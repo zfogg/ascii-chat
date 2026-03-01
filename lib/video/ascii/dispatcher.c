@@ -25,7 +25,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/video/ascii/ascii_simd.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 
 /* ============================================================================

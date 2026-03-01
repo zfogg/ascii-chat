@@ -3,10 +3,10 @@
  * @brief Display width and centering utilities implementation
  */
 
-#include "../../include/ascii-chat/util/display.h"
-#include "../../include/ascii-chat/util/utf8.h"
-#include "../../include/ascii-chat/video/ansi.h"
-#include "../../include/ascii-chat/common.h"
+#include <ascii-chat/util/display.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/video/ascii/ansi.h>
+#include <ascii-chat/common.h>
 #include <stdlib.h>
 #include <string.h>
 

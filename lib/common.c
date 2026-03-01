@@ -13,7 +13,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/buffer_pool.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
 #include <ascii-chat/video/webcam/webcam.h> // For webcam_destroy()
 #include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()

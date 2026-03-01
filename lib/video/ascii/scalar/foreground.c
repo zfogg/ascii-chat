@@ -15,6 +15,9 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/video/image.h>
+#include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/video/ascii/ansi.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/overflow.h>

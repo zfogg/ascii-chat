@@ -4,7 +4,7 @@
  * @brief ANSI RLE (REP) sequence compression and expansion
  */
 
-#include <ascii-chat/video/rle.h>
+#include <ascii-chat/video/ascii/rle.h>
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/common.h>
 

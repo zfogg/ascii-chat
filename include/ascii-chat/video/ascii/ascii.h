@@ -55,12 +55,12 @@
 
 #include <stdio.h>
 #include <time.h>
-#include "ascii/common.h"
-#include "../util/time.h"
+#include <ascii-chat/video/ascii/common.h>
+#include <ascii-chat/util/time.h>
 
 // Include platform abstraction for write function mapping and deprecation suppression
 #ifndef PLATFORM_ABSTRACTION_H
-#include "../platform/abstraction.h"
+#include <ascii-chat/platform/abstraction.h>
 #endif
 
 /* ============================================================================
@@ -179,7 +179,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
  */
 
 // Capability-aware ASCII conversion using terminal detection
-#include "../platform/terminal.h"
+#include <ascii-chat/platform/terminal.h>
 
 /**
  * @brief Convert image to ASCII art with terminal capability awareness

@@ -502,6 +502,20 @@ typedef struct utf8_palette_cache {
 } utf8_palette_cache_t;
 
 /**
+ * @brief Build UTF-8 luminance cache for all 256 levels
+ *
+ * @ingroup video
+ */
+void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256]);
+
+/**
+ * @brief Build UTF-8 ramp64 cache and character index ramp
+ *
+ * @ingroup video
+ */
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[256]);
+
+/**
  * @brief Get UTF-8 palette cache for a character set
  *
  * @ingroup video
