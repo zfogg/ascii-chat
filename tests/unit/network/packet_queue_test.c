@@ -6,7 +6,7 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/crc32.h> // For CRC calculation
 #include <ascii-chat/buffer_pool.h>   // For buffer_pool_init_global/cleanup_global
 #include <ascii-chat/util/endian.h>   // For HOST_TO_NET_U64

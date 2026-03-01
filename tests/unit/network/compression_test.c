@@ -15,7 +15,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/compression.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 
 // Use the enhanced macro to create complete test suite with basic quiet logging
 TestSuite(compression);

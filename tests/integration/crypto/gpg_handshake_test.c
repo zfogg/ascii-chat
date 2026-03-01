@@ -22,7 +22,7 @@
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/server.h>
 #include <ascii-chat/crypto/keys.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/tests/logging.h>
 

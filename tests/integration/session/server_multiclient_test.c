@@ -15,7 +15,7 @@
 
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/simd/common.h>
 #include <ascii-chat/util/overflow.h>
 

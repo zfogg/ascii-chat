@@ -29,7 +29,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/websocket/client.h>
 #include <ascii-chat/network/client.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/time.h>

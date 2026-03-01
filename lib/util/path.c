@@ -279,7 +279,6 @@ static const char *normalize_path(const char *path) {
     }
   }
 
-build_normalized:;
   /* Build normalized path */
   size_t out_pos = 0;
 #ifdef _WIN32

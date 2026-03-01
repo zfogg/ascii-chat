@@ -164,6 +164,7 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
  * @note All subsystem cleanup functions must remain idempotent.
  */
 void asciichat_shared_destroy(void) {
+  debug_memory_ensure_init();
   // Guard against double cleanup (can be called explicitly + via atexit)
   static bool shutdown_done = false;
   if (shutdown_done) {

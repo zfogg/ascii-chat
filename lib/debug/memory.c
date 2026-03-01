@@ -340,7 +340,6 @@ static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
 }
 
 /* Forward declaration for initialization */
-static void debug_memory_ensure_init(void);
 static _Atomic bool g_debug_mem_initialized = false;
 
 static struct {
@@ -374,7 +373,7 @@ static struct {
 #undef realloc
 
 /* Initialize debug memory system once at startup */
-static void debug_memory_ensure_init(void) {
+void debug_memory_ensure_init(void) {
   if (atomic_load(&g_debug_mem_initialized)) {
     return;
   }

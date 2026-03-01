@@ -56,6 +56,11 @@ extern "C" {
 #endif
 
 /**
+ * @brief Init the lifecycle of the debug memory module
+ */
+void debug_memory_ensure_init(void);
+
+/**
  * @brief Enable or disable quiet mode for memory reports
  *
  * When quiet mode is enabled, `debug_memory_report()` will not print

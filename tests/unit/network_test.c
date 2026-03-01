@@ -13,7 +13,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/parsing.h>
 
 // Use the enhanced macro to create complete test suite with debug logging and stdout/stderr enabled
