@@ -76,7 +76,7 @@ static struct log_context_t {
   atomic_t has_custom_format;         /* True if format was customized */
 } g_log = {
     .file = {0}, /* STDERR_FILENO (fd 2) - fd 0 is STDIN (read-only!) */
-    .json_file = {0}, /* -1 */
+    .json_file = {.impl = (uint64_t)-1}, /* -1 = disabled (atomic_t initialized as uint64_t -1) */
     .level = {0}, /* DEFAULT_LOG_LEVEL */
     .lifecycle = LIFECYCLE_INIT,
     .filename = {0},
