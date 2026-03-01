@@ -20,7 +20,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <ctype.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 // ============================================================================
 // Global State

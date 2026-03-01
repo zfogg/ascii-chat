@@ -76,7 +76,7 @@
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #endif
 #include <stdint.h>
 #include <stdbool.h>
@@ -185,7 +185,7 @@ typedef struct {
   /** @name Synchronization
    * @{
    */
-  atomic_bool new_frame_available; ///< Atomic flag: true when new frame available
+  atomic_t new_frame_available; ///< Atomic flag: true when new frame available
   mutex_t swap_mutex;              ///< Brief mutex for pointer swap only
   /** @} */
 
@@ -198,16 +198,16 @@ typedef struct {
   /** @name Statistics
    * @{
    */
-  atomic_ullong total_frames_received; ///< Total frames received (atomic counter)
-  atomic_ullong total_frames_dropped;  ///< Total frames dropped (atomic counter)
-  atomic_ullong last_frame_sequence;   ///< Last frame sequence number (atomic)
+  atomic_t total_frames_received; ///< Total frames received (atomic counter)
+  atomic_t total_frames_dropped;  ///< Total frames dropped (atomic counter)
+  atomic_t last_frame_sequence;   ///< Last frame sequence number (atomic)
   /** @} */
 
   /** @name Quality Metrics
    * @{
    */
-  atomic_ulong avg_decode_time_ns; ///< Average decode time in nanoseconds (atomic)
-  atomic_ulong avg_render_time_ns; ///< Average render time in nanoseconds (atomic)
+  atomic_t avg_decode_time_ns; ///< Average decode time in nanoseconds (atomic)
+  atomic_t avg_render_time_ns; ///< Average render time in nanoseconds (atomic)
   /** @} */
 
   /** @name Client Info
@@ -263,7 +263,7 @@ typedef struct {
   atomic_uintptr_t current_frame; ///< Atomic pointer to current frame
   video_frame_t frame_a;          ///< First pre-allocated frame
   video_frame_t frame_b;          ///< Second pre-allocated frame
-  atomic_bool use_frame_a;        ///< Atomic flag: true = use frame_a next, false = use frame_b
+  atomic_t use_frame_a;        ///< Atomic flag: true = use frame_a next, false = use frame_b
 } simple_frame_swap_t;
 
 /* ============================================================================

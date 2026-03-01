@@ -117,7 +117,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include "crypto.h"
 #include <ascii-chat/util/time.h>
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
@@ -164,7 +164,7 @@ static bool g_data_thread_created = false;
  *
  * @ingroup client_protocol
  */
-static atomic_bool g_data_thread_exited = false;
+static atomic_t g_data_thread_exited = false;
 
 /* ============================================================================
  * Frame Rendering Statistics
@@ -179,7 +179,7 @@ static atomic_bool g_data_thread_exited = false;
  *
  * @ingroup client_protocol
  */
-static atomic_int g_frames_rendered = 0;
+static atomic_t g_frames_rendered = 0;
 
 /* ============================================================================
  * Multi-User Client State

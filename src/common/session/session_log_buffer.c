@@ -8,15 +8,15 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/common.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Internal circular buffer structure
  */
 typedef struct session_log_buffer {
   session_log_entry_t entries[SESSION_LOG_BUFFER_SIZE];
-  _Atomic size_t write_pos;
-  _Atomic uint64_t sequence;
+  atomic_t write_pos;
+  atomic_t sequence;
   mutex_t mutex;
 } session_log_buffer_t;
 

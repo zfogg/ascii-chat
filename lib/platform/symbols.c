@@ -18,7 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 #ifndef _WIN32
 #include <unistd.h>
@@ -54,11 +54,11 @@ typedef enum {
 } symbolizer_type_t;
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
-static atomic_bool g_symbolizer_detected = false;
-static atomic_bool g_llvm_symbolizer_checked = false;
-static atomic_bool g_llvm_symbolizer_available = false;
+static atomic_t g_symbolizer_detected = false;
+static atomic_t g_llvm_symbolizer_checked = false;
+static atomic_t g_llvm_symbolizer_available = false;
 static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
-static atomic_bool g_addr2line_available = false;
+static atomic_t g_addr2line_available = false;
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
 // Lifecycle for symbolizer detection (replaces double-checked locking with mutex)
 static lifecycle_t g_llvm_symbolizer_lc = LIFECYCLE_INIT;

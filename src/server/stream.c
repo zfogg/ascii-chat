@@ -128,7 +128,7 @@
  * @see palette.c For client palette management
  */
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -161,7 +161,7 @@
  *
  * @ingroup server_stream
  */
-static atomic_int g_previous_active_video_count = 0;
+static atomic_t g_previous_active_video_count = 0;
 
 /**
  * @brief Image source structure for multi-client video mixing
@@ -247,8 +247,8 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
     // Snapshot all needed client state (all atomic reads or stable pointers)
     SAFE_STRNCPY(client_snapshots[snapshot_count].client_id, client->client_id,
                  sizeof(client_snapshots[snapshot_count].client_id) - 1);
-    client_snapshots[snapshot_count].is_active = atomic_load(&client->active);
-    client_snapshots[snapshot_count].is_sending_video = atomic_load(&client->is_sending_video);
+    client_snapshots[snapshot_count].is_active = atomic_load_bool(&client->active);
+    client_snapshots[snapshot_count].is_sending_video = atomic_load_bool(&client->is_sending_video);
     client_snapshots[snapshot_count].video_buffer = client->incoming_video_buffer; // Stable pointer
     snapshot_count++;
   }
@@ -1318,8 +1318,8 @@ bool any_clients_sending_video(void) {
     }
 
     // Check if client is active and sending video (both atomic reads)
-    bool is_active = atomic_load(&client->active);
-    bool is_sending = atomic_load(&client->is_sending_video);
+    bool is_active = atomic_load_bool(&client->active);
+    bool is_sending = atomic_load_bool(&client->is_sending_video);
 
     if (is_active && is_sending) {
       return true;

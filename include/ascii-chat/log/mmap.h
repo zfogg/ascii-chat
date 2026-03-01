@@ -33,7 +33,7 @@
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #endif
 #include "../common.h"
 #include "../platform/mmap.h"

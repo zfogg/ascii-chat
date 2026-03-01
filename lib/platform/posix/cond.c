@@ -11,7 +11,7 @@
 #include <ascii-chat/debug/named.h>
 #include <pthread.h>
 #include <time.h>
-#include <stdatomic.h> // For atomic_fetch_sub
+#include <ascii-chat/atomic.h> // For atomic_fetch_sub
 #include <errno.h>     // For ETIMEDOUT
 
 /**

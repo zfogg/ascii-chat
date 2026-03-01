@@ -33,7 +33,7 @@ static inline void *data_from_node(buffer_node_t *node) {
 }
 
 /** @brief Atomically update peak if new value is higher */
-static inline void update_peak(atomic_size_t *peak, size_t value) {
+static inline void update_peak(atomic_t *peak, size_t value) {
   size_t old = atomic_load_explicit(peak, memory_order_relaxed);
   while (value > old) {
     if (atomic_compare_exchange_weak_explicit(peak, &old, value, memory_order_relaxed, memory_order_relaxed)) {

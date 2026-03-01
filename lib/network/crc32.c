@@ -8,7 +8,7 @@
 #include <ascii-chat/platform/system.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 // Multi-architecture hardware acceleration support
 #if defined(__aarch64__)
@@ -26,7 +26,7 @@
 
 // Check if CRC32 instructions are available at runtime
 static bool crc32_hw_available = false;
-static atomic_bool crc32_hw_checked = false;
+static atomic_t crc32_hw_checked = false;
 
 static void check_crc32_hw_support(void) {
   // Fast path: check if already initialized (atomic read)

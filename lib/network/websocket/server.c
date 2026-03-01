@@ -53,8 +53,8 @@ typedef struct {
 // Per-connection callback counters for diagnosing event loop interleaving.
 // These track how many RECEIVE vs WRITEABLE callbacks fire during message assembly.
 // TODO: Make these per-connection instead of global for proper multi-client support
-static _Atomic uint64_t g_receive_callback_count = 0;
-static _Atomic uint64_t g_writeable_callback_count = 0;
+static atomic_t g_receive_callback_count = 0;
+static atomic_t g_writeable_callback_count = 0;
 
 // Forward declaration for websocket_protocols (defined later in file)
 static struct lws_protocols websocket_protocols[];
@@ -302,7 +302,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
     uint64_t writeable_callback_start_ns = time_get_ns();
-    atomic_fetch_add(&g_writeable_callback_count, 1);
+    atomic_fetch_add_u64(&g_writeable_callback_count, 1);
     log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
               (unsigned long long)writeable_callback_start_ns);
 
@@ -535,7 +535,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_debug("[WS_TIMING] is_first=%d is_final=%d, about to increment callback count", is_first, is_final);
     log_info("[WS_FRAG_DEBUG] === RECEIVE CALLBACK: is_first=%d is_final=%d len=%zu ===", is_first, is_final, len);
 
-    atomic_fetch_add(&g_receive_callback_count, 1);
+    atomic_fetch_add_u64(&g_receive_callback_count, 1);
     log_debug("[WS_TIMING] incremented callback count");
 
     // OPTIMIZATION: Only enable TCP_QUICKACK on first fragment of each message.
@@ -553,15 +553,15 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     if (is_first) {
       // Reset fragment counters at start of new message
-      atomic_store(&g_writeable_callback_count, 0);
-      atomic_store(&g_receive_callback_count, 1);
+      atomic_store_u64(&g_writeable_callback_count, 0);
+      atomic_store_u64(&g_receive_callback_count, 1);
     }
 
     // Log fragment arrival
     // Note: Timing calculation with global g_receive_first_fragment_ns is broken for multi-fragment
     // messages and will be fixed with per-connection tracking
     {
-      uint64_t frag_num = atomic_load(&g_receive_callback_count);
+      uint64_t frag_num = atomic_load_u64(&g_receive_callback_count);
       log_info("[WS_FRAG] Fragment #%llu: %zu bytes (first=%d final=%d)", (unsigned long long)frag_num, len, is_first,
                is_final);
     }
@@ -656,7 +656,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // interferes with fragmented frame processing in libwebsockets)
 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
-             (unsigned long long)atomic_load(&g_receive_callback_count));
+             (unsigned long long)atomic_load_u64(&g_receive_callback_count));
 
     // Log callback duration with breakdown
     {
@@ -819,7 +819,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   server->handler = config->client_handler;
   server->user_data = config->user_data;
   server->port = config->port;
-  atomic_store(&server->running, true);
+  atomic_store_bool(&server->running, true);
 
   // Store server pointer in protocol user data so callbacks can access it
   // Both the HTTP and ACIP protocols need access to the server
@@ -890,7 +890,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
   // Run libwebsockets event loop
   uint64_t last_service_ns = 0;
   int service_call_count = 0;
-  while (atomic_load(&server->running)) {
+  while (atomic_load_bool(&server->running)) {
     // Service libwebsockets with 16ms timeout to match 60 FPS frame rate.
     // This provides frequent event processing (~60 callback invocations per second) so that
     // WebSocket frames queued by the render loop are sent promptly, matching TCP performance.
@@ -940,7 +940,7 @@ void websocket_server_destroy(websocket_server_t *server) {
     return;
   }
 
-  atomic_store(&server->running, false);
+  atomic_store_bool(&server->running, false);
 
   // Destroy handler thread pool (waits for pending work to complete)
   if (server->handler_pool) {

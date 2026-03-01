@@ -36,7 +36,7 @@
 
 #include <string.h>
 #include <time.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 #ifndef _WIN32
 #include <netinet/tcp.h>
@@ -103,9 +103,9 @@ tcp_client_t *tcp_client_create(void) {
   memset(client, 0, sizeof(*client));
 
   client->sockfd = INVALID_SOCKET_VALUE;
-  atomic_store(&client->connection_active, false);
-  atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
+  atomic_store_bool(&client->connection_active, false);
+  atomic_store_bool(&client->connection_lost, false);
+  atomic_store_bool(&client->should_reconnect, false);
   client->my_client_id = 0;
   memset(client->server_ip, 0, sizeof(client->server_ip));
   client->encryption_enabled = false;
@@ -156,7 +156,7 @@ void tcp_client_destroy(tcp_client_t **client_ptr) {
 bool tcp_client_is_active(const tcp_client_t *client) {
   if (!client)
     return false;
-  return atomic_load(&client->connection_active);
+  return atomic_load_bool(&client->connection_active);
 }
 
 /**
@@ -165,7 +165,7 @@ bool tcp_client_is_active(const tcp_client_t *client) {
 bool tcp_client_is_lost(const tcp_client_t *client) {
   if (!client)
     return false;
-  return atomic_load(&client->connection_lost);
+  return atomic_load_bool(&client->connection_lost);
 }
 
 /**
@@ -193,9 +193,9 @@ void tcp_client_signal_lost(tcp_client_t *client) {
   if (!client)
     return;
 
-  if (!atomic_load(&client->connection_lost)) {
-    atomic_store(&client->connection_lost, true);
-    atomic_store(&client->connection_active, false);
+  if (!atomic_load_bool(&client->connection_lost)) {
+    atomic_store_bool(&client->connection_lost, true);
+    atomic_store_bool(&client->connection_active, false);
     log_info("Connection lost signaled");
   }
 }
@@ -210,7 +210,7 @@ void tcp_client_close(tcp_client_t *client) {
   log_debug("Closing client connection");
 
   // Mark connection as inactive
-  atomic_store(&client->connection_active, false);
+  atomic_store_bool(&client->connection_active, false);
 
   // Close socket
   if (socket_is_valid(client->sockfd)) {
@@ -229,7 +229,7 @@ void tcp_client_shutdown(tcp_client_t *client) {
   if (!client)
     return;
 
-  atomic_store(&client->connection_active, false);
+  atomic_store_bool(&client->connection_active, false);
 
   // Shutdown socket for reading/writing to interrupt blocking calls
   if (socket_is_valid(client->sockfd)) {
@@ -252,7 +252,7 @@ int tcp_client_send_packet(tcp_client_t *client, packet_type_t type, const void 
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
 
-  if (!atomic_load(&client->connection_active)) {
+  if (!atomic_load_bool(&client->connection_active)) {
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 
@@ -491,9 +491,9 @@ connection_success:
   }
 
   // Mark connection as active
-  atomic_store(&client->connection_active, true);
-  atomic_store(&client->connection_lost, false);
-  atomic_store(&client->should_reconnect, false);
+  atomic_store_bool(&client->connection_active, true);
+  atomic_store_bool(&client->connection_lost, false);
+  atomic_store_bool(&client->should_reconnect, false);
 
   // Initialize crypto (application must set crypto_initialized flag)
   // This is done outside this function by calling client_crypto_init()

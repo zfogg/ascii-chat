@@ -89,7 +89,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -117,7 +117,7 @@ static session_display_ctx_t *g_display_ctx = NULL;
  *
  * @ingroup client_display
  */
-static atomic_bool g_is_first_frame_of_connection = true;
+static atomic_t g_is_first_frame_of_connection = true;
 
 /**
  * @brief Keyboard input state for client mode

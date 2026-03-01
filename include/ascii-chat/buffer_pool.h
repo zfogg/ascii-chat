@@ -32,11 +32,11 @@
 // Define ATOMIC_TYPE macro for cross-platform atomic support in struct definitions.
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
-using std::atomic_size_t;
+using std::atomic_t;
 // MSVC C++ mode: use std::atomic<T> instead of _Atomic(T)
 #define ATOMIC_TYPE(T) std::atomic<T>
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 // C mode: use standard _Atomic(T)
 #define ATOMIC_TYPE(T) _Atomic(T)
 #endif

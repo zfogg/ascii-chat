@@ -100,7 +100,7 @@
  * @see protocol.c For client packet processing
  */
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -364,7 +364,7 @@ client_info_t *find_client_by_socket(socket_t socket) {
   rwlock_rdlock(&g_client_manager_rwlock);
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (g_client_manager.clients[i].socket == socket && atomic_load(&g_client_manager.clients[i].active)) {
+    if (g_client_manager.clients[i].socket == socket && atomic_load_bool(&g_client_manager.clients[i].active)) {
       client_info_t *client = &g_client_manager.clients[i];
       rwlock_rdunlock(&g_client_manager_rwlock);
       return client;
@@ -498,7 +498,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
   // This decouples receive from dispatch to prevent backpressure on the socket
   if (!is_tcp) { // Only for WebRTC/WebSocket clients that need async dispatch
     safe_snprintf(thread_name, sizeof(thread_name), "dispatch_%s", client->client_id);
-    atomic_store(&client->dispatch_thread_running, true);
+    atomic_store_bool(&client->dispatch_thread_running, true);
     result = asciichat_thread_create(&client->dispatch_thread, thread_name, client_dispatch_thread, client);
     if (result != ASCIICHAT_OK) {
       log_error("Failed to create dispatch thread for client %s: %s", client->client_id,
@@ -552,7 +552,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     if (slot == -1 && g_client_manager.clients[i].client_id[0] == '\0') {
       slot = i; // Take first available slot
     }
-    if (g_client_manager.clients[i].client_id[0] != '\0' && atomic_load(&g_client_manager.clients[i].active)) {
+    if (g_client_manager.clients[i].client_id[0] != '\0' && atomic_load_bool(&g_client_manager.clients[i].active)) {
       existing_count++;
     }
   }
@@ -650,9 +650,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = port;
-  atomic_store(&client->active, true);
+  atomic_store_bool(&client->active, true);
   client->server_ctx = server_ctx; // Store server context for cleanup
-  atomic_store(&client->shutting_down, false);
+  atomic_store_bool(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0);
   atomic_store(&client->last_sent_grid_sources, 0);
   client->connected_at = time(NULL);
@@ -931,7 +931,7 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
       slot = i; // Take first available slot
     }
     // Count only active clients
-    if (g_client_manager.clients[i].client_id[0] != '\0' && atomic_load(&g_client_manager.clients[i].active)) {
+    if (g_client_manager.clients[i].client_id[0] != '\0' && atomic_load_bool(&g_client_manager.clients[i].active)) {
       existing_count++;
     }
   }
@@ -993,10 +993,10 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   SAFE_STRNCPY(client->client_id, new_client_id, sizeof(client->client_id) - 1);
   SAFE_STRNCPY(client->client_ip, client_ip, sizeof(client->client_ip) - 1);
   client->port = 0; // WebRTC doesn't use port numbers
-  atomic_store(&client->active, true);
+  atomic_store_bool(&client->active, true);
   client->server_ctx = server_ctx; // Store server context for receive thread cleanup
   log_info("Added new WebRTC client %s from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
-  atomic_store(&client->shutting_down, false);
+  atomic_store_bool(&client->shutting_down, false);
   atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
   atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
   log_debug("WebRTC client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);
@@ -1211,7 +1211,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
     if (strcmp(client->client_id, client_id) == 0 && client->client_id[0] != '\0') {
       // Check if already being removed by another thread
       // This prevents double-free and use-after-free crashes during concurrent cleanup
-      if (atomic_load(&client->shutting_down)) {
+      if (atomic_load_bool(&client->shutting_down)) {
         rwlock_wrunlock(&g_client_manager_rwlock);
         log_debug("Client %s already being removed by another thread, skipping", client_id);
         return 0; // Return success - removal is in progress
@@ -1219,10 +1219,10 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
       // Mark as shutting down and inactive immediately to stop new operations
       log_debug("Setting active=false in remove_client (client_id=%s, socket=%d)", client_id, client->socket);
       log_info("Removing client %s (socket=%d) - marking inactive and clearing video flags", client_id, client->socket);
-      atomic_store(&client->shutting_down, true);
-      atomic_store(&client->active, false);
-      atomic_store(&client->is_sending_video, false);
-      atomic_store(&client->is_sending_audio, false);
+      atomic_store_bool(&client->shutting_down, true);
+      atomic_store_bool(&client->active, false);
+      atomic_store_bool(&client->is_sending_video, false);
+      atomic_store_bool(&client->is_sending_audio, false);
       target_client = client;
 
       // Store display name before clearing
@@ -1364,7 +1364,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
   // Another thread might have invalidated the pointer while we had the lock released.
   if (target_client) {
     // Verify client_id still matches and client is still in shutting_down state
-    bool still_shutting_down = atomic_load(&target_client->shutting_down);
+    bool still_shutting_down = atomic_load_bool(&target_client->shutting_down);
     if (strcmp(target_client->client_id, client_id) != 0 || !still_shutting_down) {
       log_warn("Client %s pointer invalidated during thread cleanup (id=%s, shutting_down=%d)", client_id,
                target_client->client_id, still_shutting_down);
@@ -1510,7 +1510,7 @@ void *client_dispatch_thread(void *arg) {
 
   uint64_t dispatch_loop_count = 0;
 
-  while (!atomic_load_bool(&g_should_exit) && atomic_load(&client->dispatch_thread_running)) {
+  while (!atomic_load_bool(&g_should_exit) && atomic_load_bool(&client->dispatch_thread_running)) {
     dispatch_loop_count++;
     // Try to dequeue next packet (non-blocking)
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
@@ -1673,7 +1673,7 @@ void *client_receive_thread(void *arg) {
   log_debug("RECV_THREAD_DEBUG: Thread started, client=%p, client_id=%s, is_tcp=%d", (void *)client, client->client_id,
             client->is_tcp_client);
 
-  if (atomic_load(&client->protocol_disconnect_requested)) {
+  if (atomic_load_bool(&client->protocol_disconnect_requested)) {
     log_debug("Receive thread for client %s exiting before start (protocol disconnect requested)", client->client_id);
     return NULL;
   }
@@ -1703,9 +1703,9 @@ void *client_receive_thread(void *arg) {
   // For WebRTC clients: receives from transport ringbuffer (via ACDS signaling)
 
   log_info("RECV_THREAD_LOOP_START: client_id=%s, is_tcp=%d, transport=%p, active=%d", client->client_id,
-           client->is_tcp_client, (void *)client->transport, atomic_load(&client->active));
+           client->is_tcp_client, (void *)client->transport, atomic_load_bool(&client->active));
 
-  while (!atomic_load_bool(&g_should_exit) && atomic_load(&client->active)) {
+  while (!atomic_load_bool(&g_should_exit) && atomic_load_bool(&client->active)) {
     // For TCP clients, check socket validity
     // For WebRTC clients, continue even if no socket (transport handles everything)
     if (client->is_tcp_client && client->socket == INVALID_SOCKET_VALUE) {
@@ -1765,7 +1765,7 @@ void *client_receive_thread(void *arg) {
       // Transport can be destroyed by WebSocket callback while we're receiving
       acip_transport_t *transport_snapshot = NULL;
       mutex_lock(&client->send_mutex);
-      if (!client->transport || atomic_load(&client->shutting_down)) {
+      if (!client->transport || atomic_load_bool(&client->shutting_down)) {
         mutex_unlock(&client->send_mutex);
         log_debug("RECV_THREAD[%s]: Transport destroyed or client shutting down, exiting receive loop",
                   client->client_id);
@@ -1856,10 +1856,10 @@ void *client_receive_thread(void *arg) {
   // OPTIMIZED: Use atomic operations for thread control flags (lock-free)
   const char *client_id_snapshot = client->client_id;
   log_debug("Setting active=false in receive_thread_fn (client_id=%s, exiting receive loop)", client_id_snapshot);
-  atomic_store(&client->active, false);
-  atomic_store(&client->send_thread_running, false);
-  atomic_store(&client->video_render_thread_running, false);
-  atomic_store(&client->audio_render_thread_running, false);
+  atomic_store_bool(&client->active, false);
+  atomic_store_bool(&client->send_thread_running, false);
+  atomic_store_bool(&client->video_render_thread_running, false);
+  atomic_store_bool(&client->audio_render_thread_running, false);
 
   // Call remove_client() to trigger cleanup
   // Safe to call from receive thread now: remove_client() detects self-join via thread IDs
@@ -1921,11 +1921,11 @@ void *client_send_thread_func(void *arg) {
   log_info("Started send thread for client %s (%s)", client->client_id, client->display_name);
 
   // Mark thread as running
-  atomic_store(&client->send_thread_running, true);
+  atomic_store_bool(&client->send_thread_running, true);
 
   log_info("SEND_THREAD_LOOP_START: client_id=%s active=%d shutting_down=%d running=%d", client->client_id,
-           atomic_load(&client->active), atomic_load(&client->shutting_down),
-           atomic_load(&client->send_thread_running));
+           atomic_load_bool(&client->active), atomic_load_bool(&client->shutting_down),
+           atomic_load_bool(&client->send_thread_running));
 
   // Track timing for video frame sends
   uint64_t last_video_send_time = 0;
@@ -1935,8 +1935,8 @@ void *client_send_thread_func(void *arg) {
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
   int loop_iteration_count = 0;
-  while (!atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
-         atomic_load(&client->send_thread_running)) {
+  while (!atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down) && atomic_load_bool(&client->active) &&
+         atomic_load_bool(&client->send_thread_running)) {
     loop_iteration_count++;
     bool sent_something = false;
     uint64_t loop_start_ns = time_get_ns();
@@ -1982,10 +1982,10 @@ void *client_send_thread_func(void *arg) {
 
         // Get transport reference while holding mutex briefly (prevents deadlock on TCP buffer full)
         mutex_lock(&client->send_mutex);
-        if (atomic_load(&client->shutting_down) || !client->transport) {
+        if (atomic_load_bool(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
           log_warn("BREAK_AUDIO_SINGLE: client_id=%s shutting_down=%d transport=%p", client->client_id,
-                   atomic_load(&client->shutting_down), (void *)client->transport);
+                   atomic_load_bool(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
         }
         acip_transport_t *transport = client->transport;
@@ -2005,10 +2005,10 @@ void *client_send_thread_func(void *arg) {
 
         // Get transport reference
         mutex_lock(&client->send_mutex);
-        if (atomic_load(&client->shutting_down) || !client->transport) {
+        if (atomic_load_bool(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
           log_warn("BREAK_AUDIO_BATCH: client_id=%s shutting_down=%d transport=%p", client->client_id,
-                   atomic_load(&client->shutting_down), (void *)client->transport);
+                   atomic_load_bool(&client->shutting_down), (void *)client->transport);
           result = ERROR_NETWORK;
         } else {
           acip_transport_t *transport = client->transport;
@@ -2119,11 +2119,11 @@ void *client_send_thread_func(void *arg) {
         mutex_lock(&client->client_state_mutex);
         // Get socket reference briefly to avoid deadlock on TCP buffer full
         mutex_lock(&client->send_mutex);
-        if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+        if (atomic_load_bool(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
           mutex_unlock(&client->send_mutex);
           mutex_unlock(&client->client_state_mutex);
           log_warn("BREAK_REKEY: client_id=%s shutting_down=%d socket=%d", client->client_id,
-                   atomic_load(&client->shutting_down), (int)client->socket);
+                   atomic_load_bool(&client->shutting_down), (int)client->socket);
           break; // Client is shutting down, exit thread
         }
         socket_t rekey_socket = client->socket;
@@ -2197,10 +2197,10 @@ void *client_send_thread_func(void *arg) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame using ACIP transport
         // Get transport reference briefly to avoid deadlock on TCP buffer full
         mutex_lock(&client->send_mutex);
-        if (atomic_load(&client->shutting_down) || !client->transport) {
+        if (atomic_load_bool(&client->shutting_down) || !client->transport) {
           mutex_unlock(&client->send_mutex);
           log_warn("BREAK_CLEAR_CONSOLE: client_id=%s shutting_down=%d transport=%p", client->client_id,
-                   atomic_load(&client->shutting_down), (void *)client->transport);
+                   atomic_load_bool(&client->shutting_down), (void *)client->transport);
           break; // Client is shutting down, exit thread
         }
         acip_transport_t *clear_transport = client->transport;
@@ -2280,10 +2280,10 @@ void *client_send_thread_func(void *arg) {
       }
 
       mutex_lock(&client->send_mutex);
-      if (atomic_load(&client->shutting_down) || !client->transport) {
+      if (atomic_load_bool(&client->shutting_down) || !client->transport) {
         mutex_unlock(&client->send_mutex);
         log_warn("BREAK_FRAME_SEND: client_id=%s shutting_down=%d transport=%p loop_iter=%d", client->client_id,
-                 atomic_load(&client->shutting_down), (void *)client->transport, loop_iteration_count);
+                 atomic_load_bool(&client->shutting_down), (void *)client->transport, loop_iteration_count);
         break; // Client is shutting down, exit thread
       }
       acip_transport_t *frame_transport = client->transport;
@@ -2357,11 +2357,11 @@ void *client_send_thread_func(void *arg) {
   // Log why the send thread exited
   log_warn("Send thread exit conditions - client_id=%s g_should_exit=%d shutting_down=%d active=%d "
            "send_thread_running=%d",
-           client->client_id, atomic_load_bool(&g_should_exit), atomic_load(&client->shutting_down),
-           atomic_load(&client->active), atomic_load(&client->send_thread_running));
+           client->client_id, atomic_load_bool(&g_should_exit), atomic_load_bool(&client->shutting_down),
+           atomic_load_bool(&client->active), atomic_load_bool(&client->send_thread_running));
 
   // Mark thread as stopped
-  atomic_store(&client->send_thread_running, false);
+  atomic_store_bool(&client->send_thread_running, false);
   log_debug("Send thread for client %s terminated", client->client_id);
 
   // Clean up thread-local error context before exit
@@ -2401,8 +2401,8 @@ void broadcast_server_state_to_all_clients(void) {
   // Count active clients and snapshot client data while holding lock
   // Use atomic_load for all atomic fields to prevent data races.
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    bool is_active = atomic_load(&g_client_manager.clients[i].active);
-    if (is_active && atomic_load(&g_client_manager.clients[i].is_sending_video)) {
+    bool is_active = atomic_load_bool(&g_client_manager.clients[i].active);
+    if (is_active && atomic_load_bool(&g_client_manager.clients[i].is_sending_video)) {
       active_video_count++;
     }
     if (is_active && g_client_manager.clients[i].socket != INVALID_SOCKET_VALUE) {
@@ -2540,8 +2540,8 @@ void stop_client_threads(client_info_t *client) {
 
   // Signal threads to stop
   log_debug("Setting active=false in stop_client_threads (client_id=%s)", client->client_id);
-  atomic_store(&client->active, false);
-  atomic_store(&client->send_thread_running, false);
+  atomic_store_bool(&client->active, false);
+  atomic_store_bool(&client->send_thread_running, false);
 
   // Wait for threads to finish
   if (asciichat_thread_is_initialized(&client->send_thread)) {
@@ -2552,7 +2552,7 @@ void stop_client_threads(client_info_t *client) {
   }
   // For async dispatch: stop dispatch thread if running
   if (asciichat_thread_is_initialized(&client->dispatch_thread)) {
-    atomic_store(&client->dispatch_thread_running, false);
+    atomic_store_bool(&client->dispatch_thread_running, false);
     asciichat_thread_join(&client->dispatch_thread, NULL);
   }
 }
@@ -2799,7 +2799,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   }
 
   // Auto-enable video stream if not already enabled
-  bool was_sending_video = atomic_load(&client->is_sending_video);
+  bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
@@ -2937,7 +2937,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   // Auto-enable video stream if not already enabled
-  bool was_sending_video = atomic_load(&client->is_sending_video);
+  bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME_H265)", client->client_id);
@@ -3142,9 +3142,9 @@ static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const
   // ACIP handler already dequantized samples - write directly to audio buffer
   // This is more efficient than calling the existing handler which would re-dequantize
   log_debug_every(LOG_RATE_DEFAULT, "Received audio batch from client %s (samples=%zu, is_sending_audio=%d)",
-                  client->client_id, num_samples, atomic_load(&client->is_sending_audio));
+                  client->client_id, num_samples, atomic_load_bool(&client->is_sending_audio));
 
-  if (!atomic_load(&client->is_sending_audio)) {
+  if (!atomic_load_bool(&client->is_sending_audio)) {
     log_debug("Ignoring audio batch - client %s not in audio streaming mode", client->client_id);
     return;
   }
@@ -3255,7 +3255,7 @@ static void acip_server_on_ping(void *client_ctx, void *app_ctx) {
   // Respond with PONG using ACIP transport
   // Get transport reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  if (atomic_load(&client->shutting_down) || !client->transport) {
+  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
     mutex_unlock(&client->send_mutex);
     return; // Client is shutting down, skip pong
   }
@@ -3340,7 +3340,7 @@ static void acip_server_on_crypto_rekey_request(const void *payload, size_t payl
   mutex_lock(&client->client_state_mutex);
   // Get socket reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+  if (atomic_load_bool(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
     mutex_unlock(&client->send_mutex);
     mutex_unlock(&client->client_state_mutex);
     return; // Client is shutting down
@@ -3381,7 +3381,7 @@ static void acip_server_on_crypto_rekey_response(const void *payload, size_t pay
   mutex_lock(&client->client_state_mutex);
   // Get socket reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  if (atomic_load(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
+  if (atomic_load_bool(&client->shutting_down) || client->socket == INVALID_SOCKET_VALUE) {
     mutex_unlock(&client->send_mutex);
     mutex_unlock(&client->client_state_mutex);
     return; // Client is shutting down

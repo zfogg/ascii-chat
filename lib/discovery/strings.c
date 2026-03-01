@@ -23,7 +23,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/util/pcre2.h>
 #include <pcre2.h>
 

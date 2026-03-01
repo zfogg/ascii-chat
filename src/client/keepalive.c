@@ -73,7 +73,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/thread_pool.h>
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /* ============================================================================
  * Keepalive Thread Management
@@ -97,7 +97,7 @@ static bool g_ping_thread_created = false;
  *
  * @ingroup client_keepalive
  */
-static atomic_bool g_ping_thread_exited = false;
+static atomic_t g_ping_thread_exited = false;
 
 /* ============================================================================
  * Keepalive Configuration

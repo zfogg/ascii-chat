@@ -87,7 +87,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <sys/types.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers (includes TCP options)
 
@@ -129,7 +129,7 @@ static acip_transport_t *g_client_transport = NULL;
  *
  * @ingroup client_connection
  */
-static atomic_bool g_connection_active = false;
+static atomic_t g_connection_active = false;
 
 /**
  * @brief Atomic flag indicating if connection loss was detected
@@ -139,7 +139,7 @@ static atomic_bool g_connection_active = false;
  *
  * @ingroup client_connection
  */
-static atomic_bool g_connection_lost = false;
+static atomic_t g_connection_lost = false;
 
 /**
  * @brief Atomic flag indicating if reconnection should be attempted
@@ -149,7 +149,7 @@ static atomic_bool g_connection_lost = false;
  *
  * @ingroup client_connection
  */
-static atomic_bool g_should_reconnect = false;
+static atomic_t g_should_reconnect = false;
 
 /**
  * @brief Client ID assigned by server

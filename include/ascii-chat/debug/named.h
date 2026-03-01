@@ -837,8 +837,8 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #endif
 
 /**
- * @brief Register an atomic_ptr_t with automatic format specifier
- * @param a Pointer to atomic_ptr_t
+ * @brief Register an _Atomic(void *) with automatic format specifier
+ * @param a Pointer to _Atomic(void *)
  * @param name Base name string
  * @ingroup debug_named
  *

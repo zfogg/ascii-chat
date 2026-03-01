@@ -28,7 +28,7 @@
 #include <ascii-chat/app_callbacks.h>
 
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 // Forward declarations (implemented below)
 static bool capture_should_exit_adapter(void *user_data);

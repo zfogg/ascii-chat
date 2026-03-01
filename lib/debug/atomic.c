@@ -70,19 +70,19 @@ void atomic_on_fetch(atomic_t *a) {
     a->last_store_time_ns = time_get_ns();
 }
 
-void atomic_ptr_on_load(atomic_ptr_t *a) {
+void atomic_ptr_on_load(_Atomic(void *) *a) {
     if (!a || !g_atomic_debug_initialized) return;
     a->last_load_time_ns = time_get_ns();
     a->load_count++;
 }
 
-void atomic_ptr_on_store(atomic_ptr_t *a) {
+void atomic_ptr_on_store(_Atomic(void *) *a) {
     if (!a || !g_atomic_debug_initialized) return;
     a->last_store_time_ns = time_get_ns();
     a->store_count++;
 }
 
-void atomic_ptr_on_cas(atomic_ptr_t *a, bool success) {
+void atomic_ptr_on_cas(_Atomic(void *) *a, bool success) {
     if (!a || !g_atomic_debug_initialized) return;
     a->cas_count++;
     if (success) {
@@ -91,7 +91,7 @@ void atomic_ptr_on_cas(atomic_ptr_t *a, bool success) {
     }
 }
 
-void atomic_ptr_on_exchange(atomic_ptr_t *a) {
+void atomic_ptr_on_exchange(_Atomic(void *) *a) {
     if (!a || !g_atomic_debug_initialized) return;
     a->exchange_count++;
     a->last_store_time_ns = time_get_ns();
@@ -144,7 +144,7 @@ static int format_atomic_timing(const atomic_t *atomic, char *buffer, size_t siz
 static void atomic_print_entry(uintptr_t key, const char *name, void *user_data) {
     (void)user_data;  // Unused
 
-    // key is the address of atomic_t or atomic_ptr_t pointer
+    // key is the address of atomic_t or _Atomic(void *) pointer
     // We can't distinguish type here, so we try to format both
     // The caller (named registry) knows the type from registration
 

@@ -14,7 +14,7 @@
 #include <ascii-chat/platform/init.h>
 #include <time.h>
 #include <math.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 // Include SIMD architecture headers for cleanup functions
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set

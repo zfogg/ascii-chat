@@ -86,7 +86,7 @@
 #include "../options/options.h" // Provides options_t struct definition
 #include "../platform/abstraction.h"
 #include <stdbool.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Initialize RCU options system

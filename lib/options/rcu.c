@@ -13,7 +13,7 @@
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/process.h>
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32
@@ -32,7 +32,7 @@
  * - Writers use atomic_exchange (serialized with mutex)
  * - Memory ordering: acquire/release for proper visibility
  */
-static _Atomic(options_t *) g_options = NULL;
+static _Atomic(void *) g_options = NULL;
 
 /**
  * @brief Mutex for serializing writers

@@ -15,7 +15,7 @@
 #include <ascii-chat/platform/abstraction.h>
 
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Create and initialize client application context

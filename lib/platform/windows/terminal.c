@@ -16,7 +16,7 @@
 #include <io.h>
 #include <fcntl.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /* ============================================================================
  * Windows Console Resize Detection
@@ -36,10 +36,10 @@ static terminal_resize_callback_t g_resize_callback = NULL;
 static asciichat_thread_t g_resize_thread = {0};
 
 /** Flag to signal resize thread should exit */
-static atomic_bool g_resize_thread_should_exit = false;
+static atomic_t g_resize_thread_should_exit = false;
 
 /** Flag indicating if resize detection is active */
-static atomic_bool g_resize_detection_active = false;
+static atomic_t g_resize_detection_active = false;
 
 /**
  * Background thread that monitors for Windows console resize events

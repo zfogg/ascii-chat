@@ -38,7 +38,7 @@
 #include <stdlib.h>
 #include <time.h>
 #include <mmsystem.h> // For timeBeginPeriod/timeEndPeriod (Windows Multimedia API)
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 #pragma comment(lib, "winmm.lib") // Link Windows Multimedia library for timeBeginPeriod/timeEndPeriod
 
@@ -488,7 +488,7 @@ int platform_backtrace(void **buffer, int size) {
 }
 
 // Global variables for Windows symbol resolution
-static atomic_bool g_symbols_initialized = false;
+static atomic_t g_symbols_initialized = false;
 static HANDLE g_process_handle = NULL;
 
 // Forward declaration (made non-static so platform_destroy can call it)

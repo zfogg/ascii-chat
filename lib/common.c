@@ -34,7 +34,7 @@
 #include <ascii-chat/platform/keyboard.h> // For keyboard_destroy()
 #include <ascii-chat/ui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <limits.h>
 #include <stdlib.h>
 
@@ -64,7 +64,7 @@ ASCIICHAT_API bool g_color_flag_value = false;  // What was the value of --color
  */
 
 // Use atomic for thread-safe access to shutdown callback
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 static _Atomic(shutdown_check_fn) g_shutdown_callback = NULL;
 
 void shutdown_register_callback(shutdown_check_fn callback) {

@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Hook called when a thread waits on a condition variable

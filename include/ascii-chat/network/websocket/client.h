@@ -63,7 +63,7 @@
 #ifndef NETWORK_WEBSOCKET_CLIENT_H
 #define NETWORK_WEBSOCKET_CLIENT_H
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -99,13 +99,13 @@ typedef struct websocket_client {
   char url[512];
 
   /** Connection is active and ready for I/O operations */
-  atomic_bool connection_active;
+  atomic_t connection_active;
 
   /** Connection was lost (triggers reconnection logic) */
-  atomic_bool connection_lost;
+  atomic_t connection_lost;
 
   /** Reconnection should be attempted */
-  atomic_bool should_reconnect;
+  atomic_t should_reconnect;
 
   /** This client's unique ID (derived from URL hash or transport-provided) */
   uint32_t my_client_id;

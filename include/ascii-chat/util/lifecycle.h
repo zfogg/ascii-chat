@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdbool.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/rwlock.h>
@@ -56,7 +56,7 @@ typedef enum {
  * Combines init/shutdown state with mutex or rwlock initialization.
  */
 typedef struct {
-  _Atomic int state;               ///< lifecycle_state_t enum value
+  atomic_t state;               ///< lifecycle_state_t enum value
   lifecycle_sync_type_t sync_type; ///< Type of sync primitive (if any)
   union {
     mutex_t *mutex;   ///< Pointer to mutex (if sync_type == LIFECYCLE_SYNC_MUTEX)

@@ -18,7 +18,7 @@ extern "C" {
 
 // Forward declarations
 struct atomic_t;
-struct atomic_ptr_t;
+struct atomic_ptr;  // Forward declaration for atomic_ptr_t if needed
 
 /**
  * @brief Register an atomic_t in the debug named registry
@@ -39,17 +39,17 @@ void debug_atomic_register(atomic_t *a, const char *name);
 void debug_atomic_unregister(atomic_t *a);
 
 /**
- * @brief Register an atomic_ptr_t in the debug named registry
- * @param a Pointer to atomic_ptr_t to register
+ * @brief Register an _Atomic(void *) in the debug named registry
+ * @param a Pointer to _Atomic(void *) to register
  * @param name Human-readable name
  */
-void debug_atomic_ptr_register(atomic_ptr_t *a, const char *name);
+void debug_atomic_ptr_register(_Atomic(void *) *a, const char *name);
 
 /**
- * @brief Unregister an atomic_ptr_t from the debug named registry
- * @param a Pointer to atomic_ptr_t to unregister
+ * @brief Unregister an _Atomic(void *) from the debug named registry
+ * @param a Pointer to _Atomic(void *) to unregister
  */
-void debug_atomic_ptr_unregister(atomic_ptr_t *a);
+void debug_atomic_ptr_unregister(_Atomic(void *) *a);
 
 #ifdef __cplusplus
 }

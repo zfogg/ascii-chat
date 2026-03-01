@@ -19,7 +19,7 @@
 #include <ascii-chat/debug/named.h>
 
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Create and initialize named WebSocket client
@@ -40,8 +40,8 @@ websocket_client_t *websocket_client_create(const char *name) {
   memset(client, 0, sizeof(*client));
 
   // Initialize connection state
-  atomic_store(&client->connection_active, false);
-  atomic_store(&client->connection_lost, false);
+  atomic_store_bool(&client->connection_active, false);
+  atomic_store_bool(&client->connection_lost, false);
   client->transport = NULL;
   client->my_client_id = 0;
   client->encryption_enabled = false;
@@ -95,7 +95,7 @@ bool websocket_client_is_active(const websocket_client_t *client) {
   if (!client) {
     return false;
   }
-  return atomic_load(&client->connection_active);
+  return atomic_load_bool(&client->connection_active);
 }
 
 /**
@@ -105,7 +105,7 @@ bool websocket_client_is_lost(const websocket_client_t *client) {
   if (!client) {
     return false;
   }
-  return atomic_load(&client->connection_lost);
+  return atomic_load_bool(&client->connection_lost);
 }
 
 /**
@@ -115,8 +115,8 @@ void websocket_client_signal_lost(websocket_client_t *client) {
   if (!client) {
     return;
   }
-  atomic_store(&client->connection_lost, true);
-  atomic_store(&client->connection_active, false);
+  atomic_store_bool(&client->connection_lost, true);
+  atomic_store_bool(&client->connection_active, false);
   log_debug("WebSocket connection marked as lost");
 }
 
@@ -134,7 +134,7 @@ void websocket_client_close(websocket_client_t *client) {
     acip_transport_close(client->transport);
   }
 
-  atomic_store(&client->connection_active, false);
+  atomic_store_bool(&client->connection_active, false);
 }
 
 /**
@@ -152,8 +152,8 @@ void websocket_client_shutdown(websocket_client_t *client) {
     acip_transport_close(client->transport);
   }
 
-  atomic_store(&client->connection_active, false);
-  atomic_store(&client->connection_lost, true);
+  atomic_store_bool(&client->connection_active, false);
+  atomic_store_bool(&client->connection_lost, true);
 }
 
 /**
@@ -181,7 +181,7 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
   acip_transport_t *transport = acip_websocket_client_transport_create("client", url, crypto_ctx);
   if (!transport) {
     log_error("Failed to create WebSocket transport");
-    atomic_store(&client->connection_lost, true);
+    atomic_store_bool(&client->connection_lost, true);
     return NULL;
   }
 
@@ -201,8 +201,8 @@ acip_transport_t *websocket_client_connect(websocket_client_t *client, const cha
 
   // Store transport and mark as active
   client->transport = transport;
-  atomic_store(&client->connection_active, true);
-  atomic_store(&client->connection_lost, false);
+  atomic_store_bool(&client->connection_active, true);
+  atomic_store_bool(&client->connection_lost, false);
 
   log_info("WebSocket client connected to %s (ID: %u)", url, client->my_client_id);
 
@@ -230,7 +230,7 @@ int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
     return SET_ERRNO(ERROR_INVALID_PARAM, "NULL client");
   }
 
-  if (!atomic_load(&client->connection_active)) {
+  if (!atomic_load_bool(&client->connection_active)) {
     return SET_ERRNO(ERROR_NETWORK, "Connection not active");
   }
 

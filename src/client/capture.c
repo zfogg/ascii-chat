@@ -102,7 +102,7 @@
 #include <ascii-chat/util/thread.h> // For THREAD_IS_CREATED macro
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <time.h>
 #include <string.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -145,7 +145,7 @@ static bool g_capture_thread_created = false;
  *
  * @ingroup client_capture
  */
-static atomic_bool g_capture_thread_exited = false;
+static atomic_t g_capture_thread_exited = false;
 
 /* ============================================================================
  * Frame Processing Constants

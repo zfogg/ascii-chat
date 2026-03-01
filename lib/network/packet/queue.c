@@ -11,7 +11,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/network/crc32.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdlib.h>
 #include <string.h>
 #ifndef _WIN32

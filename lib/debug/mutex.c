@@ -44,11 +44,11 @@ static _Atomic(int) g_thread_registry_count = 0;
 // Thread-local storage key for per-thread lock stack
 // Destructor automatically frees memory when thread exits
 static tls_key_t g_tls_mutex_stack = 0;
-static _Atomic(bool) g_tls_initialized = false;
+static atomic_t g_tls_initialized = false;
 
 // Flag set during shutdown to prevent new stack allocations
 // (threads still running at shutdown time won't leak new stacks)
-static _Atomic(bool) g_shutting_down = false;
+static atomic_t g_shutting_down = false;
 
 // Track the mutexes involved in the last detected deadlock for throttling
 #define MAX_CYCLE_MUTEXES 16

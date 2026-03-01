@@ -15,7 +15,7 @@
  *
  * Usage:
  * @code
- * atomic_bool g_should_exit = false;
+ * atomic_t g_should_exit = false;
  *
  * // Check shutdown flag
  * if (SHOULD_EXIT()) {
@@ -32,19 +32,19 @@
 
 #pragma once
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 
 /**
  * Check if the global server should exit.
- * Requires g_should_exit to be declared as atomic_bool in the compilation unit.
+ * Requires g_should_exit to be declared as atomic_t in the compilation unit.
  *
  * @return true if shutdown is requested, false otherwise
  *
  * Usage:
  * @code
- * extern atomic_bool g_should_exit;
+ * extern atomic_t g_should_exit;
  *
  * while (!SHOULD_EXIT()) {
  *     process_event();
@@ -57,13 +57,13 @@
 
 /**
  * Check if the global client should exit.
- * Requires g_should_exit to be declared as atomic_bool in the compilation unit.
+ * Requires g_should_exit to be declared as atomic_t in the compilation unit.
  *
  * @return true if shutdown is requested, false otherwise
  *
  * Usage:
  * @code
- * extern atomic_bool g_should_exit;
+ * extern atomic_t g_should_exit;
  *
  * while (!CLIENT_SHOULD_EXIT()) {
  *     process_client_event();
@@ -75,7 +75,7 @@
 /**
  * Safely load a boolean atomic value.
  *
- * @param ptr Pointer to atomic_bool variable
+ * @param ptr Pointer to atomic_t variable
  * @return Current value of the atomic variable
  *
  * Usage:
@@ -83,7 +83,7 @@
  * bool is_active = ATOMIC_LOAD_BOOL(&client->active);
  * @endcode
  */
-#define ATOMIC_LOAD_BOOL(ptr) atomic_load((atomic_bool *)(ptr))
+#define ATOMIC_LOAD_BOOL(ptr) atomic_load((atomic_t *)(ptr))
 
 /**
  * Safely load an unsigned 32-bit atomic value.
@@ -114,7 +114,7 @@
 /**
  * Safely store a boolean atomic value.
  *
- * @param ptr Pointer to atomic_bool variable
+ * @param ptr Pointer to atomic_t variable
  * @param value Value to store
  *
  * Usage:
@@ -122,7 +122,7 @@
  * ATOMIC_STORE_BOOL(&client->active, true);
  * @endcode
  */
-#define ATOMIC_STORE_BOOL(ptr, value) atomic_store((atomic_bool *)(ptr), (value))
+#define ATOMIC_STORE_BOOL(ptr, value) atomic_store((atomic_t *)(ptr), (value))
 
 /**
  * Safely store an unsigned 32-bit atomic value.
@@ -155,7 +155,7 @@
  * Atomically compares the value at ptr with expected, and if equal,
  * stores new_value and returns true. Otherwise returns false.
  *
- * @param ptr Pointer to atomic_bool variable
+ * @param ptr Pointer to atomic_t variable
  * @param expected Expected value
  * @param new_value New value to store if comparison succeeds
  * @return true if swap succeeded (value was equal to expected), false otherwise
@@ -171,7 +171,7 @@
  * @endcode
  */
 #define ATOMIC_CAS_BOOL(ptr, expected, new_value)                                                                      \
-  atomic_compare_exchange_strong((atomic_bool *)(ptr), &(expected), (new_value))
+  atomic_compare_exchange_strong((atomic_t *)(ptr), &(expected), (new_value))
 
 /**
  * Compare and swap operation for unsigned 32-bit atomics.

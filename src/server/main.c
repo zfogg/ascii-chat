@@ -278,15 +278,15 @@ static asciichat_thread_t g_status_screen_thread;
  * The main (render) thread only pops from the queue.
  */
 static asciichat_thread_t g_keyboard_thread;
-static _Atomic bool g_keyboard_thread_running = false;
+static atomic_t g_keyboard_thread_running = false;
 
 /**
  * @brief Thread-safe keyboard queue (lock-free SPSC ring buffer)
  */
 #define KEYBOARD_QUEUE_SIZE 256
 static keyboard_key_t g_keyboard_queue[KEYBOARD_QUEUE_SIZE];
-static _Atomic size_t g_keyboard_queue_head = 0;
-static _Atomic size_t g_keyboard_queue_tail = 0;
+static atomic_t g_keyboard_queue_head = 0;
+static atomic_t g_keyboard_queue_tail = 0;
 
 static bool keyboard_queue_push(keyboard_key_t key) {
   size_t head = atomic_load(&g_keyboard_queue_head);
@@ -587,7 +587,7 @@ static void server_handle_sigint(int sigint) {
     return;
   }
 
-  static _Atomic int sigint_count = 0;
+  static atomic_t sigint_count = 0;
   int count = atomic_fetch_add(&sigint_count, 1) + 1;
   if (count > 1) {
     platform_force_exit(1);

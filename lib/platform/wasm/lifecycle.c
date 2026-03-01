@@ -4,7 +4,7 @@
  */
 
 #include <ascii-chat/util/lifecycle.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdbool.h>
 
 bool lifecycle_init(lifecycle_t *lc, const char *name) {

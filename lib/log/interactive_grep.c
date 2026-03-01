@@ -23,7 +23,7 @@
 #include <pcre2.h>
 #include <string.h>
 #include <stdio.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /* ============================================================================
  * Constants
@@ -60,9 +60,9 @@ typedef struct {
 
   mutex_t mutex;
   lifecycle_t lifecycle;
-  _Atomic bool needs_rerender;
-  _Atomic bool signal_cancelled;   ///< Set by signal handler, checked by render loop
-  _Atomic int mode_atomic;         ///< Shadow of mode for signal-safe reads
+  atomic_t needs_rerender;
+  atomic_t signal_cancelled;   ///< Set by signal handler, checked by render loop
+  atomic_t mode_atomic;         ///< Shadow of mode for signal-safe reads
   bool cli_pattern_auto_populated; ///< Track if CLI pattern was already populated
 } interactive_grep_state_t;
 

@@ -17,7 +17,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <inttypes.h>
 
 #ifndef NDEBUG
@@ -38,7 +38,7 @@
  */
 typedef struct name_counter_entry {
   char *base_name;          // The base name (e.g., "media_pause")
-  _Atomic uint64_t counter; // Per-name counter
+  atomic_t counter; // Per-name counter
   UT_hash_handle hh;        // uthash handle
 } name_counter_entry_t;
 

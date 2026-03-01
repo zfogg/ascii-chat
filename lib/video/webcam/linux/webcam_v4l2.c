@@ -36,7 +36,7 @@
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/debug/named.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8
@@ -67,7 +67,7 @@ struct webcam_context_t {
   // Async camera reading (non-blocking)
   lifecycle_t async_lifecycle;      // Lifecycle state machine for camera thread
   asciichat_thread_t camera_thread; // Background thread for continuous frame capture
-  _Atomic(image_t *) latest_frame;  // Latest frame from camera (atomic swap)
+  _Atomic(void *) latest_frame;  // Latest frame from camera (atomic swap)
   image_t *async_cached_frame;      // Last frame returned to caller (returned when no new frame available)
 };
 

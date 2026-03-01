@@ -359,7 +359,7 @@ void *client_video_render_thread(void *arg) {
   // Without capabilities, convert_composite_to_ascii() will fail
   int timeout_ms = 5000; // 5 second timeout
   int waited_ms = 0;
-  while (!client->has_terminal_caps && !atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (!client->has_terminal_caps && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     if (waited_ms == 0) {
       log_debug("Waiting for terminal capabilities from client %u...", thread_client_id);
     }
@@ -409,7 +409,7 @@ void *client_video_render_thread(void *arg) {
   log_info("Video render loop STARTING for client %u", thread_client_id);
 
   bool should_continue = true;
-  while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
@@ -418,9 +418,9 @@ void *client_video_render_thread(void *arg) {
       break;
     }
 
-    bool video_running = atomic_load(&client->video_render_thread_running);
-    bool active = atomic_load(&client->active);
-    bool shutting_down = atomic_load(&client->shutting_down);
+    bool video_running = atomic_load_bool(&client->video_render_thread_running);
+    bool active = atomic_load_bool(&client->active);
+    bool shutting_down = atomic_load_bool(&client->shutting_down);
 
     should_continue = video_running && active && !shutting_down;
 
@@ -441,20 +441,20 @@ void *client_video_render_thread(void *arg) {
     uint64_t current_time_ns = time_get_ns();
 
     // Check thread state again before acquiring locks (client might have been destroyed during sleep).
-    should_continue = atomic_load(&client->video_render_thread_running) && atomic_load(&client->active) &&
-                      !atomic_load(&client->shutting_down);
+    should_continue = atomic_load_bool(&client->video_render_thread_running) && atomic_load_bool(&client->active) &&
+                      !atomic_load_bool(&client->shutting_down);
     if (!should_continue) {
       break;
     }
 
     // Optimization: No mutex needed - all fields are atomic or stable.
-    // client_id: atomic_uint - use atomic_load for thread safety
-    // width/height: atomic_ushort - use atomic_load
-    // active: atomic_bool - use atomic_load
+    // client_id: atomic_t - use atomic_load for thread safety
+    // width/height: atomic_t - use atomic_load
+    // active: atomic_t - use atomic_load
     const char *client_id_snapshot = client->client_id;            // Atomic read
-    unsigned short width_snapshot = atomic_load(&client->width);   // Atomic read
-    unsigned short height_snapshot = atomic_load(&client->height); // Atomic read
-    bool active_snapshot = atomic_load(&client->active);           // Atomic read
+    unsigned short width_snapshot = atomic_load_bool(&client->width);   // Atomic read
+    unsigned short height_snapshot = atomic_load_bool(&client->height); // Atomic read
+    bool active_snapshot = atomic_load_bool(&client->active);           // Atomic read
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {
@@ -564,7 +564,7 @@ void *client_video_render_thread(void *arg) {
       log_debug_every(5 * NS_PER_MS_INT, "Buffering frame for client %u (size=%zu)", thread_client_id, frame_size);
       // GRID LAYOUT CHANGE DETECTION: Store source count with frame
       // Send thread will compare this with last sent count to detect grid changes
-      atomic_store(&client->last_rendered_grid_sources, sources_count);
+      atomic_store_bool(&client->last_rendered_grid_sources, sources_count);
 
       // Use double-buffer system which has its own internal swap_mutex
       // No external locking needed - the double-buffer is thread-safe by design
@@ -841,7 +841,7 @@ void *client_audio_render_thread(void *arg) {
   int server_audio_frame_count = 0;
 
   bool should_continue = true;
-  while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
     log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
@@ -852,8 +852,8 @@ void *client_audio_render_thread(void *arg) {
 
     // Check thread state before acquiring any locks to prevent use-after-destroy.
     // If we acquire locks after client is being destroyed, we'll crash with SIGSEGV
-    should_continue = (((int)atomic_load(&client->audio_render_thread_running) != 0) &&
-                       ((int)atomic_load(&client->active) != 0) && !atomic_load(&client->shutting_down));
+    should_continue = (((int)atomic_load_bool(&client->audio_render_thread_running) != 0) &&
+                       ((int)atomic_load_bool(&client->active) != 0) && !atomic_load_bool(&client->shutting_down));
 
     if (!should_continue) {
       log_debug("Audio render thread stopping for client %u (should_continue=false)", thread_client_id);
@@ -870,11 +870,11 @@ void *client_audio_render_thread(void *arg) {
     }
 
     // Optimization: No mutex needed - all fields are atomic or stable.
-    // client_id: atomic_uint - use atomic_load for thread safety
-    // active: atomic_bool - use atomic_load
+    // client_id: atomic_t - use atomic_load for thread safety
+    // active: atomic_t - use atomic_load
     // audio_queue: Assigned once at init and never changes
     const char *client_id_snapshot = client->client_id;         // Atomic read
-    bool active_snapshot = atomic_load(&client->active);        // Atomic read
+    bool active_snapshot = atomic_load_bool(&client->active);        // Atomic read
     packet_queue_t *audio_queue_snapshot = client->audio_queue; // Stable after init
 
     // Check if client is still active after getting snapshot
@@ -1231,8 +1231,8 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   // Initialize render thread control flags
   // IMPORTANT: Set to true BEFORE creating thread to avoid race condition
   // where thread starts and immediately exits because flag is false
-  atomic_store(&client->video_render_thread_running, true);
-  atomic_store(&client->audio_render_thread_running, true);
+  atomic_store_bool(&client->video_render_thread_running, true);
+  atomic_store_bool(&client->audio_render_thread_running, true);
 
   // Create video rendering thread (stop_id=2, stop after receive thread)
   char thread_name[64];
@@ -1250,7 +1250,7 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
 
   if (video_result != ASCIICHAT_OK) {
     // Reset flag since thread creation failed
-    atomic_store(&client->video_render_thread_running, false);
+    atomic_store_bool(&client->video_render_thread_running, false);
     // Mutexes will be destroyed by remove_client() which called us
     return -1;
   }
@@ -1269,9 +1269,9 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   }
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)
-    atomic_store(&client->video_render_thread_running, false);
+    atomic_store_bool(&client->video_render_thread_running, false);
     // Reset audio flag since thread creation failed
-    atomic_store(&client->audio_render_thread_running, false);
+    atomic_store_bool(&client->audio_render_thread_running, false);
     // tcp_server_stop_client_threads() will be called by remove_client()
     // to clean up the video thread we just created
     // Mutexes will be destroyed by remove_client() which called us
@@ -1375,8 +1375,8 @@ void stop_client_render_threads(client_info_t *client) {
   log_debug("Stopping render threads for client %s", client->client_id);
 
   // Signal threads to stop (atomic operations, no mutex needed)
-  atomic_store(&client->video_render_thread_running, false);
-  atomic_store(&client->audio_render_thread_running, false);
+  atomic_store_bool(&client->video_render_thread_running, false);
+  atomic_store_bool(&client->audio_render_thread_running, false);
 
   // Wait for threads to finish (deterministic cleanup)
   // During shutdown, don't wait forever for threads to join

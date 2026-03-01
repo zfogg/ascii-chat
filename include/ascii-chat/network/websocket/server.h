@@ -51,7 +51,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include "../../common.h"
 #include "../../platform/abstraction.h"
 #include "../../thread_pool.h"
@@ -101,7 +101,7 @@ struct websocket_server {
   struct lws_context *context;         ///< libwebsockets context
   websocket_client_handler_fn handler; ///< Client handler function
   void *user_data;                     ///< User data for handlers
-  atomic_bool running;                 ///< Server running flag
+  atomic_t running;                 ///< Server running flag
   int port;                            ///< Listening port
   struct thread_pool *handler_pool;    ///< Thread pool for queueing handler work
 };

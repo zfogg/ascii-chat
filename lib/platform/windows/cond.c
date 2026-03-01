@@ -11,7 +11,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/debug/named.h>
 #include <errno.h> // For ETIMEDOUT
-#include <stdatomic.h> // For atomic_fetch_sub
+#include <ascii-chat/atomic.h> // For atomic_fetch_sub
 
 /**
  * @brief Initialize a condition variable with a name

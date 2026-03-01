@@ -11,7 +11,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Global timing tracker - shared across all WebSocket connections

@@ -15,7 +15,7 @@
 #include <string.h>
 #include <time.h>
 #include <inttypes.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/lifecycle.h>
 

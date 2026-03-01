@@ -96,9 +96,9 @@
 // C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
-using std::atomic_size_t;
+using std::atomic_t;
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #endif
 #include "../../buffer_pool.h"
 #include "packet.h"
@@ -172,7 +172,7 @@ typedef struct node_pool {
   /** @brief Total number of nodes in pool */
   size_t pool_size;
   /** @brief Number of nodes currently in use - atomic for lock-free tracking */
-  _Atomic size_t used_count;
+  atomic_t used_count;
 } node_pool_t;
 
 /**
@@ -214,11 +214,11 @@ typedef struct {
   /** @brief Back of queue (enqueue here) - atomic for lock-free access */
   _Atomic(packet_node_t *) tail;
   /** @brief Number of packets currently in queue - atomic for lock-free access */
-  _Atomic size_t count;
+  atomic_t count;
   /** @brief Maximum queue size (0 = unlimited) */
   size_t max_size;
   /** @brief Total bytes of data queued (for monitoring) - atomic for lock-free access */
-  _Atomic size_t bytes_queued;
+  atomic_t bytes_queued;
 
   /** @brief Optional memory pool for nodes (NULL = use malloc/free) */
   node_pool_t *node_pool;
@@ -226,14 +226,14 @@ typedef struct {
   buffer_pool_t *buffer_pool;
 
   /** @brief Total packets enqueued (statistics) - atomic for lock-free access */
-  _Atomic uint64_t packets_enqueued;
+  atomic_t packets_enqueued;
   /** @brief Total packets dequeued (statistics) - atomic for lock-free access */
-  _Atomic uint64_t packets_dequeued;
+  atomic_t packets_dequeued;
   /** @brief Total packets dropped due to queue full (statistics) - atomic for lock-free access */
-  _Atomic uint64_t packets_dropped;
+  atomic_t packets_dropped;
 
   /** @brief Shutdown flag (true = dequeue returns NULL) - atomic for lock-free access */
-  _Atomic bool shutdown;
+  atomic_t shutdown;
 } packet_queue_t;
 
 /**

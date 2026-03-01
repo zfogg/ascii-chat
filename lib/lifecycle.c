@@ -1,7 +1,7 @@
 #include "ascii-chat/util/lifecycle.h"
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/log/log.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 bool lifecycle_init(lifecycle_t *lc, const char *name) {
   if (lc == NULL) {

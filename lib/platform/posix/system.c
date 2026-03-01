@@ -39,7 +39,7 @@ extern char **backtrace_symbols(void *const *buffer, int size) __attribute__((we
 #endif
 #include <pthread.h>
 #include <stdarg.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <sys/stat.h>
 #include <netdb.h>
 #ifdef __APPLE__

@@ -36,7 +36,7 @@
 
 #include <string.h>
 #include <stdio.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdlib.h>
 
 /* ============================================================================
@@ -75,7 +75,7 @@ typedef struct session_display_ctx {
   bool snapshot_mode;
 
   /** @brief First frame flag for logging control */
-  atomic_bool first_frame;
+  atomic_t first_frame;
 
   /** @brief Context is fully initialized */
   bool initialized;
@@ -87,7 +87,7 @@ typedef struct session_display_ctx {
   void *audio_ctx;
 
   /** @brief Help screen active flag (toggled with '?') - atomic for thread-safe access */
-  atomic_bool help_screen_active;
+  atomic_t help_screen_active;
 
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;

@@ -37,9 +37,9 @@ using std::memory_order_relaxed;
 // C++ uses brace initialization for std::atomic
 #define LOG_ATOMIC_UINT64_INIT(val) {val}
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 // C11 _Atomic type qualifier syntax
-#define LOG_ATOMIC_UINT64 _Atomic uint64_t
+#define LOG_ATOMIC_UINT64 atomic_t
 // C11 uses direct initialization for atomic types
 #define LOG_ATOMIC_UINT64_INIT(val) val
 #endif

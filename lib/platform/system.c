@@ -7,7 +7,7 @@
 // NOTE: This file is #included by windows/system.c and posix/system.c
 // All necessary headers are already included by the parent files
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>

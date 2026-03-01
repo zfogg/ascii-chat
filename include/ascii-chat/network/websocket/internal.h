@@ -12,7 +12,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief WebSocket message element (individual frame or fragment)
@@ -83,7 +83,7 @@ typedef struct {
   // Graceful shutdown flag for thread-safe destruction
   // When destroying the transport, this flag is set to true to signal all threads
   // to exit send/recv operations before mutexes are destroyed.
-  atomic_bool is_destroying;        ///< True when destruction has started
+  atomic_t is_destroying;        ///< True when destruction has started
 
 } websocket_transport_data_t;
 

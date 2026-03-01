@@ -73,11 +73,8 @@
 // We bring them into global namespace for compatibility with C-style struct definitions.
 #if defined(__cplusplus) && defined(_WIN32)
 #include <atomic>
-using std::atomic_bool;
-using std::atomic_int;
-using std::atomic_uint;
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #endif
 #include <stdbool.h>
 #include <stddef.h>
@@ -101,11 +98,11 @@ typedef struct {
   /** @brief Number of elements that can be stored */
   size_t capacity;
   /** @brief Write position (producer) - atomic for lock-free operations */
-  _Atomic size_t head;
+  atomic_t head;
   /** @brief Read position (consumer) - atomic for lock-free operations */
-  _Atomic size_t tail;
+  atomic_t tail;
   /** @brief Current number of elements - atomic for fast size checks */
-  _Atomic size_t size;
+  atomic_t size;
   /** @brief Whether capacity is power of 2 (enables bit masking optimization) */
   bool is_power_of_two;
   /** @brief Mask for fast modulo when capacity is power of 2 */
@@ -214,19 +211,19 @@ typedef struct audio_ring_buffer {
   /** @brief Audio sample data buffer */
   float data[AUDIO_RING_BUFFER_SIZE];
   /** @brief Write index (producer position) - LOCK-FREE with atomic operations */
-  atomic_uint write_index;
+  atomic_t write_index;
   /** @brief Read index (consumer position) - LOCK-FREE with atomic operations */
-  atomic_uint read_index;
+  atomic_t read_index;
   /** @brief True after initial jitter buffer fill */
-  atomic_bool jitter_buffer_filled;
+  atomic_t jitter_buffer_filled;
   /** @brief Samples remaining in crossfade (0 = no crossfade active) */
-  atomic_int crossfade_samples_remaining;
+  atomic_t crossfade_samples_remaining;
   /** @brief True if we're fading in (recovering from underrun) */
-  atomic_bool crossfade_fade_in;
+  atomic_t crossfade_fade_in;
   /** @brief Last sample value for smooth fade-out during underrun - NOT atomic (only written by reader) */
   float last_sample;
   /** @brief Count of underrun events for diagnostics */
-  atomic_uint underrun_count;
+  atomic_t underrun_count;
   /** @brief Whether jitter buffering is enabled (false for capture, true for playback) */
   bool jitter_buffer_enabled;
   /** @brief Mutex for SLOW PATH only (clear/destroy operations, not regular read/write) */

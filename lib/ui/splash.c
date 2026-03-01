@@ -41,7 +41,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <time.h>
 #include <unistd.h>
 #include <fcntl.h>

@@ -22,7 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 void server_status_log_init(void) {
   // Delegate to terminal_screen log abstraction

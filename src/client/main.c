@@ -117,7 +117,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif

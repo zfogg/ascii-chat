@@ -89,7 +89,7 @@
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
 #include <ascii-chat/platform/system.h> // For platform_memcpy
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <string.h>
 #include <math.h>
 
@@ -183,7 +183,7 @@ static bool g_audio_capture_thread_created = false;
  *
  * @ingroup client_audio
  */
-static atomic_bool g_audio_capture_thread_exited = false;
+static atomic_t g_audio_capture_thread_exited = false;
 
 /* ============================================================================
  * Async Audio Packet Queue (decouples capture from network I/O)
@@ -213,8 +213,8 @@ static lifecycle_t g_audio_send_queue_lc = LIFECYCLE_INIT;
 
 /** Audio sender thread */
 static bool g_audio_sender_thread_created = false;
-static atomic_bool g_audio_sender_should_exit = false;
-static atomic_bool g_audio_sender_exited = false;
+static atomic_t g_audio_sender_should_exit = false;
+static atomic_t g_audio_sender_exited = false;
 
 /**
  * @brief Queue an audio packet for async sending (non-blocking)
@@ -1140,7 +1140,7 @@ void audio_stop_thread() {
 
   // Signal audio worker thread to exit first (stop processing)
   log_debug("[AUDIO_STOP] Signaling audio worker thread to stop");
-  atomic_store(&g_audio_context.worker_should_stop, true);
+  atomic_store_bool(&g_audio_context.worker_should_stop, true);
   // Wake up the worker thread if it's waiting on condition variable
   mutex_lock(&g_audio_context.worker_mutex);
   cond_signal(&g_audio_context.worker_cond);

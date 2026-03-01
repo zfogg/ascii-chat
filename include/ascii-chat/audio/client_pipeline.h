@@ -57,7 +57,7 @@
 // C++ mode on Windows: use <atomic> from MSVC runtime
 #include <atomic>
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #endif
 
 #include "../audio/mixer.h"

@@ -15,7 +15,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #ifndef _WIN32
 #include <sys/time.h>
 #endif

@@ -4,7 +4,7 @@
  * @brief 🔗 Global symbol stubs for test executables to satisfy linker dependencies
  */
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdbool.h>
 #include <stdlib.h>
 #include <ascii-chat/options/options.h>
@@ -31,7 +31,7 @@ __attribute__((constructor)) static void init_test_environment(void) {
  * In production builds, this is defined in main.c and set during shutdown.
  * For tests, we stub it out as false (tests don't perform shutdown).
  */
-atomic_bool g_should_exit = false;
+atomic_t g_should_exit = false;
 
 /**
  * Terminal color mode and render mode are now accessed via RCU options_get().

@@ -13,9 +13,9 @@
  * after the atomic operation completes.
  */
 
+#include <stdatomic.h>
 #include <ascii-chat/atomic.h>
 #include <ascii-chat/debug/atomic.h>
-#include <stdatomic.h>
 
 
 // ============================================================================
@@ -191,27 +191,27 @@ uint64_t atomic_fetch_sub_u64(atomic_t *a, uint64_t delta) {
     return result;
 }
 
-void *atomic_ptr_load(atomic_ptr_t *a) {
+void *atomic_ptr_load(_Atomic(void *) *a) {
     if (!a) return NULL;
     void *result = atomic_load((const _Atomic(void *) *)&a->impl);
     atomic_ptr_on_load(a);
     return result;
 }
 
-void atomic_ptr_store(atomic_ptr_t *a, void *value) {
+void atomic_ptr_store(_Atomic(void *) *a, void *value) {
     if (!a) return;
     atomic_store((_Atomic(void *) *)&a->impl, value);
     atomic_ptr_on_store(a);
 }
 
-bool atomic_ptr_cas(atomic_ptr_t *a, void **expected, void *new_value) {
+bool atomic_ptr_cas(_Atomic(void *) *a, void **expected, void *new_value) {
     if (!a || !expected) return false;
     bool success = atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
     atomic_ptr_on_cas(a, success);
     return success;
 }
 
-void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value) {
+void *atomic_ptr_exchange(_Atomic(void *) *a, void *new_value) {
     if (!a) return NULL;
     void *result = atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
     atomic_ptr_on_exchange(a);

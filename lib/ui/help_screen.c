@@ -15,7 +15,7 @@
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <stdio.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdlib.h>
 
 /* Color codes for enabled/disabled settings */

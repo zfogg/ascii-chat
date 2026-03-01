@@ -9,7 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <string.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <errno.h>
 
 /**
@@ -21,7 +21,7 @@
  */
 typedef struct pcre2_singleton {
   lifecycle_t lc;               ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
-  _Atomic(pcre2_code *) code;   ///< Compiled regex (lazy init, atomic)
+  _Atomic(void *) code;   ///< Compiled regex (lazy init, atomic)
   pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
   char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
   uint32_t flags;               ///< PCRE2 compile flags

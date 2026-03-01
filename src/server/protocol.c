@@ -111,7 +111,7 @@
 
 #include <math.h>
 #include <stdarg.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -226,7 +226,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
   log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)", client_id, reason_str);
   atomic_store(&client->active, false);
-  atomic_store(&client->shutting_down, true);
+  atomic_store_bool(&client->shutting_down, true);
   atomic_store(&client->send_thread_running, false);
   atomic_store(&client->video_render_thread_running, false);
   atomic_store(&client->audio_render_thread_running, false);
@@ -530,10 +530,10 @@ void handle_stream_start_packet(client_info_t *client, const void *data, size_t 
   VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_START");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
-    atomic_store(&client->is_sending_video, true);
+    atomic_store_bool(&client->is_sending_video, true);
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
-    atomic_store(&client->is_sending_audio, true);
+    atomic_store_bool(&client->is_sending_audio, true);
 
     // Create Opus decoder for this client if not already created
     if (!client->opus_decoder) {
@@ -613,10 +613,10 @@ void handle_stream_stop_packet(client_info_t *client, const void *data, size_t l
   VALIDATE_FLAGS_MASK(client, stream_type, VALID_STREAM_MASK, "STREAM_STOP");
 
   if (stream_type & STREAM_TYPE_VIDEO) {
-    atomic_store(&client->is_sending_video, false);
+    atomic_store_bool(&client->is_sending_video, false);
   }
   if (stream_type & STREAM_TYPE_AUDIO) {
-    atomic_store(&client->is_sending_audio, false);
+    atomic_store_bool(&client->is_sending_audio, false);
   }
 
   if (stream_type & STREAM_TYPE_VIDEO) {
@@ -645,7 +645,7 @@ void handle_ping_packet(client_info_t *client, const void *data, size_t len) {
 
   // Get transport reference briefly to avoid deadlock on TCP buffer full
   mutex_lock(&client->send_mutex);
-  if (atomic_load(&client->shutting_down) || !client->transport) {
+  if (atomic_load_bool(&client->shutting_down) || !client->transport) {
     mutex_unlock(&client->send_mutex);
     return;
   }
@@ -741,7 +741,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
     return;
   }
-  bool was_sending_video = atomic_load(&client->is_sending_video);
+  bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
     // Try to atomically enable video sending
     // Use atomic_compare_exchange_strong to avoid spurious failures
@@ -928,7 +928,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
     return;
   }
 
-  bool was_sending_video = atomic_load(&client->is_sending_video);
+  bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
     if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
@@ -1167,7 +1167,7 @@ void handle_remote_log_packet_from_client(client_info_t *client, const void *dat
 void handle_audio_batch_packet(client_info_t *client, const void *data, size_t len) {
   // Log every audio batch packet reception
   log_debug_every(LOG_RATE_DEFAULT, "Received audio batch packet from client %u (len=%zu, is_sending_audio=%d)",
-                  client->client_id, len, atomic_load(&client->is_sending_audio));
+                  client->client_id, len, atomic_load_bool(&client->is_sending_audio));
 
   VALIDATE_NOTNULL_DATA(client, data, "AUDIO_BATCH");
   VALIDATE_MIN_SIZE(client, len, sizeof(audio_batch_packet_t), "AUDIO_BATCH");
@@ -1464,7 +1464,7 @@ void handle_audio_opus_packet(client_info_t *client, const void *data, size_t le
     return;
   }
 
-  if (!atomic_load(&client->is_sending_audio)) {
+  if (!atomic_load_bool(&client->is_sending_audio)) {
     disconnect_client_for_bad_data(client, "AUDIO_OPUS received before audio stream enabled");
     return;
   }
@@ -1840,7 +1840,7 @@ int send_server_state_to_client(client_info_t *client) {
   // Count active clients - LOCK OPTIMIZATION: Use atomic reads, no rwlock needed
   int active_count = 0;
   for (int i = 0; i < MAX_CLIENTS; i++) {
-    if (atomic_load(&g_client_manager.clients[i].active)) {
+    if (atomic_load_bool(&g_client_manager.clients[i].active)) {
       active_count++;
     }
   }

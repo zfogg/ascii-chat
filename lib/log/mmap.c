@@ -34,13 +34,13 @@ static struct {
   platform_mmap_t mmap;                     /* Memory-mapped file handle */
   char *text_region;                        /* Pointer to text area (entire file is text) */
   size_t text_capacity;                     /* Total file size */
-  _Atomic uint64_t write_pos;               /* Current write position (in memory only) */
+  atomic_t write_pos;               /* Current write position (in memory only) */
   bool initialized;                         /* Initialization flag */
   char file_path[PLATFORM_MAX_PATH_LENGTH]; /* Path to log file for truncation */
 
   /* Statistics */
-  _Atomic uint64_t bytes_written;
-  _Atomic uint64_t wrap_count;
+  atomic_t bytes_written;
+  atomic_t wrap_count;
 } g_mmap_log = {
     .initialized = false,
     .file_path = {0},

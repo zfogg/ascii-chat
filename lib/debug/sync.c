@@ -25,7 +25,7 @@
 #include <string.h>
 #include <pthread.h>
 #include <inttypes.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 // ============================================================================
 // Helper Functions
@@ -376,9 +376,9 @@ typedef enum {
 typedef struct {
   debug_request_type_t request_type; // What to print
   uint64_t delay_ns;
-  _Atomic(bool) should_run;            // Atomic flag set by main thread
-  _Atomic(bool) should_exit;           // Atomic flag for shutdown
-  _Atomic(bool) signal_triggered;      // Flag set by SIGUSR1 handler
+  atomic_t should_run;            // Atomic flag set by main thread
+  atomic_t should_exit;           // Atomic flag for shutdown
+  atomic_t signal_triggered;      // Flag set by SIGUSR1 handler
   uint64_t memory_report_interval_ns;  // Interval for periodic memory reports (0 = disabled)
   uint64_t last_memory_report_time_ns; // Timestamp of last memory report
   mutex_t mutex;                       // Protects access to flags during locked operations
@@ -418,18 +418,18 @@ static uint64_t g_debug_main_thread_id = 0; // Main thread ID for memory reporti
 static void *debug_print_thread_fn(void *arg) {
   (void)arg;
 
-  while (!atomic_load(&g_debug_state_request.should_exit)) {
+  while (!atomic_load_bool(&g_debug_state_request.should_exit)) {
     // Handle delayed printing
-    if (atomic_load(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
+    if (atomic_load_bool(&g_debug_state_request.should_run) && g_debug_state_request.delay_ns > 0) {
       platform_sleep_ns(g_debug_state_request.delay_ns);
       g_debug_state_request.delay_ns = 0;
     }
 
     // Handle both scheduled and signal-triggered printing
     mutex_lock(&g_debug_state_request.mutex);
-    bool should_run = atomic_load(&g_debug_state_request.should_run);
+    bool should_run = atomic_load_bool(&g_debug_state_request.should_run);
     bool signal_triggered = atomic_load(&g_debug_state_request.signal_triggered);
-    bool should_exit = atomic_load(&g_debug_state_request.should_exit);
+    bool should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
 
     if ((should_run || signal_triggered) && !should_exit) {
       debug_request_type_t request_type = g_debug_state_request.request_type;
@@ -446,9 +446,9 @@ static void *debug_print_thread_fn(void *arg) {
       }
 
       mutex_lock(&g_debug_state_request.mutex);
-      atomic_store(&g_debug_state_request.should_run, false);
+      atomic_store_bool(&g_debug_state_request.should_run, false);
       atomic_store(&g_debug_state_request.signal_triggered, false);
-      should_exit = atomic_load(&g_debug_state_request.should_exit);
+      should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
     }
 
     // Wait for work or signal, with 100ms timeout to check should_exit
@@ -536,7 +536,7 @@ void debug_sync_final_cleanup(void) {
 void debug_sync_print_state_delayed(uint64_t delay_ns) {
   g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
   g_debug_state_request.delay_ns = delay_ns;
-  atomic_store(&g_debug_state_request.should_run, true);
+  atomic_store_bool(&g_debug_state_request.should_run, true);
   cond_signal(&g_debug_state_request.cond);
 }
 
@@ -547,7 +547,7 @@ void debug_sync_print_state_delayed(uint64_t delay_ns) {
 void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
   g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
   g_debug_state_request.delay_ns = delay_ns;
-  atomic_store(&g_debug_state_request.should_run, true);
+  atomic_store_bool(&g_debug_state_request.should_run, true);
   cond_signal(&g_debug_state_request.cond);
 }
 
@@ -610,7 +610,7 @@ void debug_sync_cleanup_thread(void) {
 
   // Signal the thread to wake up immediately instead of waiting for 100ms timeout
   log_debug("[DEBUG_SYNC_CLEANUP] Signaling thread to exit");
-  atomic_store(&g_debug_state_request.should_exit, true);
+  atomic_store_bool(&g_debug_state_request.should_exit, true);
   cond_signal(&g_debug_state_request.cond);
   log_debug("[DEBUG_SYNC_CLEANUP] Signal sent, about to join thread");
 

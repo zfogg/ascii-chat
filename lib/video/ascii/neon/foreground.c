@@ -12,7 +12,7 @@
 #include <stdarg.h>
 #include <time.h>
 #include <assert.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <math.h>
 
 #include <arm_neon.h>

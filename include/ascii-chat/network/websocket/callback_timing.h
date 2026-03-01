@@ -15,7 +15,7 @@
 
 #include <stdint.h>
 #include <time.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Per-callback timing statistics
@@ -23,11 +23,11 @@
  * Tracks invocation counts, timestamps, and durations for a single callback type.
  */
 typedef struct {
-  _Atomic uint64_t count;           // Total invocations
-  _Atomic uint64_t last_ns;         // Last callback timestamp (nanoseconds)
-  _Atomic uint64_t min_interval_ns; // Minimum interval between callbacks
-  _Atomic uint64_t max_interval_ns; // Maximum interval between callbacks
-  _Atomic uint64_t total_duration_ns; // Cumulative callback duration
+  atomic_t count;           // Total invocations
+  atomic_t last_ns;         // Last callback timestamp (nanoseconds)
+  atomic_t min_interval_ns; // Minimum interval between callbacks
+  atomic_t max_interval_ns; // Maximum interval between callbacks
+  atomic_t total_duration_ns; // Cumulative callback duration
 } websocket_callback_stats_t;
 
 /**

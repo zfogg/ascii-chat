@@ -10,7 +10,7 @@
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 /**
  * @brief Hook called when a read lock is successfully acquired

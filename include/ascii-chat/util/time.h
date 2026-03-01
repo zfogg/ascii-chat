@@ -47,9 +47,9 @@ using std::memory_order_relaxed;
 #define TIME_ATOMIC_UINT64 std::atomic<uint64_t>
 #define TIME_ATOMIC_UINT64_INIT(val) {val}
 #else
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 // C11 _Atomic type qualifier syntax
-#define TIME_ATOMIC_UINT64 _Atomic uint64_t
+#define TIME_ATOMIC_UINT64 atomic_t
 #define TIME_ATOMIC_UINT64_INIT(val) val
 #endif
 

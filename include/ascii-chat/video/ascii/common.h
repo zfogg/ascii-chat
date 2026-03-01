@@ -26,7 +26,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/uthash.h>
 #include "../../common.h"
@@ -486,8 +486,8 @@ typedef struct utf8_palette_cache {
   utf8_char_t cache[256];               /**< Cache of all 256 luminance levels */
   utf8_char_t cache64[64];              /**< Cache of 64 most common characters */
   uint8_t char_index_ramp[256];         /**< Luminance to character index mapping */
-  _Atomic(uint64_t) last_access_time;   /**< Last access timestamp */
-  _Atomic(uint32_t) access_count;       /**< Total access count */
+  atomic_t last_access_time;   /**< Last access timestamp */
+  atomic_t access_count;       /**< Total access count */
   uint32_t total_age_seconds;           /**< Total age in seconds */
   uint64_t creation_time;               /**< When this cache was created */
   double cached_score;                  /**< Eviction score (higher = keep longer) */

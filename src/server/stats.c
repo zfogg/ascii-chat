@@ -130,7 +130,7 @@
  * @see packet_queue.c For queue performance metrics
  */
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
@@ -389,7 +389,7 @@ void *stats_logger_thread(void *arg) {
     // Collect per-client details
     for (int i = 0; i < MAX_CLIENTS; i++) {
       client_info_t *client = &g_client_manager.clients[i];
-      bool is_active = atomic_load(&client->active);
+      bool is_active = atomic_load_bool(&client->active);
       const char *client_id_snapshot = client->client_id;
 
       if (is_active && client_id_snapshot != 0) {
@@ -480,7 +480,7 @@ void update_server_stats(void) {
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id[0] != '\0' && atomic_load(&client->active)) {
+    if (client->client_id[0] != '\0' && atomic_load_bool(&client->active)) {
       // Aggregate frames sent to all clients
       total_frames_sent += client->frames_sent;
 
