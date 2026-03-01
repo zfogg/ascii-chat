@@ -973,7 +973,6 @@ int audio_client_init() {
 
   // Initialize PortAudio context using library function
   log_debug("DEBUG: About to call audio_init()...");
-  int init_result = 0;
   if (audio_init(&g_audio_context) != ASCIICHAT_OK) {
     log_error("Failed to initialize audio system");
     // Clean up WAV writer if it was opened

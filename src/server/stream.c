@@ -1313,7 +1313,7 @@ bool any_clients_sending_video(void) {
     client_info_t *client = &g_client_manager.clients[i];
 
     // Skip uninitialized clients (atomic read)
-    if (client->client_id == 0) {
+    if (client->client_id[0] == '\0') {
       continue;
     }
 

@@ -998,7 +998,6 @@ void server_connection_shutdown() {
  * @ingroup client_connection
  */
 void server_connection_lost() {
-  asciichat_error_context_t err_ctx;
   atomic_store(&g_connection_lost, true);
   atomic_store(&g_connection_active, false);
 

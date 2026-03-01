@@ -1262,8 +1262,6 @@ bool protocol_connection_lost() {
  */
 static void acip_on_ascii_frame(const ascii_frame_packet_t *header, const void *frame_data, size_t data_len,
                                 void *ctx) {
-  static int callback_count = 0;
-  callback_count++;
   (void)ctx;
 
   log_info("[FRAME_RECV_CALLBACK] 🎬 FRAME_RECEIVED: width=%u, height=%u, data_len=%zu bytes, flags=0x%x",

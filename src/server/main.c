@@ -2581,7 +2581,7 @@ cleanup:
   rwlock_wrlock(&g_client_manager_rwlock);
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id != 0 && client->socket != INVALID_SOCKET_VALUE) {
+    if (client->client_id[0] != '\0' && client->socket != INVALID_SOCKET_VALUE) {
       socket_close(client->socket);
       client->socket = INVALID_SOCKET_VALUE;
     }

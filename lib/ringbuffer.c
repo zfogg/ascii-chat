@@ -11,6 +11,7 @@
 #include <ascii-chat/util/math.h> // For power-of-two utilities
 #include <ascii-chat/util/bits.h> // For is_power_of_two, next_power_of_two
 #include <stdatomic.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
@@ -392,13 +393,20 @@ bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *frame_data, si
   // Copy frame data
   SAFE_MEMCPY(data_copy, frame_size, frame_data, frame_size);
 
+  // Convert client ID number to string for storage in frame metadata
+  char client_id_str[64];
+  snprintf(client_id_str, sizeof(client_id_str), "%u", source_client_id);
+
   // Create multi-source frame
-  multi_source_frame_t multi_frame = {.magic = MAGIC_FRAME_VALID,
-                                      .source_client_id = source_client_id,
-                                      .frame_sequence = frame_sequence,
-                                      .timestamp = timestamp,
-                                      .size = frame_size,
-                                      .data = data_copy};
+  multi_source_frame_t multi_frame = {
+      .magic = MAGIC_FRAME_VALID,
+      .source_client_id = {0},
+      .frame_sequence = frame_sequence,
+      .timestamp = timestamp,
+      .size = frame_size,
+      .data = data_copy,
+  };
+  SAFE_MEMCPY(multi_frame.source_client_id, sizeof(multi_frame.source_client_id), client_id_str, strlen(client_id_str) + 1);
 
   // Thread-safe access to framebuffer
   mutex_lock(&fb->mutex);

@@ -1502,7 +1502,6 @@ void *client_dispatch_thread(void *arg) {
   log_info("DISPATCH_THREAD: Started for client %s", client_id);
 
   uint64_t dispatch_loop_count = 0;
-  uint64_t last_dequeue_attempt = time_get_ns();
 
   while (!atomic_load(&g_server_should_exit) && atomic_load(&client->dispatch_thread_running)) {
     dispatch_loop_count++;
@@ -1520,7 +1519,6 @@ void *client_dispatch_thread(void *arg) {
       mutex_lock(&client->client_state_mutex);
       cond_timedwait(&client->dispatch_queue_cond, &client->client_state_mutex, 100 * 1000 * 1000); // 100ms timeout
       mutex_unlock(&client->client_state_mutex);
-      last_dequeue_attempt = dequeue_end;
       continue;
     }
 

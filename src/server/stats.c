@@ -480,7 +480,7 @@ void update_server_stats(void) {
 
   for (int i = 0; i < MAX_CLIENTS; i++) {
     client_info_t *client = &g_client_manager.clients[i];
-    if (client->client_id != 0 && atomic_load(&client->active)) {
+    if (client->client_id[0] != '\0' && atomic_load(&client->active)) {
       // Aggregate frames sent to all clients
       total_frames_sent += client->frames_sent;
 

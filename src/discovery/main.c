@@ -158,18 +158,6 @@ static bool discovery_capture_should_exit_adapter(void *user_data) {
 }
 
 /**
- * Adapter function for session display exit callback
- * Converts from void*->bool signature to match session_display_should_exit_fn
- *
- * @param user_data Unused (NULL)
- * @return true if display should exit
- */
-static bool discovery_display_should_exit_adapter(void *user_data) {
-  (void)user_data; // Unused parameter
-  return should_exit();
-}
-
-/**
  * Discovery mode keyboard handler callback
  *
  * Enables interactive media controls during participant role.
