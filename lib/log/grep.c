@@ -870,9 +870,6 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
       }
 
       // Reset both background and foreground at end
-      memcpy(dst, "\x1b[0m", 4);
-      dst += 4;
-
       *dst = '\0';
       return highlight_buffer;
     }
@@ -969,9 +966,6 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     }
 
     // Reset both background and foreground at end to prevent color bleeding
-    memcpy(dst, "\x1b[0m", 4);
-    dst += 4;
-
     *dst = '\0';
 
     // Clean up match data if we created it for interactive grep
@@ -1123,8 +1117,6 @@ const char *grep_highlight(const char *log_line, size_t match_start, size_t matc
       dst = append_truecolor_bg(dst, r, g, b);
       memcpy(dst, src + match_pos, len);
       dst += len;
-      memcpy(dst, "\x1b[0m", 4);
-      dst += 4;
 
       pos = match_end;
       offset = match_end;
@@ -1157,10 +1149,6 @@ const char *grep_highlight(const char *log_line, size_t match_start, size_t matc
     // Copy matched text
     memcpy(dst, log_line + match_start, match_len);
     dst += match_len;
-
-    // Reset color
-    memcpy(dst, "\x1b[0m", 4);
-    dst += 4;
 
     // Copy text after match
     size_t remaining = line_len - (match_start + match_len);
