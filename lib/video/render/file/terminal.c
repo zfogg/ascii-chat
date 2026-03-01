@@ -89,18 +89,35 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
     }
   }
 
-  // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
-  // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
-  FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
+  // Handle scalable vs bitmap fonts differently
+  // Bitmap fonts (like matrix) don't respond to FT_Set_Char_Size
+  // Instead, we need to select the best available bitmap strike
+  log_debug("term_renderer_create: num_fixed_sizes=%d", r->ft_face->num_fixed_sizes);
+  if (r->ft_face->num_fixed_sizes > 0) {
+    // Bitmap font: select the best matching bitmap strike
+    int err = FT_Select_Size(r->ft_face, 0); // Use first available strike
+    log_debug("term_renderer_create: FT_Select_Size(0) returned %d", err);
+  } else {
+    // Scalable font: use FT_Set_Char_Size
+    // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
+    // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
+    int err = FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
+    log_debug("term_renderer_create: FT_Set_Char_Size returned %d", err);
+  }
 
   FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
   r->cell_w = (int)(r->ft_face->glyph->advance.x >> 6);
-  // Use face metrics (proper line spacing) instead of glyph bitmap height
-  // Glyph bitmap.rows can return 0 for some fonts, causing invalid frame dimensions
-  r->cell_h = (int)(r->ft_face->size->metrics.height >> 6);
-  if (r->cell_h <= 0 && r->ft_face->glyph->bitmap.rows > 0) {
-    r->cell_h = (int)r->ft_face->glyph->bitmap.rows; // Defensive fallback
+  // For bitmap fonts, use the glyph bitmap height; for scalable fonts, use face metrics
+  if (r->ft_face->num_fixed_sizes > 0) {
+    // Bitmap font: use actual glyph bitmap dimensions
+    r->cell_h = r->ft_face->glyph->bitmap.rows;
+  } else {
+    // Scalable font: use proper face metrics for line spacing
+    r->cell_h = (int)(r->ft_face->size->metrics.height >> 6);
+    if (r->cell_h <= 0) {
+      r->cell_h = (int)r->ft_face->glyph->bitmap.rows; // Fallback
+    }
   }
   r->baseline = r->ft_face->glyph->bitmap_top;
 
