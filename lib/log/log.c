@@ -759,7 +759,7 @@ void log_truncate_if_large(void) {
  * POSIX guarantees write() is atomic for sizes <= PIPE_BUF (typically 4096 bytes)
  * Strips ANSI escape codes from the buffer before writing to ensure clean log files.
  */
-static void write_to_log_file_atomic(const char *buffer, int length) {
+static void write_to_log_file_atomic(const char *buffer, int length, const char *stripped_buffer) {
   if (length <= 0 || buffer == NULL) {
     return;
   }
@@ -773,20 +773,15 @@ static void write_to_log_file_atomic(const char *buffer, int length) {
     return;
   }
 
-  // Strip ANSI escape codes from the buffer before writing to file
-  char *stripped = ansi_strip_escapes(buffer, (size_t)length);
-  const char *write_buf = stripped ? stripped : buffer;
-  size_t write_len = stripped ? strlen(stripped) : (size_t)length;
+  // Use pre-stripped buffer if available (already stripped by caller), otherwise use original
+  const char *write_buf = stripped_buffer ? stripped_buffer : buffer;
+  size_t write_len = stripped_buffer ? strlen(stripped_buffer) : (size_t)length;
 
   // Single atomic write() call - no locking needed
   ssize_t written = platform_write(file, write_buf, write_len);
   if (written > 0) {
     atomic_fetch_add(&g_log.current_size, (size_t)written);
     maybe_rotate_log();
-  }
-
-  if (stripped) {
-    SAFE_FREE(stripped);
   }
 }
 
@@ -1114,10 +1109,15 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
   } else {
     // Text format: output to file and terminal
-    // Write to file (atomic write syscall)
+    // Strip ANSI codes from full log buffer once to avoid race between file and terminal paths
+    // This prevents write_to_log_file_atomic and write_to_terminal_atomic from each calling
+    // ansi_strip_escapes independently, which could create a race condition in multithreaded scenarios
+    char *stripped_log_buffer = ansi_strip_escapes(log_buffer, (size_t)msg_len);
+
+    // Write to file (atomic write syscall) - use the pre-stripped buffer
     int file_fd = atomic_load(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
-      write_to_log_file_atomic(log_buffer, msg_len);
+      write_to_log_file_atomic(log_buffer, msg_len, stripped_log_buffer);
     }
 
     // Write to terminal (atomic state checks)
@@ -1125,6 +1125,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     va_start(args_terminal, fmt);
     write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
     va_end(args_terminal);
+
+    // Free the pre-stripped buffer (used by file writer)
+    if (stripped_log_buffer) {
+      SAFE_FREE(stripped_log_buffer);
+    }
   }
 }
 
@@ -1191,10 +1196,10 @@ void log_plain_msg(const char *fmt, ...) {
                                          0, "log_plain_msg", false, time_ns);
 
       if (header_len > 0) {
-        write_to_log_file_atomic(header_buffer, header_len);
+        write_to_log_file_atomic(header_buffer, header_len, NULL);
       }
-      write_to_log_file_atomic(log_buffer, msg_len);
-      write_to_log_file_atomic("\n", 1);
+      write_to_log_file_atomic(log_buffer, msg_len, NULL);
+      write_to_log_file_atomic("\n", 1, NULL);
     }
   }
 
@@ -1266,11 +1271,11 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
                                          0, "log_plain_stderr_msg", false, time_ns);
 
       if (header_len > 0) {
-        write_to_log_file_atomic(header_buffer, header_len);
+        write_to_log_file_atomic(header_buffer, header_len, NULL);
       }
-      write_to_log_file_atomic(log_buffer, msg_len);
+      write_to_log_file_atomic(log_buffer, msg_len, NULL);
       if (add_newline) {
-        write_to_log_file_atomic("\n", 1);
+        write_to_log_file_atomic("\n", 1, NULL);
       }
     }
   }
@@ -1359,8 +1364,8 @@ void log_file_msg(const char *fmt, ...) {
   } else {
     int file_fd = atomic_load(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
-      write_to_log_file_atomic(log_buffer, msg_len);
-      write_to_log_file_atomic("\n", 1);
+      write_to_log_file_atomic(log_buffer, msg_len, NULL);
+      write_to_log_file_atomic("\n", 1, NULL);
     }
   }
 }
