@@ -278,6 +278,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   uint8_t *data[1] = {(uint8_t *)rgb};
   int linesize[1] = {pitch};
 
+  // CRITICAL: Ensure frame format is set before each sws_scale call
+  // Some FFmpeg versions reset the format field, so we need to set it explicitly
+  enc->frame_encoded->format = enc->target_pix_fmt;
+
   // Convert RGB24 to target format
   sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->height_px, enc->frame_encoded->data,
             enc->frame_encoded->linesize);
