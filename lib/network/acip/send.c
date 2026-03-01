@@ -98,6 +98,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   }
 
   // Send via transport (transport handles encryption if crypto_ctx present)
+  // NOTE: acip_transport_send() takes ownership of the packet buffer and will free it
   log_info("★ PACKET_SEND: Calling acip_transport_send with %zu total bytes", total_size);
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
 
@@ -108,9 +109,10 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
     log_error("★ PACKET_SEND_VIA_TRANSPORT FAILED: acip_transport_send returned error %d (%s) when sending %zu bytes "
               "type=%d to client_id=%u",
               result, asciichat_error_string(result), total_size, type, client_id);
+    // On error, transport didn't take ownership, so free the buffer
+    SAFE_FREE(packet);
   }
 
-  SAFE_FREE(packet);
   return result;
 }
 
