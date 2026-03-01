@@ -467,7 +467,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
                      "alloc: %zu bytes)",
                      normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
                      site->live_bytes, size);
-            backtrace_t bt;
+            backtrace_t bt = {0};
             backtrace_capture_and_symbolize(&bt);
             backtrace_print("Memory accumulation backtrace", &bt, 0, 10, NULL);
             backtrace_t_free(&bt);
@@ -538,7 +538,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
                      "alloc: %zu bytes)",
                      normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
                      site->live_bytes, size);
-            backtrace_t bt;
+            backtrace_t bt = {0};
             backtrace_capture_and_symbolize(&bt);
             backtrace_print("Memory accumulation backtrace", &bt, 0, 10, NULL);
             backtrace_t_free(&bt);
@@ -701,7 +701,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
                      "alloc: %zu bytes)",
                      normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
                      site->live_bytes, total);
-            backtrace_t bt;
+            backtrace_t bt = {0};
             backtrace_capture_and_symbolize(&bt);
             backtrace_print("Memory accumulation backtrace", &bt, 0, 10, NULL);
             backtrace_t_free(&bt);
