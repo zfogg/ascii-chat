@@ -33,9 +33,9 @@ static lifecycle_t g_colorscheme_lifecycle = LIFECYCLE_INIT;
  * EXCEPTION: Emscripten/WASM with pthreads doesn't support static mutex initialization properly,
  * so we initialize it explicitly in colorscheme_init() like Windows. */
 #if defined(_WIN32) || defined(__EMSCRIPTEN__)
-mutex_t g_colorscheme_mutex = {0}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
+mutex_t g_colorscheme_mutex = {.impl = {0}, .name = NULL}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
 #else
-mutex_t g_colorscheme_mutex = {PTHREAD_MUTEX_INITIALIZER}; /* POSIX pthread_mutex_t */
+mutex_t g_colorscheme_mutex = {.impl = PTHREAD_MUTEX_INITIALIZER, .name = NULL}; /* POSIX pthread_mutex_t */
 #endif
 
 /* ============================================================================
