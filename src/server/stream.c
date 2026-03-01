@@ -1011,7 +1011,7 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   int previous_count = atomic_load(&g_previous_active_video_count);
   if (sources_with_video != previous_count) {
     // Use compare-and-swap to ensure only ONE thread detects the change
-    if (atomic_compare_exchange_strong(&g_previous_active_video_count, &previous_count, sources_with_video)) {
+    if (atomic_cas_u64(&g_previous_active_video_count, &previous_count, sources_with_video)) {
       log_dev_every(
           LOG_RATE_DEFAULT,
           "Grid layout changing: %d -> %d active video sources - caller will broadcast clear AFTER buffering frame",

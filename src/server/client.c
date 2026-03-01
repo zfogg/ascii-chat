@@ -2801,7 +2801,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // Auto-enable video stream if not already enabled
   bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
-    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       log_info_client(client, "First video frame received - streaming active");
     }
@@ -2939,7 +2939,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   // Auto-enable video stream if not already enabled
   bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
-    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME_H265)", client->client_id);
       log_info_client(client, "First H.265 video frame received - streaming active");
     }

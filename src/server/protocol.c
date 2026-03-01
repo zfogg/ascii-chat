@@ -745,7 +745,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   if (!was_sending_video) {
     // Try to atomically enable video sending
     // Use atomic_compare_exchange_strong to avoid spurious failures
-    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       // Notify client that their first video frame was received
       if (client->socket != INVALID_SOCKET_VALUE) {
@@ -930,7 +930,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
 
   bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
-    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
       if (client->socket != INVALID_SOCKET_VALUE) {
         log_info_client(client, "First H.265 video frame received - streaming active");

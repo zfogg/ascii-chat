@@ -19,7 +19,7 @@ bool lifecycle_init_once(lifecycle_t *lc) {
 
   // Try to transition from UNINITIALIZED to INITIALIZING
   int expected = LIFECYCLE_UNINITIALIZED;
-  return atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_INITIALIZING);
+  return atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZING);
 }
 
 void lifecycle_init_commit(lifecycle_t *lc) {
