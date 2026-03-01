@@ -177,16 +177,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     terminal_screen_clear_cache();
   }
 
-  // Detect transition FROM normal mode TO grep mode (first time entering grep)
-  static bool last_grep_entering = false;
-  if (!last_grep_entering && grep_entering) {
-    // Transitioning to grep mode - clear the screen to remove old normal-mode rendering
-    fprintf(stdout, "\x1b[2J\x1b[1;1H");
-    fflush(stdout);
-  }
-
   last_grep_state = grep_entering;
-  last_grep_entering = grep_entering;
 
   // Allocate or reuse frame buffer (module-level static to avoid malloc per frame)
   if (!g_frame_buf) {
@@ -381,12 +372,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Flush frame buffer (containing header) before rendering grep logs
     frame_buffer_flush(g_frame_buf);
-
-    // Position cursor at the first log row (row after header)
-    // This ensures logs start at the correct position, not wherever the cursor
-    // ended up after the header output.
-    fprintf(stdout, "\x1b[%d;1H", actual_header_height + 1);
-    fflush(stdout);
 
     int log_idx = 0;
     int lines_used = 0;
