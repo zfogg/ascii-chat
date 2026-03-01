@@ -50,7 +50,7 @@ using std::memory_order_relaxed;
 #include <ascii-chat/atomic.h>
 // C11 _Atomic type qualifier syntax
 #define TIME_ATOMIC_UINT64 atomic_t
-#define TIME_ATOMIC_UINT64_INIT(val) val
+#define TIME_ATOMIC_UINT64_INIT(val) {0}
 #endif
 
 // ============================================================================

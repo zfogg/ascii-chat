@@ -194,8 +194,7 @@ static void register_thread_if_needed(void) {
     }
 
     // Try to atomically increment the count and claim a slot
-    if (atomic_cas_int(&g_thread_registry_count, &old_count, old_count + 1)
-                                                memory_order_release, )) {
+    if (atomic_cas_int(&g_thread_registry_count, &old_count, old_count + 1)) {
       slot = old_count;
       break; // Successfully claimed slot
     }

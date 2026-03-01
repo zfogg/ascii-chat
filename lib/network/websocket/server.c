@@ -53,8 +53,8 @@ typedef struct {
 // Per-connection callback counters for diagnosing event loop interleaving.
 // These track how many RECEIVE vs WRITEABLE callbacks fire during message assembly.
 // TODO: Make these per-connection instead of global for proper multi-client support
-static atomic_t g_receive_callback_count = 0;
-static atomic_t g_writeable_callback_count = 0;
+static atomic_t g_receive_callback_count = {0};
+static atomic_t g_writeable_callback_count = {0};
 
 // Forward declaration for websocket_protocols (defined later in file)
 static struct lws_protocols websocket_protocols[];
