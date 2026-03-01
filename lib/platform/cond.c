@@ -34,7 +34,7 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
     cond->last_wait_func = func;
     asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
     cond->last_waiting_key = asciichat_thread_to_key(current_thread);
-    cond->waiting_count++;
+    atomic_fetch_add_u64(&cond->waiting_count, 1);
   }
 }
 
@@ -50,8 +50,8 @@ void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, cons
 void cond_on_signal(cond_t *cond) {
   if (cond) {
     cond->last_signal_time_ns = time_get_ns();
-    if (cond->waiting_count > 0) {
-      cond->waiting_count--;
+    if (atomic_load_u64(&cond->waiting_count) > 0) {
+      atomic_fetch_sub_u64(&cond->waiting_count, 1);
     }
   }
 }
@@ -68,6 +68,6 @@ void cond_on_signal(cond_t *cond) {
 void cond_on_broadcast(cond_t *cond) {
   if (cond) {
     cond->last_broadcast_time_ns = time_get_ns();
-    cond->waiting_count = 0;
+    atomic_store_u64(&cond->waiting_count, 0);
   }
 }
