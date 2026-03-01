@@ -2207,21 +2207,24 @@ void *client_send_thread_func(void *arg) {
         sent_something = true;
       }
 
-      log_dev_every(4500 * US_PER_MS_INT, "Send thread: frame validation - frame=%p, frame->data=%p, frame->size=%zu",
-                    (void *)frame, (void *)frame->data, frame->size);
+      log_info_every(5000 * US_PER_MS_INT,
+                     "🎯 FRAME_VALIDATION: client_id=%s frame=%p, frame->data=%p, frame->size=%zu", client->client_id,
+                     (void *)frame, (void *)frame->data, frame->size);
 
       if (!frame->data) {
-        log_dev("✗ SKIP_NO_DATA: client_id=%s frame=%p data=%p", client->client_id, (void *)frame, (void *)frame->data);
+        log_info("❌ SKIP_NO_DATA: client_id=%s frame=%p data=%p", client->client_id, (void *)frame,
+                 (void *)frame->data);
         continue;
       }
-      log_dev("✓ FRAME_DATA_OK: client_id=%s data=%p", client->client_id, (void *)frame->data);
+      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_DATA_OK: client_id=%s data=%p", client->client_id,
+                     (void *)frame->data);
 
       if (frame->data && frame->size == 0) {
-        log_dev("✗ SKIP_ZERO_SIZE: client_id=%s size=%zu", client->client_id, frame->size);
+        log_info("❌ SKIP_ZERO_SIZE: client_id=%s size=%zu", client->client_id, frame->size);
         platform_sleep_us(1 * US_PER_MS_INT); // 1ms sleep
         continue;
       }
-      log_dev("✓ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame->size);
+      log_info_every(5000 * US_PER_MS_INT, "✅ FRAME_SIZE_OK: client_id=%s size=%zu", client->client_id, frame->size);
 
       // Snapshot frame metadata (safe with double-buffer system)
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
@@ -2239,12 +2242,16 @@ void *client_send_thread_func(void *arg) {
                           (client->crypto_initialized && crypto_handshake_is_ready(&client->crypto_handshake_ctx));
       mutex_unlock(&client->client_state_mutex);
 
+      log_info_every(5000 * US_PER_MS_INT,
+                     "🔐 CRYPTO_CHECK: client_id=%s crypto_ready=%d crypto_initialized=%d no_encrypt=%d",
+                     client->client_id, crypto_ready, client->crypto_initialized, GET_OPTION(no_encrypt));
+
       if (!crypto_ready) {
-        log_dev("⚠️  SKIP_SEND_CRYPTO: client_id=%s crypto_initialized=%d no_encrypt=%d", client->client_id,
-                client->crypto_initialized, GET_OPTION(no_encrypt));
+        log_info("⚠️  SKIP_SEND_CRYPTO: client_id=%s crypto_initialized=%d no_encrypt=%d", client->client_id,
+                 client->crypto_initialized, GET_OPTION(no_encrypt));
         continue; // Skip this frame, will try again on next loop iteration
       }
-      log_dev("✓ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
+      log_info_every(5000 * US_PER_MS_INT, "✅ CRYPTO_READY: client_id=%s about to send frame", client->client_id);
 
       // Get transport reference briefly to avoid deadlock on TCP buffer full
       // ACIP transport handles header building, CRC32, encryption internally
@@ -2680,6 +2687,8 @@ int process_encrypted_packet(client_info_t *client, packet_type_t *type, void **
 static void acip_server_on_protocol_version(const protocol_version_packet_t *version, void *client_ctx, void *app_ctx);
 static void acip_server_on_image_frame(const image_frame_packet_t *header, const void *pixel_data, size_t data_len,
                                        void *client_ctx, void *app_ctx);
+static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data,
+                                            size_t data_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx);
 static void acip_server_on_audio_batch(const audio_batch_packet_t *header, const float *samples, size_t num_samples,
                                        void *client_ctx, void *app_ctx);
@@ -2717,6 +2726,7 @@ static void acip_server_on_crypto_no_encryption(packet_type_t type, const void *
 static const acip_server_callbacks_t g_acip_server_callbacks = {
     .on_protocol_version = acip_server_on_protocol_version,
     .on_image_frame = acip_server_on_image_frame,
+    .on_image_frame_h265 = acip_server_on_image_frame_h265,
     .on_audio = acip_server_on_audio,
     .on_audio_batch = acip_server_on_audio_batch,
     .on_audio_opus = acip_server_on_audio_opus,
@@ -2885,6 +2895,69 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   char cb_duration_str[32];
   time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str, sizeof(cb_duration_str));
   log_info("[WS_TIMING] on_image_frame callback took %s (data_len=%zu)", cb_duration_str, data_len);
+}
+
+static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data,
+                                            size_t data_len, void *client_ctx, void *app_ctx) {
+  (void)app_ctx;
+  (void)flags; // H.265 flags not used yet
+  uint64_t callback_start_ns = time_get_ns();
+  client_info_t *client = (client_info_t *)client_ctx;
+
+  log_info("CALLBACK_IMAGE_FRAME_H265: client_id=%s, width=%u, height=%u, h265_data_len=%zu", client->client_id, width,
+           height, data_len);
+
+  // Validate frame dimensions to prevent DoS and buffer overflow attacks
+  if (width == 0 || height == 0) {
+    log_error("Invalid H.265 frame dimensions: %ux%u (width and height must be > 0)", width, height);
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME_H265 invalid dimensions");
+    return;
+  }
+
+  const uint32_t MAX_WIDTH = 8192;
+  const uint32_t MAX_HEIGHT = 8192;
+  if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+    log_error("H.265 frame dimensions too large: %ux%u (max: %ux%u)", width, height, MAX_WIDTH, MAX_HEIGHT);
+    disconnect_client_for_bad_data(client, "IMAGE_FRAME_H265 dimensions too large");
+    return;
+  }
+
+  // Auto-set dimensions from IMAGE_FRAME_H265 if not already set
+  if (atomic_load(&client->width) == 0 || atomic_load(&client->height) == 0) {
+    atomic_store(&client->width, width);
+    atomic_store(&client->height, height);
+    log_info("Client %s: Auto-set dimensions from IMAGE_FRAME_H265: %ux%u", client->client_id, width, height);
+  }
+
+  // Auto-enable video stream if not already enabled
+  bool was_sending_video = atomic_load(&client->is_sending_video);
+  if (!was_sending_video) {
+    if (atomic_compare_exchange_strong(&client->is_sending_video, &was_sending_video, true)) {
+      log_info("Client %s auto-enabled video stream (received IMAGE_FRAME_H265)", client->client_id);
+      log_info_client(client, "First H.265 video frame received - streaming active");
+    }
+  } else {
+    // Log periodically
+    mutex_lock(&client->client_state_mutex);
+    client->frames_received_logged++;
+    if (client->frames_received_logged % 25000 == 0) {
+      char pretty[64];
+      format_bytes_pretty(data_len, pretty, sizeof(pretty));
+      log_debug("Client %s has sent %u IMAGE_FRAME_H265 packets (%s)", client->client_id,
+                client->frames_received_logged, pretty);
+    }
+    mutex_unlock(&client->client_state_mutex);
+  }
+
+  // NOTE: H.265 frames are encoded (compressed) - they need to be decoded to RGB pixels before
+  // being added to the video mixer. For now, we log the frame but don't process it.
+  // TODO: Add H.265 decoder support to handle_image_h265_frame if decoding is needed.
+  // Alternative: Forward H.265 frames directly to mixer if it can handle encoded frames.
+
+  uint64_t callback_end_ns = time_get_ns();
+  char cb_duration_str[32];
+  time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str, sizeof(cb_duration_str));
+  log_info("[WS_TIMING] on_image_frame_h265 callback took %s (data_len=%zu)", cb_duration_str, data_len);
 }
 
 static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx) {

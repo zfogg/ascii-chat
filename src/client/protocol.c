@@ -540,7 +540,10 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // Render ASCII art frame (display_render_frame will apply effects like --matrix)
+  log_debug("🎬 CALLING_DISPLAY_RENDER: frame_data=%p len=%zu, calling display_render_frame()", frame_data,
+            strlen(frame_data));
   display_render_frame(frame_data);
+  log_debug("🎬 DISPLAY_RENDER_RETURNED: frame was rendered");
 
   SAFE_FREE(frame_data);
 }

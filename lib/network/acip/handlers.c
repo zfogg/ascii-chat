@@ -40,7 +40,7 @@ typedef asciichat_error_t (*acip_server_handler_func_t)(const void *payload, siz
 
 #define HANDLER_HASH_SIZE 32    // ~50% load factor for 14-16 entries
 #define CLIENT_HANDLER_COUNT 19 // Added 5 crypto handshake handlers
-#define SERVER_HANDLER_COUNT 19 // Added 3 crypto handshake handlers
+#define SERVER_HANDLER_COUNT 20 // Added 1 H.265 image frame handler
 
 /**
  * @brief Hash table entry for packet type to handler mapping
@@ -103,25 +103,26 @@ static const handler_hash_entry_t g_client_handler_hash[HANDLER_HASH_SIZE] = {
 // Server packet type -> handler index hash table
 // clang-format off
 static const handler_hash_entry_t g_server_handler_hash[HANDLER_HASH_SIZE] = {
-   [0]  = {PACKET_TYPE_AUDIO_BATCH,                2},   // hash(4000)=0
+   [0]  = {PACKET_TYPE_AUDIO_BATCH,                3},   // hash(4000)=0
    [1]  = {PACKET_TYPE_PROTOCOL_VERSION,           0},   // hash(1)=1
-   [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,           3},   // hash(4001)=1, probed->2
-   [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,        4},   // hash(5000)=8
-   [9]  = {PACKET_TYPE_PING,                       5},   // hash(5001)=9
-   [10] = {PACKET_TYPE_PONG,                       6},   // hash(5002)=10
-   [11] = {PACKET_TYPE_CLIENT_JOIN,                7},   // hash(5003)=11
-   [12] = {PACKET_TYPE_CLIENT_LEAVE,               8},   // hash(5004)=12
-   [13] = {PACKET_TYPE_STREAM_START,               9},   // hash(5005)=13
-   [14] = {PACKET_TYPE_STREAM_STOP,                10},  // hash(5006)=14
-   [15] = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   16},  // hash(1103)=15
-   [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,       13},  // hash(1201)=17
-   [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,      14},  // hash(1202)=18
-   [19] = {PACKET_TYPE_ERROR_MESSAGE,              12},  // hash(2003)=19
-   [20] = {PACKET_TYPE_REMOTE_LOG,                 11},  // hash(2004)=20
-   [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE,      15},  // hash(1203)=19, probed->21
-   [22] = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       17},  // hash(1105)=17, probed->22
-   [23] = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       18},  // hash(1109)=21, probed->23
+   [2]  = {PACKET_TYPE_AUDIO_OPUS_BATCH,           4},   // hash(4001)=1, probed->2
+   [8]  = {PACKET_TYPE_CLIENT_CAPABILITIES,        5},   // hash(5000)=8
+   [9]  = {PACKET_TYPE_PING,                       6},   // hash(5001)=9
+   [10] = {PACKET_TYPE_PONG,                       7},   // hash(5002)=10
+   [11] = {PACKET_TYPE_CLIENT_JOIN,                8},   // hash(5003)=11
+   [12] = {PACKET_TYPE_CLIENT_LEAVE,               9},   // hash(5004)=12
+   [13] = {PACKET_TYPE_STREAM_START,               10},  // hash(5005)=13
+   [14] = {PACKET_TYPE_STREAM_STOP,                11},  // hash(5006)=14
+   [15] = {PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,   17},  // hash(1103)=15
+   [17] = {PACKET_TYPE_CRYPTO_REKEY_REQUEST,       14},  // hash(1201)=17
+   [18] = {PACKET_TYPE_CRYPTO_REKEY_RESPONSE,      15},  // hash(1202)=18
+   [19] = {PACKET_TYPE_ERROR_MESSAGE,              13},  // hash(2003)=19
+   [20] = {PACKET_TYPE_REMOTE_LOG,                 12},  // hash(2004)=20
+   [21] = {PACKET_TYPE_CRYPTO_REKEY_COMPLETE,      16},  // hash(1203)=19, probed->21
+   [22] = {PACKET_TYPE_CRYPTO_AUTH_RESPONSE,       18},  // hash(1105)=17, probed->22
+   [23] = {PACKET_TYPE_CRYPTO_NO_ENCRYPTION,       19},  // hash(1109)=21, probed->23
    [25] = {PACKET_TYPE_IMAGE_FRAME,                1},   // hash(3001)=25
+   [26] = {PACKET_TYPE_IMAGE_FRAME_H265,           2},   // hash(3002)=26
 };
 // clang-format on
 
@@ -571,6 +572,8 @@ static asciichat_error_t handle_client_crypto_handshake_complete(const void *pay
 // Forward declarations for server handlers
 static asciichat_error_t handle_server_image_frame(const void *payload, size_t payload_len, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks);
+static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx,
+                                                        const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_audio_batch(const void *payload, size_t payload_len, void *client_ctx,
                                                    const acip_server_callbacks_t *callbacks);
 static asciichat_error_t handle_server_audio_opus_batch(const void *payload, size_t payload_len, void *client_ctx,
@@ -613,23 +616,24 @@ static asciichat_error_t handle_server_crypto_no_encryption(const void *payload,
 static const acip_server_handler_func_t g_server_handlers[SERVER_HANDLER_COUNT] = {
     handle_server_protocol_version,         // 0
     handle_server_image_frame,              // 1
-    handle_server_audio_batch,              // 2
-    handle_server_audio_opus_batch,         // 3
-    handle_server_capabilities,             // 4
-    handle_server_ping,                     // 5
-    handle_server_pong,                     // 6
-    handle_server_client_join,              // 7
-    handle_server_client_leave,             // 8
-    handle_server_stream_start,             // 9
-    handle_server_stream_stop,              // 10
-    handle_server_remote_log,               // 11
-    handle_server_error_message,            // 12
-    handle_server_crypto_rekey_request,     // 13
-    handle_server_crypto_rekey_response,    // 14
-    handle_server_crypto_rekey_complete,    // 15
-    handle_server_crypto_key_exchange_resp, // 16
-    handle_server_crypto_auth_response,     // 17
-    handle_server_crypto_no_encryption,     // 18
+    handle_server_image_frame_h265,         // 2
+    handle_server_audio_batch,              // 3
+    handle_server_audio_opus_batch,         // 4
+    handle_server_capabilities,             // 5
+    handle_server_ping,                     // 6
+    handle_server_pong,                     // 7
+    handle_server_client_join,              // 8
+    handle_server_client_leave,             // 9
+    handle_server_stream_start,             // 10
+    handle_server_stream_stop,              // 11
+    handle_server_remote_log,               // 12
+    handle_server_error_message,            // 13
+    handle_server_crypto_rekey_request,     // 14
+    handle_server_crypto_rekey_response,    // 15
+    handle_server_crypto_rekey_complete,    // 16
+    handle_server_crypto_key_exchange_resp, // 17
+    handle_server_crypto_auth_response,     // 18
+    handle_server_crypto_no_encryption,     // 19
 };
 
 // Packet type names for debugging (matches handler table order)
@@ -639,6 +643,8 @@ static const char *g_packet_type_name(packet_type_t type) {
     return "PROTOCOL_VERSION";
   case PACKET_TYPE_IMAGE_FRAME:
     return "IMAGE_FRAME";
+  case PACKET_TYPE_IMAGE_FRAME_H265:
+    return "IMAGE_FRAME_H265";
   case PACKET_TYPE_AUDIO_BATCH:
     return "AUDIO_BATCH";
   case PACKET_TYPE_AUDIO_OPUS_BATCH:
@@ -800,6 +806,62 @@ static asciichat_error_t handle_server_image_frame(const void *payload, size_t p
   callbacks->on_image_frame(&header, pixel_data, pixel_data_len, client_ctx, callbacks->app_ctx);
 
   log_info("✅ [IMAGE_FRAME_DONE] on_image_frame callback returned successfully");
+  return ASCIICHAT_OK;
+}
+
+static asciichat_error_t handle_server_image_frame_h265(const void *payload, size_t payload_len, void *client_ctx,
+                                                        const acip_server_callbacks_t *callbacks) {
+  log_info("ACIP_IMAGE_FRAME_H265_HANDLER: Received IMAGE_FRAME_H265 packet, payload_len=%zu, client_ctx=%p",
+           payload_len, client_ctx);
+
+  if (!callbacks->on_image_frame_h265) {
+    log_warn("ACIP_IMAGE_FRAME_H265_HANDLER: No callback registered for on_image_frame_h265");
+    return ASCIICHAT_OK;
+  }
+
+  // Minimum header: [flags:u8][width:u16][height:u16] = 5 bytes
+  if (payload_len < 5) {
+    log_error("ACIP_IMAGE_FRAME_H265_HANDLER: Payload too small: %zu bytes (need at least 5)", payload_len);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "IMAGE_FRAME_H265 payload too small: %zu bytes (need at least 5)",
+                     payload_len);
+  }
+
+  const uint8_t *payload_bytes = (const uint8_t *)payload;
+
+  // Parse header: [flags:u8][width:u16][height:u16]
+  uint8_t flags = payload_bytes[0];
+  uint16_t width = ((uint16_t)payload_bytes[1] << 8) | payload_bytes[2];
+  uint16_t height = ((uint16_t)payload_bytes[3] << 8) | payload_bytes[4];
+
+  log_info("ACIP_IMAGE_FRAME_H265_HEADER: flags=0x%02x, width=%u, height=%u", flags, width, height);
+
+  // Get H.265 encoded data (after 5-byte header)
+  const void *h265_data = (const uint8_t *)payload + 5;
+  size_t h265_data_len = payload_len - 5;
+
+  // Validate frame dimensions to prevent DoS and buffer overflow attacks
+  if (width == 0 || height == 0) {
+    log_error("Invalid H.265 frame dimensions: %ux%u (width and height must be > 0)", width, height);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid H.265 frame dimensions: %ux%u (width and height must be > 0)", width,
+                     height);
+  }
+
+  // Sanity check: prevent unreasonably large frames
+  const uint32_t MAX_WIDTH = 8192;  // 8K
+  const uint32_t MAX_HEIGHT = 8192; // 8K
+  if (width > MAX_WIDTH || height > MAX_HEIGHT) {
+    log_error("H.265 frame dimensions too large: %ux%u (max: %ux%u)", width, height, MAX_WIDTH, MAX_HEIGHT);
+    return SET_ERRNO(ERROR_INVALID_PARAM, "H.265 frame dimensions too large: %ux%u (max: %ux%u)", width, height,
+                     MAX_WIDTH, MAX_HEIGHT);
+  }
+
+  log_info("📹 [IMAGE_FRAME_H265_CALLBACK] Invoking on_image_frame_h265 callback: %ux%u pixels, flags=0x%02x, %zu "
+           "bytes (H.265), client_ctx=%p",
+           width, height, flags, h265_data_len, client_ctx);
+
+  callbacks->on_image_frame_h265(width, height, flags, h265_data, h265_data_len, client_ctx, callbacks->app_ctx);
+
+  log_info("✅ [IMAGE_FRAME_H265_DONE] on_image_frame_h265 callback returned successfully");
   return ASCIICHAT_OK;
 }
 

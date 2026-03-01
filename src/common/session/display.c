@@ -815,7 +815,10 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
       // Write combined cursor control + frame as atomic operation
       // This prevents partial frames from being displayed if output is interrupted
-      (void)platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+      log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
+                frame_len);
+      ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
+      log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
       // Tick FPS counter to measure actual output throughput
       if (ctx->fps_counter) {
@@ -825,11 +828,14 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       SAFE_FREE(frame_buffer);
     } else {
       // Fallback if allocation fails: write cursor then frame (not ideal but prevents crash)
+      log_warn("FRAME_BUFFER_ALLOC_FAILED: Falling back to separate writes (cursor + frame)");
       (void)terminal_cursor_home(STDOUT_FILENO);
-      (void)platform_write_all(STDOUT_FILENO, display_frame, frame_len);
+      ssize_t written = platform_write_all(STDOUT_FILENO, display_frame, frame_len);
+      log_debug("FRAME_WRITE_FALLBACK: Wrote %zd bytes of frame data (requested %zu)", written, frame_len);
     }
 
     // Flush terminal to ensure all data reaches the display
+    log_debug("FRAME_FLUSH: Flushing stdout");
     (void)terminal_flush(STDOUT_FILENO);
 
     // Render FPS counter overlay if enabled
