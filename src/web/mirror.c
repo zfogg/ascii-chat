@@ -22,7 +22,7 @@
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/ansi_fast.h>
-#include <ascii-chat/video/digital_rain.h>
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 
 // Global digital rain effect context

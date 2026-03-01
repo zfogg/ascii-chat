@@ -23,7 +23,7 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/color_filter.h>
-#include <ascii-chat/video/digital_rain.h>
+#include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/image.h>
 #include "session/stdin_reader.h"
 #ifndef _WIN32
