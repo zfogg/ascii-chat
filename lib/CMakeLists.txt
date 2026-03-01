@@ -441,6 +441,9 @@ set_source_files_properties(
     PROPERTIES LANGUAGE C GENERATED TRUE
 )
 
+# Ensure font files are generated before building (required for --clean-first to work)
+add_dependencies(ascii-chat-video generate_fonts)
+
 # PCRE2: Configure for media module (for YouTube video ID extraction)
 # Define PCRE2_CODE_UNIT_WIDTH=8 for 8-bit API (UTF-8 support)
 target_compile_definitions(ascii-chat-video PRIVATE PCRE2_CODE_UNIT_WIDTH=8)

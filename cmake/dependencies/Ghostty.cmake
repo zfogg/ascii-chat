@@ -104,7 +104,7 @@ set(GHOSTTY_LIBS ${RENDER_FILE_LIBS})
 set(GHOSTTY_INCLUDES ${RENDER_FILE_INCLUDES})
 
 # =============================================================================
-# Bundled font setup (at configure time) - shared across all render backends
+# Bundled font setup (build-time generation) - shared across all render backends
 # =============================================================================
 
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/fonts")
@@ -115,36 +115,20 @@ set(MATRIX_FONT_URL "https://github.com/Rezmason/matrix/raw/master/assets/Matrix
 set(MATRIX_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/Matrix-Resurrected.ttf")
 set(MATRIX_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c")
 
-# Download font at configure time
+# Download font at configure time (downloads are expensive, so cache them)
 if(NOT EXISTS "${MATRIX_FONT_SRC}")
     message(STATUS "Downloading Matrix-Resurrected.ttf...")
     file(DOWNLOAD "${MATRIX_FONT_URL}" "${MATRIX_FONT_SRC}" SHOW_PROGRESS TLS_VERIFY ON)
 endif()
 
-# Convert to C array at configure time
-if(NOT EXISTS "${MATRIX_FONT_GEN}" OR "${MATRIX_FONT_SRC}" IS_NEWER_THAN "${MATRIX_FONT_GEN}")
-    message(STATUS "Embedding Matrix-Resurrected.ttf as C array...")
-    execute_process(
-        COMMAND ${CMAKE_COMMAND}
-                "-DINPUT=${MATRIX_FONT_SRC}"
-                "-DOUTPUT=${MATRIX_FONT_GEN}"
-                "-DVAR_NAME=g_font_matrix_resurrected"
-                "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
-        RESULT_VARIABLE BIN2C_RESULT
-    )
-    if(NOT BIN2C_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to convert font to C array")
-    endif()
-endif()
-
-# Download and embed a default monospace font (DejaVu Sans Mono) for fallback
+# Download and extract a default monospace font (DejaVu Sans Mono) for fallback
 # This ensures render-file works even if system fonts are unavailable
 set(DEFAULT_FONT_TARBALL_URL "https://github.com/dejavu-fonts/dejavu-fonts/releases/download/version_2_37/dejavu-fonts-ttf-2.37.tar.bz2")
 set(DEFAULT_FONT_TARBALL "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37.tar.bz2")
 set(DEFAULT_FONT_SRC "${CMAKE_BINARY_DIR}/fonts/DejaVuSansMono.ttf")
 set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c")
 
-# Download and extract font tarball at configure time
+# Download and extract font tarball at configure time (caching, expensive download)
 if(NOT EXISTS "${DEFAULT_FONT_SRC}")
     if(NOT EXISTS "${DEFAULT_FONT_TARBALL}")
         message(STATUS "Downloading DejaVu fonts tarball...")
@@ -173,18 +157,34 @@ if(NOT EXISTS "${DEFAULT_FONT_SRC}")
     file(RENAME "${CMAKE_BINARY_DIR}/fonts/dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf" "${DEFAULT_FONT_SRC}")
 endif()
 
-# Convert to C array at configure time
-if(NOT EXISTS "${DEFAULT_FONT_GEN}" OR "${DEFAULT_FONT_SRC}" IS_NEWER_THAN "${DEFAULT_FONT_GEN}")
-    message(STATUS "Embedding DejaVuSansMono.ttf as C array...")
-    execute_process(
-        COMMAND ${CMAKE_COMMAND}
-                "-DINPUT=${DEFAULT_FONT_SRC}"
-                "-DOUTPUT=${DEFAULT_FONT_GEN}"
-                "-DVAR_NAME=g_font_default"
-                "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
-        RESULT_VARIABLE BIN2C_RESULT
-    )
-    if(NOT BIN2C_RESULT EQUAL 0)
-        message(FATAL_ERROR "Failed to convert default font to C array")
-    endif()
-endif()
+# Create custom commands to generate C arrays at build time
+# This ensures --clean-first regenerates the files automatically
+add_custom_command(
+    OUTPUT "${MATRIX_FONT_GEN}"
+    COMMAND ${CMAKE_COMMAND}
+            "-DINPUT=${MATRIX_FONT_SRC}"
+            "-DOUTPUT=${MATRIX_FONT_GEN}"
+            "-DVAR_NAME=g_font_matrix_resurrected"
+            "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
+    DEPENDS "${MATRIX_FONT_SRC}"
+    COMMENT "Embedding Matrix-Resurrected.ttf as C array"
+    VERBATIM
+)
+
+add_custom_command(
+    OUTPUT "${DEFAULT_FONT_GEN}"
+    COMMAND ${CMAKE_COMMAND}
+            "-DINPUT=${DEFAULT_FONT_SRC}"
+            "-DOUTPUT=${DEFAULT_FONT_GEN}"
+            "-DVAR_NAME=g_font_default"
+            "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
+    DEPENDS "${DEFAULT_FONT_SRC}"
+    COMMENT "Embedding DejaVuSansMono.ttf as C array"
+    VERBATIM
+)
+
+# Create custom target to ensure fonts are built before main targets
+add_custom_target(
+    generate_fonts ALL
+    DEPENDS "${MATRIX_FONT_GEN}" "${DEFAULT_FONT_GEN}"
+)
