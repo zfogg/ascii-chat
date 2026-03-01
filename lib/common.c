@@ -29,6 +29,8 @@
 #include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <ascii-chat/debug/memory.h>      // For debug_memory_thread_cleanup in debug builds
 #include <ascii-chat/platform/symbols.h>  // For symbols cache init
+#include <ascii-chat/platform/terminal.h> // For terminal_screen_cleanup
+#include <ascii-chat/ui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
 #include <stdatomic.h>
 #include <limits.h>
@@ -123,6 +125,14 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
     }
 
+#ifndef NDEBUG
+    if (named_init() != ASCIICHAT_OK) {
+      return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize named.");
+    }
+    debug_memory_ensure_init();
+    symbol_cache_init();
+#endif
+
     // 2. LOGGING - Initialize with provided log file
     // Force stderr for client-like modes when stdout is piped to keep stdout clean
     bool force_stderr = is_client && terminal_is_piped_output();
@@ -165,16 +175,14 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
  * @note All subsystem cleanup functions must remain idempotent.
  */
 void asciichat_shared_destroy(void) {
-  debug_memory_ensure_init();
-
-  symbol_cache_init();
-
   // Guard against double cleanup (can be called explicitly + via atexit)
   static bool shutdown_done = false;
   if (shutdown_done) {
     return;
   }
   shutdown_done = true;
+
+  symbol_cache_destroy();
 
   // Cleanup in reverse order of initialization (LIFO)
   // This ensures dependencies are properly handled
@@ -208,7 +216,6 @@ void asciichat_shared_destroy(void) {
   webcam_destroy();
 
   // 2. Terminal screen - cleanup frame buffer
-  extern void terminal_screen_cleanup(void);
   terminal_screen_cleanup();
 
   // 3. SIMD caches - cleanup CPU-specific caches
@@ -247,8 +254,8 @@ void asciichat_shared_destroy(void) {
   // 13. Logging cleanup - free log format buffers
   log_destroy();
 
-  // 14. Named registry - cleanup all registered thread names and debug entries (BEFORE memory report)
-  named_destroy();
+  // 14.
+  // MISSING STEP (reorganize the numbers)
 
   // 15. Mutex stack cleanup - must be before memory report so stacks are freed
 #ifndef NDEBUG
@@ -274,8 +281,45 @@ void asciichat_shared_destroy(void) {
   log_cleanup_colors();
   colorscheme_destroy();
 
-  // 18. PCRE2 - cleanup all regex singletons together
+  // 18. Clean up binary path cache explicitly
+  // Note: This is also called by platform_destroy() via atexit(), but it's idempotent
+  platform_cleanup_binary_path_cache();
+
+  // 19. Clean up RCU-based options state
+  options_state_destroy();
+
+  // 20. PCRE2 - cleanup all regex singletons together
   asciichat_pcre2_cleanup_all();
+
+  // 21. Clean up errno context (allocated strings, backtrace symbols)
+  asciichat_errno_destroy();
+
+#ifndef NDEBUG
+  // 22. Named registry - cleanup all registered thread names and debug entries (BEFORE memory report)
+  named_destroy();
+#endif
+
+  // 23. timer resolution restore
+  platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
+
+  // 24. Clean up SIMD caches
+  simd_caches_destroy_all();
+
+  // 25. Clean up symbol cache
+  // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
+  // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
+  // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
+  symbol_cache_destroy();
+
+  // 26. Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
+  // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
+  // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
+  buffer_pool_cleanup_global();
+
+#ifndef NDEBUG
+  // 23. Symbol cache cleanup
+  symbol_cache_destroy();
+#endif
 }
 
 #if defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)

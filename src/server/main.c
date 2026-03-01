@@ -1155,7 +1155,7 @@ static void server_handle_sigterm(int sigterm) {
   log_console(LOG_INFO, "SIGTERM received - shutting down server...");
 
   // Stop the TCP server accept loop immediately.
-  // Without this, the select() call with ACCEPT_TIMEOUT could delay shutdown.
+  // Without this, the select() call with ACCET_TIMEOUT could delay shutdown.
   atomic_store(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
@@ -2740,12 +2740,10 @@ cleanup:
   rwlock_destroy(&g_client_manager_rwlock);
   mutex_destroy(&g_client_manager.mutex);
 
-#ifdef NDEBUG
+#ifndef NDEBUG
   // Clean up statistics system
   stats_cleanup();
-#endif
 
-#ifndef NDEBUG
   // Clean up lock debugging system (always, regardless of build type)
   // Lock debug records are allocated in debug builds too, so they must be cleaned up
   debug_sync_destroy();
@@ -2807,58 +2805,18 @@ cleanup:
     SAFE_FREE(g_acds_client);
     g_acds_client = NULL;
   }
-
-  // Clean up SIMD caches
-  simd_caches_destroy_all();
-
-  // Clean up symbol cache
-  // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
-  // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
-  // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
-  symbol_cache_destroy();
-
-  // Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
-  // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
-  // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
-  buffer_pool_cleanup_global();
-
   // Disable keepawake mode (re-allow OS to sleep)
   platform_disable_keepawake();
-
-  // Clean up binary path cache explicitly
-  // Note: This is also called by platform_destroy() via atexit(), but it's idempotent
-  // (checks g_cache_initialized and sets it to false, sets g_bin_path_cache to NULL)
-  // Safe to call even if atexit() runs later
-  platform_cleanup_binary_path_cache();
-
-  // Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_destroy();
-
-  // Clean up RCU-based options state
-  options_state_destroy();
 
   // Clean up platform-specific resources (Windows: Winsock cleanup, timer restoration)
   // POSIX: minimal cleanup (symbol cache already handled above on Windows)
   socket_cleanup();
-  platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
-
-#ifndef NDEBUG
-  // Join debug_sync thread first
-  debug_sync_cleanup_thread();
-
-  // Join remaining debug threads
-  debug_memory_thread_cleanup();
-#endif
 
   log_info("Server shutdown complete");
 
   asciichat_error_stats_print();
-  log_destroy();
-
-  // Clean up named registry (thread names, debug entries)
-  named_destroy();
 
   // Use exit() to allow atexit() handlers to run
   // Cleanup functions are idempotent (check if initialized first)
-  exit(0);
+  return 0;
 }

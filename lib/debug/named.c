@@ -81,20 +81,19 @@ static named_registry_t g_named_registry = {
 // Public API Implementation
 // ============================================================================
 
-int named_init(void) {
+asciichat_error_t named_init(void) {
   if (!lifecycle_init(&g_named_registry.lifecycle, "named_registry")) {
-    return 0; // Already initialized
+    return ASCIICHAT_OK; // Already initialized
   }
 
   int err = rwlock_init_impl(&g_named_registry.entries_lock);
   if (err != 0) {
-    log_error("named_init: rwlock_init_impl failed: %d", err);
     lifecycle_init_abort(&g_named_registry.lifecycle);
-    return err;
+    return SET_ERRNO(ERROR_INVALID_STATE, "named_init: rwlock_init_impl failed: %d", err);
   }
 
   lifecycle_init_commit(&g_named_registry.lifecycle);
-  return 0;
+  return ASCIICHAT_OK;
 }
 
 void named_destroy(void) {

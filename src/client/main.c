@@ -244,16 +244,13 @@ static void shutdown_client() {
     return;
   }
   shutdown_done = true;
-
   log_debug("[SHUTDOWN] 1. Starting shutdown");
 
   // Set global shutdown flag to stop all threads
   signal_exit();
-  log_debug("[SHUTDOWN] 2. signal_exit() called");
 
   // Stop splash animation thread before any resource cleanup
   splash_intro_done();
-  log_debug("[SHUTDOWN] 3. splash_intro_done() returned");
 
   // IMPORTANT: Stop all protocol threads BEFORE cleaning up resources
   // protocol_stop_connection() shuts down the socket to interrupt blocking recv(),
@@ -261,7 +258,6 @@ static void shutdown_client() {
   // This prevents race conditions where threads access freed resources.
   log_debug("[SHUTDOWN] 4. About to call protocol_stop_connection()");
   protocol_stop_connection();
-  log_debug("[SHUTDOWN] 5. protocol_stop_connection() returned");
 
   // Destroy client worker thread pool (all threads already stopped by protocol_stop_connection)
   log_debug("[SHUTDOWN] 6. About to destroy thread pool");
@@ -269,33 +265,27 @@ static void shutdown_client() {
     thread_pool_destroy(g_client_worker_pool);
     g_client_worker_pool = NULL;
   }
-  log_debug("[SHUTDOWN] 7. Thread pool destroyed");
 
   // Destroy application client context
   log_debug("[SHUTDOWN] 8. About to destroy app_client");
   if (g_client) {
     app_client_destroy(&g_client);
-    log_debug("Application client context destroyed successfully");
   }
-  log_debug("[SHUTDOWN] 9. app_client destroyed");
 
   // Now safe to cleanup server connection (socket already closed by protocol_stop_connection)
   // Legacy cleanup - will be removed after full migration to tcp_client
   log_debug("[SHUTDOWN] 10. About to cleanup server connection");
   server_connection_cleanup();
-  log_debug("[SHUTDOWN] 11. Server connection cleaned up");
 
   // Cleanup capture subsystems (capture thread already stopped by protocol_stop_connection)
   log_debug("[SHUTDOWN] 12. About to cleanup capture");
   capture_cleanup();
-  log_debug("[SHUTDOWN] 13. Capture cleaned up");
 
   // Cleanup H.265 encoder
   if (g_h265_encoder) {
     log_debug("[SHUTDOWN] 14a. About to cleanup H.265 encoder");
     h265_encoder_destroy(g_h265_encoder);
     g_h265_encoder = NULL;
-    log_debug("[SHUTDOWN] 14b. H.265 encoder cleaned up");
   }
 
   // Print audio analysis report if enabled
@@ -306,15 +296,6 @@ static void shutdown_client() {
   }
 
   audio_cleanup();
-
-#ifndef NDEBUG
-  // Stop lock debug thread BEFORE display_cleanup() because the debug thread uses
-  // _kbhit()/_getch() on Windows which interact with the console. If we close the
-  // CON handle first, the debug thread can hang on console I/O, blocking process exit.
-  // WORKAROUND: Skip debug_sync_destroy during shutdown to avoid hanging
-  // The process is about to exit anyway
-  // debug_sync_destroy();
-#endif
 
   // Cleanup display and terminal state
   // WORKAROUND: Skip cleanup during shutdown to avoid hanging
@@ -327,46 +308,9 @@ static void shutdown_client() {
   // Disable keepawake mode (re-allow OS to sleep)
   platform_disable_keepawake();
 
-  // Clean up symbol cache (before log_destroy)
-  // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
-  // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
-  // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
-  symbol_cache_destroy();
-
-  // Clean up binary path cache explicitly
-  // Note: This is also called by platform_destroy() via atexit(), but it's idempotent
-  platform_cleanup_binary_path_cache();
-
-  // Clean up errno context (allocated strings, backtrace symbols)
-  asciichat_errno_destroy();
-
-  // Clean up RCU-based options state
-  options_state_destroy();
-
   log_debug("Client shutdown complete");
   log_destroy();
-
-#ifndef NDEBUG
-  // Join the debug threads as the very last thing (after log_destroy since threads may log)
-  fprintf(stderr, "[SHUTDOWN] About to clean debug sync thread\n");
-  fflush(stderr);
-  debug_sync_cleanup_thread();
-  fprintf(stderr, "[SHUTDOWN] Debug sync thread cleaned\n");
-  fflush(stderr);
-
-  fprintf(stderr, "[SHUTDOWN] About to clean debug memory thread\n");
-  fflush(stderr);
-  debug_memory_thread_cleanup();
-  fprintf(stderr, "[SHUTDOWN] Debug memory thread cleaned\n");
-  fflush(stderr);
-#endif
-
-  fprintf(stderr, "[SHUTDOWN] Exiting shutdown_client()\n");
-  fflush(stderr);
 }
-
-#ifndef NDEBUG
-#endif
 
 /**
  * Initialize all client subsystems
@@ -899,19 +843,11 @@ int client_main(void) {
   fflush(stderr);
 
   // Cleanup remaining shared subsystems (buffer pool, platform, etc.)
-  // Note: atexit(asciichat_shared_destroy) is registered in main.c,
-  // but won't run if interrupted by signals (SIGTERM from timeout/killall)
-  // WORKAROUND: Skip shared_destroy to avoid hanging on debug cleanup
-  // The process is about to exit anyway, and cleanup is taking too long
-  // log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
-  // asciichat_shared_destroy();
-  // log_debug("[CLIENT_MAIN] asciichat_shared_destroy() returned");
+  log_debug("[CLIENT_MAIN] About to call asciichat_shared_destroy()");
+  asciichat_shared_destroy();
 
   // Log final session statistics before exit
   // Note: Frame count is logged in protocol_stop_connection() if connection was established
   // This is a fallback in case the connection never started
-
-  log_debug("[CLIENT_MAIN] About to exit with code %d (SKIPPED asciichat_shared_destroy)",
-            (session_result == ASCIICHAT_OK) ? 0 : 1);
   return (session_result == ASCIICHAT_OK) ? 0 : 1;
 }

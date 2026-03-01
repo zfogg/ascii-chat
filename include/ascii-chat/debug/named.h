@@ -64,7 +64,7 @@ extern "C" {
  * Must be called once at startup before any named_register() calls.
  * Typically called from lock_debug_init().
  */
-int named_init(void);
+asciichat_error_t named_init(void);
 
 /**
  * @brief Destroy the named object registry
