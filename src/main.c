@@ -21,7 +21,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <stdatomic.h>
 #include <signal.h>
 
 // Mode-specific entry points
@@ -44,6 +43,7 @@
 #include <ascii-chat/util/string.h>
 
 // Common headers for version info and initialization
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/options/options.h>
