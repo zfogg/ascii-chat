@@ -347,6 +347,10 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   }
 
   // Vertical centering: shift up by 2 lines to account for rendering offset
+  // NOTE: The -2 is a magic number. We don't fully understand why this offset
+  // is needed to achieve perfect vertical centering, but empirically it works.
+  // Without it, the help screen appears 2 lines too far down.
+  // TODO: Investigate why the mathematical centering formula requires this offset
   int start_row = (term_height - box_height) / 2 - 2;
   if (start_row < 0) {
     start_row = 0;
