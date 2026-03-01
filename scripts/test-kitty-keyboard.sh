@@ -8,6 +8,13 @@ set -e
 _repo_root=$(git rev-parse --show-toplevel)
 cd "$_repo_root"
 
+match='title:^ascii-chat-test'
+
+session=help-test
+
+kitty @ close-tab --match "$match" || true
+tmux kill-session -t help-test || true && sleep 0.25
+
 # Build if needed
 if [[ ! -f build/bin/ascii-chat ]]; then
   echo "Building ascii-chat..."
@@ -18,18 +25,35 @@ fi
 # Test 1: Launch mirror mode and send "?" to toggle help
 echo "=== Test 1: Opening help screen with '?' ==="
 kitty @ launch --type tab --title "ascii-chat-test" --keep-focus \
-  bash -c "cd '$_repo_root' && ./build/bin/ascii-chat --log-level info mirror"
+  zsh -ic "tmux new-session -c $_repo_root -t help-test"
+sleep 3
 
+tmux capture-pane -t "$session"
+
+kitty @ send-text --match "$match" "./build/bin/ascii-chat mirror"
+sleep 1
+kitty @ send-key --match "$match" Enter
+sleep 6
 # Give it time to start
-sleep 2
+tmux capture-pane -p -t "$session"
+
 
 # Send "?" key to toggle help
 echo "Sending '?' to toggle help..."
-kitty @ send-text --all "?"
-sleep 1
+kitty @ send-text --match "$match" "?"
+sleep 0.2
+tmux capture-pane -p -t "$session"
+
 
 # Send "q" to quit
 echo "Sending 'q' to quit..."
-kitty @ send-text --all "q"
+kitty @ send-text --match "$match" "q"
+sleep 0.2
+tmux capture-pane -p -t "$session"
+
+
+kitty @ send-key --match "$match" "ctrl+c"
+
+kitty @ close-tab --match "$match"
 
 echo "=== Test complete ==="
