@@ -122,13 +122,3 @@ if(MISSING_INTERNAL_SYMBOLS)
         "Run 'llvm-nm --defined-only ${LIBRARY}' to see available symbols")
 endif()
 
-# Report success
-get_filename_component(LIB_NAME "${LIBRARY}" NAME)
-set(ALL_CHECKED "")
-if(SYMBOLS)
-    list(APPEND ALL_CHECKED ${SYMBOLS})
-endif()
-if(INTERNAL_SYMBOLS)
-    list(APPEND ALL_CHECKED ${INTERNAL_SYMBOLS})
-endif()
-message(STATUS "Symbol validation PASSED for ${LIB_NAME}: all ${ALL_CHECKED} found")
