@@ -108,9 +108,12 @@ int display_height(const char *text, int terminal_width) {
       }
 
       // Calculate how many lines this segment wraps to
-      int segment_lines = (segment_width + terminal_width - 1) / terminal_width;
+      // Use safe ceiling division: ceil(a/b) = (a + b - 1) / b, but check for overflow
+      // Alternative safe formula: (a / b) + (a % b != 0 ? 1 : 0) avoids the addition
+      int segment_lines =
+          segment_width > 0 ? (segment_width / terminal_width) + (segment_width % terminal_width != 0 ? 1 : 0) : 0;
       if (segment_lines <= 0) {
-        segment_lines = 1;
+        segment_lines = 1; // At least one line for non-empty segment
       }
       total_lines += segment_lines;
     } else {
