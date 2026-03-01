@@ -14,6 +14,7 @@
 #include <ascii-chat/video/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/options/options.h>
 #include <vterm.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
@@ -160,6 +161,20 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->cell_h = r->ft_face->glyph->bitmap.rows;
   r->baseline = r->ft_face->glyph->bitmap_top;
   log_debug("DEBUG: cell_h=%d (from bitmap.rows), baseline=%d", r->cell_h, r->baseline);
+
+  // Apply aspect ratio correction unless --stretch is specified
+  // Terminal characters are typically 2:1 (height:width) to appear normal
+  bool stretch_mode = GET_OPTION(stretch);
+  if (!stretch_mode) {
+    int corrected_h = r->cell_w * 2;
+    if (corrected_h != r->cell_h) {
+      log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d), adjusting baseline", r->cell_h,
+               corrected_h, r->cell_w);
+      // When we change cell height, scale baseline proportionally
+      r->baseline = (r->baseline * corrected_h) / r->cell_h;
+      r->cell_h = corrected_h;
+    }
+  }
 
   r->width_px = r->cols * r->cell_w;
   r->height_px = r->rows * r->cell_h;
