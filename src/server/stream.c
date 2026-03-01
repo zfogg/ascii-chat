@@ -960,6 +960,13 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
                                           int *out_sources_count) {
   (void)wants_stretch; // Unused - we always handle aspect ratio ourselves
 
+  // Register stream atomics with named debug registry
+  static bool stream_atomics_registered = false;
+  if (!stream_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_previous_active_video_count, "server_video_source_count_for_layout_detection");
+    stream_atomics_registered = true;
+  }
+
   uint64_t frame_gen_start_ns = time_get_ns();
 
   // Initialize output parameters
