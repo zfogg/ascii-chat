@@ -83,7 +83,7 @@ typedef struct buffer_node {
  * @ingroup buffer_pool
  */
 typedef struct buffer_pool {
-  _Atomic(buffer_node_t *) free_list;     ///< Lock-free stack of available buffers
+  atomic_ptr_t free_list;                 ///< Lock-free stack of available buffers (void* cast from buffer_node_t*)
   mutex_t shrink_mutex;                   ///< Only used for shrinking
 
   size_t max_bytes;         ///< Maximum total bytes allowed
