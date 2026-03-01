@@ -451,10 +451,10 @@ void options_state_destroy(void) {
   lifecycle_shutdown(&g_options_lifecycle);
 
   // Get current options pointer
-  options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
+  options_t *current = atomic_ptr_load(&g_options);
 
   // Clear the atomic pointer (prevent further reads)
-  atomic_store_explicit(&g_options, NULL, memory_order_release);
+  atomic_ptr_store(&g_options, NULL);
 
   // Free current struct
   SAFE_FREE(current);
@@ -479,7 +479,7 @@ void options_cleanup_schema(void) {
 const options_t *options_get(void) {
   // Lock-free read with acquire semantics
   // Guarantees we see all writes made before the pointer was published
-  options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
+  options_t *current = atomic_ptr_load(&g_options);
 
   // If options not yet published or after destruction, return safe static default.
   // This is a critical fallback that:
@@ -513,7 +513,7 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
   mutex_lock(&g_options_write_mutex);
 
   // 1. Load current options (acquire semantics)
-  options_t *old_opts = atomic_load_explicit(&g_options, memory_order_acquire);
+  options_t *old_opts = atomic_ptr_load(&g_options);
 
   // 2. Allocate new options struct
   options_t *new_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
@@ -530,7 +530,7 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
 
   // 5. Atomically swap global pointer (release semantics)
   // This makes the new struct visible to all readers
-  atomic_store_explicit(&g_options, new_opts, memory_order_release);
+  atomic_ptr_store(&g_options, new_opts);
 
   // 6. Add old struct to deferred free list
   deferred_free_add(old_opts);

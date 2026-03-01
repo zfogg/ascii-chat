@@ -75,22 +75,22 @@ static struct log_context_t {
   log_template_t *format_console_only;    /* Console-only format variant */
   atomic_t has_custom_format;         /* True if format was customized */
 } g_log = {
-    .file = 2, /* STDERR_FILENO - fd 0 is STDIN (read-only!) */
-    .json_file = -1,
-    .level = DEFAULT_LOG_LEVEL,
+    .file = {0}, /* STDERR_FILENO (fd 2) - fd 0 is STDIN (read-only!) */
+    .json_file = {0}, /* -1 */
+    .level = {0}, /* DEFAULT_LOG_LEVEL */
     .lifecycle = LIFECYCLE_INIT,
     .filename = {0},
-    .current_size = 0,
-    .terminal_output_enabled = true,
-    .level_manually_set = false,
-    .force_stderr = false,
-    .terminal_locked = false,
-    .terminal_owner_thread = 0,
+    .current_size = {0},
+    .terminal_output_enabled = {0}, /* true */
+    .level_manually_set = {0}, /* false */
+    .force_stderr = {0}, /* false */
+    .terminal_locked = {0}, /* false */
+    .terminal_owner_thread = {0},
     .flush_delay_ms = 0,
     .rotation_mutex_lifecycle = LIFECYCLE_INIT,
     .format = NULL,
     .format_console_only = NULL,
-    .has_custom_format = false,
+    .has_custom_format = {0}, /* false */
 };
 #pragma GCC diagnostic pop
 
@@ -169,9 +169,10 @@ const char *get_level_string_padded(log_level_t level) {
     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     safe_fprintf(stderr, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
-    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
-    platform_write(g_log.file, message, strlen(message));                                                              \
-    platform_write(g_log.file, "\n", 1);                                                                               \
+    int _log_fd = atomic_load_int(&g_log.file);                                                                        \
+    platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
+    platform_write(_log_fd, message, strlen(message));                                                                 \
+    platform_write(_log_fd, "\n", 1);                                                                                  \
     platform_print_backtrace(0);                                                                                       \
   } while (0)
 #endif
@@ -347,8 +348,8 @@ static log_level_t parse_log_level_from_env(void) {
  * This is the only operation that uses a mutex - regular logging is lock-free.
  */
 static void rotate_log_locked(void) {
-  int file = atomic_load(&g_log.file);
-  size_t current_size = atomic_load(&g_log.current_size);
+  int file = atomic_load_int(&g_log.file);
+  size_t current_size = atomic_load_u64(&g_log.current_size);
 
   if (file < 0 || file == STDERR_FILENO || strlen(g_log.filename) == 0) {
     return;
@@ -359,7 +360,7 @@ static void rotate_log_locked(void) {
   }
 
   platform_close(file);
-  atomic_store(&g_log.file, -1);
+  atomic_store_int(&g_log.file, -1);
 
   /* Open file for reading to get the tail */
   int read_file = platform_open("log_file_read", g_log.filename, O_RDONLY, 0);
@@ -367,8 +368,8 @@ static void rotate_log_locked(void) {
     log_error("Failed to open file descriptor for log rotation: fd=%d, path=%s", read_file, g_log.filename);
     /* Fall back to regular truncation */
     int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-    atomic_store(&g_log.file, fd);
-    atomic_store(&g_log.current_size, 0);
+    atomic_store_int(&g_log.file, fd);
+    atomic_store_u64(&g_log.current_size, 0);
     return;
   }
 
@@ -378,16 +379,16 @@ static void rotate_log_locked(void) {
     platform_close(read_file);
     /* Fall back to truncation since we don't have enough data to rotate */
     int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-    atomic_store(&g_log.file, fd);
-    atomic_store(&g_log.current_size, 0);
+    atomic_store_int(&g_log.file, fd);
+    atomic_store_u64(&g_log.current_size, 0);
     return;
   }
   if (lseek(read_file, (off_t)(current_size - keep_size), SEEK_SET) == (off_t)-1) {
     platform_close(read_file);
     /* Fall back to truncation */
     int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-    atomic_store(&g_log.file, fd);
-    atomic_store(&g_log.current_size, 0);
+    atomic_store_int(&g_log.file, fd);
+    atomic_store_u64(&g_log.current_size, 0);
     return;
   }
 
@@ -404,7 +405,7 @@ static void rotate_log_locked(void) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format temp filename");
     platform_close(read_file);
     int fd = platform_open("log_file_append", g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
-    atomic_store(&g_log.file, fd);
+    atomic_store_int(&g_log.file, fd);
     return;
   }
 
@@ -414,8 +415,8 @@ static void rotate_log_locked(void) {
     platform_close(read_file);
     /* Fall back to truncation */
     int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-    atomic_store(&g_log.file, fd);
-    atomic_store(&g_log.current_size, 0);
+    atomic_store_int(&g_log.file, fd);
+    atomic_store_u64(&g_log.current_size, 0);
     return;
   }
 
@@ -431,8 +432,8 @@ static void rotate_log_locked(void) {
       unlink(temp_filename);
       /* Fall back to truncation */
       int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      atomic_store(&g_log.file, fd);
-      atomic_store(&g_log.current_size, 0);
+      atomic_store_int(&g_log.file, fd);
+      atomic_store_u64(&g_log.current_size, 0);
       return;
     }
     new_size += (size_t)bytes_read;
@@ -446,8 +447,8 @@ static void rotate_log_locked(void) {
     unlink(temp_filename); /* Clean up temp file */
     /* Fall back to truncation */
     int fd = platform_open("log_file_write", g_log.filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-    atomic_store(&g_log.file, fd);
-    atomic_store(&g_log.current_size, 0);
+    atomic_store_int(&g_log.file, fd);
+    atomic_store_u64(&g_log.current_size, 0);
     return;
   }
 
@@ -455,13 +456,13 @@ static void rotate_log_locked(void) {
   int new_fd = platform_open("log_file_append", g_log.filename, O_CREAT | O_RDWR | O_APPEND, FILE_PERM_PRIVATE);
   if (new_fd < 0) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to reopen rotated log file: %s", g_log.filename);
-    atomic_store(&g_log.file, STDERR_FILENO);
+    atomic_store_int(&g_log.file, STDERR_FILENO);
     g_log.filename[0] = '\0';
-    atomic_store(&g_log.current_size, 0);
+    atomic_store_u64(&g_log.current_size, 0);
     return;
   }
-  atomic_store(&g_log.file, new_fd);
-  atomic_store(&g_log.current_size, new_size);
+  atomic_store_int(&g_log.file, new_fd);
+  atomic_store_u64(&g_log.current_size, new_size);
 
   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
   get_current_time_formatted(time_buf);
@@ -496,7 +497,7 @@ static void maybe_rotate_log(void) {
   }
 
   /* File path: quick atomic check - avoid mutex if not needed */
-  size_t current_size = atomic_load(&g_log.current_size);
+  size_t current_size = atomic_load_u64(&g_log.current_size);
   if (current_size < MAX_LOG_SIZE) {
     return;
   }
@@ -514,33 +515,33 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   lifecycle_init(&g_log.rotation_mutex_lifecycle, "log_rotation");
 
   // Set basic config using atomic stores
-  atomic_store(&g_log.force_stderr, force_stderr);
-  bool preserve_terminal_output = atomic_load(&g_log.terminal_output_enabled);
+  atomic_store_u64(&g_log.force_stderr, force_stderr);
+  bool preserve_terminal_output = atomic_load_u64(&g_log.terminal_output_enabled);
 
   // Force logs to stderr if stdout is piped/redirected
   // This prevents logs from contaminating piped/redirected output in snapshot/batch modes
   // Per terminal.h: "force stderr when piped to prevent data corruption"
   if (terminal_is_piped_output()) {
-    atomic_store(&g_log.force_stderr, true);
+    atomic_store_bool(&g_log.force_stderr, true);
   }
 
   // Close any existing file (atomic load/store)
-  int old_file = atomic_load(&g_log.file);
+  int old_file = atomic_load_u64(&g_log.file);
   if (lifecycle_is_initialized(&g_log.lifecycle) && old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
-    atomic_store(&g_log.file, -1);
+    atomic_store_int(&g_log.file, -1);
   }
 
   // Check LOG_LEVEL environment variable
   const char *env_level_str = SAFE_GETENV("LOG_LEVEL");
   if (env_level_str) {
-    atomic_store(&g_log.level, (int)parse_log_level_from_env());
+    atomic_store_u64(&g_log.level, (int)parse_log_level_from_env());
   } else {
-    atomic_store(&g_log.level, (int)level);
+    atomic_store_u64(&g_log.level, (int)level);
   }
 
-  atomic_store(&g_log.level_manually_set, false);
-  atomic_store(&g_log.current_size, 0);
+  atomic_store_bool(&g_log.level_manually_set, false);
+  atomic_store_u64(&g_log.current_size, 0);
 
   if (filename) {
     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
@@ -549,19 +550,19 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
       // Lock-free mmap path - writes go to mmap'd file
       asciichat_error_t mmap_result = log_mmap_init_simple(filename, 0);
       if (mmap_result == ASCIICHAT_OK) {
-        atomic_store(&g_log.file, -1); // No regular fd - using mmap for file output
+        atomic_store_int(&g_log.file, -1); // No regular fd - using mmap for file output
       } else {
         // Mmap failed - use stderr only (atomic writes, lock-free)
         if (preserve_terminal_output) {
           safe_fprintf(stderr, "Mmap logging failed for %s, using stderr only (lock-free)\n", filename);
         }
-        atomic_store(&g_log.file, STDERR_FILENO);
+        atomic_store_int(&g_log.file, STDERR_FILENO);
         g_log.filename[0] = '\0';
       }
     } else {
       // Lock-free file I/O path - uses atomic write() syscalls
       int fd = platform_open("log_file", filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
-      atomic_store(&g_log.file, (fd >= 0) ? fd : STDERR_FILENO);
+      atomic_store_int(&g_log.file, (fd >= 0) ? fd : STDERR_FILENO);
       if (fd < 0) {
         if (preserve_terminal_output) {
           safe_fprintf(stderr, "Failed to open log file: %s\n", filename);
@@ -570,7 +571,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
       }
     }
   } else {
-    atomic_store(&g_log.file, STDERR_FILENO);
+    atomic_store_int(&g_log.file, STDERR_FILENO);
     g_log.filename[0] = '\0';
   }
 
@@ -582,7 +583,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
     lifecycle_init(&g_log.lifecycle, "logging");
   }
 
-  atomic_store(&g_log.terminal_output_enabled, preserve_terminal_output);
+  atomic_store_u64(&g_log.terminal_output_enabled, preserve_terminal_output);
 
   // Reset terminal detection if needed
   if (g_terminal_caps_initialized && !g_terminal_caps.detection_reliable) {
@@ -615,14 +616,14 @@ void log_destroy(void) {
     log_template_free(g_log.format_console_only);
     g_log.format_console_only = NULL;
   }
-  atomic_store(&g_log.has_custom_format, false);
+  atomic_store_bool(&g_log.has_custom_format, false);
 
   // Lock-free cleanup using atomic operations
-  int old_file = atomic_load(&g_log.file);
+  int old_file = atomic_load_u64(&g_log.file);
   if (old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
   }
-  atomic_store(&g_log.file, -1);
+  atomic_store_int(&g_log.file, -1);
 
   /* Mark logging system as shutdown (state machine transition) */
   lifecycle_shutdown(&g_log.lifecycle);
@@ -632,12 +633,12 @@ void log_destroy(void) {
 }
 
 void log_set_level(log_level_t level) {
-  atomic_store(&g_log.level, (int)level);
-  atomic_store(&g_log.level_manually_set, true);
+  atomic_store_u64(&g_log.level, (int)level);
+  atomic_store_bool(&g_log.level_manually_set, true);
 }
 
 log_level_t log_get_level(void) {
-  return (log_level_t)atomic_load(&g_log.level);
+  return (log_level_t)atomic_load_u64(&g_log.level);
 }
 
 void log_set_terminal_output(bool enabled) {
@@ -654,33 +655,33 @@ void log_set_terminal_output(bool enabled) {
     }
   }
 
-  atomic_store(&g_log.terminal_output_enabled, enabled);
+  atomic_store_u64(&g_log.terminal_output_enabled, enabled);
 }
 
 bool log_get_terminal_output(void) {
-  return atomic_load(&g_log.terminal_output_enabled);
+  return atomic_load_u64(&g_log.terminal_output_enabled);
 }
 
 void log_set_force_stderr(bool enabled) {
-  atomic_store(&g_log.force_stderr, enabled);
+  atomic_store_u64(&g_log.force_stderr, enabled);
 }
 
 bool log_get_force_stderr(void) {
-  return atomic_load(&g_log.force_stderr);
+  return atomic_load_u64(&g_log.force_stderr);
 }
 
 void log_set_json_output(int fd) {
-  atomic_store(&g_log.json_file, fd);
+  atomic_store_u64(&g_log.json_file, fd);
 }
 
 void log_disable_file_output(void) {
   /* Close the current file if it's not stderr */
-  int old_file = atomic_load(&g_log.file);
+  int old_file = atomic_load_u64(&g_log.file);
   if (old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
   }
   /* Redirect file output to stderr */
-  atomic_store(&g_log.file, STDERR_FILENO);
+  atomic_store_int(&g_log.file, STDERR_FILENO);
   g_log.filename[0] = '\0';
 }
 
@@ -723,35 +724,35 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
     g_log.format_console_only = NULL;
   }
 
-  atomic_store(&g_log.has_custom_format, is_custom);
+  atomic_store_u64(&g_log.has_custom_format, is_custom);
   return ASCIICHAT_OK;
 }
 
 bool log_lock_terminal(void) {
   bool previous_state = atomic_exchange(&g_log.terminal_locked, true);
-  atomic_store(&g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
+  atomic_store_u64(&g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
   return previous_state;
 }
 
 void log_unlock_terminal(bool previous_state) {
-  atomic_store(&g_log.terminal_locked, previous_state);
+  atomic_store_u64(&g_log.terminal_locked, previous_state);
   if (!previous_state) {
-    atomic_store(&g_log.terminal_owner_thread, 0);
+    atomic_store_u64(&g_log.terminal_owner_thread, 0);
   }
 }
 
 void log_set_flush_delay(unsigned int delay_ms) {
-  atomic_store(&g_log.flush_delay_ms, delay_ms);
+  atomic_store_u64(&g_log.flush_delay_ms, delay_ms);
 }
 
 void log_truncate_if_large(void) {
   // Log rotation is inherently racy without locks - best-effort only
   // For reliable rotation, use mmap mode or external logrotate
-  int file = atomic_load(&g_log.file);
+  int file = atomic_load_int(&g_log.file);
   if (file >= 0 && file != STDERR_FILENO && strlen(g_log.filename) > 0) {
     struct stat st;
     if (fstat(file, &st) == 0 && st.st_size > MAX_LOG_SIZE) {
-      atomic_store(&g_log.current_size, (size_t)st.st_size);
+      atomic_store_u64(&g_log.current_size, (size_t)st.st_size);
     }
   }
 }
@@ -769,7 +770,7 @@ static void write_to_log_file_atomic(const char *buffer, int length, const char 
     return;
   }
 
-  int file = atomic_load(&g_log.file);
+  int file = atomic_load_int(&g_log.file);
   if (file < 0 || file == STDERR_FILENO) {
     return;
   }
@@ -870,15 +871,15 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   }
 
   // Check if terminal output is enabled (atomic load)
-  bool is_enabled = atomic_load(&g_log.terminal_output_enabled);
+  bool is_enabled = atomic_load_u64(&g_log.terminal_output_enabled);
   if (!is_enabled) {
     // Terminal output disabled - return (status screen already captured)
     return;
   }
 
   // Check if terminal is locked by another thread
-  if (atomic_load(&g_log.terminal_locked)) {
-    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+  if (atomic_load_u64(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
     if (owner != (uint64_t)asciichat_thread_self()) {
       // Terminal locked by another thread - return
       return;
@@ -936,7 +937,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
-  if (level < (log_level_t)atomic_load(&g_log.level)) {
+  if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
     return;
   }
   /* =========================================================================
@@ -963,7 +964,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     log_mmap_write(level, file, line, func, "%s", msg_buffer);
 
     // Terminal output (check with atomic loads)
-    if (atomic_load(&g_log.terminal_output_enabled) && !atomic_load(&g_log.terminal_locked)) {
+    if (atomic_load_u64(&g_log.terminal_output_enabled) && !atomic_load_bool(&g_log.terminal_locked)) {
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
       uint64_t time_ns = time_get_realtime_ns();
       get_current_time_formatted(time_buf);
@@ -1067,7 +1068,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   // Check if JSON format is enabled
-  int json_fd = atomic_load(&g_log.json_file);
+  int json_fd = atomic_load_u64(&g_log.json_file);
   bool json_format_enabled = (json_fd >= 0);
 
   // If JSON format is enabled, output ONLY JSON (skip text output)
@@ -1075,7 +1076,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Output JSON to the JSON file descriptor
     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
     // Also output JSON to console using unified routing logic, respecting quiet flag
-    if (atomic_load(&g_log.terminal_output_enabled)) {
+    if (atomic_load_u64(&g_log.terminal_output_enabled)) {
       int console_fd = terminal_choose_log_fd(level);
       log_json_write(console_fd, level, time_ns, file, line, func, json_message);
     }
@@ -1083,7 +1084,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Text format: output to file and terminal
     // No heap allocation - use log_buffer directly
     // Write to file (atomic write syscall) - use original buffer (with ANSI codes)
-    int file_fd = atomic_load(&g_log.file);
+    int file_fd = atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       write_to_log_file_atomic(log_buffer, msg_len, NULL);
     }
@@ -1102,7 +1103,7 @@ void log_terminal_msg(log_level_t level, const char *file, int line, const char 
     return;
   }
 
-  if (level < (log_level_t)atomic_load(&g_log.level)) {
+  if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
     return;
   }
 
@@ -1147,7 +1148,7 @@ void log_plain_msg(const char *fmt, ...) {
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
     // Write to file with headers (atomic write syscall)
-    int file_fd = atomic_load(&g_log.file);
+    int file_fd = atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
@@ -1167,18 +1168,18 @@ void log_plain_msg(const char *fmt, ...) {
   }
 
   // Terminal output (atomic state checks)
-  if (!atomic_load(&g_log.terminal_output_enabled)) {
+  if (!atomic_load_bool(&g_log.terminal_output_enabled)) {
     return;
   }
-  if (atomic_load(&g_log.terminal_locked)) {
-    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+  if (atomic_load_u64(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
     if (owner != (uint64_t)asciichat_thread_self()) {
       return;
     }
   }
 
   // Check if JSON format is enabled
-  int json_fd = atomic_load(&g_log.json_file);
+  int json_fd = atomic_load_u64(&g_log.json_file);
   bool json_format_enabled = (json_fd >= 0);
 
   if (json_format_enabled) {
@@ -1222,7 +1223,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
     // Write to file with headers (atomic write syscall)
-    int file_fd = atomic_load(&g_log.file);
+    int file_fd = atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       // Add header with timestamp and log level to file output
       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
@@ -1244,11 +1245,11 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   }
 
   // Terminal output (atomic state checks)
-  if (!atomic_load(&g_log.terminal_output_enabled)) {
+  if (!atomic_load_bool(&g_log.terminal_output_enabled)) {
     return;
   }
-  if (atomic_load(&g_log.terminal_locked)) {
-    uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
+  if (atomic_load_u64(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
     if (owner != (uint64_t)asciichat_thread_self()) {
       return;
     }
@@ -1325,7 +1326,7 @@ void log_file_msg(const char *fmt, ...) {
   if (log_mmap_is_active()) {
     log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
   } else {
-    int file_fd = atomic_load(&g_log.file);
+    int file_fd = atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       write_to_log_file_atomic(log_buffer, msg_len, NULL);
       write_to_log_file_atomic("\n", 1, NULL);
@@ -1629,8 +1630,8 @@ void log_shutdown_begin(void) {
   }
 
   /* Save current terminal output state and disable console output */
-  g_shutdown_saved_terminal_output = atomic_load(&g_log.terminal_output_enabled);
-  atomic_store(&g_log.terminal_output_enabled, false);
+  g_shutdown_saved_terminal_output = atomic_load_u64(&g_log.terminal_output_enabled);
+  atomic_store_bool(&g_log.terminal_output_enabled, false);
   g_shutdown_in_progress = true;
 }
 
@@ -1640,7 +1641,7 @@ void log_shutdown_end(void) {
   }
 
   /* Restore previous terminal output state */
-  atomic_store(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
+  atomic_store_u64(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
   g_shutdown_in_progress = false;
 }
 
@@ -1927,7 +1928,7 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
   }
 
   // Check if JSON output is enabled (json_file >= 0 means enabled)
-  int json_fd = atomic_load(&g_log.json_file);
+  int json_fd = atomic_load_u64(&g_log.json_file);
   bool use_json = (json_fd >= 0);
 
   if (use_json) {

@@ -367,10 +367,10 @@ void atomic_on_store(atomic_t *a);
 void atomic_on_cas(atomic_t *a, bool success);
 void atomic_on_fetch(atomic_t *a);
 
-void atomic_ptr_on_load(_Atomic(void *) *a);
-void atomic_ptr_on_store(_Atomic(void *) *a);
-void atomic_ptr_on_cas(_Atomic(void *) *a, bool success);
-void atomic_ptr_on_exchange(_Atomic(void *) *a);
+void atomic_ptr_on_load(atomic_ptr_t *a);
+void atomic_ptr_on_store(atomic_ptr_t *a);
+void atomic_ptr_on_cas(atomic_ptr_t *a, bool success);
+void atomic_ptr_on_exchange(atomic_ptr_t *a);
 #endif
 
 // ============================================================================
