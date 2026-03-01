@@ -200,29 +200,19 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 }
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len) {
-  log_debug("DEBUG: term_renderer_feed CALLED - ctx=%p, frame_len=%zu", (void *)r, len);
-  log_debug("DEBUG: framebuffer state: ptr=%p, width_px=%d, height_px=%d, pitch=%d, cell(w=%d,h=%d)",
-            (void *)r->framebuffer, r->width_px, r->height_px, r->pitch, r->cell_w, r->cell_h);
-
   // Clear framebuffer to ensure no leftover pixels from previous frames
   uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
   memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
-  log_debug("DEBUG: cleared framebuffer with def_bg=%d", def_bg);
 
   static const char home[] = "\033[H";
   vterm_input_write(r->vt, home, sizeof(home) - 1);
 
-  // Debug: check line endings - are they \n or \r\n?
+  // Count newlines to determine CRLF conversion size
   int newline_count = 0;
-  int cr_count = 0;
   for (size_t i = 0; i < len; i++) {
     if (ansi_frame[i] == '\n')
       newline_count++;
-    if (ansi_frame[i] == '\r')
-      cr_count++;
   }
-  log_debug("DEBUG: ANSI frame line endings: %d LF (\\n), %d CR (\\r) - lines are %s terminated", newline_count,
-            cr_count, cr_count > 0 ? "CRLF" : "LF-only");
 
   // Convert LF-only line endings to CRLF (vterm expects CRLF)
   // This fixes cursor positioning on alternate rows
