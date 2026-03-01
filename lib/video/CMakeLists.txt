@@ -47,28 +47,41 @@ set(SIMD_SRCS
     # Scalar render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/render/scalar/halfblock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/render/scalar/foreground.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/render/scalar/background.c
 )
 
 if(ENABLE_SIMD_SSE2)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/foreground.c)
+    list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/background.c
+    )
     set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/background.c
         PROPERTIES COMPILE_FLAGS "-msse2"
     )
 endif()
 
 if(ENABLE_SIMD_SSSE3)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/foreground.c)
+    list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/background.c
+    )
     set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/background.c
         PROPERTIES COMPILE_FLAGS "-mssse3"
     )
 endif()
 
 if(ENABLE_SIMD_AVX2)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/foreground.c)
+    list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/background.c
+    )
     set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/background.c
         PROPERTIES COMPILE_FLAGS "-mavx2"
     )
 endif()
@@ -77,13 +90,18 @@ if(ENABLE_SIMD_NEON)
     list(APPEND SIMD_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/render/neon/foreground.c
         ${CMAKE_CURRENT_SOURCE_DIR}/render/neon/halfblock.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/neon/background.c
     )
 endif()
 
 if(ENABLE_SIMD_SVE)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/foreground.c)
+    list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/background.c
+    )
     set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/background.c
         PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve"
     )
 endif()
