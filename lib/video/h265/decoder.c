@@ -1,17 +1,23 @@
 /**
  * @file video/h265/decoder.c
- * @brief libde265 HEVC decoder for ASCII art frames
+ * @brief FFmpeg HEVC decoder for ASCII art frames
  */
 
 #include <ascii-chat/video/h265/decoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
-#include <libde265/de265.h>
+
+#include <libavcodec/avcodec.h>
+#include <libavutil/frame.h>
+
 #include <string.h>
 #include <stdlib.h>
 
 typedef struct h265_decoder {
-    de265_decoder_context *context;
+    AVCodecContext *codec_ctx;
+    AVFrame        *frame;
+    AVPacket       *packet;
+    AVCodecParserContext *parser;
 
     uint16_t last_width;
     uint16_t last_height;
@@ -27,24 +33,62 @@ h265_decoder_t *h265_decoder_create(void) {
         return NULL;
     }
 
-    dec->context = de265_new_decoder();
-    if (!dec->context) {
-        SET_ERRNO(ERROR_MEDIA_INIT, "Failed to create libde265 decoder");
+    // Find HEVC decoder
+    const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+    if (!codec) {
+        SET_ERRNO(ERROR_MEDIA_INIT, "HEVC decoder not found");
         SAFE_FREE(dec);
         return NULL;
     }
 
-    de265_set_parameter_bool(dec->context, DE265_DECODER_PARAM_DISABLE_DEBLOCKING, 0);
+    dec->codec_ctx = avcodec_alloc_context3(codec);
+    if (!dec->codec_ctx) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate codec context");
+        SAFE_FREE(dec);
+        return NULL;
+    }
 
-    log_info("libde265 decoder created");
+    // Open decoder
+    if (avcodec_open2(dec->codec_ctx, codec, NULL) < 0) {
+        SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC decoder");
+        avcodec_free_context(&dec->codec_ctx);
+        SAFE_FREE(dec);
+        return NULL;
+    }
+
+    // Allocate frame and packet
+    dec->frame = av_frame_alloc();
+    dec->packet = av_packet_alloc();
+    dec->parser = av_parser_init(AV_CODEC_ID_HEVC);
+
+    if (!dec->frame || !dec->packet || !dec->parser) {
+        SET_ERRNO(ERROR_MEMORY, "Failed to allocate frame/packet/parser");
+        if (dec->frame) av_frame_free(&dec->frame);
+        if (dec->packet) av_packet_free(&dec->packet);
+        if (dec->parser) av_parser_close(dec->parser);
+        avcodec_free_context(&dec->codec_ctx);
+        SAFE_FREE(dec);
+        return NULL;
+    }
+
+    log_info("FFmpeg HEVC decoder created");
     return dec;
 }
 
 void h265_decoder_destroy(h265_decoder_t *decoder) {
     if (!decoder) return;
 
-    if (decoder->context) {
-        de265_free_decoder(decoder->context);
+    if (decoder->frame) {
+        av_frame_free(&decoder->frame);
+    }
+    if (decoder->packet) {
+        av_packet_free(&decoder->packet);
+    }
+    if (decoder->parser) {
+        av_parser_close(decoder->parser);
+    }
+    if (decoder->codec_ctx) {
+        avcodec_free_context(&decoder->codec_ctx);
     }
     SAFE_FREE(decoder);
 }
@@ -66,6 +110,7 @@ asciichat_error_t h265_decode(
         return SET_ERRNO(ERROR_NETWORK_PROTOCOL, "Packet too small (minimum 5 bytes)");
     }
 
+    // Parse header
     uint8_t flags = encoded_packet[0];
     uint16_t width = ((uint16_t)encoded_packet[1] << 8) | encoded_packet[2];
     uint16_t height = ((uint16_t)encoded_packet[3] << 8) | encoded_packet[4];
@@ -81,36 +126,39 @@ asciichat_error_t h265_decode(
                         required_output, *output_size);
     }
 
+    // Decode HEVC data
     if (packet_size > 5) {
-        const uint8_t *nal_data = encoded_packet + 5;
-        size_t nal_size = packet_size - 5;
+        const uint8_t *hevc_data = encoded_packet + 5;
+        size_t hevc_size = packet_size - 5;
 
-        de265_error err = de265_push_NAL(decoder->context, nal_data, nal_size, 0, NULL);
-        if (err != DE265_OK) {
-            return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to push NAL: %s", de265_get_error_text(err));
+        // Send packet to decoder
+        av_packet_from_data(decoder->packet, (uint8_t *)hevc_data, hevc_size);
+
+        if (avcodec_send_packet(decoder->codec_ctx, decoder->packet) < 0) {
+            return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to send packet to decoder");
         }
 
-        err = de265_decode(decoder->context, NULL);
-        if (err != DE265_OK && err != DE265_ERROR_WAITING_FOR_INPUT_DATA) {
-            return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to decode: %s", de265_get_error_text(err));
+        if (avcodec_receive_frame(decoder->codec_ctx, decoder->frame) < 0) {
+            return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to receive decoded frame");
+        }
+    } else {
+        // Empty packet - just signal a frame boundary
+        if (avcodec_send_packet(decoder->codec_ctx, NULL) < 0) {
+            return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to flush decoder");
         }
     }
 
-    const struct de265_image *img = de265_get_next_picture(decoder->context);
-    if (!img) {
-        return SET_ERRNO(ERROR_MEDIA_DECODE, "No decoded image available");
-    }
-
-    int img_width = de265_get_image_width(img, 0);
-    int img_height = de265_get_image_height(img, 0);
+    // Extract Y plane (grayscale intensity)
+    uint8_t *y_plane = decoder->frame->data[0];
+    int y_stride = decoder->frame->linesize[0];
+    int img_width = decoder->frame->width;
+    int img_height = decoder->frame->height;
 
     if (img_width != (int)width || img_height != (int)height) {
         log_warn("Image dimensions mismatch: expected %ux%u, got %dx%d", width, height, img_width, img_height);
     }
 
-    const uint8_t *y_plane = de265_get_image_plane(img, 0, NULL);
-    int y_stride = de265_get_image_width(img, 0);  // Stride typically equals width for standard layouts
-
+    // Copy Y plane to output (ASCII intensity values)
     for (int y = 0; y < img_height && y < (int)height; y++) {
         memcpy(output_buf + y * width, y_plane + y * y_stride, width);
     }
