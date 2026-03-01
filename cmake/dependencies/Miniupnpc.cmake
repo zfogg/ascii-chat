@@ -102,7 +102,9 @@ if(MINIUPNPC_FOUND)
     # On macOS, also add libnatpmp include path and library (used alongside miniupnpc)
     if(APPLE)
         if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/libnatpmp/include" AND EXISTS "${HOMEBREW_PREFIX}/opt/libnatpmp/lib/libnatpmp.a")
-            include_directories("${HOMEBREW_PREFIX}/opt/libnatpmp/include")
+            # Don't use global include_directories() - it affects all targets including the defer tool
+            # Instead, add includes only to targets that actually use libnatpmp
+            set(NATPMP_INCLUDE_DIR "${HOMEBREW_PREFIX}/opt/libnatpmp/include")
             set(NATPMP_LIBRARY "${HOMEBREW_PREFIX}/opt/libnatpmp/lib/libnatpmp.a")
             message(STATUS "  NAT-PMP: ${HOMEBREW_PREFIX}/opt/libnatpmp")
         endif()

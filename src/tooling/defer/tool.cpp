@@ -18,7 +18,6 @@
 #include "clang/Lex/Lexer.h"
 #include "clang/Lex/Preprocessor.h"
 #include "clang/Rewrite/Core/Rewriter.h"
-#include "clang/Driver/Driver.h"
 #include "clang/Tooling/ArgumentsAdjusters.h"
 #include "clang/Tooling/CommonOptionsParser.h"
 #include "clang/Tooling/Tooling.h"
@@ -73,15 +72,6 @@ static cl::opt<std::string> BuildPath("p", cl::desc("Build path (directory conta
 
 static cl::opt<bool> QuietMode("quiet", cl::desc("Suppress verbose diagnostic output"), cl::init(false),
                                cl::cat(ToolCategory));
-
-static cl::opt<std::string>
-    ResourceDirOption("resource-dir",
-                      cl::desc("Clang resource directory (e.g., /opt/homebrew/Cellar/llvm/22/lib/clang/22)"),
-                      cl::value_desc("path"), cl::init(""), cl::cat(ToolCategory));
-
-static cl::list<std::string> IncludeDirsOption("include-dir",
-                                               cl::desc("Additional include directory for system headers"),
-                                               cl::value_desc("path"), cl::cat(ToolCategory));
 
 static cl::list<std::string> SourcePaths(cl::Positional, cl::desc("<source0> [... <sourceN>]"), cl::cat(ToolCategory));
 
@@ -896,155 +886,6 @@ int main(int argc, const char **argv) {
 
   // Wrap the compilation database with a custom adjuster that fixes problematic flags
   // We need to do this at the database level because LibTooling applies flags in a specific order
-  class FixedCompilationDatabase : public tooling::CompilationDatabase {
-  public:
-    explicit FixedCompilationDatabase(std::unique_ptr<tooling::CompilationDatabase> db, const std::string &resDir,
-                                      const std::vector<std::string> &inclDirs)
-        : db_(std::move(db)), resourceDir_(resDir), includeDirs_(inclDirs) {}
-
-    std::vector<tooling::CompileCommand> getCompileCommands(llvm::StringRef filePath) const override {
-      auto commands = db_->getCompileCommands(filePath);
-
-      for (auto &cmd : commands) {
-        // Fix the command by removing ALL project-local paths
-        // In cc1 mode, both -I and -isystem in the source tree interfere with system header search
-        std::vector<std::string> fixed;
-        bool skipNext = false;
-
-        for (size_t i = 0; i < cmd.CommandLine.size(); ++i) {
-          if (skipNext) {
-            skipNext = false;
-            continue;
-          }
-
-          const auto &arg = cmd.CommandLine[i];
-
-          // Remove --no-default-config to allow system header detection
-          if (arg == "--no-default-config") {
-            continue;
-          }
-
-          // Remove homebrew package -I paths that shadow system headers
-          if (arg == "-I" && i + 1 < cmd.CommandLine.size()) {
-            const auto &path = cmd.CommandLine[i + 1];
-            // Skip homebrew package directories - these shadow system headers
-            if (path.find("/opt/homebrew/opt/libnatpmp") != std::string::npos ||
-                path.find("/opt/homebrew/opt/portaudio") != std::string::npos ||
-                path.find("/opt/homebrew/opt/opus") != std::string::npos) {
-              skipNext = true;
-              continue;
-            }
-          }
-
-          // Handle -I prefix format (e.g., -I/opt/homebrew/...)
-          if (arg.size() > 2 && arg[0] == '-' && arg[1] == 'I') {
-            std::string path = arg.substr(2);
-            if (path.find("/opt/homebrew/opt/libnatpmp") != std::string::npos ||
-                path.find("/opt/homebrew/opt/portaudio") != std::string::npos ||
-                path.find("/opt/homebrew/opt/opus") != std::string::npos) {
-              continue;
-            }
-          }
-
-          // Handle -isystem paths: skip if they're in the source tree
-          if (arg == "-isystem" && i + 1 < cmd.CommandLine.size()) {
-            const auto &path = cmd.CommandLine[i + 1];
-            if (path.find("ascii-chat") != std::string::npos || path.find("generated") != std::string::npos ||
-                path.find("webrtc") != std::string::npos || path.find("deps") != std::string::npos ||
-                path.find("/homebrew") != std::string::npos) {
-              skipNext = true; // Skip the path argument
-              continue;
-            }
-          }
-
-          fixed.push_back(arg);
-        }
-
-        // After removing all project paths, we need to ensure system headers can be found
-        // Add system include paths explicitly (bypass --no-default-config restriction)
-
-        // Check if we have a system include path already
-        bool hasSystemInclude = false;
-        for (const auto &arg : fixed) {
-          if (arg.find("MacOSX.sdk") != std::string::npos || arg.find("/usr/include") != std::string::npos ||
-              arg == "-isysroot") {
-            hasSystemInclude = true;
-            break;
-          }
-        }
-
-        if (!hasSystemInclude) {
-          // Add explicitly passed include directories and resource directory
-          std::vector<std::string> sdkPaths;
-
-          // Add passed resource directory if provided
-          if (!resourceDir_.empty()) {
-            sdkPaths.push_back("-resource-dir");
-            sdkPaths.push_back(resourceDir_);
-          }
-
-          // Add passed include directories if provided
-          for (const auto &inclDir : includeDirs_) {
-            sdkPaths.push_back("-I");
-            sdkPaths.push_back(inclDir);
-          }
-
-          // If no include dirs were passed, use default SDK paths
-          if (sdkPaths.empty()) {
-            sdkPaths.push_back("-isysroot");
-            sdkPaths.push_back(
-                "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk");
-            sdkPaths.push_back("-I");
-            sdkPaths.push_back("/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/"
-                               "MacOSX.sdk/usr/include");
-          }
-
-          // Insert paths at position 1 (after compiler, before other flags)
-          fixed.insert(fixed.begin(), sdkPaths.begin(), sdkPaths.end());
-
-          if (!QuietMode) {
-            llvm::errs() << "[FixedCompilationDatabase] Added system include paths\n";
-          }
-        }
-
-        // Debug: show original vs fixed command line size
-        if (cmd.CommandLine.size() != fixed.size()) {
-          llvm::errs() << "[FixedCompilationDatabase] Reduced flags from " << cmd.CommandLine.size() << " to "
-                       << fixed.size() << " arguments\n";
-          // Show what include-related flags we have
-          bool foundSDKPath = false;
-          for (const auto &arg : fixed) {
-            if (arg.find("isysroot") != std::string::npos || arg.find("MacOSX.sdk") != std::string::npos) {
-              llvm::errs() << "  SDK flag: " << arg << "\n";
-              foundSDKPath = true;
-            }
-          }
-          if (!foundSDKPath) {
-            llvm::errs() << "  WARNING: No SDK path found in fixed flags!\n";
-          }
-        }
-
-        cmd.CommandLine = fixed;
-      }
-      return commands;
-    }
-
-    std::vector<std::string> getAllFiles() const override {
-      return db_->getAllFiles();
-    }
-
-    std::vector<tooling::CompileCommand> getAllCompileCommands() const override {
-      return db_->getAllCompileCommands();
-    }
-
-  private:
-    std::unique_ptr<tooling::CompilationDatabase> db_;
-    std::string resourceDir_;
-    std::vector<std::string> includeDirs_;
-  };
-
-  compilations =
-      std::make_unique<FixedCompilationDatabase>(std::move(compilations), ResourceDirOption, IncludeDirsOption);
 
   // Try to find clang resource directory at runtime
   // Priority: 1) CLANG_RESOURCE_DIR compile-time path, 2) Runtime detection via common paths
@@ -1141,7 +982,7 @@ int main(int argc, const char **argv) {
     }
     std::string absSourceStr = absSourcePath.generic_string();
 
-    // Get the compilation command from the fixed database
+    // Get the compilation command from the database
     auto commands = compilations->getCompileCommands(absSourceStr);
     if (commands.empty()) {
       llvm::errs() << "No compilation command found for: " << absSourceStr << "\n";
@@ -1149,16 +990,11 @@ int main(int argc, const char **argv) {
       continue;
     }
 
-    // Get the compilation command from the fixed database
-    const auto &compileCmd = commands[0];
-
-    // Use ClangTool with the FIXED compilation database
-    // The fixed database now has proper SDK paths in driver mode format
-    // ClangTool will use these paths correctly
+    // Use ClangTool with the compilation database
     std::vector<std::string> justThisFile = {absSourceStr};
     tooling::ClangTool tool(*compilations, justThisFile);
 
-    // Run the transformation with the corrected compilation database
+    // Run the transformation
     const int fileResult = tool.run(&actionFactory);
     if (fileResult != 0) {
       executionResult = fileResult;

@@ -1,5 +1,5 @@
 /**
- * @file video/renderer.h
+ * @file video/render/file/renderer.h
  * @ingroup video
  * @brief Terminal-to-pixel renderer and render-file output
  *

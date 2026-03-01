@@ -27,7 +27,7 @@
 #include <ascii-chat/video/image.h>
 #include "session/stdin_reader.h"
 #ifndef _WIN32
-#include <ascii-chat/video/renderer.h>
+#include <ascii-chat/video/render/file/renderer.h>
 #endif
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>

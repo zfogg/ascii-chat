@@ -160,16 +160,10 @@ function(ascii_defer_prepare)
         # Create output directory path
         get_filename_component(_gen_dir "${_gen_path}" DIRECTORY)
 
-        # On macOS, system headers are in the Xcode SDK
-        set(_sdk_include_dir "/Applications/Xcode.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX.sdk/usr/include")
-        if(NOT EXISTS "${_sdk_include_dir}")
-            set(_sdk_include_dir "/usr/include")
-        endif()
-
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND "${_defer_tool_exe}" -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR} --resource-dir=${CMAKE_CLANG_RESOURCE_DIR} --include-dir=${_sdk_include_dir} -- ${_rel_path}
+            COMMAND "${_defer_tool_exe}" -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR} -- ${_rel_path}
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${_ASCII_COMPILE_DB}"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"

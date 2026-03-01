@@ -25,7 +25,7 @@ if(FFMPEG_FOUND)
     # Render-to-file (Unix only)
     if(NOT WIN32)
         list(APPEND VIDEO_SRCS
-            ${CMAKE_CURRENT_SOURCE_DIR}/renderer.c
+            ${CMAKE_CURRENT_SOURCE_DIR}/render/file/renderer.c
             ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
             # Bundled fonts and generated C code (generated at CMake configure time)
             ${CMAKE_CURRENT_SOURCE_DIR}/font.c
