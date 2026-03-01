@@ -8,4 +8,3 @@ file(WRITE "${OUTPUT}"
     "const unsigned char ${VAR_NAME}[] = {\n${_content}\n};\n"
     "const size_t ${VAR_NAME}_size = sizeof(${VAR_NAME});\n"
 )
-message(STATUS "Generated ${OUTPUT} from ${INPUT}")
