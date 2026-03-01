@@ -18,6 +18,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
 
 /* ============================================================================
  * Constants
@@ -54,9 +55,22 @@ asciichat_error_t keyboard_init(void) {
 
   struct termios new_termios;
 
+  // Check if terminal is interactive before attempting tcgetattr
+  // If terminal is not interactive, we skip raw mode configuration but allow
+  // keyboard reading to continue via fallback with buffered input
+  if (!terminal_is_interactive()) {
+    log_debug("keyboard_init: terminal is not interactive, skipping raw mode configuration");
+    // Mark as initialized but don't actually configure terminal mode
+    // The keyboard_read functions will still work using regular read() calls,
+    // but keyboard input will need to be terminated with Enter in non-raw mode
+    return ASCIICHAT_OK;
+  }
+
   // Get current terminal settings
   if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
     lifecycle_init_abort(&g_keyboard_lc);
+    int errno_val = errno;
+    log_debug("keyboard_init: tcgetattr failed with errno=%d (%s)", errno_val, strerror(errno_val));
     return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes");
   }
 
