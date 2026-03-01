@@ -262,7 +262,11 @@ static image_t *mirror_capture_cb(void *user_data) {
 static void mirror_sleep_cb(void *user_data) {
   (void)user_data;
   // Sleep for one frame at target FPS
-  uint64_t frame_period_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps));
+  int fps = GET_OPTION(fps);
+  if (fps <= 0) {
+    return; // No FPS limit, don't sleep
+  }
+  uint64_t frame_period_ns = (uint64_t)(NS_PER_SEC_INT / fps);
   platform_sleep_ns(frame_period_ns);
 }
 
