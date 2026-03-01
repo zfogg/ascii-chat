@@ -137,16 +137,29 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   enc->codec_ctx->time_base = (AVRational){1, fps};
   enc->codec_ctx->framerate = (AVRational){fps, 1};
 
-  // Set bitrate (reasonable default: ~1Mbps per megapixel)
-  int bitrate = (width_px * height_px) / 1024; // rough estimate in kbps
-  if (bitrate < 500)
-    bitrate = 500;
-  if (bitrate > 5000)
-    bitrate = 5000;
+  // Set bitrate for high quality (music-level quality)
+  // Use ~5-10 Mbps per megapixel for visually lossless quality
+  int bitrate = (width_px * height_px * 10) / 1024; // higher quality estimate in kbps
+  if (bitrate < 4000)
+    bitrate = 4000; // Minimum 4000 kbps for quality
+  if (bitrate > 50000)
+    bitrate = 50000; // Cap at 50 Mbps max
   enc->codec_ctx->bit_rate = bitrate * 1000;
+  log_debug("ffmpeg_encoder: bitrate set to %d kbps for %dx%d", bitrate, width_px, height_px);
+
+  // Configure codec-specific options for quality
+  AVDictionary *codec_opts = NULL;
+  if (strcmp(codec_name, "libx264") == 0) {
+    // x264 high-quality settings: optimize for visual quality with high detail preservation
+    av_dict_set(&codec_opts, "preset", "slow", 0); // slow preset = high quality encoding
+    av_dict_set(&codec_opts, "x264-params", "aq-mode=3:aq-strength=1:me=tesa:merange=32",
+                0); // maximum detail through adaptive quantization + exhaustive ME
+    log_debug("ffmpeg_encoder: x264 preset=slow with maximum quality settings");
+  }
 
   // Open codec
-  ret = avcodec_open2(enc->codec_ctx, codec, NULL);
+  ret = avcodec_open2(enc->codec_ctx, codec, &codec_opts);
+  av_dict_free(&codec_opts);
   if (ret < 0) {
     avcodec_free_context(&enc->codec_ctx);
     avformat_free_context(enc->fmt_ctx);
