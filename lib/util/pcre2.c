@@ -21,7 +21,7 @@
  */
 typedef struct pcre2_singleton {
   lifecycle_t lc;                ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
-  _Atomic(void *) code;          ///< Compiled regex (lazy init, atomic pointer)
+  atomic_t code;                 ///< Compiled regex (lazy init, atomic pointer as uint64_t)
   pcre2_jit_stack *jit_stack;    ///< JIT stack for performance
   char *pattern;                 ///< Pattern string (owned by singleton, dynamically allocated)
   uint32_t flags;                ///< PCRE2 compile flags
@@ -69,7 +69,7 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
 
   /* Initialize fields */
   singleton->lc = (lifecycle_t)LIFECYCLE_INIT; ///< Per-object lifecycle for lazy compilation
-  singleton->code = NULL;
+  atomic_store_u64(&singleton->code, 0);
   singleton->jit_stack = NULL;
   singleton->flags = flags;
 
@@ -101,7 +101,7 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   }
 
   /* Fast path: check if already compiled (lock-free atomic load, no mutex) */
-  pcre2_code *code = (pcre2_code *)atomic_ptr_load(&singleton->code);
+  pcre2_code *code = (pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code);
   if (code != NULL) {
     return code;
   }
@@ -150,7 +150,7 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   }
 
   /* Store compiled code (atomic, so subsequent calls see it immediately) */
-  atomic_ptr_store(&singleton->code, code);
+  atomic_store_u64(&singleton->code, (uint64_t)(uintptr_t)code);
   /* Mark compilation as completed by moving to INITIALIZED state */
   lifecycle_init_commit(&singleton->lc);
 
@@ -184,7 +184,7 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
   }
 
   /* Free compiled code if it exists */
-  pcre2_code *code = (pcre2_code *)atomic_ptr_load(&singleton->code);
+  pcre2_code *code = (pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code);
   if (code) {
     pcre2_code_free(code);
   }
@@ -227,10 +227,10 @@ void asciichat_pcre2_cleanup_all(void) {
     pcre2_singleton_t *next = current->next;
 
     /* Free compiled code */
-    pcre2_code *code = (pcre2_code *)atomic_ptr_load(&current->code);
+    pcre2_code *code = (pcre2_code *)(uintptr_t)atomic_load_u64(&current->code);
     if (code) {
       pcre2_code_free(code);
-      atomic_ptr_store(&current->code, NULL);
+      atomic_store_u64(&current->code, 0);
     }
 
     /* Free JIT stack */
