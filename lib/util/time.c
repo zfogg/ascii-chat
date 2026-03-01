@@ -30,9 +30,9 @@
  * @brief Global timer manager
  */
 static struct {
-  timer_record_t *timers;           ///< Hash table of active timers (uthash head pointer)
-  rwlock_t rwlock;                  ///< Read-write lock for thread-safe access (uthash requires external locking)
-  lifecycle_t lifecycle;            ///< Lifecycle state machine for init/shutdown synchronization
+  timer_record_t *timers; ///< Hash table of active timers (uthash head pointer)
+  rwlock_t rwlock;        ///< Read-write lock for thread-safe access (uthash requires external locking)
+  lifecycle_t lifecycle;  ///< Lifecycle state machine for init/shutdown synchronization
 } g_timer_manager = {
     .timers = NULL,
     .lifecycle = LIFECYCLE_INIT,
@@ -67,7 +67,7 @@ static bool g_sokol_time_initialized = false;
  * - 45+ seconds: moment.js thresholds continue
  */
 static int format_human_readable_time_ago(double total_seconds, int minutes, int hours, int days, int months, int years,
-                                           const char *suffix, char *buffer, size_t buffer_size) {
+                                          const char *suffix, char *buffer, size_t buffer_size) {
   int written = 0;
 
   if (total_seconds < 3) {
@@ -301,7 +301,7 @@ double timer_stop(const char *name) {
 
   if (!timer) {
     rwlock_wrunlock(&g_timer_manager.rwlock);
-    log_warn("Timer '%s' not found", name);
+    log_dev("Timer '%s' not found (may have already been stopped)", name);
     return -1.0;
   }
 
@@ -317,9 +317,16 @@ double timer_stop(const char *name) {
   // Log the result (dev level - only shown with --verbose)
   log_dev("Timer '%s': %s", name, duration_str);
 
-  // Remove from hashtable
+  // Save pointers to free BEFORE removing from hashtable
+  char *timer_name = timer->name;
+
+  // Remove from hashtable (HASH_DEL only removes from hash, doesn't free memory)
   HASH_DEL(g_timer_manager.timers, timer);
-  SAFE_FREE(timer->name);
+
+  // Free timer->name first (this was allocated separately)
+  SAFE_FREE(timer_name);
+
+  // Free the timer record itself
   SAFE_FREE(timer);
 
   rwlock_wrunlock(&g_timer_manager.rwlock);
@@ -364,14 +371,17 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
  * Stops at space (which indicates start of unit) or end of string.
  */
 static int strip_trailing_zeros(char *str) {
-  if (!str || !*str) return 0;
+  if (!str || !*str)
+    return 0;
 
   int len = (int)strlen(str);
-  if (len <= 0) return len;
+  if (len <= 0)
+    return len;
 
   // Find decimal point
   char *decimal = strchr(str, '.');
-  if (!decimal) return len;  // No decimal point
+  if (!decimal)
+    return len; // No decimal point
 
   // Find where the number ends (space indicates unit follows)
   char *space = strchr(decimal, ' ');
@@ -416,19 +426,21 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
   int actual_decimals = decimals;
   if (decimals == -1) {
     if (nanoseconds < NS_PER_MS_INT) {
-      actual_decimals = 3;  // ns/µs
+      actual_decimals = 3; // ns/µs
     } else if (nanoseconds < NS_PER_SEC_INT) {
-      actual_decimals = 3;  // ms
+      actual_decimals = 3; // ms
     } else if (nanoseconds < NS_PER_MIN_INT) {
-      actual_decimals = 2;  // seconds
+      actual_decimals = 2; // seconds
     } else {
-      actual_decimals = 3;  // colon notation
+      actual_decimals = 3; // colon notation
     }
   }
 
   // Clamp decimals to valid range
-  if (actual_decimals < 0) actual_decimals = 0;
-  if (actual_decimals > 9) actual_decimals = 9;
+  if (actual_decimals < 0)
+    actual_decimals = 0;
+  if (actual_decimals > 9)
+    actual_decimals = 9;
 
   int written = 0;
 
@@ -486,11 +498,10 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
 
     char temp_buf[64];
     if (actual_decimals == 0) {
-      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu",
-               (unsigned long long)minutes, (unsigned long long)seconds);
+      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu", (unsigned long long)minutes, (unsigned long long)seconds);
     } else {
-      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu.%.*f",
-               (unsigned long long)minutes, (unsigned long long)seconds, actual_decimals, fraction);
+      snprintf(temp_buf, sizeof(temp_buf), "%llu:%02llu.%.*f", (unsigned long long)minutes, (unsigned long long)seconds,
+               actual_decimals, fraction);
       strip_trailing_zeros(temp_buf);
     }
 
@@ -509,9 +520,8 @@ int time_pretty(uint64_t nanoseconds, int decimals, char *buffer, size_t buffer_
     uint64_t minutes = remaining / 60;
     uint64_t seconds = remaining % 60;
 
-    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu:%02llu",
-                            (unsigned long long)hours, (unsigned long long)minutes,
-                            (unsigned long long)seconds);
+    written = safe_snprintf(buffer, buffer_size, "%llu:%02llu:%02llu", (unsigned long long)hours,
+                            (unsigned long long)minutes, (unsigned long long)seconds);
   }
 
   if (written < 0 || (size_t)written >= buffer_size) {
@@ -540,10 +550,11 @@ int time_human_readable_unsigned(uint64_t nanoseconds, char *buffer, size_t buff
   int minutes = (int)(total_seconds / 60);
   int hours = minutes / 60;
   int days = hours / 24;
-  int months = days / 30;  // Approximate
+  int months = days / 30; // Approximate
   int years = months / 12;
 
-  int written = format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, "ago", buffer, buffer_size);
+  int written =
+      format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, "ago", buffer, buffer_size);
 
   if (written < 0 || (size_t)written >= buffer_size) {
     return -1;
@@ -566,11 +577,12 @@ int time_human_readable(int64_t nanoseconds, char *buffer, size_t buffer_size) {
   int minutes = (int)(total_seconds / 60);
   int hours = minutes / 60;
   int days = hours / 24;
-  int months = days / 30;  // Approximate
+  int months = days / 30; // Approximate
   int years = months / 12;
 
   const char *suffix = is_future ? "from now" : "ago";
-  int written = format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
+  int written =
+      format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
 
   if (written < 0 || (size_t)written >= buffer_size) {
     return -1;
