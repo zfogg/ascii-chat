@@ -278,6 +278,49 @@ static void cond_iter_callback(uintptr_t key, const char *name, void *user_data)
   }
 }
 
+
+static void atomic_t_iter_callback(uintptr_t key, const char *name, void *user_data) {
+  sync_buffer_t *buf = (sync_buffer_t *)user_data;
+  if (!buf)
+    return;
+
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "atomic") != 0) {
+    return;
+  }
+
+  const atomic_t *atomic = (const atomic_t *)key;
+  char timing_str[512] = {0};
+  int bytes = debug_atomic_format_timing(atomic, timing_str, sizeof(timing_str));
+
+  // Only append if atomic has been used
+  if (bytes > 0) {
+    buf->offset +=
+        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  Atomic %s: %s\n", name, timing_str);
+  }
+}
+
+static void atomic_ptr_iter_callback(uintptr_t key, const char *name, void *user_data) {
+  sync_buffer_t *buf = (sync_buffer_t *)user_data;
+  if (!buf)
+    return;
+
+  const char *type = named_get_type(key);
+  if (!type || strcmp(type, "atomic_ptr") != 0) {
+    return;
+  }
+
+  const atomic_ptr_t *atomic = (const atomic_ptr_t *)key;
+  char timing_str[512] = {0};
+  int bytes = debug_atomic_ptr_format_timing(atomic, timing_str, sizeof(timing_str));
+
+  // Only append if atomic has been used
+  if (bytes > 0) {
+    buf->offset +=
+        snprintf(buf->buffer + buf->offset, buf->buffer_size - buf->offset, "  AtomicPtr %s: %s\n", name, timing_str);
+  }
+}
+
 // ============================================================================
 // Lock Stack Printing
 // ============================================================================
@@ -345,9 +388,10 @@ void debug_sync_print_state(void) {
   named_registry_for_each(rwlock_iter_callback, &buf);
   named_registry_for_each(cond_iter_callback, &buf);
 
-  // Print atomic state
+  // Iterate through atomic operations
   buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\nAtomic Operations State:\n");
-  debug_atomic_print_state();
+  named_registry_for_each(atomic_t_iter_callback, &buf);
+  named_registry_for_each(atomic_ptr_iter_callback, &buf);
 
   // Print lock stacks for deadlock analysis
   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);

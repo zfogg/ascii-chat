@@ -51,6 +51,52 @@ void debug_atomic_ptr_register(_Atomic(void *) *a, const char *name);
  */
 void debug_atomic_ptr_unregister(_Atomic(void *) *a);
 
+/**
+ * @brief Format timing info for an atomic_t to a buffer
+ * @param atomic Pointer to atomic_t
+ * @param buffer Output buffer for formatted timing info
+ * @param size Buffer size
+ * @return Number of bytes written (0 if never accessed)
+ *
+ * Used by --sync-state to display atomic operation timing and counts.
+ * Only formats output if the atomic has been accessed.
+ */
+int debug_atomic_format_timing(const atomic_t *atomic, char *buffer, size_t size);
+
+/**
+ * @brief Format timing info for an atomic_ptr_t to a buffer
+ * @param atomic Pointer to atomic_ptr_t
+ * @param buffer Output buffer for formatted timing info
+ * @param size Buffer size
+ * @return Number of bytes written (0 if never accessed)
+ *
+ * Used by --sync-state to display atomic operation timing and counts.
+ * Only formats output if the atomic has been accessed.
+ */
+int debug_atomic_ptr_format_timing(const atomic_ptr_t *atomic, char *buffer, size_t size);
+
+/**
+ * @brief Lifecycle initialization for debug atomic tracking
+ */
+void debug_atomic_init(void);
+
+/**
+ * @brief Lifecycle shutdown for debug atomic tracking
+ */
+void debug_atomic_shutdown(void);
+
+/**
+ * @brief Check if debug atomic tracking is initialized
+ */
+bool debug_atomic_is_initialized(void);
+
+/**
+ * @brief Print all named atomic operations state (integration with --sync-state)
+ *
+ * Called by debug_sync_print_state() to include atomic operations in sync state output.
+ */
+void debug_atomic_print_state(void);
+
 #ifdef __cplusplus
 }
 #endif
