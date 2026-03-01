@@ -1155,54 +1155,6 @@ typedef enum {
 } packet_recv_result_t;
 
 /**
- * @name Packet Validation Functions
- * @{
- * @ingroup network
- */
-
-/**
- * @brief Validate packet header and extract information
- * @param header Packet header to validate
- * @param pkt_type Output: Packet type
- * @param pkt_len Output: Packet payload length
- * @param expected_crc Output: Expected CRC32 checksum
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Validates packet header structure including magic number, type,
- * and length fields. Extracts packet information for further processing.
- *
- * @note Validates magic number to detect corrupted packets.
- *
- * @note All output parameters must be non-NULL.
- *
- * @ingroup network
- */
-asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
-                                         uint32_t *expected_crc);
-
-/**
- * @brief Validate packet CRC32 checksum
- * @param data Packet payload data
- * @param len Data length in bytes
- * @param expected_crc Expected CRC32 checksum value
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Validates packet integrity by computing CRC32 checksum of payload
- * and comparing with expected value. Uses hardware acceleration when
- * available for optimal performance.
- *
- * @note CRC32 validation prevents corrupted packets from being processed.
- *
- * @note Uses hardware-accelerated CRC32 when available (automatic fallback
- *       to software implementation).
- *
- * @ingroup network
- */
-asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc);
-
-/** @} */
-
-/**
  * @name Basic Packet I/O Functions
  * @{
  * @ingroup network

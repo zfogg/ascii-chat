@@ -28,6 +28,7 @@
 #include <ascii-chat/debug/mutex.h>       // For mutex_stack_cleanup
 #include <ascii-chat/debug/named.h>       // For named_destroy()
 #include <ascii-chat/debug/memory.h>      // For debug_memory_thread_cleanup in debug builds
+#include <ascii-chat/platform/symbols.h>  // For symbols cache init
 #include <string.h>
 #include <stdatomic.h>
 #include <limits.h>
@@ -165,6 +166,9 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
  */
 void asciichat_shared_destroy(void) {
   debug_memory_ensure_init();
+
+  symbol_cache_init();
+
   // Guard against double cleanup (can be called explicitly + via atexit)
   static bool shutdown_done = false;
   if (shutdown_done) {

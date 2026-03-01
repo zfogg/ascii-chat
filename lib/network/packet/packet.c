@@ -74,8 +74,8 @@ static uint64_t calculate_packet_timeout(size_t packet_size) {
  * @param expected_crc Output: expected CRC32
  * @return 0 on success, -1 on error
  */
-asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
-                                         uint32_t *expected_crc) {
+static asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t *pkt_type, uint32_t *pkt_len,
+                                                uint32_t *expected_crc) {
   if (!header || !pkt_type || !pkt_len || !expected_crc) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: header=%p, pkt_type=%p, pkt_len=%p, expected_crc=%p",
                      header, pkt_type, pkt_len, expected_crc);
@@ -255,7 +255,7 @@ asciichat_error_t packet_validate_header(const packet_header_t *header, uint16_t
  * @param expected_crc Expected CRC32 value
  * @return 0 on success, -1 on error
  */
-asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
+static asciichat_error_t packet_validate_crc32(const void *data, size_t len, uint32_t expected_crc) {
   if (!data && len > 0) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: data=%p but len=%zu", data, len);
   }
