@@ -1417,18 +1417,6 @@ int send_ping_packet(socket_t sockfd);
 int send_pong_packet(socket_t sockfd);
 
 /**
- * @brief Send a clear console packet
- * @param sockfd Socket file descriptor
- * @return 0 on success, -1 on error
- *
- * Sends a PACKET_TYPE_CLEAR_CONSOLE packet to request client
- * to clear terminal display.
- *
- * @ingroup network
- */
-int send_clear_console_packet(socket_t sockfd);
-
-/**
  * @brief Send an error packet with optional encryption context
  * @param sockfd Socket file descriptor
  * @param crypto_ctx Crypto context for encryption (NULL or not ready sends plaintext)

@@ -810,10 +810,6 @@ int send_pong_packet(socket_t sockfd) {
  * @param sockfd Socket file descriptor
  * @return 0 on success, -1 on error
  */
-int send_clear_console_packet(socket_t sockfd) {
-  return send_packet(sockfd, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0);
-}
-
 /**
  * @brief Decrypt a PACKET_TYPE_ENCRYPTED envelope and extract inner packet
  *
