@@ -94,7 +94,7 @@
 #include <ascii-chat/util/time.h>   // For time macros
 #include <ascii-chat/util/url.h>    // For URL parsing and WebSocket detection
 #include <ascii-chat/buffer_pool.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/client.h>

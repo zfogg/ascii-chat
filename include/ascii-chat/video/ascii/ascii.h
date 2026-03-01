@@ -83,7 +83,7 @@
 extern char ascii_palette[];
 
 // Include image.h for image_t type definition
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 
 /* ============================================================================
  * Subsystem Initialization Functions

@@ -81,7 +81,7 @@
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/network/network.h>

@@ -80,7 +80,7 @@
 #include "display.h"
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/buffer_pool.h>
 
 #include <string.h>

@@ -15,7 +15,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/fps.h>
 #include <ascii-chat/audio/audio.h>

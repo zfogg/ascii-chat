@@ -10,7 +10,7 @@
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/util/path.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/common.h>

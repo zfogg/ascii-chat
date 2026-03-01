@@ -7,7 +7,7 @@
 #include <criterion/criterion.h>
 #include <stdint.h>
 #include <string.h>
-#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/tests/logging.h>
 
 /**

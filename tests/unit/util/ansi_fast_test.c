@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/tests/logging.h>
 
 // Custom init function - must initialize ansi_fast before any tests use append_truecolor_fg/bg

@@ -53,7 +53,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/media/source.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 
 /* ============================================================================
  * Session Capture Configuration

@@ -8,7 +8,7 @@
  * Functions for rendering ASCII art with background colors using ARM SVE.
  */
 
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_SVE
 

@@ -9,8 +9,8 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/simd/common.h>
-#include <ascii-chat/video/image.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/rgba/image.h>
+#include <ascii-chat/video/ascii/palette.h>
 
 // Use quiet logging for normal test runs
 TestSuite(ascii_simd_integration);

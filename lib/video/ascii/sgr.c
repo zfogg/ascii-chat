@@ -15,7 +15,7 @@
 #include <ascii-chat/video/ascii/common.h>
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/util/number.h> // For write_u8
 #include <ascii-chat/util/time.h>

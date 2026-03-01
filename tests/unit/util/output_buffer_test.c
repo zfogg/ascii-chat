@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 

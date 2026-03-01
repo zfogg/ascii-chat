@@ -15,7 +15,7 @@
 
 #include <stdbool.h>
 #include "../platform/terminal.h"
-#include "../video/palette.h"
+#include <ascii-chat/video/ascii/palette.h>
 #include "../log/log.h"
 
 /**

@@ -21,10 +21,10 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/ascii/neon/foreground.h>
 #include <ascii-chat/video/ascii/ascii_simd.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
-#include <ascii-chat/video/output_buffer.h>
-#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/time.h>

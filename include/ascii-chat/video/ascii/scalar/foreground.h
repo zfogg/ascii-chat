@@ -14,7 +14,7 @@
  */
 
 #include <stddef.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/platform/terminal.h>
 
 // Greyscale functions

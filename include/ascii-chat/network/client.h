@@ -22,7 +22,7 @@ using std::atomic_uint;
 #include <time.h>
 
 #include <ascii-chat/network/packet/packet.h>
-#include "packet/queue.h"
+#include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/transport.h>  // For acip_transport_t
 #include <ascii-chat/crypto/handshake/common.h> // For crypto_handshake_context_t (complete type needed for field)
 #include <ascii-chat/ringbuffer.h>

@@ -9,7 +9,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/endian.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <string.h>
 
 asciichat_error_t frame_check_size_overflow(size_t header_size, size_t data_size) {

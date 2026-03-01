@@ -16,7 +16,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/parsing.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/options/options.h>
 
 // ============================================================================

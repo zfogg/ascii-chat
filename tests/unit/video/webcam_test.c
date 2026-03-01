@@ -7,7 +7,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/tests/logging.h>
 
 // Suite setup: enable test pattern mode for all tests

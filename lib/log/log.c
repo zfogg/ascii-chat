@@ -34,7 +34,7 @@
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/video/ascii/ansi.h>
 
 /* Platform-specific log hook (weak, can be overridden by platform implementations) */
 __attribute__((weak)) void platform_log_hook(log_level_t level, const char *message) {

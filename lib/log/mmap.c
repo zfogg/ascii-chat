@@ -11,7 +11,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/mmap.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/video/ascii/ansi.h>
 #include <ascii-chat/util/time.h>
 
 #include <stdarg.h>

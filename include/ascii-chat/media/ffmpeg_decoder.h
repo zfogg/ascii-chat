@@ -41,7 +41,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "../common.h"
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 
 /* ============================================================================
  * FFmpeg Decoder Handle

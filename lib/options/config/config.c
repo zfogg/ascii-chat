@@ -20,8 +20,8 @@
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/tooling/defer/defer.h>
 

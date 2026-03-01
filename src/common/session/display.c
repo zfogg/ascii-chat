@@ -19,12 +19,12 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/video/ansi_fast.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii.h>
-#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/digital_rain.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include "session/stdin_reader.h"
 #ifndef _WIN32
 #include <ascii-chat/video/ascii/file/renderer.h>

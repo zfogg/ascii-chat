@@ -11,7 +11,7 @@
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/discovery/strings.h> // Added for dynamic session string generation

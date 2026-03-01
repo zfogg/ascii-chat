@@ -19,7 +19,7 @@
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/log/interactive_grep.h>

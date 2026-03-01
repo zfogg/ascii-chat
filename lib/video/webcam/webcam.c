@@ -10,7 +10,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/platform/string.h>
 #include <ascii-chat/debug/named.h>
 

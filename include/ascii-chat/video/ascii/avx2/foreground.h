@@ -14,7 +14,7 @@
  * @date September 2025
  */
 
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_AVX2
 

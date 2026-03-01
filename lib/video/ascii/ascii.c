@@ -8,9 +8,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii.h>
-#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/log/log.h>
 
 /**

@@ -14,7 +14,7 @@
  * @date August 2025
  */
 
-#include <ascii-chat/video/image.h> // For image_t
+#include <ascii-chat/video/rgba/image.h> // For image_t
 
 #if SIMD_SUPPORT_SSSE3
 #if (!defined(__SSSE3__) && !defined(_M_X64) && !defined(_M_AMD64))

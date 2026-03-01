@@ -143,10 +143,10 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/ringbuffer.h>
-#include <ascii-chat/video/video_frame.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/video_frame.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii.h>
-#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>

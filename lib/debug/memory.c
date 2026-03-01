@@ -37,7 +37,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/video/ascii/ansi.h>
 
 typedef struct mem_block {
   void *ptr;

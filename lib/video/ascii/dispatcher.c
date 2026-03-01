@@ -19,7 +19,7 @@
 
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/time.h>

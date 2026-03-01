@@ -23,7 +23,7 @@
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/video/ascii/ansi.h>
 
 #include <signal.h>
 #include <stdio.h>

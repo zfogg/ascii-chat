@@ -8,7 +8,7 @@
  * Scalar (non-SIMD) functions for rendering ASCII art with background colors.
  */
 
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/platform/terminal.h>
 
 /**

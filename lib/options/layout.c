@@ -9,7 +9,7 @@
 #include <ascii-chat/options/layout.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/video/ansi.h>
+#include <ascii-chat/video/ascii/ansi.h>
 #include <ascii-chat/common.h>
 #include <string.h>
 #include <stdio.h>

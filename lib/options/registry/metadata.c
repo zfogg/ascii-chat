@@ -12,7 +12,7 @@
 
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/options/options.h>
 
 // ============================================================================

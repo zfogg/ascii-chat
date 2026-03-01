@@ -19,9 +19,9 @@
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/output_buffer.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 
 /* ============================================================================
  * Scalar Halfblock Rendering

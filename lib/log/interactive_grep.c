@@ -18,7 +18,7 @@
 #include "ascii-chat/util/utf8.h"
 #include "session/session_log_buffer.h"
 #include "ascii-chat/options/options.h"
-#include "ascii-chat/video/ansi.h"
+#include <ascii-chat/video/ascii/ansi.h>
 
 #include <pcre2.h>
 #include <string.h>

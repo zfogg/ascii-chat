@@ -4,7 +4,7 @@
 #include <criterion/theories.h>
 #include <string.h>
 #include <locale.h>
-#include <ascii-chat/video/palette.h>
+#include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 

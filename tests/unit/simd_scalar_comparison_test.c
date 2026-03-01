@@ -3,7 +3,7 @@
 #include <criterion/parameterized.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/simd/common.h>
 #include <ascii-chat/tests/logging.h>
 

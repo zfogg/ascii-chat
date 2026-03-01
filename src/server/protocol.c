@@ -128,10 +128,10 @@
 #include <ascii-chat/util/bytes.h>
 #include <ascii-chat/util/image.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/video/video_frame.h>
+#include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/frame_validator.h>

@@ -12,7 +12,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/video/color_filter.h>
+#include <ascii-chat/video/rgba/color_filter.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdatomic.h>

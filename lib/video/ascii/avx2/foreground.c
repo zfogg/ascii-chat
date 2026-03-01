@@ -12,8 +12,8 @@
 #include <ascii-chat/video/ascii/avx2/foreground.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/output_buffer.h>
-#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/ascii/output_buffer.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/util/overflow.h>
 
 #if SIMD_SUPPORT_AVX2

@@ -47,8 +47,8 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/palette.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/video/rgba/image.h>
 
 /* ============================================================================
  * Session Display Configuration

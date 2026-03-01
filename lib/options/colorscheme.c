@@ -11,7 +11,7 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/video/ansi_fast.h>
+#include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/platform/stat.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
