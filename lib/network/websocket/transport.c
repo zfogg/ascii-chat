@@ -285,7 +285,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
 
   // Early exit during shutdown to prevent crashes in libwebsockets callbacks
-  if (ws_data && atomic_load(&ws_data->is_destroying)) {
+  if (ws_data && atomic_load_bool(&ws_data->is_destroying)) {
     return 0;
   }
 
@@ -1043,7 +1043,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
   // CRITICAL: Stop service thread BEFORE calling lws_close_reason()
   // Mark as destroying FIRST to signal service thread to stop immediately
   // This prevents service thread from trying to call lws_service on a destroying/destroyed context
-  atomic_store(&ws_data->is_destroying, true);
+  atomic_store_bool(&ws_data->is_destroying, true);
 
   if (ws_data->service_running) {
     log_debug("[websocket_close] Stopping service thread to prevent deadlock during lws_close_reason()");
@@ -1128,7 +1128,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   // Mark transport as destroying and broadcast condition variables
   // This signals all waiting threads to wake and exit naturally.
   log_debug("[WEBSOCKET_DESTROY] Marking transport as destroying");
-  atomic_store(&ws_data->is_destroying, true);
+  atomic_store_bool(&ws_data->is_destroying, true);
 
   // Broadcast all condition variables to wake waiting threads so they can check
   // the is_destroying flag and exit gracefully
@@ -1340,7 +1340,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   }
 
   // Initialize destruction state flag (CALLOC zero-initializes, but explicit for clarity)
-  atomic_store(&ws_data->is_destroying, false);
+  atomic_store_bool(&ws_data->is_destroying, false);
 
   // Create receive queue
   ws_data->recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);

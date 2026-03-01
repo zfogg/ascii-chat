@@ -29,10 +29,10 @@ void websocket_callback_timing_record(websocket_callback_stats_t *stats, uint64_
   }
 
   uint64_t duration_ns = (end_ns > start_ns) ? (end_ns - start_ns) : 0;
-  uint64_t count = atomic_fetch_add(&stats->count, 1);
+  uint64_t count = atomic_fetch_add_u64(&stats->count, 1);
 
   // Track cumulative duration
-  atomic_fetch_add(&stats->total_duration_ns, duration_ns);
+  atomic_fetch_add_u64(&stats->total_duration_ns, duration_ns);
 
   // Update last timestamp
   uint64_t prev_last_ns = atomic_exchange(&stats->last_ns, end_ns);
@@ -42,23 +42,23 @@ void websocket_callback_timing_record(websocket_callback_stats_t *stats, uint64_
     uint64_t interval_ns = (end_ns > prev_last_ns) ? (end_ns - prev_last_ns) : 0;
 
     // Track min/max intervals
-    uint64_t current_min = atomic_load(&stats->min_interval_ns);
+    uint64_t current_min = atomic_load_u64(&stats->min_interval_ns);
     if (interval_ns < current_min && interval_ns > 0) {
-      atomic_compare_exchange_strong(&stats->min_interval_ns, &current_min, interval_ns);
+      atomic_cas_u64(&stats->min_interval_ns, &current_min, interval_ns);
     }
 
-    uint64_t current_max = atomic_load(&stats->max_interval_ns);
+    uint64_t current_max = atomic_load_u64(&stats->max_interval_ns);
     if (interval_ns > current_max) {
-      atomic_compare_exchange_strong(&stats->max_interval_ns, &current_max, interval_ns);
+      atomic_cas_u64(&stats->max_interval_ns, &current_max, interval_ns);
     }
   }
 }
 
 void websocket_callback_timing_log_stats(void) {
-  uint64_t protocol_init_count = atomic_load(&g_ws_callback_timing.protocol_init.count);
-  uint64_t protocol_destroy_count = atomic_load(&g_ws_callback_timing.protocol_destroy.count);
-  uint64_t writeable_count = atomic_load(&g_ws_callback_timing.server_writeable.count);
-  uint64_t receive_count = atomic_load(&g_ws_callback_timing.receive.count);
+  uint64_t protocol_init_count = atomic_load_u64(&g_ws_callback_timing.protocol_init.count);
+  uint64_t protocol_destroy_count = atomic_load_u64(&g_ws_callback_timing.protocol_destroy.count);
+  uint64_t writeable_count = atomic_load_u64(&g_ws_callback_timing.server_writeable.count);
+  uint64_t receive_count = atomic_load_u64(&g_ws_callback_timing.receive.count);
 
   log_info("\n===== WEBSOCKET CALLBACK TIMING STATISTICS =====");
   log_info("Timestamp: %lu ns", websocket_callback_timing_start());
@@ -67,7 +67,7 @@ void websocket_callback_timing_log_stats(void) {
   log_info("LWS_CALLBACK_PROTOCOL_INIT:");
   log_info("  Total invocations: %lu", protocol_init_count);
   if (protocol_init_count > 0) {
-    uint64_t total_duration = atomic_load(&g_ws_callback_timing.protocol_init.total_duration_ns);
+    uint64_t total_duration = atomic_load_u64(&g_ws_callback_timing.protocol_init.total_duration_ns);
     uint64_t avg_duration = total_duration / protocol_init_count;
     log_info("  Avg duration: %lu ns", avg_duration);
   }
@@ -76,7 +76,7 @@ void websocket_callback_timing_log_stats(void) {
   log_info("LWS_CALLBACK_PROTOCOL_DESTROY:");
   log_info("  Total invocations: %lu", protocol_destroy_count);
   if (protocol_destroy_count > 0) {
-    uint64_t total_duration = atomic_load(&g_ws_callback_timing.protocol_destroy.total_duration_ns);
+    uint64_t total_duration = atomic_load_u64(&g_ws_callback_timing.protocol_destroy.total_duration_ns);
     uint64_t avg_duration = total_duration / protocol_destroy_count;
     log_info("  Avg duration: %lu ns", avg_duration);
   }
@@ -85,10 +85,10 @@ void websocket_callback_timing_log_stats(void) {
   log_info("LWS_CALLBACK_SERVER_WRITEABLE:");
   log_info("  Total invocations: %lu", writeable_count);
   if (writeable_count > 0) {
-    uint64_t total_duration = atomic_load(&g_ws_callback_timing.server_writeable.total_duration_ns);
+    uint64_t total_duration = atomic_load_u64(&g_ws_callback_timing.server_writeable.total_duration_ns);
     uint64_t avg_duration = total_duration / writeable_count;
-    uint64_t min_interval = atomic_load(&g_ws_callback_timing.server_writeable.min_interval_ns);
-    uint64_t max_interval = atomic_load(&g_ws_callback_timing.server_writeable.max_interval_ns);
+    uint64_t min_interval = atomic_load_u64(&g_ws_callback_timing.server_writeable.min_interval_ns);
+    uint64_t max_interval = atomic_load_u64(&g_ws_callback_timing.server_writeable.max_interval_ns);
     log_info("  Avg duration: %lu ns", avg_duration);
     if (min_interval != UINT64_MAX) {
       log_info("  Min interval between callbacks: %lu ns (%.2f Hz)", min_interval, 1e9 / (double)min_interval);
@@ -102,10 +102,10 @@ void websocket_callback_timing_log_stats(void) {
   log_info("LWS_CALLBACK_RECEIVE:");
   log_info("  Total invocations: %lu", receive_count);
   if (receive_count > 0) {
-    uint64_t total_duration = atomic_load(&g_ws_callback_timing.receive.total_duration_ns);
+    uint64_t total_duration = atomic_load_u64(&g_ws_callback_timing.receive.total_duration_ns);
     uint64_t avg_duration = total_duration / receive_count;
-    uint64_t min_interval = atomic_load(&g_ws_callback_timing.receive.min_interval_ns);
-    uint64_t max_interval = atomic_load(&g_ws_callback_timing.receive.max_interval_ns);
+    uint64_t min_interval = atomic_load_u64(&g_ws_callback_timing.receive.min_interval_ns);
+    uint64_t max_interval = atomic_load_u64(&g_ws_callback_timing.receive.max_interval_ns);
     log_info("  Avg duration: %lu ns", avg_duration);
     if (min_interval != UINT64_MAX) {
       log_info("  Min interval between callbacks: %lu ns (%.2f Hz)", min_interval, 1e9 / (double)min_interval);
