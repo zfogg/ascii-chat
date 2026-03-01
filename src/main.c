@@ -60,6 +60,7 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
+#include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/network/update_checker.h>
 #include <ascii-chat/ui/splash.h>
@@ -438,8 +439,6 @@ int main(int argc, char *argv[]) {
 
   // VERY FIRST: Scan for --color BEFORE ANY logging initialization
   // This sets global flags that persist through cleanup, enabling --color to force colors
-  extern bool g_color_flag_passed;
-  extern bool g_color_flag_value;
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--color") == 0 || strcmp(argv[i], "--color=true") == 0) {
       g_color_flag_passed = true;
@@ -654,8 +653,6 @@ int main(int argc, char *argv[]) {
   // 2. Path cleanup (runs 3rd) - now a no-op but kept for API compatibility
   // 3. Shared destroy (runs 2nd) - frees all shared resources
   // 4. Cursor show (runs 1st) - shows cursor before exit
-  extern void path_cleanup_thread_locals(void);
-  extern void asciichat_pcre2_cleanup_all(void);
   (void)atexit(asciichat_pcre2_cleanup_all);
   (void)atexit(path_cleanup_thread_locals);
   (void)atexit(asciichat_shared_destroy);

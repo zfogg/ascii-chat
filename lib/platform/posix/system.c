@@ -16,6 +16,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/util/utf8.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/platform/symbols.h> // For symbol cache
 #include <ascii-chat/options/options.h>  // For options_get()
 #include <unistd.h>
@@ -791,9 +792,6 @@ void platform_print_backtrace(int skip_frames) {
  * information (function name, file, line) with colored formatting.
  */
 void platform_log_backtrace_frame(int n) {
-  // Import the extract function (forward declaration, implemented in log/format.c)
-  extern const char *extract_project_relative_path(const char *file);
-
   if (n < 1) {
     log_debug("Invalid frame number: %d (must be >= 1)", n);
     return;

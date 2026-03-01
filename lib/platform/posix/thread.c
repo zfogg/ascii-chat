@@ -213,9 +213,6 @@ int asciichat_thread_join_timeout(asciichat_thread_t *thread, void **retval, uin
  */
 void asciichat_thread_exit(void *retval) {
   // Clean up thread-local error context to prevent leaks
-  // Declared in asciichat_errno.h but we need to avoid circular dependency
-  // so we use weak symbol or forward declaration
-  extern void asciichat_clear_errno(void);
   asciichat_clear_errno();
 
   pthread_exit(retval);

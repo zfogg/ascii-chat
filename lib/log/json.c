@@ -9,6 +9,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/path.h>
 #include <yyjson.h>
 #include <stdint.h>
 #include <string.h>
@@ -130,8 +131,6 @@ void log_json_write(int fd, log_level_t level, uint64_t time_nanoseconds, const 
 
     /* Add file (if not NULL) - normalize to project-relative path */
     if (file) {
-      // Import from path.h for relative path extraction
-      extern const char *extract_project_relative_path(const char *file);
       const char *rel_file = extract_project_relative_path(file);
       yyjson_mut_obj_add_str(doc, header, "file", rel_file);
     }
@@ -263,7 +262,6 @@ void log_json_async_safe(int fd, log_level_t level, const char *file, int line, 
   /* Escape the strings (normalize file path to project-relative) */
   json_escape_async_safe(message, escaped_message, sizeof(escaped_message));
   if (file) {
-    extern const char *extract_project_relative_path(const char *file);
     const char *rel_file = extract_project_relative_path(file);
     json_escape_async_safe(rel_file, escaped_file, sizeof(escaped_file));
   } else {

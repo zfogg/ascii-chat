@@ -51,8 +51,6 @@ bool terminal_should_color_output(int fd) {
   // Priority 3: --color=auto (default) - Smart detection
   // Special case: Show colors for --help and --version even if not a TTY
   // Check for help/version in global argv (set by main.c early)
-  extern int g_argc;
-  extern char **g_argv;
   if (g_argc > 1 && g_argv) {
     for (int i = 1; i < g_argc; i++) {
       if (strcmp(g_argv[i], "--help") == 0 || strcmp(g_argv[i], "-h") == 0 || strcmp(g_argv[i], "--version") == 0 ||

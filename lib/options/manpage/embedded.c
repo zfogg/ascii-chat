@@ -16,17 +16,6 @@
 #include <limits.h>
 
 // =============================================================================
-// External Declarations for Embedded Data
-// =============================================================================
-//
-// These symbols are defined in auto-generated C files (generated at build time
-// by cmake/utils/EmbedTextFile.cmake). They always exist (generated from
-// CMakeLists.txt custom commands), but are only used in Release builds (NDEBUG defined)
-//
-extern const char embedded_manpage_template[];
-extern const size_t embedded_manpage_template_size;
-
-// =============================================================================
 // Resource Access Implementation
 // =============================================================================
 

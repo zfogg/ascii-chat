@@ -280,9 +280,6 @@ const char *colored_string(log_color_t color, const char *text) {
 
   // Check if we should use colors
   // Use global flag that persists even after options cleanup
-  extern bool g_color_flag_passed;
-  extern bool g_color_flag_value;
-
   bool use_colors = false;
 
   // Priority 1: If --color was explicitly passed, force colors

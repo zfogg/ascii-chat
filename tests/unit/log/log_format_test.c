@@ -10,6 +10,7 @@
 #include <ctype.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
+#include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/time.h>
@@ -834,8 +835,6 @@ Test(log_format, color_with_use_colors_true) {
   cr_assert_not_null(fmt);
 
   /* Force enable colors for testing */
-  extern bool g_color_flag_passed;
-  extern bool g_color_flag_value;
   bool saved_passed = g_color_flag_passed;
   bool saved_value = g_color_flag_value;
   g_color_flag_passed = true;
@@ -847,7 +846,6 @@ Test(log_format, color_with_use_colors_true) {
   cr_assert_gt(len, 0, "Should produce output with colors");
 
   /* Get the actual INFO color code from the enum */
-  extern const char *log_level_color(log_color_t color);
   const char *info_color = log_level_color(LOG_COLOR_INFO);
   const char *reset_code = log_level_color(LOG_COLOR_RESET);
 
@@ -879,7 +877,6 @@ Test(log_format, color_with_use_colors_false) {
   cr_assert_gt(len, 0);
 
   /* Get the INFO color code - should NOT appear when use_colors=false */
-  extern const char *log_level_color(log_color_t color);
   const char *info_color = log_level_color(LOG_COLOR_INFO);
 
   /* When use_colors=false, INFO color code should NOT be in the output */
@@ -918,8 +915,6 @@ Test(log_format, color_different_levels) {
   cr_assert_not_null(fmt);
 
   /* Force enable colors for testing */
-  extern bool g_color_flag_passed;
-  extern bool g_color_flag_value;
   bool saved_passed = g_color_flag_passed;
   bool saved_value = g_color_flag_value;
   g_color_flag_passed = true;
@@ -934,7 +929,6 @@ Test(log_format, color_different_levels) {
                      true, 45296123456000);
 
   /* Get the actual color codes from the enum */
-  extern const char *log_level_color(log_color_t color);
   const char *info_color = log_level_color(LOG_COLOR_INFO);
   const char *error_color = log_level_color(LOG_COLOR_ERROR);
 

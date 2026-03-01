@@ -2506,7 +2506,6 @@ skip_acds_session:
   // Clear status screen log buffer to discard initialization logs
   // This ensures only NEW logs (generated after status screen starts) are displayed
   if (GET_OPTION(status_screen)) {
-    extern void server_status_log_clear(void);
     server_status_log_clear();
   }
 

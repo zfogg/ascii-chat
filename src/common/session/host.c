@@ -29,6 +29,7 @@
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/common.h>
 
 #include <string.h>
 #include <time.h>
@@ -684,7 +685,6 @@ static void *host_render_thread(void *arg) {
               image_t *img = host->clients[i].incoming_video;
 
               // Convert image to ASCII (80x24 for each frame in grid, monochrome for now)
-              extern char g_default_luminance_palette[256];
               ascii_frames[frame_idx] =
                   ascii_convert(img, 80, 24, false, false, false, NULL, g_default_luminance_palette);
               if (ascii_frames[frame_idx]) {

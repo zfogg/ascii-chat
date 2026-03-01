@@ -29,6 +29,7 @@
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
+#include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
@@ -863,10 +864,8 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
 
   // Feed log to status screen buffer (use colored version if available, otherwise plain)
   if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
-    extern void server_status_log_append(const char *message);
     server_status_log_append(colored_log_line);
   } else if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
-    extern void server_status_log_append(const char *message);
     server_status_log_append(plain_log_line);
   }
 
@@ -974,8 +973,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
       // Check if colors should be used
       // Priority 1: If --color was explicitly passed, force colors
-      extern bool g_color_flag_passed;
-      extern bool g_color_flag_value;
       bool use_colors = true; // Default: enable colors
       if (g_color_flag_passed && !g_color_flag_value) {
         use_colors = false; // --color=false explicitly disables colors
@@ -1935,8 +1932,6 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
 
   if (use_json) {
     // Use async-safe JSON formatter (safe for signal handlers)
-    extern void log_json_async_safe(int fd, log_level_t level, const char *file, int line, const char *func,
-                                    const char *message);
     log_json_async_safe(fd, level, file, line, func, message);
   } else {
     // Text output to console using platform_write_all to handle partial writes

@@ -30,6 +30,7 @@
 #include <ascii-chat/debug/memory.h>      // For debug_memory_thread_cleanup in debug builds
 #include <ascii-chat/platform/symbols.h>  // For symbols cache init
 #include <ascii-chat/platform/terminal.h> // For terminal_screen_cleanup
+#include <ascii-chat/platform/keyboard.h> // For keyboard_destroy()
 #include <ascii-chat/ui/terminal_screen.h> // For terminal_screen_cleanup
 #include <string.h>
 #include <stdatomic.h>
@@ -242,7 +243,6 @@ void asciichat_shared_destroy(void) {
   platform_destroy();
 
   // 10. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
-  extern void keyboard_destroy(void);
   keyboard_destroy();
 
   // 11. Timer system - cleanup timers (may still log!)
@@ -256,7 +256,6 @@ void asciichat_shared_destroy(void) {
 
   // 14. Mutex stack cleanup - must be before memory report so stacks are freed
 #ifndef NDEBUG
-  extern void mutex_stack_cleanup(void);
   mutex_stack_cleanup();
   // Final cleanup: free the main thread's debug allocations
   debug_sync_final_cleanup();
