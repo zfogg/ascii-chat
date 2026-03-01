@@ -173,17 +173,23 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
 
-  // Set wants_padding based on snapshot mode and TTY status
-  // Disable padding when:
-  // - In snapshot mode (one frame and exit)
-  // - When stdout is not a TTY (piped/redirected output)
-  // Enable padding for TTY-based sessions (interactive or not)
+  // Set wants_padding based on snapshot mode
+  // Disable padding only in snapshot mode (one frame and exit)
+  // Enable padding for all other modes
   bool is_snapshot_mode = config->snapshot_mode;
-  bool has_tty = ctx->has_tty; // Check if we have a real TTY
-  ctx->caps.wants_padding = has_tty && !is_snapshot_mode;
+  ctx->caps.wants_padding = !is_snapshot_mode;
 
-  log_debug("Padding mode: wants_padding=%d (snapshot=%d, has_tty=%d, stdin_tty=%d, stdout_tty=%d)",
-            ctx->caps.wants_padding, is_snapshot_mode, has_tty, terminal_is_stdin_tty(), terminal_is_stdout_tty());
+  // Calculate pad_height: when padding is enabled, add top padding for centering
+  // Halfblock mode uses 2 source rows per output row, so padding is halved
+  if (ctx->caps.wants_padding) {
+    ctx->caps.pad_height = 5; // Halfblock needs half the padding (10 / 2 = 5)
+  } else {
+    ctx->caps.pad_height = 0;
+  }
+
+  log_debug("Padding mode: wants_padding=%d (snapshot=%d, has_tty=%d, stdin_tty=%d, stdout_tty=%d), pad_height=%zu",
+            ctx->caps.wants_padding, is_snapshot_mode, ctx->has_tty, terminal_is_stdin_tty(), terminal_is_stdout_tty(),
+            ctx->caps.pad_height);
 
   // Apply color mode override if specified
   if (config->color_mode != TERM_COLOR_AUTO) {

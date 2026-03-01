@@ -45,7 +45,8 @@
  *
  * @ingroup video
  */
-char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes);
+char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
+                                         size_t pad_height);
 
 /**
  * @brief Convert RGB to monochrome (grayscale) half-blocks using scalar code
@@ -62,7 +63,8 @@ char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int heig
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
+char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette,
+                               size_t pad_height);
 
 /**
  * @brief Convert RGB to 16-color half-blocks using scalar code
@@ -71,6 +73,7 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
  * @param height Image height in pixels
  * @param stride_bytes Row stride in bytes (if 0, calculated as width * 3)
  * @param palette Character palette (unused, for API consistency)
+ * @param pad_height Top padding height (number of newlines to output before frame)
  * @return Allocated ASCII string with half-block characters (caller must free), or NULL on error
  *
  * Renders an RGB image using halfblock characters with 16-color ANSI codes.
@@ -80,7 +83,8 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
+char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette,
+                                       size_t pad_height);
 
 /**
  * @brief Convert RGB to 256-color half-blocks using scalar code
@@ -89,6 +93,7 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
  * @param height Image height in pixels
  * @param stride_bytes Row stride in bytes (if 0, calculated as width * 3)
  * @param palette Character palette (unused, for API consistency)
+ * @param pad_height Top padding height (number of newlines to output before frame)
  * @return Allocated ASCII string with half-block characters (caller must free), or NULL on error
  *
  * Renders an RGB image using halfblock characters with 256-color ANSI codes.
@@ -98,6 +103,7 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
+char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
+                                        const char *palette, size_t pad_height);
 
 /** @} */

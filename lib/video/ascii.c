@@ -138,11 +138,11 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 #if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer (optimized SIMD path)
       log_dev("Using NEON halfblock renderer");
-      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
+      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0, 0);
 #else
       // Fallback to scalar halfblock renderer (works on all platforms)
       log_dev("Using scalar halfblock renderer (NEON not available)");
-      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0);
+      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0, 0);
 #endif
     } else {
 #ifdef SIMD_SUPPORT
@@ -217,11 +217,20 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   size_t pad_width = 0;
   size_t pad_height = 0;
 
+  log_dev("PADDING_CALC: use_aspect_ratio=%d wants_padding=%d width=%zd height=%zd resized_w=%zd resized_h=%zd",
+          use_aspect_ratio, caps->wants_padding, width, height, resized_width, resized_height);
+
   if (use_aspect_ratio && caps->wants_padding) {
     ssize_t pad_width_ss = width > resized_width ? (width - resized_width) / 2 : 0;
     pad_width = (size_t)pad_width_ss;
 
     ssize_t pad_height_ss = height > resized_height ? (height - resized_height) / 2 : 0;
+    // Halfblock mode uses 2 source rows per output row, so padding is halved
+    if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
+      log_dev("HALFBLOCK PADDING: before=%zd, render_mode=%d", pad_height_ss, caps->render_mode);
+      pad_height_ss /= 2;
+      log_dev("HALFBLOCK PADDING: after=%zd", pad_height_ss);
+    }
     pad_height = (size_t)pad_height_ss;
 
     log_debug_every(10 * US_PER_SEC_INT,
@@ -328,8 +337,8 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
   uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
   time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
-  log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)",
-          alloc_str, resize_str, print_str, pad_str, total_str);
+  log_dev("ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)", alloc_str, resize_str, print_str,
+          pad_str, total_str);
 
   image_destroy(resized);
 

@@ -960,7 +960,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
 //=============================================================================
 // Optimized NEON Half-block renderer (based on ChatGPT reference)
 //=============================================================================
-char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes) {
+char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes, size_t pad_height) {
   /* Main: half-block renderer. Returns NUL-terminated malloc'd string; caller free(). */
   if (width <= 0 || height <= 0)
     return platform_strdup("");
@@ -968,9 +968,9 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
     stride_bytes = width * 3;
 
   outbuf_t ob = {0};
-  // generous guess: per cell ~ 10–14 bytes avg; half the rows + newlines
+  // generous guess: per cell ~ 10–14 bytes avg; half the rows + newlines + top padding
   size_t est_cells = (size_t)width * ((size_t)(height + 1) / 2);
-  ob.cap = est_cells * 14u + (size_t)((height + 1) / 2) * 8u + 64u;
+  ob.cap = est_cells * 14u + (size_t)((height + 1) / 2) * 8u + pad_height + 64u;
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;

@@ -767,31 +767,49 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   // Handle half-block mode with appropriate color depth
   if (caps->render_mode == RENDER_MODE_HALF_BLOCK) {
     const uint8_t *rgb_data = (const uint8_t *)image->pixels;
+    char *halfblock_result = NULL;
 
     // Choose halfblock renderer based on terminal color capabilities
     switch (caps->color_level) {
     case TERM_COLOR_TRUECOLOR:
 #if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer (optimized SIMD path)
-      return rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
+      halfblock_result = rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0, 0);
+      break;
 #else
       // Fallback to scalar halfblock renderer (works on all platforms)
-      return rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
+      halfblock_result = rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0, 0);
+      break;
 #endif
 
     case TERM_COLOR_256:
       // Use 256-color halfblock renderer
-      return rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      halfblock_result = rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette, 0);
+      break;
 
     case TERM_COLOR_16:
       // Use 16-color halfblock renderer
-      return rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      halfblock_result = rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette, 0);
+      break;
 
     case TERM_COLOR_NONE:
     default:
       // Use monochrome halfblock renderer
-      return rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
+      halfblock_result = rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette, 0);
+      break;
     }
+
+    // Apply padding for halfblock if requested
+    if (halfblock_result && caps->wants_padding) {
+      // Subtract one line of padding for halfblock
+      ssize_t padding_lines_ss = (ssize_t)caps->pad_height - 1;
+      size_t padding_lines = padding_lines_ss > 0 ? (size_t)padding_lines_ss : 0;
+      char *padded_result = ascii_pad_frame_height(halfblock_result, padding_lines);
+      SAFE_FREE(halfblock_result);
+      return padded_result;
+    }
+
+    return halfblock_result;
   }
 
   // Standard color modes

@@ -733,6 +733,8 @@ typedef struct {
   color_filter_t color_filter;
   /** @brief Whether client wants frame padding (centering) - false for snapshot/piped modes */
   bool wants_padding;
+  /** @brief Number of top padding lines when wants_padding is true */
+  size_t pad_height;
 } terminal_capabilities_t;
 
 /**
