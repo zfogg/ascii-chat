@@ -11,6 +11,7 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/h265/decoder.c
     # ASCII rendering pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ascii.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/dispatcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sgr.c
     # SIMD-based ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/common.c
