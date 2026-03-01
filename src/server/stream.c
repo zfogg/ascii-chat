@@ -129,6 +129,7 @@
  */
 
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
