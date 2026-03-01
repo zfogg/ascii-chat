@@ -53,17 +53,27 @@ extern "C" {
  * @brief Atomic value wrapper for integral/boolean types
  * @ingroup util
  *
- * Wraps a C11 _Atomic(uint64_t) with a name for debugging.
+ * Wraps C11 _Atomic(uint64_t) with debug tracking fields.
  * All values (bool, int, uint64_t, size_t) fit in uint64_t on 64-bit platforms.
  *
- * Debug builds include:
- * - name registration with named.c
- * - timing of last load/store
- * - counters for load/store/CAS/fetch operations
+ * The name is registered separately via NAMED_REGISTER_ATOMIC macro,
+ * stored in named.c registry (not in this struct).
+ *
+ * Usage:
+ * @code
+ * // Global declaration
+ * atomic_t g_counter = {0};
+ *
+ * // Register name for debug tracking (in main()):
+ * NAMED_REGISTER_ATOMIC(&g_counter, "g_counter");
+ *
+ * // Use:
+ * atomic_store_u64(&g_counter, 0);
+ * uint64_t val = atomic_load_u64(&g_counter);
+ * @endcode
  */
 typedef struct {
     _Atomic(uint64_t) impl;  ///< Underlying C11 atomic value
-    const char       *name;  ///< Human-readable name for debugging
 #ifndef NDEBUG
     uint64_t          last_store_time_ns;
     uint64_t          last_load_time_ns;
@@ -79,12 +89,21 @@ typedef struct {
  * @brief Atomic pointer wrapper
  * @ingroup util
  *
- * Wraps a C11 _Atomic(void *) with a name for debugging.
- * Used for pointer-to-T atomics (atomic_ptr_load, etc.).
+ * Wraps C11 _Atomic(void *) with debug tracking fields.
+ * The name is registered separately via NAMED_REGISTER_ATOMIC_PTR,
+ * stored in named.c registry (not in this struct).
+ *
+ * Usage:
+ * @code
+ * atomic_ptr_t g_ptr = {0};
+ *
+ * NAMED_REGISTER_ATOMIC_PTR(&g_ptr, "g_ptr");
+ *
+ * atomic_ptr_store(&g_ptr, some_pointer);
+ * @endcode
  */
 typedef struct {
     _Atomic(void *)   impl;  ///< Underlying C11 atomic pointer
-    const char       *name;  ///< Human-readable name for debugging
 #ifndef NDEBUG
     uint64_t          last_store_time_ns;
     uint64_t          last_load_time_ns;
@@ -96,60 +115,6 @@ typedef struct {
 #endif
 } atomic_ptr_t;
 
-// ============================================================================
-// Initialization
-// ============================================================================
-
-/**
- * @brief Initialize an atomic_t with a name and initial value
- * @param name Human-readable name for debugging
- * @param initial_value Initial value to store
- * @return Initialized atomic_t
- *
- * Usage:
- * @code
- * atomic_t g_counter = atomic_init_u64("g_counter", 0);
- * @endcode
- */
-#define atomic_init_bool(name, initial_value) \
-    atomic_init_impl(name, (uint64_t)(initial_value))
-
-#define atomic_init_int(name, initial_value) \
-    atomic_init_impl(name, (uint64_t)(initial_value))
-
-#define atomic_init_u64(name, initial_value) \
-    atomic_init_impl(name, (uint64_t)(initial_value))
-
-#define atomic_init_size(name, initial_value) \
-    atomic_init_impl(name, (uint64_t)(initial_value))
-
-/**
- * @brief Initialize an atomic_ptr_t with a name and initial pointer
- */
-#define atomic_ptr_init(name, initial_value) \
-    atomic_ptr_init_impl(name, (void *)(initial_value))
-
-/**
- * Implementation functions (called by macros)
- */
-atomic_t atomic_init_impl(const char *name, uint64_t initial_value);
-atomic_ptr_t atomic_ptr_init_impl(const char *name, void *initial_value);
-
-// ============================================================================
-// Destruction (debug cleanup)
-// ============================================================================
-
-/**
- * @brief Destroy an atomic_t and unregister from debug registry
- * @param a Pointer to atomic_t
- */
-void atomic_destroy(atomic_t *a);
-
-/**
- * @brief Destroy an atomic_ptr_t and unregister from debug registry
- * @param a Pointer to atomic_ptr_t
- */
-void atomic_ptr_destroy(atomic_ptr_t *a);
 
 // ============================================================================
 // bool Operations

@@ -174,11 +174,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
 
-  // Set wants_padding based on snapshot mode
-  // Disable padding only in snapshot mode (one frame and exit)
-  // Enable padding for all other modes
+  // Set wants_padding based on terminal output mode
+  // Enable padding for all rendering modes (including snapshot) to center output
+  // The padding adds newlines at the top, which is useful for visual centering
   bool is_snapshot_mode = config->snapshot_mode;
-  ctx->caps.wants_padding = !is_snapshot_mode;
+  ctx->caps.wants_padding = true;
 
   // Calculate pad_height: when padding is enabled, add top padding for centering
   // Halfblock mode uses 2 source rows per output row, so padding is halved

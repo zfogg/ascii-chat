@@ -137,6 +137,7 @@ char *mirror_convert_frame(uint8_t *rgba_data, int src_width, int src_height) {
   caps.detection_reliable = true;
   caps.render_mode = (render_mode_t)GET_OPTION(render_mode);
   caps.wants_background = false;
+  caps.wants_padding = true; // Enable padding for centering in mirror mode
   caps.palette_type = palette_type;
   caps.desired_fps = 60;
   caps.color_filter = filter;
