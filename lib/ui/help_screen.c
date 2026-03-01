@@ -339,17 +339,17 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   // border)
   const int box_height = 25; // Total rows including borders
 
-  // Calculate centering position
-  // Horizontal centering
+  // Calculate centering position (true mathematical centering)
+  // Horizontal centering: center of box at center of terminal
   int start_col = (term_width - box_width) / 2;
   if (start_col < 0) {
     start_col = 0;
   }
 
-  // Vertical centering
+  // Vertical centering: center of box at center of terminal
   int start_row = (term_height - box_height) / 2;
-  if (start_row < 1) {
-    start_row = 1; // Never put at top of screen (leave room for prompts)
+  if (start_row < 0) {
+    start_row = 0;
   }
 
   // Build help screen content
