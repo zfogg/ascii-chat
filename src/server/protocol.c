@@ -84,7 +84,7 @@
  * - client.c: Called by receive threads, manages client lifecycle
  * - render.c: Consumes video/audio data stored by handlers
  * - stream.c: Uses client capabilities for frame generation
- * - main.c: Provides global state (g_server_should_exit, etc.)
+ * - main.c: Provides global state (g_should_exit, etc.)
  *
  * WHY THIS MODULAR DESIGN:
  * =========================
@@ -886,7 +886,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
     }
   } else {
     // During shutdown, this is expected - don't spam error logs
-    if (!atomic_load(&g_server_should_exit)) {
+    if (!atomic_load_bool(&g_should_exit)) {
       SET_ERRNO(ERROR_INVALID_STATE, "Client %u has no incoming video buffer!", client->client_id);
     } else {
       log_debug("Client %u: ignoring video packet during shutdown", client->client_id);
@@ -953,7 +953,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
   // Get H.265 server context (may be NULL during shutdown)
   h265_server_context_t *h265_ctx = g_h265_server;
   if (!h265_ctx) {
-    if (!atomic_load(&g_server_should_exit)) {
+    if (!atomic_load_bool(&g_should_exit)) {
       log_error("H.265 codec server context not initialized");
     }
     return;

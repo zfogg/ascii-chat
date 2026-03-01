@@ -250,7 +250,7 @@ void stats_cleanup(void) {
  * - Safe concurrent access with render threads
  *
  * RESPONSIVE SHUTDOWN:
- * - Checks g_server_should_exit every 10ms during sleep periods
+ * - Checks g_should_exit every 10ms during sleep periods
  * - Exits monitoring loop immediately when shutdown detected
  * - No hanging or delayed shutdown behavior
  * - Clean resource cleanup
@@ -327,15 +327,15 @@ void stats_cleanup(void) {
 void *stats_logger_thread(void *arg) {
   (void)arg;
 
-  while (!atomic_load(&g_server_should_exit)) {
+  while (!atomic_load_bool(&g_should_exit)) {
     // Log buffer pool statistics every 10 seconds with fast exit checking (10ms intervals)
-    for (int i = 0; i < 1000 && !atomic_load(&g_server_should_exit); i++) {
+    for (int i = 0; i < 1000 && !atomic_load_bool(&g_should_exit); i++) {
       platform_sleep_us(10 * US_PER_MS_INT); // 10ms sleep
     }
 
     // Check exit condition before proceeding with statistics logging
     // Check multiple times to avoid accessing freed resources during shutdown.
-    if (atomic_load(&g_server_should_exit)) {
+    if (atomic_load_bool(&g_should_exit)) {
       break;
     }
 
@@ -344,7 +344,7 @@ void *stats_logger_thread(void *arg) {
     char lock_debug_info[BUFFER_SIZE_MEDIUM] = {0};
     // Check exit condition again before accessing lock_debug.
     // lock_debug might be destroyed during shutdown
-    if (!atomic_load(&g_server_should_exit) && debug_sync_is_initialized()) {
+    if (!atomic_load_bool(&g_should_exit) && debug_sync_is_initialized()) {
       uint64_t total_acquired = 0, total_released = 0;
       uint32_t currently_held = 0;
       debug_sync_get_stats(&total_acquired, &total_released, &currently_held);
@@ -363,7 +363,7 @@ void *stats_logger_thread(void *arg) {
     // Collect client statistics
     // Check exit condition again before accessing rwlock.
     // rwlock might be destroyed during shutdown.
-    if (atomic_load(&g_server_should_exit)) {
+    if (atomic_load_bool(&g_should_exit)) {
       break;
     }
 

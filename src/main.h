@@ -4,7 +4,7 @@
  * @brief Global application exit and signal handling API
  *
  * Provides a centralized exit mechanism and signal handler registration
- * used by all modes (client, mirror, discovery) to coordinate graceful
+ * used by all modes (client, mirror, discovery, server) to coordinate graceful
  * shutdown. All modes share a single global exit flag and interrupt callback.
  *
  * @author Zachary Fogg <me@zfo.gg>
@@ -14,6 +14,15 @@
 #pragma once
 
 #include <stdbool.h>
+#include <ascii-chat/atomic.h>
+
+/**
+ * Global exit flag used by all modes
+ *
+ * Set to true when the application should exit (SIGTERM, Ctrl+C, error, etc).
+ * All modes check this flag regularly to exit gracefully.
+ */
+extern atomic_t g_should_exit;
 
 /**
  * Check if the application should exit

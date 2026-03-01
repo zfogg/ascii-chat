@@ -358,6 +358,44 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
 #endif
 
 // ============================================================================
+// Convenience Macros for Atomic Declaration and Registration
+// ============================================================================
+
+/**
+ * @brief Register an atomic variable for debug tracking with automatic name generation
+ *
+ * Uses stringification to avoid repeating the variable name. Simplifies the
+ * declaration + registration pattern.
+ *
+ * Usage:
+ * @code
+ * // In header:
+ * extern atomic_t g_counter;
+ *
+ * // In source:
+ * atomic_t g_counter = {0};
+ *
+ * // In main/init:
+ * ATOMIC_REGISTER_AUTO(g_counter);
+ * @endcode
+ */
+#define ATOMIC_REGISTER_AUTO(name) NAMED_REGISTER_ATOMIC(&(name), #name)
+
+/**
+ * @brief Register an atomic pointer variable for debug tracking with automatic name generation
+ *
+ * Same as ATOMIC_REGISTER_AUTO but for atomic_ptr_t variables.
+ *
+ * Usage:
+ * @code
+ * atomic_ptr_t g_buffer = {0};
+ * ATOMIC_PTR_REGISTER_AUTO(g_buffer);
+ * @endcode
+ */
+#define ATOMIC_PTR_REGISTER_AUTO(name) NAMED_REGISTER_ATOMIC_PTR(&(name), #name)
+
+
+// ============================================================================
 // Debug Initialization/Shutdown
 // ============================================================================
 

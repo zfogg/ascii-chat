@@ -40,6 +40,7 @@
 
 #pragma once
 
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/network/rate_limit/rate_limit.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/audio/mixer.h>
@@ -53,6 +54,14 @@
 /* ============================================================================
  * Global Server State
  * ============================================================================ */
+
+/**
+ * @brief Global application exit flag (shared across all modes)
+ *
+ * Set by signal handlers to request graceful shutdown. Used by all server
+ * threads to check if they should exit their loops.
+ */
+extern atomic_t g_should_exit;
 
 /**
  * @brief Global connection rate limiter
@@ -78,13 +87,6 @@ extern client_manager_t g_client_manager;
  */
 extern rwlock_t g_client_manager_rwlock;
 
-/**
- * @brief Server shutdown flag
- *
- * Atomic boolean used to signal all threads to exit gracefully.
- * Set to true when server receives SIGINT or other shutdown signal.
- */
-extern atomic_bool g_server_should_exit;
 
 /**
  * @brief Global audio mixer
@@ -181,7 +183,7 @@ typedef struct server_context_t {
   rwlock_t *client_manager_rwlock;  ///< RW lock protecting client manager
 
   // Server lifecycle
-  atomic_bool *server_should_exit; ///< Shutdown flag
+  atomic_t *server_should_exit; ///< Shutdown flag
 
   // Audio mixing
   mixer_t *audio_mixer; ///< Multi-client audio mixer

@@ -155,14 +155,14 @@ static void *cleanup_thread_func(void *arg) {
 
   log_info("Cleanup thread started (rate limits + expired sessions)");
 
-  while (!atomic_load(&server->shutdown)) {
+  while (!atomic_load_bool(&server->shutdown)) {
     // Sleep for 5 minutes (or until shutdown)
     // Use 100ms sleep intervals for responsive shutdown on timeout
-    for (int i = 0; i < 3000 && !atomic_load(&server->shutdown); i++) {
+    for (int i = 0; i < 3000 && !atomic_load_bool(&server->shutdown); i++) {
       platform_sleep_ms(100); // Sleep 100ms at a time for responsive shutdown
     }
 
-    if (atomic_load(&server->shutdown)) {
+    if (atomic_load_bool(&server->shutdown)) {
       break;
     }
 
@@ -231,7 +231,7 @@ asciichat_error_t acds_server_init(acds_server_t *server, const acds_config_t *c
   }
 
   // Initialize background worker thread pool
-  atomic_store(&server->shutdown, false);
+  atomic_store_bool(&server->shutdown, false);
   server->worker_pool = thread_pool_create("acds_workers");
   if (!server->worker_pool) {
     log_warn("Failed to create worker thread pool");
@@ -267,7 +267,7 @@ void acds_server_shutdown(acds_server_t *server) {
   }
 
   // Signal shutdown to worker threads
-  atomic_store(&server->shutdown, true);
+  atomic_store_bool(&server->shutdown, true);
 
   // Shutdown TCP server (closes listen sockets, stops accept loop)
   tcp_server_destroy(&server->tcp_server);

@@ -169,8 +169,8 @@ static void generate_default_log_path(asciichat_mode_t mode, char *buf, size_t b
  * Global Application Exit State (Centralized Signal Handling)
  * ============================================================================ */
 
-/** Global flag indicating application should exit */
-static atomic_bool g_app_should_exit = false;
+/** Global flag indicating application should exit (used by all modes) */
+atomic_t g_should_exit = {0};
 
 /** Mode-specific interrupt callback (called from signal handlers) */
 static void (*g_interrupt_callback)(void) = NULL;
@@ -180,7 +180,7 @@ static void (*g_interrupt_callback)(void) = NULL;
  * ============================================================================ */
 
 bool should_exit(void) {
-  return atomic_load(&g_app_should_exit);
+  return atomic_load_bool(&g_should_exit);
 }
 
 void signal_exit(void) {
@@ -188,7 +188,7 @@ void signal_exit(void) {
   // other threads may hold mutex locks. We avoid log_console() here to prevent
   // deadlock (render loop holds terminal lock, signal handler can't acquire it).
   // The shutdown will be logged by normal thread context later.
-  atomic_store(&g_app_should_exit, true);
+  atomic_store_bool(&g_should_exit, true);
   void (*cb)(void) = g_interrupt_callback;
   if (cb) {
     cb();
@@ -233,8 +233,13 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   }
 
   // Double Ctrl+C forces immediate exit
-  static _Atomic int ctrl_c_count = 0;
-  if (atomic_fetch_add(&ctrl_c_count, 1) + 1 > 1) {
+  static atomic_t ctrl_c_count = {0};
+  static bool ctrl_c_count_registered = false;
+  if (!ctrl_c_count_registered) {
+    ATOMIC_REGISTER_AUTO(ctrl_c_count);
+    ctrl_c_count_registered = true;
+  }
+  if (atomic_fetch_add_int(&ctrl_c_count, 1) + 1 > 1) {
     platform_force_exit(1);
   }
 
@@ -429,6 +434,8 @@ int main(int argc, char *argv[]) {
   named_init();
   // Initialize atomic operations debug tracking
   debug_atomic_init();
+  // Register static atomics for debug tracking
+  ATOMIC_REGISTER_AUTO(g_should_exit);
   // Register all packet types from the packet_type_t enum
   named_registry_register_packet_types();
 #endif

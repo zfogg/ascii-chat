@@ -12,6 +12,7 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/debug/mutex.h>
+#include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/platform/cond.h>
 #include <ascii-chat/platform/mutex.h> // Must come after cond.h since cond.h includes it
@@ -341,6 +342,10 @@ void debug_sync_print_state(void) {
   named_registry_for_each(mutex_iter_callback, &buf);
   named_registry_for_each(rwlock_iter_callback, &buf);
   named_registry_for_each(cond_iter_callback, &buf);
+
+  // Print atomic state
+  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\nAtomic Operations State:\n");
+  debug_atomic_print_state();
 
   // Print lock stacks for deadlock analysis
   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);

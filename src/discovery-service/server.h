@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <sqlite3.h>
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/network/tcp/server.h>
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/options/options.h> // For MAX_IDENTITY_KEYS
@@ -110,7 +111,7 @@ typedef struct {
 
   // Background worker threads (cleanup, etc.)
   thread_pool_t *worker_pool; ///< Thread pool for background workers
-  atomic_bool shutdown;       ///< Shutdown flag for worker threads
+  atomic_t shutdown;          ///< Shutdown flag for worker threads
 
   // Configuration
   acds_config_t config; ///< Runtime configuration

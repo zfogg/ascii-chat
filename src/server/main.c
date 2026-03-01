@@ -70,6 +70,7 @@
 #include <time.h>
 
 #include "main.h"
+#include "../main.h" // For should_exit() and signal_exit() API
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>
@@ -142,18 +143,19 @@
  * - Set to true by signal handlers (SIGINT/SIGTERM) or main loop on error
  * - Checked by all worker threads to know when to exit gracefully
  * - Must be atomic to prevent race conditions during shutdown cascade
+ *
+ * Uses the global g_should_exit from src/main.c instead of a mode-specific flag.
  */
-atomic_bool g_server_should_exit = false;
 
 /**
  * @brief Shutdown check callback for library code
  *
  * Provides clean separation between application state and library code.
  * Registered with shutdown_register_callback() so library code can check
- * shutdown status without directly accessing g_server_should_exit.
+ * shutdown status without directly accessing g_should_exit.
  */
 static bool check_shutdown(void) {
-  return atomic_load(&g_server_should_exit);
+  return should_exit();
 }
 
 /**
@@ -551,7 +553,7 @@ size_t g_num_whitelisted_clients = 0;
  *
  * SHUTDOWN PROCESS:
  * =================
- * 1. Set atomic g_server_should_exit flag (signal-safe, checked by all threads)
+ * 1. Set atomic g_should_exit flag (signal-safe, checked by all threads)
  * 2. Use raw write() for immediate user feedback (async-signal-safe)
  * 3. Broadcast shutdown condition to wake sleeping threads
  * 4. Close all sockets to interrupt blocking I/O operations
@@ -565,7 +567,7 @@ size_t g_num_whitelisted_clients = 0;
  * - send() in client send threads (if network is slow)
  *
  * Closing sockets causes these functions to return with error codes,
- * allowing threads to check g_server_should_exit and exit gracefully.
+ * allowing threads to check g_should_exit and exit gracefully.
  *
  * PLATFORM CONSIDERATIONS:
  * ========================
@@ -592,7 +594,7 @@ static void server_handle_sigint(int sigint) {
   }
 
   // STEP 1: Set atomic shutdown flag (checked by all worker threads)
-  atomic_store(&g_server_should_exit, true);
+  atomic_store_bool(&g_should_exit, true);
 
   // STEP 2: Use raw write() for user feedback (async-signal-safe).
   // log_info_nofile() is NOT safe here - it calls SAFE_MALLOC (via ansi_strip_escapes),
@@ -630,10 +632,10 @@ static void server_handle_sigint(int sigint) {
   // 3. Client array might be in an inconsistent state during modification
   //
   // SOLUTION: The listening socket closure above is sufficient to unblock accept_with_timeout()
-  // The main thread will detect g_server_should_exit and properly close client sockets with timeouts
+  // The main thread will detect g_should_exit and properly close client sockets with timeouts
 
   // NOTE: Do NOT call log_destroy() here - it's not async-signal-safe
-  // The main thread will handle cleanup when it detects g_server_should_exit
+  // The main thread will handle cleanup when it detects g_should_exit
 }
 
 // bind_and_listen() function removed - now using lib/network/tcp_server abstraction
@@ -994,7 +996,7 @@ static void *acds_ping_thread(void *arg) {
 
   log_debug("ACDS keepalive ping thread started");
 
-  while (!atomic_load(&g_server_should_exit)) {
+  while (!atomic_load_bool(&g_should_exit)) {
     if (!g_acds_transport) {
       log_debug("ACDS transport destroyed, exiting ping thread");
       break;
@@ -1012,7 +1014,7 @@ static void *acds_ping_thread(void *arg) {
     }
 
     // Sleep for 10 seconds before next ping (well before 15s timeout)
-    for (int i = 0; i < 100 && !atomic_load(&g_server_should_exit); i++) {
+    for (int i = 0; i < 100 && !atomic_load_bool(&g_should_exit); i++) {
       platform_sleep_ms(100); // Check exit flag every 100ms
     }
   }
@@ -1068,7 +1070,7 @@ static void *acds_receive_thread(void *arg) {
 
   // Receive loop - just handle incoming packets
   // Keepalive is handled by separate ping thread
-  while (!atomic_load(&g_server_should_exit)) {
+  while (!atomic_load_bool(&g_should_exit)) {
     if (!g_acds_transport) {
       log_warn("ACDS transport is NULL, exiting receive thread");
       break;
@@ -1113,7 +1115,7 @@ static void *acds_receive_thread(void *arg) {
     }
   }
 
-  if (atomic_load(&g_server_should_exit)) {
+  if (atomic_load_bool(&g_should_exit)) {
     log_debug("ACDS receive thread exiting (server shutdown)");
   } else {
     log_warn("ACDS receive thread exiting unexpectedly");
@@ -1147,7 +1149,7 @@ static void *acds_receive_thread(void *arg) {
  */
 static void server_handle_sigterm(int sigterm) {
   (void)(sigterm);
-  atomic_store(&g_server_should_exit, true);
+  atomic_store_bool(&g_should_exit, true);
 
   // Log to console only (text or JSON depending on --json flag)
   // Using log_console() which is signal-safe and handles both formats
@@ -1252,7 +1254,7 @@ static void *status_screen_thread(void *arg) {
   bool skip_next_slash = false;
   bool grep_was_just_cancelled = false;
 
-  while (!atomic_load(&g_server_should_exit)) {
+  while (!atomic_load_bool(&g_should_exit)) {
     uint64_t frame_start = platform_get_monotonic_time_us();
 
     // Check if SIGINT handler cancelled grep mode (Ctrl+C while in grep).
@@ -1423,7 +1425,7 @@ static void *ascii_chat_client_handler(void *arg) {
     log_debug("HANDLER: Client %s found, waiting for disconnect (active=%d)", client->client_id,
               atomic_load(&client->active));
     int wait_count = 0;
-    while (atomic_load(&client->active) && !atomic_load(server_ctx->server_should_exit)) {
+    while (atomic_load(&client->active) && !atomic_load_bool(server_ctx->server_should_exit)) {
       wait_count++;
       if (wait_count % 10 == 0) {
         // Log every 1 second (10 * 100ms)
@@ -1434,7 +1436,7 @@ static void *ascii_chat_client_handler(void *arg) {
     }
     log_info("Client %s disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)",
              client->client_id, client_ip, client_port, wait_count / 10, atomic_load(&client->active),
-             atomic_load(server_ctx->server_should_exit));
+             atomic_load_bool(server_ctx->server_should_exit));
   }
 
   // Cleanup (this will call tcp_server_stop_client_threads internally)
@@ -1629,7 +1631,7 @@ static void *websocket_client_handler(void *arg) {
  * CLEANUP GUARANTEES:
  * ===================
  * The shutdown sequence ensures:
- * 1. Signal handlers set g_server_should_exit atomically
+ * 1. Signal handlers set g_should_exit atomically
  * 2. All worker threads check flag and exit gracefully
  * 3. Main thread waits for all threads to finish
  * 4. Resources cleaned up in reverse dependency order
@@ -1765,6 +1767,9 @@ static int init_server_crypto(void) {
 int server_main(void) {
   // Common initialization (options, logging, lock debugging) now happens in main.c before dispatch
   // This function focuses on server-specific initialization
+
+  // Register atomic for debug tracking
+  ATOMIC_REGISTER_AUTO(g_should_exit);
 
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);
@@ -1907,7 +1912,7 @@ int server_main(void) {
       .rate_limiter = g_rate_limiter,
       .client_manager = &g_client_manager,
       .client_manager_rwlock = &g_client_manager_rwlock,
-      .server_should_exit = &g_server_should_exit,
+      .server_should_exit = &g_should_exit,
       .audio_mixer = g_audio_mixer,
       .stats = &g_stats,
       .stats_mutex = &g_stats_mutex,
@@ -1938,7 +1943,7 @@ int server_main(void) {
   asciichat_error_t tcp_init_result = tcp_server_init(&g_tcp_server, &tcp_config);
   if (tcp_init_result != ASCIICHAT_OK) {
     // Signal shutdown to allow threads to exit before we call FATAL
-    atomic_store(&g_server_should_exit, true);
+    atomic_store_bool(&g_should_exit, true);
     log_debug("TCP server init failed, signaling shutdown to threads");
 
     // Clean up worker thread pool if it was created
@@ -2013,7 +2018,7 @@ int server_main(void) {
 
   // Check if SIGINT/SIGTERM was received during initialization
   // If so, skip the accept loop entirely and go to cleanup
-  if (atomic_load(&g_server_should_exit)) {
+  if (atomic_load_bool(&g_should_exit)) {
     log_info("Shutdown signal received during initialization, skipping server startup");
     goto cleanup;
   }
@@ -2028,12 +2033,12 @@ int server_main(void) {
   g_client_manager.clients_by_id = NULL;
 
   // Initialize connection rate limiter (prevents DoS attacks)
-  if (!atomic_load(&g_server_should_exit)) {
+  if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing connection rate limiter...");
     g_rate_limiter = rate_limiter_create_memory();
     if (!g_rate_limiter) {
       LOG_ERRNO_IF_SET("Failed to initialize rate limiter");
-      if (!atomic_load(&g_server_should_exit)) {
+      if (!atomic_load_bool(&g_should_exit)) {
         FATAL(ERROR_MEMORY, "Failed to create connection rate limiter");
       }
     } else {
@@ -2042,32 +2047,32 @@ int server_main(void) {
   }
 
   // Initialize audio mixer (always enabled on server)
-  if (!atomic_load(&g_server_should_exit)) {
+  if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing audio mixer for per-client audio rendering...");
     g_audio_mixer = mixer_create(MAX_CLIENTS, AUDIO_SAMPLE_RATE);
     if (!g_audio_mixer) {
       LOG_ERRNO_IF_SET("Failed to initialize audio mixer");
-      if (!atomic_load(&g_server_should_exit)) {
+      if (!atomic_load_bool(&g_should_exit)) {
         FATAL(ERROR_AUDIO, "Failed to initialize audio mixer");
       }
     } else {
-      if (!atomic_load(&g_server_should_exit)) {
+      if (!atomic_load_bool(&g_should_exit)) {
         log_debug("Audio mixer initialized successfully for per-client audio rendering");
       }
     }
   }
 
   // Initialize H.265 codec server context (always enabled on server)
-  if (!atomic_load(&g_server_should_exit)) {
+  if (!atomic_load_bool(&g_should_exit)) {
     log_debug("Initializing H.265 codec server context...");
     g_h265_server = h265_server_context_create();
     if (!g_h265_server) {
       LOG_ERRNO_IF_SET("Failed to initialize H.265 codec context");
-      if (!atomic_load(&g_server_should_exit)) {
+      if (!atomic_load_bool(&g_should_exit)) {
         FATAL(ERROR_MEDIA_INIT, "Failed to initialize H.265 codec context");
       }
     } else {
-      if (!atomic_load(&g_server_should_exit)) {
+      if (!atomic_load_bool(&g_should_exit)) {
         log_debug("H.265 codec server context initialized successfully");
       }
     }
@@ -2077,7 +2082,7 @@ int server_main(void) {
   // mDNS allows clients on the LAN to discover this server without knowing its IP
   // Can be disabled with --no-mdns-advertise
   // Note: Actual advertisement is deferred until after ACDS session creation (if --acds is enabled)
-  if (!atomic_load(&g_server_should_exit) && !GET_OPTION(no_mdns_advertise)) {
+  if (!atomic_load_bool(&g_should_exit) && !GET_OPTION(no_mdns_advertise)) {
     log_debug("Initializing mDNS for LAN service discovery...");
     g_mdns_ctx = asciichat_mdns_init();
     if (!g_mdns_ctx) {
@@ -2096,7 +2101,7 @@ int server_main(void) {
   // ========================================================================
   // Create session_host to track clients in a transport-agnostic way.
   // This enables future discovery mode where participants can become hosts.
-  if (!atomic_load(&g_server_should_exit)) {
+  if (!atomic_load_bool(&g_should_exit)) {
     session_host_config_t host_config = {
         .port = port,
         .ipv4_address = ipv4_address,
@@ -2545,7 +2550,7 @@ skip_acds_session:
 
 cleanup:
   // Signal status screen thread to exit
-  atomic_store(&g_server_should_exit, true);
+  atomic_store_bool(&g_should_exit, true);
 
   // Wait for status screen thread to finish if it was started
   if (GET_OPTION(status_screen)) {
@@ -2586,7 +2591,7 @@ cleanup:
   }
   rwlock_wrunlock(&g_client_manager_rwlock);
 
-  log_debug("Signaling all clients to stop (sockets closed, g_server_should_exit set)...");
+  log_debug("Signaling all clients to stop (sockets closed, g_should_exit set)...");
 
   // Stop and destroy server worker thread pool (stats logger, etc.)
   if (g_server_worker_pool) {
