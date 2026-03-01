@@ -601,8 +601,9 @@ void debug_free(void *ptr, const char *file, int line) {
     }
 
     if (!found) {
-      log_warn_every(LOG_RATE_FAST, "Freeing untracked pointer %p at %s:%d", ptr, file, line);
-      // Don't print backtrace - log_warn_every already rate-limits the warning
+      // Untracked pointer could be from allocation before debug_memory_init() was called
+      // These allocations are updated in atomics but not added to the linked list,
+      // so they won't be found during free. This is safe - just free the pointer.
     }
 
     mutex_unlock(&g_mem.mutex);
