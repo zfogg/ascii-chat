@@ -526,7 +526,7 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   }
 
   // Close any existing file (atomic load/store)
-  int old_file = atomic_load_u64(&g_log.file);
+  int old_file = atomic_load_int(&g_log.file);
   if (lifecycle_is_initialized(&g_log.lifecycle) && old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
     atomic_store_int(&g_log.file, -1);
@@ -619,7 +619,7 @@ void log_destroy(void) {
   atomic_store_bool(&g_log.has_custom_format, false);
 
   // Lock-free cleanup using atomic operations
-  int old_file = atomic_load_u64(&g_log.file);
+  int old_file = atomic_load_int(&g_log.file);
   if (old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
   }
