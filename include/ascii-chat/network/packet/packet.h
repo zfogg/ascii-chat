@@ -1564,22 +1564,6 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
                                            int frame_count, crypto_context_t *crypto_ctx);
 
 /**
- * @brief Send ASCII frame packet
- * @param sockfd Socket file descriptor
- * @param frame_data ASCII frame data buffer
- * @param frame_size Size of frame data in bytes
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Sends PACKET_TYPE_ASCII_FRAME with ASCII text data.
- * Used for transmitting terminal output or text-based frames.
- *
- * @note Frame dimensions (width, height) are set to 0 and determined by receiver.
- *
- * @ingroup network
- */
-asciichat_error_t send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size);
-
-/**
  * @brief Send image frame packet
  * @param sockfd Socket file descriptor
  * @param image_data Image pixel data buffer

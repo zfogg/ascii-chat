@@ -434,7 +434,7 @@ static void *debug_print_thread_fn(void *arg) {
       if (request_type == DEBUG_REQUEST_STATE) {
         debug_sync_print_state();
       } else if (request_type == DEBUG_REQUEST_BACKTRACE) {
-        backtrace_t bt;
+        backtrace_t bt = {0};
         backtrace_capture_and_symbolize(&bt);
         backtrace_print("Backtrace", &bt, 0, 0, NULL);
         backtrace_t_free(&bt);

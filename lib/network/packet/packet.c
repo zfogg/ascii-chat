@@ -1273,45 +1273,6 @@ asciichat_error_t av_send_audio_opus_batch(socket_t sockfd, const uint8_t *opus_
   return result;
 }
 
-asciichat_error_t send_ascii_frame_packet(socket_t sockfd, const char *frame_data, size_t frame_size) {
-  if (!frame_data || frame_size == 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: frame_data=%p, frame_size=%zu", frame_data, frame_size);
-  }
-
-  // Create ASCII frame packet
-  ascii_frame_packet_t packet;
-  packet.width = 0;  // Will be set by receiver
-  packet.height = 0; // Will be set by receiver
-  packet.original_size = (uint32_t)frame_size;
-  packet.compressed_size = 0;
-  packet.checksum = 0;
-  packet.flags = 0;
-
-  // Calculate total packet size with overflow checking
-  size_t total_size;
-  if (checked_size_add(sizeof(ascii_frame_packet_t), frame_size, &total_size) != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Packet size calculation would overflow");
-  }
-
-  // Allocate buffer for complete packet
-  void *packet_data = buffer_pool_alloc(NULL, total_size);
-  if (!packet_data) {
-    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer for ASCII frame packet: %zu bytes", total_size);
-  }
-
-  // Copy packet header and frame data
-  memcpy(packet_data, &packet, sizeof(ascii_frame_packet_t));
-  memcpy((char *)packet_data + sizeof(ascii_frame_packet_t), frame_data, frame_size);
-
-  // Send packet
-  asciichat_error_t result = packet_send(sockfd, PACKET_TYPE_ASCII_FRAME, packet_data, total_size);
-
-  // Clean up
-  buffer_pool_free(NULL, packet_data, total_size);
-
-  return result;
-}
-
 asciichat_error_t send_image_frame_packet(socket_t sockfd, const void *image_data, uint16_t width, uint16_t height,
                                           uint8_t format) {
   if (!image_data || width == 0 || height == 0) {
