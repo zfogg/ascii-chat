@@ -208,24 +208,15 @@ void set_interrupt_callback(void (*cb)(void)) {
  */
 static void handle_sigterm(int sig) {
   (void)sig;
-  // Use write() directly - it's async-signal-safe
-  // log_console() can deadlock in signal context
-  const char *msg = "SIGNAL HANDLER: SIGINT/SIGTERM received\n";
-  (void)write(STDERR_FILENO, msg, strlen(msg));
+  // log_console() is async-signal-safe - uses atomic ops and platform_write_all()
+  log_console(LOG_INFO, "Signal received - shutting down");
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
-  // This sets a flag for the debug thread to print sync state
   debug_sync_trigger_print();
-  const char *debug_msg = "SIGNAL HANDLER: Triggered debug_sync_trigger_print\n";
-  (void)write(STDERR_FILENO, debug_msg, strlen(debug_msg));
 #endif
 
   // Call signal_exit() to set flag AND interrupt blocking socket operations
-  // server_connection_shutdown() is async-signal-safe (uses only atomics and socket_shutdown)
-  // This ensures blocking recv() calls are interrupted, allowing main thread to detect shutdown
-  const char *exit_msg = "SIGNAL HANDLER: Calling signal_exit\n";
-  (void)write(STDERR_FILENO, exit_msg, strlen(exit_msg));
   signal_exit();
 }
 #endif
