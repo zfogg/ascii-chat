@@ -150,23 +150,25 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
 }
 
 static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {
-  int current_value = 0;
-  memcpy(&current_value, field, sizeof(int));
-  int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
-  if (current_value != default_val) {
-    return; // Already set, skip env var
-  }
-  int value = 0;
   if (env_value) {
     char *endptr;
     long parsed = strtol(env_value, &endptr, 10);
     if (*endptr == '\0' && parsed >= INT_MIN && parsed <= INT_MAX) {
-      value = (int)parsed;
+      int value = (int)parsed;
+      memcpy(field, &value, sizeof(int));
     }
-  } else if (desc->default_value) {
-    value = *(const int *)desc->default_value;
+    return;
   }
-  memcpy(field, &value, sizeof(int));
+  // No env var — apply descriptor default only if field hasn't been changed from descriptor default
+  int current_value = 0;
+  memcpy(&current_value, field, sizeof(int));
+  int default_val = desc->default_value ? *(const int *)desc->default_value : 0;
+  if (current_value != default_val)
+    return;
+  if (desc->default_value) {
+    int value = *(const int *)desc->default_value;
+    memcpy(field, &value, sizeof(int));
+  }
 }
 
 static void apply_env_string(void *field, const char *env_value, const option_descriptor_t *desc) {
@@ -217,10 +219,18 @@ static void apply_env_double(void *field, const char *env_value, const option_de
 }
 
 static void apply_env_callback(void *field, const char *env_value, const option_descriptor_t *desc) {
-  (void)field;
-  (void)env_value;
-  // For callbacks, would need parse_fn - handled separately in options_config_set_defaults
-  (void)desc;
+  if (!env_value || !desc || !desc->parse_fn) {
+    return;
+  }
+  char *error_msg = NULL;
+  bool ok = desc->parse_fn(env_value, field, &error_msg);
+  if (!ok) {
+    log_warn("Invalid value for environment variable '%s': %s", desc->env_var_name ? desc->env_var_name : "unknown",
+             error_msg ? error_msg : "parse failed");
+  }
+  if (error_msg) {
+    free(error_msg);
+  }
 }
 
 static void apply_env_action(void *field, const char *env_value, const option_descriptor_t *desc) {

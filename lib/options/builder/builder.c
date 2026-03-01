@@ -1408,10 +1408,18 @@ asciichat_error_t options_config_set_defaults(const options_config_t *config, vo
     const option_descriptor_t *desc = &config->descriptors[i];
     void *field = base + desc->offset;
 
-    // Check environment variable first
+    // Check environment variable first (primary)
     const char *env_value = NULL;
     if (desc->env_var_name) {
       env_value = SAFE_GETENV(desc->env_var_name);
+    }
+    // Check shorter alias names as fallback if primary not set
+    if (!env_value) {
+      if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_PORT") == 0) {
+        env_value = SAFE_GETENV("PORT");
+      } else if (desc->env_var_name && strcmp(desc->env_var_name, "ASCII_CHAT_WEBSOCKET_PORT") == 0) {
+        env_value = SAFE_GETENV("WS_PORT");
+      }
     }
 
     // Use handler registry to apply environment variables and defaults

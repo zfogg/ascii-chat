@@ -436,6 +436,9 @@ Path to llvm-symbolizer executable (debug builds only). When set, enables line-b
 .B PROGRAMDATA
 Windows program data directory for shared application data. Used as fallback directory for global configuration on Windows.
 .TP
+.B PORT
+Alternative name for \fBASCII_CHAT_PORT\fR. Sets the server or client port. Takes lower priority than \fBASCII_CHAT_PORT\fR. See \fB\-\-port\fR.
+.TP
 .B USERPROFILE
 Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used for expanding ~ in paths. When APPDATA is not set, %USERPROFILE%\eAppData\eRoaming\eascii-chat\e is used for config files (first fallback in the chain).
 .TP
@@ -456,6 +459,9 @@ Colon-separated list of additional system configuration directories (default: /e
 .TP
 .B XDG_DATA_HOME
 XDG Base Directory specification data directory on Linux (default: ~/.local/share). Can be used for application data storage following XDG conventions.
+.TP
+.B WS_PORT
+Alternative name for \fBASCII_CHAT_WEBSOCKET_PORT\fR. Sets the WebSocket server port. Takes lower priority than \fBASCII_CHAT_WEBSOCKET_PORT\fR. See \fB\-\-websocket\-port\fR.
 .TP
 .B SSH_AUTH_SOCK
 Path to the SSH agent socket. Set automatically by ssh-agent. Use this for
