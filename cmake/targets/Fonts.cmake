@@ -92,6 +92,7 @@ add_custom_command(
             "-DVAR_NAME=g_font_matrix_resurrected"
             "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
     DEPENDS "${MATRIX_FONT_SRC}"
+    COMMENT "Embedding Matrix-Resurrected.ttf as C array"
     VERBATIM
 )
 
@@ -103,6 +104,7 @@ add_custom_command(
             "-DVAR_NAME=g_font_default"
             "-P" "${CMAKE_SOURCE_DIR}/cmake/tools/bin2c.cmake"
     DEPENDS "${DEFAULT_FONT_SRC}"
+    COMMENT "Embedding DejaVuSansMono.ttf as C array"
     VERBATIM
 )
 
