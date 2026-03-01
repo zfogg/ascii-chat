@@ -27,13 +27,6 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   const uint8_t *font_data = NULL;
   size_t font_data_size = 0;
   const char *raw_font = GET_OPTION(render_font);
-
-  // Use matrix font by default when --matrix is enabled, unless user explicitly set a font
-  if ((!raw_font || raw_font[0] == '\0') && GET_OPTION(matrix_rain)) {
-    raw_font = "matrix";
-    log_debug("render_file_create: Using matrix font (enabled by --matrix flag)");
-  }
-
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
