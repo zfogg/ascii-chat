@@ -489,9 +489,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       remaining--;
     }
 
-    // Fill remaining blank lines with color reset to prevent color bleed
+    // Fill remaining blank lines
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\x1b[0m\x1b[K\n");
+      fprintf(stdout, "\x1b[K\n");
     }
 
     g_prev_log_count = log_idx;
@@ -512,7 +512,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       return;
     }
 
-    int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H\x1b[0m\x1b[K", g_cached_term_size.rows);
+    int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H", g_cached_term_size.rows);
 
     // Validate snprintf succeeded and produced expected output
     if (pos > 0 && pos < (int)sizeof(grep_ui_buffer) - 256) {
