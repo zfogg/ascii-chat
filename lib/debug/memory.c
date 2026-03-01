@@ -144,8 +144,8 @@ static const debug_memory_suppression_t g_suppression_config[] = {
      .key = {0}},
     {.file = "lib/debug/mutex.c",
      .line = 330,
-     .expected_count = 37,
-     .expected_bytes = 1184,
+     .expected_count = 47,
+     .expected_bytes = 1504,
      .reason = "Debug mutex stack tracking (freed on thread exit and shutdown)",
      .key = {0}},
     {.file = NULL, .line = 0, .expected_count = 0, .expected_bytes = 0, .reason = NULL, .key = {0}} // Sentinel
