@@ -443,6 +443,18 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   bool flip_x_enabled = GET_OPTION(flip_x);
   bool flip_y_enabled = GET_OPTION(flip_y);
 
+  // On macOS, disable flip_x only for webcam sources (not for files/URLs)
+  // AVFoundation already applies mirroring for webcams by default
+  // User-controlled flip_x should only apply to non-webcam sources
+#ifdef __APPLE__
+  const char *media_file = GET_OPTION(media_file);
+  const char *media_url = GET_OPTION(media_url);
+  bool is_webcam = (!media_file || !strlen(media_file)) && (!media_url || !strlen(media_url));
+  if (is_webcam) {
+    flip_x_enabled = false;
+  }
+#endif
+
   color_filter_t color_filter = GET_OPTION(color_filter);
 
   // Handle dynamic matrix rain effect toggle
