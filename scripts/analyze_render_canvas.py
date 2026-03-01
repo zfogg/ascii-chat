@@ -178,7 +178,11 @@ def read_png_data(filepath):
                 print(f"   Expected: {height} rows utilized")
                 print(f"   Actual: {content_height} rows with content")
                 print(f"   Problem: Text isn't filling bottom of canvas")
-            elif bottom_black_pct > 50:
+            elif wasted_bottom == 0:
+                # Frame is fully utilized - dark bottom pixels are expected content, not a black bar
+                print(f"✅ GOOD: Canvas fully utilized (all {height} rows)")
+            elif bottom_black_pct > 50 and wasted_bottom > 0:
+                # Only warn about brightness if there's actual wasted space
                 print(f"⚠️  POTENTIAL BLACK BAR: {bottom_black_rows} rows ({bottom_black_pct:.1f}%) in bottom section are mostly black")
                 print(f"   Average bottom brightness ({bottom_brightness:.2f}) vs middle ({middle_brightness:.2f})")
                 if bottom_brightness < middle_brightness * 0.5:
@@ -188,8 +192,6 @@ def read_png_data(filepath):
             elif bottom_black_pct > 85:
                 print(f"❌ BLACK BAR AT BOTTOM: {bottom_black_rows} rows are {bottom_black_pct:.1f}% black")
                 print(f"   Rows {bottom_start}-{height-1} should have content but are mostly blank")
-            elif wasted_bottom == 0:
-                print(f"✅ GOOD: Canvas fully utilized (all {height} rows)")
             else:
                 print(f"⚠️  Minor waste: {wasted_bottom} rows at bottom ({100*wasted_bottom/height:.1f}%)")
         else:
