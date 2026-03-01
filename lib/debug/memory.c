@@ -464,8 +464,14 @@ void *debug_malloc(size_t size, const char *file, int line) {
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           // Only warn if this allocation site is not suppressed (expected/benign allocations)
           if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
-            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
+                     "alloc: %zu bytes)",
+                     normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
+                     site->live_bytes, size);
+            backtrace_t bt;
+            backtrace_capture_and_symbolize(&bt);
+            backtrace_print("Memory accumulation backtrace", &bt, 0, 10, NULL);
+            backtrace_t_free(&bt);
           }
         }
       }
@@ -529,8 +535,14 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           // Only warn if this allocation site is not suppressed (expected/benign allocations)
           if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
-            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
+                     "alloc: %zu bytes)",
+                     normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
+                     site->live_bytes, size);
+            backtrace_t bt;
+            backtrace_capture_and_symbolize(&bt);
+            backtrace_print("Memory accumulation backtrace", &bt, 0, 10, NULL);
+            backtrace_t_free(&bt);
           }
         }
       }
@@ -686,8 +698,14 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
         if (site->live_count == MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY) {
           // Only warn if this allocation site is not suppressed (expected/benign allocations)
           if (!should_ignore_allocation(normalized_file, line, asciichat_thread_current_id(), size)) {
-            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation", normalized_file, line,
-                     asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY);
+            log_warn("%s:%d:%lu — %d live allocations, possible memory accumulation at site (total: %zu bytes, this "
+                     "alloc: %zu bytes)",
+                     normalized_file, line, asciichat_thread_current_id(), MEM_SITE_CACHE_MAX_ALLOCS_PER_KEY,
+                     site->live_bytes, total);
+            backtrace_t bt;
+            backtrace_capture_and_symbolize(&bt);
+            backtrace_print("Memory accumulation backtrace", &bt, 0, 10, NULL);
+            backtrace_t_free(&bt);
           }
         }
       }
