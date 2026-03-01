@@ -80,9 +80,12 @@ configure:
 	@echo "Configuring CMake (build type: $(CMAKE_BUILD_TYPE))..."
 	@env MAKEFLAGS= $(CMAKE) $(CONFIGURE_ARGS)
 
-build: configure
+build: $(BUILD_DIR)/CMakeCache.txt
 	@echo "Building ascii-chat..."
 	@env MAKEFLAGS= $(CMAKE) --build "$(BUILD_DIR)" --target ascii-chat
+
+$(BUILD_DIR)/CMakeCache.txt:
+	@$(MAKE) configure
 
 ninja: build
 	@cd "$(BUILD_DIR)" && ninja $(NINJA_ARGS)
