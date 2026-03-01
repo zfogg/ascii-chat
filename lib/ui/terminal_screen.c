@@ -370,6 +370,12 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // Flush frame buffer (containing header) before rendering grep logs
     frame_buffer_flush(g_frame_buf);
 
+    // Position cursor at the first log row (row after header)
+    // This ensures logs start at the correct position, not wherever the cursor
+    // ended up after the header output.
+    fprintf(stdout, "\x1b[%d;1H", actual_header_height + 1);
+    fflush(stdout);
+
     int log_idx = 0;
     int lines_used = 0;
 
