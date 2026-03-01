@@ -120,10 +120,6 @@ function(ascii_defer_prepare)
     # CMake generates compile_commands.json in the build directory
     set(_ASCII_COMPILE_DB "${CMAKE_BINARY_DIR}/compile_commands.json")
 
-    # On macOS with self-contained LLVM, clang can find system headers via its config file.
-    # The compilation database is set after the initial build, so we can't read it yet.
-    # However, the defer tool will use the default clang config file which includes -isysroot.
-
     # Collect include directories (will be exposed to finalize phase)
     set(defer_source_dirs "")
     list(APPEND defer_source_dirs
@@ -163,7 +159,7 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND "${_defer_tool_exe}" -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR} -- ${_rel_path}
+            COMMAND "${_defer_tool_exe}" -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR} ${_rel_path}
             DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${_ASCII_COMPILE_DB}"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"

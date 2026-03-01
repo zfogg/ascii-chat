@@ -43,7 +43,6 @@ endif()
 
 # SIMD sources (reorganized into ascii/{arch}/{halfblock,foreground,background})
 set(SIMD_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/simd/common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
     # Scalar ASCII render implementations
