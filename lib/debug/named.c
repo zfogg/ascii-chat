@@ -547,6 +547,47 @@ static inline uintptr_t encode_packet_type_key(int pkt_type) {
   return PACKET_TYPE_KEY_PREFIX | (uintptr_t)pkt_type;
 }
 
+// Register packet type without counter suffix (each type is registered only once)
+static const char *named_register_packet_type_no_counter(int pkt_type, const char *name) {
+  if (!name || !lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return name;
+  }
+
+  uintptr_t key = encode_packet_type_key(pkt_type);
+  const char *relative_file = extract_project_relative_path(__FILE__);
+
+  rwlock_wrlock_impl(&g_named_registry.entries_lock);
+
+  named_entry_t *entry;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
+
+  if (entry) {
+    free(entry->name);
+    free(entry->type);
+    free(entry->format_spec);
+    entry->name = strdup(name);
+    entry->type = strdup("packet_type");
+    entry->format_spec = strdup("%d");
+  } else {
+    entry = malloc(sizeof(named_entry_t));
+    if (!entry) {
+      rwlock_wrunlock_impl(&g_named_registry.entries_lock);
+      return name;
+    }
+    entry->key = key;
+    entry->name = strdup(name);
+    entry->type = strdup("packet_type");
+    entry->format_spec = strdup("%d");
+    entry->file = strdup(relative_file);
+    entry->line = 0;
+    entry->func = NULL;
+    HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
+  }
+
+  rwlock_wrunlock_impl(&g_named_registry.entries_lock);
+  return entry->name;
+}
+
 void named_registry_register_packet_types(void) {
   // Import packet type enum to register all values
   // This ensures all packet types are programmatically registered and discoverable
@@ -556,8 +597,7 @@ void named_registry_register_packet_types(void) {
 
 #define REGISTER_PKT_TYPE(value, name_suffix)                                                                          \
   do {                                                                                                                 \
-    uintptr_t pkt_key = PACKET_TYPE_KEY_PREFIX | (uintptr_t)(value);                                                   \
-    named_register(pkt_key, (name_suffix), "packet_type", "%d", __FILE__, __LINE__, __func__);                         \
+    named_register_packet_type_no_counter((value), (name_suffix));                                                     \
   } while (0)
 
   // Register all packet types from the enum
