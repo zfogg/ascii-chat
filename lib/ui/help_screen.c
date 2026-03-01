@@ -335,11 +335,10 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   if (box_width < 30)
     box_width = 30; // Absolute minimum for readability
 
-  // Help screen box dimensions (24 rows total: border + title + nav (7 lines) + separator + settings + blank + footer +
-  // border)
-  // NOTE: This should be 24 based on the comment, but using 23 to account for the rendering
-  // starting at start_row + 1 (not start_row + 0). The actual visible box is 23 rows tall.
-  const int box_height = 23; // Actual visible rows (rendering starts at start_row + 1)
+  // Help screen box dimensions (25 rows total: border + title + nav (7 lines) + separator + settings + animations +
+  // separator + blank + footer + border) NOTE: This should be 25 based on the comment, but using 24 to account for the
+  // rendering starting at start_row + 1 (not start_row + 0). The actual visible box is 24 rows tall.
+  const int box_height = 24; // Actual visible rows (rendering starts at start_row + 1)
 
   // Calculate centering position (true mathematical centering)
   // Horizontal centering
@@ -495,6 +494,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   // Animations section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "Animations (number key toggle):");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                   "───────────────────────────────");
 
   // Format: "(0) Matrix \"Digital Rain\" : X/O"
   char animation_line[256];
