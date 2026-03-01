@@ -23,7 +23,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Fontconfig.cmake)
 if(USE_MUSL)
     message(STATUS "${BoldYellow}⚠${ColorReset} libvterm: Not built for musl (GTK ecosystem excluded)")
     set(VTERM_LDFLAGS "")
-    set(VTERM_LIBRARIES "")
     set(VTERM_INCLUDE_DIRS "")
     set(RENDER_FILE_LIBS "")
     set(RENDER_FILE_INCLUDES "")
@@ -38,7 +37,6 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(VTERM vterm REQUIRED)
 
-    set(VTERM_LIBRARIES ${VTERM_LDFLAGS})
     set(RENDER_FILE_LIBS ${VTERM_LDFLAGS} ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
     set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
 
@@ -49,7 +47,6 @@ elseif(APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(VTERM vterm REQUIRED)
 
-    set(VTERM_LIBRARIES ${VTERM_LDFLAGS})
     set(RENDER_FILE_LIBS ${VTERM_LDFLAGS} ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
     set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
 
@@ -68,7 +65,6 @@ elseif(WIN32)
 
     FetchContent_MakeAvailable(libvterm)
 
-    set(VTERM_LIBRARIES vterm)
     set(RENDER_FILE_LIBS freetype unofficial::fontconfig::fontconfig vterm)
     get_target_property(VTERM_INCLUDES vterm INTERFACE_INCLUDE_DIRECTORIES)
     set(RENDER_FILE_INCLUDES ${VTERM_INCLUDES})

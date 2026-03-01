@@ -92,7 +92,5 @@ if(NOT zstd_FOUND)
 endif()
 
 set(ZSTD_FOUND TRUE)
-set(ZSTD_LIBRARIES ${zstd_LIBRARIES})
-set(ZSTD_INCLUDE_DIRS ${zstd_INCLUDE_DIRS})
 
 message(STATUS "${BoldGreen}✓${ColorReset} zstd found")

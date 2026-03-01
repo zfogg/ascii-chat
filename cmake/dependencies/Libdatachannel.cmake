@@ -504,14 +504,4 @@ endif()
     message(STATUS "  Library: ${LIBDATACHANNEL_STATIC_LIB}")
 endif()  # NOT LIBDATACHANNEL_FOUND
 
-if(NOT LIBDATACHANNEL_LIBRARIES)
-    set(LIBDATACHANNEL_LIBRARIES libdatachannel)
-endif()
-if(NOT LIBDATACHANNEL_INCLUDE_DIRS)
-    get_target_property(_ldc_include_dirs libdatachannel INTERFACE_INCLUDE_DIRECTORIES)
-    if(_ldc_include_dirs)
-        set(LIBDATACHANNEL_INCLUDE_DIRS ${_ldc_include_dirs})
-    endif()
-endif()
-
 message(STATUS "${BoldGreen}libdatachannel WebRTC ready${ColorReset}")

@@ -43,11 +43,7 @@ function(configure_yyjson)
             message(FATAL_ERROR "yyjson target not created by subdirectory")
         endif()
 
-        if(NOT TARGET yyjson::yyjson)
-            add_library(yyjson::yyjson ALIAS yyjson)
-        endif()
-
-        set(YYJSON_LIBRARIES yyjson::yyjson PARENT_SCOPE)
+        set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
         set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src" PARENT_SCOPE)
         set(YYJSON_FOUND TRUE PARENT_SCOPE)
 
@@ -107,11 +103,7 @@ function(configure_yyjson)
             message(FATAL_ERROR "yyjson target not created by subdirectory")
         endif()
 
-        if(NOT TARGET yyjson::yyjson)
-            add_library(yyjson::yyjson ALIAS yyjson)
-        endif()
-
-        set(YYJSON_LIBRARIES yyjson::yyjson PARENT_SCOPE)
+        set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
         set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src" PARENT_SCOPE)
         set(YYJSON_FOUND TRUE PARENT_SCOPE)
         message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from source (with disabled features)")
