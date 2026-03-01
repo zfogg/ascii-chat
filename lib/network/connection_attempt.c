@@ -346,6 +346,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   // Note: TCP client stores server IP in tcp_client->server_ip for potential crypto context use
   if (tcp_client->server_ip[0] != '\0') {
     log_debug("Server IP available from TCP client: %s", tcp_client->server_ip);
+    APP_CALLBACK_VOID_STR(server_connection_set_ip, tcp_client->server_ip);
   } else {
     log_warn("TCP client did not populate server_ip field");
   }
