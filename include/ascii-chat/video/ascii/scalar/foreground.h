@@ -29,6 +29,6 @@ char *image_print_16color(const image_t *p, const char *palette);
 
 // 16-color dithered functions
 char *image_print_16color_dithered(const image_t *p, const char *palette);
-char *image_print_16color_dithered_with_background(const image_t *p);
+char *image_print_16color_dithered_with_background(const image_t *image, bool use_background, const char *palette);
 
 /** @} */

@@ -26,7 +26,9 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdatomic.h>
 #include <ascii-chat/video/image.h>
+#include <ascii-chat/uthash.h>
 #include "../../common.h"
 
 // Check for SIMD support and include architecture-specific headers
@@ -474,25 +476,29 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
 #define CACHE_MAX_LIFETIME 3600  // 1 hour maximum cache lifetime in seconds
 
 typedef struct {
-  uint8_t width;      /**< Character display width (1 or 2) */
-  uint8_t code[4];    /**< UTF-8 bytes (0-3) */
-  uint8_t len;        /**< Number of bytes used */
-  uint8_t _pad;       /**< Padding for alignment */
+  uint8_t width;         /**< Character display width (1 or 2) */
+  uint8_t utf8_bytes[4]; /**< UTF-8 bytes (0-3) */
+  uint8_t byte_len;      /**< Number of bytes used */
+  uint8_t _pad;          /**< Padding for alignment */
 } utf8_char_t;
 
 typedef struct utf8_palette_cache {
-  utf8_char_t cache64[64];           /**< Cache of 64 most common characters */
-  uint8_t char_index_ramp[256];      /**< Luminance to character index mapping */
-  uint64_t last_accessed_time;       /**< Last access timestamp */
-  uint32_t access_count;             /**< Total access count */
-  uint32_t total_age_seconds;        /**< Total age in seconds */
-  double cached_score;               /**< Eviction score (higher = keep longer) */
-  size_t heap_index;                 /**< Index in the eviction min-heap */
-  uint32_t key;                      /**< Palette string hash (uthash key) */
-  bool initialized;                  /**< Whether cache is initialized */
+  utf8_char_t cache[256];               /**< Cache of all 256 luminance levels */
+  utf8_char_t cache64[64];              /**< Cache of 64 most common characters */
+  uint8_t char_index_ramp[256];         /**< Luminance to character index mapping */
+  _Atomic(uint64_t) last_access_time;   /**< Last access timestamp */
+  _Atomic(uint32_t) access_count;       /**< Total access count */
+  uint32_t total_age_seconds;           /**< Total age in seconds */
+  uint64_t creation_time;               /**< When this cache was created */
+  double cached_score;                  /**< Eviction score (higher = keep longer) */
+  size_t heap_index;                    /**< Index in the eviction min-heap */
+  uint32_t key;                         /**< Palette string hash (uthash key) */
+  char palette_hash[256];               /**< Original palette string for validation */
+  bool initialized;                     /**< Whether cache is initialized */
+  bool is_valid;                        /**< Whether cache has valid data */
 
   // uthash handle for hash table
-  UT_hash_handle hh;                 /**< uthash handle */
+  UT_hash_handle hh;                    /**< uthash handle */
 } utf8_palette_cache_t;
 
 /**
@@ -501,6 +507,15 @@ typedef struct utf8_palette_cache {
  * @ingroup video
  */
 utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
+
+/**
+ * @brief Destroy all SIMD caches (palette and other caches)
+ *
+ * Called during shutdown to clean up resources.
+ *
+ * @ingroup video
+ */
+void simd_caches_destroy_all(void);
 
 // Include architecture-specific implementations
 #if SIMD_SUPPORT_SSE2
