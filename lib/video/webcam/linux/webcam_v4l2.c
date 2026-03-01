@@ -27,13 +27,17 @@
 #include <libavformat/avformat.h>
 
 #include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/video/image.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/util.h>
+#include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
+#include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/debug/named.h>
+#include <stdatomic.h>
 
 #define WEBCAM_BUFFER_COUNT_DEFAULT 4
 #define WEBCAM_BUFFER_COUNT_MAX 8
@@ -60,7 +64,45 @@ struct webcam_context_t {
   enum AVPixelFormat av_pixel_format; // FFmpeg pixel format for swscale
   AVCodecContext *mjpeg_codec_ctx;    // MJPEG JPEG decompression context (if using MJPEG format)
   AVFrame *mjpeg_decoded_frame;       // Decoded JPEG frame buffer
+
+  // Async camera reading (non-blocking)
+  lifecycle_t async_lifecycle;             // Lifecycle state machine for camera thread
+  asciichat_thread_t camera_thread;        // Background thread for continuous frame capture
+  _Atomic(image_t *) latest_frame;         // Latest frame from camera (atomic swap)
+  image_t *async_cached_frame;             // Last frame returned to caller (returned when no new frame available)
 };
+
+/**
+ * @brief Background thread function for continuous camera frame capture
+ *
+ * Continuously reads frames from the camera and swaps them into the latest_frame buffer.
+ * Uses lifecycle state machine to coordinate startup/shutdown safely.
+ */
+static void *webcam_camera_thread_func(void *arg) {
+  webcam_context_t *ctx = (webcam_context_t *)arg;
+
+  log_debug("Camera background thread started");
+
+  while (lifecycle_is_initialized(&ctx->async_lifecycle)) {
+    // Read frame (blocking on camera)
+    image_t *frame = webcam_read_context(ctx);
+
+    if (frame) {
+      // Copy the frame data (webcam_read_context returns ptr to module-level static buffer)
+      image_t *frame_copy = image_new_copy(frame);
+      if (frame_copy) {
+        // Atomic swap: replace latest_frame with new frame
+        image_t *old_frame = atomic_exchange(&ctx->latest_frame, frame_copy);
+        if (old_frame) {
+          image_destroy(old_frame);
+        }
+      }
+    }
+  }
+
+  log_debug("Camera background thread stopped");
+  return NULL;
+}
 
 /**
  * @brief Initialize swscale context for format conversion
@@ -461,8 +503,38 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     log_debug("V4L2 device does not support VIDIOC_S_PARM (frame rate control)");
   }
 
+  // Initialize async lifecycle for camera thread
+  if (!lifecycle_init(&context->async_lifecycle, "webcam_camera")) {
+    // Cleanup on lifecycle init failure
+    for (int i = 0; i < context->buffer_count; i++) {
+      if (context->buffers[i].start != MAP_FAILED) {
+        munmap(context->buffers[i].start, context->buffers[i].length);
+      }
+    }
+    SAFE_FREE(context->buffers);
+    close(context->fd);
+    SAFE_FREE(context);
+    return SET_ERRNO(ERROR_INIT, "Failed to initialize camera thread lifecycle");
+  }
+
+  // Start background camera thread
+  asciichat_error_t thread_err = asciichat_thread_create(&context->camera_thread, "webcam_camera",
+                                                          webcam_camera_thread_func, context);
+  if (thread_err != ASCIICHAT_OK) {
+    lifecycle_shutdown(&context->async_lifecycle);
+    for (int i = 0; i < context->buffer_count; i++) {
+      if (context->buffers[i].start != MAP_FAILED) {
+        munmap(context->buffers[i].start, context->buffers[i].length);
+      }
+    }
+    SAFE_FREE(context->buffers);
+    close(context->fd);
+    SAFE_FREE(context);
+    return thread_err;
+  }
+
   *ctx = context;
-  log_dev("V4L2 webcam initialized successfully on %s", device_path);
+  log_dev("V4L2 webcam initialized successfully on %s with async camera thread", device_path);
 
   /* Register webcam context with named registry */
   NAMED_REGISTER(context, device_path, "webcam", "0x%tx");
@@ -488,6 +560,24 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
     return;
 
   NAMED_UNREGISTER(ctx);
+
+  // Stop camera thread by shutting down lifecycle
+  if (lifecycle_shutdown(&ctx->async_lifecycle)) {
+    // This caller won the shutdown race, join the thread
+    asciichat_thread_join(&ctx->camera_thread, NULL);
+    log_debug("Camera background thread joined");
+  }
+
+  // Clean up any remaining frames in the atomic and cached buffers
+  image_t *leftover_frame = atomic_exchange(&ctx->latest_frame, NULL);
+  if (leftover_frame) {
+    image_destroy(leftover_frame);
+  }
+
+  if (ctx->async_cached_frame) {
+    image_destroy(ctx->async_cached_frame);
+    ctx->async_cached_frame = NULL;
+  }
 
   // Free swscale context if it was allocated
   if (ctx->sws_ctx) {
@@ -543,7 +633,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // Use poll() to efficiently wait for frame available (500ms timeout)
   // At 30fps, frames arrive every ~33ms; at 60fps every ~16ms
   struct pollfd pfd = {.fd = ctx->fd, .events = POLLIN};
+
+  uint64_t t_poll_start = time_get_ns();
   int poll_ret = poll(&pfd, 1, 500);  // 500ms timeout for slower cameras
+  uint64_t t_poll = time_get_ns() - t_poll_start;
 
   if (poll_ret < 0) {
     log_error("poll() failed on V4L2 device: %s", SAFE_STRERROR(errno));
@@ -563,10 +656,15 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 
   // Dequeue the buffer (should succeed now)
+  uint64_t t_dqbuf_start = time_get_ns();
   if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) != 0) {
     log_error("Failed to dequeue V4L2 buffer after poll(): %s", SAFE_STRERROR(errno));
     return NULL;
   }
+  uint64_t t_dqbuf = time_get_ns() - t_dqbuf_start;
+
+  fprintf(stderr, "[V4L2 TIMING] poll=%lu ns (%.2f ms), dqbuf=%lu ns (%.2f ms)\n",
+          (unsigned long)t_poll, t_poll / 1000000.0, (unsigned long)t_dqbuf, t_dqbuf / 1000000.0);
 
   // Validate buffer index to prevent crashes
   if (buf.index >= (unsigned int)ctx->buffer_count) {
@@ -599,8 +697,17 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   image_t *img = v4l2_cached_frame;
 
+  // DEBUG: Direct stderr output to verify function is called
+  fprintf(stderr, "[FRAME READ] pixelformat=0x%x (MJPEG=0x%x, YUYV=0x%x)\n",
+           ctx->pixelformat, V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV);
+
   // Handle MJPEG decompression if using MJPEG format
+  fprintf(stderr, "[CONDITION TEST] ctx->pixelformat (%u) == V4L2_PIX_FMT_MJPEG (%u) ? %s\n",
+          ctx->pixelformat, V4L2_PIX_FMT_MJPEG,
+          (ctx->pixelformat == V4L2_PIX_FMT_MJPEG) ? "TRUE" : "FALSE");
+
   if (ctx->pixelformat == V4L2_PIX_FMT_MJPEG) {
+    fprintf(stderr, "[MJPEG PATH] ENTERED\n");
     if (!ctx->mjpeg_codec_ctx) {
       log_error("MJPEG codec context not initialized");
       if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
@@ -608,6 +715,9 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
       return NULL;
     }
+
+    uint64_t t_start = time_get_ns();
+    uint64_t t_packet = 0, t_decode = 0, t_scale = 0;
 
     // Create packet from MJPEG frame data
     AVPacket pkt = {0};
@@ -623,8 +733,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
       return NULL;
     }
+    t_packet = time_get_ns() - t_start;
 
-    // Receive decoded frame
+    // Receive decoded frame (JPEG decompression happens here)
+    uint64_t t_decode_start = time_get_ns();
     if (avcodec_receive_frame(ctx->mjpeg_codec_ctx, ctx->mjpeg_decoded_frame) < 0) {
       log_warn_every(1000000000LL, "Failed to decode MJPEG frame from %u bytes", buf.bytesused);
       av_packet_unref(&pkt);
@@ -633,8 +745,11 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
       return NULL;
     }
+    t_decode = time_get_ns() - t_decode_start;
 
-    log_debug_every(5000000000LL, "MJPEG frame decoded: %dx%d, %u bytes", ctx->width, ctx->height, buf.bytesused);
+    // Log timing via fprintf
+    fprintf(stderr, "[MJPEG TIMING] send_packet=%lu ns (%.2f ms), decode=%lu ns (%.2f ms)\n",
+            (unsigned long)t_packet, t_packet / 1000000.0, (unsigned long)t_decode, t_decode / 1000000.0);
     av_packet_unref(&pkt);
 
     // Convert decoded frame to RGB24 using swscale
@@ -649,8 +764,14 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     uint8_t *dst_data[1] = {(uint8_t *)img->pixels};
     int dst_linesize[1] = {ctx->width * 3};
 
+    uint64_t t_scale_start = time_get_ns();
     sws_scale(ctx->sws_ctx, (const uint8_t * const *)ctx->mjpeg_decoded_frame->data,
               ctx->mjpeg_decoded_frame->linesize, 0, ctx->height, dst_data, dst_linesize);
+    t_scale = time_get_ns() - t_scale_start;
+
+    uint64_t total_time = time_get_ns() - t_start;
+    fprintf(stderr, "[MJPEG TIMING] sws_scale=%lu ns (%.2f ms), TOTAL=%lu ns (%.2f ms)\n",
+            (unsigned long)t_scale, t_scale / 1000000.0, (unsigned long)total_time, total_time / 1000000.0);
 
     // Re-queue the buffer for future use
     if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
@@ -705,6 +826,37 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 
   return img;
+}
+
+/**
+ * @brief Non-blocking async read of latest cached frame
+ *
+ * Returns the most recent frame from the background camera thread without blocking.
+ * Always returns a cached frame except on startup before any frames have been captured.
+ * Never returns NULL after the first frame is captured.
+ *
+ * The returned frame should NOT be freed by the caller (it's internal to the context).
+ */
+image_t *webcam_read_async(webcam_context_t *ctx) {
+  if (!ctx || !lifecycle_is_initialized(&ctx->async_lifecycle)) {
+    return NULL;
+  }
+
+  // Check if there's a new frame from the camera thread
+  image_t *new_frame = atomic_exchange(&ctx->latest_frame, NULL);
+
+  if (new_frame) {
+    // New frame available - update cache and return it
+    // (The background thread allocated this frame, we take ownership)
+    if (ctx->async_cached_frame) {
+      image_destroy(ctx->async_cached_frame);
+    }
+    ctx->async_cached_frame = new_frame;
+    return new_frame;
+  }
+
+  // No new frame - return the last cached frame (smooth playback without gaps)
+  return ctx->async_cached_frame;
 }
 
 asciichat_error_t webcam_get_dimensions(webcam_context_t *ctx, int *width, int *height) {

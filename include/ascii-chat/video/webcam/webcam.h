@@ -307,6 +307,29 @@ void webcam_flush_context(webcam_context_t *ctx);
 image_t *webcam_read_context(webcam_context_t *ctx);
 
 /**
+ * @brief Get the most recent frame from async camera thread (non-blocking)
+ * @param ctx Webcam context (must not be NULL)
+ * @return Pointer to captured image, or NULL if no frame available yet
+ *
+ * Retrieves the most recent frame from the background camera thread without blocking.
+ * Returns an image_t structure containing the latest frame data in RGB format,
+ * or NULL if the async thread hasn't yet captured a frame.
+ *
+ * This function is used with async camera initialization to decouple slow camera I/O
+ * from the render loop. The background thread continuously captures frames at the
+ * camera's native frame rate, and this function retrieves the latest available frame
+ * on demand without waiting.
+ *
+ * @note Returns NULL if no frame has been captured yet by the background thread.
+ * @note The caller takes ownership of the returned frame and must NOT free it.
+ * @note Subsequent calls may return NULL if no new frame is available.
+ * @note Only valid after webcam_init_context() has started the background thread.
+ *
+ * @ingroup webcam
+ */
+image_t *webcam_read_async(webcam_context_t *ctx);
+
+/**
  * @brief Get webcam frame dimensions
  * @param ctx Webcam context (must not be NULL)
  * @param width Output pointer for frame width (must not be NULL)
