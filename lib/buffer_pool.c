@@ -4,6 +4,7 @@
  * @brief 💾 Lock-free memory pool with atomic operations
  */
 
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
@@ -33,10 +34,10 @@ static inline void *data_from_node(buffer_node_t *node) {
 }
 
 /** @brief Atomically update peak if new value is higher */
-static inline void update_peak(atomic_t *peak, size_t value) {
-  size_t old = atomic_load_explicit(peak, memory_order_relaxed);
+static inline void update_peak(atomic_t *peak, uint64_t value) {
+  uint64_t old = atomic_load_u64(peak);
   while (value > old) {
-    if (atomic_compare_exchange_weak_explicit(peak, &old, value, memory_order_relaxed, memory_order_relaxed)) {
+    if (atomic_cas_u64(peak, &old, value)) {
       break;
     }
   }
@@ -64,15 +65,15 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
   pool->max_bytes = max_bytes > 0 ? max_bytes : BUFFER_POOL_MAX_BYTES;
   pool->shrink_delay_ns = shrink_delay_ns > 0 ? shrink_delay_ns : BUFFER_POOL_SHRINK_DELAY_NS;
 
-  atomic_init(&pool->current_bytes, 0);
-  atomic_init(&pool->used_bytes, 0);
-  atomic_init(&pool->peak_bytes, 0);
-  atomic_init(&pool->peak_pool_bytes, 0);
-  atomic_init(&pool->hits, 0);
-  atomic_init(&pool->allocs, 0);
-  atomic_init(&pool->returns, 0);
-  atomic_init(&pool->shrink_freed, 0);
-  atomic_init(&pool->malloc_fallbacks, 0);
+  atomic_store_u64(&pool->current_bytes, 0);
+  atomic_store_u64(&pool->used_bytes, 0);
+  atomic_store_u64(&pool->peak_bytes, 0);
+  atomic_store_u64(&pool->peak_pool_bytes, 0);
+  atomic_store_u64(&pool->hits, 0);
+  atomic_store_u64(&pool->allocs, 0);
+  atomic_store_u64(&pool->returns, 0);
+  atomic_store_u64(&pool->shrink_freed, 0);
+  atomic_store_u64(&pool->malloc_fallbacks, 0);
 
   char pretty_max[64];
   format_bytes_pretty(pool->max_bytes, pretty_max, sizeof(pretty_max));
@@ -89,9 +90,9 @@ void buffer_pool_destroy(buffer_pool_t *pool) {
   NAMED_UNREGISTER(pool);
 
   // Drain the free list
-  buffer_node_t *node = atomic_load(&pool->free_list);
+  buffer_node_t *node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
   while (node) {
-    buffer_node_t *next = atomic_load(&node->next);
+    buffer_node_t *next = atomic_load_explicit(&node->next, memory_order_relaxed);
     SAFE_FREE(node); // Node and data are one allocation
     node = next;
   }
@@ -114,11 +115,11 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     node->_pad = 0;
     node->size = size;
     atomic_init(&node->next, NULL);
-    atomic_init(&node->returned_at_ns, 0);
+    atomic_store_u64(&node->returned_at_ns, 0);
     node->pool = NULL; // No pool for fallbacks
 
     if (pool) {
-      atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
+      atomic_fetch_add_u64(&pool->malloc_fallbacks, 1);
     }
     return data_from_node(node);
   }
@@ -134,9 +135,9 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
         // Reuse this buffer
         atomic_store_explicit(&node->next, NULL, memory_order_relaxed);
         size_t node_size = node->size;
-        atomic_fetch_add_explicit(&pool->used_bytes, node_size, memory_order_relaxed);
-        atomic_fetch_add_explicit(&pool->hits, 1, memory_order_relaxed);
-        update_peak(&pool->peak_bytes, atomic_load(&pool->used_bytes));
+        atomic_fetch_add_u64(&pool->used_bytes, node_size);
+        atomic_fetch_add_u64(&pool->hits, 1);
+        update_peak(&pool->peak_bytes, atomic_load_u64(&pool->used_bytes));
         return data_from_node(node);
       } else {
         // Too small - push it back and allocate new
@@ -155,19 +156,18 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
 
   // Check if we can allocate more
   size_t total_size = sizeof(buffer_node_t) + size;
-  size_t current = atomic_load_explicit(&pool->current_bytes, memory_order_relaxed);
+  size_t current = atomic_load_u64(&pool->current_bytes);
 
   // Atomically try to reserve space
   while (current + total_size <= pool->max_bytes) {
-    if (atomic_compare_exchange_weak_explicit(&pool->current_bytes, &current, current + total_size,
-                                              memory_order_relaxed, memory_order_relaxed)) {
+    if (atomic_cas_u64(&pool->current_bytes, &current, current + total_size)) {
       // Reserved space - now allocate
       // Allocate node + data in one chunk for cache efficiency
       node = SAFE_MALLOC_ALIGNED(total_size, 64, buffer_node_t *);
       if (!node) {
         // Undo reservation
-        atomic_fetch_sub_explicit(&pool->current_bytes, total_size, memory_order_relaxed);
-        atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
+        atomic_fetch_sub_u64(&pool->current_bytes, total_size);
+        atomic_fetch_add_u64(&pool->malloc_fallbacks, 1);
         return SAFE_MALLOC(size, void *);
       }
 
@@ -175,13 +175,13 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
       node->_pad = 0;
       node->size = size;
       atomic_init(&node->next, NULL);
-      atomic_init(&node->returned_at_ns, 0);
+      atomic_store_u64(&node->returned_at_ns, 0);
       node->pool = pool;
 
-      atomic_fetch_add_explicit(&pool->used_bytes, size, memory_order_relaxed);
-      atomic_fetch_add_explicit(&pool->allocs, 1, memory_order_relaxed);
-      update_peak(&pool->peak_bytes, atomic_load(&pool->used_bytes));
-      update_peak(&pool->peak_pool_bytes, atomic_load(&pool->current_bytes));
+      atomic_fetch_add_u64(&pool->used_bytes, size);
+      atomic_fetch_add_u64(&pool->allocs, 1);
+      update_peak(&pool->peak_bytes, atomic_load_u64(&pool->used_bytes));
+      update_peak(&pool->peak_pool_bytes, atomic_load_u64(&pool->current_bytes));
 
       return data_from_node(node);
     }
@@ -198,10 +198,10 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   node->_pad = 0;
   node->size = size;
   atomic_init(&node->next, NULL);
-  atomic_init(&node->returned_at_ns, 0);
+  atomic_store_u64(&node->returned_at_ns, 0);
   node->pool = pool;
 
-  atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
+  atomic_fetch_add_u64(&pool->malloc_fallbacks, 1);
   return data_from_node(node);
 }
 
@@ -241,11 +241,11 @@ void buffer_pool_free(buffer_pool_t *pool, const void *data, size_t size) {
   }
 
   // Update stats
-  atomic_fetch_sub_explicit(&pool->used_bytes, node->size, memory_order_relaxed);
-  atomic_fetch_add_explicit(&pool->returns, 1, memory_order_relaxed);
+  atomic_fetch_sub_u64(&pool->used_bytes, node->size);
+  atomic_fetch_add_u64(&pool->returns, 1);
 
   // Set return timestamp
-  atomic_store_explicit(&node->returned_at_ns, time_get_ns(), memory_order_relaxed);
+  atomic_store_u64(&node->returned_at_ns, time_get_ns());
 
   // Push to lock-free stack
   buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
@@ -255,7 +255,7 @@ void buffer_pool_free(buffer_pool_t *pool, const void *data, size_t size) {
                                                   memory_order_relaxed));
 
   // Periodically trigger shrink (every 100 returns)
-  uint64_t returns = atomic_load_explicit(&pool->returns, memory_order_relaxed);
+  uint64_t returns = atomic_load_u64(&pool->returns);
   if (returns % 100 == 0) {
     buffer_pool_shrink(pool);
   }
@@ -282,7 +282,7 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
 
   while (list) {
     buffer_node_t *next = atomic_load_explicit(&list->next, memory_order_relaxed);
-    uint64_t returned_at = atomic_load_explicit(&list->returned_at_ns, memory_order_relaxed);
+    uint64_t returned_at = atomic_load_u64(&list->returned_at_ns);
 
     if (returned_at < cutoff) {
       // Old buffer - add to free list
@@ -300,8 +300,8 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
   if (keep_list) {
     // Find tail
     buffer_node_t *tail = keep_list;
-    while (atomic_load(&tail->next)) {
-      tail = atomic_load(&tail->next);
+    while (atomic_load_explicit(&tail->next, memory_order_relaxed)) {
+      tail = atomic_load_explicit(&tail->next, memory_order_relaxed);
     }
 
     // Atomically prepend to current free list
@@ -316,8 +316,8 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
   while (free_list) {
     buffer_node_t *next = atomic_load_explicit(&free_list->next, memory_order_relaxed);
     size_t total_size = sizeof(buffer_node_t) + free_list->size;
-    atomic_fetch_sub_explicit(&pool->current_bytes, total_size, memory_order_relaxed);
-    atomic_fetch_add_explicit(&pool->shrink_freed, 1, memory_order_relaxed);
+    atomic_fetch_sub_u64(&pool->current_bytes, total_size);
+    atomic_fetch_add_u64(&pool->shrink_freed, 1);
     SAFE_FREE(free_list);
     free_list = next;
   }
@@ -336,8 +336,8 @@ void buffer_pool_get_stats(buffer_pool_t *pool, size_t *current_bytes, size_t *u
     return;
   }
 
-  size_t current = atomic_load_explicit(&pool->current_bytes, memory_order_relaxed);
-  size_t used = atomic_load_explicit(&pool->used_bytes, memory_order_relaxed);
+  size_t current = atomic_load_u64(&pool->current_bytes);
+  size_t used = atomic_load_u64(&pool->used_bytes);
 
   if (current_bytes)
     *current_bytes = current;
@@ -351,15 +351,15 @@ void buffer_pool_log_stats(buffer_pool_t *pool, const char *name) {
   if (!pool)
     return;
 
-  size_t current = atomic_load(&pool->current_bytes);
-  size_t used = atomic_load(&pool->used_bytes);
-  size_t peak = atomic_load(&pool->peak_bytes);
-  size_t peak_pool = atomic_load(&pool->peak_pool_bytes);
-  uint64_t hits = atomic_load(&pool->hits);
-  uint64_t allocs = atomic_load(&pool->allocs);
-  uint64_t returns = atomic_load(&pool->returns);
-  uint64_t shrink_freed = atomic_load(&pool->shrink_freed);
-  uint64_t fallbacks = atomic_load(&pool->malloc_fallbacks);
+  size_t current = atomic_load_u64(&pool->current_bytes);
+  size_t used = atomic_load_u64(&pool->used_bytes);
+  size_t peak = atomic_load_u64(&pool->peak_bytes);
+  size_t peak_pool = atomic_load_u64(&pool->peak_pool_bytes);
+  uint64_t hits = atomic_load_u64(&pool->hits);
+  uint64_t allocs = atomic_load_u64(&pool->allocs);
+  uint64_t returns = atomic_load_u64(&pool->returns);
+  uint64_t shrink_freed = atomic_load_u64(&pool->shrink_freed);
+  uint64_t fallbacks = atomic_load_u64(&pool->malloc_fallbacks);
 
   char pretty_current[64], pretty_used[64], pretty_free[64];
   char pretty_peak[64], pretty_peak_pool[64], pretty_max[64];

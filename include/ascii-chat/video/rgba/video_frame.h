@@ -260,10 +260,10 @@ typedef struct {
  * @ingroup video_frame
  */
 typedef struct {
-  atomic_uintptr_t current_frame; ///< Atomic pointer to current frame
-  video_frame_t frame_a;          ///< First pre-allocated frame
-  video_frame_t frame_b;          ///< Second pre-allocated frame
-  atomic_t use_frame_a;        ///< Atomic flag: true = use frame_a next, false = use frame_b
+  atomic_t current_frame;     ///< Atomic pointer to current frame (stored as uint64_t)
+  video_frame_t frame_a;      ///< First pre-allocated frame
+  video_frame_t frame_b;      ///< Second pre-allocated frame
+  atomic_t use_frame_a;       ///< Atomic flag: true = use frame_a next, false = use frame_b
 } simple_frame_swap_t;
 
 /* ============================================================================

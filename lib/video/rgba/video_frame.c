@@ -249,7 +249,7 @@ const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {
   }
 
   // Mark that we've consumed any new frame
-  atomic_exchange(&vfb->new_frame_available, false);
+  atomic_store_bool(&vfb->new_frame_available, false);
 
   // Use mutex to safely read front_buffer pointer
   // (in case render thread is swapping)
@@ -271,11 +271,11 @@ void video_frame_get_stats(video_frame_buffer_t *vfb, video_frame_stats_t *stats
     return;
   }
 
-  stats->total_frames = atomic_load(&vfb->total_frames_received);
-  stats->dropped_frames = atomic_load(&vfb->total_frames_dropped);
+  stats->total_frames = atomic_load_u64(&vfb->total_frames_received);
+  stats->dropped_frames = atomic_load_u64(&vfb->total_frames_dropped);
   stats->drop_rate = (stats->total_frames > 0) ? (float)stats->dropped_frames / (float)stats->total_frames : 0.0f;
-  stats->avg_decode_time_ns = atomic_load(&vfb->avg_decode_time_ns);
-  stats->avg_render_time_ns = atomic_load(&vfb->avg_render_time_ns);
+  stats->avg_decode_time_ns = atomic_load_u64(&vfb->avg_decode_time_ns);
+  stats->avg_render_time_ns = atomic_load_u64(&vfb->avg_render_time_ns);
 }
 
 // Simple frame swap implementation for basic cases
@@ -287,8 +287,8 @@ simple_frame_swap_t *simple_frame_swap_create(void) {
   sfs->frame_a.data = SAFE_MALLOC(frame_size, void *);
   sfs->frame_b.data = SAFE_MALLOC(frame_size, void *);
 
-  atomic_store(&sfs->current_frame, (uintptr_t)&sfs->frame_a);
-  atomic_store(&sfs->use_frame_a, false); // Next write goes to frame_b
+  atomic_store_u64(&sfs->current_frame, (uintptr_t)&sfs->frame_a);
+  atomic_store_bool(&sfs->use_frame_a, false); // Next write goes to frame_b
 
   return sfs;
 }
@@ -310,7 +310,7 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
   }
 
   // Determine which frame to write to
-  bool use_a = atomic_load(&sfs->use_frame_a);
+  bool use_a = atomic_load_bool(&sfs->use_frame_a);
   video_frame_t *write_frame = use_a ? &sfs->frame_a : &sfs->frame_b;
 
   // Copy data to write frame
@@ -320,10 +320,10 @@ void simple_frame_swap_update(simple_frame_swap_t *sfs, const void *data, size_t
     write_frame->capture_timestamp_ns = time_get_ns();
 
     // Atomically update current frame pointer
-    atomic_store(&sfs->current_frame, (uintptr_t)write_frame);
+    atomic_store_u64(&sfs->current_frame, (uintptr_t)write_frame);
 
     // Toggle for next write
-    atomic_store(&sfs->use_frame_a, !use_a);
+    atomic_store_bool(&sfs->use_frame_a, !use_a);
   }
 }
 
@@ -332,6 +332,6 @@ const video_frame_t *simple_frame_swap_get(simple_frame_swap_t *sfs) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Simple frame swap is NULL");
     return NULL;
   }
-  uintptr_t frame_ptr = atomic_load(&sfs->current_frame);
+  uintptr_t frame_ptr = atomic_load_u64(&sfs->current_frame);
   return (const video_frame_t *)(void *)frame_ptr; // NOLINT(bugprone-casting-through-void,performance-no-int-to-ptr)
 }

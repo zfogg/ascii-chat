@@ -85,6 +85,11 @@ uint64_t atomic_fetch_sub_u64_impl(atomic_t *a, uint64_t delta) {
     return atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, delta);
 }
 
+bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
+    if (!a || !expected) return false;
+    return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
+}
+
 // ============================================================================
 // Pointer Implementation Functions
 // ============================================================================
@@ -189,6 +194,13 @@ uint64_t atomic_fetch_sub_u64(atomic_t *a, uint64_t delta) {
     uint64_t result = atomic_fetch_sub((_Atomic(uint64_t) *)&a->impl, delta);
     atomic_on_fetch(a);
     return result;
+}
+
+bool atomic_cas_u64(atomic_t *a, uint64_t *expected, uint64_t new_value) {
+    if (!a || !expected) return false;
+    bool success = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
+    atomic_on_cas(a, success);
+    return success;
 }
 
 void *atomic_ptr_load(_Atomic(void *) *a) {

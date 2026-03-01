@@ -28,18 +28,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
-// Define ATOMIC_TYPE macro for cross-platform atomic support in struct definitions.
-#if defined(__cplusplus) && defined(_WIN32)
-#include <atomic>
-using std::atomic_t;
-// MSVC C++ mode: use std::atomic<T> instead of _Atomic(T)
-#define ATOMIC_TYPE(T) std::atomic<T>
-#else
+#include <stdatomic.h>
 #include <ascii-chat/atomic.h>
-// C mode: use standard _Atomic(T)
-#define ATOMIC_TYPE(T) _Atomic(T)
-#endif
 #include "platform/mutex.h"
 #include "util/magic.h"
 
@@ -83,8 +73,8 @@ typedef struct buffer_node {
   uint32_t magic;                         ///< Magic to identify pooled buffers
   uint32_t _pad;                          ///< Padding for alignment
   size_t size;                            ///< Size of user data portion
-  ATOMIC_TYPE(struct buffer_node *) next; ///< Next in free list (atomic for lock-free)
-  ATOMIC_TYPE(uint64_t) returned_at_ns;   ///< Timestamp when returned to free list (nanoseconds)
+  _Atomic(struct buffer_node *) next;     ///< Next in free list (atomic for lock-free)
+  atomic_t returned_at_ns;                ///< Timestamp when returned to free list (nanoseconds)
   struct buffer_pool *pool;               ///< Owning pool (for free)
 } buffer_node_t;
 
@@ -94,23 +84,23 @@ typedef struct buffer_node {
  * @ingroup buffer_pool
  */
 typedef struct buffer_pool {
-  ATOMIC_TYPE(buffer_node_t *) free_list; ///< Lock-free stack of available buffers
+  _Atomic(buffer_node_t *) free_list;     ///< Lock-free stack of available buffers
   mutex_t shrink_mutex;                   ///< Only used for shrinking
 
   size_t max_bytes;         ///< Maximum total bytes allowed
   uint64_t shrink_delay_ns; ///< Time before unused buffers freed (nanoseconds)
 
   /** @name Atomic counters @{ */
-  ATOMIC_TYPE(size_t) current_bytes;   ///< Total bytes in pool
-  ATOMIC_TYPE(size_t) used_bytes;      ///< Bytes currently in use
-  ATOMIC_TYPE(size_t) peak_bytes;      ///< Peak bytes in use
-  ATOMIC_TYPE(size_t) peak_pool_bytes; ///< Peak bytes in pool
+  atomic_t current_bytes;   ///< Total bytes in pool (stored as uint64_t)
+  atomic_t used_bytes;      ///< Bytes currently in use (stored as uint64_t)
+  atomic_t peak_bytes;      ///< Peak bytes in use (stored as uint64_t)
+  atomic_t peak_pool_bytes; ///< Peak bytes in pool (stored as uint64_t)
 
-  ATOMIC_TYPE(uint64_t) hits;             ///< Allocations from free list
-  ATOMIC_TYPE(uint64_t) allocs;           ///< New buffer allocations
-  ATOMIC_TYPE(uint64_t) returns;          ///< Buffers returned to free list
-  ATOMIC_TYPE(uint64_t) shrink_freed;     ///< Buffers freed by shrink
-  ATOMIC_TYPE(uint64_t) malloc_fallbacks; ///< Allocations that bypassed pool
+  atomic_t hits;             ///< Allocations from free list
+  atomic_t allocs;           ///< New buffer allocations
+  atomic_t returns;          ///< Buffers returned to free list
+  atomic_t shrink_freed;     ///< Buffers freed by shrink
+  atomic_t malloc_fallbacks; ///< Allocations that bypassed pool
   /** @} */
 } buffer_pool_t;
 

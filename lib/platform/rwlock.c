@@ -7,6 +7,7 @@
  * rwlock implementations to record events and debug information.
  */
 
+#include <stdatomic.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>
@@ -24,7 +25,7 @@
 void rwlock_on_rdlock(rwlock_t *rwlock) {
   if (rwlock) {
     rwlock->last_rdlock_time_ns = time_get_ns();
-    atomic_fetch_add((volatile _Atomic(uint64_t) *)&rwlock->read_lock_count, 1);
+    atomic_fetch_add_u64(&rwlock->read_lock_count, 1);
   }
 }
 
@@ -62,8 +63,8 @@ void rwlock_on_unlock(rwlock_t *rwlock) {
     uintptr_t current_key = asciichat_thread_to_key(current_thread);
     if (rwlock->write_held_by_key == current_key) {
       rwlock->write_held_by_key = 0;
-    } else if (rwlock->read_lock_count > 0) {
-      atomic_fetch_sub((volatile _Atomic(uint64_t) *)&rwlock->read_lock_count, 1);
+    } else if (atomic_load_u64(&rwlock->read_lock_count) > 0) {
+      atomic_fetch_sub_u64(&rwlock->read_lock_count, 1);
     }
   }
 }
