@@ -671,12 +671,12 @@ bool log_get_force_stderr(void) {
 }
 
 void log_set_json_output(int fd) {
-  atomic_store_u64(&g_log.json_file, fd);
+  atomic_store_int(&g_log.json_file, fd);
 }
 
 void log_disable_file_output(void) {
   /* Close the current file if it's not stderr */
-  int old_file = atomic_load_u64(&g_log.file);
+  int old_file = atomic_load_int(&g_log.file);
   if (old_file >= 0 && old_file != STDERR_FILENO) {
     platform_close(old_file);
   }
@@ -1071,7 +1071,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   }
 
   // Check if JSON format is enabled
-  int json_fd = atomic_load_u64(&g_log.json_file);
+  int json_fd = atomic_load_int(&g_log.json_file);
   bool json_format_enabled = (json_fd >= 0);
 
   // If JSON format is enabled, output ONLY JSON (skip text output)
@@ -1182,7 +1182,7 @@ void log_plain_msg(const char *fmt, ...) {
   }
 
   // Check if JSON format is enabled
-  int json_fd = atomic_load_u64(&g_log.json_file);
+  int json_fd = atomic_load_int(&g_log.json_file);
   bool json_format_enabled = (json_fd >= 0);
 
   if (json_format_enabled) {
@@ -1931,7 +1931,7 @@ void log_console_impl(log_level_t level, const char *file, int line, const char 
   }
 
   // Check if JSON output is enabled (json_file >= 0 means enabled)
-  int json_fd = atomic_load_u64(&g_log.json_file);
+  int json_fd = atomic_load_int(&g_log.json_file);
   bool use_json = (json_fd >= 0);
 
   if (use_json) {
