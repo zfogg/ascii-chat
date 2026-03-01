@@ -416,17 +416,14 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
-        // Still need to reset colors to prevent them from leaking to next output.
         if (lines_for_this == 1) {
-          fprintf(stdout, "\x1b[0m\n");
+          fprintf(stdout, "\n");
         } else {
-          fprintf(stdout, "\x1b[0m\x1b[%dB", lines_for_this);
+          fprintf(stdout, "\x1b[%dB", lines_for_this);
         }
       } else {
         // Content changed - overwrite and clear tail.
-        // Reset both foreground and background colors to prevent color bleeding
-        // to the next line (important for grep UI which follows).
-        fprintf(stdout, "%s\x1b[0m\x1b[K\n", msg);
+        fprintf(stdout, "%s\x1b[K\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
