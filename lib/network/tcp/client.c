@@ -118,6 +118,17 @@ tcp_client_t *tcp_client_create(void) {
 
   NAMED_REGISTER_CLIENT(client, "client");
 
+  // Register atomic fields for debug tracking - descriptive names for sync state monitoring
+  char atomic_name[256];
+  snprintf(atomic_name, sizeof(atomic_name), "tcp_client_is_connection_active_%p", (void *)client);
+  NAMED_REGISTER_ATOMIC(&client->connection_active, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "tcp_client_has_connection_been_lost_%p", (void *)client);
+  NAMED_REGISTER_ATOMIC(&client->connection_lost, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "tcp_client_should_attempt_reconnection_%p", (void *)client);
+  NAMED_REGISTER_ATOMIC(&client->should_reconnect, atomic_name);
+
   log_debug("TCP client created successfully");
   return client;
 }
@@ -138,6 +149,11 @@ void tcp_client_destroy(tcp_client_t **client_ptr) {
     close_socket_safe(client->sockfd);
     client->sockfd = INVALID_SOCKET_VALUE;
   }
+
+  // Unregister atomic fields
+  NAMED_UNREGISTER(&client->connection_active);
+  NAMED_UNREGISTER(&client->connection_lost);
+  NAMED_UNREGISTER(&client->should_reconnect);
 
   NAMED_UNREGISTER(client);
   mutex_destroy(&client->send_mutex);

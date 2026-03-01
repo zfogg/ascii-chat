@@ -90,6 +90,7 @@
 #include <ascii-chat/platform/system.h> // For platform_memcpy
 
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>  // For NAMED_REGISTER_ATOMIC macro
 #include <string.h>
 #include <math.h>
 
@@ -1062,6 +1063,15 @@ int audio_client_init() {
  */
 int audio_start_thread() {
   log_debug("audio_start_thread called: audio_enabled=%d", GET_OPTION(audio_enabled));
+
+  // Register audio atomics for debug sync state monitoring (one-time registration)
+  static bool audio_atomics_registered = false;
+  if (!audio_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_audio_capture_thread_exited, "audio_capture_thread_exit_confirmation");
+    NAMED_REGISTER_ATOMIC(&g_audio_sender_should_exit, "audio_sender_exit_flag");
+    NAMED_REGISTER_ATOMIC(&g_audio_sender_exited, "audio_sender_exited_confirmation");
+    audio_atomics_registered = true;
+  }
 
   if (!GET_OPTION(audio_enabled)) {
     log_debug("Audio is disabled, skipping audio capture thread creation");

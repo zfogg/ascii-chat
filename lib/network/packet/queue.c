@@ -156,12 +156,46 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   if (queue->node_pool)
     NAMED_REGISTER_NODE_POOL(queue->node_pool, "queue_node_pool");
 
+  // Register atomic fields for sync state monitoring - descriptive names for lock-free queue tracking
+  char atomic_name[256];
+
+  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_current_packet_count");
+  NAMED_REGISTER_ATOMIC(&queue->count, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_total_bytes_currently_queued");
+  NAMED_REGISTER_ATOMIC(&queue->bytes_queued, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_lifetime_packets_enqueued_total");
+  NAMED_REGISTER_ATOMIC(&queue->packets_enqueued, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_lifetime_packets_dequeued_total");
+  NAMED_REGISTER_ATOMIC(&queue->packets_dequeued, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_lifetime_packets_dropped_overflow");
+  NAMED_REGISTER_ATOMIC(&queue->packets_dropped, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_is_shutdown_requested");
+  NAMED_REGISTER_ATOMIC(&queue->shutdown, atomic_name);
+
+  NAMED_REGISTER_ATOMIC_PTR(&queue->head, "packet_queue_head_node_pointer");
+  NAMED_REGISTER_ATOMIC_PTR(&queue->tail, "packet_queue_tail_node_pointer");
+
   return queue;
 }
 
 void packet_queue_destroy(packet_queue_t *queue) {
   if (!queue)
     return;
+
+  // Unregister atomic fields
+  NAMED_UNREGISTER(&queue->count);
+  NAMED_UNREGISTER(&queue->bytes_queued);
+  NAMED_UNREGISTER(&queue->packets_enqueued);
+  NAMED_UNREGISTER(&queue->packets_dequeued);
+  NAMED_UNREGISTER(&queue->packets_dropped);
+  NAMED_UNREGISTER(&queue->shutdown);
+  NAMED_UNREGISTER(&queue->head);
+  NAMED_UNREGISTER(&queue->tail);
 
   NAMED_UNREGISTER(queue);
 

@@ -88,6 +88,7 @@
 #include <time.h>
 #include <sys/types.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>  // For NAMED_REGISTER_ATOMIC macro
 
 #include <ascii-chat/platform/network.h> // Consolidates platform-specific network headers (includes TCP options)
 
@@ -299,6 +300,15 @@ int server_connection_init() {
   if (mutex_init(&g_send_mutex, "send") != 0) {
     log_error("Failed to initialize send mutex");
     return -1;
+  }
+
+  // Register connection atomics for debug sync state monitoring (one-time registration)
+  static bool connection_atomics_registered = false;
+  if (!connection_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_connection_active, "server_connection_active_flag");
+    NAMED_REGISTER_ATOMIC(&g_connection_lost, "server_connection_lost_flag");
+    NAMED_REGISTER_ATOMIC(&g_should_reconnect, "should_attempt_reconnection_flag");
+    connection_atomics_registered = true;
   }
 
   // Initialize connection state

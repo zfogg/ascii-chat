@@ -57,6 +57,17 @@ websocket_client_t *websocket_client_create(const char *name) {
   // Register WebSocket client with debug naming system
   NAMED_REGISTER_WEBSOCKET(client, name);
 
+  // Register atomic fields for sync state monitoring - descriptive names showing control purpose
+  char atomic_name[256];
+  snprintf(atomic_name, sizeof(atomic_name), "websocket_%s_connection_is_active", name);
+  NAMED_REGISTER_ATOMIC(&client->connection_active, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "websocket_%s_connection_was_lost", name);
+  NAMED_REGISTER_ATOMIC(&client->connection_lost, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "websocket_%s_needs_reconnection_attempt", name);
+  NAMED_REGISTER_ATOMIC(&client->should_reconnect, atomic_name);
+
   log_debug("WebSocket client created");
 
   return client;
@@ -79,6 +90,11 @@ void websocket_client_destroy(websocket_client_t **client_ptr) {
   // is just a thin wrapper that holds a reference. The transport will be destroyed
   // by the connection context or server connection cleanup code.
   client->transport = NULL;
+
+  // Unregister atomic fields
+  NAMED_UNREGISTER(&client->connection_active);
+  NAMED_UNREGISTER(&client->connection_lost);
+  NAMED_UNREGISTER(&client->should_reconnect);
 
   NAMED_UNREGISTER(client);
 

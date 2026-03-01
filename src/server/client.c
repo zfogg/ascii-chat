@@ -230,6 +230,54 @@ static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH
 // Forward declarations for static helper functions
 static inline void cleanup_client_all_buffers(client_info_t *client);
 
+/**
+ * @brief Register all atomic fields in a client_info_t structure with descriptive names
+ *
+ * This function is called after a new client is initialized to register all of its
+ * atomic fields with the named registry, enabling debug tracking of atomic operations
+ * via --sync-state output.
+ *
+ * Each atomic is named following the pattern: "client.<client_id>.<field_name>"
+ * to provide clear identification of which client each atomic belongs to.
+ *
+ * @param client Pointer to the client_info_t structure
+ */
+static void register_client_info_atomics(client_info_t *client) {
+    if (!client || !client->client_id[0]) {
+        return;
+    }
+
+    char atomic_name[256];
+
+#define REGISTER_CLIENT_ATOMIC(field, description) \
+    safe_snprintf(atomic_name, sizeof(atomic_name), "client.%s." description, client->client_id); \
+    NAMED_REGISTER_ATOMIC(&client->field, atomic_name)
+
+    // Video streaming state
+    REGISTER_CLIENT_ATOMIC(is_sending_video, "is_sending_video");
+
+    // Audio streaming state
+    REGISTER_CLIENT_ATOMIC(is_sending_audio, "is_sending_audio");
+
+    // Connection state
+    REGISTER_CLIENT_ATOMIC(active, "active");
+    REGISTER_CLIENT_ATOMIC(shutting_down, "shutting_down");
+    REGISTER_CLIENT_ATOMIC(protocol_disconnect_requested, "protocol_disconnect_requested");
+
+    // Thread management flags
+    REGISTER_CLIENT_ATOMIC(dispatch_thread_running, "dispatch_thread_running");
+    REGISTER_CLIENT_ATOMIC(send_thread_running, "send_thread_running");
+    REGISTER_CLIENT_ATOMIC(video_render_thread_running, "video_render_thread_running");
+    REGISTER_CLIENT_ATOMIC(audio_render_thread_running, "audio_render_thread_running");
+
+    // Frame source tracking
+    REGISTER_CLIENT_ATOMIC(last_rendered_grid_sources, "last_rendered_grid_sources_count");
+    REGISTER_CLIENT_ATOMIC(last_sent_grid_sources, "last_sent_grid_sources_count");
+    REGISTER_CLIENT_ATOMIC(frames_sent_count, "total_frames_sent_count");
+
+#undef REGISTER_CLIENT_ATOMIC
+}
+
 static void handle_client_error_packet(client_info_t *client, const void *data, size_t len) {
   asciichat_error_t reported_error = ASCIICHAT_OK;
   char message[MAX_ERROR_MESSAGE_LENGTH + 1] = {0};
@@ -682,6 +730,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
 
   // Register client with named debug system using the generated name
   (void)NAMED_REGISTER_CLIENT(client, client->display_name);
+
+  // Register all atomic fields for debug tracking
+  register_client_info_atomics(client);
 
   log_info("Added new client %s from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
   log_debug("Client slot assigned: client_id=%s assigned to slot %d, socket=%d", new_client_id, slot, socket);

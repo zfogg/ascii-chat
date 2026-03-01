@@ -821,6 +821,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   server->port = config->port;
   atomic_store_bool(&server->running, true);
 
+  // Register atomic fields for sync state monitoring
+  NAMED_REGISTER_ATOMIC(&server->running, "websocket_server_is_running");
+
   // Store server pointer in protocol user data so callbacks can access it
   // Both the HTTP and ACIP protocols need access to the server
   websocket_protocols[0].user = server; // http protocol
@@ -941,6 +944,9 @@ void websocket_server_destroy(websocket_server_t *server) {
   }
 
   atomic_store_bool(&server->running, false);
+
+  // Unregister atomic fields
+  NAMED_UNREGISTER(&server->running);
 
   // Destroy handler thread pool (waits for pending work to complete)
   if (server->handler_pool) {
