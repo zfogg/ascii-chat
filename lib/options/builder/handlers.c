@@ -325,6 +325,7 @@ static asciichat_error_t apply_cli_string(void *field, const char *opt_value, co
 }
 
 static asciichat_error_t apply_cli_double(void *field, const char *opt_value, const option_descriptor_t *desc) {
+  (void)desc;
   // Handle optional arguments - if no value provided, keep default
   if (!opt_value || !opt_value[0]) {
     return ASCIICHAT_OK;
