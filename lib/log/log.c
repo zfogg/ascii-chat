@@ -828,10 +828,14 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
   va_end(args_copy);
 
-  // Don't strip ANSI codes during shutdown - just use original message
-  // This avoids malloc/free race conditions under memory pressure
+  // Strip ANSI codes from message for accurate grep matching and status screen capture
   char *stripped_msg = NULL;
   const char *clean_msg = msg_buffer;
+
+  if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
+    stripped_msg = ansi_strip_escapes(msg_buffer, (size_t)msg_len);
+    clean_msg = stripped_msg ? stripped_msg : msg_buffer;
+  }
 
   // Use format system to generate the complete log line
   char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
