@@ -256,11 +256,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Initialize render-file if enabled (skip "-" which is used for stdin render mode to stdout)
   // Also skip if render_file is explicitly disabled for temporary displays (splash screen)
   const char *render_file_opt = GET_OPTION(render_file);
+  log_info("render-file: opt='%s', skip=%d", render_file_opt, config->skip_render_file);
   if (!config->skip_render_file && strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
-    // Use explicit width/height options for render-file output
     int width = (int)GET_OPTION(width);
     int height = (int)GET_OPTION(height);
-    log_debug("render-file: Using explicit dimensions from options: %dx%d", width, height);
+    log_info("render-file: Creating encoder with cols=%d, rows=%d", width, height);
     // Use config fps if provided (from actual media source), otherwise use option default
     uint32_t encoder_fps = (config->render_fps > 0) ? config->render_fps : (uint32_t)GET_OPTION(fps);
     log_debug("render-file: Using FPS=%u for encoding (config=%u, option=%u)", encoder_fps, config->render_fps,
@@ -270,9 +270,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     if (rf_err != ASCIICHAT_OK)
       log_warn("render-file: init failed — file output disabled");
     else
-      log_info("render-file: initialized for %s", render_file_opt);
+      log_info("render-file: initialized for %s (ctx=%p)", render_file_opt, (void *)ctx->render_file);
   } else if (strcmp(render_file_opt, "-") == 0) {
     log_info("stdin render mode: stdout output enabled (skipping render_file encoder)");
+  } else {
+    log_info("render-file: NOT initializing (skip=%d, len=%zu)", config->skip_render_file, strlen(render_file_opt));
   }
 #endif
 
