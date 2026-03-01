@@ -222,6 +222,22 @@ int atomic_fetch_sub_int(atomic_t *a, int delta);
 
 int atomic_fetch_sub_int_impl(atomic_t *a, int64_t delta);
 
+/**
+ * @brief Atomically compare-and-swap an int
+ * @param a Pointer to atomic_t
+ * @param expected Expected current value (passed by reference)
+ * @param new_value Value to store if comparison succeeds
+ * @return true if swap succeeded, false otherwise
+ */
+#ifndef NDEBUG
+bool atomic_cas_int(atomic_t *a, int *expected, int new_value);
+#else
+#define atomic_cas_int(a, expected, new_value) \
+    atomic_cas_int_impl((a), (int64_t *)(expected), (int64_t)(new_value))
+#endif
+
+bool atomic_cas_int_impl(atomic_t *a, int64_t *expected, int64_t new_value);
+
 // ============================================================================
 // uint64_t Operations
 // ============================================================================

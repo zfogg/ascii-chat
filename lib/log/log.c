@@ -729,9 +729,12 @@ asciichat_error_t log_set_format(const char *format_str, bool console_only) {
 }
 
 bool log_lock_terminal(void) {
-  bool previous_state = atomic_exchange(&g_log.terminal_locked, true);
+  bool expected = atomic_load_bool(&g_log.terminal_locked);
+  while (!atomic_cas_bool(&g_log.terminal_locked, &expected, true)) {
+    // Retry if CAS failed
+  }
   atomic_store_u64(&g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
-  return previous_state;
+  return expected;
 }
 
 void log_unlock_terminal(bool previous_state) {
@@ -782,7 +785,7 @@ static void write_to_log_file_atomic(const char *buffer, int length, const char 
   // Single atomic write() call - no locking needed
   ssize_t written = platform_write(file, write_buf, write_len);
   if (written > 0) {
-    atomic_fetch_add(&g_log.current_size, (size_t)written);
+    atomic_fetch_add_u64(&g_log.current_size, (uint64_t)written);
     maybe_rotate_log();
   }
 }
