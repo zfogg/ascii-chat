@@ -2236,8 +2236,8 @@ void *client_send_thread_func(void *arg) {
       // Snapshot frame metadata (safe with double-buffer system)
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
       size_t frame_size = frame->size;                    // Size snapshot - prevent race condition with render thread
-      uint32_t width = atomic_load_bool(&client->width);
-      uint32_t height = atomic_load_bool(&client->height);
+      uint32_t width = client->width;
+      uint32_t height = client->height;
       uint64_t step1_ns = time_get_ns();
       uint64_t step2_ns = time_get_ns();
       uint64_t step3_ns = time_get_ns();
@@ -2791,9 +2791,9 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   // Auto-set dimensions from IMAGE_FRAME if not already set (fallback for missing CLIENT_CAPABILITIES)
   // This ensures render thread can start even if CLIENT_CAPABILITIES was never sent
-  if (atomic_load_bool(&client->width) == 0 || atomic_load_bool(&client->height) == 0) {
-    atomic_store_u64(&client->width, header->width);
-    atomic_store_u64(&client->height, header->height);
+  if (client->width == 0 || client->height == 0) {
+    client->width = header->width;
+    client->height = header->height;
     log_info("Client %s: Auto-set dimensions from IMAGE_FRAME: %ux%u (CLIENT_CAPABILITIES not received)",
              client->client_id, header->width, header->height);
   }
@@ -2801,7 +2801,7 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   // Auto-enable video stream if not already enabled
   bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
-    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       log_info_client(client, "First video frame received - streaming active");
     }
@@ -2930,16 +2930,16 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   // Auto-set dimensions from IMAGE_FRAME_H265 if not already set
-  if (atomic_load_bool(&client->width) == 0 || atomic_load_bool(&client->height) == 0) {
-    atomic_store_u64(&client->width, width);
-    atomic_store_u64(&client->height, height);
+  if (client->width == 0 || client->height == 0) {
+    client->width = width;
+    client->height = height;
     log_info("Client %s: Auto-set dimensions from IMAGE_FRAME_H265: %ux%u", client->client_id, width, height);
   }
 
   // Auto-enable video stream if not already enabled
   bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
-    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled video stream (received IMAGE_FRAME_H265)", client->client_id);
       log_info_client(client, "First H.265 video frame received - streaming active");
     }

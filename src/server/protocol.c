@@ -933,7 +933,7 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
 
   bool was_sending_video = atomic_load_bool(&client->is_sending_video);
   if (!was_sending_video) {
-    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
       if (client->socket != INVALID_SOCKET_VALUE) {
         log_info_client(client, "First H.265 video frame received - streaming active");
@@ -1655,8 +1655,8 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
 
   mutex_lock(&client->client_state_mutex);
 
-  atomic_store_u64(&client->width, width);
-  atomic_store_u64(&client->height, height);
+  client->width = width;
+  client->height = height;
 
   log_debug("Client %u dimensions: %ux%u, desired_fps=%u", client->client_id, client->width, client->height,
             caps->desired_fps);
