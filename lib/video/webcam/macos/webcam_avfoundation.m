@@ -269,10 +269,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
         // Find the best format that supports the target FPS
         AVCaptureDeviceFormat *bestFormat = nil;
         AVFrameRateRange *bestRange = nil;
-        int format_count = 0;
 
         for (AVCaptureDeviceFormat *format in captureDevice.formats) {
-          format_count++;
           for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
             if (range.maxFrameRate >= target_fps && (!bestFormat || range.maxFrameRate < bestRange.maxFrameRate)) {
               bestFormat = format;
