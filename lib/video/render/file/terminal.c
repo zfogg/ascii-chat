@@ -148,12 +148,21 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
   FT_Pos advance_x_26_6 = r->ft_face->glyph->advance.x;
-  log_debug("DEBUG: advance.x (26.6pt)=%ld, after >>6 = %d pixels (before +1)", advance_x_26_6,
-            (int)(advance_x_26_6 >> 6));
-  // Calculate cell width and add 1 for proper inter-character spacing
-  r->cell_w = (int)((advance_x_26_6 + 32) >> 6) + 1;
-  log_info("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for spacing), cols=%d → width_px=%d", advance_x_26_6,
-           r->cell_w, r->cols, r->cols * r->cell_w);
+  log_debug("DEBUG: advance.x (26.6pt)=%ld", advance_x_26_6);
+
+  // Calculate cell width from font metrics
+  r->cell_w = (int)(advance_x_26_6 >> 6);
+
+  // Only add spacing to fill entire frame if --stretch is specified
+  bool stretch_mode = GET_OPTION(stretch);
+  if (stretch_mode) {
+    r->cell_w++;
+    log_info("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (advance + 1 for stretch), cols=%d → width_px=%d",
+             advance_x_26_6, r->cell_w, r->cols, r->cols * r->cell_w);
+  } else {
+    log_info("ADVANCE_X: value=%ld (26.6pt) → cell_w=%d (preserve aspect ratio), cols=%d → width_px=%d", advance_x_26_6,
+             r->cell_w, r->cols, r->cols * r->cell_w);
+  }
 
   // For both bitmap and scalable fonts, use the actual glyph bitmap height
   // This ensures text doesn't overflow cells. Using size->metrics.height (line spacing)
@@ -161,20 +170,6 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->cell_h = r->ft_face->glyph->bitmap.rows;
   r->baseline = r->ft_face->glyph->bitmap_top;
   log_debug("DEBUG: cell_h=%d (from bitmap.rows), baseline=%d", r->cell_h, r->baseline);
-
-  // Apply aspect ratio correction unless --stretch is specified
-  // Terminal characters are typically 2:1 (height:width) to appear normal
-  bool stretch_mode = GET_OPTION(stretch);
-  if (!stretch_mode) {
-    int corrected_h = r->cell_w * 2;
-    if (corrected_h != r->cell_h) {
-      log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d), adjusting baseline", r->cell_h,
-               corrected_h, r->cell_w);
-      // When we change cell height, scale baseline proportionally
-      r->baseline = (r->baseline * corrected_h) / r->cell_h;
-      r->cell_h = corrected_h;
-    }
-  }
 
   r->width_px = r->cols * r->cell_w;
   r->height_px = r->rows * r->cell_h;

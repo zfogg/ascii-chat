@@ -30,3 +30,6 @@
 [submodule "deps/ascii-chat-deps/x265"]
 	path = deps/ascii-chat-deps/x265
 	url = https://github.com/videolan/x265.git
+[submodule "deps/ascii-chat-deps/yyjson"]
+	path = deps/ascii-chat-deps/yyjson
+	url = https://github.com/ibireme/yyjson.git
