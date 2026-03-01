@@ -930,13 +930,13 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
     return;
   }
 
-  bool was_sending_video = atomic_load_bool(&client->is_sending_video);
+  // Auto-enable video stream if not already enabled
+  // Use atomic_exchange to atomically set flag and check old value
+  bool was_sending_video = atomic_exchange_bool(&client->is_sending_video, true);
   if (!was_sending_video) {
-    if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
-      log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
-      if (client->socket != INVALID_SOCKET_VALUE) {
-        log_info_client(client, "First H.265 video frame received - streaming active");
-      }
+    log_info("Client %s auto-enabled H.265 video stream (received IMAGE_FRAME_H265)", client->client_id);
+    if (client->socket != INVALID_SOCKET_VALUE) {
+      log_info_client(client, "First H.265 video frame received - streaming active");
     }
   }
 
