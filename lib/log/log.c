@@ -828,14 +828,9 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args_copy);
   va_end(args_copy);
 
-  // Strip ANSI codes from message for accurate grep matching and status screen capture
-  char *stripped_msg = NULL;
+  // Use message buffer directly as clean message
+  // Stack allocation avoids heap corruption during shutdown signal handling
   const char *clean_msg = msg_buffer;
-
-  if (msg_len > 0 && msg_len < (int)sizeof(msg_buffer)) {
-    stripped_msg = ansi_strip_escapes(msg_buffer, (size_t)msg_len);
-    clean_msg = stripped_msg ? stripped_msg : msg_buffer;
-  }
 
   // Use format system to generate the complete log line
   char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
@@ -878,10 +873,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Check if terminal output is enabled (atomic load)
   bool is_enabled = atomic_load(&g_log.terminal_output_enabled);
   if (!is_enabled) {
-    // Terminal output disabled - cleanup and return (status screen already captured)
-    if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
-    }
+    // Terminal output disabled - return (status screen already captured)
     return;
   }
 
@@ -889,10 +881,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   if (atomic_load(&g_log.terminal_locked)) {
     uint64_t owner = atomic_load(&g_log.terminal_owner_thread);
     if (owner != (uint64_t)asciichat_thread_self()) {
-      // Terminal locked by another thread - cleanup and return
-      if (stripped_msg) {
-        SAFE_FREE(stripped_msg);
-      }
+      // Terminal locked by another thread - return
       return;
     }
   }
@@ -903,9 +892,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     (void)vfprintf(output_stream, fmt, args);
     safe_fprintf(output_stream, "\n");
     (void)fflush(output_stream);
-    if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
-    }
     return;
   }
 
@@ -915,9 +901,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     // Formatting failed - try to output something
     safe_fprintf(output_stream, "%s\n", clean_msg);
     (void)fflush(output_stream);
-    if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
-    }
     return;
   }
 
@@ -925,9 +908,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   // Match against PLAIN text (no ANSI codes) so offsets are correct
   size_t match_start = 0, match_len = 0;
   if (!grep_should_output(plain_log_line, &match_start, &match_len)) {
-    if (stripped_msg) {
-      SAFE_FREE(stripped_msg);
-    }
     return; // No match - suppress terminal output
   }
 
@@ -947,11 +927,6 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   } else {
     // No colors - output plain line
     safe_fprintf(output_stream, "%s\n", plain_log_line);
-  }
-
-  // Clean up stripped message
-  if (stripped_msg) {
-    SAFE_FREE(stripped_msg);
   }
 
   (void)fflush(output_stream);
@@ -1109,15 +1084,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     }
   } else {
     // Text format: output to file and terminal
-    // Strip ANSI codes from full log buffer once to avoid race between file and terminal paths
-    // This prevents write_to_log_file_atomic and write_to_terminal_atomic from each calling
-    // ansi_strip_escapes independently, which could create a race condition in multithreaded scenarios
-    char *stripped_log_buffer = ansi_strip_escapes(log_buffer, (size_t)msg_len);
-
-    // Write to file (atomic write syscall) - use the pre-stripped buffer
+    // No heap allocation - use log_buffer directly
+    // Write to file (atomic write syscall) - use original buffer (with ANSI codes)
     int file_fd = atomic_load(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
-      write_to_log_file_atomic(log_buffer, msg_len, stripped_log_buffer);
+      write_to_log_file_atomic(log_buffer, msg_len, NULL);
     }
 
     // Write to terminal (atomic state checks)
@@ -1125,11 +1096,6 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     va_start(args_terminal, fmt);
     write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
     va_end(args_terminal);
-
-    // Free the pre-stripped buffer (used by file writer)
-    if (stripped_log_buffer) {
-      SAFE_FREE(stripped_log_buffer);
-    }
   }
 }
 
