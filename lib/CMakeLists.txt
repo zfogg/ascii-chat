@@ -432,7 +432,7 @@ create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 
 # Link external dependencies (FFmpeg, ghostty)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
-target_link_libraries(ascii-chat-video ${FFMPEG_LINK_LIBRARIES})
+target_link_libraries(ascii-chat-video ${FFMPEG_LIBRARIES})
 target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
 target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
 
@@ -1105,7 +1105,7 @@ endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LINK_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
 endif()
 
 # Link render-file dependencies
@@ -1335,7 +1335,7 @@ endif()
 
 # Link FFmpeg for media file streaming
 if(FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFMPEG_LINK_LIBRARIES})
+    target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFMPEG_LIBRARIES})
 endif()
 
 # Platform-specific system libraries

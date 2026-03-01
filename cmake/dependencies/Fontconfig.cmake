@@ -16,6 +16,7 @@
 if(USE_MUSL)
     message(STATUS "${BoldYellow}⚠${ColorReset} Fontconfig: Not built for musl (GTK ecosystem excluded)")
     set(FONTCONFIG_LDFLAGS "")
+    set(FONTCONFIG_LIBRARIES "")
     set(FONTCONFIG_INCLUDE_DIRS "")
     return()
 endif()
@@ -26,6 +27,7 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
+    set(FONTCONFIG_LIBRARIES ${FONTCONFIG_LDFLAGS})
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
 elseif(APPLE)
@@ -33,12 +35,14 @@ elseif(APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
+    set(FONTCONFIG_LIBRARIES ${FONTCONFIG_LDFLAGS})
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
 elseif(WIN32)
     # Windows: Use vcpkg
     find_package(unofficial-fontconfig CONFIG REQUIRED)
 
+    set(FONTCONFIG_LIBRARIES unofficial::fontconfig::fontconfig)
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: vcpkg")
 
 else()

@@ -283,7 +283,7 @@ if(USE_MUSL)
     )
 
     # Link FFmpeg for media file streaming (musl-built static libraries - required)
-    target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LINK_LIBRARIES})
+    target_link_libraries(ascii-chat PRIVATE ${FFMPEG_LIBRARIES})
 
     # Link libwebsockets for WebSocket transport (musl-built static library - required)
     target_link_libraries(ascii-chat PRIVATE ${LIBWEBSOCKETS_LIBRARIES})

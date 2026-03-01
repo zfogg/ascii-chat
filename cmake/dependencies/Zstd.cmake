@@ -91,7 +91,8 @@ if(NOT zstd_FOUND)
     endif()
 endif()
 
-# Set uppercase variable for consistency with build system
 set(ZSTD_FOUND TRUE)
+set(ZSTD_LIBRARIES ${zstd_LIBRARIES})
+set(ZSTD_INCLUDE_DIRS ${zstd_INCLUDE_DIRS})
 
 message(STATUS "${BoldGreen}✓${ColorReset} zstd found")

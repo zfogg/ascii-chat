@@ -129,10 +129,8 @@ if(USE_MUSL)
     # Set FFmpeg variables for use in the build
     set(FFMPEG_FOUND TRUE PARENT_SCOPE)
     set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include" PARENT_SCOPE)
-    set(FFMPEG_LIBRARY_DIR "${FFMPEG_PREFIX}/lib" PARENT_SCOPE)
 
-    # Set FFMPEG_LINK_LIBRARIES for use in target_link_libraries
-    set(FFMPEG_LINK_LIBRARIES
+    set(FFMPEG_LIBRARIES
         "${FFMPEG_PREFIX}/lib/libavformat.a"
         "${FFMPEG_PREFIX}/lib/libavcodec.a"
         "${FFMPEG_PREFIX}/lib/libavutil.a"
@@ -140,6 +138,7 @@ if(USE_MUSL)
         "${FFMPEG_PREFIX}/lib/libswresample.a"
         PARENT_SCOPE
     )
+
     return()
 endif()
 
@@ -156,9 +155,6 @@ if(WIN32)
         # - FFMPEG_LIBRARIES: list of library paths
         # - FFMPEG_INCLUDE_DIRS: include directories
         # - FFMPEG_LIBRARY_DIRS: library search paths
-
-        # Set link libraries for target_link_libraries
-        set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LIBRARIES})
 
         message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found (Windows vcpkg)")
         message(STATUS "  - FFMPEG_INCLUDE_DIRS: ${FFMPEG_INCLUDE_DIRS}")
@@ -347,8 +343,6 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED
         "-lz"
     )
 
-    # Set FFMPEG_LINK_LIBRARIES for target_link_libraries
-    set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LIBRARIES})
 
     message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (static from source):")
     message(STATUS "  - libavformat: ${FFMPEG_PREFIX}/lib/libavformat.a")
@@ -361,8 +355,8 @@ endif()
 # =============================================================================
 # Fallback: Use pkg-config (dynamic linking)
 # =============================================================================
-# Check if we need to run pkg-config: either not found yet, or found but no link libs set
-if(NOT FFMPEG_FOUND OR NOT FFMPEG_LINK_LIBRARIES)
+# Check if we need to run pkg-config: either not found yet, or found but no libraries set
+if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
     message(STATUS "FFmpeg: Searching via pkg-config...")
     # Find pkg-config (required for finding FFmpeg)
     find_package(PkgConfig QUIET)
@@ -393,9 +387,8 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LINK_LIBRARIES)
         return()
     endif()
 
-    # Set FFMPEG_LINK_LIBRARIES for target_link_libraries (matches macOS static build)
     # Use FFMPEG_LDFLAGS which includes -L path and -l flags, not just library names
-    set(FFMPEG_LINK_LIBRARIES ${FFMPEG_LDFLAGS})
+    set(FFMPEG_LIBRARIES ${FFMPEG_LDFLAGS})
 
     message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found:")
     message(STATUS "  - libavformat: ${FFMPEG_libavformat_VERSION}")
@@ -406,6 +399,5 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LINK_LIBRARIES)
     message(STATUS "  - FFMPEG_LINK_LIBRARIES: ${FFMPEG_LINK_LIBRARIES}")
 endif()
 
-# Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND
-# are set and are available in parent scope
+# Variables FFMPEG_LIBRARIES, FFMPEG_INCLUDE_DIRS, and FFMPEG_FOUND are available
 # SourceFiles.cmake will conditionally include media source files when FFMPEG_FOUND is true
