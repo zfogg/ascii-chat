@@ -45,6 +45,10 @@ set(SIMD_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
     ${CMAKE_CURRENT_SOURCE_DIR}/scalar/halfblock.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/greyscale.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/256color.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/16color.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/16color_dithered.c
 )
 
 if(ENABLE_SIMD_SSE2)
