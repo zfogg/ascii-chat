@@ -611,7 +611,7 @@ void debug_sync_cleanup_thread(void) {
 
   // Use a timeout join to ensure we don't deadlock, but still unregister the thread
   // The debug thread should exit quickly after should_exit is set above
-  int join_result = asciichat_thread_join_timeout(&g_debug_thread, NULL, 100000000ULL); // 100ms timeout
+  int join_result = asciichat_thread_join_timeout(&g_debug_thread, NULL, 1000000000ULL); // 1 second timeout
   if (join_result == 0) {
     log_debug("[DEBUG_SYNC_CLEANUP] Thread joined successfully");
   } else if (join_result == -2) {
