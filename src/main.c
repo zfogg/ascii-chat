@@ -910,6 +910,9 @@ int main(int argc, char *argv[]) {
   };
   app_callbacks_register(&app_callbacks);
 
+  // Register shutdown callback so splash thread and other code can check for exit
+  shutdown_register_callback((shutdown_check_fn)should_exit);
+
 #ifndef NDEBUG
   // Start debug threads now, after initialization but before mode entry
   // This avoids lock contention during critical initialization phase
