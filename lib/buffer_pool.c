@@ -49,7 +49,7 @@ static inline void update_peak(atomic_t *peak, uint64_t value) {
  */
 
 buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
-  buffer_pool_t *pool = SAFE_MALLOC(sizeof(buffer_pool_t), buffer_pool_t *);
+  buffer_pool_t *pool = SAFE_CALLOC(1, sizeof(buffer_pool_t), buffer_pool_t *);
   if (!pool) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer pool");
     return NULL;
@@ -64,6 +64,10 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
   pool->max_bytes = max_bytes > 0 ? max_bytes : BUFFER_POOL_MAX_BYTES;
   pool->shrink_delay_ns = shrink_delay_ns > 0 ? shrink_delay_ns : BUFFER_POOL_SHRINK_DELAY_NS;
 
+  // Initialize atomic pointer fields
+  atomic_ptr_store(&pool->free_list, NULL);
+
+  // Initialize atomic counter fields
   atomic_store_u64(&pool->current_bytes, 0);
   atomic_store_u64(&pool->used_bytes, 0);
   atomic_store_u64(&pool->peak_bytes, 0);
@@ -113,6 +117,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     node->magic = MAGIC_BUFFER_POOL_FALLBACK; // Different magic for fallbacks
     node->_pad = 0;
     node->size = size;
+    atomic_ptr_store(&node->next, NULL); // Initialize atomic pointer field
     atomic_store_u64(&node->returned_at_ns, 0);
     node->pool = NULL; // No pool for fallbacks
 
@@ -172,6 +177,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
       node->magic = MAGIC_BUFFER_POOL_VALID;
       node->_pad = 0;
       node->size = size;
+      atomic_ptr_store(&node->next, NULL); // Initialize atomic pointer field
       atomic_store_u64(&node->returned_at_ns, 0);
       node->pool = pool;
 
