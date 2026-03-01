@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "mutex.h"
+#include <ascii-chat/atomic.h>
 
 #ifdef _WIN32
 #include "windows_compat.h"
@@ -41,7 +42,7 @@ typedef struct {
     uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
     uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
-    uint64_t waiting_count;        ///< Number of threads currently waiting
+    atomic_t waiting_count;        ///< Number of threads currently waiting
     uintptr_t last_waiting_key;     ///< Registry key of most recent waiter
     mutex_t *last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
     const char *last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
@@ -60,7 +61,7 @@ typedef struct {
     uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
     uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
-    uint64_t waiting_count;        ///< Number of threads currently waiting
+    atomic_t waiting_count;        ///< Number of threads currently waiting
     uintptr_t last_waiting_key;     ///< Registry key of most recent waiter
     mutex_t *last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
     const char *last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)

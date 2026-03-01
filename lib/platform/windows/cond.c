@@ -25,7 +25,7 @@ int cond_init(cond_t *cond, const char *name) {
   cond->last_signal_time_ns = 0;
   cond->last_broadcast_time_ns = 0;
   cond->last_wait_time_ns = 0;
-  cond->waiting_count = 0;
+  cond->waiting_count = (atomic_t){0};
   cond->last_waiting_key = 0;
   return 0;
 }
@@ -84,8 +84,8 @@ int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
     DWORD err = GetLastError();
     if (err == ERROR_TIMEOUT) {
       // If we timed out (not signaled), decrement waiting_count
-      if (cond && cond->waiting_count > 0) {
-        atomic_fetch_sub((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
+      if (cond && atomic_load_u64(&cond->waiting_count) > 0) {
+        atomic_fetch_sub_u64(&cond->waiting_count, 1);
       }
       return ETIMEDOUT; // Match POSIX pthread_cond_timedwait behavior
     }
