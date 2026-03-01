@@ -1,5 +1,5 @@
 /**
- * @file video/render/sve/background.c
+ * @file video/ascii/sve/background.c
  * @ingroup video
  * @brief ARM SVE-accelerated ASCII background color rendering
  *
@@ -8,8 +8,8 @@
  */
 
 #if SIMD_SUPPORT_SVE
-#include <ascii-chat/video/render/sve/background.h>
-#include <ascii-chat/video/render/sve/foreground.h>
+#include <ascii-chat/video/ascii/sve/background.h>
+#include <ascii-chat/video/ascii/sve/foreground.h>
 #include <ascii-chat/common.h>
 
 // Wrapper for background color rendering

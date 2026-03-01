@@ -1,5 +1,5 @@
 /**
- * @file video/render/sse2/background.c
+ * @file video/ascii/sse2/background.c
  * @ingroup video
  * @brief SSE2-accelerated ASCII background color rendering
  *
@@ -8,8 +8,8 @@
  */
 
 #if SIMD_SUPPORT_SSE2
-#include <ascii-chat/video/render/sse2/background.h>
-#include <ascii-chat/video/render/sse2/foreground.h>
+#include <ascii-chat/video/ascii/sse2/background.h>
+#include <ascii-chat/video/ascii/sse2/foreground.h>
 #include <ascii-chat/common.h>
 
 // Wrapper for background color rendering

@@ -1,5 +1,5 @@
 /**
- * @file video/simd/sve.c
+ * @file video/ascii/sve.c
  * @ingroup video
  * @brief 🚀 ARM SVE (Scalable Vector Extension) ASCII rendering with variable-length vectors
  */
@@ -9,10 +9,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <ascii-chat/video/render/sve/foreground.h>
+#include <ascii-chat/video/ascii/sve/foreground.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/simd/ascii_simd.h> // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
-#include <ascii-chat/video/output_buffer.h>   // For outbuf_t, emit_*, ob_*
+#include <ascii-chat/video/ascii/ascii_simd.h> // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
+#include <ascii-chat/video/output_buffer.h>    // For outbuf_t, emit_*, ob_*
 
 #include <arm_sve.h>
 

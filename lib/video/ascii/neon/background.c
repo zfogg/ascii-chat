@@ -1,5 +1,5 @@
 /**
- * @file video/render/neon/background.c
+ * @file video/ascii/neon/background.c
  * @ingroup video
  * @brief ARM NEON-accelerated ASCII background color rendering
  *
@@ -8,8 +8,8 @@
  */
 
 #if SIMD_SUPPORT_NEON
-#include <ascii-chat/video/render/neon/background.h>
-#include <ascii-chat/video/render/neon/foreground.h>
+#include <ascii-chat/video/ascii/neon/background.h>
+#include <ascii-chat/video/ascii/neon/foreground.h>
 #include <ascii-chat/common.h>
 
 // Wrapper for background color rendering

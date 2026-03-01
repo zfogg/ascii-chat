@@ -1,5 +1,5 @@
 /**
- * @file video/simd/ssse3.c
+ * @file video/ascii/ssse3.c
  * @ingroup video
  * @brief 🚀 SSSE3-accelerated ASCII rendering with advanced shuffle operations for x86
  */
@@ -12,8 +12,8 @@
 
 #include <tmmintrin.h>
 
-#include <ascii-chat/video/render/ssse3/foreground.h>
-#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/ascii/ssse3/foreground.h>
+#include <ascii-chat/video/ascii/ascii_simd.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/output_buffer.h>
 #include <ascii-chat/util/overflow.h>

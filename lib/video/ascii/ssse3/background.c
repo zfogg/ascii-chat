@@ -1,5 +1,5 @@
 /**
- * @file video/render/ssse3/background.c
+ * @file video/ascii/ssse3/background.c
  * @ingroup video
  * @brief SSSE3-accelerated ASCII background color rendering
  *
@@ -8,8 +8,8 @@
  */
 
 #if SIMD_SUPPORT_SSSE3
-#include <ascii-chat/video/render/ssse3/background.h>
-#include <ascii-chat/video/render/ssse3/foreground.h>
+#include <ascii-chat/video/ascii/ssse3/background.h>
+#include <ascii-chat/video/ascii/ssse3/foreground.h>
 #include <ascii-chat/common.h>
 
 // Wrapper for background color rendering

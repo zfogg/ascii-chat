@@ -1,5 +1,5 @@
 /**
- * @file video/simd/neon.c
+ * @file video/ascii/neon.c
  * @ingroup video
  * @brief ⚡ ARM NEON-accelerated ASCII rendering with 128-bit vector operations for ARM64
  */
@@ -19,10 +19,10 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/video/render/neon/foreground.h>
-#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/ascii/neon/foreground.h>
+#include <ascii-chat/video/ascii/ascii_simd.h>
 #include <ascii-chat/video/image.h>
-#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/util/overflow.h>

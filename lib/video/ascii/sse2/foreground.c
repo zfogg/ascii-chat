@@ -1,5 +1,5 @@
 /**
- * @file video/simd/sse2.c
+ * @file video/ascii/sse2.c
  * @ingroup video
  * @brief ⚡ SSE2-accelerated ASCII rendering with 128-bit vector operations (x86 baseline)
  */
@@ -12,8 +12,8 @@
 
 #include <emmintrin.h>
 
-#include <ascii-chat/video/render/sse2/foreground.h>
-#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/ascii/sse2/foreground.h>
+#include <ascii-chat/video/ascii/ascii_simd.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/output_buffer.h>
 #include <ascii-chat/util/overflow.h>

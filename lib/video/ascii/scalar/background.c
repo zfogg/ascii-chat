@@ -1,5 +1,5 @@
 /**
- * @file video/render/scalar/background.c
+ * @file video/ascii/scalar/background.c
  * @ingroup video
  * @brief Scalar ASCII background color rendering
  *
@@ -7,8 +7,8 @@
  * Uses background colors instead of foreground colors for output.
  */
 
-#include <ascii-chat/video/render/scalar/background.h>
-#include <ascii-chat/video/render/scalar/foreground.h>
+#include <ascii-chat/video/ascii/scalar/background.h>
+#include <ascii-chat/video/ascii/scalar/foreground.h>
 #include <ascii-chat/common.h>
 
 // Scalar background rendering wrapper

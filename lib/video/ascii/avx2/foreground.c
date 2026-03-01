@@ -1,5 +1,5 @@
 /**
- * @file video/simd/avx2.c
+ * @file video/ascii/avx2.c
  * @ingroup video
  * @brief 🚀 AVX2-accelerated ASCII rendering with 256-bit vector operations for x86_64
  */
@@ -9,8 +9,8 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/video/render/avx2/foreground.h>
-#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/ascii/avx2/foreground.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/video/ansi_fast.h>
