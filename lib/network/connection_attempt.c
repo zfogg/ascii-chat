@@ -31,14 +31,10 @@
 #include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/websocket/client.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/app_callbacks.h>
 
 #include <string.h>
 #include <memory.h>
-
-// Client-side crypto functions and session management
-#include "../src/client/crypto.h"
-#include "../src/client/server.h"
-#include "../src/main.h"
 
 // Forward declare session function (avoids header include issues)
 struct websocket_client;
@@ -192,8 +188,8 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Check if shutdown was requested before attempting connection
-  if (should_exit()) {
+  // Check if shutdown was requested before attempting connection (via callback if available)
+  if (APP_CALLBACK_BOOL(should_exit)) {
     return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
   }
 
@@ -208,11 +204,6 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     url_parts_t url_parts = {0};
     if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
       log_debug("WebSocket URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
-      // Set server IP for crypto context (same as TCP path does)
-      if (url_parts.host[0] != '\0') {
-        server_connection_set_ip(url_parts.host);
-        log_debug("Server IP extracted from WebSocket URL: %s", url_parts.host);
-      }
     }
 
     log_info("Attempting WebSocket connection to %s", ws_url);
@@ -248,22 +239,26 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode,
               ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
 
-    // Set crypto mode before initialization
-    client_crypto_set_mode(crypto_mode);
+    // Set crypto mode before initialization via callback
+    const crypto_context_t *crypto_ctx = NULL;
 
-    // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
     if (crypto_mode != ACIP_CRYPTO_NONE) {
       log_debug("Initializing crypto context for WebSocket...");
-      if (client_crypto_init() != 0) {
+
+      APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+
+      if (APP_CALLBACK_INT(client_crypto_init) != 0) {
         log_error("Failed to initialize crypto context");
         url_parts_destroy(&url_parts);
         return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
       }
       log_debug("Crypto context initialized successfully");
-    }
 
-    // Get crypto context
-    const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+      // Get crypto context if ready
+      if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+        crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+      }
+    }
 
     // Create WebSocket client instance
     websocket_client_t *ws_client = websocket_client_create("discovery_connection");
@@ -348,11 +343,9 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     return SET_ERRNO(ERROR_NETWORK, "Invalid socket after TCP connection");
   }
 
-  // Extract and set server IP for crypto context initialization
-  // TCP client already resolved and connected to the server IP, stored in tcp_client->server_ip
+  // Note: TCP client stores server IP in tcp_client->server_ip for potential crypto context use
   if (tcp_client->server_ip[0] != '\0') {
-    server_connection_set_ip(tcp_client->server_ip);
-    log_debug("Server IP extracted from TCP client: %s", tcp_client->server_ip);
+    log_debug("Server IP available from TCP client: %s", tcp_client->server_ip);
   } else {
     log_warn("TCP client did not populate server_ip field");
   }
@@ -377,14 +370,16 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   log_debug("TCP crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode, ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode),
             ACIP_CRYPTO_HAS_AUTH(crypto_mode));
 
-  // Set crypto mode before initialization
-  client_crypto_set_mode(crypto_mode);
+  // Setup crypto operations via callbacks
+  const crypto_context_t *crypto_ctx = NULL;
 
-  // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
-  // This must happen AFTER setting server IP, as crypto init reads server IP/port
   if (crypto_mode != ACIP_CRYPTO_NONE) {
+    APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+
+    // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
+    // This must happen AFTER setting server IP, as crypto init reads server IP/port
     log_debug("Initializing crypto context...");
-    if (client_crypto_init() != 0) {
+    if (APP_CALLBACK_INT(client_crypto_init) != 0) {
       log_error("Failed to initialize crypto context");
       if (created_tcp_client) {
         tcp_client_destroy(&tcp_client);
@@ -395,7 +390,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
 
     // Perform crypto handshake with server
     log_debug("Performing crypto handshake with server...");
-    if (client_crypto_handshake(sockfd) != 0) {
+    if (APP_CALLBACK_INT_SOCKET(client_crypto_handshake, sockfd) != 0) {
       log_error("Crypto handshake failed");
       if (created_tcp_client) {
         tcp_client_destroy(&tcp_client);
@@ -403,10 +398,12 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       return SET_ERRNO(ERROR_NETWORK, "Crypto handshake failed");
     }
     log_debug("Crypto handshake completed successfully");
-  }
 
-  // Get crypto context after handshake
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+    // Get crypto context after handshake
+    if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+      crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+    }
+  }
 
   // Create ACIP transport for protocol-agnostic packet sending/receiving
   acip_transport_t *transport = acip_tcp_transport_create("connection", sockfd, (crypto_context_t *)crypto_ctx);
@@ -447,8 +444,8 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
     return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
   }
 
-  // Check if shutdown was requested
-  if (should_exit()) {
+  // Check if shutdown was requested (via callback if available)
+  if (APP_CALLBACK_BOOL(should_exit)) {
     return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
   }
 
@@ -465,17 +462,21 @@ asciichat_error_t connection_attempt_websocket(connection_attempt_context_t *ctx
   ctx->timeout_ns = CONN_TIMEOUT_TCP;
 
   // Initialize crypto context if encryption is enabled
+  const crypto_context_t *crypto_ctx = NULL;
   if (!GET_OPTION(no_encrypt)) {
     log_debug("Initializing crypto context for WebSocket...");
-    if (client_crypto_init() != 0) {
+
+    if (APP_CALLBACK_INT(client_crypto_init) != 0) {
       log_error("Failed to initialize crypto context");
       return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
     }
     log_debug("Crypto context initialized successfully");
-  }
 
-  // Get crypto context
-  const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+    // Get crypto context if ready
+    if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+      crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+    }
+  }
 
   // Create WebSocket client instance
   websocket_client_t *ws_client = websocket_client_create("connection");

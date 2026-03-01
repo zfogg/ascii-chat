@@ -18,7 +18,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
-#include <threads.h>
 
 #ifndef NDEBUG
 

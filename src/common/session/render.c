@@ -27,6 +27,7 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/app_callbacks.h>
 
 #include <stddef.h>
 #include <stdbool.h>
@@ -502,8 +503,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         SAFE_FREE(ascii_frame);
         // Signal application to exit in snapshot mode
-        extern void signal_exit(void);
-        signal_exit();
+        APP_CALLBACK_VOID(signal_exit);
         break;
       }
 

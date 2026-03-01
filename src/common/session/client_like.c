@@ -25,6 +25,7 @@
 #include <ascii-chat/network/tcp/client.h>
 #include <ascii-chat/network/websocket/client.h>
 #include <ascii-chat/util/url.h>
+#include <ascii-chat/app_callbacks.h>
 
 #include <string.h>
 #include <stdatomic.h>
@@ -45,9 +46,6 @@ static websocket_client_t *g_websocket_client = NULL;
 
 // Module-level stdin reader for ASCII-to-video rendering (stdin render mode only)
 static stdin_frame_reader_t *g_stdin_reader = NULL;
-
-// External exit function from src/main.c
-extern bool should_exit(void);
 
 /* ============================================================================
  * Public Accessors
@@ -83,7 +81,7 @@ stdin_frame_reader_t *session_client_like_get_stdin_reader(void) {
  */
 static bool capture_should_exit_adapter(void *user_data) {
   (void)user_data;
-  if (should_exit()) {
+  if (APP_CALLBACK_BOOL(should_exit)) {
     return true;
   }
   if (g_current_config && g_current_config->custom_should_exit) {
@@ -98,7 +96,7 @@ static bool capture_should_exit_adapter(void *user_data) {
  */
 static bool display_should_exit_adapter(void *user_data) {
   (void)user_data;
-  if (should_exit()) {
+  if (APP_CALLBACK_BOOL(should_exit)) {
     return true;
   }
   if (g_current_config && g_current_config->custom_should_exit) {
@@ -558,7 +556,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   log_debug("[SETUP_SPLASH] Splash will remain visible during connection attempts");
 
   // Exit early if shutdown was requested (e.g., user pressed Ctrl-C)
-  if (should_exit()) {
+  if (APP_CALLBACK_BOOL(should_exit)) {
     log_debug("[SETUP] Shutdown requested, exiting early");
     log_debug("[SETUP_SPLASH] Ending splash due to early shutdown request");
     splash_intro_done();
@@ -640,7 +638,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
 
     // If not retrying or shutdown requested, exit loop
-    if (!should_retry || should_exit()) {
+    if (!should_retry || APP_CALLBACK_BOOL(should_exit)) {
       break;
     }
 
@@ -662,12 +660,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
 
     // Apply reconnection delay if configured
-    // Check should_exit() frequently during sleep so SIGTERM can interrupt reconnection attempts
+    // Check APP_CALLBACK_BOOL(should_exit) frequently during sleep so SIGTERM can interrupt reconnection attempts
     if (config->reconnect_delay_ms > 0) {
       unsigned int remaining_ms = config->reconnect_delay_ms;
       const unsigned int check_interval_ms = 100; // Check exit flag every 100ms
 
-      while (remaining_ms > 0 && !should_exit()) {
+      while (remaining_ms > 0 && !APP_CALLBACK_BOOL(should_exit)) {
         unsigned int sleep_ms = (remaining_ms < check_interval_ms) ? remaining_ms : check_interval_ms;
         platform_sleep_ms(sleep_ms);
         remaining_ms -= sleep_ms;
@@ -702,7 +700,7 @@ cleanup:
 
   // Stop audio thread before destroying audio context to prevent use-after-free
   // The audio worker thread may still be logging when we destroy the buffer
-  audio_stop_thread();
+  APP_CALLBACK_VOID(audio_stop_thread);
 
   // Stop and destroy audio (after PortAudio is terminated and audio thread is stopped)
   if (audio_ctx) {
@@ -744,7 +742,7 @@ cleanup:
   // Stop splash animation and enforce minimum display time (even on error path)
   // But skip completely if shutting down - don't interact with splash at all during shutdown
   // The animation thread will exit on its own when it detects shutdown_is_requested()
-  if (!should_exit()) {
+  if (!APP_CALLBACK_BOOL(should_exit)) {
     log_debug("[CLEANUP] About to call splash_intro_done()");
     splash_intro_done();
     log_debug("[CLEANUP] splash_intro_done() returned");
