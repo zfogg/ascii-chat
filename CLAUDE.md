@@ -45,6 +45,60 @@ ctest --test-dir build --output-on-failure --parallel 0
 
 Get full options with: `./build/bin/ascii-chat <mode> --help`
 
+## Help System & Debug Options
+
+**Mode Legend:** S=server, C=client, M=mirror, DS=discovery-service, D=discovery
+
+### Mode Help Commands
+- **`./build/bin/ascii-chat --help`** (all) - Shows all global flags, modes, examples, environment variables, and keybindings.
+- **`./build/bin/ascii-chat <mode> --help`** (S, C, M, DS) - Mode-specific help with available options for that mode. Key help key `?` in interactive mode shows help overlay.
+
+### Connection & Addressing Options
+- **`--address`** (S, C, DS) - Bind address for server (supports IPv4/IPv6, syntax 0-2); client connects to this address with `[host][:port]` format (defaults localhost:27224).
+- **`--port`** (S, C, DS) - Port number (default: 27224 for server/client, 27225 for discovery-service).
+- **`--discovery-service`** (S, C, D) - Enable discovery service integration for P2P session discovery.
+- **`--discovery-service-port`** (S, C, D) - Discovery service server port (default 27225).
+- **`--max-clients`** (S) - Maximum concurrent clients (server mode only).
+
+### Media Input Options
+- **`--file FILE`** (S, C, M) - Use local file instead of webcam (supports .mp4, .mkv, .webm, etc.; use `-f '-'` for stdin piping).
+- **`--url URL`** (S, C, M) - Stream from HTTP/HTTPS URL, HLS (.m3u8), RTSP, or YouTube/TikTok (via yt-dlp).
+- **`--yt-dlp-options OPTIONS`** (S, C, M) - Custom yt-dlp flags for streaming site extraction.
+
+### Cryptography & Authentication
+- **`--password`** (S, C) - Password-based authentication (ephemeral DH without identity verification).
+- **`--key FILE`** (S, C) - SSH key (ed25519 .pem format) for public key authentication; server advertises its key to clients.
+- **`--server-key FILE|github:USERNAME|URL`** (C) - Validate server's public key from local file, fetch from GitHub (github:USERNAME), or HTTP(S) URL (TOFU with known_hosts).
+- **`--client-keys FILE|github:USERNAME|URL`** (S) - Validate client public keys from local file, GitHub (github:USERNAME), or HTTP(S) URL (server mode).
+
+### Display & Rendering Options
+- **`--width`** (M, C, S) - Override terminal width detection.
+- **`--height`** (M, C, S) - Override terminal height detection.
+- **`--color-mode {auto|none|16|256|truecolor}`** (all) - Force color output mode; CLAUDECODE auto-detects unless piped to file.
+- **`--strip-ansi`** (all) - Remove ANSI escape codes (useful for piping to non-terminal or text files).
+- **`--show-capabilities`** (all) - Detect and display terminal capabilities (color level, UTF-8 support), then exit immediately.
+- **`--no-splash-screen`** (S, C, M, DS, D) - Disable intro splash screen; CLAUDECODE override to suppress automated banner.
+- **`--splash-screen`** (S, C, M, DS, D) - Force splash screen (overrides CLAUDECODE=1 suppression).
+- **`--status-screen`** (S, C, M, DS, D) - Enable live status screen with logs (disabled under CLAUDECODE=1 by default).
+
+### Snapshot & Recording
+- **`--snapshot`** (C, M) - Capture exactly one frame and exit (useful for scripting). **Gotcha**: Doesn't auto-detect terminal dimensions when piped.
+- **`--snapshot-delay`** (C, M) - Delay before snapshot (default 0). **Script tip**: Use `--snapshot --snapshot-delay 0 | pbcopy` to copy frame to clipboard on macOS.
+
+### Logging & Debugging Options
+All modes support these (debug builds only):
+- **`--log-level {DEV|DEBUG|INFO|WARN|ERROR|FATAL}`** (all) - Verbosity control; pair with `--grep` for filtering specific logs.
+- **`--log-file PATH`** (all) - Write logs to file instead of stdout/stderr (useful for post-mortem debugging with `--grep` filtering).
+- **`--grep /PATTERN/FLAGS`** (all) - Filter logs by regex pattern; flags: `i` (case-insensitive), `F` (literal string), `C#` (context lines), `g` (highlight matches), `I` (invert/exclude).
+- **`--sync-state [TIME]`** (all) - Print sync primitives state (mutex/rwlock/condition variables) at optional time interval.
+- **`--backtrace [TIME]`** (all) - Print call stack with optional time offset.
+- **`--memory-report [TIME]`** (all) - Periodic memory usage report; red numbers indicate leaks.
+
+### Environment Variables
+All `--flag-name` options map to `ASCII_CHAT_FLAG_NAME` (hyphens → underscores); precedence: config file < env vars < CLI flags.
+- **`CLAUDECODE=1`** - Auto-set by Claude Code; enables splash screen, auto-detects color/UTF-8, disables status screen (override with `--splash-screen` or `--status-screen`).
+- **`ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y;n;password123'`** - Stack-based auto-answers for interactive prompts (semicolon-separated; useful for automation/testing).
+
 ## Binary Modes
 
 ascii-chat binary has four primary modes:
@@ -437,27 +491,93 @@ Every packet has:
 
 ```
 ascii-chat/
-├── src/                    # Mode entry points
-│   ├── main.c              # Unified binary (mode routing)
-│   ├── server/             # Server mode
-│   ├── client/             # Client mode
-│   ├── mirror/             # Mirror mode
-│   └── discovery-service/  # Discovery service mode / ACDS
-│   └── discovery/          # Discovery mode for connecting to sessions via acds
-├── lib/                    # Core libraries
-│   ├── platform/           # Cross-platform abstractions
-│   ├── session/            # Session management (display, splash, status)
-│   ├── crypto/             # Encryption & authentication
-│   ├── network/            # Protocol & packet handling
-│   ├── video/              # Webcam, ASCII conversion, SIMD
-│   ├── audio/              # PortAudio capture/playback
-│   ├── discovery/          # ACDS implementation
-│   ├── log/                # Logging system
-│   ├── options/            # CLI parsing
-│   └── debug/              # Memory tracking
-├── tests/                  # Criterion test suite
-├── docs/                   # Documentation
-└── build/                  # CMake build directory
+├── src/                        # Mode entry points and binary initialization
+│   ├── main.c                  # Unified binary that routes to mode implementations based on CLI arguments
+│   ├── server/                 # Server mode implementation for multi-client video streaming and audio mixing
+│   ├── client/                 # Client mode implementation that connects to server and streams webcam/media
+│   ├── mirror/                 # Mirror mode for local-only testing of media encoding without networking
+│   ├── discovery-service/      # ACDS (ascii-chat Discovery Service) implementation for P2P session discovery
+│   ├── discovery/              # Discovery mode client that connects via session strings from ACDS
+│   ├── common/                 # Shared code and utilities used by multiple modes
+│   ├── session/                # Session initialization and lifecycle management across modes
+│   ├── tooling/                # Development and debugging tools integrated into the binary
+│   └── web/                    # Web components and WebRTC integration for browser-based clients
+├── lib/                        # Core reusable libraries for all modes
+│   ├── platform/               # Cross-platform abstractions (threads, mutexes, sockets, file I/O)
+│   │   ├── linux/              # Linux-specific implementations using POSIX APIs and system calls
+│   │   ├── macos/              # macOS-specific implementations using Cocoa and Darwin APIs
+│   │   ├── windows/            # Windows-specific implementations using Win32 APIs
+│   │   ├── posix/              # POSIX-compliant implementations for Unix-like systems
+│   │   └── wasm/               # WebAssembly implementations for browser environments
+│   ├── session/                # Session management UI including splash screens, status displays, and help overlays
+│   ├── crypto/                 # Encryption, authentication, SSH key parsing, and cryptographic handshakes
+│   │   ├── ssh/                # SSH key parsing, format detection, and serialization utilities
+│   │   ├── gpg/                # GPG keyring integration and key management operations
+│   │   └── handshake/          # Cryptographic handshake protocol implementation and state machine
+│   ├── network/                # Network protocol implementation, packet structure, connection handling, and streaming
+│   │   ├── tcp/                # TCP connection management and socket handling
+│   │   ├── websocket/          # WebSocket protocol implementation for browser connections
+│   │   ├── webrtc/             # WebRTC data channels and media stream handling
+│   │   ├── acip/               # Custom ACIP protocol for ASCII chat packet transmission
+│   │   ├── mdns/               # mDNS service discovery and local network browsing
+│   │   ├── nat/                # NAT traversal and port mapping utilities
+│   │   ├── rate_limit/         # Connection rate limiting and traffic shaping
+│   │   └── consensus/          # Consensus algorithms for distributed state synchronization
+│   ├── video/                  # Webcam capture, V4L2/AVFoundation drivers, ASCII art rendering, and SIMD optimizations
+│   │   ├── webcam/             # Webcam capture drivers (V4L2 on Linux, AVFoundation on macOS)
+│   │   ├── h265/               # H.265/HEVC video codec support via FFmpeg
+│   │   ├── simd/               # SIMD-optimized video processing (AVX2, NEON, etc.)
+│   │   ├── scalar/             # Scalar (non-SIMD) video processing fallback implementations
+│   │   └── render/             # ASCII art rendering and terminal output generation
+│   ├── audio/                  # PortAudio integration for microphone capture, speaker output, and audio mixing
+│   ├── media/                  # Media file/URL handling with FFmpeg, yt-dlp integration, and format detection
+│   ├── discovery/              # ACDS client library for session registration, lookup, and cleanup
+│   ├── log/                    # Centralized logging system with filtering, formatting, and file output
+│   ├── options/                # CLI argument parsing with environment variable mapping and validation
+│   │   ├── builder/            # Option descriptor building and validation framework
+│   │   ├── parsing/            # CLI argument parsing and environment variable resolution
+│   │   ├── registry/           # Global option registry and lookup system
+│   │   ├── config/             # Configuration file loading and merging
+│   │   ├── completions/        # Shell completion generation (bash, zsh, fish)
+│   │   └── manpage/            # Man page documentation generation from option descriptors
+│   ├── util/                   # Utility functions for strings, IP validation, URLs, and common helpers
+│   ├── debug/                  # Memory allocation tracking, sync primitive inspection, and performance profiling
+│   ├── common/                 # Shared structures and utilities used across multiple library modules
+│   ├── core/                   # Core data structures and abstractions used throughout the codebase
+│   ├── ui/                     # Terminal UI components for interactive displays and user feedback
+│   ├── tooling/                # Internal tools for code generation, validation, and build-time utilities
+│   │   ├── defer/              # Deferred execution and resource cleanup helpers
+│   │   ├── panic/              # Panic/crash handling and diagnostic reporting
+│   │   └── query/              # Query and introspection tools for runtime analysis
+│   ├── tests/                  # Shared test utilities and fixtures for the test suite
+│   ├── uthash/                 # Hash table implementation library (vendored dependency)
+│   ├── cmake/                  # CMake support libraries and configuration helpers
+│   └── pkgconfig/              # pkg-config definition files for library installation
+├── cmake/                      # Build system configuration and utilities
+│   ├── dependencies/           # CMake modules for finding/configuring external libraries (PCRE2, FFmpeg, etc.)
+│   ├── targets/                # Build target definitions and custom commands for code generation
+│   ├── tools/                  # CMake utility scripts for template substitution and binary embedding
+│   ├── platform/               # Platform-specific CMake configuration (Windows, macOS, Linux)
+│   ├── compiler/               # Compiler detection and flag configuration for Clang
+│   ├── toolchains/             # CMake toolchain files for cross-compilation and build environments
+│   ├── init/                   # CMake initialization and project setup helpers
+│   ├── install/                # Installation configuration and packaging rules
+│   ├── test/                   # Test framework configuration and test runner setup
+│   ├── utils/                  # General-purpose CMake utility macros and functions
+│   └── scripts/                # CMake-invoked scripts for build-time operations
+├── include/                    # Public header files organized by module
+│   └── ascii-chat/             # Main header directory with subdirectories mirroring lib/ structure
+├── tests/                      # Criterion test suite with unit and integration tests for all modules
+│   └── unit/                   # Unit tests for individual modules organized by component
+├── docs/                       # Protocol documentation, architecture guides, and usage examples
+├── deploy/                     # Deployment configurations for ACDS, coturn, and cloud infrastructure
+├── web/                        # Web applications and browser-based client interfaces
+├── images/                     # Project images, screenshots, and visual assets
+├── git-hooks/                  # Git hooks for pre-commit checks and automation
+├── witness/                    # Test witness files and reference data for regression testing
+├── polecats/                   # Project management and tracking utilities
+├── vcpkg-overlay/              # Custom vcpkg port definitions for dependency management
+└── build/                      # CMake-generated build output (binaries, object files, generated code)
 ```
 
 ## Testing
