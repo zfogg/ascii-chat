@@ -131,7 +131,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Main render loop
   log_debug("session_render_loop: entering main loop");
+  int loop_iteration = 0;
   while (!should_exit(user_data)) {
+    loop_iteration++;
+    if (loop_iteration % 60 == 0) {
+      log_debug("session_render_loop: iteration %d, should_exit check returning false", loop_iteration);
+    }
     // Snapshot mode: exit at start of iteration if done
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
     if (snapshot_mode && snapshot_done) {

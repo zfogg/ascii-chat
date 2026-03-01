@@ -34,6 +34,9 @@
 // Global exit API (exported in main.h)
 #include "main.h"
 
+// Application callbacks for library integration
+#include <ascii-chat/app_callbacks.h>
+
 // Utilities
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
@@ -205,10 +208,11 @@ void set_interrupt_callback(void (*cb)(void)) {
 static void handle_sigterm(int sig) {
   (void)sig;
   // Use log_console for SIGTERM - it's async-signal-safe
-  log_console(LOG_INFO, "SIGTERM received - shutting down");
+  log_console(LOG_INFO, "SIGTERM/SIGINT received - shutting down");
 
 #ifndef NDEBUG
-  // Trigger debug sync state printing on shutdown
+  // Trigger debug sync state printing on shutdown (async-signal-safe)
+  // This sets a flag for the debug thread to print sync state
   debug_sync_trigger_print();
 #endif
 
@@ -285,10 +289,12 @@ void setup_signal_handlers(void) {
 
 #ifndef _WIN32
   platform_signal_handler_t handlers[] = {
+      {SIGINT, handle_sigterm},
       {SIGTERM, handle_sigterm},
       {SIGPIPE, SIG_IGN},
   };
-  platform_register_signal_handlers(handlers, 2);
+  platform_register_signal_handlers(handlers, 3);
+  log_debug("Signal handlers registered");
 #endif
 }
 
@@ -897,6 +903,14 @@ int main(int argc, char *argv[]) {
   // Set up global signal handlers BEFORE mode dispatch
   // All modes use the same centralized exit mechanism
   setup_signal_handlers();
+
+  // Register application callbacks so lib code can check exit flags
+  // This connects the render loop's should_exit check to signal_exit()
+  static const app_callbacks_t app_callbacks = {
+      .should_exit = should_exit,
+      .signal_exit = signal_exit,
+  };
+  app_callbacks_register(&app_callbacks);
 
 #ifndef NDEBUG
   // Start debug threads now, after initialization but before mode entry
