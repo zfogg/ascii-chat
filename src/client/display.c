@@ -289,10 +289,13 @@ void display_reset_for_new_connection() {
  * @ingroup client_display
  */
 void display_disable_logging_for_first_frame() {
-  // Disable terminal logging before clearing display and rendering first frame
-  if (atomic_load_bool(&g_is_first_frame_of_connection)) {
+  // Atomically check if this is the first frame and mark as not-first
+  // Avoids TOCTOU race where multiple threads could both think they're first
+  bool was_first_frame = atomic_exchange_bool(&g_is_first_frame_of_connection, false);
+
+  if (was_first_frame) {
+    // Disable terminal logging before clearing display and rendering first frame
     log_set_terminal_output(false);
-    atomic_store_bool(&g_is_first_frame_of_connection, false);
 
     // Signal the intro splash screen to stop - first frame is ready to render
     splash_intro_done();

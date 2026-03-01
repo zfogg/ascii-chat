@@ -750,9 +750,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Handle first frame - perform initial terminal reset and splash cleanup
-  if (atomic_load_bool(&ctx->first_frame)) {
-    atomic_store_bool(&ctx->first_frame, false);
-
+  // Use atomic_exchange to atomically check and clear the flag, avoiding TOCTOU race
+  bool was_first_frame = atomic_exchange_bool(&ctx->first_frame, false);
+  if (was_first_frame) {
     // NOTE: log_set_terminal_output(false) skipped here to avoid deadlocks with audio worker threads
     // Terminal logging will continue during rendering but won't corrupt the final frame
 
