@@ -1,5 +1,5 @@
 /**
- * @file opus_codec.h
+ * @file opus.h
  * @brief Opus audio codec wrapper for real-time encoding/decoding
  * @ingroup audio
  * @addtogroup audio

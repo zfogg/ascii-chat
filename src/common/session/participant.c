@@ -26,7 +26,7 @@
 #include "session/audio.h"
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/audio/opus.h>
 
 #include <string.h>
 #include <stdio.h>

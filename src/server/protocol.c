@@ -139,7 +139,7 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/audio/opus.h>
 #include <ascii-chat/network/packet_parsing.h>
 #include <ascii-chat/network/log.h>
 #include <ascii-chat/crypto/handshake/common.h>
@@ -991,8 +991,8 @@ void handle_image_frame_h265_packet(client_info_t *client, const void *data, siz
   size_t rgba_size = 512 * 512 * 4;
 
   // Decode H.265 packet to RGBA
-  asciichat_error_t decode_result = h265_server_decode_and_convert(
-      client_decoder, (const uint8_t *)data, len, rgba_buf, &frame_width, &frame_height, &rgba_size);
+  asciichat_error_t decode_result = h265_server_decode_and_convert(client_decoder, (const uint8_t *)data, len, rgba_buf,
+                                                                   &frame_width, &frame_height, &rgba_size);
 
   if (decode_result != ASCIICHAT_OK) {
     log_error("H.265 decoding failed for client %s: %s", client->client_id, asciichat_error_string(decode_result));

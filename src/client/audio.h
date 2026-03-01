@@ -41,7 +41,7 @@
 #include <stddef.h>
 
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/audio/client_audio_pipeline.h>
+#include <ascii-chat/audio/client_pipeline.h>
 
 /**
  * @brief Process received audio samples from server

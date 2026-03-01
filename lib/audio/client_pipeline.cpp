@@ -1,5 +1,5 @@
 /**
- * @file client_audio_pipeline.cpp
+ * @file client_pipeline.cpp
  * @brief Unified client-side audio processing pipeline with WebRTC AEC3
  *
  * Implements production-grade echo cancellation using WebRTC AEC3
@@ -47,7 +47,7 @@
 #endif
 
 // Now include ascii-chat headers after WebRTC to avoid macro conflicts
-#include <ascii-chat/audio/client_audio_pipeline.h>
+#include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/audio/wav_writer.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>

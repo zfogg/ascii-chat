@@ -26,7 +26,7 @@
 #include <ascii-chat/network/packet.h>
 #include <ascii-chat/ringbuffer.h>
 #include "session/audio.h"
-#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/audio/opus.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/video/ascii.h>
 

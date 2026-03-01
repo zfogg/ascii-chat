@@ -169,7 +169,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/audio/opus.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/util/fps.h>
 
@@ -1240,12 +1240,12 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   asciichat_error_t video_result;
 
   if (client->is_tcp_client) {
-    video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
-                                           client_video_render_thread, client, 2, thread_name);
+    video_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_video_render_thread, client,
+                                           2, thread_name);
   } else {
     log_debug("THREAD_CREATE: WebRTC/WebSocket render video thread for client %s", client->client_id);
-    video_result = asciichat_thread_create(&client->video_render_thread, thread_name,
-                                           client_video_render_thread, client);
+    video_result =
+        asciichat_thread_create(&client->video_render_thread, thread_name, client_video_render_thread, client);
   }
 
   if (video_result != ASCIICHAT_OK) {
@@ -1260,12 +1260,12 @@ int create_client_render_threads(server_context_t *server_ctx, client_info_t *cl
   asciichat_error_t audio_result;
 
   if (client->is_tcp_client) {
-    audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket,
-                                           client_audio_render_thread, client, 2, thread_name);
+    audio_result = tcp_server_spawn_thread(server_ctx->tcp_server, client->socket, client_audio_render_thread, client,
+                                           2, thread_name);
   } else {
     log_debug("THREAD_CREATE: WebRTC/WebSocket render audio thread for client %s", client->client_id);
-    audio_result = asciichat_thread_create(&client->audio_render_thread, thread_name,
-                                           client_audio_render_thread, client);
+    audio_result =
+        asciichat_thread_create(&client->audio_render_thread, thread_name, client_audio_render_thread, client);
   }
   if (audio_result != ASCIICHAT_OK) {
     // Clean up video thread (atomic operation, no mutex needed)

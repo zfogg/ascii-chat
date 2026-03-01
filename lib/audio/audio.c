@@ -6,7 +6,7 @@
  */
 
 #include <ascii-chat/audio/audio.h>
-#include <ascii-chat/audio/client_audio_pipeline.h>
+#include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>

@@ -1,5 +1,5 @@
 /**
- * @file client_audio_pipeline.h
+ * @file client_pipeline.h
  * @brief Unified client-side audio processing pipeline
  * @ingroup audio
  *

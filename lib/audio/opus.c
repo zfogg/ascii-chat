@@ -1,10 +1,10 @@
 /**
- * @file opus_codec.c
+ * @file opus.c
  * @brief Opus audio codec implementation
  * @ingroup audio
  */
 
-#include <ascii-chat/audio/opus_codec.h>
+#include <ascii-chat/audio/opus.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/named.h>

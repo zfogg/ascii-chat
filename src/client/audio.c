@@ -81,9 +81,9 @@
 #include <ascii-chat/util/time.h> // For timing instrumentation
 #include <ascii-chat/util/lifecycle.h>
 
-#include <ascii-chat/audio/audio.h>                 // lib/audio/audio.h for PortAudio wrapper
-#include <ascii-chat/audio/client_audio_pipeline.h> // Unified audio processing pipeline
-#include <ascii-chat/audio/wav_writer.h>            // WAV file dumping for debugging
+#include <ascii-chat/audio/audio.h>           // lib/audio/audio.h for PortAudio wrapper
+#include <ascii-chat/audio/client_pipeline.h> // Unified audio processing pipeline
+#include <ascii-chat/audio/wav_writer.h>      // WAV file dumping for debugging
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h>     // For RCU-based options access
