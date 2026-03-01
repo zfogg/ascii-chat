@@ -104,10 +104,9 @@ void keyboard_destroy(void) {
 }
 
 keyboard_key_t keyboard_read_nonblocking(void) {
-  // Check if keyboard is initialized
-  if (!lifecycle_is_initialized(&g_keyboard_lc)) {
-    return KEY_NONE;
-  }
+  // Note: This function works with or without keyboard_init() having been called.
+  // If init failed or wasn't called, we still try to read from stdin.
+  // The select() and read() calls below are safe to use regardless of init state.
 
   // Check if input is available using select with zero timeout
   fd_set readfds;
@@ -234,10 +233,9 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 }
 
 keyboard_key_t keyboard_read_with_timeout(uint32_t timeout_ms) {
-  // Check if keyboard is initialized
-  if (!lifecycle_is_initialized(&g_keyboard_lc)) {
-    return KEY_NONE;
-  }
+  // Note: This function works with or without keyboard_init() having been called.
+  // If init failed or wasn't called, we still try to read from stdin.
+  // The select() and read() calls below are safe to use regardless of init state.
 
   // Wait for input with timeout
   fd_set readfds;
