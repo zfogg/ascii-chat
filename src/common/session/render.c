@@ -193,8 +193,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         SAFE_FREE(ascii_frame);
 
-        // Handle keyboard input (only when connected to TTY)
-        if (keyboard_handler && terminal_is_interactive()) {
+        // Handle keyboard input in stdin render mode
+        // Allow keyboard regardless of TTY status, consistent with main capture path
+        if (keyboard_handler && keyboard_enabled) {
           keyboard_key_t key = keyboard_read_nonblocking();
           if (key != KEY_NONE) {
             if (interactive_grep_should_handle(key)) {
@@ -465,13 +466,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
                         (unsigned long)frame_count, key, _duration_str);
         }
         if (key != KEY_NONE) {
+          log_debug("KEYBOARD: Key pressed: code=%d char='%c'", key, (key >= 32 && key < 127) ? key : '?');
           // Check if interactive grep should handle this key
           if (interactive_grep_should_handle(key)) {
+            log_debug("KEYBOARD: Grep handler taking key %d", key);
             interactive_grep_handle_key(key);
             continue; // Force immediate re-render
           }
 
           // Normal keyboard handler
+          log_debug("KEYBOARD: Normal handler taking key %d", key);
           keyboard_handler(capture, key, user_data);
         }
       }
