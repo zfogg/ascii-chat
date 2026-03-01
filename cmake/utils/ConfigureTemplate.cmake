@@ -36,5 +36,3 @@ endif()
 
 # Configure the template using @VARIABLE@ substitution
 configure_file("${SOURCE_FILE}" "${OUTPUT_FILE}" @ONLY)
-
-message(STATUS "Configured template: ${OUTPUT_FILE}")
