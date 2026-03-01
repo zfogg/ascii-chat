@@ -250,7 +250,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Uthash.cmake)
 configure_uthash()
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Ghostty.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/VTerm.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/targets/Fonts.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 
