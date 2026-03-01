@@ -193,9 +193,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         SAFE_FREE(ascii_frame);
 
-        // Handle keyboard input in stdin render mode
-        // Allow keyboard regardless of TTY status, consistent with main capture path
-        if (keyboard_handler && keyboard_enabled) {
+        // Handle keyboard input (enabled for stdin render mode regardless of TTY status)
+        if (keyboard_handler) {
           keyboard_key_t key = keyboard_read_nonblocking();
           if (key != KEY_NONE) {
             if (interactive_grep_should_handle(key)) {
