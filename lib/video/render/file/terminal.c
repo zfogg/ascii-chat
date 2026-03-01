@@ -152,36 +152,12 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
             r->ft_face->glyph->bitmap_top, r->ft_face->size->metrics.height,
             (double)(r->ft_face->size->metrics.height >> 6));
 
-  // For bitmap fonts, use the glyph bitmap height; for scalable fonts, use face metrics
-  if (r->ft_face->num_fixed_sizes > 0) {
-    // Bitmap font: use actual glyph bitmap dimensions
-    r->cell_h = r->ft_face->glyph->bitmap.rows;
-    log_debug("term_renderer_create: [BITMAP] cell_w=%d, cell_h=%d (from bitmap.rows=%d)", r->cell_w, r->cell_h,
-              r->ft_face->glyph->bitmap.rows);
-  } else {
-    // Scalable font: try size metrics first, but fall back to ascender+descender if size metrics is wrong
-    r->cell_h = (int)(r->ft_face->size->metrics.height >> 6);
-
-    // If size->metrics.height is too small, use ascender-descender from face bbox
-    if (r->cell_h < 10) {
-      log_debug("term_renderer_create: size->metrics.height=%d is too small, using bbox ascender/descender", r->cell_h);
-      int ascender = (int)((r->ft_face->ascender * r->ft_face->size->metrics.y_scale) >> 16);
-      int descender = (int)((r->ft_face->descender * r->ft_face->size->metrics.y_scale) >> 16);
-      r->cell_h = (ascender - descender) >> 6;
-      log_debug("term_renderer_create: ascender=%d, descender=%d (scaled), cell_h=%d", ascender >> 6, descender >> 6,
-                r->cell_h);
-    }
-
-    if (r->cell_h <= 0) {
-      r->cell_h = (int)r->ft_face->glyph->bitmap.rows; // Fallback to glyph bitmap
-      if (r->cell_h <= 0)
-        r->cell_h = 16; // Last resort
-      log_debug("term_renderer_create: [SCALABLE] fallback cell_h=%d", r->cell_h);
-    } else {
-      log_debug("term_renderer_create: [SCALABLE] cell_w=%d, cell_h=%d (from size->metrics.height)", r->cell_w,
-                r->cell_h);
-    }
-  }
+  // For both bitmap and scalable fonts, use the actual glyph bitmap height
+  // This ensures text doesn't overflow cells. Using size->metrics.height (line spacing)
+  // instead of bitmap.rows causes cells to be too large and text to overflow.
+  r->cell_h = r->ft_face->glyph->bitmap.rows;
+  log_debug("term_renderer_create: cell_w=%d, cell_h=%d (from bitmap.rows=%d)", r->cell_w, r->cell_h,
+            r->ft_face->glyph->bitmap.rows);
   r->baseline = r->ft_face->glyph->bitmap_top;
 
   r->width_px = r->cols * r->cell_w;
