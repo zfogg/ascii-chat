@@ -253,6 +253,257 @@ static bool has_fd_prefix(const char *start, const char *p) {
 }
 
 /* ============================================================================
+ * Granular Helper Functions for Message Transformation
+ * ============================================================================
+ */
+
+/* --- Hex parsing and validation --- */
+static uintptr_t parse_hex_digits(const char *start, const char **end) {
+  uintptr_t address = 0;
+  const char *p = start;
+  while (*p && isxdigit(*p)) {
+    address = (address << 4) | (unsigned int)(*p > '9' ? (*p | 0x20) - 'a' + 10 : *p - '0');
+    p++;
+  }
+  *end = p;
+  return address;
+}
+
+static bool hex_value_is_registered(uintptr_t address, const char **name, const char **type) {
+  *name = named_get(address);
+  *type = named_get_type(address);
+  return *name && *type;
+}
+
+static bool hex_is_already_in_parens(const char *hex_start, const char *message) {
+  return hex_start > message && *(hex_start - 1) == '(';
+}
+
+static bool write_formatted_hex(const char *name, const char *type, uintptr_t address,
+                                char *output, size_t output_size, size_t *out_pos) {
+  const char *fmt_spec = named_get_format_spec(address);
+  if (!fmt_spec) {
+    fmt_spec = "0x%tx";
+  }
+
+  char id_buffer[128];
+  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, (ptrdiff_t)address);
+  if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
+    return false;
+  }
+
+  char temp_output[512];
+  int temp_written = snprintf(temp_output, sizeof(temp_output), "%s/%s (%s)", type, name, id_buffer);
+  if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
+    return false;
+  }
+
+  if (*out_pos + temp_written >= output_size - 1) {
+    return false;
+  }
+
+  memcpy(output + *out_pos, temp_output, temp_written);
+  *out_pos += temp_written;
+  return true;
+}
+
+static bool copy_unformatted_hex(const char *hex_start, const char *hex_end,
+                                  char *output, size_t output_size, size_t *out_pos) {
+  size_t hex_len = hex_end - hex_start;
+  if (hex_len >= output_size - *out_pos) {
+    return false;
+  }
+  memcpy(output + *out_pos, hex_start, hex_len);
+  *out_pos += hex_len;
+  return true;
+}
+
+/* --- Decimal parsing --- */
+static int parse_decimal_digits(const char *start, const char **end) {
+  int value = 0;
+  int count = 0;
+  const char *p = start;
+  while (*p && isdigit(*p) && count < 6) {
+    value = value * 10 + (*p - '0');
+    p++;
+    count++;
+  }
+  *end = p;
+  return value;
+}
+
+static bool decimal_is_already_formatted(const char *int_start, const char *message) {
+  if (int_start - message < 5) {
+    return false;
+  }
+
+  const char *check = int_start - 1;
+  while (check > message && isspace(*check)) {
+    check--;
+  }
+
+  if (check >= message && *check == '=') {
+    const char *eq_pos = check;
+    check--;
+    while (check > message && (isalnum(*check) || *check == '_')) {
+      check--;
+    }
+    check++;
+
+    size_t prefix_len = eq_pos - check;
+    if ((prefix_len == 2 && strncmp(check, "fd", 2) == 0) ||
+        (prefix_len == 6 && strncmp(check, "socket", 6) == 0) ||
+        (prefix_len == 6 && strncmp(check, "sockfd", 6) == 0) ||
+        (prefix_len == 8 && strncmp(check, "pkt_type", 8) == 0)) {
+      return true;
+    }
+  } else if (check >= message && *check == '/') {
+    const char *slash_pos = check;
+    check--;
+    while (check > message && (isalnum(*check) || *check == '_')) {
+      check--;
+    }
+    check++;
+
+    size_t type_len = slash_pos - check;
+    if (type_len > 0 && (isalpha(*check) || *check == '_')) {
+      const char *type_start = check;
+      const char *before_type = type_start - 1;
+      while (before_type > message && isspace(*before_type)) {
+        before_type--;
+      }
+
+      if (before_type >= message && *before_type == '(' && is_type_in_registry(type_start, type_len)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+static bool write_formatted_packet_type(int pkt_value, const char *name,
+                                         char *output, size_t output_size, size_t *out_pos) {
+  const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
+  if (!fmt_spec) {
+    fmt_spec = "%d";
+  }
+
+  char id_buffer[64];
+  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+  if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
+    return false;
+  }
+
+  char temp_output[512];
+  int temp_written = snprintf(temp_output, sizeof(temp_output), "packet_type/%s (pkt_type=%s)", name, id_buffer);
+  if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
+    return false;
+  }
+
+  if (*out_pos + temp_written >= output_size - 1) {
+    return false;
+  }
+
+  memcpy(output + *out_pos, temp_output, temp_written);
+  *out_pos += temp_written;
+  return true;
+}
+
+static bool write_formatted_fd(int fd_value, const char *name,
+                                char *output, size_t output_size, size_t *out_pos) {
+  const char *fmt_spec = named_get_fd_format_spec(fd_value);
+  if (!fmt_spec) {
+    fmt_spec = "%d";
+  }
+
+  char id_buffer[64];
+  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
+  if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
+    return false;
+  }
+
+  char temp_output[512];
+  int temp_written = snprintf(temp_output, sizeof(temp_output), "fd/%s (fd=%s)", name, id_buffer);
+  if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
+    return false;
+  }
+
+  if (*out_pos + temp_written >= output_size - 1) {
+    return false;
+  }
+
+  memcpy(output + *out_pos, temp_output, temp_written);
+  *out_pos += temp_written;
+  return true;
+}
+
+static bool copy_unformatted_decimal(const char *int_start, const char *int_end,
+                                      char *output, size_t output_size, size_t *out_pos) {
+  size_t int_len = int_end - int_start;
+  if (int_len >= output_size - *out_pos) {
+    return false;
+  }
+  memcpy(output + *out_pos, int_start, int_len);
+  *out_pos += int_len;
+  return true;
+}
+
+/* --- Type= pattern detection and parsing --- */
+static bool is_type_equals_pattern(const char *p) {
+  return p[0] == 't' && p[1] == 'y' && p[2] == 'p' && p[3] == 'e' && p[4] == '=';
+}
+
+static bool type_equals_inside_parens(const char *p, const char *message) {
+  if (p <= message) {
+    return false;
+  }
+
+  const char *back = p - 1;
+  while (back > message && isspace(*back)) {
+    back--;
+  }
+  return back >= message && *back == '(';
+}
+
+static bool write_formatted_type_equals(int pkt_value, const char *name,
+                                         char *output, size_t output_size, size_t *out_pos) {
+  const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
+  if (!fmt_spec) {
+    fmt_spec = "%d";
+  }
+
+  char id_buffer[64];
+  int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+  if (id_written <= 0 || id_written >= (int)sizeof(id_buffer)) {
+    return false;
+  }
+
+  char temp_output[512];
+  int temp_written = snprintf(temp_output, sizeof(temp_output), "packet_type/%s (type=%s)", name, id_buffer);
+  if (temp_written <= 0 || (size_t)temp_written >= sizeof(temp_output)) {
+    return false;
+  }
+
+  if (*out_pos + temp_written >= output_size - 1) {
+    return false;
+  }
+
+  memcpy(output + *out_pos, temp_output, temp_written);
+  *out_pos += temp_written;
+  return true;
+}
+
+/* --- Buffer operations --- */
+static bool buffer_has_space(size_t out_pos, size_t needed_bytes, size_t output_size) {
+  return out_pos + needed_bytes < output_size - 1;
+}
+
+static void copy_char_to_output(char *output, size_t *out_pos, char c) {
+  output[(*out_pos)++] = c;
+}
+
+/* ============================================================================
  * Message Transformation Helpers
  * ============================================================================
  */
@@ -653,38 +904,20 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       if (!is_already_formatted && digit_count > 0 && has_packet_type_prefix(message, int_start)) {
         const char *name = named_get_packet_type(fd_value);
         if (name) {
-          /* This integer is a registered packet type with appropriate prefix - format it */
-          const char *fmt_spec = named_get_packet_type_format_spec(fd_value);
-          if (!fmt_spec) {
-            fmt_spec = "%d"; /* Default format for packet types */
+          const char *prefix_start = find_packet_type_prefix_start(message, int_start);
+          size_t prefix_len = int_start - prefix_start;
+          size_t saved_pos = out_pos;
+
+          if (out_pos >= prefix_len) {
+            out_pos -= prefix_len;
           }
 
-          /* Format: packet_type/name (pkt_type=value) - plain text, colors applied at output stage */
-          char temp_output[512];
-          char id_buffer[64];
-          int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
-          if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written =
-                snprintf(temp_output, sizeof(temp_output), "packet_type/%s (pkt_type=%s)", name, id_buffer);
-            if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-              /* Find where prefix starts in original message, calculate how much to skip */
-              const char *prefix_start = find_packet_type_prefix_start(message, int_start);
-              size_t prefix_len = int_start - prefix_start; /* Length of prefix in original message */
-
-              /* Backtrack in output buffer to remove the prefix we already copied */
-              if (out_pos >= prefix_len) {
-                out_pos -= prefix_len;
-              }
-
-              int copy_len = temp_written;
-              if (out_pos + copy_len < output_size - 1) {
-                memcpy(output + out_pos, temp_output, copy_len);
-                out_pos += copy_len;
-                any_transformed = true;
-                continue;
-              }
-            }
+          if (write_formatted_packet_type(fd_value, name, output, output_size, &out_pos)) {
+            any_transformed = true;
+            continue;
           }
+
+          out_pos = saved_pos; /* Restore on failure */
         }
       }
 
@@ -693,37 +926,20 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       if (!is_already_formatted && digit_count > 0 && has_fd_prefix(message, int_start)) {
         const char *name = named_get_fd(fd_value);
         if (name) {
-          /* This integer is a registered FD with appropriate prefix - format it */
-          const char *fmt_spec = named_get_fd_format_spec(fd_value);
-          if (!fmt_spec) {
-            fmt_spec = "%d"; /* Default format for FDs */
+          const char *prefix_start = find_fd_prefix_start(message, int_start);
+          size_t prefix_len = int_start - prefix_start;
+          size_t saved_pos = out_pos;
+
+          if (out_pos >= prefix_len) {
+            out_pos -= prefix_len;
           }
 
-          /* Format: fd/name (fd=value) - plain text, colors applied at output stage */
-          char temp_output[512];
-          char id_buffer[64];
-          int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, fd_value);
-          if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-            int temp_written = snprintf(temp_output, sizeof(temp_output), "fd/%s (fd=%s)", name, id_buffer);
-            if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-              /* Find where prefix starts in original message, calculate how much to skip */
-              const char *prefix_start = find_fd_prefix_start(message, int_start);
-              size_t prefix_len = int_start - prefix_start; /* Length of prefix in original message */
-
-              /* Backtrack in output buffer to remove the prefix we already copied */
-              if (out_pos >= prefix_len) {
-                out_pos -= prefix_len;
-              }
-
-              int copy_len = temp_written;
-              if (out_pos + copy_len < output_size - 1) {
-                memcpy(output + out_pos, temp_output, copy_len);
-                out_pos += copy_len;
-                any_transformed = true;
-                continue;
-              }
-            }
+          if (write_formatted_fd(fd_value, name, output, output_size, &out_pos)) {
+            any_transformed = true;
+            continue;
           }
+
+          out_pos = saved_pos; /* Restore on failure */
         }
       }
 
@@ -808,76 +1024,29 @@ int log_named_format_message(const char *message, char *output, size_t output_si
       }
 
       /* Not a registered FD or formatting failed - copy original number */
-      size_t int_len = p - int_start;
-      if (int_len < output_size - out_pos) {
-        memcpy(output + out_pos, int_start, int_len);
-        out_pos += int_len;
-      } else {
+      if (!copy_unformatted_decimal(int_start, p, output, output_size, &out_pos)) {
         break;
       }
     } else {
-      /* Check if this is the start of "type=DIGIT" pattern where the digit is a packet type
-       * Skip if "type=" is inside parentheses (e.g., already formatted as "(type=VALUE)") */
-      if (*p == 't' && p + 4 < message + strlen(message)) {
-        const char *check = p;
-        if (check[0] == 't' && check[1] == 'y' && check[2] == 'p' && check[3] == 'e' && check[4] == '=') {
-          /* Check if "type=" is preceded by "(" which indicates it's inside parentheses from previous formatting */
-          bool inside_parens = false;
-          if (p > message) {
-            const char *back = p - 1;
-            while (back > message && isspace(*back)) {
-              back--;
-            }
-            if (back >= message && *back == '(') {
-              inside_parens = true;
-            }
-          }
+      /* Check if this is the start of "type=DIGIT" pattern */
+      if (*p == 't' && p + 4 < message + strlen(message) && is_type_equals_pattern(p)) {
+        if (!type_equals_inside_parens(p, message)) {
+          const char *digit_end = p + 5;
+          int pkt_value = parse_decimal_digits(digit_end, &digit_end);
 
-          if (!inside_parens) {
-            /* This looks like "type=" - parse what follows */
-            const char *digit_start = check + 5;
-            int pkt_value = 0;
-            int digit_count = 0;
-            const char *digit_check = digit_start;
-            while (*digit_check && isdigit(*digit_check) && digit_count < 6) {
-              pkt_value = pkt_value * 10 + (*digit_check - '0');
-              digit_check++;
-              digit_count++;
-            }
-
-            if (digit_count > 0) {
-              /* Check if this value is a registered packet type */
-              const char *name = named_get_packet_type(pkt_value);
-              if (name) {
-                /* Format and output the transformation */
-                const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
-                if (!fmt_spec) {
-                  fmt_spec = "%d";
-                }
-
-                char temp_output[512];
-                char id_buffer[64];
-                int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
-                if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
-                  int temp_written = snprintf(temp_output, sizeof(temp_output), "packet_type/%s (type=%s)", name, id_buffer);
-                  if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
-                    if (out_pos + temp_written < output_size - 1) {
-                      memcpy(output + out_pos, temp_output, temp_written);
-                      out_pos += temp_written;
-                      p = digit_check; /* Skip past the entire "type=DIGITS" in input */
-                      any_transformed = true;
-                      continue;
-                    }
-                  }
-                }
-              }
+          if (pkt_value > 0) {
+            const char *name = named_get_packet_type(pkt_value);
+            if (name && write_formatted_type_equals(pkt_value, name, output, output_size, &out_pos)) {
+              p = digit_end;
+              any_transformed = true;
+              continue;
             }
           }
         }
       }
 
       /* Regular character - copy it */
-      output[out_pos++] = *p++;
+      copy_char_to_output(output, &out_pos, *p++);
     }
   }
 
