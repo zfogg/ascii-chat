@@ -9,6 +9,7 @@
 #include <ascii-chat/platform/api.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/util/path.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/debug/mutex.h>
 #include <pthread.h>
@@ -65,6 +66,9 @@ void *asciichat_thread_wrapper_impl(void *arg) {
 
   // Perform cleanup before thread exit
   mutex_stack_cleanup_current_thread();
+
+  // Cleanup thread-local path resources
+  path_cleanup_thread_locals();
 
   // Free the wrapper struct
   log_debug("[THREAD] Freeing wrapper at %p before exit", (void *)wrapper);

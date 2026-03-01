@@ -359,4 +359,17 @@ bool path_looks_like_path(const char *value);
  */
 asciichat_error_t path_validate_user_path(const char *input, path_role_t role, char **normalized_out);
 
+/**
+ * @brief Cleanup thread-local path resources
+ *
+ * Frees PCRE2 match data allocated for thread-local path normalization.
+ * Called automatically on thread exit. Safe to call multiple times.
+ *
+ * @note This is called automatically by the threading system - users should
+ *       not need to call this directly.
+ *
+ * @ingroup util
+ */
+void path_cleanup_thread_locals(void);
+
 /** @} */

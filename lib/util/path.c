@@ -54,6 +54,10 @@ static pcre2_code *path_dot_component_regex_get(void) {
   return asciichat_pcre2_singleton_get_code(g_path_dot_component_regex);
 }
 
+/* Thread-local storage for PCRE2 match data */
+static _Thread_local pcre2_match_data *g_path_sep_match = NULL;
+static _Thread_local pcre2_match_data *g_path_dot_match = NULL;
+
 /**
  * Get thread-local cached match data for separator regex
  * Allocates once per thread and reuses for all normalize_path calls
@@ -62,11 +66,10 @@ static pcre2_code *path_dot_component_regex_get(void) {
 static pcre2_match_data *path_separator_match_get(pcre2_code *regex) {
   if (!regex)
     return NULL;
-  static _Thread_local pcre2_match_data *cached_sep_match = NULL;
-  if (!cached_sep_match) {
-    cached_sep_match = pcre2_match_data_create_from_pattern(regex, NULL);
+  if (!g_path_sep_match) {
+    g_path_sep_match = pcre2_match_data_create_from_pattern(regex, NULL);
   }
-  return cached_sep_match;
+  return g_path_sep_match;
 }
 
 /**
@@ -76,11 +79,25 @@ static pcre2_match_data *path_separator_match_get(pcre2_code *regex) {
 static pcre2_match_data *path_dot_match_get(pcre2_code *regex) {
   if (!regex)
     return NULL;
-  static _Thread_local pcre2_match_data *cached_dot_match = NULL;
-  if (!cached_dot_match) {
-    cached_dot_match = pcre2_match_data_create_from_pattern(regex, NULL);
+  if (!g_path_dot_match) {
+    g_path_dot_match = pcre2_match_data_create_from_pattern(regex, NULL);
   }
-  return cached_dot_match;
+  return g_path_dot_match;
+}
+
+/**
+ * Cleanup thread-local PCRE2 resources
+ * Called when thread exits to free cached match data
+ */
+void path_cleanup_thread_locals(void) {
+  if (g_path_sep_match) {
+    pcre2_match_data_free(g_path_sep_match);
+    g_path_sep_match = NULL;
+  }
+  if (g_path_dot_match) {
+    pcre2_match_data_free(g_path_dot_match);
+    g_path_dot_match = NULL;
+  }
 }
 
 /* Normalize a path by resolving .. and . components
