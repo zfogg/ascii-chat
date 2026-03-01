@@ -261,10 +261,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     return;
   }
 
-  // When grep input is active, use full log area for logs since grep input
-  // will be rendered on the last row (which is normally reserved for preventing scroll).
-  // This maximizes vertical space usage while keeping grep input at the bottom.
-  int renderable_log_rows = log_area_rows;
+  // When grep input is active, reserve 1 row for the grep input line at bottom.
+  // Subtract 1 from log_area_rows to prevent logs from overlapping the grep input.
+  int renderable_log_rows = grep_entering ? (log_area_rows - 1) : log_area_rows;
 
   // Fetch and filter logs
   session_log_entry_t *log_entries = NULL;
@@ -503,6 +502,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // This prevents the race condition where logs appear between the cursor
     // positioning command and the grep input line rendering.
     char grep_ui_buffer[512];
+
+    // Validate terminal size before using it in formatting
+    if (g_cached_term_size.rows <= 0 || g_cached_term_size.rows > 9999) {
+      // Invalid terminal size - skip grep rendering to avoid malformed output
+      return;
+    }
+
     int pos = snprintf(grep_ui_buffer, sizeof(grep_ui_buffer), "\x1b[%d;1H\x1b[0m\x1b[K", g_cached_term_size.rows);
 
     // Validate snprintf succeeded and produced expected output
@@ -515,6 +521,15 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         int pattern_len = interactive_grep_get_input_len();
         const char *pattern = interactive_grep_get_input_buffer();
         int cursor_pos = interactive_grep_get_cursor_position();
+
+        // Validate pattern_len and cursor_pos are within reasonable bounds
+        if (pattern_len < 0 || pattern_len > 256) {
+          pattern_len = 0;
+          pattern = NULL;
+        }
+        if (cursor_pos < 0 || cursor_pos > pattern_len) {
+          cursor_pos = pattern_len;
+        }
 
         if (pattern_len > 0 && pattern) {
           int remaining =
