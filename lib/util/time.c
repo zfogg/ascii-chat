@@ -326,6 +326,10 @@ double timer_stop(const char *name) {
   // Free timer->name first (this was allocated separately)
   SAFE_FREE(timer_name);
 
+  // Nullify the timer->name field so debug_free doesn't try to access it
+  // when freeing the timer structure itself
+  timer->name = NULL;
+
   // Free the timer record itself
   SAFE_FREE(timer);
 
