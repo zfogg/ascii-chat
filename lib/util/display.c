@@ -77,7 +77,7 @@ int display_height(const char *text, int terminal_width) {
     if (segment_end > segment_start) {
       // Avoid allocation: manually count display width without temporary copy
       // Process character by character to handle ANSI codes and UTF-8
-      int segment_width = 0;
+      unsigned int segment_width = 0;
       const char *p = segment_start;
 
       while (p < segment_end) {
