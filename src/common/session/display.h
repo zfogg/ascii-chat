@@ -325,6 +325,17 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len);
 
 /**
+ * @brief Render FPS counter overlay in top-right corner
+ * @param ctx Display context (must not be NULL)
+ *
+ * Displays the current FPS value as a reverse-video overlay in the top-right corner
+ * of the terminal. Only renders in TTY mode. Safe to call when fps_counter is NULL.
+ *
+ * @ingroup session
+ */
+void session_display_render_fps_overlay(session_display_ctx_t *ctx);
+
+/**
  * @brief Reset terminal to default state
  * @param ctx Display context (must not be NULL)
  *

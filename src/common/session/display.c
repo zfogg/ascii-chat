@@ -14,6 +14,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/fps_counter.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
@@ -93,6 +94,9 @@ typedef struct session_display_ctx {
   /** @brief Last frame timestamp for digital rain delta time calculation */
   uint64_t last_frame_time_ns;
 
+  /** @brief FPS counter for measuring output throughput */
+  fps_counter_t *fps_counter;
+
 #ifndef _WIN32
   /** @brief Render-to-file context (NULL if disabled) */
   render_file_ctx_t *render_file;
@@ -144,6 +148,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_ctx = config->audio_ctx;
   atomic_init(&ctx->first_frame, true);
   atomic_init(&ctx->help_screen_active, false);
+
+  // Initialize FPS counter
+  ctx->fps_counter = fps_counter_create();
 
   // Get TTY info for direct terminal access
   ctx->tty_info = get_current_tty();
@@ -286,6 +293,12 @@ void session_display_destroy(session_display_ctx_t *ctx) {
   if (ctx->digital_rain) {
     digital_rain_destroy(ctx->digital_rain);
     ctx->digital_rain = NULL;
+  }
+
+  // Cleanup FPS counter
+  if (ctx->fps_counter) {
+    fps_counter_destroy(ctx->fps_counter);
+    ctx->fps_counter = NULL;
   }
 
 #ifndef _WIN32
@@ -630,6 +643,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * Session Display Rendering Functions
  * ============================================================================ */
 
+/* Forward declaration for FPS overlay rendering */
+void session_display_render_fps_overlay(session_display_ctx_t *ctx);
+
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
   static int call_count = 0;
   if (call_count++ < 5) {
@@ -788,6 +804,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       // This prevents partial frames from being displayed if output is interrupted
       (void)platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
 
+      // Tick FPS counter to measure actual output throughput
+      if (ctx->fps_counter) {
+        fps_counter_tick(ctx->fps_counter);
+      }
+
       SAFE_FREE(frame_buffer);
     } else {
       // Fallback if allocation fails: write cursor then frame (not ideal but prevents crash)
@@ -797,6 +818,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush terminal to ensure all data reaches the display
     (void)terminal_flush(STDOUT_FILENO);
+
+    // Render FPS counter overlay if enabled
+    if (ctx->fps_counter && GET_OPTION(fps_counter)) {
+      session_display_render_fps_overlay(ctx);
+    }
   } else if (terminal_is_interactive()) {
     // Piped to an interactive terminal: output ASCII frames
     // Combine frame and newline into single write call
@@ -885,6 +911,38 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
 
   // Flush immediately after write to TTY to ensure data is sent
   (void)terminal_flush(fd);
+}
+
+void session_display_render_fps_overlay(session_display_ctx_t *ctx) {
+  if (!ctx || !ctx->fps_counter || !ctx->initialized) {
+    return;
+  }
+
+  // Only render overlay in TTY mode
+  if (!ctx->has_tty) {
+    return;
+  }
+
+  // Get current FPS value from counter
+  float fps = fps_counter_get(ctx->fps_counter);
+
+  // Get terminal width for right-alignment
+  int term_cols = (int)terminal_get_effective_width();
+
+  // Position at row 1, right side of screen
+  // Column = term_cols - 7 (to fit "FPS:144" which is 7 chars)
+  // Use reverse video (\033[7m) for visibility, then reset (\033[0m)
+  char overlay[64];
+  int overlay_len = snprintf(overlay, sizeof(overlay), "\033[1;%dH\033[7mFPS:%3.0f\033[0m", term_cols - 6, fps);
+
+  if (overlay_len > 0 && overlay_len < (int)sizeof(overlay)) {
+    // Write overlay to TTY
+    int fd = (ctx->has_tty && ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+    (void)platform_write_all(fd, overlay, overlay_len);
+
+    // Flush to ensure overlay appears immediately
+    (void)terminal_flush(fd);
+  }
 }
 
 void session_display_reset(session_display_ctx_t *ctx) {

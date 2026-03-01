@@ -286,6 +286,14 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     break;
   }
 
+  // ===== FPS COUNTER TOGGLE =====
+  case '-': {
+    bool current = (bool)GET_OPTION(fps_counter);
+    options_set_bool("fps_counter", !current);
+    log_info("FPS counter: %s", !current ? "enabled" : "disabled");
+    break;
+  }
+
   // ===== LOCK DEBUG (debug builds only) =====
 #ifndef NDEBUG
   case KEY_BACKTICK: {

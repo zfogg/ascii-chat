@@ -333,7 +333,7 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   // Help screen box dimensions (24 rows total: border + title + nav (7 lines) + separator + settings + blank + footer +
   // border)
-  const int box_height = 24; // Total rows including borders
+  const int box_height = 25; // Total rows including borders
 
   // Calculate centering position
   // Horizontal centering
@@ -491,6 +491,11 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   snprintf(animation_line, sizeof(animation_line), "(0) Matrix \"Digital Rain\" : %s", matrix_text);
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, animation_line);
 
+  // FPS Counter toggle
+  char fps_line[256];
+  snprintf(fps_line, sizeof(fps_line), "(-) FPS Counter : %s", status_indicator(GET_OPTION(fps_counter)));
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, fps_line);
+
   // Blank line before footer
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");
 
@@ -525,6 +530,9 @@ void session_display_render_help(session_display_ctx_t *ctx) {
       (void)terminal_flush(tty_fd);
     }
   }
+
+  // Always render FPS overlay on help screen (regardless of fps_counter option)
+  session_display_render_fps_overlay(ctx);
 
   SAFE_FREE(buffer);
 }
