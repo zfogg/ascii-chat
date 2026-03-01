@@ -26,21 +26,21 @@
 
 // Check if CRC32 instructions are available at runtime
 static bool crc32_hw_available = false;
-static atomic_t crc32_hw_checked = false;
+static atomic_t crc32_hw_checked = {0};
 
 static void check_crc32_hw_support(void) {
   // Fast path: check if already initialized (atomic read)
-  if (atomic_load(&crc32_hw_checked)) {
+  if (atomic_load_bool(&crc32_hw_checked)) {
     return;
   }
 
   // Try to claim initialization (only one thread will succeed)
   bool expected = false;
-  if (!atomic_compare_exchange_strong(&crc32_hw_checked, &expected, true)) {
+  if (!atomic_cas_bool(&crc32_hw_checked, &expected, true)) {
     // Another thread is initializing or already initialized, wait for it
     // Add backoff sleep to prevent 100% CPU burn if init thread is preempted
     int spin_count = 0;
-    while (!atomic_load(&crc32_hw_checked)) {
+    while (!atomic_load_bool(&crc32_hw_checked)) {
       spin_count++;
       if (spin_count > 100) {
         // After 100 spins, sleep briefly to avoid CPU waste

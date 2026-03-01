@@ -43,7 +43,7 @@ node_pool_t *node_pool_create(size_t pool_size) {
   // Initialize atomics for lock-free operations
   atomic_store_explicit(&pool->free_list, &pool->nodes[0], memory_order_relaxed);
   pool->pool_size = pool_size;
-  atomic_init(&pool->used_count, (size_t)0);
+  atomic_store_u64(&pool->used_count, 0);
 
   NAMED_REGISTER_NODE_POOL(pool, "node_pool");
 
@@ -77,7 +77,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
                                               memory_order_acquire)) {
       // Successfully popped - clear next pointer and increment used_count
       atomic_store_explicit(&node->next, (packet_node_t *)NULL, memory_order_relaxed);
-      atomic_fetch_add_explicit(&pool->used_count, 1, memory_order_relaxed);
+      atomic_fetch_add_u64(&pool->used_count, 1);
       return node;
     }
     // CAS failed - reload and retry (another thread grabbed the node)
@@ -86,7 +86,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
 
   // Pool exhausted, fallback to malloc
   node = SAFE_MALLOC(sizeof(packet_node_t), packet_node_t *);
-  size_t used = atomic_load_explicit(&pool->used_count, memory_order_relaxed);
+  size_t used = atomic_load_u64(&pool->used_count);
   log_debug("Memory pool exhausted, falling back to SAFE_MALLOC (used: %zu/%zu)", used, pool->pool_size);
 
   return node;
@@ -113,7 +113,7 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
       atomic_store_explicit(&node->next, head, memory_order_relaxed);
     } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
                                                     memory_order_relaxed));
-    atomic_fetch_sub_explicit(&pool->used_count, 1, memory_order_relaxed);
+    atomic_fetch_sub_u64(&pool->used_count, 1);
   } else {
     // This was malloc'd, so free it
     SAFE_FREE(node);
@@ -141,19 +141,19 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   // For atomic pointer types, use atomic_store with relaxed ordering for initialization
   atomic_store_explicit(&queue->head, (packet_node_t *)NULL, memory_order_relaxed);
   atomic_store_explicit(&queue->tail, (packet_node_t *)NULL, memory_order_relaxed);
-  atomic_init(&queue->count, (size_t)0);
+  atomic_store_u64(&queue->count, 0);
   queue->max_size = max_size;
-  atomic_init(&queue->bytes_queued, (size_t)0);
+  atomic_store_u64(&queue->bytes_queued, 0);
 
   // Create memory pools if requested
   queue->node_pool = node_pool_size > 0 ? node_pool_create(node_pool_size) : NULL;
   queue->buffer_pool = use_buffer_pool ? buffer_pool_create(0, 0) : NULL;
 
   // Initialize atomic statistics
-  atomic_init(&queue->packets_enqueued, (uint64_t)0);
-  atomic_init(&queue->packets_dequeued, (uint64_t)0);
-  atomic_init(&queue->packets_dropped, (uint64_t)0);
-  atomic_init(&queue->shutdown, false);
+  atomic_store_u64(&queue->packets_enqueued, 0);
+  atomic_store_u64(&queue->packets_dequeued, 0);
+  atomic_store_u64(&queue->packets_dropped, 0);
+  atomic_store_bool(&queue->shutdown, false);
 
   NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue");
   if (queue->node_pool)
@@ -194,12 +194,12 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     return -1;
 
   // Check if shutdown (atomic read with acquire semantics)
-  if (atomic_load_explicit(&queue->shutdown, memory_order_acquire)) {
+  if (atomic_load_bool(&queue->shutdown)) {
     return -1;
   }
 
   // Check if queue is full and drop oldest packet if needed (lock-free)
-  size_t current_count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  size_t current_count = atomic_load_u64(&queue->count);
   if (queue->max_size > 0 && current_count >= queue->max_size) {
     // Drop oldest packet (head) using atomic compare-and-swap
     packet_node_t *head = atomic_load_explicit(&queue->head, memory_order_acquire);
@@ -215,9 +215,9 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
 
         // Update counters atomically
         size_t bytes = head->packet.data_len;
-        atomic_fetch_sub(&queue->bytes_queued, bytes);
-        atomic_fetch_sub(&queue->count, (size_t)1);
-        atomic_fetch_add(&queue->packets_dropped, (uint64_t)1);
+        atomic_fetch_sub_u64(&queue->bytes_queued, bytes);
+        atomic_fetch_sub_u64(&queue->count, 1);
+        atomic_fetch_add_u64(&queue->packets_dropped, 1);
 
         // Free dropped packet data
         if (head->packet.owns_data && head->packet.data) {
@@ -340,12 +340,12 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   }
 
   // Check if shutdown (atomic read with acquire semantics)
-  if (atomic_load_explicit(&queue->shutdown, memory_order_acquire)) {
+  if (atomic_load_bool(&queue->shutdown)) {
     return -1;
   }
 
   // Check if queue is full and drop oldest packet if needed (lock-free)
-  size_t current_count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  size_t current_count = atomic_load_u64(&queue->count);
   if (queue->max_size > 0 && current_count >= queue->max_size) {
     // Drop oldest packet (head) using atomic compare-and-swap
     packet_node_t *head = atomic_load_explicit(&queue->head, memory_order_acquire);
@@ -361,9 +361,9 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
 
         // Update counters atomically
         size_t bytes = head->packet.data_len;
-        atomic_fetch_sub(&queue->bytes_queued, bytes);
-        atomic_fetch_sub(&queue->count, (size_t)1);
-        atomic_fetch_add(&queue->packets_dropped, (uint64_t)1);
+        atomic_fetch_sub_u64(&queue->bytes_queued, bytes);
+        atomic_fetch_sub_u64(&queue->count, 1);
+        atomic_fetch_add_u64(&queue->packets_dropped, 1);
 
         // Free dropped packet data
         if (head->packet.owns_data && head->packet.data) {
@@ -472,12 +472,12 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     return NULL;
 
   // Check if shutdown (atomic read with acquire semantics)
-  if (atomic_load_explicit(&queue->shutdown, memory_order_acquire)) {
+  if (atomic_load_bool(&queue->shutdown)) {
     return NULL;
   }
 
   // Check if queue is empty (atomic read with acquire semantics)
-  size_t current_count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  size_t current_count = atomic_load_u64(&queue->count);
   if (current_count == 0) {
     return NULL;
   }
@@ -499,8 +499,8 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
 
     // Update counters atomically
     size_t bytes = head->packet.data_len;
-    atomic_fetch_sub(&queue->bytes_queued, bytes);
-    atomic_fetch_sub(&queue->count, (size_t)1);
+    atomic_fetch_sub_u64(&queue->bytes_queued, bytes);
+    atomic_fetch_sub_u64(&queue->count, 1);
     atomic_fetch_add(&queue->packets_dequeued, (uint64_t)1);
 
     // Verify packet magic number for corruption detection
@@ -583,7 +583,7 @@ size_t packet_queue_size(packet_queue_t *queue) {
     return 0;
 
   // Lock-free atomic read
-  return atomic_load_explicit(&queue->count, memory_order_acquire);
+  return atomic_load_u64(&queue->count);
 }
 
 bool packet_queue_is_empty(packet_queue_t *queue) {
@@ -595,7 +595,7 @@ bool packet_queue_is_full(packet_queue_t *queue) {
     return false;
 
   // Lock-free atomic read
-  size_t count = atomic_load_explicit(&queue->count, memory_order_acquire);
+  size_t count = atomic_load_u64(&queue->count);
   return (count >= queue->max_size);
 }
 

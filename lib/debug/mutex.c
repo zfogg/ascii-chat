@@ -44,11 +44,11 @@ static _Atomic(int) g_thread_registry_count = 0;
 // Thread-local storage key for per-thread lock stack
 // Destructor automatically frees memory when thread exits
 static tls_key_t g_tls_mutex_stack = 0;
-static atomic_t g_tls_initialized = false;
+static atomic_t g_tls_initialized = {0};
 
 // Flag set during shutdown to prevent new stack allocations
 // (threads still running at shutdown time won't leak new stacks)
-static atomic_t g_shutting_down = false;
+static atomic_t g_shutting_down = {0};
 
 // Track the mutexes involved in the last detected deadlock for throttling
 #define MAX_CYCLE_MUTEXES 16
@@ -81,7 +81,7 @@ static void tls_mutex_stack_destructor(void *arg) {
   // This happens if: (1) thread is in registry AND (2) registry entry matches this stack
   bool already_freed_by_cleanup = false;
   thread_id_t current_thread = asciichat_thread_self();
-  int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  int count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < count; i++) {
     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
       // Found this thread's entry in registry
@@ -110,10 +110,10 @@ static void tls_mutex_stack_destructor(void *arg) {
  * Uses atomic flag to ensure one-time initialization
  */
 static void ensure_tls_initialized(void) {
-  if (!atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
+  if (!atomic_load_bool(&g_tls_initialized)) {
     // Try to initialize TLS key with destructor
     if (ascii_tls_key_create(&g_tls_mutex_stack, tls_mutex_stack_destructor) == 0) {
-      atomic_store_explicit(&g_tls_initialized, true, memory_order_release);
+      atomic_store_bool(&g_tls_initialized, true);
     }
   }
 }
@@ -128,7 +128,7 @@ static void register_thread_if_needed(void);
  */
 static thread_lock_stack_t *get_thread_local_stack(void) {
   // Skip allocation during shutdown (prevents leaks from threads killed mid-shutdown)
-  if (atomic_load_explicit(&g_shutting_down, memory_order_acquire)) {
+  if (atomic_load_bool(&g_shutting_down)) {
     return NULL;
   }
 
@@ -176,7 +176,7 @@ static void register_thread_if_needed(void) {
   thread_id_t current_thread = asciichat_thread_self();
 
   // Check if thread is already in registry (without lock)
-  int current_count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  int current_count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < current_count; i++) {
     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread)) {
       registered = true;
@@ -187,15 +187,15 @@ static void register_thread_if_needed(void) {
   // Try to claim a slot in the registry atomically
   int slot;
   while (1) {
-    int old_count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+    int old_count = atomic_load_int(&g_thread_registry_count);
     if (old_count >= MAX_THREADS) {
       registered = true; // Registry is full, give up
       return;
     }
 
     // Try to atomically increment the count and claim a slot
-    if (atomic_compare_exchange_strong_explicit(&g_thread_registry_count, &old_count, old_count + 1,
-                                                memory_order_release, memory_order_acquire)) {
+    if (atomic_cas_int(&g_thread_registry_count, &old_count, old_count + 1)
+                                                memory_order_release, )) {
       slot = old_count;
       break; // Successfully claimed slot
     }
@@ -207,7 +207,7 @@ static void register_thread_if_needed(void) {
   g_thread_registry[slot].stack = local_stack;
 
   // Memory barrier to ensure writes are visible to other threads
-  atomic_thread_fence(memory_order_release);
+  // Memory ordering is implicit in atomic operations
 
   registered = true;
 }
@@ -286,7 +286,7 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
 
   // Read the thread count with acquire semantics (lock-free, no mutex needed)
   // Use memory_order_seq_cst to ensure we get a consistent snapshot
-  int thread_count = atomic_load_explicit(&g_thread_registry_count, memory_order_seq_cst);
+  int thread_count = atomic_load_int(&g_thread_registry_count);
 
   // Allocate arrays for threads in the registry
   // Note: SAFE_MALLOC takes bytes as first parameter, not count
@@ -305,7 +305,7 @@ int mutex_stack_get_all_threads(mutex_stack_entry_t ***out_stacks, int **out_sta
   int actual_count = 0;
   for (int i = 0; i < thread_count; i++) {
     // Re-check thread count in case registry shrank
-    int current_registry_count = atomic_load_explicit(&g_thread_registry_count, memory_order_seq_cst);
+    int current_registry_count = atomic_load_int(&g_thread_registry_count);
     if (i >= current_registry_count) {
       break;
     }
@@ -695,7 +695,7 @@ void mutex_stack_cleanup_current_thread(void) {
   // This is used to prevent leaks when TLS destructors might not run reliably
   // (e.g., debug threads exiting before mutex_stack_cleanup() deletes the TLS key)
 
-  if (!atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
+  if (!atomic_load_bool(&g_tls_initialized)) {
     return; // TLS not initialized, nothing to clean up
   }
 
@@ -709,7 +709,7 @@ void mutex_stack_cleanup_current_thread(void) {
 
   // Update registry if this thread is registered
   thread_id_t current_thread = asciichat_thread_self();
-  int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  int count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < count; i++) {
     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread) && g_thread_registry[i].stack == stack) {
       g_thread_registry[i].stack = NULL; // Mark as freed in registry
@@ -723,13 +723,13 @@ void mutex_stack_cleanup_current_thread(void) {
 
 void mutex_stack_cleanup(void) {
   // Signal shutdown to prevent new allocations from threads still running
-  atomic_store_explicit(&g_shutting_down, true, memory_order_release);
+  atomic_store_bool(&g_shutting_down, true);
 
   // Manually free all stacks in the registry
   // This must happen BEFORE deleting the TLS key to avoid double-free
   // (destructor won't run on still-running threads until they exit, by which time
   // these stacks will already be freed)
-  int count = atomic_load_explicit(&g_thread_registry_count, memory_order_acquire);
+  int count = atomic_load_int(&g_thread_registry_count);
   for (int i = 0; i < count; i++) {
     if (g_thread_registry[i].stack) {
       // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
@@ -740,11 +740,11 @@ void mutex_stack_cleanup(void) {
 
   // Now delete the TLS key - destructors will see NULL in registry and skip freeing
   // For any threads that haven't been registered yet, destructor will free directly
-  if (atomic_load_explicit(&g_tls_initialized, memory_order_acquire)) {
+  if (atomic_load_bool(&g_tls_initialized)) {
     ascii_tls_key_delete(g_tls_mutex_stack);
-    atomic_store_explicit(&g_tls_initialized, false, memory_order_release);
+    atomic_store_bool(&g_tls_initialized, false);
   }
 
   // Clear registry on cleanup using atomic operations
-  atomic_store_explicit(&g_thread_registry_count, 0, memory_order_release);
+  atomic_store_int(&g_thread_registry_count, 0);
 }

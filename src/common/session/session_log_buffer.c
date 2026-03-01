@@ -32,8 +32,8 @@ bool session_log_buffer_init(void) {
     return false;
   }
 
-  atomic_init(&g_log_buffer->write_pos, 0);
-  atomic_init(&g_log_buffer->sequence, 0);
+  atomic_store_u64(&g_log_buffer->write_pos, 0);
+  atomic_store_u64(&g_log_buffer->sequence, 0);
   mutex_init(&g_log_buffer->mutex, "log_buffer");
 
   return true;
@@ -62,8 +62,8 @@ void session_log_buffer_clear(void) {
   mutex_lock(&g_log_buffer->mutex);
 
   // Reset write position and sequence
-  atomic_store(&g_log_buffer->write_pos, 0);
-  atomic_store(&g_log_buffer->sequence, 0);
+  atomic_store_u64(&g_log_buffer->write_pos, 0);
+  atomic_store_u64(&g_log_buffer->sequence, 0);
 
   // Clear all entries
   for (size_t i = 0; i < SESSION_LOG_BUFFER_SIZE; i++) {
@@ -83,13 +83,13 @@ void session_log_buffer_append(const char *message) {
 
   mutex_lock(&g_log_buffer->mutex);
 
-  size_t pos = atomic_load(&g_log_buffer->write_pos);
+  size_t pos = atomic_load_u64(&g_log_buffer->write_pos);
   uint64_t seq = atomic_fetch_add(&g_log_buffer->sequence, 1);
 
   SAFE_STRNCPY(g_log_buffer->entries[pos].message, message, SESSION_LOG_LINE_MAX);
   g_log_buffer->entries[pos].sequence = seq;
 
-  atomic_store(&g_log_buffer->write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+  atomic_store_u64(&g_log_buffer->write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
 
   mutex_unlock(&g_log_buffer->mutex);
 }
@@ -103,8 +103,8 @@ size_t session_log_buffer_get_recent(session_log_entry_t *out_entries, size_t ma
 
   mutex_lock(&g_log_buffer->mutex);
 
-  size_t write_pos = atomic_load(&g_log_buffer->write_pos);
-  uint64_t total_entries = atomic_load(&g_log_buffer->sequence);
+  size_t write_pos = atomic_load_u64(&g_log_buffer->write_pos);
+  uint64_t total_entries = atomic_load_u64(&g_log_buffer->sequence);
 
   size_t start_pos = write_pos;
   size_t entries_to_check = SESSION_LOG_BUFFER_SIZE;

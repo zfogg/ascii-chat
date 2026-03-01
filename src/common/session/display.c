@@ -147,8 +147,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->palette_type = config->palette_type;
   ctx->audio_playback_enabled = config->enable_audio_playback;
   ctx->audio_ctx = config->audio_ctx;
-  atomic_init(&ctx->first_frame, true);
-  atomic_init(&ctx->help_screen_active, false);
+  atomic_store_bool(&ctx->first_frame, true);
+  atomic_store_bool(&ctx->help_screen_active, false);
 
   // Initialize FPS counter
   ctx->fps_counter = fps_counter_create();
@@ -414,7 +414,7 @@ bool session_display_has_first_frame(session_display_ctx_t *ctx) {
     return false;
   }
   // Return true if first_frame flag is false (meaning first frame has been rendered)
-  return !atomic_load(&ctx->first_frame);
+  return !atomic_load_bool(&ctx->first_frame);
 }
 
 void session_display_reset_first_frame(session_display_ctx_t *ctx) {
@@ -422,7 +422,7 @@ void session_display_reset_first_frame(session_display_ctx_t *ctx) {
     return;
   }
   // Reset first_frame flag to true so splash screen can be shown again on next render
-  atomic_store(&ctx->first_frame, true);
+  atomic_store_bool(&ctx->first_frame, true);
 }
 
 /* ============================================================================
@@ -674,7 +674,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   // Suppress frame rendering when help screen is active
   // Network reception continues in background, frames are just not displayed
-  if (atomic_load(&ctx->help_screen_active)) {
+  if (atomic_load_bool(&ctx->help_screen_active)) {
     return;
   }
 
@@ -750,8 +750,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Handle first frame - perform initial terminal reset and splash cleanup
-  if (atomic_load(&ctx->first_frame)) {
-    atomic_store(&ctx->first_frame, false);
+  if (atomic_load_bool(&ctx->first_frame)) {
+    atomic_store_bool(&ctx->first_frame, false);
 
     // NOTE: log_set_terminal_output(false) skipped here to avoid deadlocks with audio worker threads
     // Terminal logging will continue during rendering but won't corrupt the final frame
@@ -1034,8 +1034,8 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
     audio_ring_buffer_t *rb = audio_ctx->playback_buffer;
 
     // Simple direct write: append samples to ring buffer without network-oriented complexity
-    uint32_t write_idx = atomic_load(&rb->write_index);
-    uint32_t read_idx = atomic_load(&rb->read_index);
+    uint32_t write_idx = (uint32_t)atomic_load_u64(&rb->write_index);
+    uint32_t read_idx = (uint32_t)atomic_load_u64(&rb->read_index);
 
     // Calculate available space in ring buffer
     uint32_t available = (read_idx - write_idx - 1) & (AUDIO_RING_BUFFER_SIZE - 1);
@@ -1058,7 +1058,7 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
     }
 
     // Update write index atomically
-    atomic_store(&rb->write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
+    atomic_store_u64(&rb->write_index, (write_idx + num_samples) % AUDIO_RING_BUFFER_SIZE);
 
     return ASCIICHAT_OK;
   }
@@ -1085,8 +1085,8 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
     return;
   }
 
-  bool current = atomic_load(&ctx->help_screen_active);
-  atomic_store(&ctx->help_screen_active, !current);
+  bool current = atomic_load_bool(&ctx->help_screen_active);
+  atomic_store_bool(&ctx->help_screen_active, !current);
 }
 
 /**
@@ -1103,5 +1103,5 @@ bool session_display_is_help_active(session_display_ctx_t *ctx) {
     return false;
   }
 
-  return atomic_load(&ctx->help_screen_active);
+  return atomic_load_bool(&ctx->help_screen_active);
 }
