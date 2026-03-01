@@ -1472,26 +1472,6 @@ int send_crypto_capabilities_packet(socket_t sockfd, const crypto_capabilities_p
 int send_crypto_parameters_packet(socket_t sockfd, const crypto_parameters_packet_t *params);
 
 /**
- * @brief Send a batched audio packet with encryption support
- * @param sockfd Socket file descriptor
- * @param samples Float audio samples buffer
- * @param num_samples Total number of audio samples
- * @param batch_count Number of chunks in batch
- * @param crypto_ctx Cryptographic context for encryption (NULL for plaintext)
- * @return ASCIICHAT_OK on success, error code on failure
- *
- * Sends PACKET_TYPE_AUDIO_BATCH with multiple audio chunks batched together.
- * Reduces packet overhead by sending 32 chunks (~186ms) per packet.
- * Uses system-defined AUDIO_SAMPLE_RATE and mono audio.
- *
- * @note Encryption is applied automatically when crypto_ctx is provided.
- *
- * @ingroup network
- */
-asciichat_error_t send_audio_batch_packet(socket_t sockfd, const float *samples, int num_samples, int batch_count,
-                                          crypto_context_t *crypto_ctx);
-
-/**
  * @brief Send Opus-encoded audio batch packet with encryption support
  * @param sockfd Socket file descriptor
  * @param opus_data Opus-encoded audio data buffer
