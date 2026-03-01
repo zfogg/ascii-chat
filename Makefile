@@ -93,6 +93,7 @@ reconfigure:
 	@$(MAKE) configure
 
 clean:
+	@rm -f {/tmp,.}/{mirror,client,server,acds,discovery,ascii-chat}.{log,json}
 	@if [ -d "$(BUILD_DIR)" ]; then \
 		$(CMAKE) --build "$(BUILD_DIR)" --target clean; \
 	else \
