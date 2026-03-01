@@ -465,13 +465,15 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   const char *render_str = render_mode_to_string(current_render_mode);
 
   // Create status indicators for flip, audio, and matrix rain
-  bool any_flip = flip_x || flip_y;
-  const char *flip_text = status_indicator(any_flip);
+  // Format flip status as "rows=X/O cols=X/O" (rows=flip_y, cols=flip_x)
+  char flip_status[64];
+  snprintf(flip_status, sizeof(flip_status), "rows=%s cols=%s", status_indicator(flip_y), status_indicator(flip_x));
+
   const char *audio_text = status_indicator(current_audio);
   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
   const char *matrix_text = status_indicator(matrix_rain_enabled);
 
-  // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, f, g, r)
+  // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, ↑/↓, c, f, x/y, r)
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Audio",
                        audio_text, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Volume",
@@ -482,8 +484,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
                        filter_str, 6);
   append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Render",
                        render_str, 6);
-  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Flip", flip_text,
-                       6);
+  append_settings_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "Flip",
+                       flip_status, 6);
 
   // Blank line before animations section
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width, "");

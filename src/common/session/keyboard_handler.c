@@ -87,7 +87,10 @@ static int next_color_filter(int current) {
 void session_handle_keyboard_input(session_capture_ctx_t *capture, session_display_ctx_t *display, keyboard_key_t key) {
   // Debug: log all key codes to help identify unknown keys
   if (key != KEY_NONE) {
-    log_debug("Keyboard input received: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
+    log_info("KEYBOARD INPUT: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
+    if (key == 'x' || key == 'X') {
+      log_info("!!! X KEY DETECTED AT HANDLER ENTRY !!!");
+    }
   }
 
   switch ((int)key) {
@@ -277,9 +280,11 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   // ===== HORIZONTAL FLIP CONTROL =====
   case 'X':
   case 'x': {
+    log_info("✓ X KEY PRESSED - handling horizontal flip");
     bool current_flip_x = (bool)GET_OPTION(flip_x);
     options_set_bool("flip_x", !current_flip_x);
-    log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
+    log_info("Horizontal flip: %s (was: %s)", !current_flip_x ? "enabled" : "disabled",
+             current_flip_x ? "enabled" : "disabled");
     break;
   }
 
