@@ -68,7 +68,7 @@ static struct log_context_t {
   atomic_t force_stderr;              /* Force all terminal logs to stderr (client mode) */
   atomic_t terminal_locked;           /* True when a thread has exclusive terminal access */
   atomic_t terminal_owner_thread; /* Thread that owns terminal output (stored as uint64) */
-  _Atomic unsigned int flush_delay_ms;    /* Delay between each buffered log flush (0 = disabled) */
+  atomic_t flush_delay_ms;    /* Delay between each buffered log flush (0 = disabled) */
   mutex_t rotation_mutex;                 /* Mutex for log rotation only (not for logging!) */
   lifecycle_t rotation_mutex_lifecycle;   /* Rotation mutex initialization state machine */
   log_template_t *format;                 /* Compiled log format (NULL = use default) */
@@ -86,7 +86,7 @@ static struct log_context_t {
     .force_stderr = {0}, /* false */
     .terminal_locked = {0}, /* false */
     .terminal_owner_thread = {0},
-    .flush_delay_ms = 0,
+    .flush_delay_ms = {0},
     .rotation_mutex_lifecycle = LIFECYCLE_INIT,
     .format = NULL,
     .format_console_only = NULL,
