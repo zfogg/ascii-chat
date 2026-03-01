@@ -127,7 +127,13 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
   // Build backtrace frames with colored output for terminal, plain for log
   int frame_num = 0;
   for (int i = start; i < end && i < count && colored_offset < (int)sizeof(colored_buffer) - 512; i++) {
-    const char *symbol = (symbols && i < count && symbols[i]) ? symbols[i] : "???";
+    // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
+    const char *symbol = NULL;
+    if (symbols && symbols[i]) {
+      symbol = symbols[i];
+    } else {
+      symbol = "???";
+    }
 
     // Skip frame if filter says to
     if (filter && filter(symbol)) {
@@ -354,7 +360,13 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   // Add frames
   int frame_num = 0;
   for (int i = start; i < end && i < count && offset < (int)buf_size - 128; i++) {
-    const char *symbol = (symbols && i < count && symbols[i]) ? symbols[i] : "???";
+    // Safely access symbols[i] - symbols array might be smaller than count or have NULL entries
+    const char *symbol = NULL;
+    if (symbols && symbols[i]) {
+      symbol = symbols[i];
+    } else {
+      symbol = "???";
+    }
 
     // Skip frame if filter says to
     if (filter && filter(symbol)) {
