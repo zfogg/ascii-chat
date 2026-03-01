@@ -234,9 +234,8 @@ void asciichat_shared_destroy(void) {
   // 7. Options state - cleanup RCU-based options
   options_state_destroy();
 
-  // 8. Buffer pool - cleanup global buffer pool and all remaining allocations
+  // 8. Buffer pool - cleanup global buffer pool
   buffer_pool_cleanup_global();
-  buffer_pool_cleanup_all_allocations();
 
   // 9. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)

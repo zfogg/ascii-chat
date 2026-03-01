@@ -18,22 +18,6 @@
 #include <string.h>
 
 /* ============================================================================
- * Global Allocation Tracker
- * ============================================================================
- */
-
-/** Global list tracking all allocated buffer nodes for cleanup at shutdown */
-static _Atomic(buffer_node_t *) g_all_allocated_nodes = NULL;
-
-/** @brief Add node to global allocation tracker */
-static void track_allocated_node(buffer_node_t *node) {
-  buffer_node_t *head = atomic_load(&g_all_allocated_nodes);
-  do {
-    atomic_store(&node->next, head);
-  } while (!atomic_compare_exchange_weak(&g_all_allocated_nodes, &head, node));
-}
-
-/* ============================================================================
  * Internal Helpers
  * ============================================================================
  */
@@ -116,17 +100,6 @@ void buffer_pool_destroy(buffer_pool_t *pool) {
   SAFE_FREE(pool);
 }
 
-void buffer_pool_cleanup_all_allocations(void) {
-  // Free all globally tracked buffer nodes (both in-use and returned)
-  // This is called at shutdown to clean up any remaining buffers
-  buffer_node_t *node = atomic_exchange(&g_all_allocated_nodes, NULL);
-  while (node) {
-    buffer_node_t *next = atomic_load(&node->next);
-    SAFE_FREE(node); // Node and data are one allocation
-    node = next;
-  }
-}
-
 void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   // Use global pool if none specified
   if (!pool) {
@@ -143,8 +116,6 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     atomic_init(&node->next, NULL);
     atomic_init(&node->returned_at_ns, 0);
     node->pool = NULL; // No pool for fallbacks
-
-    track_allocated_node(node);
 
     if (pool) {
       atomic_fetch_add_explicit(&pool->malloc_fallbacks, 1, memory_order_relaxed);
@@ -206,8 +177,6 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
       atomic_init(&node->next, NULL);
       atomic_init(&node->returned_at_ns, 0);
       node->pool = pool;
-
-      track_allocated_node(node);
 
       atomic_fetch_add_explicit(&pool->used_bytes, size, memory_order_relaxed);
       atomic_fetch_add_explicit(&pool->allocs, 1, memory_order_relaxed);
