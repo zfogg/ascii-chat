@@ -171,6 +171,19 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->baseline = r->ft_face->glyph->bitmap_top;
   log_debug("DEBUG: cell_h=%d (from bitmap.rows), baseline=%d", r->cell_h, r->baseline);
 
+  // Apply aspect ratio correction unless --stretch is specified
+  // Terminal characters are typically 2:1 (height:width) to appear normal
+  if (!stretch_mode) {
+    int corrected_h = r->cell_w * 2;
+    if (corrected_h != r->cell_h) {
+      log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d), adjusting baseline", r->cell_h,
+               corrected_h, r->cell_w);
+      // When we change cell height, scale baseline proportionally
+      r->baseline = (r->baseline * corrected_h) / r->cell_h;
+      r->cell_h = corrected_h;
+    }
+  }
+
   r->width_px = r->cols * r->cell_w;
   r->height_px = r->rows * r->cell_h;
   log_debug("DEBUG: calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)",
