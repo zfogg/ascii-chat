@@ -257,10 +257,10 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Also skip if render_file is explicitly disabled for temporary displays (splash screen)
   const char *render_file_opt = GET_OPTION(render_file);
   if (!config->skip_render_file && strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
-    // Query actual terminal dimensions instead of using option defaults
-    int width = (int)terminal_get_effective_width();
-    int height = (int)terminal_get_effective_height();
-    log_debug("render-file: Using terminal dimensions: %ux%u", width, height);
+    // Use explicit width/height options for render-file output
+    int width = (int)GET_OPTION(width);
+    int height = (int)GET_OPTION(height);
+    log_debug("render-file: Using explicit dimensions from options: %dx%d", width, height);
     // Use config fps if provided (from actual media source), otherwise use option default
     uint32_t encoder_fps = (config->render_fps > 0) ? config->render_fps : (uint32_t)GET_OPTION(fps);
     log_debug("render-file: Using FPS=%u for encoding (config=%u, option=%u)", encoder_fps, config->render_fps,
@@ -872,6 +872,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   // Track actual frame writes to terminal (increment counter after ANY write path)
   static int actual_frames_written = 0;
   actual_frames_written++;
+  log_debug("[FRAME_WRITE_CHECK] frame_len=%zu, display_frame=%p, frame#%d", frame_len, (void *)display_frame,
+            actual_frames_written);
   if (actual_frames_written % 10 == 1) {
     log_info("✅ ACTUAL_FRAME_WRITTEN: #%d to terminal output", actual_frames_written);
   }
@@ -879,7 +881,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 #ifndef _WIN32
   // Write frame to render-file if enabled
   if (ctx->render_file) {
+    log_debug("[RENDER_FILE_WRITE] About to call render_file_write_frame with frame_len=%zu", frame_len);
     asciichat_error_t fe = render_file_write_frame(ctx->render_file, display_frame);
+    log_debug("[RENDER_FILE_WRITE] render_file_write_frame returned: %s", asciichat_error_string(fe));
     if (fe != ASCIICHAT_OK)
       log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }
