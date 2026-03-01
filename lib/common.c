@@ -65,14 +65,14 @@ ASCIICHAT_API bool g_color_flag_value = false;  // What was the value of --color
 
 // Use atomic for thread-safe access to shutdown callback
 #include <ascii-chat/atomic.h>
-static _Atomic(shutdown_check_fn) g_shutdown_callback = NULL;
+static atomic_ptr_t g_shutdown_callback = {0};
 
 void shutdown_register_callback(shutdown_check_fn callback) {
-  atomic_store(&g_shutdown_callback, callback);
+  atomic_ptr_store(&g_shutdown_callback, (void *)callback);
 }
 
 bool shutdown_is_requested(void) {
-  shutdown_check_fn callback = atomic_load(&g_shutdown_callback);
+  shutdown_check_fn callback = (shutdown_check_fn)atomic_ptr_load(&g_shutdown_callback);
   if (callback == NULL) {
     return false; // No callback registered, assume not shutting down
   }
