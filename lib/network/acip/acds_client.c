@@ -17,7 +17,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/parallel_connect.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/endian.h>

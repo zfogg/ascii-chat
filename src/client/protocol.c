@@ -85,9 +85,9 @@
 #include "keepalive.h"
 #include <ascii-chat/thread_pool.h>
 
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/packet_parsing.h>
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/packet/parsing.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/network/acip/client.h>
@@ -129,7 +129,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #endif
 
 #include <ascii-chat/network/compression.h>
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/parsing.h>
 
 #include <errno.h>
 
@@ -1083,7 +1083,7 @@ int protocol_start_connection() {
   // Server expects this as the first packet after crypto handshake
   log_debug("[FRAME_RECV_INIT] 📤 SENDING_CAPABILITIES: terminal_size negotiation");
   asciichat_error_t cap_result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
-                                                                               (int)terminal_get_effective_height());
+                                                                              (int)terminal_get_effective_height());
   if (cap_result != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] ❌ CAPABILITIES_FAILED: cannot send terminal size");
     return -1;

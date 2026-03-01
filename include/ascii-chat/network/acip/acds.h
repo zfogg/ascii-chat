@@ -118,7 +118,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "../../options/options.h"
-#include "../../network/packet.h"
+#include "../../network/packet/packet.h"
 #include "../../network/acip/protocol.h"
 #include "../../network/webrtc/stun.h"
 #include "../../network/webrtc/turn.h"

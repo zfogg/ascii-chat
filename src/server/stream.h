@@ -7,7 +7,7 @@
 
 #include "client.h"
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <stdatomic.h>
 
 // Global shutdown flag

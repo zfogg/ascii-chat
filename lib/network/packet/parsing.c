@@ -10,7 +10,7 @@
  * @date December 2025
  */
 
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/util/bytes.h>
 #include <ascii-chat/util/format.h>

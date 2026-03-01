@@ -11,7 +11,7 @@
 
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/endian.h>

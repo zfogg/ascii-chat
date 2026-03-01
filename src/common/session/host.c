@@ -23,7 +23,7 @@
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/client.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/ringbuffer.h>
 #include "session/audio.h"
 #include <ascii-chat/audio/opus.h>

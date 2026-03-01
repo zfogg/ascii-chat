@@ -24,7 +24,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/ip.h>

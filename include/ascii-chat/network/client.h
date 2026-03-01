@@ -21,8 +21,8 @@ using std::atomic_uint;
 #include <stdint.h>
 #include <time.h>
 
-#include "../network/packet.h"
-#include "../network/packet_queue.h"
+#include "packet/packet.h"
+#include "packet/queue.h"
 #include "../network/acip/transport.h"  // For acip_transport_t
 #include "../crypto/handshake/common.h" // For crypto_handshake_context_t (complete type needed for field)
 #include "../ringbuffer.h"

@@ -40,8 +40,8 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/client.h>
 #include <ascii-chat/crypto/handshake/common.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/network/acip/send.h>

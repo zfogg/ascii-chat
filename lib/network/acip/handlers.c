@@ -13,8 +13,8 @@
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/messages.h>
 #include <ascii-chat/network/acip/acds.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/log/log.h>

@@ -72,9 +72,9 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../common.h"
-#include "../audio/audio.h"
-#include "../util/endian.h"
+#include "../../common.h"
+#include "../../audio/audio.h"
+#include "../../util/endian.h"
 
 /** @name Frame Decoding Functions
  * @{

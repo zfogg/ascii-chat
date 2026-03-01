@@ -11,7 +11,7 @@
 #include "../../platform/socket.h"
 #include "../../crypto/crypto.h"
 #include "../../crypto/keys.h"
-#include "../../network/packet.h"
+#include "../../network/packet/packet.h"
 
 /**
  * @name Authentication Requirement Flags

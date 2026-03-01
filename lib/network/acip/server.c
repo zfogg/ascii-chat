@@ -13,7 +13,7 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/handlers.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>

@@ -141,7 +141,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/buffer_pool.h>
-#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/video_frame.h>
 #include <ascii-chat/video/image.h>

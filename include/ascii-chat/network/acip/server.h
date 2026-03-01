@@ -19,7 +19,7 @@
 
 #include "../../network/acip/transport.h"
 #include "../../network/acip/handlers.h"
-#include "../../network/packet.h"
+#include "../../network/packet/packet.h"
 #include "../../asciichat_errno.h"
 
 #ifdef __cplusplus

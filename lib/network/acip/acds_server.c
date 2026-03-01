@@ -14,7 +14,7 @@
  */
 
 #include <ascii-chat/network/acip/acds_server.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
 

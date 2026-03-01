@@ -70,7 +70,7 @@
 #include "../../common.h"
 #include "../../asciichat_errno.h"
 #include "../acip/transport.h"
-#include "../packet.h"
+#include "../packet/packet.h"
 #include "../../platform/abstraction.h"
 
 /* Forward declarations */
@@ -268,8 +268,7 @@ acip_transport_t *websocket_client_get_transport(const websocket_client_t *clien
  * @note Equivalent to tcp_client_send_packet() for API compatibility
  * @note Thread-safe: multiple threads can call concurrently
  */
-int websocket_client_send_packet(websocket_client_t *client, packet_type_t type,
-                                  const void *data, size_t len);
+int websocket_client_send_packet(websocket_client_t *client, packet_type_t type, const void *data, size_t len);
 
 /**
  * @brief Send ping frame (keepalive heartbeat)

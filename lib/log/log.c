@@ -33,7 +33,7 @@
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/ansi.h>
 
 /* Platform-specific log hook (weak, can be overridden by platform implementations) */

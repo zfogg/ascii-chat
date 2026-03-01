@@ -13,7 +13,7 @@
 #pragma once
 
 #include <ascii-chat/platform/socket.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/log/log.h>
 #include <stdint.h>
 #include <stdbool.h>

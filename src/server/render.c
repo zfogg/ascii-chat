@@ -164,7 +164,7 @@
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/mixer.h>

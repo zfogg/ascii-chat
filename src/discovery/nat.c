@@ -11,7 +11,7 @@
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/network/nat/upnp.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/socket.h>

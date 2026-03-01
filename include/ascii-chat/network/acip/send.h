@@ -22,7 +22,7 @@
 
 #include "../../network/acip/transport.h"
 #include "../../network/acip/messages.h"
-#include "../../network/packet.h" // For packet_type_t
+#include "../../network/packet/packet.h" // For packet_type_t
 #include "../../asciichat_errno.h"
 #include <stdint.h>
 #include <stddef.h>

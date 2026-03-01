@@ -15,10 +15,10 @@
 #include <ascii-chat/asciichat_errno.h> // For asciichat_errno system
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/platform/init.h>        // For static_mutex_t
-#include <ascii-chat/platform/abstraction.h> // For platform_sleep_us
-#include <ascii-chat/network/packet.h>       // For audio_batch_packet_t
-#include <ascii-chat/log/log.h>              // For log_* macros
+#include <ascii-chat/platform/init.h>         // For static_mutex_t
+#include <ascii-chat/platform/abstraction.h>  // For platform_sleep_us
+#include <ascii-chat/network/packet/packet.h> // For audio_batch_packet_t
+#include <ascii-chat/log/log.h>               // For log_* macros
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/media/source.h> // For media_source_read_audio()
 #include <stdlib.h>

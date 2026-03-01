@@ -13,7 +13,7 @@
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/handlers.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
@@ -240,7 +240,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   // Allocate output buffer for H.265 encoding
   // Maximum output: 5 bytes header + encoded data
-  size_t output_buffer_size = 5 + (width * height);  // Conservative estimate
+  size_t output_buffer_size = 5 + (width * height); // Conservative estimate
   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
   if (!output_buffer) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
@@ -249,9 +249,8 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
 
   // Encode frame
   size_t encoded_size = output_buffer_size - 5;
-  asciichat_error_t encode_result =
-      h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer + 5,
-                  &encoded_size);
+  asciichat_error_t encode_result = h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data,
+                                                output_buffer + 5, &encoded_size);
 
   if (encode_result != ASCIICHAT_OK) {
     log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
@@ -260,7 +259,7 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   }
 
   // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
-  output_buffer[0] = 0;  // flags: no flags set by default
+  output_buffer[0] = 0; // flags: no flags set by default
   output_buffer[1] = (width >> 8) & 0xFF;
   output_buffer[2] = width & 0xFF;
   output_buffer[3] = (height >> 8) & 0xFF;

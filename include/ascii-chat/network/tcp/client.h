@@ -34,7 +34,7 @@
 #include <stdint.h>
 
 #include "../../platform/socket.h"
-#include "../../network/packet.h"
+#include "../../network/packet/packet.h"
 
 /**
  * @brief TCP client connection state (network-layer only)

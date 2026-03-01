@@ -29,7 +29,7 @@
  */
 
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/crc32.h>
@@ -227,15 +227,15 @@ static void *websocket_service_thread(void *arg) {
 
     // Only call lws_service() every 50ms to avoid assertion failures
     // while still processing handshake and connection maintenance
-    if (time_since_last_service >= 50000000ULL) {  // 50ms
+    if (time_since_last_service >= 50000000ULL) { // 50ms
       last_service_call = now_ns;
       uint64_t service_start_ns = now_ns;
 
       if (!ws_data->context || ws_data->is_destroying) {
         // Context is invalid or being destroyed, don't call lws_service
         if (loop_count <= 50) {
-          log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d",
-                   loop_count, (void *)ws_data->context, ws_data->is_destroying);
+          log_info("[LOOP %d] Skipping lws_service: context=%p, destroying=%d", loop_count, (void *)ws_data->context,
+                   ws_data->is_destroying);
         }
       } else {
         // Call lws_service with valid context
@@ -256,7 +256,7 @@ static void *websocket_service_thread(void *arg) {
       }
     } else {
       // Sleep briefly between lws_service() calls to avoid busy-waiting
-      platform_sleep_us(10000);  // 10ms
+      platform_sleep_us(10000); // 10ms
     }
 
     // Check if connection is still alive
@@ -427,7 +427,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       }
       ringbuffer_read(ws_data->send_queue, &msg);
 
-      log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes in fragments (msg %d)", msg.len, message_count + 1);
+      log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes in fragments (msg %d)", msg.len,
+                message_count + 1);
 
       // CRITICAL: Let libwebsockets handle fragmentation internally
       // We send the entire message at once with LWS_WRITE_BINARY
@@ -440,7 +441,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         // Error - pipe is full or other error
         log_debug("WebSocket write returned %d (pipe choked), re-queueing", result);
         ringbuffer_write(ws_data->send_queue, &msg);
-        break;  // Stop processing, wait for next writeable callback
+        break; // Stop processing, wait for next writeable callback
       } else {
         // Success - lws_write handles ALL fragmentation internally
         // The entire message is queued for sending (fragmented internally by libwebsockets)
@@ -448,7 +449,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         message_count++;
         log_debug("Message queued for send, will be fragmented by libwebsockets");
       }
-    }  // End while loop - continues until queue empty or pipe choked
+    } // End while loop - continues until queue empty or pipe choked
 
     mutex_unlock(&ws_data->send_mutex);
 
@@ -484,13 +485,13 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   // they're called before the service thread has fully established the connection.
   if (ws_data->owns_context) {
     // Wait for connection with same timeout as recv()
-    const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL;  // 100ms per wait iteration
+    const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL; // 100ms per wait iteration
     uint64_t wait_start_ns = time_get_ns();
 
     mutex_lock(&ws_data->state_mutex);
     while (!ws_data->is_connected && !ws_data->connection_failed) {
       uint64_t elapsed_ns = time_get_ns() - wait_start_ns;
-      if (elapsed_ns > 30 * 1000000000ULL) {  // 30 second total timeout
+      if (elapsed_ns > 30 * 1000000000ULL) { // 30 second total timeout
         log_error("[WEBSOCKET_SEND] Connection timeout after 30 seconds, cannot send");
         mutex_unlock(&ws_data->state_mutex);
         return SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
@@ -611,7 +612,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
     if (!success) {
       mutex_unlock(&ws_data->send_mutex);
-      log_error("WebSocket server send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len, WEBSOCKET_SEND_QUEUE_SIZE);
+      log_error("WebSocket server send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len,
+                WEBSOCKET_SEND_QUEUE_SIZE);
       buffer_pool_free(NULL, msg.data, buffer_size);
       SAFE_FREE(send_buffer);
       if (encrypted_packet)
@@ -662,7 +664,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
 
   if (!success) {
     mutex_unlock(&ws_data->send_mutex);
-    log_error("WebSocket client send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len, WEBSOCKET_SEND_QUEUE_SIZE);
+    log_error("WebSocket client send queue FULL - cannot queue %zu bytes (queue size=%d)", send_len,
+              WEBSOCKET_SEND_QUEUE_SIZE);
     buffer_pool_free(NULL, msg.data, buffer_size);
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
@@ -689,13 +692,13 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   // The service thread creates the transport immediately and returns, allowing the main
   // thread to respond to input, but the connection may not be established yet.
   // We need to wait for it with a timeout to avoid hanging forever.
-  const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL;  // 100ms per wait iteration
+  const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL; // 100ms per wait iteration
   uint64_t wait_start_ns = time_get_ns();
 
   mutex_lock(&ws_data->state_mutex);
   while (!ws_data->is_connected && !ws_data->connection_failed) {
     uint64_t elapsed_ns = time_get_ns() - wait_start_ns;
-    if (elapsed_ns > 30 * 1000000000ULL) {  // 30 second total timeout
+    if (elapsed_ns > 30 * 1000000000ULL) { // 30 second total timeout
       log_error("🔴 WEBSOCKET_RECV: Connection timeout after 30 seconds, connection_failed=%d",
                 ws_data->connection_failed);
       mutex_unlock(&ws_data->state_mutex);
@@ -722,7 +725,8 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   if (!connected && !has_queued_data && ws_data->partial_size == 0) {
     // Only fail if connection is closed AND no buffered data AND no leftover from previous call
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔴 WEBSOCKET_RECV: Connection closed! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, timestamp=%llu",
+    log_fatal("🔴 WEBSOCKET_RECV: Connection closed! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, "
+              "timestamp=%llu",
               connected, has_queued_data, ws_data->partial_size, (void *)ws_data->wsi, (unsigned long long)now_ns);
     mutex_unlock(&ws_data->recv_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection closed");
@@ -966,7 +970,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
     // we have the complete ACIP packet - we must verify using the ACIP header's length field
     if (frag.final) {
       // Check if this is actually a complete ACIP packet by validating the length field
-      if (assembled_size >= 14) {  // Minimum to read ACIP length field
+      if (assembled_size >= 14) { // Minimum to read ACIP length field
         const uint8_t *data = (const uint8_t *)assembled_buffer;
         uint32_t msg_payload_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
         const size_t HEADER_SIZE = 22;
@@ -1045,7 +1049,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
     log_debug("[websocket_close] Stopping service thread to prevent deadlock during lws_close_reason()");
     ws_data->service_running = false;
     // Give service thread time to notice is_destroying flag
-    platform_sleep_us(10000);  // 10ms
+    platform_sleep_us(10000); // 10ms
     asciichat_thread_join(&ws_data->service_thread, NULL);
     log_debug("[websocket_close] Service thread stopped");
   }
@@ -1133,7 +1137,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   // Give threads a brief moment to detect the flag and exit
   // Threads should check is_destroying before acquiring mutexes
-  platform_sleep_us(100 * US_PER_MS_INT);  // 100ms for threads to detect flag
+  platform_sleep_us(100 * US_PER_MS_INT); // 100ms for threads to detect flag
 
   // Stop service thread (client-side only)
   if (ws_data->service_running) {
@@ -1150,7 +1154,7 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
 
   // Give libwebsockets a moment to process the close handshake
   // This ensures any pending callbacks complete before we destroy the context
-  platform_sleep_us(50 * US_PER_MS_INT);  // 50ms for close handshake
+  platform_sleep_us(50 * US_PER_MS_INT); // 50ms for close handshake
 
   // Destroy WebSocket context (only if we own it - client transports only)
   if (ws_data->context && ws_data->owns_context) {
@@ -1424,24 +1428,24 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // IMPORTANT: "http" protocol MUST be first for WebSocket upgrade handshake to work
   static struct lws_protocols client_protocols[] = {
       {
-          "http",                              // Required first for WebSocket upgrade
+          "http", // Required first for WebSocket upgrade
           websocket_callback,
-          0,                                   // Per-session data (unused, using connect_info.userdata instead)
-          524288,                              // RX buffer size
-          0,                                   // ID
-          NULL,                                // User pointer (will be set from connect_info.userdata)
-          524288                               // TX packet size
+          0,      // Per-session data (unused, using connect_info.userdata instead)
+          524288, // RX buffer size
+          0,      // ID
+          NULL,   // User pointer (will be set from connect_info.userdata)
+          524288  // TX packet size
       },
       {
-          "acip",                              // ACIP protocol
+          "acip", // ACIP protocol
           websocket_callback,
-          0,                                   // Per-session data (unused, using connect_info.userdata instead)
-          524288,                              // RX buffer size
-          0,                                   // ID
-          NULL,                                // User pointer (will be set from connect_info.userdata)
-          524288                               // TX packet size
+          0,      // Per-session data (unused, using connect_info.userdata instead)
+          524288, // RX buffer size
+          0,      // ID
+          NULL,   // User pointer (will be set from connect_info.userdata)
+          524288  // TX packet size
       },
-      {NULL, NULL, 0, 0, 0, NULL, 0}           // Terminator
+      {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
   };
 
   // Disable client compression for now - causes assertion in lws_set_extension_option()
@@ -1535,7 +1539,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // is called repeatedly. Concurrent access to context during connection setup can trigger assertions.
   // Sleep 50ms to let lws_client_connect_via_info() callbacks complete initialization.
   log_debug("Delaying service thread start to allow libwebsockets connection initialization...");
-  platform_sleep_us(50000);  // 50ms delay
+  platform_sleep_us(50000); // 50ms delay
 
   // Start service thread after connection initialization
   // Only the service thread should call lws_service() on this context

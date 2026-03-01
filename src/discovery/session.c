@@ -13,7 +13,7 @@
 #include <ascii-chat/network/acip/acds.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/acip/send.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/webrtc/stun.h>
 #include <ascii-chat/network/webrtc/peer_manager.h>
 #include <ascii-chat/discovery/identity.h>

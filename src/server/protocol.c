@@ -133,14 +133,14 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/network/compression.h>
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/frame_validator.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/util/format.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/audio/opus.h>
-#include <ascii-chat/network/packet_parsing.h>
+#include <ascii-chat/network/packet/parsing.h>
 #include <ascii-chat/network/log.h>
 #include <ascii-chat/crypto/handshake/common.h>
 

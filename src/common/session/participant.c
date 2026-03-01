@@ -24,7 +24,7 @@
 #include <ascii-chat/log/log.h>
 #include "session/capture.h"
 #include "session/audio.h"
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/audio/opus.h>
 

@@ -4,7 +4,7 @@
  * @brief 📦 Packet protocol handler with CRC validation, encryption, and compression
  */
 
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>

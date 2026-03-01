@@ -11,7 +11,7 @@
 
 #include <ascii-chat/network/acip/acds_handlers.h>
 #include <ascii-chat/network/acip/messages.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>

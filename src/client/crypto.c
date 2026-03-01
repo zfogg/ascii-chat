@@ -159,7 +159,7 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/discovery_keys.h>
 #include <ascii-chat/buffer_pool.h>
-#include <ascii-chat/network/packet.h>
+#include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/network/mdns/discovery.h> // For pubkey_to_hex
 #include <ascii-chat/util/time.h>
@@ -324,7 +324,8 @@ int client_crypto_init(void) {
   } else if (strlen(GET_OPTION(password)) > 0) {
     // Password provided - use password-based initialization
     log_debug("CLIENT_CRYPTO_INIT: Using password authentication");
-    result = crypto_handshake_init_with_password("crypto_client_local", &g_crypto_ctx, false, GET_OPTION(password)); // false = client
+    result = crypto_handshake_init_with_password("crypto_client_local", &g_crypto_ctx, false,
+                                                 GET_OPTION(password)); // false = client
     if (result != ASCIICHAT_OK) {
       FATAL(result, "Failed to initialize crypto handshake with password");
     }

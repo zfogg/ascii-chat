@@ -82,7 +82,7 @@
 #pragma once
 
 #include <stdint.h>
-#include "../../network/packet.h"
+#include "../../network/packet/packet.h"
 
 #ifdef __cplusplus
 extern "C" {

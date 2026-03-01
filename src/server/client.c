@@ -127,8 +127,8 @@
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/network/network.h>
-#include <ascii-chat/network/packet.h>
-#include <ascii-chat/network/packet_queue.h>
+#include <ascii-chat/network/packet/packet.h>
+#include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/errors.h>
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/transport.h>

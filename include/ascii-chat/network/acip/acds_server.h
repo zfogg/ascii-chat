@@ -83,7 +83,7 @@
 #include "../../asciichat_errno.h"
 #include "../../network/acip/protocol.h"
 #include "../../network/acip/acds.h"
-#include "../../network/packet.h"
+#include "../../network/packet/packet.h"
 #include "../../platform/socket.h"
 
 #ifdef __cplusplus

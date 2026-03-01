@@ -72,11 +72,11 @@
 
 #pragma once
 
-#include "../platform/socket.h"
-#include "../platform/abstraction.h"
-#include "../crypto/crypto.h"
-#include "../log/log.h"
-#include "../util/magic.h"
+#include "../../platform/socket.h"
+#include "../../platform/abstraction.h"
+#include "../../crypto/crypto.h"
+#include "../../log/log.h"
+#include "../../util/magic.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>

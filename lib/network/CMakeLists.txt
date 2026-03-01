@@ -4,12 +4,13 @@
 set(NETWORK_SRCS
     # Core network files
     ${CMAKE_CURRENT_SOURCE_DIR}/network.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/packet.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/packet_parsing.c
     ${CMAKE_CURRENT_SOURCE_DIR}/frame_validator.c
     ${CMAKE_CURRENT_SOURCE_DIR}/compression.c
     ${CMAKE_CURRENT_SOURCE_DIR}/crc32.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/packet_queue.c
+    # packet/
+    ${CMAKE_CURRENT_SOURCE_DIR}/packet/packet.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/packet/parsing.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/packet/queue.c
     ${CMAKE_CURRENT_SOURCE_DIR}/http_client.c
     ${CMAKE_CURRENT_SOURCE_DIR}/dns.c
     ${CMAKE_CURRENT_SOURCE_DIR}/update_checker.c
@@ -48,7 +49,6 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/handlers.c
     ${CMAKE_CURRENT_SOURCE_DIR}/acip/acds_handlers.c
     # consensus/
-    ${CMAKE_CURRENT_SOURCE_DIR}/consensus/packets.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/topology.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/state.c
     ${CMAKE_CURRENT_SOURCE_DIR}/consensus/election.c
