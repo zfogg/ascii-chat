@@ -154,7 +154,7 @@ const registry_entry_t g_logging_entries[] = {
      NULL,
      NULL,
      false,
-     true,
+     false,
      OPTION_MODE_BINARY,
      {0},
      NULL},
