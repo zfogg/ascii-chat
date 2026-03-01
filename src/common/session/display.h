@@ -99,6 +99,9 @@ typedef struct {
 
   /** @brief Skip render-file initialization (for temporary splash displays) */
   bool skip_render_file;
+
+  /** @brief Video FPS for render-file encoding (0 = use default/option) */
+  uint32_t render_fps;
 } session_display_config_t;
 
 /* ============================================================================

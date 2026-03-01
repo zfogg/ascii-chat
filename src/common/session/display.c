@@ -261,7 +261,11 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     int width = (int)terminal_get_effective_width();
     int height = (int)terminal_get_effective_height();
     log_debug("render-file: Using terminal dimensions: %ux%u", width, height);
-    asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, GET_OPTION(fps),
+    // Use config fps if provided (from actual media source), otherwise use option default
+    uint32_t encoder_fps = (config->render_fps > 0) ? config->render_fps : (uint32_t)GET_OPTION(fps);
+    log_debug("render-file: Using FPS=%u for encoding (config=%u, option=%u)", encoder_fps, config->render_fps,
+              (uint32_t)GET_OPTION(fps));
+    asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, (int)encoder_fps,
                                                   GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK)
       log_warn("render-file: init failed — file output disabled");
