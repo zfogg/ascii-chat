@@ -42,10 +42,10 @@ app_client_t *app_client_create(void) {
   client->audio_send_queue_head = 0;
   client->audio_send_queue_tail = 0;
   client->audio_send_queue_initialized = false;
-  atomic_store(&client->audio_sender_should_exit, false);
+  atomic_store_bool(&client->audio_sender_should_exit, false);
   client->audio_capture_thread_created = false;
   client->audio_sender_thread_created = false;
-  atomic_store(&client->audio_capture_thread_exited, false);
+  atomic_store_bool(&client->audio_capture_thread_exited, false);
 
   // Initialize audio queue mutex and condition variable
   if (mutex_init(&client->audio_send_queue_mutex, "audio_queue") != 0) {
@@ -63,7 +63,7 @@ app_client_t *app_client_create(void) {
 
   /* Protocol State */
   client->data_thread_created = false;
-  atomic_store(&client->data_thread_exited, false);
+  atomic_store_bool(&client->data_thread_exited, false);
   client->last_active_count = 0;
   client->server_state_initialized = false;
   client->should_clear_before_next_frame = false;
@@ -72,7 +72,7 @@ app_client_t *app_client_create(void) {
 
   /* Capture State */
   client->capture_thread_created = false;
-  atomic_store(&client->capture_thread_exited, false);
+  atomic_store_bool(&client->capture_thread_exited, false);
 
   /* Keepalive State */
   client->ping_thread_created = false;

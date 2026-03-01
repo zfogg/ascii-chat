@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <math.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 #ifdef _WIN32
 #include <malloc.h> // For _alloca on Windows
@@ -202,7 +202,7 @@ static void *audio_worker_thread(void *arg) {
     }
 
     // Check shutdown flag
-    if (atomic_load(&ctx->worker_should_stop)) {
+    if (atomic_load_bool(&ctx->worker_should_stop)) {
       log_debug("Worker thread received shutdown signal");
       break;
     }
@@ -404,7 +404,7 @@ static int duplex_callback(const void *inputBuffer, void *outputBuffer, unsigned
   size_t num_samples = framesPerBuffer * AUDIO_CHANNELS;
 
   // Silence on shutdown
-  if (atomic_load(&ctx->shutting_down)) {
+  if (atomic_load_bool(&ctx->shutting_down)) {
     if (output) {
       SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
     }
@@ -615,7 +615,7 @@ static int output_callback(const void *inputBuffer, void *outputBuffer, unsigned
   }
 
   // Silence on shutdown
-  if (atomic_load(&ctx->shutting_down)) {
+  if (atomic_load_bool(&ctx->shutting_down)) {
     if (output) {
       SAFE_MEMSET(output, num_samples * sizeof(float), 0, num_samples * sizeof(float));
     }
@@ -739,7 +739,7 @@ static int input_callback(const void *inputBuffer, void *outputBuffer, unsigned 
   }
 
   // Silence on shutdown
-  if (atomic_load(&ctx->shutting_down)) {
+  if (atomic_load_bool(&ctx->shutting_down)) {
     return paContinue;
   }
 
@@ -1245,10 +1245,10 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
   // Initialize worker thread state (thread will be started in audio_start_duplex)
   ctx->worker_running = false;
-  atomic_store(&ctx->worker_should_stop, false);
+  atomic_store_bool(&ctx->worker_should_stop, false);
 
   ctx->initialized = true;
-  atomic_store(&ctx->shutting_down, false);
+  atomic_store_bool(&ctx->shutting_down, false);
   log_info("Audio system initialized successfully (worker thread architecture enabled)");
   return ASCIICHAT_OK;
 }
@@ -1272,7 +1272,7 @@ void audio_destroy(audio_context_t *ctx) {
     // Ensure worker thread is stopped even if streams weren't running
     if (ctx->worker_running) {
       log_debug("Stopping worker thread during audio_destroy");
-      atomic_store(&ctx->worker_should_stop, true);
+      atomic_store_bool(&ctx->worker_should_stop, true);
       cond_signal(&ctx->worker_cond); // Wake up worker if waiting
       asciichat_thread_join(&ctx->worker_thread, NULL);
       ctx->worker_running = false;
@@ -1646,7 +1646,7 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
   // Start worker thread for heavy audio processing
   if (!ctx->worker_running) {
-    atomic_store(&ctx->worker_should_stop, false);
+    atomic_store_bool(&ctx->worker_should_stop, false);
     if (asciichat_thread_create(&ctx->worker_thread, "audio_worker", audio_worker_thread, ctx) != 0) {
       // Failed to create worker thread - stop streams and cleanup
       if (ctx->duplex_stream) {
@@ -1685,12 +1685,12 @@ asciichat_error_t audio_stop_duplex(audio_context_t *ctx) {
     return SET_ERRNO(ERROR_INVALID_STATE, "Audio context not initialized");
   }
 
-  atomic_store(&ctx->shutting_down, true);
+  atomic_store_bool(&ctx->shutting_down, true);
 
   // Stop worker thread before stopping streams
   if (ctx->worker_running) {
     log_debug("Stopping worker thread");
-    atomic_store(&ctx->worker_should_stop, true);
+    atomic_store_bool(&ctx->worker_should_stop, true);
     cond_signal(&ctx->worker_cond); // Wake up worker if waiting
     asciichat_thread_join(&ctx->worker_thread, NULL);
     ctx->worker_running = false;
@@ -1784,7 +1784,7 @@ asciichat_error_t audio_write_samples(audio_context_t *ctx, const float *buffer,
   }
 
   // Don't accept new audio data during shutdown - this prevents garbage/beeps
-  if (atomic_load(&ctx->shutting_down)) {
+  if (atomic_load_bool(&ctx->shutting_down)) {
     return ASCIICHAT_OK; // Silently discard
   }
 

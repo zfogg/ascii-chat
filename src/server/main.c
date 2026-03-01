@@ -608,7 +608,7 @@ static void server_handle_sigint(int sigint) {
 
   // STEP 3: Signal TCP server to stop and close listening sockets
   // This interrupts the accept() call in the main loop
-  atomic_store(&g_tcp_server.running, false);
+  atomic_store_bool(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
     g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
@@ -1157,7 +1157,7 @@ static void server_handle_sigterm(int sigterm) {
 
   // Stop the TCP server accept loop immediately.
   // Without this, the select() call with ACCET_TIMEOUT could delay shutdown.
-  atomic_store(&g_tcp_server.running, false);
+  atomic_store_bool(&g_tcp_server.running, false);
   if (g_tcp_server.listen_socket != INVALID_SOCKET_VALUE) {
     socket_close(g_tcp_server.listen_socket);
     g_tcp_server.listen_socket = INVALID_SOCKET_VALUE;
@@ -1423,19 +1423,19 @@ static void *ascii_chat_client_handler(void *arg) {
   // Block until client disconnects (active flag is set by receive thread)
   if (client) {
     log_debug("HANDLER: Client %s found, waiting for disconnect (active=%d)", client->client_id,
-              atomic_load(&client->active));
+              atomic_load_bool(&client->active));
     int wait_count = 0;
-    while (atomic_load(&client->active) && !atomic_load_bool(server_ctx->server_should_exit)) {
+    while (atomic_load_bool(&client->active) && !atomic_load_bool(server_ctx->server_should_exit)) {
       wait_count++;
       if (wait_count % 10 == 0) {
         // Log every 1 second (10 * 100ms)
         log_debug("HANDLER: Client %s still active (waited %d seconds), active=%d", client->client_id, wait_count / 10,
-                  atomic_load(&client->active));
+                  atomic_load_bool(&client->active));
       }
       platform_sleep_ms(100); // Check every 100ms
     }
     log_info("Client %s disconnected from %s:%d (waited %d seconds, active=%d, server_should_exit=%d)",
-             client->client_id, client_ip, client_port, wait_count / 10, atomic_load(&client->active),
+             client->client_id, client_ip, client_port, wait_count / 10, atomic_load_bool(&client->active),
              atomic_load_bool(server_ctx->server_should_exit));
   }
 
@@ -2540,7 +2540,7 @@ skip_acds_session:
   // - select() on IPv4/IPv6 sockets with timeout
   // - accept() new connections
   // - Spawn ascii_chat_client_handler() thread for each connection
-  // - Responsive shutdown when atomic_store(&g_tcp_server.running, false)
+  // - Responsive shutdown when atomic_store_bool(&g_tcp_server.running, false)
   asciichat_error_t run_result = tcp_server_run(&g_tcp_server);
   if (run_result != ASCIICHAT_OK) {
     log_error("TCP server exited with error");

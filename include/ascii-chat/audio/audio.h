@@ -58,12 +58,7 @@
  */
 
 #include <stdbool.h>
-// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
-#if defined(__cplusplus) && defined(_WIN32)
-#include <atomic>
-#else
-#include <stdatomic.h>
-#endif
+#include <ascii-chat/atomic.h>
 #include <portaudio.h>
 #ifdef __linux__
 #include <sched.h>
@@ -151,7 +146,7 @@ typedef struct {
   mutex_t worker_mutex;             ///< Mutex protecting worker state
   cond_t worker_cond;               ///< Condition variable for worker signaling
   bool worker_running;              ///< True if worker thread is running
-  _Atomic bool worker_should_stop;  ///< Signal worker thread to exit
+  atomic_t worker_should_stop;      ///< Signal worker thread to exit
 
   // Pre-allocated worker buffers (avoid malloc in worker loop)
   float *worker_capture_batch;  ///< Pre-allocated buffer for batch capture processing
@@ -163,7 +158,7 @@ typedef struct {
   bool running;               ///< True if duplex stream is active
   bool separate_streams;      ///< True if using separate input/output streams
   bool playback_only;         ///< True for playback-only mode (mirror), skip microphone capture
-  _Atomic bool shutting_down; ///< True when shutdown started - callback outputs silence
+  atomic_t shutting_down;     ///< True when shutdown started - callback outputs silence
   mutex_t state_mutex;        ///< Mutex protecting context state
 
   // Audio pipeline and device info

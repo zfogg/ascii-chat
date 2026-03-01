@@ -64,7 +64,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include <stdatomic.h>
+#include "../../atomic.h"
 #include "../../common.h"
 #include "../../platform/socket.h"
 #include "../../platform/abstraction.h"
@@ -170,7 +170,7 @@ struct tcp_client_entry {
 struct tcp_server {
   socket_t listen_socket;     ///< IPv4 listen socket
   socket_t listen_socket6;    ///< IPv6 listen socket
-  atomic_bool running;        ///< Server running flag (set false to shutdown)
+  atomic_t running;           ///< Server running flag (set false to shutdown)
   tcp_server_config_t config; ///< Server configuration
 
   // Client registry (thread-safe with read-write lock)

@@ -907,7 +907,7 @@ void *acds_client_handler(void *arg) {
   log_info("Crypto handshake complete for client %s", client_ip);
 
   // Main packet processing loop
-  while (atomic_load(&server->tcp_server.running)) {
+  while (atomic_load_bool(&server->tcp_server.running)) {
     packet_type_t packet_type;
     void *payload = NULL;
     size_t payload_size = 0;

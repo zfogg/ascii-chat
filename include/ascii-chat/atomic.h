@@ -36,7 +36,7 @@
 
 #pragma once
 
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stddef.h>

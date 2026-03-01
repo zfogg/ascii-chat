@@ -53,7 +53,7 @@ static time_t g_last_status_update = 0;
 /**
  * @brief Atomic flag for shutdown request
  */
-static atomic_bool g_acds_should_exit = false;
+static atomic_t g_acds_should_exit = false;
 
 /**
  * @brief Check if discovery mode should exit
@@ -76,7 +76,7 @@ static void acds_handle_signal(int sig) {
   (void)sig;
   log_console(LOG_INFO, "Signal received - shutting down discovery service...");
   if (g_server) {
-    atomic_store(&g_server->tcp_server.running, false);
+    atomic_store_bool(&g_server->tcp_server.running, false);
   }
   acds_signal_exit();
   // UPnP context will be cleaned up after server shutdown

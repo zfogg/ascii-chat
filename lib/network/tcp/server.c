@@ -114,7 +114,7 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   memset(server, 0, sizeof(*server));
   server->listen_socket = INVALID_SOCKET_VALUE;
   server->listen_socket6 = INVALID_SOCKET_VALUE;
-  atomic_store(&server->running, true);
+  atomic_store_bool(&server->running, true);
   server->config = *config; // Copy config
 
   // Initialize client registry
@@ -173,7 +173,7 @@ asciichat_error_t tcp_server_run(tcp_server_t *server) {
 
   log_debug("TCP server starting accept loop...");
 
-  while (atomic_load(&server->running)) {
+  while (atomic_load_bool(&server->running)) {
     // Build fd_set for select()
     fd_set read_fds;
     socket_fd_zero(&read_fds);
@@ -298,7 +298,7 @@ void tcp_server_destroy(tcp_server_t *server) {
   log_debug("Shutting down TCP server...");
 
   // Signal server to stop
-  atomic_store(&server->running, false);
+  atomic_store_bool(&server->running, false);
 
   // Close listen sockets
   if (server->listen_socket != INVALID_SOCKET_VALUE) {

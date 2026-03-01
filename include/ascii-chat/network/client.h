@@ -8,19 +8,11 @@
  */
 #pragma once
 
-// C11 stdatomic.h conflicts with MSVC's C++ <atomic> header on Windows.
-#if defined(__cplusplus) && defined(_WIN32)
-#include <atomic>
-using std::atomic_bool;
-using std::atomic_int;
-using std::atomic_uint;
-#else
-#include <stdatomic.h>
-#endif
 #include <stdbool.h>
 #include <stdint.h>
 #include <time.h>
 
+#include <ascii-chat/atomic.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/network/packet/queue.h>
 #include <ascii-chat/network/acip/transport.h>  // For acip_transport_t
@@ -104,8 +96,8 @@ typedef struct client_info {
   bool can_send_video;
   bool can_send_audio;
   bool wants_stretch;           // Client wants stretched output (ignore aspect ratio)
-  atomic_bool is_sending_video; // Thread-safe video stream state
-  atomic_bool is_sending_audio; // Thread-safe audio stream state
+  atomic_t is_sending_video; // Thread-safe video stream state
+  atomic_t is_sending_audio; // Thread-safe audio stream state
 
   // Opus codec for audio compression/decompression
   void *opus_decoder; // opus_codec_t* - Opus decoder for this client's audio
@@ -122,12 +114,12 @@ typedef struct client_info {
   bool client_palette_initialized;    // Whether client's palette is set up
 
   // Stream dimensions
-  atomic_ushort width, height;
+  uint16_t width, height;
 
   // Statistics
-  atomic_bool active;
-  atomic_bool shutting_down;                 // Set when client is being removed
-  atomic_bool protocol_disconnect_requested; // Set when protocol violation requires disconnect
+  atomic_t active;
+  atomic_t shutting_down;                 // Set when client is being removed
+  atomic_t protocol_disconnect_requested; // Set when protocol violation requires disconnect
   time_t connected_at;
   uint64_t frames_sent;
   uint64_t frames_received;          // Track incoming frames from this client
@@ -147,19 +139,19 @@ typedef struct client_info {
   // Async dispatch: queue for received packets (async processing)
   packet_queue_t *received_packet_queue; // Queue of complete received packets waiting for dispatch
   asciichat_thread_t dispatch_thread;    // Async dispatch thread processes queued packets
-  atomic_bool dispatch_thread_running;   // Flag to signal dispatch thread to exit
+  atomic_t dispatch_thread_running;   // Flag to signal dispatch thread to exit
   cond_t dispatch_queue_cond;            // Condition variable to wake dispatch thread when packets arrive
 
   // Dedicated send thread for this client
   asciichat_thread_t send_thread;
-  atomic_bool send_thread_running;
+  atomic_t send_thread_running;
 
   // Per-client grid tracking for CLEAR_CONSOLE logic
-  atomic_int last_rendered_grid_sources; // Render thread: source count in buffered frame
-  atomic_int last_sent_grid_sources;     // Send thread: source count in last sent frame
+  atomic_t last_rendered_grid_sources; // Render thread: source count in buffered frame
+  atomic_t last_sent_grid_sources;     // Send thread: source count in last sent frame
 
   // Frame statistics for debugging
-  atomic_ulong frames_sent_count; // Total ASCII frames sent to this client
+  atomic_t frames_sent_count; // Total ASCII frames sent to this client
 
   // Pre-allocated buffers to avoid malloc/free in send thread (prevents buffer pool contention)
   void *send_buffer;
@@ -172,8 +164,8 @@ typedef struct client_info {
   // Per-client rendering threads
   asciichat_thread_t video_render_thread;
   asciichat_thread_t audio_render_thread;
-  atomic_bool video_render_thread_running;
-  atomic_bool audio_render_thread_running;
+  atomic_t video_render_thread_running;
+  atomic_t audio_render_thread_running;
 
   // Per-client synchronization
   mutex_t client_state_mutex;
@@ -243,12 +235,12 @@ typedef struct app_client {
   mutex_t audio_send_queue_mutex;
   cond_t audio_send_queue_cond;
   bool audio_send_queue_initialized;
-  atomic_bool audio_sender_should_exit;
+  atomic_t audio_sender_should_exit;
   asciichat_thread_t audio_capture_thread;
   asciichat_thread_t audio_sender_thread;
   bool audio_capture_thread_created;
   bool audio_sender_thread_created;
-  atomic_bool audio_capture_thread_exited;
+  atomic_t audio_capture_thread_exited;
 
   /* ========================================================================
    * Protocol State
@@ -256,7 +248,7 @@ typedef struct app_client {
 
   asciichat_thread_t data_reception_thread;
   bool data_thread_created;
-  atomic_bool data_thread_exited;
+  atomic_t data_thread_exited;
   uint32_t last_active_count;
   bool server_state_initialized;
   bool should_clear_before_next_frame;
@@ -269,7 +261,7 @@ typedef struct app_client {
 
   asciichat_thread_t capture_thread;
   bool capture_thread_created;
-  atomic_bool capture_thread_exited;
+  atomic_t capture_thread_exited;
 
   /* ========================================================================
    * Keepalive State
@@ -277,14 +269,14 @@ typedef struct app_client {
 
   asciichat_thread_t ping_thread;
   bool ping_thread_created;
-  atomic_bool ping_thread_exited;
+  atomic_t ping_thread_exited;
 
   /* ========================================================================
    * Display State
    * ======================================================================== */
 
   bool has_tty;
-  atomic_bool is_first_frame_of_connection;
+  atomic_t is_first_frame_of_connection;
   tty_info_t tty_info;
 
   /* ========================================================================
