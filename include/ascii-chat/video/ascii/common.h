@@ -463,19 +463,58 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
                                           const uint8_t *fg_idx, const uint8_t *bg_idx, const char *ascii_chars,
                                           int width, char *dst, size_t cap, bool is_truecolor);
 
+/**
+ * @brief UTF-8 character palette cache
+ *
+ * @ingroup video
+ */
+#define RAMP64_SIZE 64
+#define CACHE_FREQUENCY_DECAY_TIME 10000  // 10 seconds in milliseconds
+#define CACHE_RECENCY_SCALE 100
+#define CACHE_MAX_LIFETIME 3600  // 1 hour maximum cache lifetime in seconds
+
+typedef struct {
+  uint8_t width;      /**< Character display width (1 or 2) */
+  uint8_t code[4];    /**< UTF-8 bytes (0-3) */
+  uint8_t len;        /**< Number of bytes used */
+  uint8_t _pad;       /**< Padding for alignment */
+} utf8_char_t;
+
+typedef struct utf8_palette_cache {
+  utf8_char_t cache64[64];           /**< Cache of 64 most common characters */
+  uint8_t char_index_ramp[256];      /**< Luminance to character index mapping */
+  uint64_t last_accessed_time;       /**< Last access timestamp */
+  uint32_t access_count;             /**< Total access count */
+  uint32_t total_age_seconds;        /**< Total age in seconds */
+  double cached_score;               /**< Eviction score (higher = keep longer) */
+  size_t heap_index;                 /**< Index in the eviction min-heap */
+  uint32_t key;                      /**< Palette string hash (uthash key) */
+  bool initialized;                  /**< Whether cache is initialized */
+
+  // uthash handle for hash table
+  UT_hash_handle hh;                 /**< uthash handle */
+} utf8_palette_cache_t;
+
+/**
+ * @brief Get UTF-8 palette cache for a character set
+ *
+ * @ingroup video
+ */
+utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars);
+
 // Include architecture-specific implementations
 #if SIMD_SUPPORT_SSE2
-#include "../../video/ascii/sse2/foreground.h"
+#include <ascii-chat/video/ascii/sse2/foreground.h>
 #endif
 #if SIMD_SUPPORT_SSSE3
-#include "../../video/ascii/ssse3/foreground.h"
+#include <ascii-chat/video/ascii/ssse3/foreground.h>
 #endif
 #if SIMD_SUPPORT_AVX2
-#include "../../video/ascii/avx2/foreground.h"
+#include <ascii-chat/video/ascii/avx2/foreground.h>
 #endif
 #if SIMD_SUPPORT_SVE
-#include "../../video/ascii/sve/foreground.h"
+#include <ascii-chat/video/ascii/sve/foreground.h>
 #endif
 #if SIMD_SUPPORT_NEON
-#include "../../video/ascii/neon/foreground.h"
+#include <ascii-chat/video/ascii/neon/foreground.h>
 #endif

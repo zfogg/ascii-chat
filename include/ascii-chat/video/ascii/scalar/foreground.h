@@ -15,7 +15,7 @@
 
 #include <stddef.h>
 #include <ascii-chat/video/image.h>
-#include "platform/terminal.h"
+#include <ascii-chat/platform/terminal.h>
 
 // Greyscale functions
 char *image_print(const image_t *p, const char *palette);
