@@ -16,10 +16,6 @@
 #include <ascii-chat/options/registry/core.h>
 #include <string.h>
 
-#ifndef NDEBUG
-extern const registry_entry_t g_debug_entries[];
-#endif
-
 // ============================================================================
 // Master Registry - Composition of all category arrays
 // ============================================================================

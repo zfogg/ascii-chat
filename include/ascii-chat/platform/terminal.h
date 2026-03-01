@@ -1358,4 +1358,9 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback);
 void terminal_stop_resize_detection(void);
 
 /** @} */
+#else
+/**
+ * @brief No-op stub on POSIX platforms (no resize detection thread)
+ */
+void terminal_stop_resize_detection(void);
 #endif

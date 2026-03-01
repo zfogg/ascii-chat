@@ -190,7 +190,6 @@ void asciichat_shared_destroy(void) {
 
   // 0. Stop background threads first (before any cleanup that might use them)
   // Terminal resize detection thread (Windows only, checks if active)
-  extern void terminal_stop_resize_detection(void);
   terminal_stop_resize_detection();
 
 #ifndef NDEBUG

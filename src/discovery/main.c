@@ -50,9 +50,6 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
 
-// Global exit API from src/main.c
-extern bool should_exit(void);
-
 /* ============================================================================
  * Global Discovery Session
  * ============================================================================ */
