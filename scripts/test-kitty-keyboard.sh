@@ -35,24 +35,31 @@ sleep 1
 kitty @ send-key --match "$match" Enter
 sleep 6
 # Give it time to start
+echo "=== Initial Mirror Display ==="
 tmux capture-pane -p -t "$session"
 
 
-# Send "?" key to toggle help
+# Send "?" key to toggle help - use tmux to send to the running process
 echo "Sending '?' to toggle help..."
-kitty @ send-text --match "$match" "?"
-sleep 0.2
+tmux send-keys -t "$session" "?"
+sleep 0.5
+echo "=== Help Screen (after pressing '?') ==="
 tmux capture-pane -p -t "$session"
 
 
 # Send "q" to quit
+echo ""
 echo "Sending 'q' to quit..."
-kitty @ send-text --match "$match" "q"
-sleep 0.2
+tmux send-keys -t "$session" "q"
+sleep 0.5
+echo "=== After pressing 'q' ==="
 tmux capture-pane -p -t "$session"
 
 
-kitty @ send-key --match "$match" "ctrl+c"
+# Send Ctrl+C to force quit
+echo ""
+echo "Sending Ctrl+C to quit..."
+tmux send-keys -t "$session" "C-c"
 
 kitty @ close-tab --match "$match"
 
