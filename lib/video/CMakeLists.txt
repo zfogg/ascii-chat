@@ -3,9 +3,6 @@
 set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/video_frame.c
     ${CMAKE_CURRENT_SOURCE_DIR}/image.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ansi_fast.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ansi.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/palette.c
     ${CMAKE_CURRENT_SOURCE_DIR}/color_filter.c
     ${CMAKE_CURRENT_SOURCE_DIR}/anim/digital_rain.c
     ${CMAKE_CURRENT_SOURCE_DIR}/webcam/webcam.c
@@ -16,7 +13,13 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ascii.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/dispatcher.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sgr.c
+    # SIMD-based ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/common.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ansi_fast.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ansi.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/palette.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/rle.c
 )
 
 # Media source files (only when FFmpeg is available)
@@ -43,8 +46,6 @@ endif()
 
 # SIMD sources (reorganized into ascii/{arch}/{halfblock,foreground,background})
 set(SIMD_SRCS
-    ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
     # Scalar ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/halfblock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/scalar/foreground.c

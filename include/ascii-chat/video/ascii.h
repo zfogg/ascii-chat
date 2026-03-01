@@ -55,7 +55,7 @@
 
 #include <stdio.h>
 #include <time.h>
-#include "simd/common.h"
+#include "ascii/common.h"
 #include "../util/time.h"
 
 // Include platform abstraction for write function mapping and deprecation suppression
