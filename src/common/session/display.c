@@ -170,14 +170,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Disable padding when:
   // - In snapshot mode (one frame and exit)
   // - When stdout is not a TTY (piped/redirected output)
-  // Enable padding for interactive terminal sessions
+  // Enable padding for TTY-based sessions (interactive or not)
   bool is_snapshot_mode = config->snapshot_mode;
-  bool is_interactive = terminal_is_interactive();
-  ctx->caps.wants_padding = is_interactive && !is_snapshot_mode;
+  bool has_tty = ctx->has_tty; // Check if we have a real TTY
+  ctx->caps.wants_padding = has_tty && !is_snapshot_mode;
 
-  log_debug("Padding mode: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)",
-            ctx->caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(),
-            terminal_is_stdout_tty());
+  log_debug("Padding mode: wants_padding=%d (snapshot=%d, has_tty=%d, stdin_tty=%d, stdout_tty=%d)",
+            ctx->caps.wants_padding, is_snapshot_mode, has_tty, terminal_is_stdin_tty(), terminal_is_stdout_tty());
 
   // Apply color mode override if specified
   if (config->color_mode != TERM_COLOR_AUTO) {
@@ -770,8 +769,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     // This ensures complete frames are displayed without fragmentation from partial writes
-    const char *cursor_home_sequence = "\033[H"; // ESC [ H - cursor home
-    size_t cursor_seq_len = 3;
+    // Use cursor home + clear-entire-display (including scrollback) to prevent frame stacking
+    const char *cursor_home_sequence = "\033[H\033[3J"; // ESC [ H (home) + ESC [ 3 J (clear display + scrollback)
+    size_t cursor_seq_len = 6;
 
     // Calculate total buffer size needed for cursor control + frame data
     size_t total_size = cursor_seq_len + frame_len;
@@ -822,18 +822,6 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush kernel write buffer so piped data appears immediately to readers
     (void)terminal_flush(STDOUT_FILENO);
-  }
-
-  // Track actual frame writes to terminal (increment counter after ANY write path)
-  static int actual_frames_written = 0;
-  actual_frames_written++;
-  if (actual_frames_written % 10 == 1) {
-    log_info("✅ ACTUAL_FRAME_WRITTEN: #%d to terminal output", actual_frames_written);
-  }
-
-  // Fallback code path continues below
-  if (!ctx->has_tty && terminal_is_interactive()) {
-    // Already handled above
   } else {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
     // Write frame data with newline and flush
@@ -852,6 +840,13 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush output to ensure frame reaches destination in snapshot mode
     (void)terminal_flush(STDOUT_FILENO);
+  }
+
+  // Track actual frame writes to terminal (increment counter after ANY write path)
+  static int actual_frames_written = 0;
+  actual_frames_written++;
+  if (actual_frames_written % 10 == 1) {
+    log_info("✅ ACTUAL_FRAME_WRITTEN: #%d to terminal output", actual_frames_written);
   }
 
 #ifndef _WIN32
