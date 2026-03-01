@@ -262,29 +262,7 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
 
             // Blit if we have content
             if (g->bitmap.width > 0 && g->bitmap.rows > 0) {
-              // Use fixed baseline for all glyphs in the row (not per-glyph bitmap_top)
-              // This ensures consistent vertical alignment within rows
-              // Position glyphs at cell_h - max_glyph_height to leave headroom
-              int glyph_y = py + r->cell_h - 28; // 28 is max observed glyph height
-
-              int glyph_bottom = glyph_y + (int)g->bitmap.rows;
-              int cell_bottom = py + r->cell_h;
-
-              // Log glyph positioning for debugging overflow
-              log_debug("GLYPH(%d,%d): bitmap_top=%d fixed_pos=%d glyph_h=%d cell_bottom=%d overflow=%d", col, row,
-                        g->bitmap_top, glyph_y, (int)g->bitmap.rows, cell_bottom,
-                        (glyph_bottom > cell_bottom) ? (glyph_bottom - cell_bottom) : 0);
-
-              // Clamp glyph to cell boundaries to prevent overflow
-              if (glyph_bottom > cell_bottom) {
-                int overflow = glyph_bottom - cell_bottom;
-                glyph_y -= overflow;
-              }
-              if (glyph_y < py) {
-                glyph_y = py;
-              }
-
-              blit_glyph(r, &g->bitmap, px + g->bitmap_left, glyph_y, fr, fg, fb, br, bg, bb);
+              blit_glyph(r, &g->bitmap, px + g->bitmap_left, py + r->baseline - g->bitmap_top, fr, fg, fb, br, bg, bb);
               cells_rendered++;
             }
           }
