@@ -26,13 +26,11 @@ set(MATRIX_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected
 
 # Download font at configure time
 if(NOT EXISTS "${MATRIX_FONT_SRC}")
-    message(STATUS "Downloading Matrix-Resurrected.ttf...")
     file(DOWNLOAD "${MATRIX_FONT_URL}" "${MATRIX_FONT_SRC}" SHOW_PROGRESS TLS_VERIFY ON)
 endif()
 
 # Convert to C array at configure time
 if(NOT EXISTS "${MATRIX_FONT_GEN}" OR "${MATRIX_FONT_SRC}" IS_NEWER_THAN "${MATRIX_FONT_GEN}")
-    message(STATUS "Embedding Matrix-Resurrected.ttf as C array...")
     execute_process(
         COMMAND ${CMAKE_COMMAND}
                 "-DINPUT=${MATRIX_FONT_SRC}"
@@ -60,7 +58,6 @@ set(DEFAULT_FONT_GEN "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c")
 # Download and extract font tarball at configure time
 if(NOT EXISTS "${DEFAULT_FONT_SRC}")
     if(NOT EXISTS "${DEFAULT_FONT_TARBALL}")
-        message(STATUS "Downloading DejaVu fonts tarball...")
         file(DOWNLOAD "${DEFAULT_FONT_TARBALL_URL}" "${DEFAULT_FONT_TARBALL}"
              SHOW_PROGRESS
              TLS_VERIFY ON
@@ -72,7 +69,6 @@ if(NOT EXISTS "${DEFAULT_FONT_SRC}")
         endif()
     endif()
 
-    message(STATUS "Extracting DejaVuSansMono.ttf from tarball...")
     execute_process(
         COMMAND ${CMAKE_COMMAND} -E tar xjf "${DEFAULT_FONT_TARBALL}" "dejavu-fonts-ttf-2.37/ttf/DejaVuSansMono.ttf"
         WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/fonts"

@@ -66,7 +66,7 @@ static void generate_nonce(crypto_context_t *ctx, uint8_t *nonce_out) {
   // Counter MUST be in big-endian (network byte order) for cross-platform compatibility
   // between browser (JavaScript/WASM) and native (C) implementations
   uint64_t counter = ctx->nonce_counter++;
-  uint64_t counter_be = HOST_TO_NET_U64(counter);  // Convert to big-endian
+  uint64_t counter_be = HOST_TO_NET_U64(counter); // Convert to big-endian
   size_t counter_size = ctx->nonce_size - 16;
   SAFE_MEMCPY(nonce_out + 16, counter_size, &counter_be,
               (counter_size < sizeof(counter_be)) ? counter_size : sizeof(counter_be));
@@ -268,9 +268,9 @@ crypto_result_t crypto_set_peer_public_key(crypto_context_t *ctx, const uint8_t 
   // Log keys for debugging crypto failures
   char priv_hex[65], peer_hex[65], shared_hex[65];
   for (int i = 0; i < 32; i++) {
-    sprintf(&priv_hex[i * 2], "%02x", ctx->private_key[i]);
-    sprintf(&peer_hex[i * 2], "%02x", peer_public_key[i]);
-    sprintf(&shared_hex[i * 2], "%02x", ctx->shared_key[i]);
+    snprintf(&priv_hex[i * 2], 3, "%02x", ctx->private_key[i]);
+    snprintf(&peer_hex[i * 2], 3, "%02x", peer_public_key[i]);
+    snprintf(&shared_hex[i * 2], 3, "%02x", ctx->shared_key[i]);
   }
   priv_hex[64] = peer_hex[64] = shared_hex[64] = '\0';
 
@@ -486,7 +486,7 @@ crypto_result_t crypto_encrypt(crypto_context_t *ctx, const uint8_t *plaintext, 
   // Log nonce for debugging
   char nonce_hex[49];
   for (int i = 0; i < 24; i++) {
-    sprintf(&nonce_hex[i * 2], "%02x", nonce[i]);
+    snprintf(&nonce_hex[i * 2], 3, "%02x", nonce[i]);
   }
   nonce_hex[48] = '\0';
   log_debug("ENCRYPT_NONCE: counter=%lu nonce=%s plaintext_len=%zu", ctx->nonce_counter - 1, nonce_hex, plaintext_len);
@@ -554,10 +554,10 @@ crypto_result_t crypto_decrypt(crypto_context_t *ctx, const uint8_t *ciphertext,
     // Log decryption failure details for debugging
     char key_hex[65], nonce_hex[49];
     for (int i = 0; i < 32; i++) {
-      sprintf(&key_hex[i * 2], "%02x", decryption_key[i]);
+      snprintf(&key_hex[i * 2], 3, "%02x", decryption_key[i]);
     }
     for (int i = 0; i < 24; i++) {
-      sprintf(&nonce_hex[i * 2], "%02x", nonce[i]);
+      snprintf(&nonce_hex[i * 2], 3, "%02x", nonce[i]);
     }
     key_hex[64] = '\0';
     nonce_hex[48] = '\0';

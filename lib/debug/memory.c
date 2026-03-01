@@ -102,18 +102,73 @@ typedef struct {
 
 // Static configuration of expected suppressions
 static const debug_memory_suppression_t g_suppression_config[] = {
-    {.file = "lib/options/colorscheme.c", .line = 585, .expected_count = 8, .expected_bytes = 47, .reason = "8 16-color ANSI code strings", .key = {0}},
-    {.file = "lib/options/colorscheme.c", .line = 602, .expected_count = 8, .expected_bytes = 88, .reason = "8 256-color ANSI code strings", .key = {0}},
-    {.file = "lib/options/colorscheme.c", .line = 619, .expected_count = 8, .expected_bytes = 144, .reason = "8 truecolor ANSI code strings", .key = {0}},
-    {.file = "lib/util/path.c", .line = 1211, .expected_count = 1, .expected_bytes = 43, .reason = "normalized path allocation (caller frees)", .key = {0}},
-    {.file = "lib/platform/posix/util.c", .line = 35, .expected_count = 18, .expected_bytes = 1280, .reason = "platform_strdup() string allocations (mirror mode)", .key = {0}},
-    {.file = "lib/util/pcre2.c", .line = 54, .expected_count = 1, .expected_bytes = 56, .reason = "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)", .key = {0}},
-    {.file = "lib/util/pcre2.c", .line = 62, .expected_count = 1, .expected_bytes = 7, .reason = "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)", .key = {0}},
+    {.file = "lib/options/colorscheme.c",
+     .line = 585,
+     .expected_count = 8,
+     .expected_bytes = 47,
+     .reason = "8 16-color ANSI code strings",
+     .key = {0}},
+    {.file = "lib/options/colorscheme.c",
+     .line = 602,
+     .expected_count = 8,
+     .expected_bytes = 88,
+     .reason = "8 256-color ANSI code strings",
+     .key = {0}},
+    {.file = "lib/options/colorscheme.c",
+     .line = 619,
+     .expected_count = 8,
+     .expected_bytes = 144,
+     .reason = "8 truecolor ANSI code strings",
+     .key = {0}},
+    {.file = "lib/util/path.c",
+     .line = 1211,
+     .expected_count = 1,
+     .expected_bytes = 43,
+     .reason = "normalized path allocation (caller frees)",
+     .key = {0}},
+    {.file = "lib/platform/posix/util.c",
+     .line = 35,
+     .expected_count = 18,
+     .expected_bytes = 1280,
+     .reason = "platform_strdup() string allocations (mirror mode)",
+     .key = {0}},
+    {.file = "lib/util/pcre2.c",
+     .line = 54,
+     .expected_count = 1,
+     .expected_bytes = 56,
+     .reason = "PCRE2 JIT singleton for code compilation (intentional, cleaned up at shutdown)",
+     .key = {0}},
+    {.file = "lib/util/pcre2.c",
+     .line = 62,
+     .expected_count = 1,
+     .expected_bytes = 7,
+     .reason = "PCRE2 mcontext singleton for matching (intentional, cleaned up at shutdown)",
+     .key = {0}},
     // Debug system allocations (intentional, tied to thread lifetimes)
-    {.file = "lib/debug/mutex.c", .line = 327, .expected_count = 500, .expected_bytes = 15000, .reason = "Debug mutex stack tracking allocations (freed on thread/program exit)", .key = {0}},
-    {.file = "lib/thread_pool.c", .line = 114, .expected_count = 10, .expected_bytes = 3840, .reason = "Thread pool metadata allocations", .key = {0}},
-    {.file = "lib/thread_pool.c", .line = 160, .expected_count = 40, .expected_bytes = 416, .reason = "Thread pool work queue entries", .key = {0}},
-    {.file = "lib/platform/posix/thread.c", .line = 87, .expected_count = 100, .expected_bytes = 1600, .reason = "Thread creation tracking allocations", .key = {0}},
+    {.file = "lib/debug/mutex.c",
+     .line = 327,
+     .expected_count = 500,
+     .expected_bytes = 15000,
+     .reason = "Debug mutex stack tracking allocations (freed on thread/program exit)",
+     .key = {0}},
+    {.file = "lib/thread_pool.c",
+     .line = 114,
+     .expected_count = 10,
+     .expected_bytes = 3840,
+     .reason = "Thread pool metadata allocations",
+     .key = {0}},
+    {.file = "lib/thread_pool.c",
+     .line = 160,
+     .expected_count = 40,
+     .expected_bytes = 416,
+     .reason = "Thread pool work queue entries",
+     .key = {0}},
+    {.file = "lib/platform/posix/thread.c",
+     .line = 87,
+     .expected_count = 100,
+     .expected_bytes = 1600,
+     .reason = "Thread creation tracking allocations",
+     .key = {0}},
     {.file = NULL, .line = 0, .expected_count = 0, .expected_bytes = 0, .reason = NULL, .key = {0}} // Sentinel
 };
 
@@ -1123,7 +1178,7 @@ void debug_memory_report(void) {
                 file[file_len] = '\0';
 
                 // Extract line (between first and last colon)
-                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%lu", &tid) == 1) {
+                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%llu", &tid) == 1) {
                   parse_success = true;
                 }
               } else if (file_len >= sizeof(file)) {
@@ -1133,7 +1188,7 @@ void debug_memory_report(void) {
                 file[max_len] = '\0';
                 strcat(file, "...");
 
-                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%lu", &tid) == 1) {
+                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%llu", &tid) == 1) {
                   parse_success = true;
                 }
               }

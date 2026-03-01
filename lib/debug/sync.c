@@ -133,7 +133,7 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
   }
 
   if (rwlock->read_lock_count > 0) {
-    snprintf(read_held_str, sizeof(read_held_str), "[READ_LOCKED=%lu]", rwlock->read_lock_count);
+    snprintf(read_held_str, sizeof(read_held_str), "[READ_LOCKED=%llu]", rwlock->read_lock_count);
   }
 
   if (rwlock->write_held_by_key == 0 && rwlock->read_lock_count == 0) {
@@ -189,7 +189,7 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
   }
 
   if (cond->waiting_count > 0) {
-    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%lu threads, last=0x%lx]", cond->waiting_count,
+    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%llu threads, last=0x%lx]", cond->waiting_count,
              (unsigned long)cond->last_waiting_key);
   } else {
     snprintf(status_str, sizeof(status_str), "[IDLE]");

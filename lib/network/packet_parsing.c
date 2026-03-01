@@ -185,7 +185,7 @@ asciichat_error_t packet_parse_opus_batch(const void *packet_data, size_t packet
     char hex_buf[256];
     size_t bytes_to_show = (packet_len < 32) ? packet_len : 32;
     for (size_t i = 0; i < bytes_to_show; i++) {
-      sprintf(hex_buf + i * 2, "%02x", ((uint8_t *)packet_data)[i]);
+      snprintf(hex_buf + i * 2, 3, "%02x", ((uint8_t *)packet_data)[i]);
     }
     hex_buf[bytes_to_show * 2] = '\0';
     log_error("★ OPUS_BATCH_RCV_DEBUG: packet_len=%zu, expected_min=%zu, first_bytes=%s", packet_len, header_size,

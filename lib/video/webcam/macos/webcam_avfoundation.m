@@ -529,7 +529,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     // Get buffer info
     size_t width = CVPixelBufferGetWidth(pixelBuffer);
     size_t height = CVPixelBufferGetHeight(pixelBuffer);
-    size_t bytesPerRow = CVPixelBufferGetBytesPerRow(pixelBuffer);
     uint8_t *baseAddress = (uint8_t *)CVPixelBufferGetBaseAddress(pixelBuffer);
 
     if (!baseAddress) {
