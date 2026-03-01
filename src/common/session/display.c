@@ -770,8 +770,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     // This ensures complete frames are displayed without fragmentation from partial writes
     // Use cursor home + clear-entire-display (including scrollback) to prevent frame stacking
-    const char *cursor_home_sequence = "\033[H\033[3J"; // ESC [ H (home) + ESC [ 3 J (clear display + scrollback)
-    size_t cursor_seq_len = 6;
+    const char *cursor_home_sequence = "\033[H\033[3J"; // ESC [ H (3 bytes) + ESC [ 3 J (4 bytes) = 7 bytes total
+    size_t cursor_seq_len = 7;
 
     // Calculate total buffer size needed for cursor control + frame data
     size_t total_size = cursor_seq_len + frame_len;
