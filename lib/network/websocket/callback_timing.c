@@ -35,7 +35,7 @@ void websocket_callback_timing_record(websocket_callback_stats_t *stats, uint64_
   atomic_fetch_add_u64(&stats->total_duration_ns, duration_ns);
 
   // Update last timestamp
-  uint64_t prev_last_ns = atomic_exchange(&stats->last_ns, end_ns);
+  uint64_t prev_last_ns = atomic_ptr_exchange(&stats->last_ns, end_ns);
 
   // Calculate interval from previous callback (if not the first one)
   if (count > 0 && prev_last_ns > 0) {

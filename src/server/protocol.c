@@ -157,7 +157,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
   protocol_cleanup_thread_locals();
 
-  bool already_requested = atomic_exchange(&client->protocol_disconnect_requested, true);
+  bool already_requested = atomic_ptr_exchange(&client->protocol_disconnect_requested, true);
   if (already_requested) {
     return;
   }
