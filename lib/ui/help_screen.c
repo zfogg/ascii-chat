@@ -400,6 +400,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
                    "─────────────────────");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "?       Toggle this help screen");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                   "Esc     Close help / Quit app");
 
   // Check if media is provided (only show Space/Seek keys if media is loaded)
   const char *media_url = GET_OPTION(media_url);
@@ -414,17 +416,17 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   }
 
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "m       Mute/Unmute audio");
+                   "m / M   Mute/Unmute audio");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "↑ / ↓   Volume up/down (10%)");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "c       Cycle color mode");
+                   "c / C   Cycle color mode");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "f       Cycle color filter");
+                   "f / F   Cycle color filter");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "g       Flip webcam horizontally");
+                   "g / G   Flip webcam horizontally");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "r       Cycle render mode");
+                   "r / R   Cycle render mode");
 
 #ifndef NDEBUG
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,

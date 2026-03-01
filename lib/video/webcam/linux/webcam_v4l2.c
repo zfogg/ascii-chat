@@ -634,9 +634,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // At 30fps, frames arrive every ~33ms; at 60fps every ~16ms
   struct pollfd pfd = {.fd = ctx->fd, .events = POLLIN};
 
-  uint64_t t_poll_start = time_get_ns();
   int poll_ret = poll(&pfd, 1, 500);  // 500ms timeout for slower cameras
-  uint64_t t_poll = time_get_ns() - t_poll_start;
 
   if (poll_ret < 0) {
     log_error("poll() failed on V4L2 device: %s", SAFE_STRERROR(errno));
@@ -656,15 +654,10 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   }
 
   // Dequeue the buffer (should succeed now)
-  uint64_t t_dqbuf_start = time_get_ns();
   if (ioctl(ctx->fd, VIDIOC_DQBUF, &buf) != 0) {
     log_error("Failed to dequeue V4L2 buffer after poll(): %s", SAFE_STRERROR(errno));
     return NULL;
   }
-  uint64_t t_dqbuf = time_get_ns() - t_dqbuf_start;
-
-  fprintf(stderr, "[V4L2 TIMING] poll=%lu ns (%.2f ms), dqbuf=%lu ns (%.2f ms)\n",
-          (unsigned long)t_poll, t_poll / 1000000.0, (unsigned long)t_dqbuf, t_dqbuf / 1000000.0);
 
   // Validate buffer index to prevent crashes
   if (buf.index >= (unsigned int)ctx->buffer_count) {
@@ -697,17 +690,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
 
   image_t *img = v4l2_cached_frame;
 
-  // DEBUG: Direct stderr output to verify function is called
-  fprintf(stderr, "[FRAME READ] pixelformat=0x%x (MJPEG=0x%x, YUYV=0x%x)\n",
-           ctx->pixelformat, V4L2_PIX_FMT_MJPEG, V4L2_PIX_FMT_YUYV);
-
   // Handle MJPEG decompression if using MJPEG format
-  fprintf(stderr, "[CONDITION TEST] ctx->pixelformat (%u) == V4L2_PIX_FMT_MJPEG (%u) ? %s\n",
-          ctx->pixelformat, V4L2_PIX_FMT_MJPEG,
-          (ctx->pixelformat == V4L2_PIX_FMT_MJPEG) ? "TRUE" : "FALSE");
-
   if (ctx->pixelformat == V4L2_PIX_FMT_MJPEG) {
-    fprintf(stderr, "[MJPEG PATH] ENTERED\n");
     if (!ctx->mjpeg_codec_ctx) {
       log_error("MJPEG codec context not initialized");
       if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
@@ -716,8 +700,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       return NULL;
     }
 
-    uint64_t t_start = time_get_ns();
-    uint64_t t_packet = 0, t_decode = 0, t_scale = 0;
 
     // Create packet from MJPEG frame data
     AVPacket pkt = {0};
@@ -733,10 +715,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
       return NULL;
     }
-    t_packet = time_get_ns() - t_start;
 
     // Receive decoded frame (JPEG decompression happens here)
-    uint64_t t_decode_start = time_get_ns();
     if (avcodec_receive_frame(ctx->mjpeg_codec_ctx, ctx->mjpeg_decoded_frame) < 0) {
       log_warn_every(1000000000LL, "Failed to decode MJPEG frame from %u bytes", buf.bytesused);
       av_packet_unref(&pkt);
@@ -745,11 +725,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       }
       return NULL;
     }
-    t_decode = time_get_ns() - t_decode_start;
 
-    // Log timing via fprintf
-    fprintf(stderr, "[MJPEG TIMING] send_packet=%lu ns (%.2f ms), decode=%lu ns (%.2f ms)\n",
-            (unsigned long)t_packet, t_packet / 1000000.0, (unsigned long)t_decode, t_decode / 1000000.0);
     av_packet_unref(&pkt);
 
     // Convert decoded frame to RGB24 using swscale
@@ -764,14 +740,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     uint8_t *dst_data[1] = {(uint8_t *)img->pixels};
     int dst_linesize[1] = {ctx->width * 3};
 
-    uint64_t t_scale_start = time_get_ns();
     sws_scale(ctx->sws_ctx, (const uint8_t * const *)ctx->mjpeg_decoded_frame->data,
               ctx->mjpeg_decoded_frame->linesize, 0, ctx->height, dst_data, dst_linesize);
-    t_scale = time_get_ns() - t_scale_start;
-
-    uint64_t total_time = time_get_ns() - t_start;
-    fprintf(stderr, "[MJPEG TIMING] sws_scale=%lu ns (%.2f ms), TOTAL=%lu ns (%.2f ms)\n",
-            (unsigned long)t_scale, t_scale / 1000000.0, (unsigned long)total_time, total_time / 1000000.0);
 
     // Re-queue the buffer for future use
     if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {
