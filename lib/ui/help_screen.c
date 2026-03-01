@@ -531,9 +531,6 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     }
   }
 
-  // Always render FPS overlay on help screen (regardless of fps_counter option)
-  session_display_render_fps_overlay(ctx);
-
   SAFE_FREE(buffer);
 }
 
