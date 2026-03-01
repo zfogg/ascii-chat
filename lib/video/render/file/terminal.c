@@ -17,6 +17,7 @@
 #include <vterm.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_GLYPH_H
 #include <string.h>
 
 struct terminal_renderer_s {
@@ -29,6 +30,7 @@ struct terminal_renderer_s {
   uint8_t *framebuffer;
   int width_px, height_px, pitch;
   term_renderer_theme_t theme;
+  bool is_matrix_font;
 };
 
 static int screen_damage(VTermRect r, void *u) {
@@ -37,6 +39,32 @@ static int screen_damage(VTermRect r, void *u) {
   return 1;
 }
 static VTermScreenCallbacks g_vterm_cbs = {.damage = screen_damage};
+
+/**
+ * Map ASCII characters to Matrix font's Private Use Area glyphs (U+E900-U+E91A).
+ * The Matrix-Resurrected font has 27 decorative glyphs in the PUA.
+ * Map printable ASCII characters to cycle through these glyphs.
+ */
+static uint32_t matrix_char_map(uint32_t ascii_char) {
+  // Matrix font glyphs: U+E900 to U+E91A (27 glyphs total)
+  const uint32_t matrix_start = 0xE900;
+  const uint32_t matrix_count = 27;
+
+  // If it's already in the PUA range, return as-is
+  if (ascii_char >= 0xE900 && ascii_char <= 0xE91A) {
+    return ascii_char;
+  }
+
+  // Map printable ASCII (32-126) to matrix glyphs
+  if (ascii_char >= 32 && ascii_char <= 126) {
+    // Cycle through available glyphs
+    uint32_t offset = (ascii_char - 32) % matrix_count;
+    return matrix_start + offset;
+  }
+
+  // Return unmapped characters as-is (will have no glyph)
+  return ascii_char;
+}
 
 /**
  * Alpha-composite a FreeType bitmap glyph at pixel (px,py) with fg/bg colors.
@@ -89,34 +117,69 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
     }
   }
 
+  // Detect if this is the matrix font (needs character mapping to Private Use Area)
+  r->is_matrix_font = (strstr(cfg->font_spec, "matrix") != NULL || strstr(cfg->font_spec, "Matrix") != NULL);
+  if (r->is_matrix_font) {
+    log_debug("term_renderer_create: Detected matrix font - will use Private Use Area character mapping");
+  }
+
   // Handle scalable vs bitmap fonts differently
   // Bitmap fonts (like matrix) don't respond to FT_Set_Char_Size
   // Instead, we need to select the best available bitmap strike
-  log_debug("term_renderer_create: num_fixed_sizes=%d", r->ft_face->num_fixed_sizes);
+  log_debug("term_renderer_create: font='%s' num_fixed_sizes=%d", cfg->font_spec, r->ft_face->num_fixed_sizes);
   if (r->ft_face->num_fixed_sizes > 0) {
     // Bitmap font: select the best matching bitmap strike
     int err = FT_Select_Size(r->ft_face, 0); // Use first available strike
-    log_debug("term_renderer_create: FT_Select_Size(0) returned %d", err);
+    log_debug("term_renderer_create: [BITMAP] FT_Select_Size(0) returned %d", err);
   } else {
     // Scalable font: use FT_Set_Char_Size
     // FT_Set_Char_Size takes 1/64pt units and DPI — supports fractional point sizes.
     // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
     int err = FT_Set_Char_Size(r->ft_face, 0, (FT_F26Dot6)(cfg->font_size_pt * 64.0), 96, 96);
-    log_debug("term_renderer_create: FT_Set_Char_Size returned %d", err);
+    log_debug("term_renderer_create: [SCALABLE] FT_Set_Char_Size(size_pt=%.1f → %ld 1/64pt) returned %d",
+              cfg->font_size_pt, (long)(cfg->font_size_pt * 64.0), err);
   }
 
-  FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
+  int load_err = FT_Load_Char(r->ft_face, 'M', FT_LOAD_RENDER);
+  log_debug("term_renderer_create: FT_Load_Char('M', FT_LOAD_RENDER) returned %d", load_err);
+
   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
   r->cell_w = (int)(r->ft_face->glyph->advance.x >> 6);
+
+  log_debug("term_renderer_create: [GLYPH_M] advance.x=%ld (→ cell_w=%d), bitmap.rows=%d, bitmap.width=%d, "
+            "bitmap_top=%d, size->metrics.height=%ld (→ %.1f)",
+            r->ft_face->glyph->advance.x, r->cell_w, r->ft_face->glyph->bitmap.rows, r->ft_face->glyph->bitmap.width,
+            r->ft_face->glyph->bitmap_top, r->ft_face->size->metrics.height,
+            (double)(r->ft_face->size->metrics.height >> 6));
+
   // For bitmap fonts, use the glyph bitmap height; for scalable fonts, use face metrics
   if (r->ft_face->num_fixed_sizes > 0) {
     // Bitmap font: use actual glyph bitmap dimensions
     r->cell_h = r->ft_face->glyph->bitmap.rows;
+    log_debug("term_renderer_create: [BITMAP] cell_w=%d, cell_h=%d (from bitmap.rows=%d)", r->cell_w, r->cell_h,
+              r->ft_face->glyph->bitmap.rows);
   } else {
-    // Scalable font: use proper face metrics for line spacing
+    // Scalable font: try size metrics first, but fall back to ascender+descender if size metrics is wrong
     r->cell_h = (int)(r->ft_face->size->metrics.height >> 6);
+
+    // If size->metrics.height is too small, use ascender-descender from face bbox
+    if (r->cell_h < 10) {
+      log_debug("term_renderer_create: size->metrics.height=%d is too small, using bbox ascender/descender", r->cell_h);
+      int ascender = (int)((r->ft_face->ascender * r->ft_face->size->metrics.y_scale) >> 16);
+      int descender = (int)((r->ft_face->descender * r->ft_face->size->metrics.y_scale) >> 16);
+      r->cell_h = (ascender - descender) >> 6;
+      log_debug("term_renderer_create: ascender=%d, descender=%d (scaled), cell_h=%d", ascender >> 6, descender >> 6,
+                r->cell_h);
+    }
+
     if (r->cell_h <= 0) {
-      r->cell_h = (int)r->ft_face->glyph->bitmap.rows; // Fallback
+      r->cell_h = (int)r->ft_face->glyph->bitmap.rows; // Fallback to glyph bitmap
+      if (r->cell_h <= 0)
+        r->cell_h = 16; // Last resort
+      log_debug("term_renderer_create: [SCALABLE] fallback cell_h=%d", r->cell_h);
+    } else {
+      log_debug("term_renderer_create: [SCALABLE] cell_w=%d, cell_h=%d (from size->metrics.height)", r->cell_w,
+                r->cell_h);
     }
   }
   r->baseline = r->ft_face->glyph->bitmap_top;
@@ -125,6 +188,9 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   r->height_px = r->rows * r->cell_h;
   r->pitch = r->width_px * 3;
   r->framebuffer = SAFE_MALLOC((size_t)r->pitch * r->height_px, uint8_t *);
+
+  log_debug("term_renderer_create: Final dims: %dx%d cells, %dx%d pixels, cell(w=%d,h=%d)", r->cols, r->rows,
+            r->width_px, r->height_px, r->cell_w, r->cell_h);
 
   r->vt = vterm_new(r->rows, r->cols);
   r->vts = vterm_obtain_screen(r->vt);
@@ -139,12 +205,20 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
 }
 
 asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_frame, size_t len) {
+  FILE *dbg = fopen("/tmp/render-debug.txt", "a");
+  if (dbg) {
+    fprintf(dbg, "[TERM_RENDERER_FEED] Called with len=%zu, r=%p, dims=%dx%d\n", len, (void *)r, r->width_px,
+            r->height_px);
+    fclose(dbg);
+  }
   static const char home[] = "\033[H";
+  log_debug("term_renderer_feed: Processing ANSI frame (len=%zu, first 100 chars: %.100s)", len, ansi_frame);
   vterm_input_write(r->vt, home, sizeof(home) - 1);
   vterm_input_write(r->vt, ansi_frame, len);
 
   uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
 
+  int cells_with_chars = 0, cells_rendered = 0;
   for (int row = 0; row < r->rows; row++) {
     for (int col = 0; col < r->cols; col++) {
       VTermScreenCell cell;
@@ -178,14 +252,35 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
       }
 
       if (cell.chars[0] && cell.chars[0] != ' ') {
-        FT_UInt gi = FT_Get_Char_Index(r->ft_face, cell.chars[0]);
-        if (gi && FT_Load_Glyph(r->ft_face, gi, FT_LOAD_RENDER) == 0) {
-          FT_GlyphSlot g = r->ft_face->glyph;
-          blit_glyph(r, &g->bitmap, px + g->bitmap_left, py + r->baseline - g->bitmap_top, fr, fg, fb, br, bg, bb);
+        cells_with_chars++;
+        // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
+        uint32_t char_to_render = r->is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
+        FT_UInt gi = FT_Get_Char_Index(r->ft_face, char_to_render);
+        if (gi) {
+          if (FT_Load_Glyph(r->ft_face, gi, FT_LOAD_RENDER) == 0) {
+            FT_GlyphSlot g = r->ft_face->glyph;
+
+            // Blit if we have content
+            if (g->bitmap.width > 0 && g->bitmap.rows > 0) {
+              blit_glyph(r, &g->bitmap, px + g->bitmap_left, py + r->baseline - g->bitmap_top, fr, fg, fb, br, bg, bb);
+              cells_rendered++;
+            }
+          }
         }
       }
     }
   }
+
+  // Sample pixels from framebuffer to verify content
+  uint8_t *sample_top = r->framebuffer;
+  uint8_t *sample_mid = r->framebuffer + (r->height_px / 2) * r->pitch;
+  uint8_t *sample_bot = r->framebuffer + (r->height_px - 1) * r->pitch;
+  log_debug("term_renderer_feed: cells_with_chars=%d, cells_rendered=%d", cells_with_chars, cells_rendered);
+  log_debug(
+      "term_renderer_feed: pixel samples - top_left RGB(%d,%d,%d), mid_left RGB(%d,%d,%d), bot_left RGB(%d,%d,%d)",
+      sample_top[0], sample_top[1], sample_top[2], sample_mid[0], sample_mid[1], sample_mid[2], sample_bot[0],
+      sample_bot[1], sample_bot[2]);
+
   return ASCIICHAT_OK;
 }
 
