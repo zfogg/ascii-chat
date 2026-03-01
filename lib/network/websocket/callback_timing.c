@@ -16,12 +16,7 @@
 /**
  * @brief Global timing tracker - shared across all WebSocket connections
  */
-websocket_callback_timing_t g_ws_callback_timing = {
-    .protocol_init = {.count = 0, .last_ns = 0, .min_interval_ns = UINT64_MAX, .max_interval_ns = 0},
-    .protocol_destroy = {.count = 0, .last_ns = 0, .min_interval_ns = UINT64_MAX, .max_interval_ns = 0},
-    .server_writeable = {.count = 0, .last_ns = 0, .min_interval_ns = UINT64_MAX, .max_interval_ns = 0},
-    .receive = {.count = 0, .last_ns = 0, .min_interval_ns = UINT64_MAX, .max_interval_ns = 0},
-};
+websocket_callback_timing_t g_ws_callback_timing = {0};
 
 void websocket_callback_timing_record(websocket_callback_stats_t *stats, uint64_t start_ns, uint64_t end_ns) {
   if (!stats) {
@@ -123,8 +118,8 @@ void websocket_callback_timing_log_stats(void) {
 
 void websocket_callback_timing_reset(void) {
   memset(&g_ws_callback_timing, 0, sizeof(g_ws_callback_timing));
-  g_ws_callback_timing.protocol_init.min_interval_ns = UINT64_MAX;
-  g_ws_callback_timing.protocol_destroy.min_interval_ns = UINT64_MAX;
-  g_ws_callback_timing.server_writeable.min_interval_ns = UINT64_MAX;
-  g_ws_callback_timing.receive.min_interval_ns = UINT64_MAX;
+  atomic_store_u64(&g_ws_callback_timing.protocol_init.min_interval_ns, UINT64_MAX);
+  atomic_store_u64(&g_ws_callback_timing.protocol_destroy.min_interval_ns, UINT64_MAX);
+  atomic_store_u64(&g_ws_callback_timing.server_writeable.min_interval_ns, UINT64_MAX);
+  atomic_store_u64(&g_ws_callback_timing.receive.min_interval_ns, UINT64_MAX);
 }
