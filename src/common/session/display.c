@@ -242,8 +242,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
 
 #ifndef _WIN32
   // Initialize render-file if enabled (skip "-" which is used for stdin render mode to stdout)
+  // Also skip if render_file is explicitly disabled for temporary displays (splash screen)
   const char *render_file_opt = GET_OPTION(render_file);
-  if (strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
+  if (!config->skip_render_file && strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
     // Query actual terminal dimensions instead of using option defaults
     int width = (int)terminal_get_effective_width();
     int height = (int)terminal_get_effective_height();
@@ -747,7 +748,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Perform initial terminal reset (clear screen immediately for first frame)
     if (ctx->has_tty) {
       (void)terminal_reset(STDOUT_FILENO);
-      (void)terminal_clear_screen();  // Clear AFTER splash thread exits to avoid log overlap
+      (void)terminal_clear_screen(); // Clear AFTER splash thread exits to avoid log overlap
       (void)terminal_cursor_home(STDOUT_FILENO);
       (void)terminal_clear_scrollback(STDOUT_FILENO);
       // Ensure cursor is visible after splash before hiding it for rendering

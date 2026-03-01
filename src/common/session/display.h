@@ -96,6 +96,9 @@ typedef struct {
 
   /** @brief Opaque data passed to should_exit_callback */
   void *callback_data;
+
+  /** @brief Skip render-file initialization (for temporary splash displays) */
+  bool skip_render_file;
 } session_display_config_t;
 
 /* ============================================================================

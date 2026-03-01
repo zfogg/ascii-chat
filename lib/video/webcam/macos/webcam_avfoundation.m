@@ -14,6 +14,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/image.h>
+#include <ascii-chat/options/options.h>
 
 // AVFoundation timeout configuration
 #define AVFOUNDATION_FRAME_TIMEOUT_NS 500000000         // 500ms timeout (adjustable for slow cameras)
@@ -250,6 +251,70 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
       dispatch_release(context->queue);
       SAFE_FREE(context);
       return SET_ERRNO(ERROR_WEBCAM, "Failed to initialize webcam");
+    }
+
+    // Configure frame rate before starting session
+    log_debug("AVFoundation: Attempting to configure frame rate...");
+    AVCaptureDeviceInput *deviceInput = (AVCaptureDeviceInput *)context->input;
+    AVCaptureDevice *captureDevice = [deviceInput device];
+
+    if (captureDevice) {
+      log_debug("AVFoundation: Found device for FPS configuration");
+      NSError *lockError = nil;
+      uint32_t target_fps = (uint32_t)GET_OPTION(fps);
+      if (target_fps == 0)
+        target_fps = 60;
+
+      if ([captureDevice lockForConfiguration:&lockError]) {
+        // Find the best format that supports the target FPS
+        AVCaptureDeviceFormat *bestFormat = nil;
+        AVFrameRateRange *bestRange = nil;
+        int format_count = 0;
+
+        for (AVCaptureDeviceFormat *format in captureDevice.formats) {
+          format_count++;
+          for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
+            if (range.maxFrameRate >= target_fps && (!bestFormat || range.maxFrameRate < bestRange.maxFrameRate)) {
+              bestFormat = format;
+              bestRange = range;
+            }
+          }
+        }
+
+        if (bestFormat && bestRange) {
+          captureDevice.activeFormat = bestFormat;
+          captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, (int32_t)target_fps);
+          captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, (int32_t)target_fps);
+          log_info("AVFoundation: Configured for %u FPS (device supports %.0f - %.0f FPS)", target_fps,
+                   bestRange.minFrameRate, bestRange.maxFrameRate);
+        } else {
+          // Device doesn't support requested FPS - find the maximum FPS available
+          AVFrameRateRange *maxRange = nil;
+          AVCaptureDeviceFormat *maxFormat = nil;
+          for (AVCaptureDeviceFormat *format in captureDevice.formats) {
+            for (AVFrameRateRange *range in format.videoSupportedFrameRateRanges) {
+              if (!maxRange || range.maxFrameRate > maxRange.maxFrameRate) {
+                maxRange = range;
+                maxFormat = format;
+              }
+            }
+          }
+
+          if (maxFormat && maxRange) {
+            int actual_fps = (int)maxRange.maxFrameRate;
+            captureDevice.activeFormat = maxFormat;
+            captureDevice.activeVideoMinFrameDuration = CMTimeMake(1, actual_fps);
+            captureDevice.activeVideoMaxFrameDuration = CMTimeMake(1, actual_fps);
+            log_warn("Device does not support %u FPS - using maximum available %.0f FPS", target_fps,
+                     maxRange.maxFrameRate);
+          } else {
+            log_warn("Could not determine device FPS capabilities, using device default");
+          }
+        }
+        [captureDevice unlockForConfiguration];
+      } else {
+        log_warn("Could not lock device for FPS configuration: %s", [[lockError localizedDescription] UTF8String]);
+      }
     }
 
     // Start the session

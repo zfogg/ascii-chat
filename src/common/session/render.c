@@ -31,6 +31,8 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
+#include <inttypes.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -77,10 +79,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   }
 
   // Snapshot mode state tracking
-  uint64_t snapshot_start_time_ns = 0; // Initialized when first frame is rendered
+  bool snapshot_mode = GET_OPTION(snapshot_mode);
+  uint64_t snapshot_start_time_ns = (snapshot_mode ? time_get_ns() : 0); // Initialize immediately in snapshot mode
   bool snapshot_done = false;
   bool first_frame_rendered = false;
-  bool snapshot_mode = GET_OPTION(snapshot_mode);
 
   // Help screen state tracking for clear-screen transition
   bool help_was_active = false;
@@ -89,8 +91,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   unsigned short int last_terminal_width = terminal_get_effective_width();
   unsigned short int last_terminal_height = terminal_get_effective_height();
 
-  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s", (void *)display,
-           (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO");
+  log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f",
+           (void *)display, (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO",
+           snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
 
   // Pause mode state tracking
   bool initial_paused_frame_rendered = false;
@@ -470,11 +473,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
-      // Snapshot mode timing: start timer right after rendering first frame
+      // Snapshot mode timing: mark that first frame has been rendered
+      // (timer already started at the beginning of the render loop)
       if (snapshot_mode && !first_frame_rendered) {
-        snapshot_start_time_ns = time_get_ns();
         first_frame_rendered = true;
-        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered, timer started");
+        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered");
       }
 
       // Snapshot mode: check if delay has elapsed after rendering a frame
@@ -486,7 +489,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         log_debug_every(US_PER_SEC_INT, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
 
         // snapshot_delay=0 means exit immediately after rendering first frame
-        // snapshot_delay>0 means wait that many seconds after first frame
+        // snapshot_delay>0 means wait that many seconds after render loop start
         if (elapsed_sec >= snapshot_delay) {
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,

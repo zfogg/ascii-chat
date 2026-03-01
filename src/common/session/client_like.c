@@ -173,7 +173,15 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
   log_debug("session_client_like_run(): Creating temporary display for splash");
 
-  temp_display = session_display_create(NULL);
+  // Create temporary display for splash with render-file disabled
+  session_display_config_t splash_config = {
+      .snapshot_mode = GET_OPTION(snapshot_mode),
+      .palette_type = GET_OPTION(palette_type),
+      .custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL,
+      .color_mode = TERM_COLOR_AUTO,
+      .skip_render_file = true, // Skip render-file for temporary splash display
+  };
+  temp_display = session_display_create(&splash_config);
   if (temp_display) {
     splash_intro_start(temp_display);
     log_debug("session_client_like_run(): splash_intro_start() returned");
