@@ -275,11 +275,20 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== HORIZONTAL FLIP CONTROL =====
-  case 'G':
-  case 'g': {
+  case 'X':
+  case 'x': {
     bool current_flip_x = (bool)GET_OPTION(flip_x);
     options_set_bool("flip_x", !current_flip_x);
     log_info("Horizontal flip: %s", !current_flip_x ? "enabled" : "disabled");
+    break;
+  }
+
+  // ===== VERTICAL FLIP CONTROL =====
+  case 'Y':
+  case 'y': {
+    bool current_flip_y = (bool)GET_OPTION(flip_y);
+    options_set_bool("flip_y", !current_flip_y);
+    log_info("Vertical flip: %s", !current_flip_y ? "enabled" : "disabled");
     break;
   }
 

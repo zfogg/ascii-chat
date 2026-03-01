@@ -428,7 +428,9 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "f / F   Cycle color filter");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
-                   "g / G   Flip webcam horizontally");
+                   "x / X   Flip webcam horizontally");
+  append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
+                   "y / Y   Flip webcam vertically");
   append_help_line(buffer, &buf_pos, BUFFER_SIZE, start_row, &current_row, start_col, box_width,
                    "r / R   Cycle render mode");
 

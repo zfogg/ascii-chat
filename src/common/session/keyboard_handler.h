@@ -46,7 +46,8 @@ typedef struct session_display_ctx session_display_ctx_t;
  * - **Spacebar**: Play/pause toggle (file/URL sources only)
  * - **'c' key**: Cycle through color modes (mono → 16 → 256 → truecolor)
  * - **'m' key**: Toggle mute (remembers previous volume for unmute)
- * - **'f' key**: Flip webcam horizontally (mirroring)
+ * - **'x' key**: Flip webcam horizontally (mirroring)
+ * - **'y' key**: Flip webcam vertically
  *
  * **Source-specific behavior:**
  * - Help screen: Works in all modes (toggles with '?')
