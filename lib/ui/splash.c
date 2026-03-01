@@ -93,19 +93,19 @@ void splash_log_append(const char *message) {
  * @brief Animation state for intro splash
  */
 static struct {
-  _Atomic(bool) is_running;             // true while animation should continue
-  _Atomic(bool) should_stop;            // set to true when splash should stop
-  _Atomic(bool) thread_created;         // true if animation thread was successfully created
+  atomic_t is_running;                  // true while animation should continue
+  atomic_t should_stop;                 // set to true when splash should stop
+  atomic_t thread_created;              // true if animation thread was successfully created
   int frame;                            // current animation frame
   asciichat_thread_t anim_thread;       // animation thread handle
   uint64_t start_time_ns;               // when splash was started (for minimum display time)
-  _Atomic(uint64_t) intro_done_time_ns; // when splash_intro_done() was called
-} g_splash_state = {.is_running = false,
-                    .should_stop = false,
-                    .thread_created = false,
+  atomic_t intro_done_time_ns;          // when splash_intro_done() was called
+} g_splash_state = {.is_running = {0},
+                    .should_stop = {0},
+                    .thread_created = {0},
                     .frame = 0,
                     .start_time_ns = 0,
-                    .intro_done_time_ns = 0};
+                    .intro_done_time_ns = {0}};
 
 // ============================================================================
 // Helper Functions - TTY Detection
@@ -448,7 +448,7 @@ static void *splash_animation_thread(void *arg) {
   // Don't log until after first frame to avoid startup flicker
   bool first_frame = true;
 
-  while (!atomic_load(&g_splash_state.should_stop) && !shutdown_is_requested()) {
+  while (!atomic_load_bool(&g_splash_state.should_stop) && !shutdown_is_requested()) {
     // Calculate animation frame based on ELAPSED TIME, not iteration count
     // This ensures the animation plays at the same speed regardless of FPS variation
     uint64_t now_ns = time_get_ns();
@@ -456,7 +456,7 @@ static void *splash_animation_thread(void *arg) {
     uint64_t elapsed_ms = elapsed_ns / 1000000;
 
     // Check if we should stop the splash (from splash_intro_done signal)
-    uint64_t intro_done_ns = atomic_load(&g_splash_state.intro_done_time_ns);
+    uint64_t intro_done_ns = atomic_load_u64(&g_splash_state.intro_done_time_ns);
     if (intro_done_ns > 0) {
       // splash_intro_done() was called - keep splash running for a minimum display time
       // The first ASCII frame will be rendered after the splash exits
@@ -471,7 +471,7 @@ static void *splash_animation_thread(void *arg) {
       bool max_time_reached = elapsed_since_start_ns >= max_display_ns;
 
       if (min_display_reached || max_time_reached) {
-        atomic_store(&g_splash_state.should_stop, true);
+        atomic_store_bool(&g_splash_state.should_stop, true);
       }
     }
 
@@ -481,7 +481,7 @@ static void *splash_animation_thread(void *arg) {
 
     if (!first_frame) {
       log_dev("[SPLASH_ANIM] Iter %d: elapsed=%llums frame=%d should_stop=%d", iteration_count,
-              (unsigned long long)elapsed_ms, frame, atomic_load(&g_splash_state.should_stop));
+              (unsigned long long)elapsed_ms, frame, atomic_load_bool(&g_splash_state.should_stop));
     }
 
     // Poll keyboard for interactive grep and Escape to cancel
@@ -495,7 +495,7 @@ static void *splash_animation_thread(void *arg) {
         if (interactive_grep_is_active()) {
           interactive_grep_exit_mode(false); // Cancel grep without applying
         } else {
-          atomic_store(&g_splash_state.should_stop, true); // Exit splash screen
+          atomic_store_bool(&g_splash_state.should_stop, true); // Exit splash screen
         }
       } else if (key != KEY_NONE && interactive_grep_should_handle(key)) {
         interactive_grep_handle_key(key);
@@ -615,7 +615,7 @@ static void *splash_animation_thread(void *arg) {
   log_info(
       "[SPLASH_ANIM] === ANIMATION LOOP EXITED === %d iterations in %.3f seconds (%.1f actual FPS). should_stop=%d, "
       "shutdown=%d",
-      iteration_count, total_elapsed_sec, final_fps, atomic_load(&g_splash_state.should_stop), shutdown_is_requested());
+      iteration_count, total_elapsed_sec, final_fps, atomic_load_bool(&g_splash_state.should_stop), shutdown_is_requested());
 
   // If shutdown was requested, clear the screen immediately to prevent splash from
   // appearing briefly during exit
@@ -632,7 +632,7 @@ static void *splash_animation_thread(void *arg) {
     keyboard_destroy();
   }
 
-  atomic_store(&g_splash_state.is_running, false);
+  atomic_store_bool(&g_splash_state.is_running, false);
   log_dev("[SPLASH_ANIM] Animation thread exiting");
   return NULL;
 }
@@ -663,21 +663,21 @@ int splash_intro_start(session_display_ctx_t *ctx) {
   splash_log_clear();
 
   // Set running flag
-  atomic_store(&g_splash_state.is_running, true);
-  atomic_store(&g_splash_state.should_stop, false);
+  atomic_store_bool(&g_splash_state.is_running, true);
+  atomic_store_bool(&g_splash_state.should_stop, false);
   g_splash_state.frame = 0;
   g_splash_state.start_time_ns = time_get_ns();
 
   // Start animation thread (only create once)
   bool expected_false = false;
-  if (!atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected_false, true)) {
+  if (!atomic_cas_bool(&g_splash_state.thread_created, &expected_false, true)) {
     return 0;
   }
 
   int err = asciichat_thread_create(&g_splash_state.anim_thread, "splash_anim", splash_animation_thread, NULL);
   if (err != ASCIICHAT_OK) {
     log_warn("Failed to create splash animation thread: error=%d", err);
-    atomic_store(&g_splash_state.thread_created, false);
+    atomic_store_bool(&g_splash_state.thread_created, false);
     return 0;
   }
 
@@ -688,7 +688,7 @@ int splash_intro_done(void) {
   // Record when intro_done was called - animation thread will use this to decide when to stop
   // Animation thread needs time to check the flag and perform cleanup, so this must happen
   // BEFORE we try to access the terminal for frame rendering
-  atomic_store(&g_splash_state.intro_done_time_ns, time_get_ns());
+  atomic_store_u64(&g_splash_state.intro_done_time_ns, time_get_ns());
 
   // CRITICAL: Wait for the animation thread to fully exit BEFORE returning
   // This prevents race condition where both splash thread and frame rendering thread
@@ -696,12 +696,12 @@ int splash_intro_done(void) {
   // Animation thread will stop when 2 seconds have elapsed since splash start
   // Use 2.5 second timeout to allow animation to complete its 2-second minimum display time
   bool expected = true;
-  if (atomic_compare_exchange_strong(&g_splash_state.thread_created, &expected, false)) {
+  if (atomic_cas_bool(&g_splash_state.thread_created, &expected, false)) {
     // Successfully marked that we will join - now wait for thread to exit
     asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 2500LL * NS_PER_MS_INT);
   }
 
-  atomic_store(&g_splash_state.is_running, false);
+  atomic_store_bool(&g_splash_state.is_running, false);
   return 0;
 }
 
@@ -726,14 +726,14 @@ void splash_wait_for_animation(void) {
   // We block here to ensure clean terminal state before ASCII rendering begins
 
   // Only join if we successfully created the thread
-  if (atomic_load(&g_splash_state.thread_created)) {
+  if (atomic_load_bool(&g_splash_state.thread_created)) {
     log_dev("[SPLASH_WAIT] Waiting for animation thread to exit...");
 
     // Check if shutdown was requested - handle it specially
     bool is_shutting_down = shutdown_is_requested();
     if (is_shutting_down) {
       log_dev("[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop");
-      atomic_store(&g_splash_state.should_stop, true);
+      atomic_store_bool(&g_splash_state.should_stop, true);
     }
 
     // Use different timeout based on shutdown state:
@@ -752,7 +752,7 @@ void splash_wait_for_animation(void) {
         log_warn("[SPLASH_WAIT] Animation thread join timed out after %llu ms, forcing stop",
                  (unsigned long long)(timeout_ns / 1000000));
         // Force stop the animation thread if it didn't exit in time
-        atomic_store(&g_splash_state.should_stop, true);
+        atomic_store_bool(&g_splash_state.should_stop, true);
         // Clear any partial splash output left on screen
         terminal_clear_screen();
         terminal_cursor_home(STDOUT_FILENO);
@@ -761,7 +761,7 @@ void splash_wait_for_animation(void) {
     }
 
     // Mark that we've joined (safe to call multiple times - only joins once)
-    atomic_store(&g_splash_state.thread_created, false);
+    atomic_store_bool(&g_splash_state.thread_created, false);
   }
 }
 
