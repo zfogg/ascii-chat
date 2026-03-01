@@ -65,41 +65,44 @@ asciichat_error_t keyboard_init(void) {
   int config_fd = STDIN_FILENO;
   bool use_stdin = true;
 
-  // Try /dev/tty FIRST (preferred method - works in real TTYs)
-  // Falls back to stdin only if /dev/tty is unavailable
-  log_info("keyboard_init: Attempting to open /dev/tty as primary method");
-  g_tty_fd = open("/dev/tty", O_RDWR);
-  if (g_tty_fd >= 0) {
-    // Try to get terminal settings from /dev/tty
-    if (tcgetattr(g_tty_fd, &g_original_termios) >= 0) {
-      log_info("keyboard_init: Successfully using /dev/tty for keyboard input");
-      config_fd = g_tty_fd;
-      g_tty_fd_owned = true;
-      use_stdin = false;
-    } else {
-      // tcgetattr failed on /dev/tty - close it and fall back to stdin
-      log_warn("keyboard_init: tcgetattr(/dev/tty) failed - falling back to stdin");
-      close(g_tty_fd);
-      g_tty_fd = -1;
-      g_tty_fd_owned = false;
-      // Continue to try stdin below
-    }
-  } else {
-    log_debug("keyboard_init: /dev/tty not available (errno=%d) - falling back to stdin", errno);
-    // /dev/tty not available, try stdin instead
-  }
-
-  // If /dev/tty didn't work, try stdin as fallback
-  if (!g_tty_fd_owned) {
-    log_info("keyboard_init: Trying stdin as fallback");
+  // Check if stdin is a TTY - if so, use it directly
+  // This is important for tmux sessions where stdin receives input from tmux send-keys
+  if (isatty(STDIN_FILENO)) {
+    log_info("keyboard_init: stdin is a TTY - using stdin for keyboard input");
     if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
-      log_error("keyboard_init: FAILED - neither /dev/tty nor stdin available for keyboard input");
+      log_error("keyboard_init: FAILED - tcgetattr(stdin) failed");
       lifecycle_init_abort(&g_keyboard_lc);
-      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from both stdin and /dev/tty");
+      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from stdin");
     }
     config_fd = STDIN_FILENO;
     use_stdin = true;
     log_info("keyboard_init: Successfully using stdin for keyboard input");
+  } else {
+    // stdin is not a TTY - try /dev/tty as fallback
+    log_info("keyboard_init: stdin is not a TTY - attempting to open /dev/tty as fallback");
+    g_tty_fd = open("/dev/tty", O_RDWR);
+    if (g_tty_fd >= 0) {
+      // Try to get terminal settings from /dev/tty
+      if (tcgetattr(g_tty_fd, &g_original_termios) >= 0) {
+        log_info("keyboard_init: Successfully using /dev/tty for keyboard input");
+        config_fd = g_tty_fd;
+        g_tty_fd_owned = true;
+        use_stdin = false;
+      } else {
+        // tcgetattr failed on /dev/tty - close it
+        log_warn("keyboard_init: tcgetattr(/dev/tty) failed");
+        close(g_tty_fd);
+        g_tty_fd = -1;
+        g_tty_fd_owned = false;
+        log_error("keyboard_init: FAILED - neither stdin nor /dev/tty available for keyboard input");
+        lifecycle_init_abort(&g_keyboard_lc);
+        return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from both stdin and /dev/tty");
+      }
+    } else {
+      log_error("keyboard_init: FAILED - /dev/tty not available (errno=%d)", errno);
+      lifecycle_init_abort(&g_keyboard_lc);
+      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to open /dev/tty and stdin is not a TTY");
+    }
   }
 
   // Save original settings and create raw mode version
