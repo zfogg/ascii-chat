@@ -80,29 +80,29 @@ if [[ "$PLATFORM" == "macos" ]]; then
 # Linux: Detect package manager
 elif [[ "$PLATFORM" == "linux" ]]; then
   if [ -f /etc/devian_version ]; then
-      sudo bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
+      bash -c "$(wget -O - https://apt.llvm.org/llvm.sh)"
 
   elif command -v apt-get &>/dev/null; then
     echo "Detected apt-get package manager"
     echo "Installing dependencies..."
 
-    sudo add-apt-repository ppa:tomtomtom/yt-dlp -y
+    add-apt-repository ppa:tomtomtom/yt-dlp -y
 
     # INFO: see https://apt.kitware.com/
     set +e
-    sudo /bin/bash -c "$(curl -fsSL https://apt.kitware.com/kitware-archive.sh)" 2>/dev/null
+    /bin/bash -c "$(curl -fsSL https://apt.kitware.com/kitware-archive.sh)" 2>/dev/null
     kitware_apt_sh_result="$?"
     set -e
 
     if [ $kitware_apt_sh_result -eq 1 ]; then
-      sudo apt-get update
-      sudo apt-get install ca-certificates gpg wget
+      apt-get update
+      apt-get install ca-certificates gpg wget
 
       if [ ! -f /etc/debian_version ]; then
         test -f /usr/share/doc/kitware-archive-keyring/copyright \
           || wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc 2>/dev/null \
           | gpg --dearmor - \
-          | sudo tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
+          | tee /usr/share/keyrings/kitware-archive-keyring.gpg >/dev/null
 
         ubuntu_version_major="$(lsb_release -a | grep Release: | grep -Eo '[0-9]+' | head -n1)"
         ubuntu_version_name_short=""
@@ -118,23 +118,23 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         fi
 
         echo 'deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ '"$ubuntu_version_name_short"' main' \
-          | sudo tee /etc/apt/sources.list.d/kitware.list >/dev/null
+          | tee /etc/apt/sources.list.d/kitware.list >/dev/null
 
-        sudo apt-get update
+        apt-get update
 
         test -f /usr/share/doc/kitware-archive-keyring/copyright \
-          || sudo rm /usr/share/keyrings/kitware-archive-keyring.gpg
+          || rm /usr/share/keyrings/kitware-archive-keyring.gpg
 
-        sudo apt-get install kitware-archive-keyring
+        apt-get install kitware-archive-keyring
       fi
     fi
 
-    sudo apt-get update
+    apt-get update
 
     uname -a
 
     # Install non-LLVM dependencies first
-    sudo apt-get install -y \
+    apt-get install -y \
       pkg-config make autoconf automake libtool ccache \
       cmake ninja-build \
       musl-tools musl-dev \
@@ -154,10 +154,10 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       libvterm-dev libfreetype6-dev libfontconfig1-dev \
       || true
 
-    sudo /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     brew install yyjson
 
-    curl -fsSL https://bun.com/install | sudo bash
+    curl -fsSL https://bun.com/install | bash
 
     # Try LLVM versions in order from newest to oldest
     LLVM_VERSIONS="21 20 19 18"
@@ -169,7 +169,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       # libclang1-$ver provides the libclang runtime library
       # libclang-rt-$ver-dev provides compiler runtime (sanitizers, builtins)
       # libc++-$ver-dev and libc++abi-$ver-dev provide LLVM C++ standard library (required for musl builds)
-      if sudo apt-get install -y clang-$ver clang-format-$ver clang-tools-$ver clang-tidy-$ver libclang-$ver-dev libclang-cpp$ver-dev libclang-common-$ver-dev libclang1-$ver libclang-rt-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver libc++-$ver-dev libc++abi-$ver-dev 2>/dev/null; then
+      if apt-get install -y clang-$ver clang-format-$ver clang-tools-$ver clang-tidy-$ver libclang-$ver-dev libclang-cpp$ver-dev libclang-common-$ver-dev libclang1-$ver libclang-rt-$ver-dev llvm-$ver llvm-$ver-dev lld-$ver libc++-$ver-dev libc++abi-$ver-dev 2>/dev/null; then
         LLVM_VERSION=$ver
         echo "Successfully installed LLVM $ver"
         break
@@ -191,7 +191,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
     # Remove existing alternatives that might conflict (they may be registered as masters)
     # This allows us to set up fresh alternatives with our desired configuration
     for tool in $LLVM_TOOLS; do
-      sudo update-alternatives --remove-all "$tool" 2>/dev/null || true
+      update-alternatives --remove-all "$tool" 2>/dev/null || true
     done
 
     # Check for non-alternatives binaries in /usr/bin that would shadow our alternatives
@@ -216,7 +216,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
         echo "Removing conflicting binaries (--dangerously-delete-conflicts):"
         for f in $CONFLICTING_TOOLS $STALE_SYMLINKS; do
           echo "  Removing: $f"
-          sudo rm -f "$f"
+          rm -f "$f"
         done
       else
         echo ""
@@ -253,35 +253,35 @@ elif [[ "$PLATFORM" == "linux" ]]; then
 
     # Register each tool as a separate alternative (no slaves - avoids conflicts)
     # Use priority 200 to override any lower-priority alternatives
-    sudo update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200 || true
-    sudo update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200 || true
-    sudo update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200 || true
+    update-alternatives --install /usr/bin/lld lld ${LLVM_BIN}/lld 200 || true
+    update-alternatives --install /usr/bin/ld.lld ld.lld ${LLVM_BIN}/ld.lld 200 || true
+    update-alternatives --install /usr/bin/lldb lldb ${LLVM_BIN}/lldb 200 || true
 
-    sudo update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200
-    sudo update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
-    sudo update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 200
-    sudo update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 200
-    sudo update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 200
-    sudo update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200
-    sudo update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200
-    sudo update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200
-    sudo update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200
-    sudo update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200
+    update-alternatives --install /usr/bin/clang clang ${LLVM_BIN}/clang 200
+    update-alternatives --install /usr/bin/clang++ clang++ ${LLVM_BIN}/clang++ 200
+    update-alternatives --install /usr/bin/llvm-config llvm-config ${LLVM_BIN}/llvm-config 200
+    update-alternatives --install /usr/bin/llvm-ar llvm-ar ${LLVM_BIN}/llvm-ar 200
+    update-alternatives --install /usr/bin/llvm-nm llvm-nm ${LLVM_BIN}/llvm-nm 200
+    update-alternatives --install /usr/bin/llvm-objdump llvm-objdump ${LLVM_BIN}/llvm-objdump 200
+    update-alternatives --install /usr/bin/llvm-ranlib llvm-ranlib ${LLVM_BIN}/llvm-ranlib 200
+    update-alternatives --install /usr/bin/llvm-symbolizer llvm-symbolizer ${LLVM_BIN}/llvm-symbolizer 200
+    update-alternatives --install /usr/bin/llvm-cov llvm-cov ${LLVM_BIN}/llvm-cov 200
+    update-alternatives --install /usr/bin/llvm-profdata llvm-profdata ${LLVM_BIN}/llvm-profdata 200
 
-    sudo update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200 || true
-    sudo update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200 || true
+    update-alternatives --install /usr/bin/clang-format clang-format ${LLVM_BIN}/clang-format 200 || true
+    update-alternatives --install /usr/bin/clang-tidy clang-tidy ${LLVM_BIN}/clang-tidy 200 || true
 
     # Explicitly set the alternatives to ensure our version is active
-    sudo update-alternatives --set clang ${LLVM_BIN}/clang
-    sudo update-alternatives --set clang++ ${LLVM_BIN}/clang++
-    sudo update-alternatives --set llvm-config ${LLVM_BIN}/llvm-config
+    update-alternatives --set clang ${LLVM_BIN}/clang
+    update-alternatives --set clang++ ${LLVM_BIN}/clang++
+    update-alternatives --set llvm-config ${LLVM_BIN}/llvm-config
 
     # Ensure apt-installed cmake in /usr/bin is used
     # GitHub runners have pre-installed cmake in /usr/local/bin that may take precedence
     # Remove any conflicting cmake from /usr/local/bin if it exists
     if [ -f /usr/local/bin/cmake ]; then
       echo >&2 "Removing old cmake from /usr/local/bin..."
-      sudo rm -f /usr/local/bin/cmake
+      rm -f /usr/local/bin/cmake
     fi
 
     # Verify configuration
@@ -296,7 +296,7 @@ elif [[ "$PLATFORM" == "linux" ]]; then
   elif command -v yum &>/dev/null; then
     echo "Detected yum package manager"
     echo "Installing dependencies..."
-    sudo yum install -y \
+    yum install -y \
       pkg-config make autoconf automake libtool \
       clang llvm lld \
       libcxx-devel libcxxabi-devel \
@@ -315,14 +315,14 @@ elif [[ "$PLATFORM" == "linux" ]]; then
       rpm-build \
       libvterm-devel freetype-devel fontconfig-devel
 
-    sudo python3 -m pip install -U "yt-dlp[default]"
+    python3 -m pip install -U "yt-dlp[default]"
 
-    curl -fsSL https://bun.com/install | sudo bash
+    curl -fsSL https://bun.com/install | bash
 
   elif command -v pacman &>/dev/null; then
     echo "Detected pacman package manager"
     echo "Installing dependencies..."
-    sudo pacman -S --needed \
+    pacman -S --needed \
       pkg-config autoconf automake libtool \
       ccache \
       clang llvm lldb lld \
