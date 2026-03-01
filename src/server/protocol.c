@@ -157,7 +157,10 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
   protocol_cleanup_thread_locals();
 
-  bool already_requested = atomic_ptr_exchange(&client->protocol_disconnect_requested, true);
+  bool already_requested = atomic_load_bool(&client->protocol_disconnect_requested);
+  if (!already_requested) {
+    atomic_store_bool(&client->protocol_disconnect_requested, true);
+  }
   if (already_requested) {
     return;
   }
@@ -745,7 +748,7 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
   if (!was_sending_video) {
     // Try to atomically enable video sending
     // Use atomic_compare_exchange_strong to avoid spurious failures
-    if (atomic_cas_u64(&client->is_sending_video, &was_sending_video, true)) {
+    if (atomic_cas_bool(&client->is_sending_video, &was_sending_video, true)) {
       log_info("Client %u auto-enabled video stream (received IMAGE_FRAME)", client->client_id);
       // Notify client that their first video frame was received
       if (client->socket != INVALID_SOCKET_VALUE) {
@@ -1652,8 +1655,8 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
 
   mutex_lock(&client->client_state_mutex);
 
-  atomic_store(&client->width, width);
-  atomic_store(&client->height, height);
+  atomic_store_u64(&client->width, width);
+  atomic_store_u64(&client->height, height);
 
   log_debug("Client %u dimensions: %ux%u, desired_fps=%u", client->client_id, client->width, client->height,
             caps->desired_fps);

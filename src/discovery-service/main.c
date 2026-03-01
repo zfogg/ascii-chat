@@ -59,7 +59,7 @@ static atomic_t g_acds_should_exit = {0};
  * @brief Check if discovery mode should exit
  */
 static bool acds_should_exit(void) {
-  return atomic_load(&g_acds_should_exit);
+  return atomic_load_bool(&g_acds_should_exit);
 }
 
 /**

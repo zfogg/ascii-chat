@@ -72,8 +72,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
   packet_node_t *node = (packet_node_t *)atomic_ptr_load(&pool->free_list);
   while (node) {
     packet_node_t *next = (packet_node_t *)atomic_ptr_load(&node->next);
-    if (atomic_compare_exchange_weak_explicit(&pool->free_list, &node, next, memory_order_release,
-                                              memory_order_acquire)) {
+    if (atomic_ptr_cas(&pool->free_list, &node, next)) {
       // Successfully popped - clear next pointer and increment used_count
       atomic_ptr_store(&node->next, (void *)(packet_node_t *)NULL);
       atomic_fetch_add_u64(&pool->used_count, 1);
@@ -110,8 +109,7 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
     packet_node_t *head = (packet_node_t *)atomic_ptr_load(&pool->free_list);
     do {
       atomic_ptr_store(&node->next, (void *)head);
-    } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
-                                                    memory_order_relaxed));
+    } while (!atomic_ptr_cas(&pool->free_list, &head, node));
     atomic_fetch_sub_u64(&pool->used_count, 1);
   } else {
     // This was malloc'd, so free it
@@ -205,7 +203,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     if (head) {
       packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
       // Atomically update head pointer
-      if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
+      if (atomic_ptr_cas(&queue->head, &head, next)) {
         // Successfully claimed head node
         if (next == NULL) {
           // Queue became empty, also update tail
@@ -281,8 +279,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     if (tail == NULL) {
       // Empty queue - atomically set both head and tail
       packet_node_t *expected = NULL;
-      if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release,
-                                                memory_order_acquire)) {
+      if (atomic_ptr_cas(&queue->head, &expected, node)) {
         // Successfully set head (queue was empty)
         atomic_ptr_store(&queue->tail, (void *)node);
         break; // Enqueue successful
@@ -304,8 +301,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     if (next == NULL) {
       // Tail is actually the last node - try to link new node
       packet_node_t *expected_null = NULL;
-      if (atomic_compare_exchange_weak_explicit(&tail->next, &expected_null, node, memory_order_release,
-                                                memory_order_acquire)) {
+      if (atomic_ptr_cas(&tail->next, &expected_null, node)) {
         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
         atomic_ptr_cas(&queue->tail, &tail, node);
         break; // Enqueue successful
@@ -319,9 +315,9 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   }
 
   // Update counters atomically
-  atomic_fetch_add(&queue->count, (size_t)1);
-  atomic_fetch_add(&queue->bytes_queued, data_len);
-  atomic_fetch_add(&queue->packets_enqueued, (uint64_t)1);
+  atomic_fetch_add_u64(&queue->count, (size_t)1);
+  atomic_fetch_add_u64(&queue->bytes_queued, data_len);
+  atomic_fetch_add_u64(&queue->packets_enqueued, (uint64_t)1);
 
   return 0;
 }
@@ -351,7 +347,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     if (head) {
       packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
       // Atomically update head pointer
-      if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
+      if (atomic_ptr_cas(&queue->head, &head, next)) {
         // Successfully claimed head node
         if (next == NULL) {
           // Queue became empty, also update tail
@@ -416,8 +412,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     if (tail == NULL) {
       // Empty queue - atomically set both head and tail
       packet_node_t *expected = NULL;
-      if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release,
-                                                memory_order_acquire)) {
+      if (atomic_ptr_cas(&queue->head, &expected, node)) {
         // Successfully set head (queue was empty)
         atomic_ptr_store(&queue->tail, (void *)node);
         break; // Enqueue successful
@@ -439,8 +434,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     if (next == NULL) {
       // Tail is actually the last node - try to link new node
       packet_node_t *expected_null = NULL;
-      if (atomic_compare_exchange_weak_explicit(&tail->next, &expected_null, node, memory_order_release,
-                                                memory_order_acquire)) {
+      if (atomic_ptr_cas(&tail->next, &expected_null, node)) {
         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
         atomic_ptr_cas(&queue->tail, &tail, node);
         break; // Enqueue successful
@@ -454,9 +448,9 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   }
 
   // Update counters atomically
-  atomic_fetch_add(&queue->count, (size_t)1);
-  atomic_fetch_add(&queue->bytes_queued, packet->data_len);
-  atomic_fetch_add(&queue->packets_enqueued, (uint64_t)1);
+  atomic_fetch_add_u64(&queue->count, (size_t)1);
+  atomic_fetch_add_u64(&queue->bytes_queued, packet->data_len);
+  atomic_fetch_add_u64(&queue->packets_enqueued, (uint64_t)1);
 
   return 0;
 }
@@ -489,7 +483,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
 
   // Atomically update head pointer
   packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
-  if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
+  if (atomic_ptr_cas(&queue->head, &head, next)) {
     // Successfully claimed head node
     if (next == NULL) {
       // Queue became empty, also update tail atomically
@@ -500,7 +494,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
     size_t bytes = head->packet.data_len;
     atomic_fetch_sub_u64(&queue->bytes_queued, bytes);
     atomic_fetch_sub_u64(&queue->count, 1);
-    atomic_fetch_add(&queue->packets_dequeued, (uint64_t)1);
+    atomic_fetch_add_u64(&queue->packets_dequeued, (uint64_t)1);
 
     // Verify packet magic number for corruption detection
     uint64_t magic = NET_TO_HOST_U64(head->packet.header.magic);

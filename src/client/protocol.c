@@ -515,7 +515,7 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   }
 
   // Increment global frame counter BEFORE rendering (to track unique frames received)
-  int total_frames = atomic_fetch_add(&g_frames_rendered, 1) + 1;
+  int total_frames = atomic_fetch_add_u64(&g_frames_rendered, 1) + 1;
 
   // DEBUG: Periodically log frame stats on client side
   static int client_frame_counter = 0;
@@ -1213,12 +1213,12 @@ void protocol_stop_connection() {
   log_debug("[PROTOCOL_STOP] 11. Waiting for data thread to exit");
   // Thread checks should_exit() every read cycle (typically <1-5ms), so timeout can be much shorter
   int wait_count = 0;
-  while (wait_count < 5 && !atomic_load(&g_data_thread_exited)) {
+  while (wait_count < 5 && !atomic_load_bool(&g_data_thread_exited)) {
     platform_sleep_us(10 * US_PER_MS_INT); // 10ms * 5 = 50ms max wait
     wait_count++;
   }
 
-  if (!atomic_load(&g_data_thread_exited)) {
+  if (!atomic_load_bool(&g_data_thread_exited)) {
     log_warn("Data thread not responding after 50ms - will be joined by thread pool");
   }
   log_debug("[PROTOCOL_STOP] 12. Data thread wait complete");
@@ -1251,7 +1251,7 @@ void protocol_stop_connection() {
  * @ingroup client_protocol
  */
 bool protocol_connection_lost() {
-  return atomic_load(&g_data_thread_exited) || server_connection_is_lost();
+  return atomic_load_bool(&g_data_thread_exited) || server_connection_is_lost();
 }
 
 /* ============================================================================

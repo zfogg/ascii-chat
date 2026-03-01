@@ -653,8 +653,8 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   atomic_store_bool(&client->active, true);
   client->server_ctx = server_ctx; // Store server context for cleanup
   atomic_store_bool(&client->shutting_down, false);
-  atomic_store(&client->last_rendered_grid_sources, 0);
-  atomic_store(&client->last_sent_grid_sources, 0);
+  atomic_store_u64(&client->last_rendered_grid_sources, 0);
+  atomic_store_u64(&client->last_sent_grid_sources, 0);
   client->connected_at = time(NULL);
 
   memset(&client->crypto_handshake_ctx, 0, sizeof(client->crypto_handshake_ctx));
@@ -997,8 +997,8 @@ client_info_t *add_webrtc_client(server_context_t *server_ctx, acip_transport_t 
   client->server_ctx = server_ctx; // Store server context for receive thread cleanup
   log_info("Added new WebRTC client %s from %s (transport=%p, slot=%d)", new_client_id, client_ip, transport, slot);
   atomic_store_bool(&client->shutting_down, false);
-  atomic_store(&client->last_rendered_grid_sources, 0); // Render thread updates this
-  atomic_store(&client->last_sent_grid_sources, 0);     // Send thread updates this
+  atomic_store_u64(&client->last_rendered_grid_sources, 0); // Render thread updates this
+  atomic_store_u64(&client->last_sent_grid_sources, 0);     // Send thread updates this
   log_debug("WebRTC client slot assigned: client_id=%s assigned to slot %d", client->client_id, slot);
   client->connected_at = time(NULL);
 
@@ -2190,8 +2190,8 @@ void *client_send_thread_func(void *arg) {
 
       // GRID LAYOUT CHANGE: Check if render thread has buffered a frame with different source count
       // If so, send CLEAR_CONSOLE before sending the new frame
-      int rendered_sources = atomic_load(&client->last_rendered_grid_sources);
-      int sent_sources = atomic_load(&client->last_sent_grid_sources);
+      int rendered_sources = atomic_load_bool(&client->last_rendered_grid_sources);
+      int sent_sources = atomic_load_bool(&client->last_sent_grid_sources);
 
       if (rendered_sources != sent_sources && rendered_sources > 0) {
         // Grid layout changed! Send CLEAR_CONSOLE before next frame using ACIP transport
@@ -2210,7 +2210,7 @@ void *client_send_thread_func(void *arg) {
         acip_send_clear_console(clear_transport);
         log_debug_every(LOG_RATE_FAST, "Client %s: Sent CLEAR_CONSOLE (grid changed %d → %d sources)",
                         client->client_id, sent_sources, rendered_sources);
-        atomic_store(&client->last_sent_grid_sources, rendered_sources);
+        atomic_store_u64(&client->last_sent_grid_sources, rendered_sources);
         sent_something = true;
       }
 
@@ -2236,8 +2236,8 @@ void *client_send_thread_func(void *arg) {
       // Snapshot frame metadata (safe with double-buffer system)
       const char *frame_data = (const char *)frame->data; // Pointer snapshot - data is stable in front buffer
       size_t frame_size = frame->size;                    // Size snapshot - prevent race condition with render thread
-      uint32_t width = atomic_load(&client->width);
-      uint32_t height = atomic_load(&client->height);
+      uint32_t width = atomic_load_bool(&client->width);
+      uint32_t height = atomic_load_bool(&client->height);
       uint64_t step1_ns = time_get_ns();
       uint64_t step2_ns = time_get_ns();
       uint64_t step3_ns = time_get_ns();
@@ -2316,7 +2316,7 @@ void *client_send_thread_func(void *arg) {
       log_dev_every(4500 * US_PER_MS_INT, "SEND_FRAME_SUCCESS: client_id=%s size=%zu", client->client_id, frame_size);
 
       // Increment frame counter and log
-      unsigned long frame_count = atomic_fetch_add(&client->frames_sent_count, 1) + 1;
+      unsigned long frame_count = atomic_fetch_add_u64(&client->frames_sent_count, 1) + 1;
       log_info("🎬 FRAME_SENT: client_id=%s frame_num=%lu size=%zu", client->client_id, frame_count, frame_size);
 
       sent_something = true;
@@ -2791,9 +2791,9 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
 
   // Auto-set dimensions from IMAGE_FRAME if not already set (fallback for missing CLIENT_CAPABILITIES)
   // This ensures render thread can start even if CLIENT_CAPABILITIES was never sent
-  if (atomic_load(&client->width) == 0 || atomic_load(&client->height) == 0) {
-    atomic_store(&client->width, header->width);
-    atomic_store(&client->height, header->height);
+  if (atomic_load_bool(&client->width) == 0 || atomic_load_bool(&client->height) == 0) {
+    atomic_store_u64(&client->width, header->width);
+    atomic_store_u64(&client->height, header->height);
     log_info("Client %s: Auto-set dimensions from IMAGE_FRAME: %ux%u (CLIENT_CAPABILITIES not received)",
              client->client_id, header->width, header->height);
   }
@@ -2930,9 +2930,9 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   // Auto-set dimensions from IMAGE_FRAME_H265 if not already set
-  if (atomic_load(&client->width) == 0 || atomic_load(&client->height) == 0) {
-    atomic_store(&client->width, width);
-    atomic_store(&client->height, height);
+  if (atomic_load_bool(&client->width) == 0 || atomic_load_bool(&client->height) == 0) {
+    atomic_store_u64(&client->width, width);
+    atomic_store_u64(&client->height, height);
     log_info("Client %s: Auto-set dimensions from IMAGE_FRAME_H265: %ux%u", client->client_id, width, height);
   }
 

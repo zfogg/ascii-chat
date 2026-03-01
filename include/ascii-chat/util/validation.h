@@ -85,7 +85,7 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
  */
 #define VALIDATE_AUDIO_STREAM_ENABLED(client, packet_name)                                                             \
   do {                                                                                                                 \
-    if (!atomic_load(&(client)->is_sending_audio)) {                                                                   \
+    if (!atomic_load_bool(&(client)->is_sending_audio)) {                                                                   \
       disconnect_client_for_bad_data((client), "%s received before audio stream enabled", (packet_name));              \
       return;                                                                                                          \
     }                                                                                                                  \
