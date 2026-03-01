@@ -7,7 +7,6 @@
 
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
 
-#include <ascii-chat/atomic.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
@@ -316,18 +315,18 @@ static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
 }
 
 /* Forward declaration for initialization */
-static atomic_t g_debug_mem_initialized = false;
+static _Atomic(bool) g_debug_mem_initialized = false;
 
 static struct {
   mem_block_t *head;
-  atomic_t total_allocated;
-  atomic_t total_freed;
-  atomic_t current_usage;
-  atomic_t peak_usage;
-  atomic_t malloc_calls;
-  atomic_t free_calls;
-  atomic_t calloc_calls;
-  atomic_t realloc_calls;
+  _Atomic(uint64_t) total_allocated;
+  _Atomic(uint64_t) total_freed;
+  _Atomic(uint64_t) current_usage;
+  _Atomic(uint64_t) peak_usage;
+  _Atomic(uint64_t) malloc_calls;
+  _Atomic(uint64_t) free_calls;
+  _Atomic(uint64_t) calloc_calls;
+  _Atomic(uint64_t) realloc_calls;
   mutex_t mutex;
   lifecycle_t lifecycle;
   bool quiet_mode;
