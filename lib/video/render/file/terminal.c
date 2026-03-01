@@ -187,12 +187,15 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
             r->height_px);
     fclose(dbg);
   }
+
+  // Clear framebuffer to ensure no leftover pixels from previous frames
+  uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
+  memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
+
   static const char home[] = "\033[H";
   log_debug("term_renderer_feed: Processing ANSI frame (len=%zu, first 100 chars: %.100s)", len, ansi_frame);
   vterm_input_write(r->vt, home, sizeof(home) - 1);
   vterm_input_write(r->vt, ansi_frame, len);
-
-  uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
 
   int cells_with_chars = 0, cells_rendered = 0;
   for (int row = 0; row < r->rows; row++) {
@@ -252,6 +255,50 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   uint8_t *sample_mid = r->framebuffer + (r->height_px / 2) * r->pitch;
   uint8_t *sample_bot = r->framebuffer + (r->height_px - 1) * r->pitch;
   log_debug("term_renderer_feed: cells_with_chars=%d, cells_rendered=%d", cells_with_chars, cells_rendered);
+
+  // Write ANSI frame size and sample bottom row characters to debug file
+  FILE *dbg_dims = fopen("/tmp/render-dims.txt", "a");
+  if (dbg_dims) {
+    fprintf(dbg_dims, "[TERM_FEED] len=%zu, grid=%dx%d, pixels=%dx%d, cells_with_chars=%d, cells_rendered=%d\n", len,
+            r->cols, r->rows, r->width_px, r->height_px, cells_with_chars, cells_rendered);
+
+    // Sample bottom row to see what characters are there
+    fprintf(dbg_dims, "  Bottom row (41): ");
+    for (int col = 0; col < 20; col++) { // First 20 chars
+      VTermScreenCell cell;
+      vterm_screen_get_cell(r->vts, (VTermPos){r->rows - 1, col}, &cell);
+      if (cell.chars[0]) {
+        fprintf(dbg_dims, "%c", (cell.chars[0] >= 32 && cell.chars[0] < 127) ? cell.chars[0] : '?');
+      } else {
+        fprintf(dbg_dims, " ");
+      }
+    }
+    fprintf(dbg_dims, "\n");
+
+    // Check color of first char in bottom row
+    for (int col = 0; col < r->cols; col++) {
+      VTermScreenCell cell;
+      vterm_screen_get_cell(r->vts, (VTermPos){r->rows - 1, col}, &cell);
+      if (cell.chars[0] && cell.chars[0] != ' ') {
+        int has_rgb_fg = VTERM_COLOR_IS_RGB(&cell.fg);
+        int has_rgb_bg = VTERM_COLOR_IS_RGB(&cell.bg);
+        fprintf(dbg_dims, "  Colors - has_rgb_fg=%d has_rgb_bg=%d\n", has_rgb_fg, has_rgb_bg);
+        if (has_rgb_fg) {
+          fprintf(dbg_dims, "    fg=RGB(%d,%d,%d)\n", cell.fg.rgb.red, cell.fg.rgb.green, cell.fg.rgb.blue);
+        }
+        if (has_rgb_bg) {
+          fprintf(dbg_dims, "    bg=RGB(%d,%d,%d)\n", cell.bg.rgb.red, cell.bg.rgb.green, cell.bg.rgb.blue);
+        }
+        break;
+      }
+    }
+    fflush(dbg_dims);
+    fclose(dbg_dims);
+  }
+
+  log_debug("term_renderer_feed: Grid dimensions: %d cols x %d rows, Pixel dimensions: %d x %d px", r->cols, r->rows,
+            r->width_px, r->height_px);
+
   log_debug(
       "term_renderer_feed: pixel samples - top_left RGB(%d,%d,%d), mid_left RGB(%d,%d,%d), bot_left RGB(%d,%d,%d)",
       sample_top[0], sample_top[1], sample_top[2], sample_mid[0], sample_mid[1], sample_mid[2], sample_bot[0],

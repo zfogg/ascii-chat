@@ -70,11 +70,14 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     SAFE_FREE(ctx);
     return err;
   }
-  log_debug("render_file_create: term_renderer created (%dx%d cells, %dx%d px)", cols, rows,
-            term_renderer_width_px(ctx->renderer), term_renderer_height_px(ctx->renderer));
+  int actual_width_px = term_renderer_width_px(ctx->renderer);
+  int actual_height_px = term_renderer_height_px(ctx->renderer);
+  log_info("render_file_create: GRID DIMENSIONS: %ux%u cells -> PIXEL DIMENSIONS: %dx%d px", cols, rows,
+           actual_width_px, actual_height_px);
+  log_debug("render_file_create: term_renderer created (%dx%d cells, %dx%d px)", cols, rows, actual_width_px,
+            actual_height_px);
 
-  err = ffmpeg_encoder_create(output_path, term_renderer_width_px(ctx->renderer),
-                              term_renderer_height_px(ctx->renderer), fps, &ctx->encoder);
+  err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &ctx->encoder);
   if (err != ASCIICHAT_OK) {
     log_error("render_file_create: ffmpeg_encoder_create failed: %s", asciichat_error_string(err));
     term_renderer_destroy(ctx->renderer);
