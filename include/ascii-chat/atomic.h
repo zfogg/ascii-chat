@@ -13,11 +13,12 @@
  * - No mutexes in implementation (uses raw C11 atomics internally)
  * - Named registration via named.c (NAMED_REGISTER_ATOMIC macro)
  * - Debug-only timing and count tracking
+ * - Exchange operations for atomic min/max patterns (avoids TOCTOU races)
  *
  * Supported types via typed macros:
- * - bool: atomic_load_bool, atomic_store_bool, atomic_cas_bool
+ * - bool: atomic_load_bool, atomic_store_bool, atomic_cas_bool, atomic_exchange_bool
  * - int: atomic_load_int, atomic_store_int, atomic_fetch_add_int, atomic_fetch_sub_int
- * - uint64_t: atomic_load_u64, atomic_store_u64, atomic_fetch_add_u64, atomic_fetch_sub_u64
+ * - uint64_t: atomic_load_u64, atomic_store_u64, atomic_fetch_add_u64, atomic_fetch_sub_u64, atomic_exchange_u64
  * - Pointers: atomic_ptr_load, atomic_ptr_store, atomic_ptr_cas, atomic_ptr_exchange
  *
  * Usage:
@@ -161,6 +162,24 @@ bool atomic_cas_bool(atomic_t *a, bool *expected, bool new_value);
 #endif
 
 bool atomic_cas_bool_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
+
+/**
+ * @brief Atomically exchange a boolean and return the old value
+ * @param a Pointer to atomic_t
+ * @param new_value Boolean value to store
+ * @return Previous boolean value
+ *
+ * Atomically swaps the new value for the old value and returns the old value.
+ * Avoids TOCTOU race conditions present in load+check+cas patterns.
+ */
+#ifndef NDEBUG
+bool atomic_exchange_bool(atomic_t *a, bool new_value);
+#else
+#define atomic_exchange_bool(a, new_value) \
+    atomic_exchange_bool_impl((a), (new_value))
+#endif
+
+bool atomic_exchange_bool_impl(atomic_t *a, bool new_value);
 
 // ============================================================================
 // int Operations
@@ -312,6 +331,30 @@ bool atomic_cas_u64(atomic_t *a, uint64_t *expected, uint64_t new_value);
 
 bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
 
+/**
+ * @brief Atomically exchange a uint64_t and return the old value
+ * @param a Pointer to atomic_t
+ * @param new_value Value to store
+ * @return Previous uint64_t value
+ *
+ * Used for atomic min/max updates and other exchange patterns where you need
+ * the old value atomically. Avoids TOCTOU race conditions present in load+check+cas.
+ *
+ * Example (atomic minimum):
+ * @code
+ * uint64_t old = atomic_exchange_u64(&stats->min_val, 0);
+ * // old is the previous value, atomically
+ * @endcode
+ */
+#ifndef NDEBUG
+uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value);
+#else
+#define atomic_exchange_u64(a, new_value) \
+    atomic_exchange_u64_impl((a), (new_value))
+#endif
+
+uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value);
+
 // ============================================================================
 // Pointer Operations
 // ============================================================================
@@ -372,6 +415,42 @@ void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value);
 #endif
 
 void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value);
+
+/**
+ * @brief Atomically exchange a bool and return the old value
+ * @param a Pointer to atomic_t
+ * @param new_value Bool value to store
+ * @return Previous bool value
+ */
+/**
+ * @brief Atomically exchange an int and return the old value
+ * @param a Pointer to atomic_t
+ * @param new_value Int value to store
+ * @return Previous int value
+ */
+#ifndef NDEBUG
+int atomic_exchange_int(atomic_t *a, int new_value);
+#else
+#define atomic_exchange_int(a, new_value) \
+    atomic_exchange_int_impl((a), (new_value))
+#endif
+
+int atomic_exchange_int_impl(atomic_t *a, int new_value);
+
+/**
+ * @brief Atomically exchange a uint64_t and return the old value
+ * @param a Pointer to atomic_t
+ * @param new_value Uint64_t value to store
+ * @return Previous uint64_t value
+ */
+#ifndef NDEBUG
+uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value);
+#else
+#define atomic_exchange_u64(a, new_value) \
+    atomic_exchange_u64_impl((a), (new_value))
+#endif
+
+uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value);
 
 // ============================================================================
 // Debug Hooks (called by _impl functions in debug builds)
