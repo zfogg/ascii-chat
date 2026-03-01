@@ -178,6 +178,13 @@ def read_png_data(filepath):
                 print(f"   Expected: {height} rows utilized")
                 print(f"   Actual: {content_height} rows with content")
                 print(f"   Problem: Text isn't filling bottom of canvas")
+            elif bottom_black_pct > 50:
+                print(f"⚠️  POTENTIAL BLACK BAR: {bottom_black_rows} rows ({bottom_black_pct:.1f}%) in bottom section are mostly black")
+                print(f"   Average bottom brightness ({bottom_brightness:.2f}) vs middle ({middle_brightness:.2f})")
+                if bottom_brightness < middle_brightness * 0.5:
+                    print(f"   ❌ BLACK BAR CONFIRMED: Bottom is {100*(1 - bottom_brightness/middle_brightness):.0f}% darker")
+                else:
+                    print(f"   ⚠️  Check if this is expected spacing or a rendering issue")
             elif bottom_black_pct > 85:
                 print(f"❌ BLACK BAR AT BOTTOM: {bottom_black_rows} rows are {bottom_black_pct:.1f}% black")
                 print(f"   Rows {bottom_start}-{height-1} should have content but are mostly blank")

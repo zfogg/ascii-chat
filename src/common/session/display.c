@@ -457,7 +457,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     height = terminal_get_effective_height();
   }
   bool stretch = GET_OPTION(stretch);
-  bool preserve_aspect_ratio = !stretch;
+  // For render-file, always stretch to fill the full frame (no aspect ratio preservation)
+  // This ensures the entire 256×42 grid is utilized without black bars
+  bool preserve_aspect_ratio = ctx->render_file ? false : !stretch;
 
   // Determine if we should apply flip_x and flip_y
   bool flip_x_enabled = GET_OPTION(flip_x);
