@@ -335,11 +335,6 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   if (box_width < 30)
     box_width = 30; // Absolute minimum for readability
 
-  // Help screen box dimensions (25 rows total: border + title + nav (7 lines) + separator + settings + animations +
-  // separator + blank + footer + border) NOTE: This should be 25 based on the comment, but using 24 to account for the
-  // rendering starting at start_row + 1 (not start_row + 0). The actual visible box is 24 rows tall.
-  const int box_height = 24; // Actual visible rows (rendering starts at start_row + 1)
-
   // Calculate centering position (true mathematical centering)
   // Horizontal centering
   int start_col = (term_width - box_width) / 2;
@@ -347,8 +342,12 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     start_col = 0;
   }
 
-  // Vertical centering: shift up by 3 to account for rendering starting at start_row + 1
-  int start_row = (term_height - box_height) / 2 - 3;
+  // Calculate box height dynamically based on content
+  // With animations separator line added, the standard help screen is 25 rows
+  int box_height = 25;
+
+  // Vertical centering with dynamic box height
+  int start_row = (term_height - box_height) / 2 - 3; // -3 offset for proper vertical centering
   if (start_row < 0) {
     start_row = 0;
   }
