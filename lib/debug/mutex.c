@@ -39,7 +39,7 @@ typedef struct {
 } thread_registry_entry_t;
 
 static thread_registry_entry_t g_thread_registry[MAX_THREADS] = {0};
-static _Atomic(int) g_thread_registry_count = 0;
+static atomic_t g_thread_registry_count = {0};
 
 // Thread-local storage key for per-thread lock stack
 // Destructor automatically frees memory when thread exits

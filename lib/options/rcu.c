@@ -32,7 +32,7 @@
  * - Writers use atomic_ptr_exchange (serialized with mutex)
  * - Memory ordering: sequentially consistent for proper visibility
  */
-static _Atomic(void *) g_options = NULL;
+static atomic_ptr_t g_options = {0};
 
 /**
  * @brief Mutex for serializing writers

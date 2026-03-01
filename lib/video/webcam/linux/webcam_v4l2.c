@@ -67,7 +67,7 @@ struct webcam_context_t {
   // Async camera reading (non-blocking)
   lifecycle_t async_lifecycle;      // Lifecycle state machine for camera thread
   asciichat_thread_t camera_thread; // Background thread for continuous frame capture
-  _Atomic(void *) latest_frame;  // Latest frame from camera (atomic swap)
+  atomic_ptr_t latest_frame;  // Latest frame from camera (atomic swap)
   image_t *async_cached_frame;      // Last frame returned to caller (returned when no new frame available)
 };
 
@@ -91,7 +91,7 @@ static void *webcam_camera_thread_func(void *arg) {
       image_t *frame_copy = image_new_copy(frame);
       if (frame_copy) {
         // Atomic swap: replace latest_frame with new frame
-        image_t *old_frame = atomic_exchange(&ctx->latest_frame, frame_copy);
+        image_t *old_frame = (image_t *)atomic_ptr_exchange(&ctx->latest_frame, frame_copy);
         if (old_frame) {
           image_destroy(old_frame);
         }
@@ -569,7 +569,7 @@ void webcam_cleanup_context(webcam_context_t *ctx) {
   }
 
   // Clean up any remaining frames in the atomic and cached buffers
-  image_t *leftover_frame = atomic_exchange(&ctx->latest_frame, NULL);
+  image_t *leftover_frame = (image_t *)atomic_ptr_exchange(&ctx->latest_frame, NULL);
   if (leftover_frame) {
     image_destroy(leftover_frame);
   }
@@ -812,7 +812,7 @@ image_t *webcam_read_async(webcam_context_t *ctx) {
   }
 
   // Check if there's a new frame from the camera thread
-  image_t *new_frame = atomic_exchange(&ctx->latest_frame, NULL);
+  image_t *new_frame = (image_t *)atomic_ptr_exchange(&ctx->latest_frame, NULL);
 
   if (new_frame) {
     // New frame available - update cache and return it

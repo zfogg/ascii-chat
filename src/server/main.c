@@ -278,34 +278,34 @@ static asciichat_thread_t g_status_screen_thread;
  * The main (render) thread only pops from the queue.
  */
 static asciichat_thread_t g_keyboard_thread;
-static atomic_t g_keyboard_thread_running = false;
+static atomic_t g_keyboard_thread_running = {0};
 
 /**
  * @brief Thread-safe keyboard queue (lock-free SPSC ring buffer)
  */
 #define KEYBOARD_QUEUE_SIZE 256
 static keyboard_key_t g_keyboard_queue[KEYBOARD_QUEUE_SIZE];
-static atomic_t g_keyboard_queue_head = 0;
-static atomic_t g_keyboard_queue_tail = 0;
+static atomic_t g_keyboard_queue_head = {0};
+static atomic_t g_keyboard_queue_tail = {0};
 
 static bool keyboard_queue_push(keyboard_key_t key) {
-  size_t head = atomic_load(&g_keyboard_queue_head);
+  size_t head = atomic_load_u64(&g_keyboard_queue_head);
   size_t next_head = (head + 1) % KEYBOARD_QUEUE_SIZE;
-  if (next_head == atomic_load(&g_keyboard_queue_tail)) {
+  if (next_head == atomic_load_u64(&g_keyboard_queue_tail)) {
     return false;
   }
   g_keyboard_queue[head] = key;
-  atomic_store(&g_keyboard_queue_head, next_head);
+  atomic_store_u64(&g_keyboard_queue_head, next_head);
   return true;
 }
 
 static keyboard_key_t keyboard_queue_pop(void) {
-  size_t tail = atomic_load(&g_keyboard_queue_tail);
-  if (tail == atomic_load(&g_keyboard_queue_head)) {
+  size_t tail = atomic_load_u64(&g_keyboard_queue_tail);
+  if (tail == atomic_load_u64(&g_keyboard_queue_head)) {
     return KEY_NONE;
   }
   keyboard_key_t key = g_keyboard_queue[tail];
-  atomic_store(&g_keyboard_queue_tail, (tail + 1) % KEYBOARD_QUEUE_SIZE);
+  atomic_store_u64(&g_keyboard_queue_tail, (tail + 1) % KEYBOARD_QUEUE_SIZE);
   return key;
 }
 
@@ -321,7 +321,7 @@ static void *keyboard_thread_func(void *arg) {
   (void)arg;
   log_debug("Keyboard thread started (polling mode, 100ms interval)");
 
-  while (atomic_load(&g_keyboard_thread_running)) {
+  while (atomic_load_u64(&g_keyboard_thread_running)) {
     keyboard_key_t key = keyboard_read_with_timeout(100);
     if (key != KEY_NONE) {
       keyboard_queue_push(key);
@@ -587,7 +587,7 @@ static void server_handle_sigint(int sigint) {
     return;
   }
 
-  static atomic_t sigint_count = 0;
+  static atomic_t sigint_count = {0};
   int count = atomic_fetch_add(&sigint_count, 1) + 1;
   if (count > 1) {
     platform_force_exit(1);
@@ -621,7 +621,7 @@ static void server_handle_sigint(int sigint) {
   // STEP 3b: Signal WebSocket server to stop
   // Without this, lws_service() could block for up to 50ms before checking the running flag.
   // websocket_server_cancel_service() is async-signal-safe (uses only atomic operations).
-  atomic_store(&g_websocket_server.running, false);
+  atomic_store_u64(&g_websocket_server.running, false);
   websocket_server_cancel_service(&g_websocket_server);
 
   // STEP 4: DO NOT access client data structures in signal handler
@@ -1169,7 +1169,7 @@ static void server_handle_sigterm(int sigterm) {
 
   // Stop the WebSocket server event loop immediately.
   // Without this, lws_service() could block for up to 50ms before checking the running flag.
-  atomic_store(&g_websocket_server.running, false);
+  atomic_store_u64(&g_websocket_server.running, false);
   websocket_server_cancel_service(&g_websocket_server);
 }
 
@@ -1234,13 +1234,13 @@ static void *status_screen_thread(void *arg) {
   if (terminal_is_interactive()) {
     log_info("Terminal is interactive, initializing keyboard...");
     if (keyboard_init() == ASCIICHAT_OK) {
-      atomic_store(&g_keyboard_thread_running, true);
+      atomic_store_u64(&g_keyboard_thread_running, true);
       if (asciichat_thread_create(&g_keyboard_thread, "keyboard", keyboard_thread_func, NULL) == 0) {
         keyboard_enabled = true;
         log_info("Keyboard thread started - press '/' to activate grep");
       } else {
         log_warn("Failed to create keyboard thread");
-        atomic_store(&g_keyboard_thread_running, false);
+        atomic_store_u64(&g_keyboard_thread_running, false);
         keyboard_destroy();
       }
     } else {
@@ -1327,7 +1327,7 @@ static void *status_screen_thread(void *arg) {
   // Stop keyboard thread (polls at 100ms, so join completes within ~100ms)
   if (keyboard_enabled) {
     log_debug("Stopping keyboard thread...");
-    atomic_store(&g_keyboard_thread_running, false);
+    atomic_store_u64(&g_keyboard_thread_running, false);
     asciichat_thread_join(&g_keyboard_thread, NULL);
     log_debug("Keyboard thread stopped");
     keyboard_destroy();
@@ -2615,7 +2615,7 @@ cleanup:
   // After this, remove_client can safely destroy the transport objects.
   if (g_websocket_server.context != NULL) {
     log_debug("Shutting down WebSocket server before client cleanup");
-    atomic_store(&g_websocket_server.running, false);
+    atomic_store_u64(&g_websocket_server.running, false);
     // Wake the LWS event loop immediately instead of waiting for the 50ms
     // lws_service timeout. This is safe because the event loop thread can't
     // destroy the context until after it exits its loop (which requires

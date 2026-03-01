@@ -318,60 +318,60 @@ bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
 
 /**
  * @brief Atomically load a pointer
- * @param a Pointer to _Atomic(void *)
+ * @param a Pointer to atomic_ptr_t
  * @return Current pointer value
  */
 #ifndef NDEBUG
-void *atomic_ptr_load(_Atomic(void *) *a);
+void *atomic_ptr_load(atomic_ptr_t *a);
 #else
 #define atomic_ptr_load(a) atomic_ptr_load_impl(a)
 #endif
 
-void *atomic_ptr_load_impl(const _Atomic(void *) *a);
+void *atomic_ptr_load_impl(const atomic_ptr_t *a);
 
 /**
  * @brief Atomically store a pointer
- * @param a Pointer to _Atomic(void *)
+ * @param a Pointer to atomic_ptr_t
  * @param value Pointer value to store
  */
 #ifndef NDEBUG
-void atomic_ptr_store(_Atomic(void *) *a, void *value);
+void atomic_ptr_store(atomic_ptr_t *a, void *value);
 #else
 #define atomic_ptr_store(a, value) atomic_ptr_store_impl((a), (value))
 #endif
 
-void atomic_ptr_store_impl(_Atomic(void *) *a, void *value);
+void atomic_ptr_store_impl(atomic_ptr_t *a, void *value);
 
 /**
  * @brief Atomically compare-and-swap a pointer
- * @param a Pointer to _Atomic(void *)
+ * @param a Pointer to atomic_ptr_t
  * @param expected Expected current pointer (passed by reference)
  * @param new_value Pointer value to store if comparison succeeds
  * @return true if swap succeeded, false otherwise
  */
 #ifndef NDEBUG
-bool atomic_ptr_cas(_Atomic(void *) *a, void **expected, void *new_value);
+bool atomic_ptr_cas(atomic_ptr_t *a, void **expected, void *new_value);
 #else
 #define atomic_ptr_cas(a, expected, new_value) \
     atomic_ptr_cas_impl((a), (expected), (new_value))
 #endif
 
-bool atomic_ptr_cas_impl(_Atomic(void *) *a, void **expected, void *new_value);
+bool atomic_ptr_cas_impl(atomic_ptr_t *a, void **expected, void *new_value);
 
 /**
  * @brief Atomically exchange a pointer and return the old value
- * @param a Pointer to _Atomic(void *)
+ * @param a Pointer to atomic_ptr_t
  * @param new_value Pointer value to store
  * @return Previous pointer value
  */
 #ifndef NDEBUG
-void *atomic_ptr_exchange(_Atomic(void *) *a, void *new_value);
+void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value);
 #else
 #define atomic_ptr_exchange(a, new_value) \
     atomic_ptr_exchange_impl((a), (new_value))
 #endif
 
-void *atomic_ptr_exchange_impl(_Atomic(void *) *a, void *new_value);
+void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value);
 
 // ============================================================================
 // Debug Hooks (called by _impl functions in debug builds)

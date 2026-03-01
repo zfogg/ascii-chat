@@ -787,15 +787,15 @@ static audio_ring_buffer_t *audio_ring_buffer_create_internal(bool jitter_buffer
   }
 
   SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
-  rb->write_index = 0;
-  rb->read_index = 0;
+  atomic_store_u64(&rb->write_index, 0);
+  atomic_store_u64(&rb->read_index, 0);
   // For capture buffers (jitter_buffer_enabled=false), mark as already filled to bypass jitter logic
   // For playback buffers (jitter_buffer_enabled=true), start unfilled to wait for threshold
-  rb->jitter_buffer_filled = !jitter_buffer_enabled;
-  rb->crossfade_samples_remaining = 0;
-  rb->crossfade_fade_in = false;
+  atomic_store_bool(&rb->jitter_buffer_filled, !jitter_buffer_enabled);
+  atomic_store_u64(&rb->crossfade_samples_remaining, 0);
+  atomic_store_bool(&rb->crossfade_fade_in, false);
   rb->last_sample = 0.0f;
-  rb->underrun_count = 0;
+  atomic_store_u64(&rb->underrun_count, 0);
   rb->jitter_buffer_enabled = jitter_buffer_enabled;
 
   if (mutex_init(&rb->mutex, "audio_ring_buffer") != 0) {
@@ -831,8 +831,8 @@ void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {
 
   mutex_lock(&rb->mutex);
   // Reset buffer to empty state (no audio to play = silence at shutdown)
-  rb->write_index = 0;
-  rb->read_index = 0;
+  atomic_store_u64(&rb->write_index, 0);
+  atomic_store_u64(&rb->read_index, 0);
   rb->last_sample = 0.0f;
   // Clear the actual data to zeros to prevent any stale audio
   SAFE_MEMSET(rb->data, sizeof(rb->data), 0, sizeof(rb->data));
@@ -852,8 +852,8 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
   // LOCK-FREE: Load indices with proper memory ordering
   // - Load our own write_index with relaxed (no sync needed with ourselves)
   // - Load reader's read_index with acquire (see reader's updates to free space)
-  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_relaxed);
-  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_acquire);
+  unsigned int write_idx = atomic_load_u64(&rb->write_index);
+  unsigned int read_idx = atomic_load_u64(&rb->read_index);
 
   // Calculate current buffer level (how many samples are buffered)
   int buffer_level;
@@ -914,7 +914,7 @@ asciichat_error_t audio_ring_buffer_write(audio_ring_buffer_t *rb, const float *
     // LOCK-FREE: Store new write_index with release ordering
     // This ensures all data writes above are visible before the index update
     unsigned int new_write_idx = (write_idx + (unsigned int)samples_to_write) % AUDIO_RING_BUFFER_SIZE;
-    atomic_store_explicit(&rb->write_index, new_write_idx, memory_order_release);
+    atomic_store_u64(&rb->write_index, new_write_idx);
   }
 
   // Note: jitter buffer fill check is now done in read function for better control
@@ -931,8 +931,8 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // LOCK-FREE: Load indices with proper memory ordering
   // - Load writer's write_index with acquire (see writer's data updates)
   // - Load our own read_index with relaxed (no sync needed with ourselves)
-  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_acquire);
-  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
+  unsigned int write_idx = atomic_load_u64(&rb->write_index);
+  unsigned int read_idx = atomic_load_u64(&rb->read_index);
 
   // Calculate available samples
   size_t available;
@@ -943,18 +943,18 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // LOCK-FREE: Load jitter buffer state with acquire ordering
-  bool jitter_filled = atomic_load_explicit(&rb->jitter_buffer_filled, memory_order_acquire);
-  int crossfade_remaining = atomic_load_explicit(&rb->crossfade_samples_remaining, memory_order_acquire);
-  bool fade_in = atomic_load_explicit(&rb->crossfade_fade_in, memory_order_acquire);
+  bool jitter_filled = atomic_load_u64(&rb->jitter_buffer_filled);
+  int crossfade_remaining = atomic_load_u64(&rb->crossfade_samples_remaining);
+  bool fade_in = atomic_load_u64(&rb->crossfade_fade_in);
 
   // Jitter buffer: don't read until initial fill threshold is reached
   // (only for playback buffers - capture buffers have jitter_buffer_enabled = false)
   if (!jitter_filled && rb->jitter_buffer_enabled) {
     // Check if we've accumulated enough samples to start playback
     if (available >= AUDIO_JITTER_BUFFER_THRESHOLD) {
-      atomic_store_explicit(&rb->jitter_buffer_filled, true, memory_order_release);
-      atomic_store_explicit(&rb->crossfade_samples_remaining, AUDIO_CROSSFADE_SAMPLES, memory_order_release);
-      atomic_store_explicit(&rb->crossfade_fade_in, true, memory_order_release);
+      atomic_store_u64(&rb->jitter_buffer_filled, true);
+      atomic_store_u64(&rb->crossfade_samples_remaining, AUDIO_CROSSFADE_SAMPLES);
+      atomic_store_u64(&rb->crossfade_fade_in, true);
       log_info("Jitter buffer filled (%zu samples), starting playback with fade-in", available);
       // Reload state for processing below
       jitter_filled = true;
@@ -969,7 +969,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // Periodic buffer health logging (every 5 seconds when healthy)
-  unsigned int underruns = atomic_load_explicit(&rb->underrun_count, memory_order_relaxed);
+  unsigned int underruns = atomic_load_u64(&rb->underrun_count);
   log_dev_every(5 * NS_PER_MS_INT, "Buffer health: %zu/%d samples (%.1f%%), underruns=%u", available,
                 AUDIO_RING_BUFFER_SIZE, (100.0f * available) / AUDIO_RING_BUFFER_SIZE, underruns);
 
@@ -980,7 +980,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   //
   // Instead: always consume samples to prevent overflow, use silence for missing data
   if (rb->jitter_buffer_enabled && available < AUDIO_JITTER_LOW_WATER_MARK) {
-    unsigned int underrun_count = atomic_fetch_add_explicit(&rb->underrun_count, 1, memory_order_relaxed) + 1;
+    unsigned int underrun_count = atomic_fetch_add_u64(&rb->underrun_count, 1) + 1;
     log_warn_every(LOG_RATE_FAST,
                    "Audio buffer low #%u: only %zu samples available (low water mark: %d), padding with silence",
                    underrun_count, available, AUDIO_JITTER_LOW_WATER_MARK);
@@ -1005,7 +1005,7 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
   // LOCK-FREE: Store new read_index with release ordering
   // This ensures all data reads above complete before the index update
   unsigned int new_read_idx = (read_idx + (unsigned int)to_read) % AUDIO_RING_BUFFER_SIZE;
-  atomic_store_explicit(&rb->read_index, new_read_idx, memory_order_release);
+  atomic_store_u64(&rb->read_index, new_read_idx);
 
   // Apply fade-in if recovering from underrun
   if (fade_in && crossfade_remaining > 0) {
@@ -1018,9 +1018,9 @@ size_t audio_ring_buffer_read(audio_ring_buffer_t *rb, float *data, size_t sampl
     }
 
     int new_crossfade_remaining = crossfade_remaining - (int)fade_samples;
-    atomic_store_explicit(&rb->crossfade_samples_remaining, new_crossfade_remaining, memory_order_release);
+    atomic_store_u64(&rb->crossfade_samples_remaining, new_crossfade_remaining);
     if (new_crossfade_remaining <= 0) {
-      atomic_store_explicit(&rb->crossfade_fade_in, false, memory_order_release);
+      atomic_store_u64(&rb->crossfade_fade_in, false);
       log_debug("Audio fade-in complete");
     }
   }
@@ -1058,8 +1058,8 @@ size_t audio_ring_buffer_peek(audio_ring_buffer_t *rb, float *data, size_t sampl
   }
 
   // LOCK-FREE: Load indices with proper memory ordering
-  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_acquire);
-  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
+  unsigned int write_idx = atomic_load_u64(&rb->write_index);
+  unsigned int read_idx = atomic_load_u64(&rb->read_index);
 
   // Calculate available samples
   size_t available;
@@ -1096,8 +1096,8 @@ size_t audio_ring_buffer_available_read(audio_ring_buffer_t *rb) {
   // LOCK-FREE: Load indices with proper memory ordering
   // Use acquire for write_index to see writer's updates
   // Use relaxed for read_index (our own index)
-  unsigned int write_idx = atomic_load_explicit(&rb->write_index, memory_order_acquire);
-  unsigned int read_idx = atomic_load_explicit(&rb->read_index, memory_order_relaxed);
+  unsigned int write_idx = atomic_load_u64(&rb->write_index);
+  unsigned int read_idx = atomic_load_u64(&rb->read_index);
 
   if (write_idx >= read_idx) {
     return write_idx - read_idx;

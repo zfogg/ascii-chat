@@ -48,7 +48,7 @@ using std::memory_order_relaxed;
 #define TIME_ATOMIC_UINT64_INIT(val) {val}
 #else
 #include <ascii-chat/atomic.h>
-// C11 _Atomic type qualifier syntax
+// Use atomic_t for rate-limiting counters
 #define TIME_ATOMIC_UINT64 atomic_t
 #define TIME_ATOMIC_UINT64_INIT(val) {0}
 #endif
@@ -648,12 +648,11 @@ int format_uptime_hms(int hours, int minutes, int seconds, char *buffer, size_t 
   do {                                                                                                                 \
     double _elapsed_ns = STOP_TIMER(timer_name, ##__VA_ARGS__);                                                        \
     if (_elapsed_ns >= 0.0 && (threshold_ns == 0 || _elapsed_ns >= (double)(threshold_ns))) {                          \
-      static TIME_ATOMIC_UINT64 _log_every_last_time = TIME_ATOMIC_UINT64_INIT(0);                                     \
+      static atomic_t _log_every_last_time = {0};                                                                      \
       uint64_t _log_every_now = time_get_ns();                                                                         \
-      uint64_t _log_every_last = atomic_load_explicit(&_log_every_last_time, memory_order_relaxed);                    \
+      uint64_t _log_every_last = atomic_load_u64(&_log_every_last_time);                                               \
       if (_log_every_now - _log_every_last >= (uint64_t)(interval_ns)) {                                               \
-        if (atomic_compare_exchange_weak_explicit(&_log_every_last_time, &_log_every_last, _log_every_now,             \
-                                                  memory_order_relaxed, memory_order_relaxed)) {                       \
+        if (atomic_cas_u64(&_log_every_last_time, &_log_every_last, _log_every_now)) {                                 \
           char _duration_str[32];                                                                                      \
           time_pretty((uint64_t)_elapsed_ns, -1, _duration_str, sizeof(_duration_str));                                \
           log_##log_level(msg_fmt " in %s", ##__VA_ARGS__, _duration_str);                                             \

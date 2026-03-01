@@ -28,7 +28,6 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <stdatomic.h>
 #include <ascii-chat/atomic.h>
 #include "platform/mutex.h"
 #include "util/magic.h"
@@ -73,7 +72,7 @@ typedef struct buffer_node {
   uint32_t magic;                         ///< Magic to identify pooled buffers
   uint32_t _pad;                          ///< Padding for alignment
   size_t size;                            ///< Size of user data portion
-  _Atomic(struct buffer_node *) next;     ///< Next in free list (atomic for lock-free)
+  atomic_ptr_t next;                      ///< Next in free list (lock-free)
   atomic_t returned_at_ns;                ///< Timestamp when returned to free list (nanoseconds)
   struct buffer_pool *pool;               ///< Owning pool (for free)
 } buffer_node_t;

@@ -90,28 +90,36 @@ bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value) {
     return atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, expected, new_value);
 }
 
+bool atomic_cas_int_impl(atomic_t *a, int64_t *expected, int64_t new_value) {
+    if (!a || !expected) return false;
+    uint64_t expected_u64 = (uint64_t)*expected;
+    bool result = atomic_compare_exchange_strong((_Atomic(uint64_t) *)&a->impl, &expected_u64, (uint64_t)new_value);
+    *expected = (int64_t)expected_u64;
+    return result;
+}
+
 // ============================================================================
 // Pointer Implementation Functions
 // ============================================================================
 
-void *atomic_ptr_load_impl(const _Atomic(void *) *a) {
+void *atomic_ptr_load_impl(const atomic_ptr_t *a) {
     if (!a) return NULL;
-    return atomic_load(a);
+    return atomic_load((const _Atomic(void *) *)&a->impl);
 }
 
-void atomic_ptr_store_impl(_Atomic(void *) *a, void *value) {
+void atomic_ptr_store_impl(atomic_ptr_t *a, void *value) {
     if (!a) return;
-    atomic_store(a, value);
+    atomic_store((_Atomic(void *) *)&a->impl, value);
 }
 
-bool atomic_ptr_cas_impl(_Atomic(void *) *a, void **expected, void *new_value) {
+bool atomic_ptr_cas_impl(atomic_ptr_t *a, void **expected, void *new_value) {
     if (!a || !expected) return false;
-    return atomic_compare_exchange_strong(a, expected, new_value);
+    return atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
 }
 
-void *atomic_ptr_exchange_impl(_Atomic(void *) *a, void *new_value) {
+void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value) {
     if (!a) return NULL;
-    return atomic_exchange(a, new_value);
+    return atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
 }
 
 // ============================================================================
@@ -169,6 +177,15 @@ int atomic_fetch_sub_int(atomic_t *a, int delta) {
     return result;
 }
 
+bool atomic_cas_int(atomic_t *a, int *expected, int new_value) {
+    if (!a || !expected) return false;
+    int64_t exp = (int64_t)*expected;
+    bool success = atomic_cas_int_impl(a, &exp, (int64_t)new_value);
+    *expected = (int)exp;
+    atomic_on_cas(a, success);
+    return success;
+}
+
 uint64_t atomic_load_u64(atomic_t *a) {
     if (!a) return 0;
     uint64_t result = atomic_load((const _Atomic(uint64_t) *)&a->impl);
@@ -203,30 +220,30 @@ bool atomic_cas_u64(atomic_t *a, uint64_t *expected, uint64_t new_value) {
     return success;
 }
 
-void *atomic_ptr_load(_Atomic(void *) *a) {
+void *atomic_ptr_load(atomic_ptr_t *a) {
     if (!a) return NULL;
-    void *result = atomic_load(a);
-    // atomic_ptr_on_load(a);  // Debug hook would need atomic_ptr_t *, not raw _Atomic
+    void *result = atomic_load((const _Atomic(void *) *)&a->impl);
+    atomic_ptr_on_load(a);
     return result;
 }
 
-void atomic_ptr_store(_Atomic(void *) *a, void *value) {
+void atomic_ptr_store(atomic_ptr_t *a, void *value) {
     if (!a) return;
-    atomic_store(a, value);
-    // atomic_ptr_on_store(a);  // Debug hook would need atomic_ptr_t *
+    atomic_store((_Atomic(void *) *)&a->impl, value);
+    atomic_ptr_on_store(a);
 }
 
-bool atomic_ptr_cas(_Atomic(void *) *a, void **expected, void *new_value) {
+bool atomic_ptr_cas(atomic_ptr_t *a, void **expected, void *new_value) {
     if (!a || !expected) return false;
-    bool success = atomic_compare_exchange_strong(a, expected, new_value);
-    // atomic_ptr_on_cas(a, success);  // Debug hook would need atomic_ptr_t *
+    bool success = atomic_compare_exchange_strong((_Atomic(void *) *)&a->impl, expected, new_value);
+    atomic_ptr_on_cas(a, success);
     return success;
 }
 
-void *atomic_ptr_exchange(_Atomic(void *) *a, void *new_value) {
+void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value) {
     if (!a) return NULL;
-    void *result = atomic_exchange(a, new_value);
-    // atomic_ptr_on_exchange(a);  // Debug hook would need atomic_ptr_t *
+    void *result = atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
+    atomic_ptr_on_exchange(a);
     return result;
 }
 

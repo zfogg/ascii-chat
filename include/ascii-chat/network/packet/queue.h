@@ -148,7 +148,7 @@ struct packet_node {
   /** @brief The queued packet data */
   queued_packet_t packet;
   /** @brief Pointer to next node in linked list (NULL for tail) - atomic for lock-free operations */
-  _Atomic(packet_node_t *) next;
+  atomic_ptr_t next;
 };
 
 /**
@@ -166,7 +166,7 @@ struct packet_node {
  */
 typedef struct node_pool {
   /** @brief Stack of free nodes (LIFO for cache locality) - atomic for lock-free access */
-  _Atomic(packet_node_t *) free_list;
+  atomic_ptr_t free_list;
   /** @brief Pre-allocated array of all nodes */
   packet_node_t *nodes;
   /** @brief Total number of nodes in pool */
@@ -210,9 +210,9 @@ typedef struct node_pool {
  */
 typedef struct {
   /** @brief Front of queue (dequeue from here) - atomic for lock-free access */
-  _Atomic(packet_node_t *) head;
+  atomic_ptr_t head;
   /** @brief Back of queue (enqueue here) - atomic for lock-free access */
-  _Atomic(packet_node_t *) tail;
+  atomic_ptr_t tail;
   /** @brief Number of packets currently in queue - atomic for lock-free access */
   atomic_t count;
   /** @brief Maximum queue size (0 = unlimited) */
