@@ -75,47 +75,32 @@ int display_height(const char *text, int terminal_width) {
 
     // Calculate display width of this segment (excluding ANSI codes)
     if (segment_end > segment_start) {
-      // Avoid allocation: manually count display width without temporary copy
-      // Process character by character to handle ANSI codes and UTF-8
-      unsigned int segment_width = 0;
-      const char *p = segment_start;
+      // Create temporary null-terminated copy of segment
+      size_t segment_len = segment_end - segment_start;
+      char *segment_copy = SAFE_MALLOC(segment_len + 1, char *);
+      if (segment_copy) {
+        strncpy(segment_copy, segment_start, segment_len);
+        segment_copy[segment_len] = '\0';
 
-      while (p < segment_end) {
-        if (*p == '\x1b' && (p + 1 < segment_end) && *(p + 1) == '[') {
-          // ANSI escape sequence - skip until 'm'
-          p += 2;
-          while (p < segment_end && *p != 'm') {
-            p++;
-          }
-          if (p < segment_end)
-            p++; // Skip the 'm'
-        } else if ((unsigned char)*p >= 0x80) {
-          // UTF-8 multi-byte character - count as 1 display width
-          // (assumes characters are not wide - this matches utf8_display_width behavior for typical text)
-          segment_width++;
-          // Skip additional UTF-8 bytes
-          while (p < segment_end && ((unsigned char)*p & 0xC0) == 0x80) {
-            p++;
-          }
-        } else if ((unsigned char)*p >= 0x20) {
-          // Regular ASCII character
-          segment_width++;
-          p++;
-        } else {
-          // Control character - skip
-          p++;
+        // Calculate display width using proper UTF-8 aware function
+        int segment_width = display_width(segment_copy);
+        if (segment_width < 0) {
+          segment_width = (int)segment_len;
         }
-      }
 
-      // Calculate how many lines this segment wraps to
-      // Use safe ceiling division: ceil(a/b) = (a + b - 1) / b, but check for overflow
-      // Alternative safe formula: (a / b) + (a % b != 0 ? 1 : 0) avoids the addition
-      int segment_lines =
-          segment_width > 0 ? (segment_width / terminal_width) + (segment_width % terminal_width != 0 ? 1 : 0) : 0;
-      if (segment_lines <= 0) {
-        segment_lines = 1; // At least one line for non-empty segment
+        // Calculate how many lines this segment wraps to
+        int segment_lines =
+            segment_width > 0 ? (segment_width / terminal_width) + (segment_width % terminal_width != 0 ? 1 : 0) : 0;
+        if (segment_lines <= 0) {
+          segment_lines = 1; // At least one line for non-empty segment
+        }
+        total_lines += segment_lines;
+
+        SAFE_FREE(segment_copy);
+      } else {
+        // Fallback: assume 1 line per segment if allocation fails
+        total_lines += 1;
       }
-      total_lines += segment_lines;
     } else {
       // Empty segment (e.g., two consecutive newlines) still counts as 1 line
       total_lines += 1;
