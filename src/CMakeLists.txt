@@ -542,13 +542,16 @@ else()
     )
     if(HOMEBREW_PREFIX)
         list(APPEND EMSCRIPTEN_SEARCH_PATHS "${HOMEBREW_PREFIX}/share/emscripten")
+        # Homebrew Cellar for emscripten package (e.g., /opt/homebrew/Cellar/emscripten/X.Y.Z)
+        file(GLOB HOMEBREW_EMSCRIPTEN_CELLAR "${HOMEBREW_PREFIX}/Cellar/emscripten/*")
+        list(APPEND EMSCRIPTEN_SEARCH_PATHS ${HOMEBREW_EMSCRIPTEN_CELLAR})
     endif()
 endif()
 
 find_file(EMSCRIPTEN_TOOLCHAIN_FILE
     NAMES Emscripten.cmake
     PATHS ${EMSCRIPTEN_SEARCH_PATHS}
-    PATH_SUFFIXES cmake/Modules/Platform
+    PATH_SUFFIXES cmake/Modules/Platform libexec/cmake/Modules/Platform
 )
 
 if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
@@ -578,7 +581,7 @@ endif()
 if(NOT TARGET mirror-web)
     add_custom_target(mirror-web
         COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-wasm
         WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
         COMMENT "Building WASM mirror module"
         VERBATIM
@@ -589,7 +592,7 @@ endif()
 if(NOT TARGET client-web)
     add_custom_target(client-web
         COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-wasm
         WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
         COMMENT "Building WASM client module"
         VERBATIM
@@ -600,8 +603,8 @@ endif()
 if(NOT TARGET web)
     add_custom_target(web
         COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-web
-        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-web
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target mirror-wasm
+        COMMAND ${CMAKE_COMMAND} --build "${WASM_BUILD_DIR}" --target client-wasm
         WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
         COMMENT "Building all WASM modules"
         VERBATIM
