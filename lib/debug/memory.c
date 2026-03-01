@@ -488,6 +488,11 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
 
   g_in_debug_memory = true;
 
+  /* Initialize mutex on first allocation */
+  if (!atomic_load(&g_debug_mem_initialized)) {
+    debug_memory_ensure_init();
+  }
+
   atomic_fetch_add(&g_mem.malloc_calls, 1);
   atomic_fetch_add(&g_mem.total_allocated, size);
   size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
@@ -498,7 +503,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
       break;
   }
 
-  bool have_mutex = ensure_mutex_initialized();
+  bool have_mutex = atomic_load(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
