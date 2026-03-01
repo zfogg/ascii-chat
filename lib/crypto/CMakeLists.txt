@@ -5,7 +5,7 @@ set(CRYPTO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/keys.c
     ${CMAKE_CURRENT_SOURCE_DIR}/known_hosts.c
     ${CMAKE_CURRENT_SOURCE_DIR}/regex.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/pem_utils.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/pem.c
     ${CMAKE_CURRENT_SOURCE_DIR}/sha1.c
     ${CMAKE_CURRENT_SOURCE_DIR}/https_keys.c
     ${CMAKE_CURRENT_SOURCE_DIR}/discovery_keys.c

@@ -6,7 +6,7 @@
 
 #include <ascii-chat/network/http_client.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/crypto/pem_utils.h>
+#include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/socket.h>

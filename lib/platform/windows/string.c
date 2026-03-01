@@ -59,7 +59,7 @@ int platform_vasprintf(char **strp, const char *format, va_list ap) {
 
 int platform_asprintf(char **strp, const char *format, ...) {
   va_list args;
-  va_start(args, format);
+  va_start(args);
   int ret = platform_vasprintf(strp, format, args);
   va_end(args);
   return ret;

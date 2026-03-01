@@ -26,7 +26,7 @@
 #pragma once
 
 /**
- * @file crypto/pem_utils.h
+ * @file crypto/pem.h
  * @brief BearSSL PEM and trust anchor utilities adapted for in-memory data
  * @ingroup crypto
  * @addtogroup crypto

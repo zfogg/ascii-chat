@@ -1,5 +1,5 @@
 /**
- * @file crypto/pem_utils.c
+ * @file crypto/pem.c
  * @ingroup crypto
  * @brief 📄 PEM format encoding/decoding utilities for certificates and keys (adapted from BearSSL)
  *
@@ -28,7 +28,7 @@
  */
 
 #include <ascii-chat/common.h>
-#include <ascii-chat/crypto/pem_utils.h>
+#include <ascii-chat/crypto/pem.h>
 #include <ascii-chat/asciichat_errno.h>
 
 #include <ascii-chat-deps/bearssl/inc/bearssl.h>
