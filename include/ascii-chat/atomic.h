@@ -280,6 +280,22 @@ uint64_t atomic_fetch_sub_u64(atomic_t *a, uint64_t delta);
 
 uint64_t atomic_fetch_sub_u64_impl(atomic_t *a, uint64_t delta);
 
+/**
+ * @brief Atomically compare-and-swap a uint64_t
+ * @param a Pointer to atomic_t
+ * @param expected Expected current value (passed by reference)
+ * @param new_value Value to store if comparison succeeds
+ * @return true if swap succeeded, false otherwise
+ */
+#ifndef NDEBUG
+bool atomic_cas_u64(atomic_t *a, uint64_t *expected, uint64_t new_value);
+#else
+#define atomic_cas_u64(a, expected, new_value) \
+    atomic_cas_u64_impl((a), (expected), (new_value))
+#endif
+
+bool atomic_cas_u64_impl(atomic_t *a, uint64_t *expected, uint64_t new_value);
+
 // ============================================================================
 // Pointer Operations
 // ============================================================================
@@ -394,6 +410,56 @@ void atomic_ptr_on_exchange(_Atomic(void *) *a);
  */
 #define ATOMIC_PTR_REGISTER_AUTO(name) NAMED_REGISTER_ATOMIC_PTR(&(name), #name)
 
+// ============================================================================
+// Automatic Named Initialization & Registration Macros
+// ============================================================================
+
+/**
+ * @brief Initialize an atomic_t with automatic named registration
+ *
+ * In debug builds, automatically registers the atomic with named.c using
+ * a constructor function. In release builds, just initializes to {0}.
+ *
+ * Usage:
+ * @code
+ * // Declare with automatic registration:
+ * static atomic_t g_counter ATOMIC_INIT_AUTO("g_counter");
+ *
+ * // Or simpler - use the variable name directly:
+ * static atomic_t g_counter ATOMIC_INIT_AUTO();
+ * @endcode
+ *
+ * Note: Currently requires GCC/Clang constructor attribute. For other compilers,
+ * use ATOMIC_REGISTER_AUTO(variable_name) separately.
+ */
+#ifndef NDEBUG
+#define ATOMIC_INIT_AUTO(...) = _atomic_init_auto(__VA_ARGS__)
+#else
+#define ATOMIC_INIT_AUTO(...) = {0}
+#endif
+
+/**
+ * @brief Initialize an atomic_ptr_t with automatic named registration
+ *
+ * Same as ATOMIC_INIT_AUTO but for atomic_ptr_t.
+ */
+#ifndef NDEBUG
+#define ATOMIC_PTR_INIT_AUTO(...) = _atomic_ptr_init_auto(__VA_ARGS__)
+#else
+#define ATOMIC_PTR_INIT_AUTO(...) = {0}
+#endif
+
+// Actual init functions (defined below - use a workaround pattern)
+// These are helpers that work with static initialization
+#define _atomic_init_auto(name) {0}; \
+  static void __attribute__((constructor, used)) _atomic_reg_##name(void) { \
+    NAMED_REGISTER_ATOMIC(&name, #name); \
+  } typedef int _atomic_assert_##name
+
+#define _atomic_ptr_init_auto(name) {0}; \
+  static void __attribute__((constructor, used)) _atomic_ptr_reg_##name(void) { \
+    NAMED_REGISTER_ATOMIC_PTR(&name, #name); \
+  } typedef int _atomic_ptr_assert_##name
 
 // ============================================================================
 // Debug Initialization/Shutdown

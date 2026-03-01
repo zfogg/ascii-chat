@@ -170,7 +170,7 @@ static void generate_default_log_path(asciichat_mode_t mode, char *buf, size_t b
  * ============================================================================ */
 
 /** Global flag indicating application should exit (used by all modes) */
-atomic_t g_should_exit = {0};
+atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
 
 /** Mode-specific interrupt callback (called from signal handlers) */
 static void (*g_interrupt_callback)(void) = NULL;
@@ -434,8 +434,7 @@ int main(int argc, char *argv[]) {
   named_init();
   // Initialize atomic operations debug tracking
   debug_atomic_init();
-  // Register static atomics for debug tracking
-  ATOMIC_REGISTER_AUTO(g_should_exit);
+  // Static atomics are now auto-registered via ATOMIC_INIT_AUTO macro at definition time
   // Register all packet types from the packet_type_t enum
   named_registry_register_packet_types();
 #endif
