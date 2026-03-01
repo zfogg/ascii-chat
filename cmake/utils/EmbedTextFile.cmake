@@ -66,5 +66,3 @@ const char ${VARIABLE_NAME}[] =
  */
 const size_t ${VARIABLE_NAME}_size = sizeof(${VARIABLE_NAME}) - 1;
 ")
-
-message(STATUS "Embedded ${INPUT_FILE} (${VARIABLE_NAME}) → ${OUTPUT_FILE}")
