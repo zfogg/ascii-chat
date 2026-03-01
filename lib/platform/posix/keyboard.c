@@ -65,37 +65,41 @@ asciichat_error_t keyboard_init(void) {
   int config_fd = STDIN_FILENO;
   bool use_stdin = true;
 
-  // Get current terminal settings from stdin
-  log_info("keyboard_init: Trying tcgetattr(STDIN_FILENO)");
-  if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
-    log_warn("keyboard_init: tcgetattr(STDIN_FILENO) failed - trying /dev/tty fallback");
-    // stdin is not a TTY - try /dev/tty as fallback
-    // This allows keyboard input to work even when stdin/stdout are redirected,
-    // which happens in environments like Claude Code where the subprocess has
-    // no direct TTY access but /dev/tty is available
-    log_info("keyboard_init: Attempting to open /dev/tty as fallback");
-    g_tty_fd = open("/dev/tty", O_RDWR);
-    if (g_tty_fd < 0) {
-      log_error("keyboard_init: FAILED - /dev/tty not available. Keyboard input will NOT work!");
-      lifecycle_init_abort(&g_keyboard_lc);
-      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT,
-                           "Failed to get terminal attributes from stdin, and /dev/tty is not available");
-    }
-
-    log_info("keyboard_init: /dev/tty opened successfully");
+  // Try /dev/tty FIRST (preferred method - works in real TTYs)
+  // Falls back to stdin only if /dev/tty is unavailable
+  log_info("keyboard_init: Attempting to open /dev/tty as primary method");
+  g_tty_fd = open("/dev/tty", O_RDWR);
+  if (g_tty_fd >= 0) {
     // Try to get terminal settings from /dev/tty
-    if (tcgetattr(g_tty_fd, &g_original_termios) < 0) {
-      log_error("keyboard_init: tcgetattr(/dev/tty) failed");
+    if (tcgetattr(g_tty_fd, &g_original_termios) >= 0) {
+      log_info("keyboard_init: Successfully using /dev/tty for keyboard input");
+      config_fd = g_tty_fd;
+      g_tty_fd_owned = true;
+      use_stdin = false;
+    } else {
+      // tcgetattr failed on /dev/tty - close it and fall back to stdin
+      log_warn("keyboard_init: tcgetattr(/dev/tty) failed - falling back to stdin");
       close(g_tty_fd);
       g_tty_fd = -1;
-      lifecycle_init_abort(&g_keyboard_lc);
-      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from /dev/tty");
+      g_tty_fd_owned = false;
+      // Continue to try stdin below
     }
+  } else {
+    log_debug("keyboard_init: /dev/tty not available (errno=%d) - falling back to stdin", errno);
+    // /dev/tty not available, try stdin instead
+  }
 
-    config_fd = g_tty_fd;
-    g_tty_fd_owned = true;
-    use_stdin = false;
-    log_info("keyboard_init: Using /dev/tty for keyboard input");
+  // If /dev/tty didn't work, try stdin as fallback
+  if (!g_tty_fd_owned) {
+    log_info("keyboard_init: Trying stdin as fallback");
+    if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
+      log_error("keyboard_init: FAILED - neither /dev/tty nor stdin available for keyboard input");
+      lifecycle_init_abort(&g_keyboard_lc);
+      return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from both stdin and /dev/tty");
+    }
+    config_fd = STDIN_FILENO;
+    use_stdin = true;
+    log_info("keyboard_init: Successfully using stdin for keyboard input");
   }
 
   // Save original settings and create raw mode version

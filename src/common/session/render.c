@@ -114,10 +114,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       keyboard_enabled = true;
       log_info("render_loop: ✓ Keyboard input ENABLED");
     } else {
-      log_warn("render_loop: keyboard_init failed (%s) - will attempt fallback", asciichat_error_string(kb_result));
-      // Don't fail - continue with keyboard handler (will try to read anyway)
-      keyboard_enabled = true; // Allow trying to read keyboard even if init failed
-      log_info("render_loop: Continuing with keyboard fallback");
+      log_error("render_loop: keyboard_init failed (%s) - keyboard input disabled", asciichat_error_string(kb_result));
+      // When keyboard_init() fails (stdin/tty not real TTYs), disable keyboard
+      // Trying to read would just spin returning KEY_NONE repeatedly
+      keyboard_enabled = false;
     }
   } else {
     log_info("render_loop: Keyboard NOT enabled - handler=%p snapshot=%s", (void *)keyboard_handler,
