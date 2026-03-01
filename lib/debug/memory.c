@@ -1066,16 +1066,23 @@ void debug_memory_report(void) {
 
         if (total_count != g_suppression_config[i].expected_count ||
             total_bytes != g_suppression_config[i].expected_bytes) {
-          APPEND_REPORT("%s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected"));
-          APPEND_REPORT("  %s:%d\n", g_suppression_config[i].file, g_suppression_config[i].line);
+          char mismatch_details[256] = {0};
           if (total_count != g_suppression_config[i].expected_count) {
-            APPEND_REPORT("    Count mismatch: expected %d, found %d\n", g_suppression_config[i].expected_count,
-                          total_count);
+            snprintf(mismatch_details, sizeof(mismatch_details), "Count mismatch: expected %d, found %d",
+                     g_suppression_config[i].expected_count, total_count);
           }
           if (total_bytes != g_suppression_config[i].expected_bytes) {
-            APPEND_REPORT("    Bytes mismatch: expected %zu, found %zu\n", g_suppression_config[i].expected_bytes,
-                          total_bytes);
+            size_t len = strlen(mismatch_details);
+            if (len > 0) {
+              snprintf(mismatch_details + len, sizeof(mismatch_details) - len, " Bytes mismatch: expected %zu, found %zu",
+                       g_suppression_config[i].expected_bytes, total_bytes);
+            } else {
+              snprintf(mismatch_details, sizeof(mismatch_details), "Bytes mismatch: expected %zu, found %zu",
+                       g_suppression_config[i].expected_bytes, total_bytes);
+            }
           }
+          APPEND_REPORT("%s %s:%d %s\n", colored_string(LOG_COLOR_ERROR, "WARNING: Suppression mismatch detected"),
+                        g_suppression_config[i].file, g_suppression_config[i].line, mismatch_details);
         }
       }
     }
