@@ -227,10 +227,10 @@ void asciichat_pcre2_cleanup_all(void) {
     pcre2_singleton_t *next = current->next;
 
     /* Free compiled code */
-    pcre2_code *code = atomic_load(&current->code);
+    pcre2_code *code = (pcre2_code *)atomic_ptr_load(&current->code);
     if (code) {
       pcre2_code_free(code);
-      atomic_store(&current->code, NULL);
+      atomic_ptr_store(&current->code, NULL);
     }
 
     /* Free JIT stack */
