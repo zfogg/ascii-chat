@@ -93,10 +93,14 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   switch ((int)key) {
   // ===== HELP SCREEN TOGGLE =====
   case KEY_QUESTION: {
+    log_debug("KEYBOARD: KEY_QUESTION matched, display=%p", (void *)display);
     if (display) {
+      log_info("KEYBOARD: Toggling help screen");
       session_display_toggle_help(display);
       // Render help screen immediately so user sees it
       session_display_render_help(display);
+    } else {
+      log_warn("KEYBOARD: Cannot toggle help - display context is NULL");
     }
     break;
   }
