@@ -148,6 +148,13 @@
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/network/log.h>
 
+// FFmpeg headers for H.265 decoding
+#include <libavcodec/avcodec.h>
+#include <libavutil/frame.h>
+#include <libavutil/imgutils.h>
+#include <libavutil/pixfmt.h>
+#include <libswscale/swscale.h>
+
 // Debug flags
 #define DEBUG_NETWORK 1
 #define DEBUG_THREADS 1
@@ -2949,15 +2956,175 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     mutex_unlock(&client->client_state_mutex);
   }
 
-  // NOTE: H.265 frames are encoded (compressed) - they need to be decoded to RGB pixels before
-  // being added to the video mixer. For now, we log the frame but don't process it.
-  // TODO: Add H.265 decoder support to handle_image_h265_frame if decoding is needed.
-  // Alternative: Forward H.265 frames directly to mixer if it can handle encoded frames.
+  // H.265 frames need to be decoded before being added to the video mixer
+  if (data_len == 0) {
+    log_debug("SKIP_H265_EMPTY: client=%s, width=%ux%u, no encoded data", client->client_id, width, height);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (data_len=%zu)", cb_duration_str, data_len);
+    return;
+  }
+
+  // H.265 frame with actual data - decode it
+  log_info("H265_FRAME_WITH_DATA: client=%s, %ux%u, %zu bytes - DECODING", client->client_id, width, height, data_len);
+
+  const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+  if (!codec) {
+    log_error("H.265 decoder not found");
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (no decoder)", cb_duration_str);
+    return;
+  }
+
+  AVCodecContext *dec_ctx = avcodec_alloc_context3(codec);
+  if (!dec_ctx || avcodec_open2(dec_ctx, codec, NULL) < 0) {
+    log_error("Failed to create/open H.265 decoder");
+    if (dec_ctx)
+      avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (decoder failed)", cb_duration_str);
+    return;
+  }
+
+  AVPacket *pkt = av_packet_alloc();
+  AVFrame *frame = av_frame_alloc();
+  AVFrame *rgb_frame = av_frame_alloc();
+
+  if (!pkt || !frame || !rgb_frame) {
+    log_error("Failed to allocate FFmpeg structures");
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (alloc failed)", cb_duration_str);
+    return;
+  }
+
+  pkt->data = (uint8_t *)h265_data;
+  pkt->size = (int)data_len;
+
+  if (avcodec_send_packet(dec_ctx, pkt) < 0 || avcodec_receive_frame(dec_ctx, frame) < 0) {
+    log_error("H.265 decode failed");
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (decode error)", cb_duration_str);
+    return;
+  }
+
+  // Convert YUV to RGB
+  struct SwsContext *sws_ctx = sws_getContext(frame->width, frame->height, (int)frame->format, frame->width,
+                                              frame->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+
+  if (!sws_ctx) {
+    log_error("Failed to create color converter");
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (sws failed)", cb_duration_str);
+    return;
+  }
+
+  int rgb_buf_size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
+  uint8_t *rgb_buffer = SAFE_MALLOC(rgb_buf_size, uint8_t *);
+
+  if (!rgb_buffer) {
+    log_error("Failed to allocate RGB buffer");
+    sws_freeContext(sws_ctx);
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (rgb alloc failed)", cb_duration_str);
+    return;
+  }
+
+  av_image_fill_arrays(rgb_frame->data, rgb_frame->linesize, rgb_buffer, AV_PIX_FMT_RGB24, frame->width, frame->height,
+                       1);
+
+  if (sws_scale(sws_ctx, (const uint8_t *const *)frame->data, frame->linesize, 0, frame->height, rgb_frame->data,
+                rgb_frame->linesize) < 0) {
+    log_error("Color conversion failed");
+    SAFE_FREE(rgb_buffer);
+    sws_freeContext(sws_ctx);
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (scale failed)", cb_duration_str);
+    return;
+  }
+
+  log_debug("H265_DECODE: Successfully converted to RGB (%d bytes)", rgb_buf_size);
+
+  // Add decoded frame to mixer
+  if (client->incoming_video_buffer) {
+    video_frame_t *vf = video_frame_begin_write(client->incoming_video_buffer);
+    if (vf && vf->data) {
+      size_t total_size = sizeof(uint32_t) * 2 + rgb_buf_size;
+      size_t buffer_capacity = client->incoming_video_buffer->allocated_buffer_size;
+
+      if (total_size < buffer_capacity) {
+        uint32_t width_net = HOST_TO_NET_U32(width);
+        uint32_t height_net = HOST_TO_NET_U32(height);
+
+        memcpy(vf->data, &width_net, sizeof(uint32_t));
+        memcpy((char *)vf->data + sizeof(uint32_t), &height_net, sizeof(uint32_t));
+        memcpy((char *)vf->data + sizeof(uint32_t) * 2, rgb_buffer, rgb_buf_size);
+
+        vf->size = total_size;
+        vf->width = width;
+        vf->height = height;
+        vf->capture_timestamp_ns = time_get_ns();
+        vf->sequence_number = ++client->frames_received;
+
+        video_frame_commit(client->incoming_video_buffer);
+        log_info("H265_DECODE: Frame committed: seq=%u, %ux%u", vf->sequence_number, width, height);
+      }
+    }
+  }
+
+  SAFE_FREE(rgb_buffer);
+  sws_freeContext(sws_ctx);
+  av_packet_free(&pkt);
+  av_frame_free(&frame);
+  av_frame_free(&rgb_frame);
+  avcodec_free_context(&dec_ctx);
 
   uint64_t callback_end_ns = time_get_ns();
   char cb_duration_str[32];
   time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str, sizeof(cb_duration_str));
-  log_info("[WS_TIMING] on_image_frame_h265 callback took %s (data_len=%zu)", cb_duration_str, data_len);
+  log_info("[WS_TIMING] on_image_frame_h265 callback took %s (SUCCESS)", cb_duration_str);
 }
 
 static void acip_server_on_audio(const void *audio_data, size_t audio_len, void *client_ctx, void *app_ctx) {
