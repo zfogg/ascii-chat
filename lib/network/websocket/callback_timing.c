@@ -39,15 +39,26 @@ void websocket_callback_timing_record(websocket_callback_stats_t *stats, uint64_
   if (count > 0 && prev_last_ns > 0) {
     uint64_t interval_ns = (end_ns > prev_last_ns) ? (end_ns - prev_last_ns) : 0;
 
-    // Track min/max intervals
-    uint64_t current_min = atomic_load_u64(&stats->min_interval_ns);
-    if (interval_ns < current_min && interval_ns > 0) {
-      atomic_cas_u64(&stats->min_interval_ns, &current_min, interval_ns);
+    // Track min intervals (atomic compare-and-swap loop to avoid TOCTOU race)
+    if (interval_ns > 0) {
+      uint64_t current_min = atomic_load_u64(&stats->min_interval_ns);
+      while (interval_ns < current_min) {
+        if (atomic_cas_u64(&stats->min_interval_ns, &current_min, interval_ns)) {
+          break;
+        }
+        // CAS failed - reload current value and retry if still applicable
+        current_min = atomic_load_u64(&stats->min_interval_ns);
+      }
     }
 
+    // Track max intervals (atomic compare-and-swap loop to avoid TOCTOU race)
     uint64_t current_max = atomic_load_u64(&stats->max_interval_ns);
-    if (interval_ns > current_max) {
-      atomic_cas_u64(&stats->max_interval_ns, &current_max, interval_ns);
+    while (interval_ns > current_max) {
+      if (atomic_cas_u64(&stats->max_interval_ns, &current_max, interval_ns)) {
+        break;
+      }
+      // CAS failed - reload current value and retry if still applicable
+      current_max = atomic_load_u64(&stats->max_interval_ns);
     }
   }
 }
