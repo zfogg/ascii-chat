@@ -54,11 +54,11 @@ typedef enum {
 } symbolizer_type_t;
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
-static atomic_t g_symbolizer_detected = false;
-static atomic_t g_llvm_symbolizer_checked = false;
-static atomic_t g_llvm_symbolizer_available = false;
+static atomic_t g_symbolizer_detected = {0};
+static atomic_t g_llvm_symbolizer_checked = {0};
+static atomic_t g_llvm_symbolizer_available = {0};
 static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
-static atomic_t g_addr2line_available = false;
+static atomic_t g_addr2line_available = {0};
 static char g_addr2line_cmd[PLATFORM_MAX_PATH_LENGTH];
 // Lifecycle for symbolizer detection (replaces double-checked locking with mutex)
 static lifecycle_t g_llvm_symbolizer_lc = LIFECYCLE_INIT;
@@ -118,8 +118,8 @@ static rwlock_t g_symbol_cache_lock = {0};    // External locking for thread saf
 static lifecycle_t g_symbol_cache_lc = LIFECYCLE_INIT;
 
 // Statistics
-static atomic_uint_fast64_t g_cache_hits = 0;
-static atomic_uint_fast64_t g_cache_misses = 0;
+static atomic_t g_cache_hits = {0};
+static atomic_t g_cache_misses = {0};
 
 // ============================================================================
 // Helper Functions
@@ -194,12 +194,12 @@ static const char *get_llvm_symbolizer_command(void) {
       log_dev("Found %s in PATH", LLVM_SYMBOLIZER_BIN);
     }
 
-    atomic_store(&g_llvm_symbolizer_available, available);
+    atomic_store_bool(&g_llvm_symbolizer_available, available);
   }
 
 check_available:
 
-  if (!atomic_load(&g_llvm_symbolizer_available)) {
+  if (!atomic_load_bool(&g_llvm_symbolizer_available)) {
     return NULL;
   }
 
@@ -248,12 +248,12 @@ static const char *get_addr2line_command(void) {
       log_dev("Found %s in PATH", ADDR2LINE_BIN);
     }
 
-    atomic_store(&g_addr2line_available, available);
+    atomic_store_bool(&g_addr2line_available, available);
   }
 
 check_available:
 
-  if (!atomic_load(&g_addr2line_available)) {
+  if (!atomic_load_bool(&g_addr2line_available)) {
     return NULL;
   }
 
@@ -294,7 +294,7 @@ asciichat_error_t symbol_cache_init(void) {
 
   // Detect which symbolizer is available (once at init)
   bool expected = false;
-  if (atomic_compare_exchange_strong(&g_symbolizer_detected, &expected, true)) {
+  if (atomic_cas_bool(&g_symbolizer_detected, &expected, true)) {
     g_symbolizer_type = detect_symbolizer();
   }
 
@@ -307,8 +307,8 @@ asciichat_error_t symbol_cache_init(void) {
   // Initialize uthash head to NULL (required)
   g_symbol_cache = NULL;
 
-  atomic_store(&g_cache_hits, 0);
-  atomic_store(&g_cache_misses, 0);
+  atomic_store_u64(&g_cache_hits, 0);
+  atomic_store_u64(&g_cache_misses, 0);
 
   log_dev("Symbol cache initialized");
   return 0;
@@ -348,8 +348,8 @@ void symbol_cache_destroy(void) {
   g_symbol_cache = NULL;
 
   log_dev("Symbol cache cleaned up: %zu entries counted, %zu entries freed (hits=%llu, misses=%llu)", entry_count,
-          freed_count, (unsigned long long)atomic_load(&g_cache_hits),
-          (unsigned long long)atomic_load(&g_cache_misses));
+          freed_count, (unsigned long long)atomic_load_u64(&g_cache_hits),
+          (unsigned long long)atomic_load_u64(&g_cache_misses));
 }
 
 const char *symbol_cache_lookup(void *addr) {
@@ -366,9 +366,9 @@ const char *symbol_cache_lookup(void *addr) {
   if (entry) {
     // Copy string while holding lock to prevent use-after-free
     result = platform_strdup(entry->symbol);
-    atomic_fetch_add(&g_cache_hits, 1);
+    atomic_fetch_add_u64(&g_cache_hits, 1);
   } else {
-    atomic_fetch_add(&g_cache_misses, 1);
+    atomic_fetch_add_u64(&g_cache_misses, 1);
   }
 
   rwlock_rdunlock(&g_symbol_cache_lock);
@@ -435,10 +435,10 @@ bool symbol_cache_insert(void *addr, const char *symbol) {
 
 void symbol_cache_get_stats(uint64_t *hits_out, uint64_t *misses_out, size_t *entries_out) {
   if (hits_out) {
-    *hits_out = atomic_load(&g_cache_hits);
+    *hits_out = atomic_load_u64(&g_cache_hits);
   }
   if (misses_out) {
-    *misses_out = atomic_load(&g_cache_misses);
+    *misses_out = atomic_load_u64(&g_cache_misses);
   }
   if (entries_out) {
     rwlock_rdlock(&g_symbol_cache_lock);
@@ -448,8 +448,8 @@ void symbol_cache_get_stats(uint64_t *hits_out, uint64_t *misses_out, size_t *en
 }
 
 void symbol_cache_print_stats(void) {
-  uint64_t hits = atomic_load(&g_cache_hits);
-  uint64_t misses = atomic_load(&g_cache_misses);
+  uint64_t hits = atomic_load_u64(&g_cache_hits);
+  uint64_t misses = atomic_load_u64(&g_cache_misses);
 
   rwlock_rdlock(&g_symbol_cache_lock);
   size_t entries = HASH_COUNT(g_symbol_cache);

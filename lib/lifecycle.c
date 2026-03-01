@@ -8,9 +8,9 @@ bool lifecycle_init(lifecycle_t *lc, const char *name) {
     log_dev("[lifecycle] init: NULL lifecycle pointer");
     return false;
   }
-  int expected = LIFECYCLE_UNINITIALIZED;
-  if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_INITIALIZED)) {
-    log_dev("[lifecycle] init: %s already initialized (current state: %d)", name ? name : "<unnamed>", expected);
+  uint64_t expected = LIFECYCLE_UNINITIALIZED;
+  if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZED)) {
+    log_dev("[lifecycle] init: %s already initialized (current state: %llu)", name ? name : "<unnamed>", expected);
     return false; // Already initialized or in INITIALIZING/DEAD state
   }
 
@@ -34,8 +34,8 @@ bool lifecycle_init_once(lifecycle_t *lc) {
     return false;
   }
 
-  int expected = LIFECYCLE_UNINITIALIZED;
-  if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_INITIALIZING)) {
+  uint64_t expected = LIFECYCLE_UNINITIALIZED;
+  if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZING)) {
     // If already initialized, just return false (no work needed)
     if (expected == LIFECYCLE_INITIALIZED) {
       log_dev("[lifecycle] init_once: already initialized");
@@ -72,7 +72,7 @@ void lifecycle_init_commit(lifecycle_t *lc) {
     return;
   }
   log_dev("[lifecycle] init_commit: transitioning INITIALIZING → INITIALIZED");
-  atomic_store(&lc->state, LIFECYCLE_INITIALIZED);
+  atomic_store_u64(&lc->state, LIFECYCLE_INITIALIZED);
 }
 
 void lifecycle_init_abort(lifecycle_t *lc) {
@@ -81,7 +81,7 @@ void lifecycle_init_abort(lifecycle_t *lc) {
     return;
   }
   log_dev("[lifecycle] init_abort: transitioning INITIALIZING → UNINITIALIZED (retry allowed)");
-  atomic_store(&lc->state, LIFECYCLE_UNINITIALIZED);
+  atomic_store_u64(&lc->state, LIFECYCLE_UNINITIALIZED);
 }
 
 bool lifecycle_shutdown(lifecycle_t *lc) {
@@ -89,8 +89,8 @@ bool lifecycle_shutdown(lifecycle_t *lc) {
     log_dev("[lifecycle] shutdown: NULL lifecycle pointer");
     return false;
   }
-  int expected = LIFECYCLE_INITIALIZED;
-  if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_UNINITIALIZED)) {
+  uint64_t expected = LIFECYCLE_INITIALIZED;
+  if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_UNINITIALIZED)) {
     log_dev("[lifecycle] shutdown: not in INITIALIZED state (current: %d)", expected);
     return false; // Not initialized or in unexpected state
   }
@@ -115,9 +115,9 @@ bool lifecycle_shutdown_forever(lifecycle_t *lc) {
     return false;
   }
 
-  int current;
+  uint64_t current;
   do {
-    current = atomic_load(&lc->state);
+    current = atomic_load_u64(&lc->state);
     if (current == LIFECYCLE_DEAD) {
       log_dev("[lifecycle] shutdown_forever: already DEAD");
       return false;
@@ -125,7 +125,7 @@ bool lifecycle_shutdown_forever(lifecycle_t *lc) {
     if (current == LIFECYCLE_INITIALIZING) {
       log_dev("[lifecycle] shutdown_forever: spinning on INITIALIZING");
     }
-  } while (current == LIFECYCLE_INITIALIZING || !atomic_compare_exchange_weak(&lc->state, &current, LIFECYCLE_DEAD));
+  } while (current == LIFECYCLE_INITIALIZING || !atomic_cas_u64(&lc->state, &current, LIFECYCLE_DEAD));
 
   log_dev("[lifecycle] shutdown_forever: transitioned to DEAD (was in state: %d)", current);
   return current == LIFECYCLE_INITIALIZED;
@@ -134,13 +134,13 @@ bool lifecycle_shutdown_forever(lifecycle_t *lc) {
 bool lifecycle_is_initialized(const lifecycle_t *lc) {
   if (lc == NULL)
     return false;
-  return atomic_load(&lc->state) == LIFECYCLE_INITIALIZED;
+  return atomic_load_u64(&lc->state) == LIFECYCLE_INITIALIZED;
 }
 
 bool lifecycle_is_dead(const lifecycle_t *lc) {
   if (lc == NULL)
     return false;
-  return atomic_load(&lc->state) == LIFECYCLE_DEAD;
+  return atomic_load_u64(&lc->state) == LIFECYCLE_DEAD;
 }
 
 bool lifecycle_reset(lifecycle_t *lc) {
@@ -149,8 +149,8 @@ bool lifecycle_reset(lifecycle_t *lc) {
     return false;
   }
 
-  int expected = LIFECYCLE_INITIALIZED;
-  if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_UNINITIALIZED)) {
+  uint64_t expected = LIFECYCLE_INITIALIZED;
+  if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_UNINITIALIZED)) {
     log_dev("[lifecycle] reset: not in INITIALIZED state (current: %d)", expected);
     return false; // Not in INITIALIZED state
   }
@@ -175,8 +175,8 @@ bool lifecycle_destroy_once(lifecycle_t *lc) {
     return false;
   }
 
-  int expected = LIFECYCLE_INITIALIZED;
-  if (!atomic_compare_exchange_strong(&lc->state, &expected, LIFECYCLE_DESTROYING)) {
+  uint64_t expected = LIFECYCLE_INITIALIZED;
+  if (!atomic_cas_u64(&lc->state, &expected, LIFECYCLE_DESTROYING)) {
     // If not initialized, nothing to destroy
     if (expected == LIFECYCLE_UNINITIALIZED) {
       log_dev("[lifecycle] destroy_once: already uninitialized, nothing to destroy");
@@ -218,5 +218,5 @@ void lifecycle_destroy_commit(lifecycle_t *lc) {
     return;
   }
   log_dev("[lifecycle] destroy_commit: transitioning DESTROYING → UNINITIALIZED");
-  atomic_store(&lc->state, LIFECYCLE_UNINITIALIZED);
+  atomic_store_u64(&lc->state, LIFECYCLE_UNINITIALIZED);
 }

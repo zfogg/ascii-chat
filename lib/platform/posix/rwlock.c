@@ -28,7 +28,7 @@ int rwlock_init(rwlock_t *lock, const char *name) {
     lock->last_rdlock_time_ns = 0;
     lock->last_wrlock_time_ns = 0;
     lock->last_unlock_time_ns = 0;
-    lock->read_lock_count = 0;
+    atomic_store_u64(&lock->read_lock_count, 0);
     lock->write_held_by_key = 0;
   }
   return err;
