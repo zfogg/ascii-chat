@@ -12,6 +12,8 @@
 #include <string.h>
 #include <errno.h>
 #include <inttypes.h>
+#include <unistd.h>
+#include <time.h>
 
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
@@ -337,6 +339,10 @@ static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
   return site;
 }
 
+/* Forward declaration for initialization */
+static void debug_memory_ensure_init(void);
+static _Atomic bool g_debug_mem_initialized = false;
+
 static struct {
   mem_block_t *head;
   atomic_size_t total_allocated;
@@ -367,17 +373,43 @@ static struct {
 #undef calloc
 #undef realloc
 
+/* Initialize debug memory system once at startup */
+static void debug_memory_ensure_init(void) {
+  if (atomic_load(&g_debug_mem_initialized)) {
+    return;
+  }
+
+  /* Use lifecycle_init_once() for proper thread-safe initialization */
+  if (lifecycle_init_once(&g_mem.lifecycle)) {
+    /* This thread won the race; do the actual initialization */
+    if (lifecycle_init(&g_mem.lifecycle, "debug_memory")) {
+      atomic_store(&g_debug_mem_initialized, true);
+    }
+    lifecycle_init_commit(&g_mem.lifecycle);
+  } else {
+    /* Another thread is initializing or already initialized;
+     * spin briefly to wait for initialization to complete */
+    int attempts = 0;
+    while (!atomic_load(&g_debug_mem_initialized) && attempts < 1000) {
+      attempts++;
+      /* Brief busy-wait */
+      for (volatile int i = 0; i < 10; i++)
+        ;
+    }
+  }
+}
+
 static bool ensure_mutex_initialized(void) {
-  if (lifecycle_is_initialized(&g_mem.lifecycle)) {
+  if (atomic_load(&g_debug_mem_initialized)) {
     return true;
   }
 
-  if (!lifecycle_init(&g_mem.lifecycle, "debug_memory")) {
-    log_error("Failed to initialize debug memory mutex; memory tracking will run without locking");
-    return false;
+  if (lifecycle_is_initialized(&g_mem.lifecycle)) {
+    atomic_store(&g_debug_mem_initialized, true);
+    return true;
   }
 
-  return true;
+  return false;
 }
 
 void *debug_malloc(size_t size, const char *file, int line) {
@@ -391,6 +423,11 @@ void *debug_malloc(size_t size, const char *file, int line) {
 
   g_in_debug_memory = true;
 
+  /* Initialize mutex on first allocation */
+  if (!atomic_load(&g_debug_mem_initialized)) {
+    debug_memory_ensure_init();
+  }
+
   atomic_fetch_add(&g_mem.malloc_calls, 1);
   atomic_fetch_add(&g_mem.total_allocated, size);
   size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
@@ -401,7 +438,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
       break;
   }
 
-  bool have_mutex = ensure_mutex_initialized();
+  bool have_mutex = atomic_load(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -511,6 +548,11 @@ void debug_free(void *ptr, const char *file, int line) {
 
   g_in_debug_memory = true;
 
+  /* Initialize mutex on first free */
+  if (!atomic_load(&g_debug_mem_initialized)) {
+    debug_memory_ensure_init();
+  }
+
   atomic_fetch_add(&g_mem.free_calls, 1);
 
   size_t freed_size = 0;
@@ -519,7 +561,7 @@ void debug_free(void *ptr, const char *file, int line) {
   bool was_aligned = false;
 #endif
 
-  bool have_mutex = ensure_mutex_initialized();
+  bool have_mutex = atomic_load(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -598,6 +640,11 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
 
   g_in_debug_memory = true;
 
+  /* Initialize mutex on first calloc */
+  if (!atomic_load(&g_debug_mem_initialized)) {
+    debug_memory_ensure_init();
+  }
+
   atomic_fetch_add(&g_mem.calloc_calls, 1);
   atomic_fetch_add(&g_mem.total_allocated, total);
   size_t new_usage = atomic_fetch_add(&g_mem.current_usage, total) + total;
@@ -608,7 +655,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
       break;
   }
 
-  bool have_mutex = ensure_mutex_initialized();
+  bool have_mutex = atomic_load(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -715,9 +762,14 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     return NULL;
   }
 
+  /* Initialize mutex on first realloc */
+  if (!atomic_load(&g_debug_mem_initialized)) {
+    debug_memory_ensure_init();
+  }
+
   // Look up old allocation size from tracking list
   size_t old_size = 0;
-  bool have_mutex = ensure_mutex_initialized();
+  bool have_mutex = atomic_load(&g_debug_mem_initialized);
 
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);

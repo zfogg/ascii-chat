@@ -580,20 +580,16 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
     case LOG_FORMAT_STRFTIME_CODE: {
       /* strftime format code (like %H, %M, %S, %A, %B, etc.)
        * Let strftime handle all the parsing and validation */
-      if (spec->literal) {
-        /* Construct format string with % prefix */
-        size_t fmt_len = spec->literal_len + 1;
-        char *format_str = SAFE_MALLOC(fmt_len + 1, char *);
-        if (format_str) {
-          format_str[0] = '%';
-          memcpy(format_str + 1, spec->literal, spec->literal_len);
-          format_str[fmt_len] = '\0';
-          written = time_format_now(format_str, p, remaining + 1);
-          if (written <= 0) {
-            log_debug("time_format_now failed for format code: %s", format_str);
-            written = 0;
-          }
-          SAFE_FREE(format_str);
+      if (spec->literal && spec->literal_len < 64) {
+        /* Construct format string with % prefix on stack */
+        char format_str[66]; /* 1 (%) + 64 (literal) + 1 (null) */
+        format_str[0] = '%';
+        memcpy(format_str + 1, spec->literal, spec->literal_len);
+        format_str[spec->literal_len + 1] = '\0';
+        written = time_format_now(format_str, p, remaining + 1);
+        if (written <= 0) {
+          log_debug("time_format_now failed for format code: %s", format_str);
+          written = 0;
         }
       }
       break;
