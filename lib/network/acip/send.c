@@ -81,10 +81,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
             total_size);
 
   // Allocate buffer for complete packet
-  // Use buffer_pool (not SAFE_MALLOC) because WebSocket transport queues buffers
-  // for async sending via LWS_CALLBACK_SERVER_WRITEABLE. The send_queue holds
-  // msg_data pointers that must persist after acip_transport_send() returns.
-  uint8_t *packet = buffer_pool_alloc(NULL, total_size);
+  uint8_t *packet = SAFE_MALLOC(total_size, uint8_t *);
   if (!packet) {
     log_error("★ PACKET_SEND: Memory allocation FAILED for %zu byte packet buffer", total_size);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate packet buffer");
@@ -100,7 +97,7 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
   }
 
   // Send via transport (transport handles encryption if crypto_ctx present)
-  // Transport does NOT take ownership - it copies data to its own buffers
+  // Transport does NOT take ownership - it only copies data to its own buffers
   log_info("★ PACKET_SEND: Calling acip_transport_send with %zu total bytes", total_size);
   asciichat_error_t result = acip_transport_send(transport, packet, total_size);
 
@@ -113,8 +110,8 @@ asciichat_error_t packet_send_via_transport(acip_transport_t *transport, packet_
               result, asciichat_error_string(result), total_size, type, client_id);
   }
 
-  // Always free the buffer (using buffer_pool_free instead of SAFE_FREE)
-  buffer_pool_free(NULL, packet, total_size);
+  // Always free the packet buffer
+  SAFE_FREE(packet);
   return result;
 }
 

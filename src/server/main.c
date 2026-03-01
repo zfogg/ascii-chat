@@ -1916,7 +1916,7 @@ int server_main(void) {
       .server_private_key = &g_server_private_key,
       .client_whitelist = g_client_whitelist,
       .num_whitelisted_clients = g_num_whitelisted_clients,
-      .session_host = NULL, // Will be created after TCP server init
+      .session_host = NULL,           // Will be created after TCP server init
       .h265_server = h265_server_ctx, // H.265 codec support
   };
 
@@ -2619,15 +2619,14 @@ cleanup:
     // seeing running=false, which we just set).
     websocket_server_cancel_service(&g_websocket_server);
 
-    // Join with 2-second timeout only if thread was successfully created.
-    // lws_context_destroy() can take 5+ seconds if called from a different thread
-    // (waiting for close handshake), but we're destroying from the event loop thread
-    // so it's fast. 2s accounts for any slow lws_service() calls or LWS cleanup.
+    // Join with 500ms timeout for responsive shutdown
+    // Most systems exit quickly since we set running=false and called cancel_service.
+    // 500ms is enough time but still responsive to timeout -k signals.
     if (g_websocket_server_thread_started) {
       int join_result =
-          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 2 * NS_PER_SEC_INT); // 2 seconds in ns
+          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 500 * NS_PER_MS_INT); // 500ms in ns
       if (join_result != 0) {
-        log_warn("WebSocket thread did not exit cleanly (timeout), forcing cleanup");
+        log_warn("WebSocket thread did not exit cleanly within 500ms, forcing cleanup");
       }
       g_websocket_server_thread_started = false;
     }
