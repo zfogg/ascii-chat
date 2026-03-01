@@ -1,6 +1,6 @@
 #include <ascii-chat/video/ascii/frame_validator.h>
 #include <string.h>
-#include <ascii-chat/logging.h>
+#include <ascii-chat/log/log.h>
 
 /**
  * @brief Find the final reset sequence in frame data

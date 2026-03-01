@@ -18,8 +18,9 @@ set(VIDEO_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ansi_fast.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ansi.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/palette.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/rle.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/frame_validator.c
 )
 
 # Media source files (only when FFmpeg is available)
