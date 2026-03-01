@@ -1066,7 +1066,9 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
     return;
   }
 
-  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
+  // Disable help in snapshot mode only - allow help toggle even if stdin/stdout aren't TTYs
+  // (the display context tracks has_tty independently)
+  if (GET_OPTION(snapshot_mode)) {
     return;
   }
 
@@ -1083,7 +1085,8 @@ bool session_display_is_help_active(session_display_ctx_t *ctx) {
     return false;
   }
 
-  if (!terminal_is_interactive() || GET_OPTION(snapshot_mode)) {
+  // Disable help in snapshot mode only - allow help state check even if stdin/stdout aren't TTYs
+  if (GET_OPTION(snapshot_mode)) {
     return false;
   }
 

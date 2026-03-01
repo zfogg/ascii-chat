@@ -473,6 +473,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
+      // Free frame before checking exit conditions to avoid double-free
+      SAFE_FREE(ascii_frame);
+
       // Snapshot mode timing: mark that first frame has been rendered
       // (timer already started at the beginning of the render loop)
       if (snapshot_mode && !first_frame_rendered) {
@@ -504,13 +507,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
       if (snapshot_mode && (snapshot_done || output_paused_frame)) {
-        SAFE_FREE(ascii_frame);
         // Signal application to exit in snapshot mode
         APP_CALLBACK_VOID(signal_exit);
         break;
       }
-
-      SAFE_FREE(ascii_frame);
 
       // Measure frame completion right after rendering, BEFORE keyboard polling
       // This gives us accurate timing for just the core frame operations
