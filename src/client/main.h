@@ -44,6 +44,7 @@
 #include <ascii-chat/thread_pool.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/video/h265/encoder.h>
 
 /**
  * @brief Global crypto handshake context for this client connection
@@ -53,6 +54,15 @@
  * Thread-safe for use across multiple client threads.
  */
 extern crypto_handshake_context_t g_crypto_ctx;
+
+/**
+ * @brief Global H.265 encoder context for client video streaming
+ *
+ * Encodes captured RGB frames to H.265/HEVC format before transmission.
+ * Initialized in client_main() and used by capture thread.
+ * Set to NULL during shutdown to prevent use-after-free.
+ */
+extern h265_encoder_t *volatile g_h265_encoder;
 
 /**
  * @brief Global client worker thread pool

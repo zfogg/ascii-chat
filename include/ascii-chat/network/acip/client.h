@@ -21,6 +21,7 @@
 #include "../../network/acip/handlers.h"
 #include "../../network/packet.h"
 #include "../../asciichat_errno.h"
+#include "../../video/h265/encoder.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -62,6 +63,32 @@ asciichat_error_t acip_client_receive_and_dispatch(acip_transport_t *transport,
  */
 asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void *pixel_data, uint32_t width,
                                         uint32_t height, uint32_t pixel_format);
+
+/**
+ * @brief Send H.265-encoded video frame to server (client → server)
+ *
+ * Encodes RGB frame to H.265 and transmits as PACKET_TYPE_IMAGE_FRAME_H265.
+ * Much more efficient than raw pixel transmission for bandwidth-limited connections.
+ *
+ * PACKET FORMAT:
+ *   [flags: u8][width: u16][height: u16][h265_data...]
+ *   - flags: H.265 encoding flags (keyframe, size_change)
+ *   - width: Frame width in pixels
+ *   - height: Frame height in pixels
+ *   - h265_data: x265-encoded frame payload
+ *
+ * @param transport Transport instance
+ * @param encoder H.265 encoder (initialized with initial frame dimensions)
+ * @param pixel_data RGB pixel data from camera/source
+ * @param width Frame width in pixels
+ * @param height Frame height in pixels
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @note Encoder is responsible for RGB → YUV420 conversion internally
+ * @note Encoder handles frame dimension changes transparently (reconfigures on size change)
+ */
+asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
+                                             const void *pixel_data, uint32_t width, uint32_t height);
 
 /**
  * @brief Announce client join to server (client → server)

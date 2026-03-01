@@ -20,6 +20,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/crypto/crypto.h>
+#include <ascii-chat/video/h265/encoder.h>
 #include <string.h>
 
 // =============================================================================
@@ -214,6 +215,66 @@ asciichat_error_t acip_send_image_frame(acip_transport_t *transport, const void 
   log_debug("★ ACIP_SEND_IMAGE_FRAME: packet_send_via_transport returned %d", result);
 
   buffer_pool_free(NULL, buffer, total_size);
+  return result;
+}
+
+/**
+ * @brief Send H.265-encoded video frame to server
+ *
+ * Encodes frame using H.265 codec and sends as PACKET_TYPE_IMAGE_FRAME_H265.
+ * Packet format: [flags:u8][width:u16][height:u16][h265_encoded_data...]
+ *
+ * @param transport ACIP transport
+ * @param encoder H.265 encoder instance
+ * @param pixel_data RGB pixel data from capture
+ * @param width Frame width in pixels
+ * @param height Frame height in pixels
+ * @return Error code
+ */
+asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_encoder_t *encoder,
+                                             const void *pixel_data, uint32_t width, uint32_t height) {
+  if (!transport || !encoder || !pixel_data) {
+    log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Invalid params");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid transport, encoder, or pixel_data");
+  }
+
+  // Allocate output buffer for H.265 encoding
+  // Maximum output: 5 bytes header + encoded data
+  size_t output_buffer_size = 5 + (width * height);  // Conservative estimate
+  uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
+  if (!output_buffer) {
+    log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
+    return SET_ERRNO(ERROR_MEMORY, "Failed to allocate H.265 output buffer: %zu bytes", output_buffer_size);
+  }
+
+  // Encode frame
+  size_t encoded_size = output_buffer_size - 5;
+  asciichat_error_t encode_result =
+      h265_encode(encoder, (uint16_t)width, (uint16_t)height, (const uint8_t *)pixel_data, output_buffer + 5,
+                  &encoded_size);
+
+  if (encode_result != ASCIICHAT_OK) {
+    log_error("H.265 encoding failed: %s", asciichat_error_string(encode_result));
+    buffer_pool_free(NULL, output_buffer, output_buffer_size);
+    return encode_result;
+  }
+
+  // Prepare H.265 packet: [flags:u8][width:u16][height:u16][h265_data...]
+  output_buffer[0] = 0;  // flags: no flags set by default
+  output_buffer[1] = (width >> 8) & 0xFF;
+  output_buffer[2] = width & 0xFF;
+  output_buffer[3] = (height >> 8) & 0xFF;
+  output_buffer[4] = height & 0xFF;
+
+  size_t total_size = 5 + encoded_size;
+
+  log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Encoded %ux%u → %zu bytes", width, height, total_size);
+
+  // Send via transport
+  asciichat_error_t result =
+      packet_send_via_transport(transport, PACKET_TYPE_IMAGE_FRAME_H265, output_buffer, total_size, 0);
+
+  buffer_pool_free(NULL, output_buffer, output_buffer_size);
   return result;
 }
 

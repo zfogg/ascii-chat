@@ -269,10 +269,24 @@ static void *webcam_capture_thread_func(void *arg) {
     }
 
     uint64_t send_start_ns = time_get_ns();
-    log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME %ux%u", processed_image->w, processed_image->h);
-    asciichat_error_t send_result =
-        threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
-                                  (uint32_t)processed_image->h, 1); // pixel_format = 1 (RGB24)
+
+    // Determine which codec to use based on --video-codec option
+    const char *video_codec = GET_OPTION(video_codec);
+    bool use_hevc = video_codec && strcmp(video_codec, "raw") != 0;  // Default to HEVC unless explicitly "raw"
+
+    asciichat_error_t send_result;
+    if (use_hevc) {
+      log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME_H265 %ux%u", processed_image->w,
+                      processed_image->h);
+      send_result =
+          threaded_send_image_frame_h265((const void *)processed_image->pixels, (uint32_t)processed_image->w,
+                                         (uint32_t)processed_image->h);
+    } else {
+      log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME (raw) %ux%u", processed_image->w,
+                      processed_image->h);
+      send_result = threaded_send_image_frame((const void *)processed_image->pixels, (uint32_t)processed_image->w,
+                                              (uint32_t)processed_image->h, 1);  // pixel_format = 1 (RGB24)
+    }
 
     // If send failed due to connection loss, break out of loop
     if (send_result != ASCIICHAT_OK && !server_connection_is_active()) {
@@ -283,19 +297,23 @@ static void *webcam_capture_thread_func(void *arg) {
     uint64_t send_duration_ns = time_elapsed_ns(send_start_ns, time_get_ns());
 
     if (send_result != ASCIICHAT_OK) {
-      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME send error=%d (%s) after %.1fms, closing connection", send_result,
-                asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
+      const char *codec_name = use_hevc ? "H265" : "RAW";
+      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
+                codec_name, send_result, asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
       server_connection_lost();
       image_destroy(processed_image);
       break;
     }
 
     if (send_duration_ns > 500 * NS_PER_MS_INT) {
-      log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u frame (may indicate full send buffer)",
-               (double)send_duration_ns / 1e6, processed_image->w, processed_image->h);
+      const char *codec_name = use_hevc ? "H.265" : "RAW";
+      log_warn("⚠️  SLOW_FRAME_SEND: %.1fms to send %ux%u %s frame (may indicate full send buffer)",
+               (double)send_duration_ns / 1e6, processed_image->w, processed_image->h, codec_name);
     }
 
-    log_info("✅ CAPTURE_FRAME_SENT: IMAGE_FRAME delivered to server in %.1fms", (double)send_duration_ns / 1e6);
+    const char *codec_name = use_hevc ? "H265" : "RAW";
+    log_info("✅ CAPTURE_FRAME_SENT: IMAGE_FRAME_%s delivered to server in %.1fms", codec_name,
+             (double)send_duration_ns / 1e6);
 
     // Cache last frame for rendering when paused
     // Make a copy since the original is owned by media_source

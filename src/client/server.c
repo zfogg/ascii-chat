@@ -61,6 +61,7 @@
 #include "crypto.h"
 #include <ascii-chat/crypto/crypto.h>
 #include <ascii-chat/crypto/handshake/common.h>
+#include <ascii-chat/video/h265/encoder.h>
 
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
@@ -196,6 +197,15 @@ static mutex_t g_send_mutex = {0};
  * @ingroup client_connection
  */
 crypto_handshake_context_t g_crypto_ctx = {0};
+
+/**
+ * @brief Global H.265 encoder context for client video streaming
+ *
+ * Encodes captured RGB frames to H.265/HEVC format before transmission.
+ * Initialized in client_main() and used by capture thread.
+ * Set to NULL during shutdown to prevent use-after-free.
+ */
+h265_encoder_t *volatile g_h265_encoder = NULL;
 
 /**
  * @brief Flag indicating whether encryption is enabled for this connection
@@ -1260,6 +1270,55 @@ asciichat_error_t threaded_send_image_frame(const void *pixel_data, uint32_t wid
 
   // Send image frame with socket lock held
   asciichat_error_t result = acip_send_image_frame(transport, pixel_data, width, height, pixel_format);
+
+  // Unlock after send completes
+  mutex_unlock(&g_send_mutex);
+
+  // If send failed due to network error, signal connection loss
+  if (result != ASCIICHAT_OK) {
+    server_connection_lost();
+    return result;
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
+ * @brief Send H.265-encoded video frame to server (thread-safe)
+ *
+ * Encodes RGB frame using H.265 codec before transmission.
+ * Much more bandwidth-efficient than raw pixel transmission.
+ * Uses mutex to prevent interleaving with other packet sends.
+ *
+ * @param pixel_data RGB pixel data from camera
+ * @param width Frame width in pixels
+ * @param height Frame height in pixels
+ * @return ASCIICHAT_OK on success, error code on failure
+ *
+ * @ingroup client_connection
+ */
+asciichat_error_t threaded_send_image_frame_h265(const void *pixel_data, uint32_t width, uint32_t height) {
+  if (!pixel_data) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Pixel data is NULL");
+  }
+
+  // Get encoder - may be NULL if not initialized
+  h265_encoder_t *encoder = g_h265_encoder;
+  if (!encoder) {
+    return SET_ERRNO(ERROR_INVALID_STATE, "H.265 encoder not initialized");
+  }
+
+  mutex_lock(&g_send_mutex);
+
+  // Get transport reference - may be NULL if connection was lost
+  acip_transport_t *transport = server_connection_get_transport();
+  if (!transport || !server_connection_is_active()) {
+    mutex_unlock(&g_send_mutex);
+    return SET_ERRNO(ERROR_NETWORK, "Transport unavailable");
+  }
+
+  // Send H.265 frame with socket lock held
+  asciichat_error_t result = acip_send_image_frame_h265(transport, encoder, pixel_data, width, height);
 
   // Unlock after send completes
   mutex_unlock(&g_send_mutex);

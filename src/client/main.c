@@ -289,6 +289,14 @@ static void shutdown_client() {
   capture_cleanup();
   log_debug("[SHUTDOWN] 13. Capture cleaned up");
 
+  // Cleanup H.265 encoder
+  if (g_h265_encoder) {
+    log_debug("[SHUTDOWN] 14a. About to cleanup H.265 encoder");
+    h265_encoder_destroy(g_h265_encoder);
+    g_h265_encoder = NULL;
+    log_debug("[SHUTDOWN] 14b. H.265 encoder cleaned up");
+  }
+
   // Print audio analysis report if enabled
   // Print audio analysis report if enabled
   if (GET_OPTION(audio_analysis_enabled)) {
@@ -412,6 +420,18 @@ static int initialize_client_systems(void) {
   if (capture_result != 0) {
     log_fatal("Failed to initialize capture subsystem");
     return capture_result;
+  }
+
+  // Initialize H.265 encoder for video streaming
+  // Use reasonable default dimensions (will adapt on first frame)
+  if (!g_h265_encoder) {
+    g_h265_encoder = h265_encoder_create(800, 600);
+    if (!g_h265_encoder) {
+      log_warn("Failed to initialize H.265 encoder (will fall back to raw frames)");
+      // Don't fail - we can still use raw frames
+    } else {
+      log_debug("H.265 encoder initialized successfully");
+    }
   }
 
   // Initialize audio if enabled (skip in snapshot mode - no server connection needed)
