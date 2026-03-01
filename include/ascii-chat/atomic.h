@@ -417,12 +417,6 @@ void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value);
 void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value);
 
 /**
- * @brief Atomically exchange a bool and return the old value
- * @param a Pointer to atomic_t
- * @param new_value Bool value to store
- * @return Previous bool value
- */
-/**
  * @brief Atomically exchange an int and return the old value
  * @param a Pointer to atomic_t
  * @param new_value Int value to store
@@ -436,21 +430,6 @@ int atomic_exchange_int(atomic_t *a, int new_value);
 #endif
 
 int atomic_exchange_int_impl(atomic_t *a, int new_value);
-
-/**
- * @brief Atomically exchange a uint64_t and return the old value
- * @param a Pointer to atomic_t
- * @param new_value Uint64_t value to store
- * @return Previous uint64_t value
- */
-#ifndef NDEBUG
-uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value);
-#else
-#define atomic_exchange_u64(a, new_value) \
-    atomic_exchange_u64_impl((a), (new_value))
-#endif
-
-uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value);
 
 // ============================================================================
 // Debug Hooks (called by _impl functions in debug builds)

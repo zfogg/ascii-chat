@@ -122,6 +122,21 @@ void *atomic_ptr_exchange_impl(atomic_ptr_t *a, void *new_value) {
     return atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
 }
 
+bool atomic_exchange_bool_impl(atomic_t *a, bool new_value) {
+    if (!a) return false;
+    return (bool)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)new_value);
+}
+
+int atomic_exchange_int_impl(atomic_t *a, int new_value) {
+    if (!a) return 0;
+    return (int)(int32_t)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)new_value);
+}
+
+uint64_t atomic_exchange_u64_impl(atomic_t *a, uint64_t new_value) {
+    if (!a) return 0;
+    return atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
+}
+
 // ============================================================================
 // Debug Build: Wrapper Functions with Hooks
 // ============================================================================
@@ -244,6 +259,27 @@ void *atomic_ptr_exchange(atomic_ptr_t *a, void *new_value) {
     if (!a) return NULL;
     void *result = atomic_exchange((_Atomic(void *) *)&a->impl, new_value);
     atomic_ptr_on_exchange(a);
+    return result;
+}
+
+bool atomic_exchange_bool(atomic_t *a, bool new_value) {
+    if (!a) return false;
+    bool result = (bool)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)new_value);
+    atomic_on_store(a);
+    return result;
+}
+
+int atomic_exchange_int(atomic_t *a, int new_value) {
+    if (!a) return 0;
+    int result = (int)(int32_t)atomic_exchange((_Atomic(uint64_t) *)&a->impl, (uint64_t)(int32_t)new_value);
+    atomic_on_store(a);
+    return result;
+}
+
+uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value) {
+    if (!a) return 0;
+    uint64_t result = atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
+    atomic_on_store(a);
     return result;
 }
 

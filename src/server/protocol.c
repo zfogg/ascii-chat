@@ -157,12 +157,11 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
 
   protocol_cleanup_thread_locals();
 
-  bool already_requested = atomic_load_bool(&client->protocol_disconnect_requested);
-  if (!already_requested) {
-    atomic_store_bool(&client->protocol_disconnect_requested, true);
-  }
+  // Atomically set the disconnect flag and get the old value
+  // This ensures only one thread proceeds to disconnect (the first one)
+  bool already_requested = atomic_exchange_bool(&client->protocol_disconnect_requested, true);
   if (already_requested) {
-    return;
+    return;  // Already disconnecting, don't do it again
   }
 
   char reason[BUFFER_SIZE_SMALL] = {0};
