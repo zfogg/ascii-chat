@@ -27,7 +27,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdatomic.h>
-#include <ascii-chat/video/image.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/uthash.h>
 #include "../../common.h"
 

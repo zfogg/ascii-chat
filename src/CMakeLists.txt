@@ -117,6 +117,8 @@ if(_use_shared_lib)
         )
         # Link BearSSL (required)
         target_link_libraries(ascii-chat ${BEARSSL_LIBRARIES})
+        # Link FFmpeg (required for video codec support)
+        target_link_libraries(ascii-chat ${FFMPEG_LIBRARIES})
         # Link WebRTC audio processing for echo cancellation
         if(TARGET webrtc_audio_processing)
             target_link_libraries(ascii-chat webrtc_audio_processing)
