@@ -774,28 +774,28 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
     case TERM_COLOR_TRUECOLOR:
 #if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer (optimized SIMD path)
-      halfblock_result = rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0, 0);
+      halfblock_result = rgb_to_truecolor_halfblocks_neon(rgb_data, image->w, image->h, 0);
       break;
 #else
       // Fallback to scalar halfblock renderer (works on all platforms)
-      halfblock_result = rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0, 0);
+      halfblock_result = rgb_to_truecolor_halfblocks_scalar(rgb_data, image->w, image->h, 0);
       break;
 #endif
 
     case TERM_COLOR_256:
       // Use 256-color halfblock renderer
-      halfblock_result = rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette, 0);
+      halfblock_result = rgb_to_256color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
       break;
 
     case TERM_COLOR_16:
       // Use 16-color halfblock renderer
-      halfblock_result = rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette, 0);
+      halfblock_result = rgb_to_16color_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
       break;
 
     case TERM_COLOR_NONE:
     default:
       // Use monochrome halfblock renderer
-      halfblock_result = rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette, 0);
+      halfblock_result = rgb_to_halfblocks_scalar(rgb_data, image->w, image->h, 0, palette);
       break;
     }
 

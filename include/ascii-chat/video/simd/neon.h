@@ -80,7 +80,7 @@ char *render_ascii_neon_unified_optimized(const image_t *image, bool use_backgro
  *
  * @ingroup video
  */
-char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes, size_t pad_height);
+char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height, int stride_bytes);
 
 /**
  * @brief Flip image horizontally in-place using NEON acceleration

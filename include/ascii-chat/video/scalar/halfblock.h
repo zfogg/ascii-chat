@@ -45,8 +45,7 @@
  *
  * @ingroup video
  */
-char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
-                                         size_t pad_height);
+char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes);
 
 /**
  * @brief Convert RGB to monochrome (grayscale) half-blocks using scalar code
@@ -63,8 +62,7 @@ char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int heig
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette,
-                               size_t pad_height);
+char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette);
 
 /**
  * @brief Convert RGB to 16-color half-blocks using scalar code
@@ -83,8 +81,8 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
  * @note Caller must free the returned buffer with free().
  * @ingroup video
  */
-char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette,
-                                       size_t pad_height);
+char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
+                                       const char *palette);
 
 /**
  * @brief Convert RGB to 256-color half-blocks using scalar code
@@ -104,6 +102,6 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
  * @ingroup video
  */
 char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
-                                        const char *palette, size_t pad_height);
+                                        const char *palette);
 
 /** @} */

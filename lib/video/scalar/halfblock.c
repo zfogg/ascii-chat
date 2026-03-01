@@ -45,9 +45,7 @@
  * Uses RLE optimization for repeated halfblocks and detects transparent areas
  * (fully black pixels) which are rendered as spaces instead of halfblocks.
  */
-char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
-                                         size_t pad_height) {
-  (void)pad_height; // Padding is handled by ascii_pad_frame_height() after rendering
+char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes) {
 
   if (width <= 0 || height <= 0)
     return platform_strdup("");
@@ -183,8 +181,7 @@ char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int heig
  * Renders an RGB image using halfblock characters with no color codes.
  * Simple monochrome rendering without any ANSI escape sequences.
  */
-char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette,
-                               size_t pad_height) {
+char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette) {
   (void)palette; // Unused for monochrome mode
   if (width <= 0 || height <= 0)
     return platform_strdup("");
@@ -192,9 +189,9 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
     stride_bytes = width * 3;
 
   outbuf_t ob = {0};
-  // Estimate: per cell ~ 3 bytes (UTF-8 block shade); half the rows + newlines + top padding
+  // Estimate: per cell ~ 3 bytes (UTF-8 block shade); half the rows + newlines
   size_t est_cells = (size_t)width * ((size_t)(height + 1) / 2);
-  ob.cap = est_cells * 3u + (size_t)((height + 1) / 2) * 2u + pad_height + 64u;
+  ob.cap = est_cells * 3u + (size_t)((height + 1) / 2) * 2u + 64u;
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;
@@ -297,8 +294,8 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
  * @brief Scalar 16-color halfblock renderer
  * Uses 16-color ANSI codes for foreground (top) and implicit background (bottom).
  */
-char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes, const char *palette,
-                                       size_t pad_height) {
+char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
+                                       const char *palette) {
   (void)palette; // Unused for 16-color mode
   if (width <= 0 || height <= 0)
     return platform_strdup("");
@@ -309,9 +306,9 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
   ansi_fast_init_16color();
 
   outbuf_t ob = {0};
-  // Estimate: per cell ~ 12 bytes (16-color codes); half the rows + newlines + resets + top padding
+  // Estimate: per cell ~ 12 bytes (16-color codes); half the rows + newlines + resets
   size_t est_cells = (size_t)width * ((size_t)(height + 1) / 2);
-  ob.cap = est_cells * 12u + (size_t)((height + 1) / 2) * 8u + pad_height + 64u;
+  ob.cap = est_cells * 12u + (size_t)((height + 1) / 2) * 8u + 64u;
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;
@@ -417,7 +414,7 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
  * Uses 256-color ANSI codes for foreground (top) and implicit background (bottom).
  */
 char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int height, int stride_bytes,
-                                        const char *palette, size_t pad_height) {
+                                        const char *palette) {
   (void)palette; // Unused for 256-color mode
   if (width <= 0 || height <= 0)
     return platform_strdup("");
@@ -428,9 +425,9 @@ char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int heigh
   ansi_fast_init_256color();
 
   outbuf_t ob = {0};
-  // Estimate: per cell ~ 14 bytes (256-color codes); half the rows + newlines + resets + top padding
+  // Estimate: per cell ~ 14 bytes (256-color codes); half the rows + newlines + resets
   size_t est_cells = (size_t)width * ((size_t)(height + 1) / 2);
-  ob.cap = est_cells * 14u + (size_t)((height + 1) / 2) * 8u + pad_height + 64u;
+  ob.cap = est_cells * 14u + (size_t)((height + 1) / 2) * 8u + 64u;
   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
   if (!ob.buf)
     return NULL;

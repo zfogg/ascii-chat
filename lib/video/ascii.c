@@ -138,11 +138,11 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
 #if SIMD_SUPPORT_NEON
       // Use NEON half-block renderer (optimized SIMD path)
       log_dev("Using NEON halfblock renderer");
-      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0, 0);
+      ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized->w, resized->h, 0);
 #else
       // Fallback to scalar halfblock renderer (works on all platforms)
       log_dev("Using scalar halfblock renderer (NEON not available)");
-      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0, 0);
+      ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized->w, resized->h, 0);
 #endif
     } else {
 #ifdef SIMD_SUPPORT
