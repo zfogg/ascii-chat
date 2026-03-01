@@ -173,6 +173,7 @@ void buffer_pool_log_stats(buffer_pool_t *pool, const char *name);
 
 void buffer_pool_init_global(void);
 void buffer_pool_cleanup_global(void);
+void buffer_pool_cleanup_all_allocations(void);
 buffer_pool_t *buffer_pool_get_global(void);
 
 /* ============================================================================
