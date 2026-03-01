@@ -77,16 +77,26 @@ int debug_atomic_ptr_format_timing(const atomic_ptr_t *atomic, char *buffer, siz
 
 /**
  * @brief Lifecycle initialization for debug atomic tracking
+ *
+ * In release builds (NDEBUG), this is a no-op macro.
+ * In debug builds, this initializes atomic operation tracking.
  */
+#ifndef NDEBUG
 void debug_atomic_init(void);
 
 /**
  * @brief Lifecycle shutdown for debug atomic tracking
+ *
+ * In release builds (NDEBUG), this is a no-op macro.
+ * In debug builds, this cleans up atomic operation tracking.
  */
 void debug_atomic_shutdown(void);
 
 /**
  * @brief Check if debug atomic tracking is initialized
+ *
+ * In release builds (NDEBUG), returns true.
+ * In debug builds, returns actual initialization state.
  */
 bool debug_atomic_is_initialized(void);
 
@@ -94,8 +104,11 @@ bool debug_atomic_is_initialized(void);
  * @brief Print all named atomic operations state (integration with --sync-state)
  *
  * Called by debug_sync_print_state() to include atomic operations in sync state output.
+ * In release builds (NDEBUG), this is a no-op macro.
+ * In debug builds, this prints detailed atomic operation statistics.
  */
 void debug_atomic_print_state(void);
+#endif
 
 #ifdef __cplusplus
 }
