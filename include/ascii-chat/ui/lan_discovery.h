@@ -1,5 +1,5 @@
 /**
- * @file discovery_tui.h
+ * @file lan_discovery.h
  * @brief TUI-based service discovery for ascii-chat client
  *
  * Implements interactive mDNS-based discovery of ascii-chat servers on the local network.
@@ -25,7 +25,7 @@ typedef struct {
   char ipv4[16];     ///< IPv4 address (if available)
   char ipv6[46];     ///< IPv6 address (if available)
   uint32_t ttl;      ///< TTL remaining (seconds)
-} discovery_tui_server_t;
+} lan_discovery_server_t;
 
 /**
  * @brief Configuration for TUI discovery
@@ -34,7 +34,7 @@ typedef struct {
   int timeout_ms;  ///< Maximum time to wait for responses (default: 2000)
   int max_servers; ///< Maximum servers to collect (default: 20)
   bool quiet;      ///< Suppress discovery messages (default: false)
-} discovery_tui_config_t;
+} lan_discovery_config_t;
 
 /**
  * @brief Discover ascii-chat servers on the local network via mDNS
@@ -72,31 +72,31 @@ typedef struct {
  *
  * Example:
  * @code
- * discovery_tui_config_t config = {.timeout_ms = 2000, .max_servers = 20};
+ * lan_discovery_config_t config = {.timeout_ms = 2000, .max_servers = 20};
  * int count = 0;
- * discovery_tui_server_t *servers = discovery_tui_query(&config, &count);
+ * lan_discovery_server_t *servers = lan_discovery_query(&config, &count);
  *
  * if (servers && count > 0) {
  *     for (int i = 0; i < count; i++) {
  *         printf("%d: %s (%s:%d)\n", i+1, servers[i].name, servers[i].address, servers[i].port);
  *     }
  *     // User selects server...
- *     discovery_tui_free_results(servers);
+ *     lan_discovery_free_results(servers);
  * }
  * @endcode
  */
-discovery_tui_server_t *discovery_tui_query(const discovery_tui_config_t *config, int *out_count);
+lan_discovery_server_t *lan_discovery_query(const lan_discovery_config_t *config, int *out_count);
 
 /**
  * @brief Free results from TUI discovery query
  *
- * Releases memory allocated by discovery_tui_query().
+ * Releases memory allocated by lan_discovery_query().
  *
  * @param servers Pointer to server array (safe to pass NULL)
  *
  * @note Safe to call multiple times or with NULL pointer
  */
-void discovery_tui_free_results(discovery_tui_server_t *servers);
+void lan_discovery_free_results(lan_discovery_server_t *servers);
 
 /**
  * @brief Display discovered servers to user and prompt for selection
@@ -128,7 +128,7 @@ void discovery_tui_free_results(discovery_tui_server_t *servers);
  * @note This function performs interactive I/O - may not be suitable for automated contexts
  * @note For automated selection, use servers[0] directly instead
  */
-int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int count);
+int lan_discovery_prompt_selection(const lan_discovery_server_t *servers, int count);
 
 /**
  * @brief TUI-based server selection with formatted display
@@ -170,7 +170,7 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
  * @param count Number of servers (0 for "no results")
  * @return 0-based index of selected server, or -1 to cancel
  */
-int discovery_tui_select(const discovery_tui_server_t *servers, int count);
+int lan_discovery_select(const lan_discovery_server_t *servers, int count);
 
 /**
  * @brief Get best address representation for a discovered server
@@ -186,7 +186,7 @@ int discovery_tui_select(const discovery_tui_server_t *servers, int count);
  * @param server Discovered server
  * @return Pointer to best address string (points to field in server struct)
  */
-const char *discovery_tui_get_best_address(const discovery_tui_server_t *server);
+const char *lan_discovery_get_best_address(const lan_discovery_server_t *server);
 
 #ifdef __cplusplus
 }

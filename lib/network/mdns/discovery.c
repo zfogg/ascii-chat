@@ -10,11 +10,11 @@
  * - mDNS discovery: discovery_mdns_query() - core implementation (this module)
  * - ACDS discovery: ACDS client implementation for centralized lookup
  * - Parallel coordination: Concurrent threads with "race to success" semantics
- * - TUI wrapper: discovery_tui.c calls discovery_mdns_query() for interactive selection
+ * - UI wrapper: lan_discovery.c calls discovery_mdns_query() for interactive selection
  */
 
 #include <ascii-chat/network/mdns/discovery.h>
-#include <ascii-chat/network/mdns/discovery_tui.h> // For discovery_tui_server_t struct only
+#include <ascii-chat/ui/lan_discovery.h> // For lan_discovery_server_t struct only
 #include <ascii-chat/network/acip/acds_client.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
@@ -96,7 +96,7 @@ asciichat_error_t hex_to_pubkey(const char *hex_str, uint8_t pubkey_out[32]) {
  * @brief Internal state for collecting discovered services
  */
 typedef struct {
-  discovery_tui_server_t *servers; ///< Array of discovered servers
+  lan_discovery_server_t *servers; ///< Array of discovered servers
   int count;                       ///< Number of servers discovered so far
   int capacity;                    ///< Allocated capacity
   int64_t start_time_ms;           ///< When discovery started (for timeout)
@@ -144,8 +144,8 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
   }
 
   // Add new server to our array
-  discovery_tui_server_t *server = &state->servers[state->count];
-  memset(server, 0, sizeof(discovery_tui_server_t));
+  lan_discovery_server_t *server = &state->servers[state->count];
+  memset(server, 0, sizeof(lan_discovery_server_t));
 
   // Copy service information
   SAFE_STRNCPY(server->name, discovery->name, sizeof(server->name));
@@ -176,7 +176,7 @@ static void discovery_mdns_callback(const asciichat_mdns_discovery_t *discovery,
  * @param out_count Output: number of servers discovered
  * @return Array of discovered servers, or NULL on error. Use discovery_mdns_destroy() to free.
  */
-discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count) {
+lan_discovery_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count) {
   if (!out_count) {
     SET_ERRNO(ERROR_INVALID_PARAM, "out_count pointer is NULL");
     return NULL;
@@ -200,12 +200,12 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
   state.start_time_ms = (int64_t)time_ns_to_ms(time_get_ns());
 
   // Allocate server array
-  state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(discovery_tui_server_t), discovery_tui_server_t *);
+  state.servers = SAFE_MALLOC((size_t)state.capacity * sizeof(lan_discovery_server_t), lan_discovery_server_t *);
   if (!state.servers) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate mDNS discovery server array");
     return NULL;
   }
-  memset(state.servers, 0, state.capacity * sizeof(discovery_tui_server_t));
+  memset(state.servers, 0, state.capacity * sizeof(lan_discovery_server_t));
 
   if (!quiet) {
     log_info("mDNS: Searching for ascii-chat servers on local network (timeout: %dms)", state.timeout_ms);
@@ -264,7 +264,7 @@ discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bo
 /**
  * @brief Free memory from mDNS discovery results
  */
-void discovery_mdns_destroy(discovery_tui_server_t *servers) {
+void discovery_mdns_destroy(lan_discovery_server_t *servers) {
   SAFE_FREE(servers);
 }
 
@@ -290,7 +290,7 @@ static void *mdns_thread_fn(void *arg) {
 
   // Call the public mDNS query function in this module
   int discovered_count = 0;
-  discovery_tui_server_t *discovered_servers =
+  lan_discovery_server_t *discovered_servers =
       discovery_mdns_query((int)(ctx->timeout_ms > 0 ? ctx->timeout_ms : 2000), 20, true, &discovered_count);
 
   if (!discovered_servers || discovered_count == 0) {
@@ -308,7 +308,7 @@ static void *mdns_thread_fn(void *arg) {
 
   // Search for server matching our session string
   for (int i = 0; i < discovered_count; i++) {
-    discovery_tui_server_t *server = &discovered_servers[i];
+    lan_discovery_server_t *server = &discovered_servers[i];
 
     if (strcmp(server->name, ctx->session_string) == 0) {
       // Found a match!

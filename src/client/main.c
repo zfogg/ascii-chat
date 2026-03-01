@@ -77,7 +77,7 @@
 #include "session/client_like.h"
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>
-#include <ascii-chat/network/mdns/discovery_tui.h>
+#include <ascii-chat/ui/lan_discovery.h>
 #include <ascii-chat/network/mdns/discovery.h>
 
 #include <ascii-chat/platform/abstraction.h>
@@ -711,17 +711,17 @@ int client_main(void) {
       (opts->address[0] == '\0' || is_localhost_ipv4(opts->address) || strcmp(opts->address, "localhost") == 0)) {
     log_debug("LAN discovery: --scan flag set, querying for available servers");
 
-    discovery_tui_config_t lan_config;
+    lan_discovery_config_t lan_config;
     memset(&lan_config, 0, sizeof(lan_config));
     lan_config.timeout_ms = 2 * MS_PER_SEC_INT; // Wait up to 2 seconds for responses
     lan_config.max_servers = 20;                // Support up to 20 servers on LAN
     lan_config.quiet = true;                    // Quiet during discovery, TUI will show status
 
     int discovered_count = 0;
-    discovery_tui_server_t *discovered_servers = discovery_tui_query(&lan_config, &discovered_count);
+    lan_discovery_server_t *discovered_servers = lan_discovery_query(&lan_config, &discovered_count);
 
     // Use TUI for server selection
-    int selected_index = discovery_tui_select(discovered_servers, discovered_count);
+    int selected_index = lan_discovery_select(discovered_servers, discovered_count);
 
     if (selected_index < 0) {
       // User cancelled or no servers found
@@ -741,14 +741,14 @@ int client_main(void) {
       // User cancelled (had servers to choose from but pressed cancel)
       log_debug("LAN discovery: User cancelled server selection");
       if (discovered_servers) {
-        discovery_tui_free_results(discovered_servers);
+        lan_discovery_free_results(discovered_servers);
       }
       return 1; // User cancelled
     }
 
     // Update options with discovered server's address and port
-    discovery_tui_server_t *selected = &discovered_servers[selected_index];
-    const char *selected_address = discovery_tui_get_best_address(selected);
+    lan_discovery_server_t *selected = &discovered_servers[selected_index];
+    const char *selected_address = lan_discovery_get_best_address(selected);
 
     // We need to modify options, but they're immutable via RCU
     // Create a new options copy with updated address/port
@@ -766,7 +766,7 @@ int client_main(void) {
       // This is a known limitation - proper RCU update requires more infrastructure
     }
 
-    discovery_tui_free_results(discovered_servers);
+    lan_discovery_free_results(discovered_servers);
   }
 
   // =========================================================================

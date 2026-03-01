@@ -1,12 +1,12 @@
 /**
- * @file discovery_tui.c
+ * @file lan_discovery.c
  * @brief TUI-based service discovery wrapper for interactive server selection
  *
  * Pure TUI wrapper that calls discovery_mdns_query() from discovery.c.
  * Provides interactive terminal UI for server selection and address resolution.
  */
 
-#include <ascii-chat/network/mdns/discovery_tui.h>
+#include <ascii-chat/ui/lan_discovery.h>
 #include <ascii-chat/network/mdns/discovery.h> // For discovery_mdns_query()
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -24,7 +24,7 @@
  *
  * Calls discovery_mdns_query() from discovery.c with TUI-friendly configuration.
  */
-discovery_tui_server_t *discovery_tui_query(const discovery_tui_config_t *config, int *out_count) {
+lan_discovery_server_t *lan_discovery_query(const lan_discovery_config_t *config, int *out_count) {
   if (!out_count) {
     SET_ERRNO(ERROR_INVALID_PARAM, "out_count pointer is NULL");
     return NULL;
@@ -44,14 +44,14 @@ discovery_tui_server_t *discovery_tui_query(const discovery_tui_config_t *config
 /**
  * @brief Free results from mDNS discovery
  */
-void discovery_tui_free_results(discovery_tui_server_t *servers) {
+void lan_discovery_free_results(lan_discovery_server_t *servers) {
   discovery_mdns_destroy(servers);
 }
 
 /**
  * @brief Interactive server selection
  */
-int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int count) {
+int lan_discovery_prompt_selection(const lan_discovery_server_t *servers, int count) {
   if (!servers || count <= 0) {
     return -1;
   }
@@ -59,8 +59,8 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
   // Display available servers
   printf("\nAvailable ascii-chat servers on LAN:\n");
   for (int i = 0; i < count; i++) {
-    const discovery_tui_server_t *srv = &servers[i];
-    const char *addr = discovery_tui_get_best_address(srv);
+    const lan_discovery_server_t *srv = &servers[i];
+    const char *addr = lan_discovery_get_best_address(srv);
     printf("  %d. %s (%s:%u)\n", i + 1, srv->name, addr, srv->port);
   }
 
@@ -87,7 +87,7 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
   // Validate input
   if (selection < 1 || selection > count) {
     printf("⚠️  Invalid selection. Please enter a number between 1 and %d\n", count);
-    return discovery_tui_prompt_selection(servers, count); // Re-prompt
+    return lan_discovery_prompt_selection(servers, count); // Re-prompt
   }
 
   return (int)(selection - 1); // Convert to 0-based index
@@ -117,7 +117,7 @@ int discovery_tui_prompt_selection(const discovery_tui_server_t *servers, int co
  * @param count Number of servers
  * @return 0-based index of selected server, or -1 to cancel
  */
-int discovery_tui_select(const discovery_tui_server_t *servers, int count) {
+int lan_discovery_select(const lan_discovery_server_t *servers, int count) {
   if (!servers || count <= 0) {
     // No servers found - return special code
     // Message will be printed at exit in client main
@@ -140,8 +140,8 @@ int discovery_tui_select(const discovery_tui_server_t *servers, int count) {
 
   // Display server list with formatting
   for (int i = 0; i < count; i++) {
-    const discovery_tui_server_t *srv = &servers[i];
-    const char *addr = discovery_tui_get_best_address(srv);
+    const lan_discovery_server_t *srv = &servers[i];
+    const char *addr = lan_discovery_get_best_address(srv);
 
     log_plain("%s│%s  ", ANSI_BOLD, ANSI_RESET);
     log_plain("%s[%d]%s %-30s %s%s:%u%s", ANSI_CYAN, i + 1, ANSI_RESET, srv->name, ANSI_YELLOW, addr, srv->port,
@@ -178,7 +178,7 @@ int discovery_tui_select(const discovery_tui_server_t *servers, int count) {
   // Validate input
   if (selection < 1 || selection > count) {
     printf("%sError:%s Please enter a number between 1 and %d\n\n", ANSI_YELLOW, ANSI_RESET, count);
-    return discovery_tui_select(servers, count); // Re-prompt
+    return lan_discovery_select(servers, count); // Re-prompt
   }
 
   // Lock terminal again for final output
@@ -203,7 +203,7 @@ int discovery_tui_select(const discovery_tui_server_t *servers, int count) {
 /**
  * @brief Get best address for a server
  */
-const char *discovery_tui_get_best_address(const discovery_tui_server_t *server) {
+const char *lan_discovery_get_best_address(const lan_discovery_server_t *server) {
   if (!server) {
     return "";
   }

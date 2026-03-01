@@ -28,6 +28,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/splash.c
     ${LIB_DIR}/ui/server_status.c
     ${LIB_DIR}/ui/discovery_status.c
+    ${LIB_DIR}/ui/lan_discovery.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
     ${LIB_DIR}/options/options.c

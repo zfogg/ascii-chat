@@ -67,8 +67,8 @@
 #include <stdbool.h>
 #include <time.h>
 #include "../../common.h"
-#include "../../discovery/strings.h"          // For is_session_string()
-#include "../../network/mdns/discovery_tui.h" // For discovery_tui_server_t
+#include "../../discovery/strings.h" // For is_session_string()
+#include "../../ui/lan_discovery.h"  // For lan_discovery_server_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -195,7 +195,7 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
  * Queries for mDNS _ascii-chat._tcp services and returns discovered servers.
  * This is the core discovery function used by both:
  * - Parallel discovery threads (discover_session_parallel)
- * - TUI wrapper (discovery_tui_query)
+ * - TUI wrapper (lan_discovery_query)
  *
  * @param timeout_ms Query timeout in milliseconds (default: 2000)
  * @param max_servers Maximum servers to discover (default: 20)
@@ -203,12 +203,12 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
  * @param out_count Output: number of servers discovered
  * @return Array of discovered servers, or NULL on error. Use discovery_mdns_destroy() to free.
  */
-discovery_tui_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count);
+lan_discovery_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count);
 
 /**
  * @brief Free memory from mDNS discovery results
  */
-void discovery_mdns_destroy(discovery_tui_server_t *servers);
+void discovery_mdns_destroy(lan_discovery_server_t *servers);
 
 // ============================================================================
 // Utility Functions

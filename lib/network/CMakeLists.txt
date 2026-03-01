@@ -58,7 +58,6 @@ set(NETWORK_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/nat/upnp.c
     # mdns/
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/mdns.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/mdns/discovery_tui.c
     ${CMAKE_CURRENT_SOURCE_DIR}/mdns/discovery.c
 )
 
