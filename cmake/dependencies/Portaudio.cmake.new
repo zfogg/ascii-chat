@@ -1,0 +1,141 @@
+# =============================================================================
+# PortAudio Library Configuration
+# =============================================================================
+# Finds and configures PortAudio library for audio capture/playback
+#
+# Platform-specific dependency management:
+#   - Windows: Uses vcpkg
+#   - Linux/macOS (non-musl): Uses pkg-config for system packages
+#   - Linux (musl): Dependencies built from source (see MuslDependencies.cmake)
+#
+# Prerequisites (must be set before including this file):
+#   - WIN32, UNIX, APPLE: Platform detection variables
+#   - USE_MUSL: Whether using musl libc
+#   - CMAKE_BUILD_TYPE: Build type
+#   - VCPKG_ROOT, VCPKG_TARGET_TRIPLET: (Windows only) vcpkg configuration
+#
+# Outputs (variables set by this file):
+#   - PORTAUDIO_LIBRARIES: Libraries to link against
+#   - PORTAUDIO_INCLUDE_DIRS: Include directories
+#   - PORTAUDIO_FOUND: Whether portaudio was found
+# =============================================================================
+
+# =============================================================================
+# musl: Build from source asynchronously at build time
+# =============================================================================
+if(USE_MUSL)
+    message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} from source...")
+
+    set(PORTAUDIO_PREFIX "${MUSL_DEPS_DIR_STATIC}/portaudio")
+    set(PORTAUDIO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/portaudio-build")
+
+    # Only add external project if library doesn't exist
+    if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
+        message(STATUS "  PortAudio library not found in cache, will build from source")
+        ExternalProject_Add(portaudio-musl
+            URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
+            URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
+            TLS_VERIFY FALSE  # PortAudio's SSL cert is expired (Dec 2025)
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${PORTAUDIO_BUILD_DIR}
+            STAMP_DIR ${PORTAUDIO_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
+            BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
+            DEPENDS alsa-lib-musl
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}PortAudio${ColorReset} library found in cache: ${BoldMagenta}${PORTAUDIO_PREFIX}/lib/libportaudio.a${ColorReset}")
+        # Create a dummy target so dependencies can reference it
+        add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
+    endif()
+
+    set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
+    set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
+    set(PORTAUDIO_FOUND TRUE)
+    return()
+endif()
+
+# For musl builds, PortAudio is configured in MuslDependencies.cmake
+# with musl-gcc compiler. Skip this file entirely for musl.
+
+include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
+
+# Check if we're using vcpkg (CMAKE_TOOLCHAIN_FILE points to vcpkg)
+if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE MATCHES "vcpkg")
+    # Use vcpkg's portaudio - our overlay port enables ALSA for device enumeration
+    message(STATUS "PortAudio: Using vcpkg (overlay port with ALSA support)")
+    # Try CMake config first, then fall back to pkg-config
+    find_package(portaudio CONFIG QUIET)
+    if(NOT portaudio_FOUND)
+        include(FindPkgConfig)
+        pkg_check_modules(portaudio REQUIRED portaudio-2.0)
+        if(NOT TARGET portaudio)
+            add_library(portaudio INTERFACE IMPORTED)
+            target_include_directories(portaudio INTERFACE ${portaudio_INCLUDE_DIRS})
+            target_link_libraries(portaudio INTERFACE ${portaudio_LIBRARIES})
+        endif()
+    endif()
+    # vcpkg provides 'portaudio' target (not portaudio_static as of vcpkg 2024+)
+    if(TARGET portaudio_static)
+        set(PORTAUDIO_LIBRARIES portaudio_static)
+        get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio_static INTERFACE_INCLUDE_DIRECTORIES)
+    elseif(TARGET portaudio)
+        set(PORTAUDIO_LIBRARIES portaudio)
+        get_target_property(PORTAUDIO_INCLUDE_DIRS portaudio INTERFACE_INCLUDE_DIRECTORIES)
+    else()
+        message(FATAL_ERROR "PortAudio found via vcpkg but no usable target (portaudio or portaudio_static)")
+    endif()
+    set(PORTAUDIO_FOUND TRUE)
+    message(STATUS "Found PORTAUDIO via vcpkg: ${PORTAUDIO_LIBRARIES}")
+else()
+    # Use system PortAudio
+    # On macOS Release builds: prefer static library when ASCIICHAT_SHARED_DEPS is OFF
+    if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
+        find_library(PORTAUDIO_STATIC_LIB
+            NAMES libportaudio.a
+            PATHS
+                ${HOMEBREW_PREFIX}/opt/portaudio/lib
+            NO_DEFAULT_PATH
+        )
+        find_path(PORTAUDIO_INC NAMES portaudio.h
+            PATHS
+                ${HOMEBREW_PREFIX}/opt/portaudio/include
+            NO_DEFAULT_PATH
+        )
+
+        if(PORTAUDIO_STATIC_LIB AND PORTAUDIO_INC)
+            set(PORTAUDIO_LIBRARIES "${PORTAUDIO_STATIC_LIB}")
+            set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_INC}")
+            set(PORTAUDIO_FOUND TRUE)
+            # PortAudio on macOS needs these frameworks
+            list(APPEND PORTAUDIO_LIBRARIES
+                "-framework CoreAudio"
+                "-framework AudioToolbox"
+                "-framework AudioUnit"
+                "-framework CoreFoundation"
+                "-framework CoreServices"
+            )
+            message(STATUS "Found ${BoldGreen}PortAudio${ColorReset} (macOS static): ${PORTAUDIO_STATIC_LIB}")
+        endif()
+    endif()
+
+    # Fallback to pkg-config if static not found or not macOS Release
+    if(NOT PORTAUDIO_FOUND)
+        message(STATUS "PortAudio: Using system library via pkg-config")
+        find_package(PkgConfig REQUIRED)
+        pkg_check_modules(PORTAUDIO REQUIRED portaudio-2.0)
+        set(PORTAUDIO_LIBRARIES ${PORTAUDIO_LINK_LIBRARIES})
+        set(PORTAUDIO_INCLUDE_DIRS ${PORTAUDIO_INCLUDE_DIRS})
+        set(PORTAUDIO_FOUND TRUE)
+        message(STATUS "Found PORTAUDIO via pkg-config: ${PORTAUDIO_LIBRARIES}")
+    endif()
+endif()
