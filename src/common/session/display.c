@@ -439,18 +439,9 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   bool stretch = GET_OPTION(stretch);
   bool preserve_aspect_ratio = !stretch;
 
-  // Determine if we should apply flip_x (with macOS webcam caveat)
+  // Determine if we should apply flip_x and flip_y
   bool flip_x_enabled = GET_OPTION(flip_x);
   bool flip_y_enabled = GET_OPTION(flip_y);
-
-  // On macOS, webcam respects platform default but ignores the flip_x flag
-  // (like FaceTime - always flipped by default regardless of user preference)
-#ifdef __APPLE__
-  // Check if this frame is from a webcam source
-  // For now, we apply the same default but ignore user toggle
-  // TODO: Add source tracking to know if frame is from webcam
-  flip_x_enabled = false; // Ignore flip_x for now on macOS (will be enhanced with source tracking)
-#endif
 
   color_filter_t color_filter = GET_OPTION(color_filter);
 
