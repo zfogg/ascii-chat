@@ -145,7 +145,7 @@ static bool g_capture_thread_created = false;
  *
  * @ingroup client_capture
  */
-static atomic_t g_capture_thread_exited = false;
+static atomic_t g_capture_thread_exited = {0};
 
 /* ============================================================================
  * Frame Processing Constants
@@ -369,7 +369,7 @@ static void *webcam_capture_thread_func(void *arg) {
   }
 
   log_debug("CAPTURE_THREAD_EXIT: About to mark thread as exited");
-  atomic_store(&g_capture_thread_exited, true);
+  atomic_store_bool(&g_capture_thread_exited, true);
   log_debug("CAPTURE_THREAD_EXIT: Thread marked as exited, cleaning up errno");
 
   // Clean up thread-local error context before exit
@@ -468,7 +468,7 @@ int capture_start_thread() {
   }
 
   // Start webcam capture thread
-  atomic_store(&g_capture_thread_exited, false);
+  atomic_store_bool(&g_capture_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, webcam_capture_thread_func, NULL, 2, "webcam_capture") != ASCIICHAT_OK) {
     SET_ERRNO(ERROR_THREAD, "Webcam capture thread creation failed");
     LOG_ERRNO_IF_SET("Webcam capture thread creation failed");
@@ -495,12 +495,12 @@ void capture_stop_thread() {
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load(&g_capture_thread_exited)) {
+  while (wait_count < 20 && !atomic_load_bool(&g_capture_thread_exited)) {
     platform_sleep_us(100 * US_PER_MS_INT); // 100ms
     wait_count++;
   }
 
-  if (!atomic_load(&g_capture_thread_exited)) {
+  if (!atomic_load_bool(&g_capture_thread_exited)) {
     log_warn("Capture thread not responding after 2 seconds - will be joined by thread pool");
   }
 
@@ -515,7 +515,7 @@ void capture_stop_thread() {
  * @ingroup client_capture
  */
 bool capture_thread_exited() {
-  return atomic_load(&g_capture_thread_exited);
+  return atomic_load_bool(&g_capture_thread_exited);
 }
 /**
  * Cleanup capture subsystem

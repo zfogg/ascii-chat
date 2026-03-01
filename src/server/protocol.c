@@ -225,11 +225,11 @@ void disconnect_client_for_bad_data(client_info_t *client, const char *format, .
   platform_sleep_ms(500);
 
   log_debug("Setting active=false in disconnect_client_for_bad_data (client_id=%u, reason=%s)", client_id, reason_str);
-  atomic_store(&client->active, false);
+  atomic_store_bool(&client->active, false);
   atomic_store_bool(&client->shutting_down, true);
-  atomic_store(&client->send_thread_running, false);
-  atomic_store(&client->video_render_thread_running, false);
-  atomic_store(&client->audio_render_thread_running, false);
+  atomic_store_bool(&client->send_thread_running, false);
+  atomic_store_bool(&client->video_render_thread_running, false);
+  atomic_store_bool(&client->audio_render_thread_running, false);
 
   if (client->audio_queue) {
     packet_queue_stop(client->audio_queue);
@@ -473,7 +473,7 @@ void handle_client_leave_packet(client_info_t *client, const void *data, size_t 
   // Deactivate client to stop processing packets
   // Sets client->active = false immediately - triggers client cleanup procedures
   log_debug("Setting active=false in handle_client_leave_packet (client_id=%u)", client_id);
-  atomic_store(&client->active, false);
+  atomic_store_bool(&client->active, false);
 
   // Note: We don't disconnect the client here - that happens when socket closes
   // This is just a clean notification before disconnect

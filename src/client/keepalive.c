@@ -97,7 +97,7 @@ static bool g_ping_thread_created = false;
  *
  * @ingroup client_keepalive
  */
-static atomic_t g_ping_thread_exited = false;
+static atomic_t g_ping_thread_exited = {0};
 
 /* ============================================================================
  * Keepalive Configuration
@@ -208,7 +208,7 @@ static void *ping_thread_func(void *arg) {
   log_debug("Ping thread stopped");
 #endif
 
-  atomic_store(&g_ping_thread_exited, true);
+  atomic_store_bool(&g_ping_thread_exited, true);
 
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
@@ -237,7 +237,7 @@ int keepalive_start_thread() {
   }
 
   // Start ping thread for keepalive
-  atomic_store(&g_ping_thread_exited, false);
+  atomic_store_bool(&g_ping_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, ping_thread_func, NULL, 3, "keepalive_ping") != ASCIICHAT_OK) {
     log_error("Failed to spawn ping thread in worker pool");
     LOG_ERRNO_IF_SET("Ping thread creation failed");
@@ -266,12 +266,12 @@ void keepalive_stop_thread() {
 
   // Wait for thread to exit gracefully
   int wait_count = 0;
-  while (wait_count < 20 && !atomic_load(&g_ping_thread_exited)) {
+  while (wait_count < 20 && !atomic_load_bool(&g_ping_thread_exited)) {
     platform_sleep_ns(100 * NS_PER_MS_INT); // 100ms
     wait_count++;
   }
 
-  if (!atomic_load(&g_ping_thread_exited)) {
+  if (!atomic_load_bool(&g_ping_thread_exited)) {
     log_warn("Ping thread not responding - will be joined by thread pool");
   }
 
@@ -289,5 +289,5 @@ void keepalive_stop_thread() {
  * @ingroup client_keepalive
  */
 bool keepalive_thread_exited() {
-  return atomic_load(&g_ping_thread_exited);
+  return atomic_load_bool(&g_ping_thread_exited);
 }

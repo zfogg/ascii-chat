@@ -53,7 +53,7 @@ static time_t g_last_status_update = 0;
 /**
  * @brief Atomic flag for shutdown request
  */
-static atomic_t g_acds_should_exit = false;
+static atomic_t g_acds_should_exit = {0};
 
 /**
  * @brief Check if discovery mode should exit
@@ -66,7 +66,7 @@ static bool acds_should_exit(void) {
  * @brief Signal discovery mode to exit
  */
 static void acds_signal_exit(void) {
-  atomic_store(&g_acds_should_exit, true);
+  atomic_store_bool(&g_acds_should_exit, true);
 }
 
 /**

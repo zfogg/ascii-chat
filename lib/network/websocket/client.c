@@ -45,7 +45,7 @@ websocket_client_t *websocket_client_create(const char *name) {
   client->transport = NULL;
   client->my_client_id = 0;
   client->encryption_enabled = false;
-  client->should_reconnect = false;
+  atomic_store_bool(&client->should_reconnect, false);
 
   // Initialize thread-safe mutex for packet transmission
   if (mutex_init(&client->send_mutex, "client_send") != 0) {

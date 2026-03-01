@@ -84,7 +84,7 @@ void session_log_buffer_append(const char *message) {
   mutex_lock(&g_log_buffer->mutex);
 
   size_t pos = atomic_load_u64(&g_log_buffer->write_pos);
-  uint64_t seq = atomic_fetch_add(&g_log_buffer->sequence, 1);
+  uint64_t seq = atomic_fetch_add_u64(&g_log_buffer->sequence, 1);
 
   SAFE_STRNCPY(g_log_buffer->entries[pos].message, message, SESSION_LOG_LINE_MAX);
   g_log_buffer->entries[pos].sequence = seq;

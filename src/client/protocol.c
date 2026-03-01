@@ -164,7 +164,7 @@ static bool g_data_thread_created = false;
  *
  * @ingroup client_protocol
  */
-static atomic_t g_data_thread_exited = false;
+static atomic_t g_data_thread_exited = {0};
 
 /* ============================================================================
  * Frame Rendering Statistics
@@ -179,7 +179,7 @@ static atomic_t g_data_thread_exited = false;
  *
  * @ingroup client_protocol
  */
-static atomic_t g_frames_rendered = 0;
+static atomic_t g_frames_rendered = {0};
 
 /* ============================================================================
  * Multi-User Client State
@@ -1046,7 +1046,7 @@ static void *data_reception_thread_func(void *arg) {
   log_debug("[FRAME_RECV_LOOP] Thread lifecycle tracking - exit");
 #endif
 
-  atomic_store(&g_data_thread_exited, true);
+  atomic_store_bool(&g_data_thread_exited, true);
 
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
@@ -1110,7 +1110,7 @@ int protocol_start_connection() {
 
   // Start data reception thread
   log_warn("[FRAME_RECV_INIT] 🔄 STARTING_DATA_THREAD: callbacks registered, about to spawn thread");
-  atomic_store(&g_data_thread_exited, false);
+  atomic_store_bool(&g_data_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, data_reception_thread_func, NULL, 1, "data_reception") != ASCIICHAT_OK) {
     log_error("[FRAME_RECV_INIT] ❌ DATA_THREAD_SPAWN_FAILED: cannot start frame receive thread");
     LOG_ERRNO_IF_SET("Data reception thread creation failed");
@@ -1161,7 +1161,7 @@ int protocol_start_connection() {
  */
 void protocol_stop_connection() {
   // Log final frame count before shutting down
-  int final_frame_count = atomic_load(&g_frames_rendered);
+  int final_frame_count = atomic_load_u64(&g_frames_rendered);
   if (final_frame_count > 0) {
     log_info("📊 CLIENT SESSION STATS: %d unique frames rendered during connection", final_frame_count);
   }

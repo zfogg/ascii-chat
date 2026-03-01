@@ -1315,7 +1315,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
 
     // Join dispatch thread (BEFORE destroying packet queues)
     if (asciichat_thread_is_initialized(&target_client->dispatch_thread)) {
-      atomic_store(&target_client->dispatch_thread_running, false);
+      atomic_store_bool(&target_client->dispatch_thread_running, false);
       void *dispatch_result = NULL;
       asciichat_error_t dispatch_join_result = asciichat_thread_join(&target_client->dispatch_thread, &dispatch_result);
       if (dispatch_join_result != ASCIICHAT_OK) {

@@ -76,11 +76,11 @@ app_client_t *app_client_create(void) {
 
   /* Keepalive State */
   client->ping_thread_created = false;
-  atomic_store(&client->ping_thread_exited, false);
+  atomic_store_bool(&client->ping_thread_exited, false);
 
   /* Display State */
   client->has_tty = false;
-  atomic_store(&client->is_first_frame_of_connection, false);
+  atomic_store_bool(&client->is_first_frame_of_connection, false);
   memset(&client->tty_info, 0, sizeof(client->tty_info));
 
   /* Crypto State */

@@ -191,8 +191,9 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
     snprintf(broadcast_str, sizeof(broadcast_str), "broadcast=%s", elapsed_str);
   }
 
-  if (cond->waiting_count > 0) {
-    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%" PRIu64 " threads, last=0x%lx]", cond->waiting_count,
+  uint64_t waiting_count = atomic_load_u64(&cond->waiting_count);
+  if (waiting_count > 0) {
+    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%" PRIu64 " threads, last=0x%lx]", waiting_count,
              (unsigned long)cond->last_waiting_key);
   } else {
     snprintf(status_str, sizeof(status_str), "[IDLE]");

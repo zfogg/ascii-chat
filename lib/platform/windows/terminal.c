@@ -36,10 +36,10 @@ static terminal_resize_callback_t g_resize_callback = NULL;
 static asciichat_thread_t g_resize_thread = {0};
 
 /** Flag to signal resize thread should exit */
-static atomic_t g_resize_thread_should_exit = false;
+static atomic_t g_resize_thread_should_exit = {0};
 
 /** Flag indicating if resize detection is active */
-static atomic_t g_resize_detection_active = false;
+static atomic_t g_resize_detection_active = {0};
 
 /**
  * Background thread that monitors for Windows console resize events
@@ -146,7 +146,7 @@ static void *resize_detection_thread(void *arg) {
  * @return 0 on success, -1 on failure
  */
 int terminal_start_resize_detection(terminal_resize_callback_t callback) {
-  if (atomic_load(&g_resize_detection_active)) {
+  if (atomic_load_bool(&g_resize_detection_active)) {
     log_warn("Resize detection already active");
     return 0; // Already running
   }
@@ -157,7 +157,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback) {
   }
 
   g_resize_callback = callback;
-  atomic_store(&g_resize_thread_should_exit, false);
+  atomic_store_bool(&g_resize_thread_should_exit, false);
 
   if (asciichat_thread_create(&g_resize_thread, "resize_detect", resize_detection_thread, NULL) != 0) {
     log_error("Failed to create resize detection thread");
@@ -165,7 +165,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback) {
     return -1;
   }
 
-  atomic_store(&g_resize_detection_active, true);
+  atomic_store_bool(&g_resize_detection_active, true);
   log_info("Windows console resize detection started");
   return 0;
 }
@@ -180,10 +180,10 @@ void terminal_stop_resize_detection(void) {
     return; // Not running
   }
 
-  atomic_store(&g_resize_thread_should_exit, true);
+  atomic_store_bool(&g_resize_thread_should_exit, true);
   // Wait for thread to exit
   asciichat_thread_join(&g_resize_thread, NULL);
-  atomic_store(&g_resize_detection_active, false);
+  atomic_store_bool(&g_resize_detection_active, false);
   g_resize_callback = NULL;
 }
 

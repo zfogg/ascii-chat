@@ -375,7 +375,7 @@ void *stats_logger_thread(void *arg) {
     int client_details_len = 0;
 
     for (int i = 0; i < MAX_CLIENTS; i++) {
-      if (atomic_load(&g_client_manager.clients[i].active)) {
+      if (atomic_load_bool(&g_client_manager.clients[i].active)) {
         active_clients++;
         if (g_client_manager.clients[i].audio_queue) {
           clients_with_audio++;

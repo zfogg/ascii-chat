@@ -35,12 +35,12 @@ node_pool_t *node_pool_create(size_t pool_size) {
 
   // Link all nodes into free list (using atomic stores for consistency with atomic type)
   for (size_t i = 0; i < pool_size - 1; i++) {
-    atomic_store_u64(&pool->nodes[i].next, &pool->nodes[i + 1]);
+    atomic_ptr_store(&pool->nodes[i].next, (void *)&pool->nodes[i + 1]);
   }
-  atomic_store_u64(&pool->nodes[pool_size - 1].next, (packet_node_t *)NULL);
+  atomic_ptr_store(&pool->nodes[pool_size - 1].next, NULL);
 
   // Initialize atomics for lock-free operations
-  atomic_store_u64(&pool->free_list, &pool->nodes[0]);
+  atomic_ptr_store(&pool->free_list, (void *)&pool->nodes[0]);
   pool->pool_size = pool_size;
   atomic_store_u64(&pool->used_count, 0);
 
@@ -69,18 +69,18 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
   }
 
   // Lock-free pop from free_list stack using CAS (same pattern as buffer_pool)
-  packet_node_t *node = atomic_load_u64(&pool->free_list);
+  packet_node_t *node = (packet_node_t *)atomic_ptr_load(&pool->free_list);
   while (node) {
-    packet_node_t *next = atomic_load_u64(&node->next);
+    packet_node_t *next = (packet_node_t *)atomic_ptr_load(&node->next);
     if (atomic_compare_exchange_weak_explicit(&pool->free_list, &node, next, memory_order_release,
                                               memory_order_acquire)) {
       // Successfully popped - clear next pointer and increment used_count
-      atomic_store_u64(&node->next, (packet_node_t *)NULL);
+      atomic_ptr_store(&node->next, (void *)(packet_node_t *)NULL);
       atomic_fetch_add_u64(&pool->used_count, 1);
       return node;
     }
     // CAS failed - reload and retry (another thread grabbed the node)
-    node = atomic_load_u64(&pool->free_list);
+    node = (packet_node_t *)atomic_ptr_load(&pool->free_list);
   }
 
   // Pool exhausted, fallback to malloc
@@ -107,9 +107,9 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
 
   if (is_pool_node) {
     // Lock-free push to free_list stack using CAS
-    packet_node_t *head = atomic_load_u64(&pool->free_list);
+    packet_node_t *head = (packet_node_t *)atomic_ptr_load(&pool->free_list);
     do {
-      atomic_store_u64(&node->next, head);
+      atomic_ptr_store(&node->next, (void *)head);
     } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
                                                     memory_order_relaxed));
     atomic_fetch_sub_u64(&pool->used_count, 1);
@@ -138,8 +138,8 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
 
   // Initialize atomic fields
   // For atomic pointer types, use atomic_store with relaxed ordering for initialization
-  atomic_store_u64(&queue->head, (packet_node_t *)NULL);
-  atomic_store_u64(&queue->tail, (packet_node_t *)NULL);
+  atomic_ptr_store(&queue->head, (void *)(packet_node_t *)NULL);
+  atomic_ptr_store(&queue->tail, (void *)(packet_node_t *)NULL);
   atomic_store_u64(&queue->count, 0);
   queue->max_size = max_size;
   atomic_store_u64(&queue->bytes_queued, 0);
@@ -201,15 +201,15 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   size_t current_count = atomic_load_u64(&queue->count);
   if (queue->max_size > 0 && current_count >= queue->max_size) {
     // Drop oldest packet (head) using atomic compare-and-swap
-    packet_node_t *head = atomic_load_u64(&queue->head);
+    packet_node_t *head = (packet_node_t *)atomic_ptr_load(&queue->head);
     if (head) {
-      packet_node_t *next = atomic_load_u64(&head->next);
+      packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
       // Atomically update head pointer
       if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
         // Successfully claimed head node
         if (next == NULL) {
           // Queue became empty, also update tail
-          atomic_store_u64(&queue->tail, (packet_node_t *)NULL);
+          atomic_ptr_store(&queue->tail, (void *)(packet_node_t *)NULL);
         }
 
         // Update counters atomically
@@ -272,11 +272,11 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
   }
 
   node->packet.data_len = data_len;
-  atomic_store_u64(&node->next, (packet_node_t *)NULL);
+  atomic_ptr_store(&node->next, (void *)(packet_node_t *)NULL);
 
   // Add to queue using lock-free CAS-based enqueue (Michael-Scott algorithm)
   while (true) {
-    packet_node_t *tail = atomic_load_u64(&queue->tail);
+    packet_node_t *tail = (packet_node_t *)atomic_ptr_load(&queue->tail);
 
     if (tail == NULL) {
       // Empty queue - atomically set both head and tail
@@ -284,7 +284,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
       if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release,
                                                 memory_order_acquire)) {
         // Successfully set head (queue was empty)
-        atomic_store_u64(&queue->tail, node);
+        atomic_ptr_store(&queue->tail, (void *)node);
         break; // Enqueue successful
       }
       // CAS failed - another thread initialized queue, retry
@@ -292,8 +292,8 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     }
 
     // Queue is non-empty - try to append to tail
-    packet_node_t *next = atomic_load_u64(&tail->next);
-    packet_node_t *current_tail = atomic_load_u64(&queue->tail);
+    packet_node_t *next = (packet_node_t *)atomic_ptr_load(&tail->next);
+    packet_node_t *current_tail = (packet_node_t *)atomic_ptr_load(&queue->tail);
 
     // Verify tail hasn't changed (ABA problem mitigation)
     if (tail != current_tail) {
@@ -307,13 +307,13 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
       if (atomic_compare_exchange_weak_explicit(&tail->next, &expected_null, node, memory_order_release,
                                                 memory_order_acquire)) {
         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
-        atomic_compare_exchange_weak_explicit(&queue->tail, &tail, node, memory_order_release, memory_order_relaxed);
+        atomic_ptr_cas(&queue->tail, &tail, node);
         break; // Enqueue successful
       }
       // CAS failed - another thread appended to tail, retry
     } else {
       // Tail is lagging behind - help advance it
-      atomic_compare_exchange_weak_explicit(&queue->tail, &tail, next, memory_order_release, memory_order_relaxed);
+      atomic_ptr_cas(&queue->tail, &tail, next);
       // Retry with new tail
     }
   }
@@ -347,15 +347,15 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
   size_t current_count = atomic_load_u64(&queue->count);
   if (queue->max_size > 0 && current_count >= queue->max_size) {
     // Drop oldest packet (head) using atomic compare-and-swap
-    packet_node_t *head = atomic_load_u64(&queue->head);
+    packet_node_t *head = (packet_node_t *)atomic_ptr_load(&queue->head);
     if (head) {
-      packet_node_t *next = atomic_load_u64(&head->next);
+      packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
       // Atomically update head pointer
       if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
         // Successfully claimed head node
         if (next == NULL) {
           // Queue became empty, also update tail
-          atomic_store_u64(&queue->tail, (packet_node_t *)NULL);
+          atomic_ptr_store(&queue->tail, (void *)(packet_node_t *)NULL);
         }
 
         // Update counters atomically
@@ -407,11 +407,11 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     node->packet.buffer_pool = packet->buffer_pool; // Preserve original pool reference
   }
 
-  atomic_store_u64(&node->next, (packet_node_t *)NULL);
+  atomic_ptr_store(&node->next, (void *)(packet_node_t *)NULL);
 
   // Add to queue using lock-free CAS-based enqueue (Michael-Scott algorithm)
   while (true) {
-    packet_node_t *tail = atomic_load_u64(&queue->tail);
+    packet_node_t *tail = (packet_node_t *)atomic_ptr_load(&queue->tail);
 
     if (tail == NULL) {
       // Empty queue - atomically set both head and tail
@@ -419,7 +419,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
       if (atomic_compare_exchange_weak_explicit(&queue->head, &expected, node, memory_order_release,
                                                 memory_order_acquire)) {
         // Successfully set head (queue was empty)
-        atomic_store_u64(&queue->tail, node);
+        atomic_ptr_store(&queue->tail, (void *)node);
         break; // Enqueue successful
       }
       // CAS failed - another thread initialized queue, retry
@@ -427,8 +427,8 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     }
 
     // Queue is non-empty - try to append to tail
-    packet_node_t *next = atomic_load_u64(&tail->next);
-    packet_node_t *current_tail = atomic_load_u64(&queue->tail);
+    packet_node_t *next = (packet_node_t *)atomic_ptr_load(&tail->next);
+    packet_node_t *current_tail = (packet_node_t *)atomic_ptr_load(&queue->tail);
 
     // Verify tail hasn't changed (ABA problem mitigation)
     if (tail != current_tail) {
@@ -442,13 +442,13 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
       if (atomic_compare_exchange_weak_explicit(&tail->next, &expected_null, node, memory_order_release,
                                                 memory_order_acquire)) {
         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
-        atomic_compare_exchange_weak_explicit(&queue->tail, &tail, node, memory_order_release, memory_order_relaxed);
+        atomic_ptr_cas(&queue->tail, &tail, node);
         break; // Enqueue successful
       }
       // CAS failed - another thread appended to tail, retry
     } else {
       // Tail is lagging behind - help advance it
-      atomic_compare_exchange_weak_explicit(&queue->tail, &tail, next, memory_order_release, memory_order_relaxed);
+      atomic_ptr_cas(&queue->tail, &tail, next);
       // Retry with new tail
     }
   }
@@ -482,18 +482,18 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
   }
 
   // Remove from head atomically (lock-free dequeue)
-  packet_node_t *head = atomic_load_u64(&queue->head);
+  packet_node_t *head = (packet_node_t *)atomic_ptr_load(&queue->head);
   if (!head) {
     return NULL;
   }
 
   // Atomically update head pointer
-  packet_node_t *next = atomic_load_u64(&head->next);
+  packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
   if (atomic_compare_exchange_weak(&queue->head, &head, next)) {
     // Successfully claimed head node
     if (next == NULL) {
       // Queue became empty, also update tail atomically
-      atomic_store_u64(&queue->tail, (packet_node_t *)NULL);
+      atomic_ptr_store(&queue->tail, (void *)(packet_node_t *)NULL);
     }
 
     // Update counters atomically

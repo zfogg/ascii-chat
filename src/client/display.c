@@ -117,7 +117,7 @@ static session_display_ctx_t *g_display_ctx = NULL;
  *
  * @ingroup client_display
  */
-static atomic_t g_is_first_frame_of_connection = true;
+static atomic_t g_is_first_frame_of_connection = {0};
 
 /**
  * @brief Keyboard input state for client mode
@@ -277,7 +277,7 @@ void display_full_reset() {
  * @ingroup client_display
  */
 void display_reset_for_new_connection() {
-  atomic_store(&g_is_first_frame_of_connection, true);
+  atomic_store_bool(&g_is_first_frame_of_connection, true);
 }
 
 /**
@@ -290,9 +290,9 @@ void display_reset_for_new_connection() {
  */
 void display_disable_logging_for_first_frame() {
   // Disable terminal logging before clearing display and rendering first frame
-  if (atomic_load(&g_is_first_frame_of_connection)) {
+  if (atomic_load_bool(&g_is_first_frame_of_connection)) {
     log_set_terminal_output(false);
-    atomic_store(&g_is_first_frame_of_connection, false);
+    atomic_store_bool(&g_is_first_frame_of_connection, false);
 
     // Signal the intro splash screen to stop - first frame is ready to render
     splash_intro_done();

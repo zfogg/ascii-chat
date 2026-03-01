@@ -129,7 +129,7 @@ static acip_transport_t *g_client_transport = NULL;
  *
  * @ingroup client_connection
  */
-static atomic_t g_connection_active = false;
+static atomic_t g_connection_active = {0};
 
 /**
  * @brief Atomic flag indicating if connection loss was detected
@@ -139,7 +139,7 @@ static atomic_t g_connection_active = false;
  *
  * @ingroup client_connection
  */
-static atomic_t g_connection_lost = false;
+static atomic_t g_connection_lost = {0};
 
 /**
  * @brief Atomic flag indicating if reconnection should be attempted
@@ -149,7 +149,7 @@ static atomic_t g_connection_lost = false;
  *
  * @ingroup client_connection
  */
-static atomic_t g_should_reconnect = false;
+static atomic_t g_should_reconnect = {0};
 
 /**
  * @brief Client ID assigned by server
@@ -304,9 +304,9 @@ int server_connection_init() {
   // Initialize connection state
   g_sockfd = INVALID_SOCKET_VALUE;
   g_client_transport = NULL;
-  atomic_store(&g_connection_active, false);
-  atomic_store(&g_connection_lost, false);
-  atomic_store(&g_should_reconnect, false);
+  atomic_store_bool(&g_connection_active, false);
+  atomic_store_bool(&g_connection_lost, false);
+  atomic_store_bool(&g_should_reconnect, false);
   g_my_client_id = 0;
 
   return 0;
@@ -395,8 +395,8 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     log_debug("CLIENT_CONNECT: Created WebSocket ACIP transport with crypto context");
 
     // Set connection as active
-    atomic_store(&g_connection_active, true);
-    atomic_store(&g_connection_lost, false);
+    atomic_store_bool(&g_connection_active, true);
+    atomic_store_bool(&g_connection_lost, false);
 
     // Send initial terminal capabilities to server
     int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
@@ -628,9 +628,9 @@ connection_success:
   g_my_client_id = (uint32_t)local_port;
 
   // Mark connection as active immediately after successful socket connection
-  atomic_store(&g_connection_active, true);
-  atomic_store(&g_connection_lost, false);
-  atomic_store(&g_should_reconnect, false);
+  atomic_store_bool(&g_connection_active, true);
+  atomic_store_bool(&g_connection_lost, false);
+  atomic_store_bool(&g_should_reconnect, false);
 
   // Initialize crypto BEFORE starting protocol handshake
   // Note: server IP is already set above in the connection loop
@@ -748,7 +748,7 @@ connection_success:
 bool server_connection_is_active() {
   // For TCP: check socket validity
   // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
-  return atomic_load(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
+  return atomic_load_bool(&g_connection_active) && (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
 }
 
 /**
@@ -807,14 +807,14 @@ void server_connection_set_transport(acip_transport_t *transport) {
     g_sockfd = acip_transport_get_socket(transport);
     log_debug("[TRANSPORT_LIFECYCLE] Socket extracted: %d from transport=%p", (int)g_sockfd, (void *)transport);
 
-    atomic_store(&g_connection_active, true);
-    atomic_store(&g_connection_lost, false); // Reset lost flag for new connection
+    atomic_store_bool(&g_connection_active, true);
+    atomic_store_bool(&g_connection_lost, false); // Reset lost flag for new connection
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport set and marked active (transport=%p, sockfd=%d, "
               "is_connected=%s)",
               (void *)transport, (int)g_sockfd, acip_transport_is_connected(transport) ? "true" : "false");
   } else {
     g_sockfd = INVALID_SOCKET_VALUE;
-    atomic_store(&g_connection_active, false);
+    atomic_store_bool(&g_connection_active, false);
     log_debug("[TRANSPORT_LIFECYCLE] Server connection transport cleared and marked inactive");
   }
 
@@ -880,7 +880,7 @@ void server_connection_close() {
   // Acquire send mutex to prevent race with threaded_send_image_frame()
   // This ensures any in-flight sends complete before we destroy the transport
   mutex_lock(&g_send_mutex);
-  atomic_store(&g_connection_active, false);
+  atomic_store_bool(&g_connection_active, false);
 
   // Destroy ACIP transport before closing socket
   if (g_client_transport) {
@@ -967,8 +967,8 @@ void server_connection_shutdown() {
   //   - SetConsoleCtrlHandler callback thread on Windows (separate thread context)
   // Only use atomic operations and simple system calls - NO mutex locks, NO malloc, NO logging.
 
-  atomic_store(&g_connection_active, false);
-  atomic_store(&g_connection_lost, true);
+  atomic_store_bool(&g_connection_active, false);
+  atomic_store_bool(&g_connection_lost, true);
 
   if (g_sockfd != INVALID_SOCKET_VALUE) {
     // Only shutdown() the socket to interrupt blocking recv()/send() operations.
@@ -998,8 +998,8 @@ void server_connection_shutdown() {
  * @ingroup client_connection
  */
 void server_connection_lost() {
-  atomic_store(&g_connection_lost, true);
-  atomic_store(&g_connection_active, false);
+  atomic_store_bool(&g_connection_lost, true);
+  atomic_store_bool(&g_connection_active, false);
 
   // Don't re-enable terminal logging here - let the splash screen handle it
   // The reconnection splash will capture and display logs properly
@@ -1014,7 +1014,7 @@ void server_connection_lost() {
  * @ingroup client_connection
  */
 bool server_connection_is_lost() {
-  return atomic_load(&g_connection_lost);
+  return atomic_load_bool(&g_connection_lost);
 }
 
 /**
@@ -1059,9 +1059,9 @@ asciichat_error_t threaded_send_packet(packet_type_t type, const void *data, siz
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load(&g_connection_active) || !g_client_transport) {
+  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
     log_debug("[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p",
-              atomic_load(&g_connection_active) ? "true" : "false", (void *)g_client_transport);
+              atomic_load_bool(&g_connection_active) ? "true" : "false", (void *)g_client_transport);
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
@@ -1106,7 +1106,7 @@ int threaded_send_audio_batch_packet(const float *samples, int num_samples, int 
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load(&g_connection_active) || !g_client_transport) {
+  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return -1;
   }
@@ -1149,7 +1149,7 @@ asciichat_error_t threaded_send_audio_opus(const uint8_t *opus_data, size_t opus
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load(&g_connection_active) || !g_client_transport) {
+  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
@@ -1213,7 +1213,7 @@ asciichat_error_t threaded_send_audio_opus_batch(const uint8_t *opus_data, size_
   mutex_lock(&g_send_mutex);
 
   // Check connection status and get transport reference
-  if (!atomic_load(&g_connection_active) || !g_client_transport) {
+  if (!atomic_load_bool(&g_connection_active) || !g_client_transport) {
     mutex_unlock(&g_send_mutex);
     return SET_ERRNO(ERROR_NETWORK, "Connection not active or transport unavailable");
   }
@@ -1500,7 +1500,7 @@ int threaded_send_client_join_packet(const char *display_name, uint32_t capabili
   int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &join_packet, sizeof(join_packet));
   if (send_result == 0) {
     mutex_lock(&g_send_mutex);
-    bool active = atomic_load(&g_connection_active);
+    bool active = atomic_load_u64(&g_connection_active);
     socket_t socket_snapshot = g_sockfd;
     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
     if (active && socket_snapshot != INVALID_SOCKET_VALUE) {

@@ -68,7 +68,7 @@ static void format_timestamp(char *buf, size_t buf_size) {
  * Signal Handlers for Crash Safety
  * ============================================================================ */
 
-static volatile sig_atomic_t g_crash_in_progress = 0;
+static volatile sig_atomic_t g_crash_in_progress = {0};
 
 #ifndef _WIN32
 static void crash_signal_handler(int sig) {

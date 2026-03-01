@@ -494,7 +494,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
           // Disable jitter buffering for file playback
           if (audio_ctx->playback_buffer) {
             audio_ctx->playback_buffer->jitter_buffer_enabled = false;
-            atomic_store(&audio_ctx->playback_buffer->jitter_buffer_filled, true);
+            atomic_store_bool(&audio_ctx->playback_buffer->jitter_buffer_filled, true);
           }
 
           // Store in capture for keyboard handler access

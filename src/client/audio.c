@@ -183,7 +183,7 @@ static bool g_audio_capture_thread_created = false;
  *
  * @ingroup client_audio
  */
-static atomic_t g_audio_capture_thread_exited = false;
+static atomic_t g_audio_capture_thread_exited = {0};
 
 /* ============================================================================
  * Async Audio Packet Queue (decouples capture from network I/O)
@@ -213,8 +213,8 @@ static lifecycle_t g_audio_send_queue_lc = LIFECYCLE_INIT;
 
 /** Audio sender thread */
 static bool g_audio_sender_thread_created = false;
-static atomic_t g_audio_sender_should_exit = false;
-static atomic_t g_audio_sender_exited = false;
+static atomic_t g_audio_sender_should_exit = {0};
+static atomic_t g_audio_sender_exited = {0};
 
 /**
  * @brief Queue an audio packet for async sending (non-blocking)
@@ -292,7 +292,7 @@ static void *audio_sender_thread_func(void *arg) {
     }
 
     // Check exit flag after waking from cond_wait
-    if (atomic_load(&g_audio_sender_should_exit)) {
+    if (atomic_load_bool(&g_audio_sender_should_exit)) {
       mutex_unlock(&g_audio_send_queue_mutex);
       break;
     }
@@ -333,7 +333,7 @@ static void *audio_sender_thread_func(void *arg) {
   asciichat_errno_destroy();
 
   // Signal that audio sender thread has exited
-  atomic_store(&g_audio_sender_exited, true);
+  atomic_store_bool(&g_audio_sender_exited, true);
 
   return NULL;
 }
@@ -372,8 +372,8 @@ void audio_sender_init(void) {
   log_info("[AUDIO_SENDER_INIT] Setting queue state");
   g_audio_send_queue_head = 0;
   g_audio_send_queue_tail = 0;
-  atomic_store(&g_audio_sender_should_exit, false);
-  atomic_store(&g_audio_sender_exited, false);
+  atomic_store_bool(&g_audio_sender_should_exit, false);
+  atomic_store_bool(&g_audio_sender_exited, false);
 
   log_info("[AUDIO_SENDER_INIT] Spawning audio sender thread");
   // Start sender thread (after lock release to avoid blocking other threads)
@@ -392,7 +392,7 @@ void audio_sender_init(void) {
 void audio_sender_cleanup(void) {
   // Signal thread to exit
   if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
-    atomic_store(&g_audio_sender_should_exit, true);
+    atomic_store_bool(&g_audio_sender_should_exit, true);
     mutex_lock(&g_audio_send_queue_mutex);
     cond_signal(&g_audio_send_queue_cond);
     mutex_unlock(&g_audio_send_queue_mutex);
@@ -917,7 +917,7 @@ static void *audio_capture_thread_func(void *arg) {
   }
 
   log_debug("Audio capture thread stopped");
-  atomic_store(&g_audio_capture_thread_exited, true);
+  atomic_store_bool(&g_audio_capture_thread_exited, true);
 
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
@@ -1092,7 +1092,7 @@ int audio_start_thread() {
   // No need to send it again here - the protocol layer handles sending combined stream types
 
   // Start audio capture thread
-  atomic_store(&g_audio_capture_thread_exited, false);
+  atomic_store_bool(&g_audio_capture_thread_exited, false);
   if (thread_pool_spawn(g_client_worker_pool, audio_capture_thread_func, NULL, 4, "audio_capture") != ASCIICHAT_OK) {
     log_error("Failed to spawn audio capture thread in worker pool");
     LOG_ERRNO_IF_SET("Audio capture thread creation failed");
@@ -1154,7 +1154,7 @@ void audio_stop_thread() {
   // NOTE: Only do this if audio_sender_init() was actually called
   if (lifecycle_is_initialized(&g_audio_send_queue_lc)) {
     log_debug("[AUDIO_STOP] Signaling audio sender thread to exit");
-    atomic_store(&g_audio_sender_should_exit, true);
+    atomic_store_bool(&g_audio_sender_should_exit, true);
     mutex_lock(&g_audio_send_queue_mutex);
     cond_signal(&g_audio_send_queue_cond);
     mutex_unlock(&g_audio_send_queue_mutex);

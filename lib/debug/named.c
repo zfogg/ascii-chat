@@ -169,13 +169,13 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
       rwlock_wrunlock_impl(&g_named_registry.entries_lock);
       return base_name;
     }
-    atomic_init(&counter_entry->counter, 0);
+    atomic_store_u64(&counter_entry->counter, 0);
     HASH_ADD_KEYPTR(hh, g_named_registry.name_counters, counter_entry->base_name, strlen(counter_entry->base_name),
                     counter_entry);
   }
 
   // Increment and get counter for this name
-  uint64_t counter = atomic_fetch_add(&counter_entry->counter, 1);
+  uint64_t counter = atomic_fetch_add_u64(&counter_entry->counter, 1);
   rwlock_wrunlock_impl(&g_named_registry.entries_lock);
 
   // Generate suffixed name: "base_name.counter"
@@ -373,13 +373,13 @@ const char *named_update_name(uintptr_t key, const char *new_base_name) {
       rwlock_wrunlock_impl(&g_named_registry.entries_lock);
       return entry->name;
     }
-    atomic_init(&counter_entry->counter, 0);
+    atomic_store_u64(&counter_entry->counter, 0);
     HASH_ADD_KEYPTR(hh, g_named_registry.name_counters, counter_entry->base_name, strlen(counter_entry->base_name),
                     counter_entry);
   }
 
   // Get next counter for this new name
-  uint64_t counter = atomic_fetch_add(&counter_entry->counter, 1);
+  uint64_t counter = atomic_fetch_add_u64(&counter_entry->counter, 1);
 
   // Generate new suffixed name
   char *new_full_name = NULL;

@@ -488,7 +488,7 @@ int platform_backtrace(void **buffer, int size) {
 }
 
 // Global variables for Windows symbol resolution
-static atomic_t g_symbols_initialized = false;
+static atomic_t g_symbols_initialized = {0};
 static HANDLE g_process_handle = NULL;
 
 // Forward declaration (made non-static so platform_destroy can call it)
@@ -496,7 +496,7 @@ void cleanup_windows_symbols(void);
 
 // Function to initialize Windows symbol resolution once
 static void init_windows_symbols(void) {
-  if (atomic_load(&g_symbols_initialized)) {
+  if (atomic_load_bool(&g_symbols_initialized)) {
     return; // Already initialized
   }
 
@@ -602,7 +602,7 @@ static void init_windows_symbols(void) {
     }
   }
 
-  atomic_store(&g_symbols_initialized, true);
+  atomic_store_bool(&g_symbols_initialized, true);
   // NOTE: Cleanup is now handled by platform_destroy() called from asciichat_shared_destroy().
   // Library code does not call atexit() - that's the application's responsibility.
 }
@@ -615,7 +615,7 @@ static void init_windows_symbols(void) {
 void cleanup_windows_symbols(void) {
   if (atomic_load(&g_symbols_initialized) && g_process_handle) {
     SymCleanup(g_process_handle);
-    atomic_store(&g_symbols_initialized, false);
+    atomic_store_bool(&g_symbols_initialized, false);
     g_process_handle = NULL;
   }
 }

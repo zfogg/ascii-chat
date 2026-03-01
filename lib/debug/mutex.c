@@ -392,7 +392,7 @@ static uintptr_t thread_waiting_for_mutex(thread_lock_stack_t *stack) {
  * @brief Find which thread holds a given mutex (-1 if none)
  */
 static int find_thread_holding_mutex(int thread_count, uintptr_t mutex_key) {
-  for (int i = 0; i < thread_count && i < g_thread_registry_count; i++) {
+  for (int i = 0; i < thread_count; i++) {
     thread_lock_stack_t *stack = g_thread_registry[i].stack;
     if (thread_holds_mutex(stack, mutex_key)) {
       return i;
@@ -527,7 +527,7 @@ void mutex_stack_detect_deadlocks(void) {
   }
 
   // Check each thread for deadlock conditions
-  for (int i = 0; i < thread_count && i < g_thread_registry_count; i++) {
+  for (int i = 0; i < thread_count; i++) {
     thread_lock_stack_t *stack_a = g_thread_registry[i].stack;
     uintptr_t waiting_for = thread_waiting_for_mutex(stack_a);
 
@@ -626,7 +626,7 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
   }
 
   const cond_t *cond = (const cond_t *)key;
-  if (cond->waiting_count == 0) {
+  if (atomic_load_u64(&cond->waiting_count) == 0) {
     return; // No threads waiting, nothing to check
   }
 
