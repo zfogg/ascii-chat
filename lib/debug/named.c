@@ -528,19 +528,36 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
   }
 }
 
+// ============================================================================
+// Type-specific registration and lookup with namespace encoding
+// ============================================================================
+
+/**
+ * Key namespace prefixes to avoid collisions between different value types.
+ * Each type uses a distinct high-order bits pattern.
+ */
+#define FD_KEY_PREFIX (0xFD00000000000000UL)
+#define PACKET_TYPE_KEY_PREFIX (0xAC00000000000000UL)
+
+static inline uintptr_t encode_fd_key(int fd) {
+  return FD_KEY_PREFIX | (uintptr_t)fd;
+}
+
+static inline uintptr_t encode_packet_type_key(int pkt_type) {
+  return PACKET_TYPE_KEY_PREFIX | (uintptr_t)pkt_type;
+}
+
 void named_registry_register_packet_types(void) {
   // Import packet type enum to register all values
   // This ensures all packet types are programmatically registered and discoverable
 
   // Packet type enum values from include/ascii-chat/network/packet.h
-  // Format: key="PACKET_TYPE=%d", name="PACKET_TYPE_%d"
+  // Format: register with name="PACKET_TYPE_NAME"
 
 #define REGISTER_PKT_TYPE(value, name_suffix)                                                                          \
   do {                                                                                                                 \
-    char key_buf[64], name_buf[64];                                                                                    \
-    snprintf(key_buf, sizeof(key_buf), "PACKET_TYPE=%d", (value));                                                     \
-    snprintf(name_buf, sizeof(name_buf), "%s", (name_suffix));                                                         \
-    named_register((uintptr_t)(value), key_buf, "packet_type", "%d", __FILE__, __LINE__, __func__);                    \
+    uintptr_t pkt_key = PACKET_TYPE_KEY_PREFIX | (uintptr_t)(value);                                                   \
+    named_register(pkt_key, (name_suffix), "packet_type", "%d", __FILE__, __LINE__, __func__);                         \
   } while (0)
 
   // Register all packet types from the enum
@@ -618,25 +635,6 @@ void named_registry_register_packet_types(void) {
 #undef REGISTER_PKT_TYPE
 
   log_debug("Registered %d packet types in named registry", 68); // Count of all packet types
-}
-
-// ============================================================================
-// Type-specific registration and lookup with namespace encoding
-// ============================================================================
-
-/**
- * Key namespace prefixes to avoid collisions between different value types.
- * Each type uses a distinct high-order bits pattern.
- */
-#define FD_KEY_PREFIX (0xFD00000000000000UL)
-#define PACKET_TYPE_KEY_PREFIX (0xAC00000000000000UL)
-
-static inline uintptr_t encode_fd_key(int fd) {
-  return FD_KEY_PREFIX | (uintptr_t)fd;
-}
-
-static inline uintptr_t encode_packet_type_key(int pkt_type) {
-  return PACKET_TYPE_KEY_PREFIX | (uintptr_t)pkt_type;
 }
 
 const char *named_register_fd(int fd, const char *file, int line, const char *func) {
