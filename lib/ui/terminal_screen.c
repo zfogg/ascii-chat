@@ -373,6 +373,11 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // Flush frame buffer (containing header) before rendering grep logs
     frame_buffer_flush(g_frame_buf);
 
+    // Suppress logging during grep rendering to prevent log messages from
+    // interleaving with escape sequences and appearing as literal text in logs
+    log_level_t saved_level = log_get_level();
+    log_set_level(LOG_FATAL); // Suppress all logging except fatal errors during rendering
+
     int log_idx = 0;
     int lines_used = 0;
 
@@ -423,7 +428,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         }
       } else {
         // Content changed - overwrite and clear tail.
-        fprintf(stdout, "%s\n", msg);
+        fprintf(stdout, "%s\x1b[0m\x1b[K\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
@@ -451,7 +456,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         // Truncate to fit: progressively test shorter substrings until one fits
         int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
         if (target_width <= 0) {
-          fprintf(stdout, "...\n");
+          fprintf(stdout, "...\x1b[K\n");
         } else {
           size_t src_len = strlen(prev_msg);
           bool found = false;
@@ -468,27 +473,27 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
             if (test_width <= target_width) {
               // Found a length that fits
-              fprintf(stdout, "%s...\n", test_buf);
+              fprintf(stdout, "%s...\x1b[K\n", test_buf);
               found = true;
               break;
             }
           }
 
           if (!found) {
-            fprintf(stdout, "...\n");
+            fprintf(stdout, "...\x1b[K\n");
           }
         }
       } else {
         // Fits without truncation
-        fprintf(stdout, "%s\n", prev_msg);
+        fprintf(stdout, "%s\x1b[K\n", prev_msg);
       }
 
       remaining--;
     }
 
-    // Fill remaining blank lines
+    // Fill remaining blank lines with color reset to prevent color bleed
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\n");
+      fprintf(stdout, "\x1b[0m\x1b[K\n");
     }
 
     g_prev_log_count = log_idx;
@@ -565,6 +570,9 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     if (pos > 0 && pos <= (int)sizeof(grep_ui_buffer)) {
       platform_write_all(STDOUT_FILENO, grep_ui_buffer, (size_t)pos);
     }
+
+    // Restore logging level after grep rendering completes
+    log_set_level(saved_level);
   }
 
   SAFE_FREE(log_entries);
