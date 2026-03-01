@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <inttypes.h>
 
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
@@ -1178,7 +1179,7 @@ void debug_memory_report(void) {
                 file[file_len] = '\0';
 
                 // Extract line (between first and last colon)
-                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%llu", &tid) == 1) {
+                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%" SCNu64, &tid) == 1) {
                   parse_success = true;
                 }
               } else if (file_len >= sizeof(file)) {
@@ -1188,7 +1189,7 @@ void debug_memory_report(void) {
                 file[max_len] = '\0';
                 strcat(file, "...");
 
-                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%llu", &tid) == 1) {
+                if (sscanf(first_colon + 1, "%d", &line) == 1 && sscanf(last_colon + 1, "%" SCNu64, &tid) == 1) {
                   parse_success = true;
                 }
               }

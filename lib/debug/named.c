@@ -18,6 +18,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdatomic.h>
+#include <inttypes.h>
 
 #ifndef NDEBUG
 
@@ -180,7 +181,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 
   // Generate suffixed name: "base_name.counter"
   char *full_name = NULL;
-  int ret = asprintf(&full_name, "%s.%llu", base_name, counter);
+  int ret = asprintf(&full_name, "%s.%" PRIu64, base_name, counter);
   if (ret < 0) {
     log_error("named_register: asprintf failed for key=0x%tx", (ptrdiff_t)key);
     return base_name;
@@ -383,7 +384,7 @@ const char *named_update_name(uintptr_t key, const char *new_base_name) {
 
   // Generate new suffixed name
   char *new_full_name = NULL;
-  int ret = asprintf(&new_full_name, "%s.%llu", new_base_name, counter);
+  int ret = asprintf(&new_full_name, "%s.%" PRIu64, new_base_name, counter);
   if (ret < 0) {
     log_error("named_update_name: asprintf failed for key=0x%tx", (ptrdiff_t)key);
     rwlock_wrunlock_impl(&g_named_registry.entries_lock);
