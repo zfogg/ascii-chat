@@ -116,14 +116,9 @@ char *rgb_to_truecolor_halfblocks_scalar(const uint8_t *rgb, int width, int heig
           cur_fr = cur_fg = cur_fb = -1;
           cur_br = cur_bg = cur_bb = -1;
         }
-        // Emit spaces for transparent area
-        ob_write(&ob, " ", 1);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, " ", 1);
-          }
+        // Emit spaces for transparent area (no RLE for padding)
+        for (uint32_t k = 0; k < run; ++k) {
+          ob_write(&ob, " ", 1);
         }
       } else {
         // Normal colored halfblocks - set fg to TOP, bg to BOTTOM if changed
@@ -247,14 +242,9 @@ char *rgb_to_halfblocks_scalar(const uint8_t *rgb, int width, int height, int st
       bool is_transparent = (lum_top < 16 && lum_bot < 16);
 
       if (is_transparent) {
-        // Emit spaces for transparent area
-        ob_write(&ob, " ", 1);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, " ", 1);
-          }
+        // Emit spaces for transparent area (no RLE for padding)
+        for (uint32_t k = 0; k < run; ++k) {
+          ob_write(&ob, " ", 1);
         }
       } else {
         // Use block characters based on luminance levels
@@ -370,13 +360,9 @@ char *rgb_to_16color_halfblocks_scalar(const uint8_t *rgb, int width, int height
           emit_reset(&ob);
           cur_fg = cur_bg = -1;
         }
-        ob_write(&ob, " ", 1);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, " ", 1);
-          }
+        // Emit spaces for transparent area (no RLE for padding)
+        for (uint32_t k = 0; k < run; ++k) {
+          ob_write(&ob, " ", 1);
         }
       } else {
         // Emit 16-color codes if changed
@@ -493,13 +479,9 @@ char *rgb_to_256color_halfblocks_scalar(const uint8_t *rgb, int width, int heigh
           emit_reset(&ob);
           cur_fg = cur_bg = -1;
         }
-        ob_write(&ob, " ", 1);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, " ", 1);
-          }
+        // Emit spaces for transparent area (no RLE for padding)
+        for (uint32_t k = 0; k < run; ++k) {
+          ob_write(&ob, " ", 1);
         }
       } else {
         // Emit 256-color codes if changed

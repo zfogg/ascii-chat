@@ -1036,14 +1036,9 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
             cur_fr = cur_fg = cur_fb = -1;
             cur_br = cur_bg = cur_bb = -1;
           }
-          // For transparent areas, emit space character with no color codes (terminal default)
-          ob_write(&ob, " ", 1);
-          if (rep_is_profitable(run)) {
-            emit_rep(&ob, run - 1);
-          } else {
-            for (uint32_t k = 1; k < run; ++k) {
-              ob_write(&ob, " ", 1);
-            }
+          // Emit spaces for transparent area (no RLE for padding)
+          for (uint32_t k = 0; k < run; ++k) {
+            ob_write(&ob, " ", 1);
           }
         } else {
           // Normal colored half-blocks - set fg to TOP, bg to BOTTOM if changed
@@ -1111,14 +1106,9 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
           cur_fr = cur_fg = cur_fb = -1;
           cur_br = cur_bg = cur_bb = -1;
         }
-        // For transparent areas, emit space character with no color codes
-        ob_write(&ob, " ", 1);
-        if (rep_is_profitable(run)) {
-          emit_rep(&ob, run - 1);
-        } else {
-          for (uint32_t k = 1; k < run; ++k) {
-            ob_write(&ob, " ", 1);
-          }
+        // Emit spaces for transparent area (no RLE for padding)
+        for (uint32_t k = 0; k < run; ++k) {
+          ob_write(&ob, " ", 1);
         }
       } else {
         // SGR: fg = TOP, bg = BOTTOM for colored areas
