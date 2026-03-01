@@ -30,6 +30,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <ascii-chat/atomic.h>
 
 #ifdef _WIN32
 #include "windows_compat.h"
@@ -44,7 +45,7 @@ typedef struct {
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
     uintptr_t write_held_by_key;    ///< Registry key of thread holding write lock (0 if not held)
-    uint64_t read_lock_count;      ///< Number of threads holding read locks
+    atomic_t read_lock_count;       ///< Number of threads holding read locks (thread-safe atomic)
 } rwlock_t;
 #else
 #include <pthread.h>
@@ -59,7 +60,7 @@ typedef struct {
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
     uintptr_t write_held_by_key;    ///< Registry key of thread holding write lock (0 if not held)
-    uint64_t read_lock_count;      ///< Number of threads holding read locks
+    atomic_t read_lock_count;       ///< Number of threads holding read locks (thread-safe atomic)
 } rwlock_t;
 #endif
 

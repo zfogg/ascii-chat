@@ -45,9 +45,7 @@ ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity) {
   rb->capacity = actual_capacity;
   rb->is_power_of_two = true;
   rb->capacity_mask = actual_capacity - 1;
-  atomic_init(&rb->head, 0);
-  atomic_init(&rb->tail, 0);
-  atomic_init(&rb->size, 0);
+  /* Atomic fields are zero-initialized by SAFE_CALLOC */
 
   return rb;
 }
@@ -63,20 +61,20 @@ bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
   if (!rb || !data)
     return false;
 
-  size_t current_size = atomic_load(&rb->size);
+  size_t current_size = atomic_load_u64(&rb->size);
   if (current_size >= rb->capacity) {
     return false; /* Buffer full */
   }
 
-  size_t head = atomic_load(&rb->head);
+  size_t head = atomic_load_u64(&rb->head);
   size_t next_head = (head + 1) & rb->capacity_mask;
 
   /* Copy data */
   SAFE_MEMCPY(rb->buffer + (head * rb->element_size), rb->element_size, data, rb->element_size);
 
   /* Update head and size atomically */
-  atomic_store(&rb->head, next_head);
-  atomic_fetch_add(&rb->size, 1);
+  atomic_store_u64(&rb->head, next_head);
+  atomic_fetch_add_u64(&rb->size, 1);
 
   return true;
 }
@@ -85,20 +83,20 @@ bool ringbuffer_read(ringbuffer_t *rb, void *data) {
   if (!rb || !data)
     return false;
 
-  size_t current_size = atomic_load(&rb->size);
+  size_t current_size = atomic_load_u64(&rb->size);
   if (current_size == 0) {
     return false; /* Buffer empty */
   }
 
-  size_t tail = atomic_load(&rb->tail);
+  size_t tail = atomic_load_u64(&rb->tail);
   size_t next_tail = (tail + 1) & rb->capacity_mask;
 
   /* Copy data */
   SAFE_MEMCPY(data, rb->element_size, rb->buffer + (tail * rb->element_size), rb->element_size);
 
   /* Update tail and size atomically */
-  atomic_store(&rb->tail, next_tail);
-  atomic_fetch_sub(&rb->size, 1);
+  atomic_store_u64(&rb->tail, next_tail);
+  atomic_fetch_sub_u64(&rb->size, 1);
 
   return true;
 }
@@ -107,12 +105,12 @@ bool ringbuffer_peek(ringbuffer_t *rb, void *data) {
   if (!rb || !data)
     return false;
 
-  size_t current_size = atomic_load(&rb->size);
+  size_t current_size = atomic_load_u64(&rb->size);
   if (current_size == 0) {
     return false; /* Buffer empty */
   }
 
-  size_t tail = atomic_load(&rb->tail);
+  size_t tail = atomic_load_u64(&rb->tail);
 
   /* Copy data without updating tail */
   SAFE_MEMCPY(data, rb->element_size, rb->buffer + (tail * rb->element_size), rb->element_size);
@@ -121,7 +119,7 @@ bool ringbuffer_peek(ringbuffer_t *rb, void *data) {
 }
 
 size_t ringbuffer_size(const ringbuffer_t *rb) {
-  return rb ? atomic_load(&rb->size) : 0;
+  return rb ? atomic_load_u64(&rb->size) : 0;
 }
 
 bool ringbuffer_is_empty(const ringbuffer_t *rb) {
@@ -134,9 +132,9 @@ bool ringbuffer_is_full(const ringbuffer_t *rb) {
 
 void ringbuffer_clear(ringbuffer_t *rb) {
   if (rb) {
-    atomic_store(&rb->head, 0);
-    atomic_store(&rb->tail, 0);
-    atomic_store(&rb->size, 0);
+    atomic_store_u64(&rb->head, 0);
+    atomic_store_u64(&rb->tail, 0);
+    atomic_store_u64(&rb->size, 0);
   }
 }
 

@@ -249,9 +249,9 @@ static bool try_insert_with_eviction_utf8(uint32_t hash, utf8_palette_cache_t *n
       uint32_t victim_key = victim_cache->key;
 
       // Log clean eviction
-      uint32_t victim_access_count = atomic_load(&victim_cache->access_count);
+      uint32_t victim_access_count = atomic_load_u64(&victim_cache->access_count);
       uint64_t current_time = time_get_ns();
-      uint64_t victim_age = (current_time - atomic_load(&victim_cache->last_access_time)) / NS_PER_SEC_INT;
+      uint64_t victim_age = (current_time - atomic_load_u64(&victim_cache->last_access_time)) / NS_PER_SEC_INT;
 
       log_debug("UTF8_CACHE_EVICTION: Proactive min-heap eviction hash=0x%x (age=%lus, count=%u)", victim_key,
                 victim_age, victim_access_count);
@@ -298,8 +298,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   if (cache) {
     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
     uint64_t current_time = time_get_ns();
-    atomic_store(&cache->last_access_time, current_time);
-    uint32_t new_access_count = atomic_fetch_add(&cache->access_count, 1) + 1;
+    atomic_store_u64(&cache->last_access_time, current_time);
+    uint32_t new_access_count = atomic_fetch_add_u64(&cache->access_count, 1) + 1;
 
     // Every 10th access: Update heap position (requires write lock)
     if (new_access_count % 10 == 0) {
@@ -316,8 +316,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
       HASH_FIND_INT(g_utf8_cache_table, &saved_key, cache_relookup);
       if (cache_relookup) {
         // Cache entry still exists - safe to update heap position
-        uint64_t last_access = atomic_load(&cache_relookup->last_access_time);
-        uint32_t access_count = atomic_load(&cache_relookup->access_count);
+        uint64_t last_access = atomic_load_u64(&cache_relookup->last_access_time);
+        uint32_t access_count = atomic_load_u64(&cache_relookup->access_count);
         double new_score =
             calculate_cache_eviction_score(last_access, access_count, cache_relookup->creation_time, current_time);
         utf8_heap_update_score(cache_relookup, new_score);
@@ -343,8 +343,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
   if (cache) {
     // Found it! Just update access tracking and return
     uint64_t current_time = time_get_ns();
-    atomic_store(&cache->last_access_time, current_time);
-    atomic_fetch_add(&cache->access_count, 1);
+    atomic_store_u64(&cache->last_access_time, current_time);
+    atomic_fetch_add_u64(&cache->access_count, 1);
     rwlock_wrunlock(&g_utf8_cache_rwlock);
     return cache;
   }
@@ -370,8 +370,8 @@ utf8_palette_cache_t *get_utf8_palette_cache(const char *ascii_chars) {
 
   // Initialize eviction tracking
   uint64_t current_time = time_get_ns();
-  atomic_store(&cache->last_access_time, current_time);
-  atomic_store(&cache->access_count, 1); // First access
+  atomic_store_u64(&cache->last_access_time, current_time);
+  atomic_store_u64(&cache->access_count, 1); // First access
   cache->creation_time = current_time;
 
   // Store in hash table with guaranteed eviction support

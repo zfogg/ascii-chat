@@ -61,7 +61,6 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
     return NULL;
   }
 
-  atomic_init(&pool->free_list, NULL);
   pool->max_bytes = max_bytes > 0 ? max_bytes : BUFFER_POOL_MAX_BYTES;
   pool->shrink_delay_ns = shrink_delay_ns > 0 ? shrink_delay_ns : BUFFER_POOL_SHRINK_DELAY_NS;
 
@@ -90,9 +89,9 @@ void buffer_pool_destroy(buffer_pool_t *pool) {
   NAMED_UNREGISTER(pool);
 
   // Drain the free list
-  buffer_node_t *node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
+  buffer_node_t *node = atomic_ptr_load(&pool->free_list);
   while (node) {
-    buffer_node_t *next = atomic_load_explicit(&node->next, memory_order_relaxed);
+    buffer_node_t *next = atomic_ptr_load(&node->next);
     SAFE_FREE(node); // Node and data are one allocation
     node = next;
   }
@@ -114,7 +113,6 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
     node->magic = MAGIC_BUFFER_POOL_FALLBACK; // Different magic for fallbacks
     node->_pad = 0;
     node->size = size;
-    atomic_init(&node->next, NULL);
     atomic_store_u64(&node->returned_at_ns, 0);
     node->pool = NULL; // No pool for fallbacks
 
@@ -125,15 +123,15 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   }
 
   // Try to pop from lock-free stack (LIFO)
-  buffer_node_t *node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
+  buffer_node_t *node = atomic_ptr_load(&pool->free_list);
   while (node) {
-    buffer_node_t *next = atomic_load_explicit(&node->next, memory_order_relaxed);
+    buffer_node_t *next = atomic_ptr_load(&node->next);
     if (atomic_compare_exchange_weak_explicit(&pool->free_list, &node, next, memory_order_release,
                                               memory_order_acquire)) {
       // Successfully popped - check if it's big enough
       if (node->size >= size) {
         // Reuse this buffer
-        atomic_store_explicit(&node->next, NULL, memory_order_relaxed);
+        atomic_ptr_store(&node->next, NULL);
         size_t node_size = node->size;
         atomic_fetch_add_u64(&pool->used_bytes, node_size);
         atomic_fetch_add_u64(&pool->hits, 1);
@@ -142,16 +140,16 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
       } else {
         // Too small - push it back and allocate new
         // (This is rare with LIFO - usually we get similar sizes)
-        buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+        buffer_node_t *head = atomic_ptr_load(&pool->free_list);
         do {
-          atomic_store_explicit(&node->next, head, memory_order_relaxed);
+          atomic_ptr_store(&node->next, head);
         } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
                                                         memory_order_relaxed));
         break; // Fall through to allocate new
       }
     }
     // CAS failed - reload and retry
-    node = atomic_load_explicit(&pool->free_list, memory_order_acquire);
+    node = atomic_ptr_load(&pool->free_list);
   }
 
   // Check if we can allocate more
@@ -174,7 +172,6 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
       node->magic = MAGIC_BUFFER_POOL_VALID;
       node->_pad = 0;
       node->size = size;
-      atomic_init(&node->next, NULL);
       atomic_store_u64(&node->returned_at_ns, 0);
       node->pool = pool;
 
@@ -197,7 +194,6 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   node->magic = MAGIC_BUFFER_POOL_FALLBACK;
   node->_pad = 0;
   node->size = size;
-  atomic_init(&node->next, NULL);
   atomic_store_u64(&node->returned_at_ns, 0);
   node->pool = pool;
 
@@ -248,9 +244,9 @@ void buffer_pool_free(buffer_pool_t *pool, const void *data, size_t size) {
   atomic_store_u64(&node->returned_at_ns, time_get_ns());
 
   // Push to lock-free stack
-  buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+  buffer_node_t *head = atomic_ptr_load(&pool->free_list);
   do {
-    atomic_store_explicit(&node->next, head, memory_order_relaxed);
+    atomic_ptr_store(&node->next, head);
   } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, node, memory_order_release,
                                                   memory_order_relaxed));
 
@@ -305,7 +301,7 @@ void buffer_pool_shrink(buffer_pool_t *pool) {
     }
 
     // Atomically prepend to current free list
-    buffer_node_t *head = atomic_load_explicit(&pool->free_list, memory_order_relaxed);
+    buffer_node_t *head = atomic_ptr_load(&pool->free_list);
     do {
       atomic_store_explicit(&tail->next, head, memory_order_relaxed);
     } while (!atomic_compare_exchange_weak_explicit(&pool->free_list, &head, keep_list, memory_order_release,
