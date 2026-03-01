@@ -346,8 +346,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     start_col = 0;
   }
 
-  // Vertical centering: simple formula for perfectly centered box
-  int start_row = (term_height - box_height) / 2;
+  // Vertical centering: shift up by 2 lines to account for rendering offset
+  int start_row = (term_height - box_height) / 2 - 2;
   if (start_row < 0) {
     start_row = 0;
   }
