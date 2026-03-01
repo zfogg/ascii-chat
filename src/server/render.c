@@ -289,7 +289,7 @@
  * - Safe concurrent access to client data
  *
  * SHUTDOWN COORDINATION:
- * - Monitors global g_server_should_exit flag
+ * - Monitors global g_should_exit flag
  * - Checks per-client running flags with mutex protection
  * - Responds to shutdown within one frame interval (16.67ms)
  *
@@ -359,7 +359,7 @@ void *client_video_render_thread(void *arg) {
   // Without capabilities, convert_composite_to_ascii() will fail
   int timeout_ms = 5000; // 5 second timeout
   int waited_ms = 0;
-  while (!client->has_terminal_caps && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (!client->has_terminal_caps && !atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down)) {
     if (waited_ms == 0) {
       log_debug("Waiting for terminal capabilities from client %u...", thread_client_id);
     }
@@ -409,12 +409,12 @@ void *client_video_render_thread(void *arg) {
   log_info("Video render loop STARTING for client %u", thread_client_id);
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down)) {
     log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
-    if (atomic_load(&g_server_should_exit)) {
-      log_debug("Video render thread stopping for client %u (g_server_should_exit)", thread_client_id);
+    if (atomic_load_bool(&g_should_exit)) {
+      log_debug("Video render thread stopping for client %u (g_should_exit)", thread_client_id);
       break;
     }
 
@@ -841,12 +841,12 @@ void *client_audio_render_thread(void *arg) {
   int server_audio_frame_count = 0;
 
   bool should_continue = true;
-  while (should_continue && !atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down)) {
+  while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down)) {
     log_debug_every(LOG_RATE_SLOW, "Audio render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
-    if (atomic_load(&g_server_should_exit)) {
-      log_debug("Audio render thread stopping for client %u (g_server_should_exit)", thread_client_id);
+    if (atomic_load_bool(&g_should_exit)) {
+      log_debug("Audio render thread stopping for client %u (g_should_exit)", thread_client_id);
       break;
     }
 
@@ -863,7 +863,7 @@ void *client_audio_render_thread(void *arg) {
     if (!g_audio_mixer) {
       log_dev_every(10 * NS_PER_MS_INT, "Audio render waiting for mixer (client %u)", thread_client_id);
       // Check shutdown flag while waiting
-      if (atomic_load(&g_server_should_exit))
+      if (atomic_load_bool(&g_should_exit))
         break;
       platform_sleep_ns(10 * NS_PER_MS_INT);
       continue;
@@ -1380,7 +1380,7 @@ void stop_client_render_threads(client_info_t *client) {
 
   // Wait for threads to finish (deterministic cleanup)
   // During shutdown, don't wait forever for threads to join
-  bool is_shutting_down = atomic_load(&g_server_should_exit);
+  bool is_shutting_down = atomic_load_bool(&g_should_exit);
 
   if (asciichat_thread_is_initialized(&client->video_render_thread)) {
     log_debug("Joining video render thread for client %u", client->client_id);

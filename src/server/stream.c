@@ -221,7 +221,7 @@ static int collect_video_sources(image_source_t *sources, int max_sources) {
   int source_count = 0;
 
   // Check for shutdown before acquiring locks to prevent lock corruption
-  if (atomic_load(&g_server_should_exit)) {
+  if (atomic_load_bool(&g_should_exit)) {
     return 0;
   }
 

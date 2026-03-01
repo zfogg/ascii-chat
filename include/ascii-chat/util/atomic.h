@@ -38,22 +38,22 @@
 
 /**
  * Check if the global server should exit.
- * Requires g_server_should_exit to be declared as atomic_bool in the compilation unit.
+ * Requires g_should_exit to be declared as atomic_bool in the compilation unit.
  *
  * @return true if shutdown is requested, false otherwise
  *
  * Usage:
  * @code
- * extern atomic_bool g_server_should_exit;
+ * extern atomic_bool g_should_exit;
  *
  * while (!SHOULD_EXIT()) {
  *     process_event();
  * }
  * @endcode
  *
- * @note This assumes g_server_should_exit is declared in the same file or extern declared.
+ * @note This assumes g_should_exit is declared in the same file or extern declared.
  */
-#define SHOULD_EXIT() (atomic_load(&g_server_should_exit))
+#define SHOULD_EXIT() (atomic_load(&g_should_exit))
 
 /**
  * Check if the global client should exit.

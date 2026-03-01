@@ -8,10 +8,10 @@
 #include "client.h"
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/network/packet/packet.h>
-#include <stdatomic.h>
+#include <ascii-chat/atomic.h>
 
 // Global shutdown flag
-extern atomic_bool g_server_should_exit;
+extern atomic_t g_should_exit;
 
 // Stream mixing and sending functions
 char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned short width, unsigned short height,

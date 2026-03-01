@@ -121,7 +121,7 @@
  * Maximum time to wait for incoming data. Increased to 30 seconds to allow
  * for network latency and frame processing delays without prematurely
  * disconnecting. If no data is received within this time, receive operation
- * returns allowing the caller to check g_server_should_exit.
+ * returns allowing the caller to check g_should_exit.
  *
  * @ingroup network
  */

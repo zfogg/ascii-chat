@@ -1334,7 +1334,7 @@ int remove_client(server_context_t *server_ctx, const char *client_id) {
       log_debug("Joined send thread for WebRTC client %s", client_id);
     }
     // Note: Render threads still need to be stopped - they're created the same way for both TCP and WebRTC
-    // For now, render threads are expected to exit when they check g_server_should_exit and client->active
+    // For now, render threads are expected to exit when they check g_should_exit and client->active
   }
 
   // Destroy ACIP transport before closing socket
@@ -1510,7 +1510,7 @@ void *client_dispatch_thread(void *arg) {
 
   uint64_t dispatch_loop_count = 0;
 
-  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->dispatch_thread_running)) {
+  while (!atomic_load_bool(&g_should_exit) && atomic_load(&client->dispatch_thread_running)) {
     dispatch_loop_count++;
     // Try to dequeue next packet (non-blocking)
     // Use try_dequeue to avoid blocking - allows checking exit flag frequently
@@ -1694,7 +1694,7 @@ void *client_receive_thread(void *arg) {
 
   // Enable thread cancellation for clean shutdown
   // Thread cancellation not available in platform abstraction
-  // Threads should exit when g_server_should_exit is set
+  // Threads should exit when g_should_exit is set
 
   log_debug("Started receive thread for client %s (%s)", client->client_id, client->display_name);
 
@@ -1705,7 +1705,7 @@ void *client_receive_thread(void *arg) {
   log_info("RECV_THREAD_LOOP_START: client_id=%s, is_tcp=%d, transport=%p, active=%d", client->client_id,
            client->is_tcp_client, (void *)client->transport, atomic_load(&client->active));
 
-  while (!atomic_load(&g_server_should_exit) && atomic_load(&client->active)) {
+  while (!atomic_load_bool(&g_should_exit) && atomic_load(&client->active)) {
     // For TCP clients, check socket validity
     // For WebRTC clients, continue even if no socket (transport handles everything)
     if (client->is_tcp_client && client->socket == INVALID_SOCKET_VALUE) {
@@ -1730,7 +1730,7 @@ void *client_receive_thread(void *arg) {
           acip_server_receive_and_dispatch(client->transport, client, &g_acip_server_callbacks);
 
       // Check if shutdown was requested during the network call
-      if (atomic_load(&g_server_should_exit)) {
+      if (atomic_load_bool(&g_should_exit)) {
         log_debug("RECV_EXIT: Server shutdown requested, breaking loop");
         break;
       }
@@ -1747,7 +1747,7 @@ void *client_receive_thread(void *arg) {
           } else if (err_ctx.code == ERROR_CRYPTO) {
             log_error_client(
                 client, "SECURITY VIOLATION: Unencrypted packet when encryption required - terminating connection");
-            atomic_store(&g_server_should_exit, true);
+            atomic_store_bool(&g_should_exit, true);
             break;
           }
         }
@@ -1935,7 +1935,7 @@ void *client_send_thread_func(void *arg) {
   // to ensure audio packets are sent immediately, not rate-limited by video
 #define MAX_AUDIO_BATCH 8
   int loop_iteration_count = 0;
-  while (!atomic_load(&g_server_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
+  while (!atomic_load_bool(&g_should_exit) && !atomic_load(&client->shutting_down) && atomic_load(&client->active) &&
          atomic_load(&client->send_thread_running)) {
     loop_iteration_count++;
     bool sent_something = false;
@@ -2078,7 +2078,7 @@ void *client_send_thread_func(void *arg) {
       }
 
       if (result != ASCIICHAT_OK) {
-        if (!atomic_load(&g_server_should_exit)) {
+        if (!atomic_load_bool(&g_should_exit)) {
           log_error("Failed to send audio to client %s: %s", client->client_id, asciichat_error_string(result));
         }
         // Network errors corrupt the TCP stream - must disconnect immediately
@@ -2303,7 +2303,7 @@ void *client_send_thread_func(void *arg) {
       uint64_t step5_ns = time_get_ns();
 
       if (send_result != ASCIICHAT_OK) {
-        if (!atomic_load(&g_server_should_exit)) {
+        if (!atomic_load_bool(&g_should_exit)) {
           SET_ERRNO(ERROR_NETWORK, "Failed to send video frame to client %s: %s", client->client_id,
                     asciichat_error_string(send_result));
         }
@@ -2355,9 +2355,9 @@ void *client_send_thread_func(void *arg) {
   }
 
   // Log why the send thread exited
-  log_warn("Send thread exit conditions - client_id=%s g_server_should_exit=%d shutting_down=%d active=%d "
+  log_warn("Send thread exit conditions - client_id=%s g_should_exit=%d shutting_down=%d active=%d "
            "send_thread_running=%d",
-           client->client_id, atomic_load(&g_server_should_exit), atomic_load(&client->shutting_down),
+           client->client_id, atomic_load_bool(&g_should_exit), atomic_load(&client->shutting_down),
            atomic_load(&client->active), atomic_load(&client->send_thread_running));
 
   // Mark thread as stopped
