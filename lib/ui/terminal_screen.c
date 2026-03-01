@@ -493,7 +493,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Fill remaining blank lines with color reset to prevent color bleed
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\x1b[0m\x1b[K\n");
+      fprintf(stdout, "\n");
     }
 
     g_prev_log_count = log_idx;
