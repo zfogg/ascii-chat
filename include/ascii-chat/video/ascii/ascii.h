@@ -214,6 +214,21 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
                                       const terminal_capabilities_t *caps, const bool use_aspect_ratio,
                                       const bool stretch, const char *palette_chars);
 
+/**
+ * @brief Convert image to ASCII art with terminal capabilities
+ * @param image Image to convert (must not be NULL)
+ * @param caps Terminal capabilities structure
+ * @param palette Palette characters to use for conversion
+ * @return ASCII art string, or NULL on error
+ *
+ * Converts an image to ASCII art using the provided terminal capabilities.
+ * Automatically selects the best rendering method based on terminal capabilities.
+ *
+ * @note Returns dynamically allocated string that must be freed by caller.
+ * @ingroup video
+ */
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette);
+
 /** @} */
 
 /* ============================================================================
