@@ -37,47 +37,54 @@ if(FFMPEG_FOUND)
     endif()
 endif()
 
-# SIMD sources
+# SIMD sources (reorganized into render/{arch}/{halfblock,foreground})
 set(SIMD_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/simd/ascii_simd.c
     ${CMAKE_CURRENT_SOURCE_DIR}/simd/ascii_simd_color.c
     ${CMAKE_CURRENT_SOURCE_DIR}/simd/common.c
     ${CMAKE_CURRENT_SOURCE_DIR}/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rle.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/halfblock.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/greyscale.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/256color.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/16color.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/scalar/16color_dithered.c
+    # Scalar render implementations
+    ${CMAKE_CURRENT_SOURCE_DIR}/render/scalar/halfblock.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/render/scalar/foreground.c
 )
 
 if(ENABLE_SIMD_SSE2)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/simd/sse2.c)
+    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/foreground.c)
+    set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sse2/foreground.c
+        PROPERTIES COMPILE_FLAGS "-msse2"
+    )
 endif()
 
 if(ENABLE_SIMD_SSSE3)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/simd/ssse3.c)
+    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/foreground.c)
+    set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/ssse3/foreground.c
+        PROPERTIES COMPILE_FLAGS "-mssse3"
+    )
 endif()
 
 if(ENABLE_SIMD_AVX2)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/simd/avx2.c)
+    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/foreground.c)
     set_source_files_properties(
-        ${CMAKE_SOURCE_DIR}/lib/video/simd/avx2.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/avx2/foreground.c
         PROPERTIES COMPILE_FLAGS "-mavx2"
-        DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endif()
 
 if(ENABLE_SIMD_NEON)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/simd/neon.c)
+    list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/neon/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/neon/halfblock.c
+    )
 endif()
 
 if(ENABLE_SIMD_SVE)
-    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/simd/sve.c)
+    list(APPEND SIMD_SRCS ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/foreground.c)
     set_source_files_properties(
-        ${CMAKE_SOURCE_DIR}/lib/video/simd/sve.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/render/sve/foreground.c
         PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve"
-        DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endif()
 

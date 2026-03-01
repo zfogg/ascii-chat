@@ -22,11 +22,9 @@
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/simd/common.h>
-#include <ascii-chat/video/scalar/halfblock.h>
-#include <ascii-chat/video/scalar/greyscale.h>
-#include <ascii-chat/video/scalar/256color.h>
-#include <ascii-chat/video/scalar/16color.h>
-#include <ascii-chat/video/scalar/16color_dithered.h>
+#include <ascii-chat/video/render/scalar/halfblock.h>
+#include <ascii-chat/video/render/scalar/foreground.h>
+
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/buffer_pool.h> // For buffer pool allocation functions

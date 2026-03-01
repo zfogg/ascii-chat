@@ -19,7 +19,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/video/simd/neon.h>
+#include <ascii-chat/video/render/neon/foreground.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/simd/common.h>

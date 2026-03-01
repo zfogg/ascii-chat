@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
-#include <ascii-chat/video/simd/sve.h>
+#include <ascii-chat/video/render/sve/foreground.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/simd/ascii_simd.h> // For LUMA_RED, LUMA_GREEN, LUMA_BLUE, LUMA_THRESHOLD
 #include <ascii-chat/video/output_buffer.h>   // For outbuf_t, emit_*, ob_*

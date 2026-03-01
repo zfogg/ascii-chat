@@ -18,7 +18,7 @@
 #include <ascii-chat/video/palette.h>
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/output_buffer.h>
-#include <ascii-chat/video/simd/avx2.h>
+#include <ascii-chat/video/render/avx2/foreground.h>
 #include <ascii-chat/util/math.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/time.h>

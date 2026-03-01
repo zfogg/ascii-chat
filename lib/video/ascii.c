@@ -26,7 +26,7 @@
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
-#include <ascii-chat/video/scalar/halfblock.h>
+#include <ascii-chat/video/render/scalar/halfblock.h>
 
 /* ============================================================================
  * ASCII Art Video Processing
