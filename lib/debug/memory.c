@@ -315,30 +315,30 @@ static alloc_site_t *lookup_site(const char *file, int line, uint64_t tid) {
 }
 
 /* Forward declaration for initialization */
-static _Atomic(bool) g_debug_mem_initialized = false;
+static atomic_t g_debug_mem_initialized = {0};
 
 static struct {
   mem_block_t *head;
-  _Atomic(uint64_t) total_allocated;
-  _Atomic(uint64_t) total_freed;
-  _Atomic(uint64_t) current_usage;
-  _Atomic(uint64_t) peak_usage;
-  _Atomic(uint64_t) malloc_calls;
-  _Atomic(uint64_t) free_calls;
-  _Atomic(uint64_t) calloc_calls;
-  _Atomic(uint64_t) realloc_calls;
+  atomic_t total_allocated;
+  atomic_t total_freed;
+  atomic_t current_usage;
+  atomic_t peak_usage;
+  atomic_t malloc_calls;
+  atomic_t free_calls;
+  atomic_t calloc_calls;
+  atomic_t realloc_calls;
   mutex_t mutex;
   lifecycle_t lifecycle;
   bool quiet_mode;
 } g_mem = {.head = NULL,
-           .total_allocated = 0,
-           .total_freed = 0,
-           .current_usage = 0,
-           .peak_usage = 0,
-           .malloc_calls = 0,
-           .free_calls = 0,
-           .calloc_calls = 0,
-           .realloc_calls = 0,
+           .total_allocated = {0},
+           .total_freed = {0},
+           .current_usage = {0},
+           .peak_usage = {0},
+           .malloc_calls = {0},
+           .free_calls = {0},
+           .calloc_calls = {0},
+           .realloc_calls = {0},
            .lifecycle = LIFECYCLE_INIT,
            .quiet_mode = false};
 
@@ -349,7 +349,7 @@ static struct {
 
 /* Initialize debug memory system once at startup */
 void debug_memory_ensure_init(void) {
-  if (atomic_load(&g_debug_mem_initialized)) {
+  if (atomic_load_bool(&g_debug_mem_initialized)) {
     return;
   }
 
@@ -357,14 +357,14 @@ void debug_memory_ensure_init(void) {
   if (lifecycle_init_once(&g_mem.lifecycle)) {
     /* This thread won the race; do the actual initialization */
     if (lifecycle_init(&g_mem.lifecycle, "debug_memory")) {
-      atomic_store(&g_debug_mem_initialized, true);
+      atomic_store_bool(&g_debug_mem_initialized, true);
     }
     lifecycle_init_commit(&g_mem.lifecycle);
   } else {
     /* Another thread is initializing or already initialized;
      * spin briefly to wait for initialization to complete */
     int attempts = 0;
-    while (!atomic_load(&g_debug_mem_initialized) && attempts < 1000) {
+    while (!atomic_load_bool(&g_debug_mem_initialized) && attempts < 1000) {
       attempts++;
       /* Brief busy-wait */
       for (volatile int i = 0; i < 10; i++)
@@ -374,12 +374,12 @@ void debug_memory_ensure_init(void) {
 }
 
 static bool ensure_mutex_initialized(void) {
-  if (atomic_load(&g_debug_mem_initialized)) {
+  if (atomic_load_bool(&g_debug_mem_initialized)) {
     return true;
   }
 
   if (lifecycle_is_initialized(&g_mem.lifecycle)) {
-    atomic_store(&g_debug_mem_initialized, true);
+    atomic_store_bool(&g_debug_mem_initialized, true);
     return true;
   }
 
@@ -398,21 +398,21 @@ void *debug_malloc(size_t size, const char *file, int line) {
   g_in_debug_memory = true;
 
   /* Initialize mutex on first allocation */
-  if (!atomic_load(&g_debug_mem_initialized)) {
+  if (!atomic_load_bool(&g_debug_mem_initialized)) {
     debug_memory_ensure_init();
   }
 
-  atomic_fetch_add(&g_mem.malloc_calls, 1);
-  atomic_fetch_add(&g_mem.total_allocated, size);
-  size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
+  atomic_fetch_add_u64(&g_mem.malloc_calls, 1);
+  atomic_fetch_add_u64(&g_mem.total_allocated, size);
+  size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, size) + size;
 
-  size_t peak = atomic_load(&g_mem.peak_usage);
+  size_t peak = atomic_load_u64(&g_mem.peak_usage);
   while (new_usage > peak) {
-    if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+    if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
       break;
   }
 
-  bool have_mutex = atomic_load(&g_debug_mem_initialized);
+  bool have_mutex = atomic_load_bool(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -469,21 +469,21 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
   g_in_debug_memory = true;
 
   /* Initialize mutex on first allocation */
-  if (!atomic_load(&g_debug_mem_initialized)) {
+  if (!atomic_load_bool(&g_debug_mem_initialized)) {
     debug_memory_ensure_init();
   }
 
-  atomic_fetch_add(&g_mem.malloc_calls, 1);
-  atomic_fetch_add(&g_mem.total_allocated, size);
-  size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
+  atomic_fetch_add_u64(&g_mem.malloc_calls, 1);
+  atomic_fetch_add_u64(&g_mem.total_allocated, size);
+  size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, size) + size;
 
-  size_t peak = atomic_load(&g_mem.peak_usage);
+  size_t peak = atomic_load_u64(&g_mem.peak_usage);
   while (new_usage > peak) {
-    if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+    if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
       break;
   }
 
-  bool have_mutex = atomic_load(&g_debug_mem_initialized);
+  bool have_mutex = atomic_load_bool(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -540,11 +540,11 @@ void debug_free(void *ptr, const char *file, int line) {
   g_in_debug_memory = true;
 
   /* Initialize mutex on first free */
-  if (!atomic_load(&g_debug_mem_initialized)) {
+  if (!atomic_load_bool(&g_debug_mem_initialized)) {
     debug_memory_ensure_init();
   }
 
-  atomic_fetch_add(&g_mem.free_calls, 1);
+  atomic_fetch_add_u64(&g_mem.free_calls, 1);
 
   size_t freed_size = 0;
   bool found = false;
@@ -552,7 +552,7 @@ void debug_free(void *ptr, const char *file, int line) {
   bool was_aligned = false;
 #endif
 
-  bool have_mutex = atomic_load(&g_debug_mem_initialized);
+  bool have_mutex = atomic_load_bool(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -602,8 +602,8 @@ void debug_free(void *ptr, const char *file, int line) {
   }
 
   if (found) {
-    atomic_fetch_add(&g_mem.total_freed, freed_size);
-    atomic_fetch_sub(&g_mem.current_usage, freed_size);
+    atomic_fetch_add_u64(&g_mem.total_freed, freed_size);
+    atomic_fetch_sub_u64(&g_mem.current_usage, freed_size);
   }
 
 #ifdef _WIN32
@@ -632,21 +632,21 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   g_in_debug_memory = true;
 
   /* Initialize mutex on first calloc */
-  if (!atomic_load(&g_debug_mem_initialized)) {
+  if (!atomic_load_bool(&g_debug_mem_initialized)) {
     debug_memory_ensure_init();
   }
 
-  atomic_fetch_add(&g_mem.calloc_calls, 1);
-  atomic_fetch_add(&g_mem.total_allocated, total);
-  size_t new_usage = atomic_fetch_add(&g_mem.current_usage, total) + total;
+  atomic_fetch_add_u64(&g_mem.calloc_calls, 1);
+  atomic_fetch_add_u64(&g_mem.total_allocated, total);
+  size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, total) + total;
 
-  size_t peak = atomic_load(&g_mem.peak_usage);
+  size_t peak = atomic_load_u64(&g_mem.peak_usage);
   while (new_usage > peak) {
-    if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+    if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
       break;
   }
 
-  bool have_mutex = atomic_load(&g_debug_mem_initialized);
+  bool have_mutex = atomic_load_bool(&g_debug_mem_initialized);
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
 
@@ -745,7 +745,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   g_in_debug_memory = true;
 
   // Track number of realloc calls
-  atomic_fetch_add(&g_mem.realloc_calls, 1);
+  atomic_fetch_add_u64(&g_mem.realloc_calls, 1);
 
   // If ptr == NULL, realloc behaves like malloc
   if (ptr == NULL) {
@@ -760,13 +760,13 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
   }
 
   /* Initialize mutex on first realloc */
-  if (!atomic_load(&g_debug_mem_initialized)) {
+  if (!atomic_load_bool(&g_debug_mem_initialized)) {
     debug_memory_ensure_init();
   }
 
   // Look up old allocation size from tracking list
   size_t old_size = 0;
-  bool have_mutex = atomic_load(&g_debug_mem_initialized);
+  bool have_mutex = atomic_load_bool(&g_debug_mem_initialized);
 
   if (have_mutex) {
     mutex_lock(&g_mem.mutex);
@@ -798,30 +798,30 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     if (size >= old_size) {
       // Growing: track additional allocation
       size_t delta = size - old_size;
-      atomic_fetch_add(&g_mem.total_allocated, delta);
-      size_t new_usage = atomic_fetch_add(&g_mem.current_usage, delta) + delta;
+      atomic_fetch_add_u64(&g_mem.total_allocated, delta);
+      size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, delta) + delta;
 
       // Update peak usage if new usage exceeds previous peak
-      size_t peak = atomic_load(&g_mem.peak_usage);
+      size_t peak = atomic_load_u64(&g_mem.peak_usage);
       while (new_usage > peak) {
-        if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+        if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
           break;
       }
     } else {
       // Shrinking: track freed memory
       size_t delta = old_size - size;
-      atomic_fetch_add(&g_mem.total_freed, delta);
-      atomic_fetch_sub(&g_mem.current_usage, delta);
+      atomic_fetch_add_u64(&g_mem.total_freed, delta);
+      atomic_fetch_sub_u64(&g_mem.current_usage, delta);
     }
   } else {
     // Block was not tracked - treat as new allocation
-    atomic_fetch_add(&g_mem.total_allocated, size);
-    size_t new_usage = atomic_fetch_add(&g_mem.current_usage, size) + size;
+    atomic_fetch_add_u64(&g_mem.total_allocated, size);
+    size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, size) + size;
 
     // Update peak usage
-    size_t peak = atomic_load(&g_mem.peak_usage);
+    size_t peak = atomic_load_u64(&g_mem.peak_usage);
     while (new_usage > peak) {
-      if (atomic_compare_exchange_weak(&g_mem.peak_usage, &peak, new_usage))
+      if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
         break;
     }
   }
@@ -952,13 +952,13 @@ void debug_memory_report(void) {
 
     APPEND_REPORT("=== Memory Report ===\n");
 
-    size_t total_allocated = atomic_load(&g_mem.total_allocated);
-    size_t total_freed = atomic_load(&g_mem.total_freed);
-    size_t current_usage = atomic_load(&g_mem.current_usage);
-    size_t peak_usage = atomic_load(&g_mem.peak_usage);
-    size_t malloc_calls = atomic_load(&g_mem.malloc_calls);
-    size_t calloc_calls = atomic_load(&g_mem.calloc_calls);
-    size_t free_calls = atomic_load(&g_mem.free_calls);
+    size_t total_allocated = atomic_load_u64(&g_mem.total_allocated);
+    size_t total_freed = atomic_load_u64(&g_mem.total_freed);
+    size_t current_usage = atomic_load_u64(&g_mem.current_usage);
+    size_t peak_usage = atomic_load_u64(&g_mem.peak_usage);
+    size_t malloc_calls = atomic_load_u64(&g_mem.malloc_calls);
+    size_t calloc_calls = atomic_load_u64(&g_mem.calloc_calls);
+    size_t free_calls = atomic_load_u64(&g_mem.free_calls);
 
     // Calculate total size and count of suppressed allocations
     size_t suppressed_bytes = 0;
