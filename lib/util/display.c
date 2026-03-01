@@ -63,54 +63,45 @@ int display_height(const char *text, int terminal_width) {
   }
 
   int total_lines = 0;
-  const char *segment_start = text;
+  const char *p = text;
 
-  // Process text segment by segment, split by newlines
-  while (*segment_start) {
-    // Find the end of this segment (next newline or end of string)
-    const char *segment_end = segment_start;
-    while (*segment_end && *segment_end != '\n') {
-      segment_end++;
+  // Count lines by processing the text and counting newlines + final segment
+  while (*p) {
+    // Find the end of this line (next newline or end of string)
+    const char *line_end = p;
+    while (*line_end && *line_end != '\n') {
+      line_end++;
     }
 
-    // Calculate display width of this segment (excluding ANSI codes)
-    if (segment_end > segment_start) {
-      // Create temporary null-terminated copy of segment
-      size_t segment_len = segment_end - segment_start;
-      char *segment_copy = SAFE_MALLOC(segment_len + 1, char *);
-      if (segment_copy) {
-        strncpy(segment_copy, segment_start, segment_len);
-        segment_copy[segment_len] = '\0';
+    // Calculate display width of this line
+    size_t line_len = line_end - p;
+    if (line_len > 0) {
+      // Strip ANSI codes and calculate display width
+      char *stripped = ansi_strip_escapes(p, line_len);
+      if (stripped) {
+        int line_width = utf8_display_width(stripped);
+        SAFE_FREE(stripped);
 
-        // Calculate display width using proper UTF-8 aware function
-        int segment_width = display_width(segment_copy);
-        if (segment_width < 0) {
-          segment_width = (int)segment_len;
+        if (line_width > 0) {
+          // Calculate how many display lines this wraps to
+          int display_lines = (line_width + terminal_width - 1) / terminal_width; // Ceiling division
+          total_lines += display_lines;
+        } else {
+          total_lines += 1;
         }
-
-        // Calculate how many lines this segment wraps to
-        int segment_lines =
-            segment_width > 0 ? (segment_width / terminal_width) + (segment_width % terminal_width != 0 ? 1 : 0) : 0;
-        if (segment_lines <= 0) {
-          segment_lines = 1; // At least one line for non-empty segment
-        }
-        total_lines += segment_lines;
-
-        SAFE_FREE(segment_copy);
       } else {
-        // Fallback: assume 1 line per segment if allocation fails
+        // If stripping fails, count as 1 line
         total_lines += 1;
       }
     } else {
-      // Empty segment (e.g., two consecutive newlines) still counts as 1 line
+      // Empty line still counts as 1 line
       total_lines += 1;
     }
 
-    // Move to next segment (skip the newline if present)
-    if (*segment_end == '\n') {
-      segment_start = segment_end + 1;
+    // Move to next line
+    if (*line_end == '\n') {
+      p = line_end + 1;
     } else {
-      // End of string
       break;
     }
   }

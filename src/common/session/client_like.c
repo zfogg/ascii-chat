@@ -577,6 +577,11 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     goto cleanup;
   }
 
+  // Wait for splash animation to finish before destroying display
+  // (splash_anim thread uses the terminal, must not be disrupted by display destroy)
+  splash_intro_done();
+  splash_wait_for_animation();
+
   if (temp_display) {
     session_display_destroy(temp_display);
     temp_display = NULL;
