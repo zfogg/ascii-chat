@@ -7,7 +7,6 @@
  * rwlock implementations to record events and debug information.
  */
 
-#include <stdatomic.h>
 #include <ascii-chat/platform/rwlock.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/time.h>

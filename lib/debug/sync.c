@@ -134,11 +134,12 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
              (unsigned long)rwlock->write_held_by_key);
   }
 
-  if (rwlock->read_lock_count > 0) {
-    snprintf(read_held_str, sizeof(read_held_str), "[READ_LOCKED=%" PRIu64 "]", rwlock->read_lock_count);
+  uint64_t read_count = atomic_load_u64(&rwlock->read_lock_count);
+  if (read_count > 0) {
+    snprintf(read_held_str, sizeof(read_held_str), "[READ_LOCKED=%" PRIu64 "]", read_count);
   }
 
-  if (rwlock->write_held_by_key == 0 && rwlock->read_lock_count == 0) {
+  if (rwlock->write_held_by_key == 0 && read_count == 0) {
     snprintf(status_str, sizeof(status_str), "[FREE]");
   }
 
@@ -428,7 +429,7 @@ static void *debug_print_thread_fn(void *arg) {
     // Handle both scheduled and signal-triggered printing
     mutex_lock(&g_debug_state_request.mutex);
     bool should_run = atomic_load_bool(&g_debug_state_request.should_run);
-    bool signal_triggered = atomic_load(&g_debug_state_request.signal_triggered);
+    bool signal_triggered = atomic_load_bool(&g_debug_state_request.signal_triggered);
     bool should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
 
     if ((should_run || signal_triggered) && !should_exit) {
@@ -447,7 +448,7 @@ static void *debug_print_thread_fn(void *arg) {
 
       mutex_lock(&g_debug_state_request.mutex);
       atomic_store_bool(&g_debug_state_request.should_run, false);
-      atomic_store(&g_debug_state_request.signal_triggered, false);
+      atomic_store_bool(&g_debug_state_request.signal_triggered, false);
       should_exit = atomic_load_bool(&g_debug_state_request.should_exit);
     }
 
@@ -586,7 +587,7 @@ int debug_sync_start_thread(void) {
     g_debug_state_request.initialized = true;
   }
 
-  g_debug_state_request.should_exit = false;
+  atomic_store_bool(&g_debug_state_request.should_exit, false);
   int err = asciichat_thread_create(&g_debug_thread, "debug_sync", debug_print_thread_fn, NULL);
   return err;
 }
@@ -635,7 +636,7 @@ void debug_sync_trigger_print(void) {
   //
   // Signal the condition variable to wake up the debug thread immediately
   // (without waiting for the 100ms timeout).
-  atomic_store(&g_debug_state_request.signal_triggered, true);
+  atomic_store_bool(&g_debug_state_request.signal_triggered, true);
   cond_signal(&g_debug_state_request.cond);
 }
 

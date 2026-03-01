@@ -28,9 +28,9 @@
  * @brief Global atomic pointer to current options
  *
  * This is the heart of the RCU pattern:
- * - Readers use atomic_load (lock-free, fast)
- * - Writers use atomic_exchange (serialized with mutex)
- * - Memory ordering: acquire/release for proper visibility
+ * - Readers use atomic_ptr_load (lock-free, fast)
+ * - Writers use atomic_ptr_exchange (serialized with mutex)
+ * - Memory ordering: sequentially consistent for proper visibility
  */
 static _Atomic(void *) g_options = NULL;
 
@@ -334,11 +334,11 @@ static void deferred_free_all(void) {
 static void options_rcu_atfork_child(void) {
   /* Reset the lifecycle state to allow reinitialization after fork */
   /* This is safe because lifecycle_t is just an atomic int, can be reset directly */
-  atomic_store(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED);
+  atomic_store_int(&g_options_lifecycle.state, LIFECYCLE_UNINITIALIZED);
 
   /* Reset the atomic options pointer to avoid dangling references */
   /* The parent's allocated memory is not accessible/valid in the child */
-  atomic_store(&g_options, NULL);
+  atomic_ptr_store(&g_options, NULL);
 
   /* Don't reset g_init_pid - we'll detect the fork in options_state_init */
 }
@@ -411,7 +411,7 @@ asciichat_error_t options_state_init(void) {
   *initial_opts = options_t_new();
 
   // Publish initial struct (release semantics - make all fields visible to readers)
-  atomic_store_explicit(&g_options, initial_opts, memory_order_release);
+  atomic_ptr_store(&g_options, initial_opts);
 
   g_init_pid = current_pid; // Record PID to detect fork later
   log_dev("Options state initialized with RCU pattern (PID %d)", current_pid);
@@ -430,7 +430,7 @@ asciichat_error_t options_state_set(const options_t *opts) {
   }
 
   // Get current struct (should be the initial zero-initialized one during startup)
-  options_t *current = atomic_load_explicit(&g_options, memory_order_acquire);
+  options_t *current = atomic_ptr_load(&g_options);
 
   // Copy provided options into current struct
   // Note: No need for RCU update here since this is called during initialization

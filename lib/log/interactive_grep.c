@@ -79,9 +79,9 @@ static interactive_grep_state_t g_grep_state = {
     .context_before = 0,
     .context_after = 0,
     .lifecycle = LIFECYCLE_INIT,
-    .needs_rerender = false,
-    .signal_cancelled = false,
-    .mode_atomic = GREP_MODE_INACTIVE,
+    .needs_rerender = {0},
+    .signal_cancelled = {0},
+    .mode_atomic = {0},
     .cli_pattern_auto_populated = false,
 };
 
@@ -158,7 +158,7 @@ asciichat_error_t interactive_grep_init(void) {
   if (!cli_pattern || cli_pattern[0] == '\0') {
     // No CLI pattern - start inactive
     g_grep_state.mode = GREP_MODE_INACTIVE;
-    atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
+    atomic_store_int(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
     lifecycle_init_commit(&g_interactive_grep_lifecycle);
     mutex_unlock(&g_grep_state.mutex);
     return ASCIICHAT_OK;
@@ -169,7 +169,7 @@ asciichat_error_t interactive_grep_init(void) {
   g_grep_state.len = strlen(cli_pattern);
   g_grep_state.cursor = g_grep_state.len;
   g_grep_state.mode = GREP_MODE_ACTIVE;
-  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
+  atomic_store_int(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
 
   // Compile the initial pattern
   grep_parse_result_t parsed = grep_parse_pattern(cli_pattern);
@@ -187,7 +187,7 @@ asciichat_error_t interactive_grep_init(void) {
     g_grep_state.context_after = parsed.context_after;
   }
 
-  atomic_store(&g_grep_state.needs_rerender, true);
+  atomic_store_bool(&g_grep_state.needs_rerender, true);
   lifecycle_init_commit(&g_interactive_grep_lifecycle);
 
   mutex_unlock(&g_grep_state.mutex);
@@ -283,8 +283,8 @@ void interactive_grep_enter_mode(void) {
 
   // Enter input mode
   g_grep_state.mode = GREP_MODE_ENTERING;
-  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ENTERING);
-  atomic_store(&g_grep_state.needs_rerender, true);
+  atomic_store_int(&g_grep_state.mode_atomic, GREP_MODE_ENTERING);
+  atomic_store_bool(&g_grep_state.needs_rerender, true);
 
   mutex_unlock(&g_grep_state.mutex);
 }
@@ -314,8 +314,8 @@ void interactive_grep_exit_mode(bool accept) {
     g_grep_state.cli_pattern_auto_populated = false;
 
     g_grep_state.mode = GREP_MODE_INACTIVE;
-    atomic_store(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
-    atomic_store(&g_grep_state.needs_rerender, true);
+    atomic_store_int(&g_grep_state.mode_atomic, GREP_MODE_INACTIVE);
+    atomic_store_bool(&g_grep_state.needs_rerender, true);
     mutex_unlock(&g_grep_state.mutex);
     return;
   }
@@ -364,8 +364,8 @@ void interactive_grep_exit_mode(bool accept) {
   // For fixed strings, pattern stays in input_buffer and fixed_string=true
 
   g_grep_state.mode = GREP_MODE_ACTIVE;
-  atomic_store(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
-  atomic_store(&g_grep_state.needs_rerender, true);
+  atomic_store_int(&g_grep_state.mode_atomic, GREP_MODE_ACTIVE);
+  atomic_store_bool(&g_grep_state.needs_rerender, true);
 
   mutex_unlock(&g_grep_state.mutex);
 }
@@ -375,25 +375,26 @@ void interactive_grep_exit_mode(bool accept) {
  * ========================================================================== */
 
 bool interactive_grep_is_entering_atomic(void) {
-  return atomic_load(&g_grep_state.mode_atomic) == GREP_MODE_ENTERING;
+  return atomic_load_int(&g_grep_state.mode_atomic) == GREP_MODE_ENTERING;
 }
 
 void interactive_grep_signal_cancel(void) {
-  atomic_store(&g_grep_state.signal_cancelled, true);
+  atomic_store_bool(&g_grep_state.signal_cancelled, true);
 }
 
 bool interactive_grep_check_signal_cancel(void) {
-  return atomic_exchange(&g_grep_state.signal_cancelled, false);
+  bool expected = true;
+  return atomic_cas_bool(&g_grep_state.signal_cancelled, &expected, false);
 }
 
 bool interactive_grep_is_entering(void) {
   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
-  return atomic_load(&g_grep_state.mode_atomic) == GREP_MODE_ENTERING;
+  return atomic_load_int(&g_grep_state.mode_atomic) == GREP_MODE_ENTERING;
 }
 
 bool interactive_grep_is_active(void) {
   // Use atomic read (async-signal-safe) to avoid mutex issues when called from signal handlers
-  return atomic_load(&g_grep_state.mode_atomic) != GREP_MODE_INACTIVE;
+  return atomic_load_int(&g_grep_state.mode_atomic) != GREP_MODE_INACTIVE;
 }
 
 /* ============================================================================
@@ -466,7 +467,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     if (g_grep_state.len == 0) {
       g_grep_state.active_pattern_count = 0;
       mutex_unlock(&g_grep_state.mutex);
-      atomic_store(&g_grep_state.needs_rerender, true);
+      atomic_store_bool(&g_grep_state.needs_rerender, true);
       break;
     }
 
@@ -476,7 +477,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     if (!parsed.valid) {
       // Invalid pattern - keep previous patterns active (don't clear)
       mutex_unlock(&g_grep_state.mutex);
-      atomic_store(&g_grep_state.needs_rerender, true);
+      atomic_store_bool(&g_grep_state.needs_rerender, true);
       break;
     }
 
@@ -516,7 +517,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key) {
     g_grep_state.context_after = parsed.context_after;
 
     mutex_unlock(&g_grep_state.mutex);
-    atomic_store(&g_grep_state.needs_rerender, true);
+    atomic_store_bool(&g_grep_state.needs_rerender, true);
     break;
   case LINE_EDIT_NO_INPUT:
     // No input available
@@ -737,7 +738,7 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
   *out_match_len = 0;
 
   // Use atomic read to avoid mutex contention with keyboard handler
-  int mode = atomic_load(&g_grep_state.mode_atomic);
+  int mode = atomic_load_int(&g_grep_state.mode_atomic);
   if (mode == GREP_MODE_INACTIVE) {
     return false;
   }
@@ -884,9 +885,9 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
  * ========================================================================== */
 
 bool interactive_grep_needs_rerender(void) {
-  bool needs = atomic_load(&g_grep_state.needs_rerender);
+  bool needs = atomic_load_bool(&g_grep_state.needs_rerender);
   if (needs) {
-    atomic_store(&g_grep_state.needs_rerender, false);
+    atomic_store_bool(&g_grep_state.needs_rerender, false);
   }
   return needs;
 }
@@ -897,7 +898,7 @@ bool interactive_grep_needs_rerender(void) {
 
 bool interactive_grep_get_global_highlight(void) {
   // Use atomic read to avoid mutex contention with keyboard handler
-  int mode = atomic_load(&g_grep_state.mode_atomic);
+  int mode = atomic_load_int(&g_grep_state.mode_atomic);
   if (mode == GREP_MODE_INACTIVE) {
     return false;
   }
@@ -912,7 +913,7 @@ bool interactive_grep_get_global_highlight(void) {
 
 void *interactive_grep_get_pattern_singleton(void) {
   // Use atomic read to check if active
-  int mode = atomic_load(&g_grep_state.mode_atomic);
+  int mode = atomic_load_int(&g_grep_state.mode_atomic);
   if (mode == GREP_MODE_INACTIVE) {
     return NULL;
   }
