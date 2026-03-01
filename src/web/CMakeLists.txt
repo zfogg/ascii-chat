@@ -299,20 +299,20 @@ target_link_libraries(wasm-common PRIVATE
 )
 
 # Create WASM mirror module
-add_executable(mirror-wasm
+add_executable(mirror-web
     ${WEB_SRC_MIRROR}
     ${LIB_SRC_MIRROR_ONLY}
     $<TARGET_OBJECTS:wasm-common>
 )
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
-target_compile_definitions(mirror-wasm PRIVATE EMSCRIPTEN_BUILD=1)
+target_compile_definitions(mirror-web PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Mirror mode uses SIMD for video processing
-target_compile_options(mirror-wasm PRIVATE -msimd128 -mavx2)
+target_compile_options(mirror-web PRIVATE -msimd128 -mavx2)
 
 # Link dependencies (built for WASM via FetchContent)
-target_link_libraries(mirror-wasm PRIVATE
+target_link_libraries(mirror-web PRIVATE
     sodium
     pcre2-8
 )
@@ -323,7 +323,7 @@ set(WEB_SRC_CLIENT
 )
 
 # Create WASM client module
-add_executable(client-wasm
+add_executable(client-web
     ${WEB_SRC_CLIENT}
     ${LIB_SRC_CLIENT_CRYPTO}
     ${LIB_SRC_CLIENT_NETWORK}
@@ -331,10 +331,10 @@ add_executable(client-wasm
 )
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
-target_compile_definitions(client-wasm PRIVATE EMSCRIPTEN_BUILD=1)
+target_compile_definitions(client-web PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Link dependencies for client mode
-target_link_libraries(client-wasm PRIVATE
+target_link_libraries(client-web PRIVATE
     sodium
     pcre2-8
     opus
@@ -342,7 +342,7 @@ target_link_libraries(client-wasm PRIVATE
 )
 
 # Add include directories for client mode dependencies
-target_include_directories(client-wasm PRIVATE
+target_include_directories(client-web PRIVATE
     ${zstd_SOURCE_DIR}/lib
     ${opus_SOURCE_DIR}/include
 )
@@ -431,7 +431,7 @@ string(REPLACE ";" "," EXPORTED_FUNCTIONS_CLIENT_CSV "${EXPORTED_FUNCTIONS_CLIEN
 set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,print,printErr")
 
 # Use target_link_options for better cross-platform quoting
-target_link_options(mirror-wasm PRIVATE
+target_link_options(mirror-web PRIVATE
     -sWASM=1
     -sMODULARIZE=1
     -sEXPORT_ES6=1
@@ -448,7 +448,7 @@ target_link_options(mirror-wasm PRIVATE
     --no-entry
 )
 
-target_link_options(client-wasm PRIVATE
+target_link_options(client-web PRIVATE
     -sWASM=1
     -sMODULARIZE=1
     -sEXPORT_ES6=1
@@ -466,11 +466,11 @@ target_link_options(client-wasm PRIVATE
 )
 
 # Set output names to match target names
-set_target_properties(mirror-wasm PROPERTIES OUTPUT_NAME "mirror")
-set_target_properties(client-wasm PROPERTIES OUTPUT_NAME "client")
+set_target_properties(mirror-web PROPERTIES OUTPUT_NAME "mirror")
+set_target_properties(client-web PROPERTIES OUTPUT_NAME "client")
 
 # Copy outputs to web/src/wasm/dist/ (so Vite can import them)
-add_custom_command(TARGET mirror-wasm POST_BUILD
+add_custom_command(TARGET mirror-web POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_BINARY_DIR}/mirror.js
@@ -479,7 +479,7 @@ add_custom_command(TARGET mirror-wasm POST_BUILD
     COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
 )
 
-add_custom_command(TARGET client-wasm POST_BUILD
+add_custom_command(TARGET client-web POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
     COMMAND ${CMAKE_COMMAND} -E copy
         ${CMAKE_CURRENT_BINARY_DIR}/client.js
@@ -489,8 +489,8 @@ add_custom_command(TARGET client-wasm POST_BUILD
 )
 
 # Combined WASM target (builds both mirror and client)
-add_custom_target(wasm
-    DEPENDS mirror-wasm client-wasm
+add_custom_target(web
+    DEPENDS mirror-web client-web
     COMMENT "All WASM modules built"
 )
 

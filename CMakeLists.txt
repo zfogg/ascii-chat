@@ -363,7 +363,11 @@ ascii_query_finalize()
 # =============================================================================
 if(BUILD_WEB)
     message(STATUS "Web components ${BoldGreen}enabled${ColorReset} (BUILD_WEB=ON)")
-    add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
+    # Only use add_subdirectory for native build if Emscripten not found
+    # (Emscripten build is handled separately with correct toolchain below)
+    if(NOT EMSCRIPTEN_TOOLCHAIN_FILE)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/src/web ${CMAKE_BINARY_DIR}/web)
+    endif()
 else()
     message(STATUS "Web components ${BoldYellow}disabled${ColorReset} (BUILD_WEB=OFF)")
 endif()
