@@ -423,7 +423,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         }
       } else {
         // Content changed - overwrite and clear tail.
-        fprintf(stdout, "%s\x1b[K\n", msg);
+        fprintf(stdout, "%s\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
@@ -451,7 +451,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         // Truncate to fit: progressively test shorter substrings until one fits
         int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
         if (target_width <= 0) {
-          fprintf(stdout, "...\x1b[K\n");
+          fprintf(stdout, "...\n");
         } else {
           size_t src_len = strlen(prev_msg);
           bool found = false;
@@ -468,19 +468,19 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
             if (test_width <= target_width) {
               // Found a length that fits
-              fprintf(stdout, "%s...\x1b[K\n", test_buf);
+              fprintf(stdout, "%s...\n", test_buf);
               found = true;
               break;
             }
           }
 
           if (!found) {
-            fprintf(stdout, "...\x1b[K\n");
+            fprintf(stdout, "...\n");
           }
         }
       } else {
         // Fits without truncation
-        fprintf(stdout, "%s\x1b[K\n", prev_msg);
+        fprintf(stdout, "%s\n", prev_msg);
       }
 
       remaining--;
@@ -488,7 +488,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Fill remaining blank lines
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\x1b[K\n");
+      fprintf(stdout, "\n");
     }
 
     g_prev_log_count = log_idx;
