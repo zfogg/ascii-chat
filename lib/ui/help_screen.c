@@ -340,16 +340,20 @@ void session_display_render_help(session_display_ctx_t *ctx) {
   const int box_height = 25; // Total rows including borders
 
   // Calculate centering position (true mathematical centering)
+  // ANSI coordinates are 1-indexed, so we add 1 to center properly
+
   // Horizontal centering: center of box at center of terminal
+  // Columns are 0-indexed in calculation but 1-indexed in ANSI codes, so no +1 needed here
   int start_col = (term_width - box_width) / 2;
   if (start_col < 0) {
     start_col = 0;
   }
 
   // Vertical centering: center of box at center of terminal
-  int start_row = (term_height - box_height) / 2;
-  if (start_row < 0) {
-    start_row = 0;
+  // Rows are 1-indexed in ANSI codes, so add 1 to shift from 0-indexed calculation
+  int start_row = (term_height - box_height) / 2 + 1;
+  if (start_row < 1) {
+    start_row = 1;
   }
 
   // Build help screen content
