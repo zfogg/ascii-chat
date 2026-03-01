@@ -674,7 +674,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // Register client with named debug system using the generated name
-  NAMED_REGISTER_CLIENT(client, client->display_name);
+  (void)NAMED_REGISTER_CLIENT(client, client->display_name);
 
   log_info("Added new client %s from %s:%d (socket=%d, slot=%d)", new_client_id, client_ip, port, socket, slot);
   log_debug("Client slot assigned: client_id=%s assigned to slot %d, socket=%d", new_client_id, slot, socket);

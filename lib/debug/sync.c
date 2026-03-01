@@ -456,6 +456,7 @@ static void *debug_print_thread_fn(void *arg) {
     debug_sync_check_cond_deadlocks();
     mutex_stack_detect_deadlocks();
 
+#ifndef NDEBUG
     // Periodic memory report (if enabled)
     if (g_debug_state_request.memory_report_interval_ns > 0) {
       uint64_t now = time_get_ns();
@@ -504,6 +505,12 @@ static void *debug_print_thread_fn(void *arg) {
       uint64_t interval_ns = (uint64_t)(opts->debug_memory_report_interval * NS_PER_SEC_INT);
       debug_sync_set_memory_report_interval(interval_ns);
     }
+#else
+    options_t *opts = options_get();
+    if (!opts) {
+      continue;
+    }
+#endif
   }
 
   return NULL;

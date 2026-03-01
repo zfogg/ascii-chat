@@ -477,6 +477,14 @@ endif()
 # Now create the module with WebRTC includes in scope
 create_ascii_chat_module(ascii-chat-audio "${AUDIO_SRCS}")
 
+# Add library search directories for pkg-config found libraries
+if(PORTAUDIO_LIBRARY_DIRS)
+    link_directories(${PORTAUDIO_LIBRARY_DIRS})
+endif()
+if(OPUS_LIBRARY_DIRS)
+    link_directories(${OPUS_LIBRARY_DIRS})
+endif()
+
 # For OBJECT libs, link external deps only
 target_link_libraries(ascii-chat-audio ${PORTAUDIO_LIBRARIES} ${OPUS_LIBRARIES} webrtc_audio_processing)
 
@@ -1026,9 +1034,7 @@ else()
         # Link BearSSL (required)
         target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
         # Audio codec and processing
-        if(OPUS_LIBRARIES)
-            target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
-        endif()
+        target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
         # Link mimalloc into shared library (required for SAFE_MALLOC macros)
         # Use force_load/whole-archive to export all mimalloc symbols from the shared library
         if(USE_MIMALLOC)

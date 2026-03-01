@@ -346,7 +346,7 @@ client_audio_pipeline_t *client_audio_pipeline_create(const client_audio_pipelin
   log_info("Audio pipeline created: %dHz, %dms frames, %dkbps Opus", p->config.sample_rate, p->config.frame_size_ns,
            p->config.opus_bitrate / 1000);
 
-  NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, "audio_pipeline");
+  (void)NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, "audio_pipeline");
 
   return p;
 
