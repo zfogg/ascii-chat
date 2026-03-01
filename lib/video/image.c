@@ -20,8 +20,7 @@
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/video/image.h>
 #include <ascii-chat/video/ascii.h>
-#include <ascii-chat/video/simd/ascii_simd.h>
-#include <ascii-chat/video/simd/common.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 

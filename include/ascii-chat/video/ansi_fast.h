@@ -24,7 +24,7 @@
  * @date September 2025
  */
 
-#include "../video/simd/ascii_simd.h"
+#include "../video/ascii/common.h"
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>

@@ -6,7 +6,7 @@
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/util/math.h>
 #include <ascii-chat/platform/init.h>
@@ -18,7 +18,7 @@
 #include <limits.h>
 
 // 256-color lookup table (optional)
-static char color256_strings[256][16]; // Pre-built SGR strings like "\033[38;5;123m"
+static char color256_strings[256][16];    // Pre-built SGR strings like "\033[38;5;123m"
 static char color256_bg_strings[256][16]; // Pre-built SGR strings like "\033[48;5;123m"
 static lifecycle_t g_color256_lc = LIFECYCLE_INIT;
 

@@ -6,7 +6,7 @@
 
 #include <ascii-chat/video/output_buffer.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/video/simd/ascii_simd.h>
+#include <ascii-chat/video/ascii/common.h>
 
 /*****************************************************************************/
 // char* output buffer helpers
