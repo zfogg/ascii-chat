@@ -440,6 +440,7 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         }
       }
 
+
       /* Check if this is a registered file descriptor */
       if (!is_already_formatted && digit_count > 0 && has_fd_prefix(message, int_start)) {
         const char *name = named_get_fd(fd_value);
@@ -567,6 +568,66 @@ int log_named_format_message(const char *message, char *output, size_t output_si
         break;
       }
     } else {
+      /* Check if this is the start of "type=DIGIT" pattern where the digit is a packet type
+       * Skip if "type=" is inside parentheses (e.g., already formatted as "(type=VALUE)") */
+      if (*p == 't' && p + 4 < message + strlen(message)) {
+        const char *check = p;
+        if (check[0] == 't' && check[1] == 'y' && check[2] == 'p' && check[3] == 'e' && check[4] == '=') {
+          /* Check if "type=" is preceded by "(" which indicates it's inside parentheses from previous formatting */
+          bool inside_parens = false;
+          if (p > message) {
+            const char *back = p - 1;
+            while (back > message && isspace(*back)) {
+              back--;
+            }
+            if (back >= message && *back == '(') {
+              inside_parens = true;
+            }
+          }
+
+          if (!inside_parens) {
+            /* This looks like "type=" - parse what follows */
+            const char *digit_start = check + 5;
+            int pkt_value = 0;
+            int digit_count = 0;
+            const char *digit_check = digit_start;
+            while (*digit_check && isdigit(*digit_check) && digit_count < 6) {
+              pkt_value = pkt_value * 10 + (*digit_check - '0');
+              digit_check++;
+              digit_count++;
+            }
+
+            if (digit_count > 0) {
+              /* Check if this value is a registered packet type */
+              const char *name = named_get_packet_type(pkt_value);
+              if (name) {
+                /* Format and output the transformation */
+                const char *fmt_spec = named_get_packet_type_format_spec(pkt_value);
+                if (!fmt_spec) {
+                  fmt_spec = "%d";
+                }
+
+                char temp_output[512];
+                char id_buffer[64];
+                int id_written = snprintf(id_buffer, sizeof(id_buffer), fmt_spec, pkt_value);
+                if (id_written > 0 && id_written < (int)sizeof(id_buffer)) {
+                  int temp_written = snprintf(temp_output, sizeof(temp_output), "packet_type/%s (type=%s)", name, id_buffer);
+                  if (temp_written > 0 && (size_t)temp_written < sizeof(temp_output)) {
+                    if (out_pos + temp_written < output_size - 1) {
+                      memcpy(output + out_pos, temp_output, temp_written);
+                      out_pos += temp_written;
+                      p = digit_check; /* Skip past the entire "type=DIGITS" in input */
+                      any_transformed = true;
+                      continue;
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
       /* Regular character - copy it */
       output[out_pos++] = *p++;
     }
