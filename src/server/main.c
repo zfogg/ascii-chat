@@ -126,6 +126,7 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/atomic.h>
 
 /* ============================================================================
  * Global State
@@ -1227,6 +1228,15 @@ static void *status_screen_thread(void *arg) {
   if (devnull >= 0) {
     dup2(devnull, STDERR_FILENO);
     close(devnull);
+  }
+
+  // Register keyboard atomics with named debug registry
+  static bool keyboard_atomics_registered = false;
+  if (!keyboard_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_keyboard_thread_running, "server_keyboard_thread_running_flag");
+    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_head, "server_keyboard_queue_head_position");
+    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_tail, "server_keyboard_queue_tail_position");
+    keyboard_atomics_registered = true;
   }
 
   // Initialize keyboard for interactive grep (cross-platform)
