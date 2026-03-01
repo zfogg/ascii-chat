@@ -174,14 +174,6 @@ keyboard_key_t keyboard_read_nonblocking(void) {
   // otherwise use stdin
   int read_fd = (g_tty_fd >= 0) ? g_tty_fd : STDIN_FILENO;
 
-  static uint64_t last_log_ns = 0;
-  uint64_t now_ns = time_get_ns();
-  bool should_log_debug = (now_ns - last_log_ns) > (100 * NS_PER_MS_INT); // Log every 100ms max
-  if (should_log_debug) {
-    log_debug("keyboard_read_nonblocking: Starting - using fd=%d (g_tty_fd=%d stdin=%d)", read_fd, g_tty_fd,
-              STDIN_FILENO);
-  }
-
   // Check if input is available using select with zero timeout
   fd_set readfds;
   struct timeval timeout;
@@ -194,16 +186,7 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
   int select_result = select(read_fd + 1, &readfds, NULL, NULL, &timeout);
   if (select_result <= 0) {
-    if (should_log_debug) {
-      log_debug("keyboard_read_nonblocking: select() returned %d (no input or error), errno=%d", select_result,
-                select_result < 0 ? errno : 0);
-      last_log_ns = now_ns;
-    }
     return KEY_NONE; // No input available or error
-  }
-
-  if (should_log_debug) {
-    log_debug("keyboard_read_nonblocking: select() found input, reading...");
   }
 
   // Input is available, read one byte
@@ -214,10 +197,8 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-  if (should_log_debug) {
-    log_debug("keyboard_read_nonblocking: Successfully read char 0x%02x (%c)", ch, (ch >= 32 && ch < 127) ? ch : '?');
-    last_log_ns = now_ns;
-  }
+  log_info("keyboard_read_nonblocking: Read char 0x%02x (%c) from fd=%d", ch, (ch >= 32 && ch < 127) ? ch : '?',
+           read_fd);
 
   // Handle special characters first
   if (ch == ' ') {

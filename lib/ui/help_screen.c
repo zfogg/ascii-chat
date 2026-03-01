@@ -317,12 +317,16 @@ static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SI
  */
 void session_display_render_help(session_display_ctx_t *ctx) {
   if (!ctx) {
+    log_error("session_display_render_help: ctx is NULL!");
     return;
   }
+
+  log_info("session_display_render_help: STARTING");
 
   // Get terminal dimensions
   int term_width = (int)terminal_get_effective_width();
   int term_height = (int)terminal_get_effective_height();
+  log_info("session_display_render_help: term_width=%d, term_height=%d", term_width, term_height);
 
   // Use available terminal width, capped at preferred width
   int box_width = term_width;
@@ -520,18 +524,24 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
 #undef APPEND
 
+  log_info("session_display_render_help: buffer prepared, buf_pos=%zu", buf_pos);
+
   // Write buffer to terminal
   session_display_write_raw(ctx, buffer, buf_pos);
+  log_info("session_display_render_help: buffer written to terminal");
 
   // Flush output
   if (ctx && session_display_has_tty(ctx)) {
     int tty_fd = session_display_get_tty_fd(ctx);
+    log_info("session_display_render_help: tty_fd=%d", tty_fd);
     if (tty_fd >= 0) {
       (void)terminal_flush(tty_fd);
+      log_info("session_display_render_help: terminal flushed");
     }
   }
 
   SAFE_FREE(buffer);
+  log_info("session_display_render_help: COMPLETE");
 }
 
 /* ============================================================================
