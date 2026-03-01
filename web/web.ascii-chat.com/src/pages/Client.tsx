@@ -1,10 +1,10 @@
 import {
+  useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
-  useCallback,
-  useMemo,
 } from "react";
 
 // Extend Window interface for frame metrics
@@ -19,29 +19,29 @@ declare global {
 }
 import {
   cleanupClientWasm,
-  ConnectionState,
-  PacketType,
-  ColorMode as ClientColorMode,
   ColorFilter as ClientColorFilter,
+  ColorMode as ClientColorMode,
+  ConnectionState,
   isWasmReady as isClientWasmReady,
+  PacketType,
 } from "../wasm/client";
 import {
-  setColorMode,
-  getColorMode,
-  setColorFilter,
   getColorFilter,
-  setPalette,
-  getPalette,
-  setPaletteChars,
-  getPaletteChars,
-  setMatrixRain,
-  getMatrixRain,
-  setFlipX,
-  getFlipX,
-  setTargetFps,
-  getTargetFps,
-  setDimensions,
+  getColorMode,
   getDimensions,
+  getFlipX,
+  getMatrixRain,
+  getPalette,
+  getPaletteChars,
+  getTargetFps,
+  setColorFilter,
+  setColorMode,
+  setDimensions,
+  setFlipX,
+  setMatrixRain,
+  setPalette,
+  setPaletteChars,
+  setTargetFps,
 } from "../wasm/settings";
 import { ClientConnection } from "../network/ClientConnection";
 import { parseAsciiFrame } from "../network/AsciiFrameParser";
@@ -376,10 +376,16 @@ export function ClientPage() {
             // Check renderer dimensions
             const rendererDims = rendererRef.current?.getDimensions();
             console.log(
-              `[Client] Renderer dimensions: ${rendererDims ? `${rendererDims.cols}x${rendererDims.rows}` : "null/undefined"}`,
+              `[Client] Renderer dimensions: ${
+                rendererDims
+                  ? `${rendererDims.cols}x${rendererDims.rows}`
+                  : "null/undefined"
+              }`,
             );
             console.log(
-              `[Client] Renderer ref available: ${rendererRef.current ? "yes" : "no"}`,
+              `[Client] Renderer ref available: ${
+                rendererRef.current ? "yes" : "no"
+              }`,
             );
 
             // Send terminal capabilities after handshake
@@ -450,7 +456,9 @@ export function ClientPage() {
                   recentTimes[recentTimes.length - 1]! - recentTimes[0]!;
                 const framesPerSecond = (9 / timeDiff) * 1000; // 9 intervals over 10 frames
                 console.log(
-                  `[Client] Frame arrival rate: ${framesPerSecond.toFixed(1)} FPS (received ${receivedFrameCountRef.current} total frames)`,
+                  `[Client] Frame arrival rate: ${framesPerSecond.toFixed(
+                    1,
+                  )} FPS (received ${receivedFrameCountRef.current} total frames)`,
                 );
               }
             }
@@ -598,7 +606,11 @@ export function ClientPage() {
         const renderFps = (diagnosticFrameCountRef.current / elapsed) * 1000;
         const uniqueFrames = Object.keys(frameHashesRef.current).length;
         console.log(
-          `[Client] Rendered ${diagnosticFrameCountRef.current} frames in ${elapsed.toFixed(0)}ms = ${renderFps.toFixed(1)} FPS (${uniqueFrames} unique frame hashes)`,
+          `[Client] Rendered ${diagnosticFrameCountRef.current} frames in ${elapsed.toFixed(
+            0,
+          )}ms = ${renderFps.toFixed(
+            1,
+          )} FPS (${uniqueFrames} unique frame hashes)`,
         );
         console.log(
           `[Client] Frame hash distribution:`,
@@ -650,7 +662,9 @@ export function ClientPage() {
       if (now - lastLogTime > 100) {
         lastLogTime = now;
         console.log(
-          `[Client] RAF cycle: calls=${captureLoopCountRef.current}, frames_sent=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, video_updates=${videFrameUpdateCountRef.current}, ready=${!!clientRef.current && connectionState === ConnectionState.CONNECTED}`,
+          `[Client] RAF cycle: calls=${captureLoopCountRef.current}, frames_sent=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, video_updates=${videFrameUpdateCountRef.current}, ready=${
+            !!clientRef.current && connectionState === ConnectionState.CONNECTED
+          }`,
         );
       }
 
@@ -671,11 +685,15 @@ export function ClientPage() {
               videFrameUpdateCountRef.current++;
               lastFrameHashRef.current = frameHash;
               console.log(
-                `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(16)}, size=${frame.data.length}`,
+                `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(
+                  16,
+                )}, size=${frame.data.length}`,
               );
             } else {
               console.log(
-                `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(16)}, size=${frame.data.length}`,
+                `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(
+                  16,
+                )}, size=${frame.data.length}`,
               );
             }
 
@@ -820,11 +838,14 @@ export function ClientPage() {
       await Promise.race([metadataPromise, timeoutPromise]);
 
       console.log(
-        `[startWebcam] About to start capture loop, videoRef=${videoRef.current ? "OK" : "NULL"}, canvasRef=${canvasRef.current ? "OK" : "NULL"}`,
+        `[startWebcam] About to start capture loop, videoRef=${
+          videoRef.current ? "OK" : "NULL"
+        }, canvasRef=${canvasRef.current ? "OK" : "NULL"}`,
       );
       if (videoRef.current) {
         console.log(
-          `[startWebcam] Video: playing=${!videoRef.current.paused}, width=${videoRef.current.videoWidth}, height=${videoRef.current.videoHeight}`,
+          `[startWebcam] Video: playing=${!videoRef.current
+            .paused}, width=${videoRef.current.videoWidth}, height=${videoRef.current.videoHeight}`,
         );
       }
 
@@ -852,13 +873,7 @@ export function ClientPage() {
       console.error("[Client] Error:", err);
       setError(errMsg);
     }
-  }, [
-    connectionState,
-    settings.width,
-    settings.height,
-    settings.targetFps,
-    startRenderLoop,
-  ]);
+  }, [connectionState, settings.width, settings.height, settings.targetFps]);
 
   const stopWebcam = useCallback(() => {
     if (animationFrameRef.current !== null) {
@@ -944,7 +959,9 @@ export function ClientPage() {
   // Start render loop when connected (independent of webcam)
   useEffect(() => {
     if (connectionState === ConnectionState.CONNECTED) {
-      console.log("[Client] Connected, starting render loop for server frames...");
+      console.log(
+        "[Client] Connected, starting render loop for server frames...",
+      );
       startRenderLoop();
     }
     // Note: startRenderLoop is NOT in deps array to avoid circular dependency issues
