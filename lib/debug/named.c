@@ -529,95 +529,10 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
 }
 
 void named_registry_register_packet_types(void) {
-  // Import packet type enum to register all values
-  // This ensures all packet types are programmatically registered and discoverable
-
-  // Packet type enum values from include/ascii-chat/network/packet.h
-  // Format: key="PACKET_TYPE=%d", name="PACKET_TYPE_%d"
-
-#define REGISTER_PKT_TYPE(value, name_suffix)                                                                          \
-  do {                                                                                                                 \
-    char key_buf[64], name_buf[64];                                                                                    \
-    snprintf(key_buf, sizeof(key_buf), "PACKET_TYPE=%d", (value));                                                     \
-    snprintf(name_buf, sizeof(name_buf), "%s", (name_suffix));                                                         \
-    named_register((uintptr_t)(value), key_buf, "packet_type", "%d", __FILE__, __LINE__, __func__);                    \
-  } while (0)
-
-  // Register all packet types from the enum
-  REGISTER_PKT_TYPE(1, "PROTOCOL_VERSION");
-  REGISTER_PKT_TYPE(1000, "CRYPTO_CLIENT_HELLO");
-  REGISTER_PKT_TYPE(1100, "CRYPTO_CAPABILITIES");
-  REGISTER_PKT_TYPE(1101, "CRYPTO_PARAMETERS");
-  REGISTER_PKT_TYPE(1102, "CRYPTO_KEY_EXCHANGE_INIT");
-  REGISTER_PKT_TYPE(1103, "CRYPTO_KEY_EXCHANGE_RESP");
-  REGISTER_PKT_TYPE(1104, "CRYPTO_AUTH_CHALLENGE");
-  REGISTER_PKT_TYPE(1105, "CRYPTO_AUTH_RESPONSE");
-  REGISTER_PKT_TYPE(1106, "CRYPTO_AUTH_FAILED");
-  REGISTER_PKT_TYPE(1107, "CRYPTO_SERVER_AUTH_RESP");
-  REGISTER_PKT_TYPE(1108, "CRYPTO_HANDSHAKE_COMPLETE");
-  REGISTER_PKT_TYPE(1109, "CRYPTO_NO_ENCRYPTION");
-  REGISTER_PKT_TYPE(1200, "ENCRYPTED");
-  REGISTER_PKT_TYPE(1201, "CRYPTO_REKEY_REQUEST");
-  REGISTER_PKT_TYPE(1202, "CRYPTO_REKEY_RESPONSE");
-  REGISTER_PKT_TYPE(1203, "CRYPTO_REKEY_COMPLETE");
-  REGISTER_PKT_TYPE(2000, "SIZE_MESSAGE");
-  REGISTER_PKT_TYPE(2001, "AUDIO_MESSAGE");
-  REGISTER_PKT_TYPE(2002, "TEXT_MESSAGE");
-  REGISTER_PKT_TYPE(2003, "ERROR_MESSAGE");
-  REGISTER_PKT_TYPE(2004, "REMOTE_LOG");
-  REGISTER_PKT_TYPE(3000, "ASCII_FRAME");
-  REGISTER_PKT_TYPE(3001, "IMAGE_FRAME");
-  REGISTER_PKT_TYPE(4000, "AUDIO_BATCH");
-  REGISTER_PKT_TYPE(4001, "AUDIO_OPUS_BATCH");
-  REGISTER_PKT_TYPE(5000, "CLIENT_CAPABILITIES");
-  REGISTER_PKT_TYPE(5001, "PING");
-  REGISTER_PKT_TYPE(5002, "PONG");
-  REGISTER_PKT_TYPE(5003, "CLIENT_JOIN");
-  REGISTER_PKT_TYPE(5004, "CLIENT_LEAVE");
-  REGISTER_PKT_TYPE(5005, "STREAM_START");
-  REGISTER_PKT_TYPE(5006, "STREAM_STOP");
-  REGISTER_PKT_TYPE(5007, "CLEAR_CONSOLE");
-  REGISTER_PKT_TYPE(5008, "SERVER_STATE");
-  REGISTER_PKT_TYPE(6000, "ACIP_SESSION_CREATE");
-  REGISTER_PKT_TYPE(6001, "ACIP_SESSION_CREATED");
-  REGISTER_PKT_TYPE(6002, "ACIP_SESSION_LOOKUP");
-  REGISTER_PKT_TYPE(6003, "ACIP_SESSION_INFO");
-  REGISTER_PKT_TYPE(6004, "ACIP_SESSION_JOIN");
-  REGISTER_PKT_TYPE(6005, "ACIP_SESSION_JOINED");
-  REGISTER_PKT_TYPE(6006, "ACIP_SESSION_LEAVE");
-  REGISTER_PKT_TYPE(6007, "ACIP_SESSION_END");
-  REGISTER_PKT_TYPE(6008, "ACIP_SESSION_RECONNECT");
-  REGISTER_PKT_TYPE(6009, "ACIP_WEBRTC_SDP");
-  REGISTER_PKT_TYPE(6010, "ACIP_WEBRTC_ICE");
-  REGISTER_PKT_TYPE(6020, "ACIP_STRING_RESERVE");
-  REGISTER_PKT_TYPE(6021, "ACIP_STRING_RESERVED");
-  REGISTER_PKT_TYPE(6022, "ACIP_STRING_RENEW");
-  REGISTER_PKT_TYPE(6023, "ACIP_STRING_RELEASE");
-  REGISTER_PKT_TYPE(6050, "ACIP_PARTICIPANT_LIST");
-  REGISTER_PKT_TYPE(6051, "ACIP_RING_COLLECT");
-  REGISTER_PKT_TYPE(6060, "ACIP_NETWORK_QUALITY");
-  REGISTER_PKT_TYPE(6061, "ACIP_HOST_ANNOUNCEMENT");
-  REGISTER_PKT_TYPE(6062, "ACIP_HOST_DESIGNATED");
-  REGISTER_PKT_TYPE(6063, "ACIP_SETTINGS_SYNC");
-  REGISTER_PKT_TYPE(6064, "ACIP_SETTINGS_ACK");
-  REGISTER_PKT_TYPE(6065, "ACIP_HOST_LOST");
-  REGISTER_PKT_TYPE(6066, "ACIP_FUTURE_HOST_ELECTED");
-  REGISTER_PKT_TYPE(6067, "ACIP_PARTICIPANT_JOINED");
-  REGISTER_PKT_TYPE(6068, "ACIP_PARTICIPANT_LEFT");
-  REGISTER_PKT_TYPE(6070, "ACIP_BANDWIDTH_TEST");
-  REGISTER_PKT_TYPE(6071, "ACIP_BANDWIDTH_RESULT");
-  REGISTER_PKT_TYPE(6075, "ACIP_BROADCAST_ACK");
-  REGISTER_PKT_TYPE(6100, "RING_MEMBERS");
-  REGISTER_PKT_TYPE(6101, "STATS_COLLECTION_START");
-  REGISTER_PKT_TYPE(6102, "STATS_UPDATE");
-  REGISTER_PKT_TYPE(6103, "RING_ELECTION_RESULT");
-  REGISTER_PKT_TYPE(6104, "STATS_ACK");
-  REGISTER_PKT_TYPE(6190, "ACIP_DISCOVERY_PING");
-  REGISTER_PKT_TYPE(6199, "ACIP_ERROR");
-
-#undef REGISTER_PKT_TYPE
-
-  log_debug("Registered %d packet types in named registry", 68); // Count of all packet types
+  // Packet types are static enum values, not heap allocations.
+  // They should not be tracked in the named registry as "unfreed pointers"
+  // since they were never allocated memory to begin with.
+  // This is a no-op.
 }
 
 // ============================================================================
