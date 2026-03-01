@@ -337,7 +337,9 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
   // Help screen box dimensions (24 rows total: border + title + nav (7 lines) + separator + settings + blank + footer +
   // border)
-  const int box_height = 25; // Total rows including borders
+  // NOTE: This should be 24 based on the comment, but using 23 to account for the rendering
+  // starting at start_row + 1 (not start_row + 0). The actual visible box is 23 rows tall.
+  const int box_height = 23; // Actual visible rows (rendering starts at start_row + 1)
 
   // Calculate centering position (true mathematical centering)
   // Horizontal centering
@@ -346,12 +348,8 @@ void session_display_render_help(session_display_ctx_t *ctx) {
     start_col = 0;
   }
 
-  // Vertical centering: shift up by 2 lines to account for rendering offset
-  // NOTE: The -2 is a magic number. We don't fully understand why this offset
-  // is needed to achieve perfect vertical centering, but empirically it works.
-  // Without it, the help screen appears 2 lines too far down.
-  // TODO: Investigate why the mathematical centering formula requires this offset
-  int start_row = (term_height - box_height) / 2 - 2;
+  // Vertical centering: simple mathematical formula
+  int start_row = (term_height - box_height) / 2;
   if (start_row < 0) {
     start_row = 0;
   }
