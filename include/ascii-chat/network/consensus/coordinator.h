@@ -17,7 +17,7 @@
 
 #include "state.h"
 #include "topology.h"
-#include "packets.h"
+#include "metrics.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <stdint.h>
 #include <stdbool.h>

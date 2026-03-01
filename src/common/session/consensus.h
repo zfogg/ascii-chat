@@ -24,7 +24,7 @@
 #pragma once
 
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/network/consensus/packets.h>
+#include <ascii-chat/network/consensus/metrics.h>
 #include <stdint.h>
 #include <stdbool.h>
 

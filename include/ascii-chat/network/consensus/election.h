@@ -7,7 +7,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "packets.h"
+#include "metrics.h"
 #include <ascii-chat/common.h>
 
 /**

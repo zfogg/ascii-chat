@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "packets.h"
+#include "metrics.h"
 #include "topology.h"
 #include <ascii-chat/asciichat_errno.h>
 #include <stdint.h>

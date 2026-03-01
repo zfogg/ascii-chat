@@ -16,9 +16,36 @@
 
 #pragma once
 
-#include "packets.h"
 #include <ascii-chat/asciichat_errno.h>
+#include <stdint.h>
 #include <stddef.h>
+
+#ifdef _WIN32
+#pragma pack(push, 1)
+#endif
+
+/**
+ * @brief Network quality metrics for a single participant
+ *
+ * Used for host selection in consensus algorithm. Includes NAT classification,
+ * bandwidth estimates, latency, and probe success rates.
+ */
+typedef struct {
+  uint8_t participant_id[16];     ///< UUID of participant
+  uint8_t nat_tier;               ///< 0=LAN, 1=Public, 2=UPnP, 3=STUN, 4=TURN
+  uint32_t upload_kbps;           ///< Upload bandwidth in Kbps (network byte order)
+  uint32_t rtt_ns;                ///< RTT to current host in nanoseconds (network byte order)
+  uint8_t stun_probe_success_pct; ///< 0-100: percentage of successful STUN probes
+  char public_address[64];        ///< Detected public IP address
+  uint16_t public_port;           ///< Detected public port (network byte order)
+  uint8_t connection_type;        ///< Direct=0, UPnP=1, STUN=2, TURN=3
+  uint64_t measurement_time_ns;   ///< Unix ns when measured (network byte order)
+  uint64_t measurement_window_ns; ///< Duration of measurement in ns (network byte order)
+} __attribute__((packed)) participant_metrics_t;
+
+#ifdef _WIN32
+#pragma pack(pop)
+#endif
 
 #ifdef __cplusplus
 extern "C" {
