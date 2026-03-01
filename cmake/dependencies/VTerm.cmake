@@ -3,15 +3,35 @@
 # =============================================================================
 # Cross-platform configuration for libvterm terminal emulation
 #
+# For musl builds: libvterm is not built from source (it depends on GTK ecosystem)
+# For native builds: Uses system package manager
+#
 # Outputs (variables set by this file):
 #   - VTERM_LDFLAGS: libvterm libraries to link
 #   - VTERM_INCLUDE_DIRS: libvterm include directories
+#   - RENDER_FILE_LIBS: Combined libraries for render-file backend
+#   - RENDER_FILE_INCLUDES: Combined include directories for render-file backend
+#   - GHOSTTY_LIBS: Backwards compatibility alias for RENDER_FILE_LIBS
+#   - GHOSTTY_INCLUDES: Backwards compatibility alias for RENDER_FILE_INCLUDES
 # =============================================================================
 
 # Include FreeType2 and Fontconfig dependencies
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FreeType2.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Fontconfig.cmake)
 
+# Musl builds: libvterm is not built from source (no GTK ecosystem)
+if(USE_MUSL)
+    message(STATUS "${BoldYellow}⚠${ColorReset} libvterm: Not built for musl (GTK ecosystem excluded)")
+    set(VTERM_LDFLAGS "")
+    set(VTERM_INCLUDE_DIRS "")
+    set(RENDER_FILE_LIBS "")
+    set(RENDER_FILE_INCLUDES "")
+    set(GHOSTTY_LIBS "")
+    set(GHOSTTY_INCLUDES "")
+    return()
+endif()
+
+# Non-musl builds: Use system package manager
 if(UNIX AND NOT APPLE)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)

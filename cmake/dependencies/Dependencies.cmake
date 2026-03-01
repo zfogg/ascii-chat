@@ -9,7 +9,7 @@
 # Platform-specific dependency management:
 #   - Windows: Uses vcpkg for package management
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
-#   - Linux (musl): Dependencies built from source (see MuslDependencies.cmake)
+#   - Linux (musl): Dependencies built from source (see MuslDep.cmake in cmake/utils/)
 #
 # Prerequisites (must be set before including this file):
 #   - WIN32, UNIX, APPLE: Platform detection variables
@@ -96,6 +96,24 @@ endif()
 
 # FFmpeg - Media file decoding (includes HEVC codec support)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
+
+# ALSA - Advanced Linux Sound Architecture (Linux only)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/ALSA.cmake)
+
+# libexecinfo - Backtrace support (musl only)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libexecinfo.cmake)
+
+# Abseil - Google C++ library (WebRTC dependency)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Abseil.cmake)
+
+# FreeType2 - Font rasterization for render-file
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FreeType2.cmake)
+
+# Fontconfig - Font configuration for render-file
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Fontconfig.cmake)
+
+# VTerm - Terminal emulation for render-file (depends on FreeType2/Fontconfig)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/VTerm.cmake)
 
 # =============================================================================
 # Test Dependencies

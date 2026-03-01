@@ -24,13 +24,107 @@
 # =============================================================================
 
 # =============================================================================
-# Skip system search if using musl (built in MuslDependencies.cmake)
+# Handle musl builds - SQLite3 is built from source at configure time
 # =============================================================================
 if(USE_MUSL)
-    if(SQLITE3_FOUND)
-        message(STATUS "${BoldGreen}✓${ColorReset} SQLite3 (musl): using musl-built static library")
-        return()
+    message(STATUS "Configuring ${BoldBlue}SQLite3${ColorReset} from source...")
+
+    set(SQLITE3_PREFIX "${MUSL_DEPS_DIR_STATIC}/sqlite3")
+    set(SQLITE3_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/sqlite3-build")
+    set(SQLITE3_SOURCE_DIR "${SQLITE3_BUILD_DIR}/src/sqlite3")
+
+    # Build SQLite3 synchronously at configure time if not cached
+    if(NOT EXISTS "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+        message(STATUS "  SQLite3 library not found in cache, will build from source")
+        message(STATUS "  This should be quick (SQLite is a single file)...")
+
+        file(MAKE_DIRECTORY "${SQLITE3_BUILD_DIR}")
+        file(MAKE_DIRECTORY "${SQLITE3_SOURCE_DIR}")
+
+        # Download SQLite3 amalgamation (single-file distribution)
+        set(SQLITE3_TARBALL "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000.zip")
+        if(NOT EXISTS "${SQLITE3_TARBALL}")
+            message(STATUS "  Downloading SQLite3 3.48.0...")
+            file(DOWNLOAD
+                "https://www.sqlite.org/2025/sqlite-amalgamation-3480000.zip"
+                "${SQLITE3_TARBALL}"
+                EXPECTED_HASH SHA256=d9a15a42db7c78f88fe3d3c5945acce2f4bfe9e4da9f685cd19f6ea1d40aa884
+                STATUS DOWNLOAD_STATUS
+                SHOW_PROGRESS
+            )
+            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+            if(NOT STATUS_CODE EQUAL 0)
+                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+                message(FATAL_ERROR "Failed to download SQLite3: ${ERROR_MSG}")
+            endif()
+        endif()
+
+        # Extract archive
+        if(NOT EXISTS "${SQLITE3_SOURCE_DIR}/sqlite3.c")
+            message(STATUS "  Extracting SQLite3...")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xf "${SQLITE3_TARBALL}"
+                WORKING_DIRECTORY "${SQLITE3_BUILD_DIR}"
+                RESULT_VARIABLE EXTRACT_RESULT
+            )
+            if(NOT EXTRACT_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to extract SQLite3 archive")
+            endif()
+            # Move from sqlite-amalgamation-3480000/ to src/sqlite3/
+            file(RENAME "${SQLITE3_BUILD_DIR}/sqlite-amalgamation-3480000" "${SQLITE3_SOURCE_DIR}")
+        endif()
+
+        # Compile SQLite3 to static library
+        message(STATUS "  Building SQLite3...")
+        file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/lib")
+        file(MAKE_DIRECTORY "${SQLITE3_PREFIX}/include")
+
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E env
+                CC=${MUSL_GCC}
+                REALGCC=${REAL_GCC}
+                CFLAGS=${MUSL_KERNEL_CFLAGS}
+                ${MUSL_GCC} -c
+                -DSQLITE_THREADSAFE=1
+                -DSQLITE_ENABLE_FTS5
+                -DSQLITE_ENABLE_RTREE
+                -DSQLITE_ENABLE_JSON1
+                -O3
+                -fPIC
+                "${SQLITE3_SOURCE_DIR}/sqlite3.c"
+                -o "${SQLITE3_BUILD_DIR}/sqlite3.o"
+            RESULT_VARIABLE COMPILE_RESULT
+            OUTPUT_VARIABLE COMPILE_OUTPUT
+            ERROR_VARIABLE COMPILE_ERROR
+        )
+        if(NOT COMPILE_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to compile SQLite3:\n${COMPILE_ERROR}")
+        endif()
+
+        # Create static library
+        execute_process(
+            COMMAND ${CMAKE_AR} rcs "${SQLITE3_PREFIX}/lib/libsqlite3.a" "${SQLITE3_BUILD_DIR}/sqlite3.o"
+            RESULT_VARIABLE AR_RESULT
+            OUTPUT_VARIABLE AR_OUTPUT
+            ERROR_VARIABLE AR_ERROR
+        )
+        if(NOT AR_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to create SQLite3 static library:\n${AR_ERROR}")
+        endif()
+
+        # Copy headers
+        file(COPY "${SQLITE3_SOURCE_DIR}/sqlite3.h" DESTINATION "${SQLITE3_PREFIX}/include")
+        file(COPY "${SQLITE3_SOURCE_DIR}/sqlite3ext.h" DESTINATION "${SQLITE3_PREFIX}/include")
+
+        message(STATUS "  ${BoldGreen}SQLite3${ColorReset} built and cached successfully")
+    else()
+        message(STATUS "  ${BoldBlue}SQLite3${ColorReset} library found in cache: ${BoldMagenta}${SQLITE3_PREFIX}/lib/libsqlite3.a${ColorReset}")
     endif()
+
+    set(SQLITE3_FOUND TRUE PARENT_SCOPE)
+    set(SQLITE3_LIBRARIES "${SQLITE3_PREFIX}/lib/libsqlite3.a" PARENT_SCOPE)
+    set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include" PARENT_SCOPE)
+    return()
 endif()
 
 # =============================================================================

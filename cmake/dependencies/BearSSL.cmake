@@ -31,8 +31,72 @@ if(NPROC EQUAL 0)
     set(NPROC 1)
 endif()
 
-# Skip when using musl - BearSSL is built from source in MuslDependencies.cmake
+# Handle musl builds - BearSSL is built from source
 if(USE_MUSL)
+    message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source...")
+
+    set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
+    set(BEARSSL_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/bearssl-build")
+    set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
+
+    if(EXISTS "${BEARSSL_SOURCE_DIR}")
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            message(STATUS "  BearSSL library not found in cache, building from source...")
+            file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
+
+            # Clean any previous build to avoid leftover targets
+            execute_process(
+                COMMAND make clean
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+
+            # Build the static library target with parallel jobs for faster builds
+            # For musl: disable getentropy() (not in musl), force /dev/urandom, disable fortification
+            execute_process(
+                COMMAND make -j lib CC=${MUSL_GCC} AR=${CMAKE_AR} CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                RESULT_VARIABLE BEARSSL_MAKE_RESULT
+                OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
+                ERROR_VARIABLE BEARSSL_MAKE_ERROR
+                OUTPUT_QUIET
+            )
+
+            if(BEARSSL_MAKE_RESULT EQUAL 0)
+                # Copy library to cache
+                file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a"
+                     DESTINATION "${BEARSSL_BUILD_DIR}")
+                message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library built and cached successfully")
+            else()
+                message(FATAL_ERROR "BearSSL build failed with exit code ${BEARSSL_MAKE_RESULT}\nOutput: ${BEARSSL_MAKE_OUTPUT}\nError: ${BEARSSL_MAKE_ERROR}")
+            endif()
+        else()
+            message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library found in cache: ${BoldMagenta}${BEARSSL_LIB}${ColorReset}")
+        endif()
+
+        # Create an imported library target that matches what BearSSL.cmake creates
+        add_library(bearssl_static STATIC IMPORTED GLOBAL)
+        set_target_properties(bearssl_static PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_LIB}"
+        )
+        target_include_directories(bearssl_static INTERFACE
+            "${BEARSSL_SOURCE_DIR}/inc"
+        )
+
+        set(BEARSSL_LIBRARIES bearssl_static)
+        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
+        set(BEARSSL_FOUND TRUE)
+    else()
+        message(FATAL_ERROR "BearSSL submodule not found - GitHub/GitLab key fetching will be disabled")
+        set(BEARSSL_LIBRARIES "")
+        set(BEARSSL_INCLUDE_DIRS "")
+        set(BEARSSL_FOUND FALSE)
+    endif()
+
+    set(BEARSSL_LIBRARIES "${BEARSSL_LIBRARIES}" PARENT_SCOPE)
+    set(BEARSSL_INCLUDE_DIRS "${BEARSSL_INCLUDE_DIRS}" PARENT_SCOPE)
+    set(BEARSSL_FOUND "${BEARSSL_FOUND}" PARENT_SCOPE)
     return()
 endif()
 

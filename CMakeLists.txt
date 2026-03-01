@@ -236,8 +236,13 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PkgConfigSetup.cmake)
 # When USE_MUSL=ON, build all dependencies from source FIRST
 # This must run before Dependencies.cmake so musl-built libraries (like OpenSSL)
 # are available when dependency files (like Libdatachannel.cmake) try to find them
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/MuslDependencies.cmake)
 
+# Common musl setup (kernel headers, compiler validation, variables)
+# This must come BEFORE Dependencies.cmake which includes all modular dependency files
+include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
+
+# All dependencies are now modularized into individual .cmake files in cmake/dependencies/
+# Dependencies.cmake orchestrates including them all
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Dependencies.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Tomlc17.cmake)

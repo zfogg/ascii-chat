@@ -20,9 +20,45 @@
 #   - PORTAUDIO_FOUND: Whether portaudio was found
 # =============================================================================
 
-# For musl builds, PortAudio is configured in MuslDependencies.cmake
-# with musl-gcc compiler. Skip this file entirely for musl.
+# Handle musl builds - PortAudio is built from source
 if(USE_MUSL)
+    message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} from source...")
+
+    set(PORTAUDIO_PREFIX "${MUSL_DEPS_DIR_STATIC}/portaudio")
+    set(PORTAUDIO_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/portaudio-build")
+
+    # Only add external project if library doesn't exist
+    if(NOT EXISTS "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
+        message(STATUS "  PortAudio library not found in cache, will build from source")
+        ExternalProject_Add(portaudio-musl
+            URL http://files.portaudio.com/archives/pa_stable_v190700_20210406.tgz
+            URL_HASH SHA256=47efbf42c77c19a05d22e627d42873e991ec0c1357219c0d74ce6a2948cb2def
+            TLS_VERIFY FALSE  # PortAudio's SSL cert is expired (Dec 2025)
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${PORTAUDIO_BUILD_DIR}
+            STAMP_DIR ${PORTAUDIO_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND env CC=${MUSL_GCC} REALGCC=${REAL_GCC} CFLAGS=-fPIC PKG_CONFIG_PATH=${ALSA_PREFIX}/lib/pkgconfig <SOURCE_DIR>/configure --prefix=${PORTAUDIO_PREFIX} --enable-static --disable-shared --with-alsa --without-jack --without-oss
+            BUILD_COMMAND env REALGCC=${REAL_GCC} CFLAGS=-fPIC make -j
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${PORTAUDIO_PREFIX}/lib/libportaudio.a
+            DEPENDS alsa-lib-musl
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}PortAudio${ColorReset} library found in cache: ${BoldMagenta}${PORTAUDIO_PREFIX}/lib/libportaudio.a${ColorReset}")
+        # Create a dummy target so dependencies can reference it
+        add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
+    endif()
+
+    set(PORTAUDIO_FOUND TRUE PARENT_SCOPE)
+    set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a" PARENT_SCOPE)
+    set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include" PARENT_SCOPE)
     return()
 endif()
 
