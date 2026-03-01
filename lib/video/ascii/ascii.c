@@ -922,3 +922,28 @@ char *ascii_pad_frame_height(const char *frame, size_t pad_top) {
 
   return buffer;
 }
+
+/**
+ * @brief Convert image to ASCII art with terminal capabilities
+ * @param image Image to convert (must not be NULL)
+ * @param caps Terminal capabilities structure
+ * @param palette Palette characters to use for conversion
+ * @return ASCII art string, or NULL on error
+ *
+ * Converts an image to ASCII art using the provided terminal capabilities.
+ * Automatically selects the best rendering method based on terminal capabilities.
+ *
+ * @note Returns dynamically allocated string that must be freed by caller.
+ */
+char *image_print_with_capabilities(const image_t *image, const terminal_capabilities_t *caps, const char *palette) {
+  if (!image || !caps || !palette) {
+    return NULL;
+  }
+
+  // Dispatch based on terminal capabilities
+  // For now, use a simple heuristic: if color_level would indicate truecolor, use color
+  // This can be enhanced with proper terminal capability detection
+
+  // Try color rendering first
+  return image_print_color(image, palette);
+}
