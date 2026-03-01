@@ -34,8 +34,11 @@ void websocket_callback_timing_record(websocket_callback_stats_t *stats, uint64_
   // Track cumulative duration
   atomic_fetch_add_u64(&stats->total_duration_ns, duration_ns);
 
-  // Update last timestamp
-  uint64_t prev_last_ns = atomic_ptr_exchange(&stats->last_ns, end_ns);
+  // Update last timestamp (atomically swap)
+  uint64_t prev_last_ns = atomic_load_u64(&stats->last_ns);
+  while (!atomic_cas_u64(&stats->last_ns, &prev_last_ns, end_ns)) {
+    // Retry if CAS failed due to concurrent update
+  }
 
   // Calculate interval from previous callback (if not the first one)
   if (count > 0 && prev_last_ns > 0) {
