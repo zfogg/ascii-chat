@@ -648,9 +648,18 @@ int main(int argc, char *argv[]) {
 
   // Register cleanup of shared subsystems to run on normal exit
   // Library code doesn't call atexit() - the application is responsible
-  // Register cursor show FIRST so it runs LAST (atexit is LIFO) - cursor restored after cleanup
-  (void)atexit(on_exit_show_cursor);
+  // IMPORTANT: atexit handlers run in LIFO order - last registered runs first
+  // So register order (top to bottom) = execution order (bottom to top):
+  // 1. PCRE2 cleanup (runs 4th/last) - frees all compiled regexes and JIT stacks
+  // 2. Path cleanup (runs 3rd) - frees thread-local match data
+  // 3. Shared destroy (runs 2nd) - frees shared resources
+  // 4. Cursor show (runs 1st) - shows cursor before exit
+  extern void path_cleanup_thread_locals(void);
+  extern void asciichat_pcre2_cleanup_all(void);
+  (void)atexit(asciichat_pcre2_cleanup_all);
+  (void)atexit(path_cleanup_thread_locals);
   (void)atexit(asciichat_shared_destroy);
+  (void)atexit(on_exit_show_cursor);
 
   // SECRET: Check for --backtrace (debug builds only) BEFORE options_init()
   // Prints a backtrace and exits immediately - useful for debugging hangs

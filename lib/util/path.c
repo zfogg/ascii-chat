@@ -54,50 +54,34 @@ static pcre2_code *path_dot_component_regex_get(void) {
   return asciichat_pcre2_singleton_get_code(g_path_dot_component_regex);
 }
 
-/* Thread-local storage for PCRE2 match data */
-static _Thread_local pcre2_match_data *g_path_sep_match = NULL;
-static _Thread_local pcre2_match_data *g_path_dot_match = NULL;
-
 /**
- * Get thread-local cached match data for separator regex
- * Allocates once per thread and reuses for all normalize_path calls
- * Avoids repeated allocations that could trigger AddressSanitizer issues
+ * Allocate match data for a regex on the stack (no persistent allocation)
+ * Match data is small and safe to allocate locally - no caching needed
  */
-static pcre2_match_data *path_separator_match_get(pcre2_code *regex) {
+static inline pcre2_match_data *path_match_data_create(pcre2_code *regex) {
   if (!regex)
     return NULL;
-  if (!g_path_sep_match) {
-    g_path_sep_match = pcre2_match_data_create_from_pattern(regex, NULL);
-  }
-  return g_path_sep_match;
+  return pcre2_match_data_create_from_pattern(regex, NULL);
 }
 
 /**
- * Get thread-local cached match data for dot component regex
- * Allocates once per thread and reuses for all normalize_path calls
+ * Free match data allocated by path_match_data_create
  */
-static pcre2_match_data *path_dot_match_get(pcre2_code *regex) {
-  if (!regex)
-    return NULL;
-  if (!g_path_dot_match) {
-    g_path_dot_match = pcre2_match_data_create_from_pattern(regex, NULL);
+static inline void path_match_data_free(pcre2_match_data *match_data) {
+  if (match_data) {
+    pcre2_match_data_free(match_data);
   }
-  return g_path_dot_match;
 }
 
 /**
- * Cleanup thread-local PCRE2 resources
- * Called when thread exits to free cached match data
+ * Cleanup thread-local PCRE2 resources (now a no-op, kept for compatibility)
+ *
+ * Previously this freed cached thread-local match data, but we now allocate
+ * fresh match data for each operation and free it immediately, so there's
+ * nothing to clean up. This function is kept for API compatibility.
  */
 void path_cleanup_thread_locals(void) {
-  if (g_path_sep_match) {
-    pcre2_match_data_free(g_path_sep_match);
-    g_path_sep_match = NULL;
-  }
-  if (g_path_dot_match) {
-    pcre2_match_data_free(g_path_dot_match);
-    g_path_dot_match = NULL;
-  }
+  /* No-op: match data is now allocated and freed immediately per operation */
 }
 
 /* Normalize a path by resolving .. and . components
@@ -138,13 +122,13 @@ static const char *normalize_path(const char *path) {
   }
 
   /* Use PCRE2 to split by separators and detect dot components.
-     Use thread-local cached match data to avoid repeated allocations. */
+     Allocate fresh match data for this operation and free immediately when done. */
   pcre2_code *separator_regex = path_separator_regex_get();
   pcre2_code *dot_regex = path_dot_component_regex_get();
 
   if (separator_regex && dot_regex) {
-    pcre2_match_data *sep_match = path_separator_match_get(separator_regex);
-    pcre2_match_data *dot_match = path_dot_match_get(dot_regex);
+    pcre2_match_data *sep_match = path_match_data_create(separator_regex);
+    pcre2_match_data *dot_match = path_match_data_create(dot_regex);
 
     if (sep_match && dot_match) {
       size_t offset = 0;
@@ -215,7 +199,9 @@ static const char *normalize_path(const char *path) {
         last_component_end = sep_end;
       }
 
-      /* match data is cached thread-locally, don't free it */
+      /* Free match data immediately - it was allocated for this operation only */
+      path_match_data_free(sep_match);
+      path_match_data_free(dot_match);
     } else {
       /* Fallback to manual parsing if match data allocation failed */
       const char *parse_pos = pos;
