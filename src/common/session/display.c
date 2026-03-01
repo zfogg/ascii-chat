@@ -445,21 +445,11 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
     return NULL;
   }
 
-  // Get conversion parameters from command-line options or terminal detection
-  // When rendering to file, use the configured grid dimensions instead of terminal size
-  unsigned short int width, height;
-  if (ctx->render_file) {
-    width = (unsigned short int)GET_OPTION(width);
-    height = (unsigned short int)GET_OPTION(height);
-    log_debug("session_display_convert_to_ascii: Using render-file dimensions %ux%u", width, height);
-  } else {
-    width = terminal_get_effective_width();
-    height = terminal_get_effective_height();
-  }
+  // Get conversion parameters from command-line options
+  unsigned short int width = GET_OPTION(width);
+  unsigned short int height = GET_OPTION(height);
   bool stretch = GET_OPTION(stretch);
-  // For render-file, always stretch to fill the full frame (no aspect ratio preservation)
-  // This ensures the entire 256×42 grid is utilized without black bars
-  bool preserve_aspect_ratio = ctx->render_file ? false : !stretch;
+  bool preserve_aspect_ratio = !stretch;
 
   // Determine if we should apply flip_x and flip_y
   bool flip_x_enabled = GET_OPTION(flip_x);
