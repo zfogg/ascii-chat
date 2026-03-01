@@ -820,9 +820,49 @@ void audio_ring_buffer_destroy(audio_ring_buffer_t *rb) {
     return;
 
   NAMED_UNREGISTER(rb);
+  audio_ring_buffer_unregister_atomics(rb);
 
   mutex_destroy(&rb->mutex);
   buffer_pool_free(NULL, rb, sizeof(audio_ring_buffer_t));
+}
+
+void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *context_name) {
+  if (!rb || !context_name || !context_name[0]) {
+    return;
+  }
+
+  char atomic_name[256];
+
+#define REGISTER_AUDIO_ATOMIC(field, description) \
+    snprintf(atomic_name, sizeof(atomic_name), "audio_ring_buffer.%s." description, context_name); \
+    NAMED_REGISTER_ATOMIC(&rb->field, atomic_name)
+
+  // Ring buffer indices (lock-free producer-consumer)
+  REGISTER_AUDIO_ATOMIC(write_index, "write_index_producer_position");
+  REGISTER_AUDIO_ATOMIC(read_index, "read_index_consumer_position");
+
+  // Jitter buffer state management
+  REGISTER_AUDIO_ATOMIC(jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag");
+  REGISTER_AUDIO_ATOMIC(crossfade_samples_remaining, "crossfade_samples_remaining_count");
+  REGISTER_AUDIO_ATOMIC(crossfade_fade_in, "crossfade_fade_in_direction_flag");
+
+  // Audio quality monitoring
+  REGISTER_AUDIO_ATOMIC(underrun_count, "audio_underrun_event_counter");
+
+#undef REGISTER_AUDIO_ATOMIC
+}
+
+void audio_ring_buffer_unregister_atomics(audio_ring_buffer_t *rb) {
+  if (!rb) {
+    return;
+  }
+
+  NAMED_UNREGISTER(&rb->write_index);
+  NAMED_UNREGISTER(&rb->read_index);
+  NAMED_UNREGISTER(&rb->jitter_buffer_filled);
+  NAMED_UNREGISTER(&rb->crossfade_samples_remaining);
+  NAMED_UNREGISTER(&rb->crossfade_fade_in);
+  NAMED_UNREGISTER(&rb->underrun_count);
 }
 
 void audio_ring_buffer_clear(audio_ring_buffer_t *rb) {

@@ -118,6 +118,7 @@ int crypto_client_decrypt_packet(const uint8_t *ciphertext, size_t ciphertext_le
 #include <ascii-chat/util/time.h>
 
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <time.h>
 #include <stdarg.h>
@@ -1071,6 +1072,14 @@ static void *data_reception_thread_func(void *arg) {
  */
 int protocol_start_connection() {
   log_warn("[FRAME_RECV_INIT] 🟢 PROTOCOL_START: Starting client protocol initialization");
+
+  // Register protocol atomics with named debug registry
+  static bool protocol_atomics_registered = false;
+  if (!protocol_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_data_thread_exited, "protocol_data_reception_thread_exit_confirmation");
+    NAMED_REGISTER_ATOMIC(&g_frames_rendered, "protocol_frames_successfully_rendered");
+    protocol_atomics_registered = true;
+  }
 
   // Reset protocol state for new connection
   g_server_state_initialized = false;

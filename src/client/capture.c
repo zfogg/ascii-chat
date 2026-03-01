@@ -103,6 +103,7 @@
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #include <time.h>
 #include <string.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -465,6 +466,13 @@ int capture_start_thread() {
   if (THREAD_IS_CREATED(g_capture_thread_created)) {
     log_warn("Capture thread already created");
     return 0;
+  }
+
+  // Register capture atomics with named debug registry
+  static bool capture_atomics_registered = false;
+  if (!capture_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_capture_thread_exited, "capture_webcam_thread_exit_confirmation");
+    capture_atomics_registered = true;
   }
 
   // Start webcam capture thread

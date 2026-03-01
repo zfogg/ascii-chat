@@ -771,6 +771,11 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
+  // Register audio and video buffer atomic fields for debug tracking
+  if (client->incoming_audio_buffer) {
+    audio_ring_buffer_register_atomics(client->incoming_audio_buffer, new_client_id);
+  }
+
   // Register with audio mixer OUTSIDE lock
   if (g_audio_mixer && client->incoming_audio_buffer) {
     if (mixer_add_source(g_audio_mixer, new_client_id, client->incoming_audio_buffer) < 0) {

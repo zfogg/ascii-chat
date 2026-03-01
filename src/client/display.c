@@ -90,6 +90,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <ascii-chat/atomic.h>
+#include <ascii-chat/debug/named.h>
 #ifndef _WIN32
 #include <unistd.h>
 #endif
@@ -238,6 +239,13 @@ int display_init() {
       log_warn("Failed to initialize keyboard input: %s", asciichat_error_string(kb_result));
       g_keyboard_enabled = false;
     }
+  }
+
+  // Register display atomics with named debug registry
+  static bool display_atomics_registered = false;
+  if (!display_atomics_registered) {
+    NAMED_REGISTER_ATOMIC(&g_is_first_frame_of_connection, "first_frame_of_display_connection");
+    display_atomics_registered = true;
   }
 
   return 0;

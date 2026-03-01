@@ -150,6 +150,21 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
            (void *)vfb->frames[1].data, vfb->allocated_buffer_size);
 
   NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer");
+
+  // Register atomic fields with descriptive names tied to client_id
+  char atomic_name[256];
+  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.new_frame_available_flag", client_id);
+  NAMED_REGISTER_ATOMIC(&vfb->new_frame_available, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.total_frames_received_counter", client_id);
+  NAMED_REGISTER_ATOMIC(&vfb->total_frames_received, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.total_frames_dropped_counter", client_id);
+  NAMED_REGISTER_ATOMIC(&vfb->total_frames_dropped, atomic_name);
+
+  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.last_frame_sequence_number", client_id);
+  NAMED_REGISTER_ATOMIC(&vfb->last_frame_sequence, atomic_name);
+
   return vfb;
 }
 
@@ -160,6 +175,12 @@ void video_frame_buffer_destroy(video_frame_buffer_t *vfb) {
   }
 
   NAMED_UNREGISTER(vfb);
+
+  // Unregister atomic fields
+  NAMED_UNREGISTER(&vfb->new_frame_available);
+  NAMED_UNREGISTER(&vfb->total_frames_received);
+  NAMED_UNREGISTER(&vfb->total_frames_dropped);
+  NAMED_UNREGISTER(&vfb->last_frame_sequence);
 
   vfb->active = false;
 

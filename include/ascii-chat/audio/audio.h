@@ -533,6 +533,28 @@ audio_ring_buffer_t *audio_ring_buffer_create_for_capture(void);
 void audio_ring_buffer_destroy(audio_ring_buffer_t *rb);
 
 /**
+ * @brief Register audio ring buffer atomic fields for debug tracking
+ * @param rb Audio ring buffer (must not be NULL)
+ * @param context_name Descriptive context name for registration (e.g. client_id)
+ *
+ * Registers all atomic fields within the audio ring buffer with the named registry
+ * for debug tracking and --sync-state output. Should be called after creation.
+ *
+ * @ingroup audio
+ */
+void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *context_name);
+
+/**
+ * @brief Unregister audio ring buffer atomic fields
+ * @param rb Audio ring buffer (must not be NULL)
+ *
+ * Unregisters all atomic fields registered by audio_ring_buffer_register_atomics().
+ *
+ * @ingroup audio
+ */
+void audio_ring_buffer_unregister_atomics(audio_ring_buffer_t *rb);
+
+/**
  * @brief Clear all audio samples from ring buffer
  * @param rb Audio ring buffer (must not be NULL)
  *
