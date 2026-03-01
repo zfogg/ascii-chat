@@ -58,7 +58,13 @@ void ob_write(outbuf_t *ob, const char *s, size_t n) {
 void ob_term(outbuf_t *ob) {
   if (!ob)
     return;
-  ob_putc(ob, '\0');
+  // Reserve space for null terminator if needed
+  if (ob->len >= ob->cap) {
+    ob_reserve(ob, 1);
+  }
+  // Append null terminator WITHOUT incrementing length
+  // (null terminator is not part of the string length)
+  ob->buf[ob->len] = '\0';
 }
 
 // Fast decimal for uint8_t (0..255)
