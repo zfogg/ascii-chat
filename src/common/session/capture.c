@@ -266,6 +266,12 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     return NULL;
   }
 
+  // Set up exit callback on media source for graceful shutdown during I/O
+  // This allows Ctrl+C to abort blocking FFmpeg calls like YouTube HTTP requests
+  if (config->should_exit_callback && ctx->source) {
+    media_source_set_exit_callback(ctx->source, config->should_exit_callback, config->callback_data);
+  }
+
   // Detect if media source has audio
   if (ctx->audio_enabled && ctx->source) {
     ctx->file_has_audio = media_source_has_audio(ctx->source);

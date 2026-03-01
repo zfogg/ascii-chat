@@ -985,3 +985,19 @@ void media_source_set_audio_context(media_source_t *source, void *audio_ctx) {
     source->audio_ctx = audio_ctx;
   }
 }
+
+void media_source_set_exit_callback(media_source_t *source, bool (*should_exit_callback)(void *), void *user_data) {
+  if (!source) {
+    return;
+  }
+
+  // Set exit callback on video decoder if present
+  if (source->video_decoder) {
+    ffmpeg_decoder_set_exit_callback(source->video_decoder, should_exit_callback, user_data);
+  }
+
+  // Set exit callback on audio decoder if present (only if different from video decoder)
+  if (source->audio_decoder && source->audio_decoder != source->video_decoder) {
+    ffmpeg_decoder_set_exit_callback(source->audio_decoder, should_exit_callback, user_data);
+  }
+}

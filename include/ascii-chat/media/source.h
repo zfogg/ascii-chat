@@ -480,4 +480,25 @@ double media_source_get_video_fps(media_source_t *source);
  */
 void media_source_set_audio_context(media_source_t *source, void *audio_ctx);
 
+/**
+ * @brief Set exit signal callback for graceful shutdown during I/O
+ * @param source Media source (must not be NULL)
+ * @param callback Function that returns true if app should exit (can be NULL)
+ * @param user_data User data to pass to callback (can be NULL)
+ *
+ * Sets a callback on the underlying decoders that allows graceful shutdown
+ * when the application is shutting down (e.g., Ctrl+C). This is particularly
+ * important for file/HTTP sources where av_read_frame() might block indefinitely.
+ *
+ * **Purpose:** When the user presses Ctrl+C, the signal handler sets the
+ * app's exit flag. This callback is polled by FFmpeg's interrupt handler
+ * to abort blocking I/O operations, allowing the prefetch thread to exit
+ * cleanly instead of hanging indefinitely.
+ *
+ * @note Called automatically from session_capture_create (no need to call manually)
+ *
+ * @ingroup media
+ */
+void media_source_set_exit_callback(media_source_t *source, bool (*should_exit_callback)(void *), void *user_data);
+
 /** @} */

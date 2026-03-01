@@ -161,6 +161,26 @@ asciichat_error_t ffmpeg_decoder_start_prefetch(ffmpeg_decoder_t *decoder);
 void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder);
 
 /**
+ * @brief Set exit signal callback for graceful shutdown during I/O
+ * @param decoder Decoder (must not be NULL)
+ * @param callback Function that returns true if app should exit (can be NULL)
+ * @param user_data User data to pass to callback (can be NULL)
+ *
+ * Sets a callback that allows the decoder's background prefetch thread to
+ * gracefully abort blocking I/O operations (like YouTube HTTP requests) when
+ * the application is shutting down (e.g., when user presses Ctrl+C).
+ *
+ * When the callback returns true, the FFmpeg interrupt handler will abort
+ * any blocking av_read_frame() call, allowing the prefetch thread to exit
+ * cleanly rather than hanging indefinitely.
+ *
+ * @note Called automatically from media_source layer (no need to call manually)
+ *
+ * @ingroup media
+ */
+void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_exit_callback)(void *), void *user_data);
+
+/**
  * @brief Check if background frame prefetching thread is running
  * @param decoder Decoder (must not be NULL)
  * @return true if prefetch thread is running, false otherwise

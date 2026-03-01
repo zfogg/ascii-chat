@@ -122,6 +122,10 @@ struct ffmpeg_decoder_t {
   // Sample-based position tracking
   uint64_t audio_samples_read; ///< Total audio samples decoded and output
   int audio_sample_rate;       ///< Audio sample rate (Hz)
+
+  // Exit signal callback (for graceful shutdown during blocking I/O)
+  bool (*should_exit_callback)(void *user_data); ///< Callback to check if app should exit
+  void *exit_callback_user_data;                 ///< User data for exit callback
 };
 
 /* ============================================================================
@@ -177,8 +181,19 @@ static int ffmpeg_interrupt_callback(void *opaque) {
   if (!decoder) {
     return 0;
   }
+
   // Interrupt av_read_frame() if a seek is in progress
-  return decoder->seeking_in_progress ? 1 : 0;
+  if (decoder->seeking_in_progress) {
+    return 1;
+  }
+
+  // Interrupt av_read_frame() if application is shutting down
+  // This allows Ctrl+C to abort blocking I/O operations like YouTube HTTP requests
+  if (decoder->should_exit_callback && decoder->should_exit_callback(decoder->exit_callback_user_data)) {
+    return 1;
+  }
+
+  return 0;
 }
 
 /**
@@ -986,6 +1001,15 @@ void ffmpeg_decoder_stop_prefetch(ffmpeg_decoder_t *decoder) {
     // The old thread will eventually finish and exit
     decoder->prefetch_thread_running = false;
   }
+}
+
+void ffmpeg_decoder_set_exit_callback(ffmpeg_decoder_t *decoder, bool (*should_exit_callback)(void *),
+                                      void *user_data) {
+  if (!decoder) {
+    return;
+  }
+  decoder->should_exit_callback = should_exit_callback;
+  decoder->exit_callback_user_data = user_data;
 }
 
 bool ffmpeg_decoder_is_prefetch_running(ffmpeg_decoder_t *decoder) {
