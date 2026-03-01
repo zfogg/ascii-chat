@@ -79,8 +79,14 @@ static void get_codec_from_extension(const char *path, const char **codec, const
 
 asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
                                         ffmpeg_encoder_t **out) {
-  if (!output_path || !out || width_px <= 0 || height_px <= 0 || fps <= 0)
+  if (!output_path || !out || width_px <= 0 || height_px <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "ffmpeg_encoder_create: invalid parameters");
+
+  // Use default FPS if not specified (0 from config means "use default")
+  if (fps <= 0) {
+    fps = 60;
+    log_debug("ffmpeg_encoder_create: fps was 0, using default 60");
+  }
 
   ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
   enc->width_px = width_px;
