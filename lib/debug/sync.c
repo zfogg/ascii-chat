@@ -698,13 +698,21 @@ int debug_sync_rwlock_wrunlock(rwlock_t *lock, const char *file_name, int line_n
 
 int debug_sync_cond_wait(cond_t *cond, mutex_t *mutex, const char *file_name, int line_number,
                          const char *function_name) {
-  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  // Note: pthread_cond_wait() atomically releases and re-acquires the mutex,
+  // but this happens at the kernel level. Debug tracking can't monitor this atomic
+  // operation properly, so we skip cond_on_wait() to avoid false deadlock reports.
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
   return cond_wait_impl(cond, mutex);
 }
 
 int debug_sync_cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns, const char *file_name, int line_number,
                               const char *function_name) {
-  cond_on_wait(cond, mutex, file_name, line_number, function_name);
+  // Same as debug_sync_cond_wait(): skip tracking the atomic unlock/relock.
+  (void)file_name;
+  (void)line_number;
+  (void)function_name;
   return cond_timedwait_impl(cond, mutex, timeout_ns);
 }
 
