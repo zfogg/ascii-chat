@@ -80,56 +80,113 @@ def read_png_data(filepath):
                 avg_brightness = sum(pixels) / len(pixels)
                 brightness_data.append(avg_brightness)
 
-        # Find rows with content (brightness > threshold)
-        # Threshold: 10 means background + minimal content
-        threshold = 10
-        content_rows = [i for i, b in enumerate(brightness_data) if b > threshold]
-
-        if not content_rows:
-            print("⚠️  Image appears to be completely blank/black")
-            return
-
-        first_content = content_rows[0]
-        last_content = content_rows[-1]
-        content_height = last_content - first_content + 1
-        wasted_top = first_content
-        wasted_bottom = height - last_content - 1
-
-        print(f"Content analysis:")
-        print(f"  Content range: rows {first_content} to {last_content}")
-        print(f"  Content height: {content_height} rows ({100*content_height/height:.1f}%)")
+        # Analyze brightness distribution
+        print("Brightness distribution:")
         print()
 
-        print(f"Wasted space:")
-        print(f"  Top: {wasted_top} rows ({100*wasted_top/height:.1f}%)")
-        print(f"  Bottom: {wasted_bottom} rows ({100*wasted_bottom/height:.1f}%)")
-        print()
-
-        # Sample rows throughout
-        print("Sample brightness by row:")
-        for row_idx in [
-            first_content,
-            first_content + 10,
-            last_content - 10,
-            last_content,
-            height - 1,
-        ]:
-            if 0 <= row_idx < len(brightness_data):
-                b = brightness_data[row_idx]
-                pct = 100 * row_idx / height
-                print(f"  Row {row_idx:4d} ({pct:5.1f}%): brightness {b:6.1f}")
+        # Print histogram of all rows
+        for i in range(0, len(brightness_data), max(1, len(brightness_data) // 20)):
+            row_idx = i
+            b = brightness_data[row_idx]
+            pct = 100 * row_idx / height
+            bar_len = int(b / 255 * 50)
+            bar = '█' * bar_len + '░' * (50 - bar_len)
+            print(f"  Row {row_idx:4d} ({pct:5.1f}%): {bar} {b:6.1f}")
 
         print()
 
-        # Verdict
-        if wasted_bottom > height * 0.1:
-            print(f"❌ PROBLEM DETECTED: {wasted_bottom} rows ({100*wasted_bottom/height:.1f}%) wasted at BOTTOM")
-            print(f"   Canvas should use all {height} rows but only uses {content_height}")
-            print(f"   Black bar detected at bottom of image")
-        elif wasted_bottom == 0:
-            print(f"✅ GOOD: Canvas fully utilized ({content_height}/{height} rows)")
+        # Find rows with ACTUAL content (bright pixels, not just faint text)
+        # Use different thresholds to detect the problem
+        # Thresholds adjusted for dark rendering (ASCII on dark background)
+        threshold_high = 20    # Definitely has content (ASCII characters)
+        threshold_med = 10     # Medium content (some pixels)
+        threshold_low = 3      # Very faint (mostly black)
+
+        rows_bright = [i for i, b in enumerate(brightness_data) if b > threshold_high]
+        rows_medium = [i for i, b in enumerate(brightness_data) if b > threshold_med]
+        rows_faint = [i for i, b in enumerate(brightness_data) if b > threshold_low]
+
+        print(f"Content detection:")
+        print(f"  Rows with BRIGHT pixels (>{threshold_high}): {len(rows_bright)} rows")
+        if rows_bright:
+            print(f"    Range: {rows_bright[0]} to {rows_bright[-1]}")
+
+        print(f"  Rows with MEDIUM pixels (>{threshold_med}): {len(rows_medium)} rows")
+        if rows_medium:
+            print(f"    Range: {rows_medium[0]} to {rows_medium[-1]}")
+
+        print(f"  Rows with FAINT pixels (>{threshold_low}): {len(rows_faint)} rows")
+        if rows_faint:
+            print(f"    Range: {rows_faint[0]} to {rows_faint[-1]}")
+
+        print()
+
+        # Use bright pixels as the real content indicator
+        if rows_bright:
+            first_content = rows_bright[0]
+            last_content = rows_bright[-1]
+            content_height = last_content - first_content + 1
+            wasted_top = first_content
+            wasted_bottom = height - last_content - 1
+
+            print(f"ACTUAL content (bright pixels only):")
+            print(f"  Range: rows {first_content} to {last_content}")
+            print(f"  Content height: {content_height} rows ({100*content_height/height:.1f}%)")
+            print()
+
+            print(f"Wasted space:")
+            print(f"  Top: {wasted_top} rows ({100*wasted_top/height:.1f}%)")
+            print(f"  Bottom: {wasted_bottom} rows ({100*wasted_bottom/height:.1f}%)")
+            print()
+
+            # Detailed bottom analysis
+            if wasted_bottom > 0:
+                print(f"Bottom rows (potential black bar):")
+                for row_idx in range(max(0, last_content - 10), height):
+                    b = brightness_data[row_idx]
+                    pct = 100 * row_idx / height
+                    status = "█" if b < 5 else "░"
+                    print(f"  Row {row_idx:4d} ({pct:5.1f}%): brightness {b:6.1f} {status}")
+
+            print()
+
+            # Check for black bar at bottom by comparing bottom sections
+            print(f"Checking for BLACK BAR at bottom:")
+
+            # Sample middle and bottom sections
+            middle_start = (height // 2) - 50
+            middle_end = (height // 2) + 50
+            bottom_start = height - 100
+
+            middle_brightness = sum(brightness_data[middle_start:middle_end]) / 100
+            bottom_brightness = sum(brightness_data[bottom_start:]) / 100
+
+            print(f"  Middle section brightness (rows {middle_start}-{middle_end}): {middle_brightness:.2f}")
+            print(f"  Bottom section brightness (rows {bottom_start}-{height}): {bottom_brightness:.2f}")
+            print()
+
+            # Calculate percentage of truly black pixels in bottom section
+            bottom_black_rows = sum(1 for i in range(bottom_start, height) if brightness_data[i] < 10)
+            bottom_black_pct = 100 * bottom_black_rows / (height - bottom_start)
+
+            print(f"  Bottom rows ({bottom_start}-{height-1}): {bottom_black_pct:.1f}% are mostly black")
+            print()
+
+            # Verdict
+            if wasted_bottom > height * 0.05:
+                print(f"❌ BLACK BAR DETECTED: {wasted_bottom} rows ({100*wasted_bottom/height:.1f}%) wasted at BOTTOM")
+                print(f"   Expected: {height} rows utilized")
+                print(f"   Actual: {content_height} rows with content")
+                print(f"   Problem: Text isn't filling bottom of canvas")
+            elif bottom_black_pct > 85:
+                print(f"❌ BLACK BAR AT BOTTOM: {bottom_black_rows} rows are {bottom_black_pct:.1f}% black")
+                print(f"   Rows {bottom_start}-{height-1} should have content but are mostly blank")
+            elif wasted_bottom == 0:
+                print(f"✅ GOOD: Canvas fully utilized (all {height} rows)")
+            else:
+                print(f"⚠️  Minor waste: {wasted_bottom} rows at bottom ({100*wasted_bottom/height:.1f}%)")
         else:
-            print(f"⚠️  Minor waste: {wasted_bottom} rows at bottom ({100*wasted_bottom/height:.1f}%)")
+            print("⚠️  No bright pixels detected - image may be too dark")
 
 
 if __name__ == '__main__':
