@@ -177,7 +177,16 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     terminal_screen_clear_cache();
   }
 
+  // Detect transition FROM normal mode TO grep mode (first time entering grep)
+  static bool last_grep_entering = false;
+  if (!last_grep_entering && grep_entering) {
+    // Transitioning to grep mode - clear the screen to remove old normal-mode rendering
+    fprintf(stdout, "\x1b[2J\x1b[1;1H");
+    fflush(stdout);
+  }
+
   last_grep_state = grep_entering;
+  last_grep_entering = grep_entering;
 
   // Allocate or reuse frame buffer (module-level static to avoid malloc per frame)
   if (!g_frame_buf) {
@@ -250,7 +259,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   // Calculate log area: total rows - actual header height - 1 (prevent scroll)
-  int log_area_rows = g_cached_term_size.rows - actual_header_height - 1;
+  // When grep search is open, subtract additional row to prevent header bump
+  int log_area_rows = g_cached_term_size.rows - actual_header_height - (grep_entering ? 2 : 1);
 
   if (log_area_rows <= 0) {
     // Terminal too small for logs, flush header and return
@@ -289,12 +299,14 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   // Display logs - most recent at bottom, oldest scrolled off top.
-  // Calculate a stable window: show logs that fit in log_area_rows, newest last.
+  // Calculate a stable window: show logs that fit in available space, newest last.
   // This ensures smooth scrolling as new logs arrive (no jumping viewport).
+  // Use renderable_log_rows when in grep mode to account for grep input line.
   // CRITICAL: account for multi-line logs via display_height() in pre-selection.
   // Without this, logs overflow and push the header off screen.
   int first_log_to_display = log_count; // Start past the end (no logs selected)
   int total_lines_used = 0;
+  int available_rows = grep_entering ? renderable_log_rows : log_area_rows;
 
   // Work backwards from newest to oldest log, selecting which fit
   for (int i = (int)log_count - 1; i >= 0; i--) {
@@ -303,7 +315,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       lines_for_msg = 1;
     }
     // Check if adding this log would exceed available space
-    if (total_lines_used + lines_for_msg <= log_area_rows) {
+    if (total_lines_used + lines_for_msg <= available_rows) {
       total_lines_used += lines_for_msg;
       first_log_to_display = i; // This is the first (oldest) log we'll display
     }

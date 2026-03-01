@@ -52,9 +52,13 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     return;
   }
 
+  // Capture count and symbols once to avoid TOCTOU race with other threads
+  int count = bt->count;
+  char **symbols = bt->symbols;
+
   // Calculate frame limits
   int start = skip_frames;
-  int end = bt->count;
+  int end = count;
   if (max_frames > 0 && (start + max_frames) < end) {
     end = start + max_frames;
   }
@@ -122,8 +126,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
 
   // Build backtrace frames with colored output for terminal, plain for log
   int frame_num = 0;
-  for (int i = start; i < end && i < bt->count && colored_offset < (int)sizeof(colored_buffer) - 512; i++) {
-    const char *symbol = (bt->symbols && i < bt->count && bt->symbols[i]) ? bt->symbols[i] : "???";
+  for (int i = start; i < end && i < count && colored_offset < (int)sizeof(colored_buffer) - 512; i++) {
+    const char *symbol = (symbols && i < count && symbols[i]) ? symbols[i] : "???";
 
     // Skip frame if filter says to
     if (filter && filter(symbol)) {
@@ -331,6 +335,10 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
     return -1;
   }
 
+  // Capture count and symbols once to avoid TOCTOU race with other threads
+  int count = bt->count;
+  char **symbols = bt->symbols;
+
   int offset = 0;
 
   // Add label
@@ -338,15 +346,15 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
 
   // Calculate frame limits
   int start = skip_frames;
-  int end = bt->count;
+  int end = count;
   if (max_frames > 0 && (start + max_frames) < end) {
     end = start + max_frames;
   }
 
   // Add frames
   int frame_num = 0;
-  for (int i = start; i < end && i < bt->count && offset < (int)buf_size - 128; i++) {
-    const char *symbol = (bt->symbols && i < bt->count && bt->symbols[i]) ? bt->symbols[i] : "???";
+  for (int i = start; i < end && i < count && offset < (int)buf_size - 128; i++) {
+    const char *symbol = (symbols && i < count && symbols[i]) ? symbols[i] : "???";
 
     // Skip frame if filter says to
     if (filter && filter(symbol)) {
