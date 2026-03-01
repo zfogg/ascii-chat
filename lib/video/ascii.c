@@ -280,6 +280,18 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "image_resize",
                            "IMAGE_RESIZE: Resize complete (%.2f ms)");
 
+  // Check original image before resize
+  int orig_black = 0, orig_total = 0;
+  for (int i = 0; i < original->w * original->h && i < 1000; i++) {
+    rgb_pixel_t p = original->pixels[i];
+    orig_total++;
+    if (p.r == 0 && p.g == 0 && p.b == 0)
+      orig_black++;
+  }
+  fprintf(stderr, ">>> ORIGINAL image: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", orig_black,
+          orig_total, orig_total > 0 ? 100.0 * orig_black / orig_total : 0, original->pixels[0].r,
+          original->pixels[0].g, original->pixels[0].b);
+
   // PROFILING: Time ASCII print
   uint64_t prof_print_start_ns = prof_resize_end_ns;
 
@@ -287,6 +299,18 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
   log_debug_every(10 * US_PER_SEC_INT,
                   "ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)", original->w,
                   original->h, width, height, resized->w, resized->h, pad_width, pad_height, caps->render_mode);
+
+  // Check if image is all black
+  int black_pixels = 0, total_pixels = 0;
+  for (int i = 0; i < resized->w * resized->h && i < 1000; i++) {
+    rgb_pixel_t p = resized->pixels[i];
+    total_pixels++;
+    if (p.r == 0 && p.g == 0 && p.b == 0)
+      black_pixels++;
+  }
+  fprintf(stderr, ">>> Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n", black_pixels,
+          total_pixels, total_pixels > 0 ? 100.0 * black_pixels / total_pixels : 0, resized->pixels[0].r,
+          resized->pixels[0].g, resized->pixels[0].b);
 
   // Use the capability-aware image printing function with client's palette
   START_TIMER("image_print_with_capabilities");

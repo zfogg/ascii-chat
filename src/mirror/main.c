@@ -207,6 +207,9 @@
 #include "session/render.h"
 #include "session/keyboard_handler.h"
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/options/options.h>
+#include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/util/time.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
@@ -242,6 +245,27 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
  * @param user_data Unused (NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  */
+// Capture callback wrapper for mirror mode
+static image_t *mirror_capture_cb(void *user_data) {
+  session_capture_ctx_t *capture = (session_capture_ctx_t *)user_data;
+  if (!capture) {
+    log_error("[MIRROR_CAPTURE_CB] capture context is NULL!");
+    return NULL;
+  }
+  log_debug("[MIRROR_CAPTURE_CB] Reading frame from capture=%p", (void *)capture);
+  image_t *frame = session_capture_read_frame(capture);
+  log_debug("[MIRROR_CAPTURE_CB] Got frame: %p", (void *)frame);
+  return frame;
+}
+
+// Sleep callback wrapper for mirror mode
+static void mirror_sleep_cb(void *user_data) {
+  (void)user_data;
+  // Sleep for one frame at target FPS
+  uint64_t frame_period_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps));
+  platform_sleep_ns(frame_period_ns);
+}
+
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
   (void)user_data; // Unused
 
@@ -254,14 +278,15 @@ static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_disp
     return SET_ERRNO(ERROR_INVALID_STATE, "Render should_exit callback not initialized");
   }
 
-  log_info("mirror_run: Calling session_render_loop");
-  // Run the unified render loop with keyboard support
-  asciichat_error_t result = session_render_loop(capture, display,
+  log_info("mirror_run: Calling session_render_loop with callbacks");
+  // Run the unified render loop with keyboard support using event-driven mode (callbacks)
+  asciichat_error_t result = session_render_loop(NULL, // No capture context (use callbacks instead)
+                                                 display,
                                                  render_should_exit,      // Exit check (checks global + custom)
-                                                 NULL,                    // No custom capture callback
-                                                 NULL,                    // No custom sleep callback
+                                                 mirror_capture_cb,       // Capture callback
+                                                 mirror_sleep_cb,         // Sleep callback
                                                  mirror_keyboard_handler, // Keyboard handler
-                                                 display);                // user_data for keyboard handler
+                                                 capture);                // user_data for callbacks
   log_info("mirror_run: session_render_loop returned with result=%d", result);
   return result;
 }

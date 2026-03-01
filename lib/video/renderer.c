@@ -31,7 +31,7 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
   if ((!raw_font || raw_font[0] == '\0') && GET_OPTION(matrix_rain)) {
     raw_font = "matrix";
-    log_debug("render_file_create: Using matrix font (enabled by --matrix flag)");
+    log_debug("render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
   asciichat_error_t fe =
@@ -40,10 +40,23 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     log_warn("renderer: font resolution failed for '%s' — using system default", raw_font[0] ? raw_font : "(default)");
   }
 
+  log_debug("render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec,
+            font_is_path, (void *)font_data, font_data_size);
+
+  // Use larger default font size for matrix font for better render-file quality
+  double font_size_pt = GET_OPTION(render_font_size);
+  if (raw_font && strcmp(raw_font, "matrix") == 0) {
+    // If using default font size (12.0) with matrix, scale up to 24.0 for better visibility
+    if (font_size_pt == 12.0) {
+      font_size_pt = 24.0;
+      log_debug("render_file_create: [MATRIX] Scaling font size from 12.0pt to 24.0pt for render-file");
+    }
+  }
+
   term_renderer_config_t tr_cfg = {
       .cols = cols,
       .rows = rows,
-      .font_size_pt = GET_OPTION(render_font_size),
+      .font_size_pt = font_size_pt,
       .theme = (term_renderer_theme_t)theme,
       .font_is_path = font_is_path,
       .font_data = font_data,
@@ -57,8 +70,8 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     SAFE_FREE(ctx);
     return err;
   }
-  log_debug("render_file_create: term_renderer created successfully (%dx%d px)", term_renderer_width_px(ctx->renderer),
-            term_renderer_height_px(ctx->renderer));
+  log_debug("render_file_create: term_renderer created (%dx%d cells, %dx%d px)", cols, rows,
+            term_renderer_width_px(ctx->renderer), term_renderer_height_px(ctx->renderer));
 
   err = ffmpeg_encoder_create(output_path, term_renderer_width_px(ctx->renderer),
                               term_renderer_height_px(ctx->renderer), fps, &ctx->encoder);
@@ -76,6 +89,13 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 }
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame) {
+  // Write to debug file directly to bypass logging system
+  FILE *dbg = fopen("/tmp/render-debug.txt", "a");
+  if (dbg) {
+    fprintf(dbg, "[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu\n", (void *)ctx,
+            ansi_frame ? strlen(ansi_frame) : 0);
+    fclose(dbg);
+  }
   log_info("render_file_write_frame: CALLED - ctx=%p", (void *)ctx);
 
   if (!ctx) {

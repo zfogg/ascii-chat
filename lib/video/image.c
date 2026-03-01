@@ -817,6 +817,10 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
 
   char *result = NULL;
 
+  // DEBUG: Log terminal capabilities
+  fprintf(stderr, ">>> image_print_with_capabilities: color_level=%d, render_mode=%d, use_background=%d\n",
+          caps->color_level, caps->render_mode, use_background_mode);
+
   // Choose the appropriate printing method based on terminal capabilities
   switch (caps->color_level) {
   case TERM_COLOR_TRUECOLOR:
@@ -861,14 +865,18 @@ char *image_print_with_capabilities(const image_t *image, const terminal_capabil
   case TERM_COLOR_NONE:
   default:
     // Use grayscale/monochrome conversion with client's custom palette
+    fprintf(stderr, ">>> TERM_COLOR_NONE: palette=%p (%s), image=%dx%d\n", palette, palette ? palette : "(null)",
+            image->w, image->h);
 #ifdef SIMD_SUPPORT
     START_TIMER("print_simd");
     result = image_print_simd((image_t *)image, palette);
+    fprintf(stderr, ">>> image_print_simd returned: %p (len=%zu)\n", result, result ? strlen(result) : 0);
     STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print_simd",
                              "PRINT_SIMD: Complete (%.2f ms)");
 #else
     START_TIMER("print");
     result = image_print(image, palette);
+    fprintf(stderr, ">>> image_print returned: %p (len=%zu)\n", result, result ? strlen(result) : 0);
     STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "print", "PRINT: Complete (%.2f ms)");
 #endif
     break;

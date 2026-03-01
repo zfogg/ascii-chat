@@ -138,20 +138,25 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Disable console logging during rendering to prevent logs from corrupting frame display
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
+  log_info("[PRE_RENDER_LOOP] About to disable logging. snapshot_mode=%s capture=%p is_synchronous=%d",
+           snapshot_mode ? "YES" : "NO", (void *)capture, (capture != NULL));
   log_set_terminal_output(false);
 
   // Main render loop
   log_debug("session_render_loop: entering main loop");
   int loop_iteration = 0;
+  log_info("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
+           snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
   while (!should_exit(user_data)) {
     loop_iteration++;
+    log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s", loop_iteration, snapshot_done ? "YES" : "NO");
     if (loop_iteration % 60 == 0) {
       log_debug("session_render_loop: iteration %d, should_exit check returning false", loop_iteration);
     }
     // Snapshot mode: exit at start of iteration if done
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
     if (snapshot_mode && snapshot_done) {
-      log_debug("Snapshot mode: exiting at loop iteration start");
+      log_info("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start");
       break;
     }
 
@@ -169,9 +174,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     if (is_synchronous) {
       capture_start_ns = time_get_ns();
       // SYNCHRONOUS MODE: Use session_capture context
+      log_info("[SYNC_MODE] Processing frame %lu, capture=%p", frame_count, (void *)capture);
 
       // Check if we're in stdin render mode (reading ASCII frames from stdin)
       stdin_frame_reader_t *stdin_reader = (stdin_frame_reader_t *)session_display_get_stdin_reader(display);
+      log_info("[SYNC_MODE] stdin_reader=%p (stdin mode: %s)", (void *)stdin_reader, stdin_reader ? "YES" : "NO");
       if (stdin_reader) {
         // STDIN RENDER MODE: Read ASCII frame text directly from stdin
         char *ascii_frame = NULL;
