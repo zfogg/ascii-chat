@@ -104,18 +104,29 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Disable keyboard only in snapshot mode
   // Allow keyboard input in all other modes, even if stdin/stdout aren't TTYs
   bool keyboard_enabled = false;
+  log_info("render_loop: Keyboard setup - handler=%p snapshot=%s", (void *)keyboard_handler,
+           snapshot_mode ? "YES" : "NO");
   if (keyboard_handler && !snapshot_mode) {
+    log_info("render_loop: Calling keyboard_init()...");
     // Try to initialize keyboard input
     asciichat_error_t kb_result = keyboard_init();
     if (kb_result == ASCIICHAT_OK) {
       keyboard_enabled = true;
-      log_debug("Keyboard input enabled");
+      log_info("render_loop: ✓ Keyboard input ENABLED");
     } else {
-      log_debug("Failed to initialize keyboard input (%s) - will attempt fallback", asciichat_error_string(kb_result));
+      log_warn("render_loop: keyboard_init failed (%s) - will attempt fallback", asciichat_error_string(kb_result));
       // Don't fail - continue with keyboard handler (will try to read anyway)
       keyboard_enabled = true; // Allow trying to read keyboard even if init failed
+      log_info("render_loop: Continuing with keyboard fallback");
     }
+  } else {
+    log_info("render_loop: Keyboard NOT enabled - handler=%p snapshot=%s", (void *)keyboard_handler,
+             snapshot_mode ? "YES" : "NO");
   }
+
+  // Log TTY detection status for debugging keyboard issues
+  log_info("TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d", terminal_is_stdin_tty(),
+           terminal_is_stdout_tty(), terminal_is_interactive(), keyboard_enabled);
 
   // Determine mode: synchronous (capture provided) or event-driven (callbacks provided)
   bool is_synchronous = (capture != NULL);

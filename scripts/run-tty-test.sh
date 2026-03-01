@@ -2,6 +2,8 @@
 #
 # Run TTY detection test in different contexts to diagnose keyboard input issues
 
+set -e
+
 _repo_root=$(git rev-parse --show-toplevel)
 cd "$_repo_root"
 
@@ -16,7 +18,7 @@ echo "1. Direct interactive run (should show all TTYs):"
 echo ""
 
 echo "2. Via tmux send-keys (should show piped stdout):"
-tmux new-session -d -s tty-test bash
+tmux new-session -d -t tty-test
 tmux send-keys -t tty-test "/tmp/tty-test" Enter
 sleep 1
 tmux capture-pane -t tty-test -p

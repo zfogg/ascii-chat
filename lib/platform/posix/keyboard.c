@@ -18,6 +18,8 @@
 #include <string.h>
 #include <stdio.h>
 #include <ctype.h>
+#include <errno.h>
+#include <ascii-chat/util/time.h>
 
 /* ============================================================================
  * Constants
@@ -43,13 +45,16 @@ static bool g_tty_fd_owned = false;
  * ============================================================================ */
 
 asciichat_error_t keyboard_init(void) {
+  log_info("keyboard_init: STARTING");
   // If already initialized, return success
   if (lifecycle_is_initialized(&g_keyboard_lc)) {
+    log_debug("keyboard_init: Already initialized");
     return ASCIICHAT_OK;
   }
 
   // CAS to claim initialization
   if (!lifecycle_init(&g_keyboard_lc, "keyboard")) {
+    log_debug("keyboard_init: Lost init race, another thread initialized");
     return ASCIICHAT_OK; // Already initialized
   }
 
@@ -61,20 +66,26 @@ asciichat_error_t keyboard_init(void) {
   bool use_stdin = true;
 
   // Get current terminal settings from stdin
+  log_info("keyboard_init: Trying tcgetattr(STDIN_FILENO)");
   if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
+    log_warn("keyboard_init: tcgetattr(STDIN_FILENO) failed - trying /dev/tty fallback");
     // stdin is not a TTY - try /dev/tty as fallback
     // This allows keyboard input to work even when stdin/stdout are redirected,
     // which happens in environments like Claude Code where the subprocess has
     // no direct TTY access but /dev/tty is available
-    g_tty_fd = open("/dev/tty", O_RDONLY);
+    log_info("keyboard_init: Attempting to open /dev/tty as fallback");
+    g_tty_fd = open("/dev/tty", O_RDWR);
     if (g_tty_fd < 0) {
+      log_error("keyboard_init: FAILED - /dev/tty not available. Keyboard input will NOT work!");
       lifecycle_init_abort(&g_keyboard_lc);
       return SET_ERRNO_SYS(ERROR_PLATFORM_INIT,
                            "Failed to get terminal attributes from stdin, and /dev/tty is not available");
     }
 
+    log_info("keyboard_init: /dev/tty opened successfully");
     // Try to get terminal settings from /dev/tty
     if (tcgetattr(g_tty_fd, &g_original_termios) < 0) {
+      log_error("keyboard_init: tcgetattr(/dev/tty) failed");
       close(g_tty_fd);
       g_tty_fd = -1;
       lifecycle_init_abort(&g_keyboard_lc);
@@ -84,7 +95,7 @@ asciichat_error_t keyboard_init(void) {
     config_fd = g_tty_fd;
     g_tty_fd_owned = true;
     use_stdin = false;
-    log_debug("Using /dev/tty for keyboard input (stdin is not a TTY)");
+    log_info("keyboard_init: Using /dev/tty for keyboard input");
   }
 
   // Save original settings and create raw mode version
@@ -120,6 +131,7 @@ asciichat_error_t keyboard_init(void) {
   // read() to return EAGAIN spuriously.
 
   // Mark as initialized (still under lock-free CAS)
+  log_info("keyboard_init: SUCCESS - using %s for keyboard input", use_stdin ? "stdin" : "/dev/tty");
   return ASCIICHAT_OK;
 }
 
@@ -155,6 +167,14 @@ keyboard_key_t keyboard_read_nonblocking(void) {
   // otherwise use stdin
   int read_fd = (g_tty_fd >= 0) ? g_tty_fd : STDIN_FILENO;
 
+  static uint64_t last_log_ns = 0;
+  uint64_t now_ns = time_get_ns();
+  bool should_log_debug = (now_ns - last_log_ns) > (100 * NS_PER_MS_INT); // Log every 100ms max
+  if (should_log_debug) {
+    log_debug("keyboard_read_nonblocking: Starting - using fd=%d (g_tty_fd=%d stdin=%d)", read_fd, g_tty_fd,
+              STDIN_FILENO);
+  }
+
   // Check if input is available using select with zero timeout
   fd_set readfds;
   struct timeval timeout;
@@ -167,14 +187,29 @@ keyboard_key_t keyboard_read_nonblocking(void) {
 
   int select_result = select(read_fd + 1, &readfds, NULL, NULL, &timeout);
   if (select_result <= 0) {
+    if (should_log_debug) {
+      log_debug("keyboard_read_nonblocking: select() returned %d (no input or error), errno=%d", select_result,
+                select_result < 0 ? errno : 0);
+      last_log_ns = now_ns;
+    }
     return KEY_NONE; // No input available or error
+  }
+
+  if (should_log_debug) {
+    log_debug("keyboard_read_nonblocking: select() found input, reading...");
   }
 
   // Input is available, read one byte
   unsigned char ch;
   ssize_t n = read(read_fd, &ch, 1);
   if (n <= 0) {
+    log_warn("keyboard_read_nonblocking: read() returned %zd, errno=%d", n, errno);
     return KEY_NONE;
+  }
+
+  if (should_log_debug) {
+    log_debug("keyboard_read_nonblocking: Successfully read char 0x%02x (%c)", ch, (ch >= 32 && ch < 127) ? ch : '?');
+    last_log_ns = now_ns;
   }
 
   // Handle special characters first
