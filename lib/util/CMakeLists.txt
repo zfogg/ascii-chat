@@ -16,6 +16,8 @@ set(UTIL_SRCS
     ${CMAKE_CURRENT_SOURCE_DIR}/display.c
     ${CMAKE_CURRENT_SOURCE_DIR}/pcre2.c
     ${CMAKE_CURRENT_SOURCE_DIR}/env.c
+    # Atomic operations abstraction
+    ${CMAKE_SOURCE_DIR}/lib/atomic.c
     # utf8proc Unicode library
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/utf8proc/utf8proc.c
 )

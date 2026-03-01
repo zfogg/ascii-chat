@@ -821,6 +821,36 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #define NAMED_REGISTER_FD(fd, name) ((void)0)
 #endif
 
+/**
+ * @brief Register an atomic_t with automatic format specifier
+ * @param a Pointer to atomic_t
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for atomic addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_ATOMIC(a, name)                                                                                     \
+  named_register((uintptr_t)(const void *)(a), (name), "atomic", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_ATOMIC(a, name) (name)
+#endif
+
+/**
+ * @brief Register an atomic_ptr_t with automatic format specifier
+ * @param a Pointer to atomic_ptr_t
+ * @param name Base name string
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for atomic_ptr addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_ATOMIC_PTR(a, name)                                                                                 \
+  named_register((uintptr_t)(const void *)(a), (name), "atomic_ptr", "0x%tx", __FILE__, __LINE__, __func__)
+#else
+#define NAMED_REGISTER_ATOMIC_PTR(a, name) (name)
+#endif
+
 // ============================================================================
 // Thread-Specific Registration Macros
 // ============================================================================

@@ -69,6 +69,7 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/debug/atomic.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/backtrace.h>
 #endif
@@ -426,6 +427,8 @@ int main(int argc, char *argv[]) {
   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
 #ifndef NDEBUG
   named_init();
+  // Initialize atomic operations debug tracking
+  debug_atomic_init();
   // Register all packet types from the packet_type_t enum
   named_registry_register_packet_types();
 #endif
