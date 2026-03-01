@@ -65,7 +65,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "../common.h"
-#include "../video/image.h"
+#include <ascii-chat/video/image.h>
 
 /* ============================================================================
  * Media Source Types

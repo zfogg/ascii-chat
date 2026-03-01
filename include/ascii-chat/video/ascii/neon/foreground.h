@@ -17,7 +17,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
-#include "../../video/image.h"
+#include <ascii-chat/video/image.h>
 
 #if SIMD_SUPPORT_NEON
 #include <arm_neon.h>

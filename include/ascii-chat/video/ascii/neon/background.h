@@ -8,7 +8,7 @@
  * Functions for rendering ASCII art with background colors using ARM NEON.
  */
 
-#include "image.h"
+#include <ascii-chat/video/image.h>
 
 #if SIMD_SUPPORT_NEON
 

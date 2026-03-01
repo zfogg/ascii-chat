@@ -31,7 +31,7 @@
 
 #include "../common.h"
 #include "../platform/terminal.h"
-#include "../video/image.h"
+#include <ascii-chat/video/image.h>
 
 #ifdef __cplusplus
 extern "C" {

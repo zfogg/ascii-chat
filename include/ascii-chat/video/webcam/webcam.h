@@ -63,7 +63,7 @@
  */
 
 #include <stdint.h>
-#include "../../video/image.h"
+#include <ascii-chat/video/image.h>
 
 /* ============================================================================
  * Device Information
