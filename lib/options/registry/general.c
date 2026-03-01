@@ -60,8 +60,7 @@ const registry_entry_t g_general_entries[] = {
      offsetof(options_t, splash_screen),
      &default_splash_value,
      sizeof(bool),
-     "Enable or disable splash screen with ASCII art (e.g., --splash-screen=true or --splash-screen=false; default: auto-detect). "
-     "Overrides CLAUDECODE environment variable.",
+     "Enable or disable splash screen with ASCII art. Overrides CLAUDECODE environment variable.",
      "GENERAL",
      NULL,
      false,
@@ -79,8 +78,7 @@ const registry_entry_t g_general_entries[] = {
      offsetof(options_t, status_screen),
      &default_status_screen_value,
      sizeof(bool),
-     "Enable or disable live status screen display (e.g., --status-screen=true or --status-screen=false; default: auto-detect). "
-     "Overrides non-interactive terminal checks on server and discovery-service modes.",
+     "Enable or disable live status screen display. Overrides non-interactive terminal checks.",
      "GENERAL",
      NULL,
      false,
