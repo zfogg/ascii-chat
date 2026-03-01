@@ -80,7 +80,6 @@
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii.h>

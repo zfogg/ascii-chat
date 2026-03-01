@@ -10,7 +10,6 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/password.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/bytes.h>

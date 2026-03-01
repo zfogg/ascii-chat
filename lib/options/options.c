@@ -94,7 +94,6 @@
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
@@ -1162,8 +1161,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       opts.version = true;
       options_state_set(&opts);
       return ASCIICHAT_OK;
-    }
-    else if (create_config) {
+    } else if (create_config) {
       // Build the schema first so config_create_default can generate options from it
       const options_config_t *unified_config = options_preset_unified(NULL, NULL);
       if (unified_config) {
@@ -1178,8 +1176,7 @@ asciichat_error_t options_init(int argc, char **argv) {
       // Call action handler which handles all output and prompts properly
       action_create_config(config_create_path);
       // action_create_config() calls _Exit(), so we don't reach here
-    }
-    else if (create_manpage) {
+    } else if (create_manpage) {
       // Call action handler which handles all output and prompts properly
       action_create_manpage(manpage_create_path);
       // action_create_manpage() calls _Exit(), so we don't reach here

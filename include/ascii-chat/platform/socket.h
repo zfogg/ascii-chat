@@ -248,9 +248,13 @@
 #include <stdbool.h>
 #include <string.h> // For memcpy used in common.h
 #include <sys/types.h>
-#include "../platform/util.h" // For ssize_t definition on Windows
 
+// Define ssize_t for Windows - avoid circular include with string.h
 #ifdef _WIN32
+#ifndef _SSIZE_T_DEFINED
+typedef SSIZE_T ssize_t;
+#define _SSIZE_T_DEFINED
+#endif
 #include <winsock2.h>
 #include <ws2tcpip.h> // Includes TCP_NODELAY and other TCP options
 /** @brief Socket handle type (Windows: SOCKET) */

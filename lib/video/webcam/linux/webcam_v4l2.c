@@ -31,7 +31,6 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/util/overflow.h>
 #include <ascii-chat/util/image.h>
@@ -66,10 +65,10 @@ struct webcam_context_t {
   AVFrame *mjpeg_decoded_frame;       // Decoded JPEG frame buffer
 
   // Async camera reading (non-blocking)
-  lifecycle_t async_lifecycle;             // Lifecycle state machine for camera thread
-  asciichat_thread_t camera_thread;        // Background thread for continuous frame capture
-  _Atomic(image_t *) latest_frame;         // Latest frame from camera (atomic swap)
-  image_t *async_cached_frame;             // Last frame returned to caller (returned when no new frame available)
+  lifecycle_t async_lifecycle;      // Lifecycle state machine for camera thread
+  asciichat_thread_t camera_thread; // Background thread for continuous frame capture
+  _Atomic(image_t *) latest_frame;  // Latest frame from camera (atomic swap)
+  image_t *async_cached_frame;      // Last frame returned to caller (returned when no new frame available)
 };
 
 /**
@@ -256,7 +255,8 @@ static int webcam_v4l2_set_format(webcam_context_t *ctx, int width, int height) 
     ctx->width = fmt.fmt.pix.width;
     ctx->height = fmt.fmt.pix.height;
     if (webcam_v4l2_init_mjpeg_decoder(ctx) == 0) {
-      log_debug("V4L2 format set to MJPEG %dx%d (60fps compressed - will decompress JPEG with FFmpeg)", ctx->width, ctx->height);
+      log_debug("V4L2 format set to MJPEG %dx%d (60fps compressed - will decompress JPEG with FFmpeg)", ctx->width,
+                ctx->height);
       log_info("MJPEG format selected: pixelformat=0x%x", ctx->pixelformat);
       return 0;
     } else {
@@ -484,7 +484,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   // Request target FPS via VIDIOC_S_PARM AFTER streaming starts
   // Some devices require streaming to be active before frame rate control works
   uint32_t target_fps = (uint32_t)GET_OPTION(fps);
-  if (target_fps == 0) target_fps = 60;  // Default to 60 if not set
+  if (target_fps == 0)
+    target_fps = 60; // Default to 60 if not set
 
   struct v4l2_streamparm parm = {0};
   parm.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
@@ -495,8 +496,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
     // Get back what the driver actually set
     if (ioctl(context->fd, VIDIOC_G_PARM, &parm) == 0) {
       int actual_fps = parm.parm.capture.timeperframe.denominator /
-                      (parm.parm.capture.timeperframe.numerator ?
-                       parm.parm.capture.timeperframe.numerator : 1);
+                       (parm.parm.capture.timeperframe.numerator ? parm.parm.capture.timeperframe.numerator : 1);
       log_info("V4L2 frame rate set: requested %u FPS, got %d FPS", target_fps, actual_fps);
     }
   } else {
@@ -518,8 +518,8 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   }
 
   // Start background camera thread
-  asciichat_error_t thread_err = asciichat_thread_create(&context->camera_thread, "webcam_camera",
-                                                          webcam_camera_thread_func, context);
+  asciichat_error_t thread_err =
+      asciichat_thread_create(&context->camera_thread, "webcam_camera", webcam_camera_thread_func, context);
   if (thread_err != ASCIICHAT_OK) {
     lifecycle_shutdown(&context->async_lifecycle);
     for (int i = 0; i < context->buffer_count; i++) {
@@ -634,7 +634,7 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
   // At 30fps, frames arrive every ~33ms; at 60fps every ~16ms
   struct pollfd pfd = {.fd = ctx->fd, .events = POLLIN};
 
-  int poll_ret = poll(&pfd, 1, 500);  // 500ms timeout for slower cameras
+  int poll_ret = poll(&pfd, 1, 500); // 500ms timeout for slower cameras
 
   if (poll_ret < 0) {
     log_error("poll() failed on V4L2 device: %s", SAFE_STRERROR(errno));
@@ -700,7 +700,6 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
       return NULL;
     }
 
-
     // Create packet from MJPEG frame data
     AVPacket pkt = {0};
     av_new_packet(&pkt, buf.bytesused);
@@ -740,8 +739,8 @@ image_t *webcam_read_context(webcam_context_t *ctx) {
     uint8_t *dst_data[1] = {(uint8_t *)img->pixels};
     int dst_linesize[1] = {ctx->width * 3};
 
-    sws_scale(ctx->sws_ctx, (const uint8_t * const *)ctx->mjpeg_decoded_frame->data,
-              ctx->mjpeg_decoded_frame->linesize, 0, ctx->height, dst_data, dst_linesize);
+    sws_scale(ctx->sws_ctx, (const uint8_t *const *)ctx->mjpeg_decoded_frame->data, ctx->mjpeg_decoded_frame->linesize,
+              0, ctx->height, dst_data, dst_linesize);
 
     // Re-queue the buffer for future use
     if (ioctl(ctx->fd, VIDIOC_QBUF, &buf) == -1) {

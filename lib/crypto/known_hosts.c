@@ -17,7 +17,6 @@
 #include <ascii-chat/crypto/keys.h>
 #include <ascii-chat/crypto/regex.h> // For crypto_regex_match_known_hosts()
 #include <ascii-chat/util/ip.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/system.h>     // For platform_isatty() and FILE_PERM_* constants
 #include <ascii-chat/platform/filesystem.h> // For platform_mkdir(), platform_stat()
 #include <ascii-chat/platform/question.h>   // For platform_prompt_yes_no
@@ -548,7 +547,8 @@ asciichat_error_t remove_known_host(const char *server_ip, uint16_t port) {
   }
 
   // Write back the filtered lines
-  fd = platform_open("known_hosts_file_write", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC, FILE_PERM_PRIVATE);
+  fd = platform_open("known_hosts_file_write", path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC,
+                     FILE_PERM_PRIVATE);
   f = platform_fdopen("known_hosts_write_stream", fd, "w");
   if (!f) {
     // Cleanup on error - fdopen failed, so fd is still open but f is NULL

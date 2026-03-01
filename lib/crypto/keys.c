@@ -14,7 +14,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/url.h>            // For url_is_valid(), url_parse()
-#include <ascii-chat/platform/util.h>       // For platform_strtok_r
 #include <ascii-chat/crypto/gpg/export.h>   // For gpg_get_public_key()
 #include <ascii-chat/network/http_client.h> // For https_get()
 #include <string.h>

@@ -7,8 +7,8 @@
 #ifndef _WIN32
 
 #include <ascii-chat/platform/filesystem.h>
+#include <ascii-chat/platform/string.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <sys/stat.h>

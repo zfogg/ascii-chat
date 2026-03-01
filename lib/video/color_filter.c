@@ -7,7 +7,6 @@
 #include <ascii-chat/video/color_filter.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/memory.h>
-#include <ascii-chat/platform/util.h>
 #include <string.h>
 #include <math.h>
 #include <stdio.h>

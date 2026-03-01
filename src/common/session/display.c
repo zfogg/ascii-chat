@@ -446,8 +446,16 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
   }
 
   // Get conversion parameters from command-line options or terminal detection
-  unsigned short int width = terminal_get_effective_width();
-  unsigned short int height = terminal_get_effective_height();
+  // When rendering to file, use the configured grid dimensions instead of terminal size
+  unsigned short int width, height;
+  if (ctx->render_file) {
+    width = (unsigned short int)GET_OPTION(width);
+    height = (unsigned short int)GET_OPTION(height);
+    log_debug("session_display_convert_to_ascii: Using render-file dimensions %ux%u", width, height);
+  } else {
+    width = terminal_get_effective_width();
+    height = terminal_get_effective_height();
+  }
   bool stretch = GET_OPTION(stretch);
   bool preserve_aspect_ratio = !stretch;
 

@@ -11,7 +11,6 @@
 #include <ascii-chat/network/webrtc/ice.h>
 #include <ascii-chat/network/webrtc/webrtc.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/util/ip.h>
 #include <string.h>

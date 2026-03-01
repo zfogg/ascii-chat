@@ -26,7 +26,6 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
-#include <ascii-chat/platform/util.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

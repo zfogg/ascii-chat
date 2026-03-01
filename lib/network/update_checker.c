@@ -12,7 +12,6 @@
 #include <ascii-chat/platform/network.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>

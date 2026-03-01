@@ -8,7 +8,6 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/string.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/util/url.h> // For url_parse()

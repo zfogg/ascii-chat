@@ -12,7 +12,6 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/time.h>
 #include <stdlib.h>

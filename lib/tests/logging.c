@@ -13,7 +13,6 @@
 // POSIX-only test utilities for redirecting stdout/stderr
 
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/util.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>

@@ -14,7 +14,6 @@
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/process.h>
-#include <ascii-chat/platform/util.h>
 
 #include <ctype.h>
 #include <errno.h>

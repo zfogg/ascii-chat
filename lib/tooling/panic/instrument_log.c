@@ -3,7 +3,6 @@
 
 #include <ascii-chat/tooling/panic/instrument_log.h>
 #include <ascii-chat/common.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/platform/system.h>

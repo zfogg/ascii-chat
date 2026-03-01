@@ -27,7 +27,6 @@
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/init.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/mdns/mdns.h>

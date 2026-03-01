@@ -10,7 +10,6 @@
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/question.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <string.h>

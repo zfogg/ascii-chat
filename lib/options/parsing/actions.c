@@ -26,7 +26,6 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/stat.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/version.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/audio/audio.h>

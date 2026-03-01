@@ -299,6 +299,7 @@
 #include "../platform/socket.h"
 #include "../platform/terminal.h"
 #include "../platform/system.h"
+#include "../platform/string.h"
 #include "../platform/memory.h"
 #include "../platform/process.h"
 #include "../platform/filesystem.h"

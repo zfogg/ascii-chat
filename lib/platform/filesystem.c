@@ -4,7 +4,6 @@
  */
 
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/util.h>
 #include <errno.h>
 #include <string.h>
 #include <stdio.h>

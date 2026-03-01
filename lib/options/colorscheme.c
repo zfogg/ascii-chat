@@ -13,7 +13,6 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/platform/stat.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat-deps/tomlc17/src/tomlc17.h>
 #include <string.h>
@@ -33,7 +32,9 @@ static lifecycle_t g_colorscheme_lifecycle = LIFECYCLE_INIT;
  * EXCEPTION: Emscripten/WASM with pthreads doesn't support static mutex initialization properly,
  * so we initialize it explicitly in colorscheme_init() like Windows. */
 #if defined(_WIN32) || defined(__EMSCRIPTEN__)
-mutex_t g_colorscheme_mutex = {.impl = {0}, .name = NULL}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
+mutex_t g_colorscheme_mutex = {
+    .impl = {0},
+    .name = NULL}; /* Windows CRITICAL_SECTION or Emscripten pthread_mutex_t - initialized in colorscheme_init() */
 #else
 mutex_t g_colorscheme_mutex = {.impl = PTHREAD_MUTEX_INITIALIZER, .name = NULL}; /* POSIX pthread_mutex_t */
 #endif

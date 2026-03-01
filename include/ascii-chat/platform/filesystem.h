@@ -592,6 +592,84 @@ char *platform_get_config_dir(void);
 char *platform_get_data_dir(void);
 
 // ============================================================================
+// File I/O Operations
+// ============================================================================
+
+/**
+ * @brief Safe file open (open replacement)
+ * @param name Debug name for the file descriptor (required, e.g., "config_file")
+ * @param pathname File path to open
+ * @param flags Open flags (PLATFORM_O_RDONLY, PLATFORM_O_WRONLY, PLATFORM_O_RDWR, etc.)
+ * @param ... Variable arguments (mode for PLATFORM_O_CREAT)
+ * @return File descriptor, or -1 on error
+ */
+int platform_open(const char *name, const char *pathname, int flags, ...);
+
+/**
+ * @brief Safe file open stream (fopen replacement)
+ * @param name Debug name for the file (required, e.g., "config_file")
+ * @param filename File path to open
+ * @param mode Open mode string (e.g., "r", "w", "rb")
+ * @return FILE pointer, or NULL on error
+ */
+FILE *platform_fopen(const char *name, const char *filename, const char *mode);
+
+/**
+ * @brief Create a temporary file (tmpfile replacement)
+ * @return FILE pointer, or NULL on error
+ */
+FILE *platform_tmpfile(void);
+
+/**
+ * @brief Convert file descriptor to stream (fdopen replacement)
+ * @param name Debug name for the stream (required, e.g., "log_stream")
+ * @param fd File descriptor
+ * @param mode Open mode string for the stream
+ * @return FILE pointer, or NULL on error
+ */
+FILE *platform_fdopen(const char *name, int fd, const char *mode);
+
+/**
+ * @brief Safe file read (read replacement)
+ * @param fd File descriptor
+ * @param buf Buffer to read into
+ * @param count Number of bytes to read
+ * @return Number of bytes read, or -1 on error
+ */
+ssize_t platform_read(int fd, void *buf, size_t count);
+
+/**
+ * @brief Safe file write (write replacement)
+ * @param fd File descriptor
+ * @param buf Buffer to write from
+ * @param count Number of bytes to write
+ * @return Number of bytes written, or -1 on error
+ */
+ssize_t platform_write(int fd, const void *buf, size_t count);
+
+/**
+ * @brief Safe file close (close replacement)
+ * @param fd File descriptor to close
+ * @return 0 on success, -1 on error
+ */
+int platform_close(int fd);
+
+/**
+ * @brief Delete/unlink file
+ * @param pathname File path to delete
+ * @return 0 on success, -1 on error
+ */
+int platform_unlink(const char *pathname);
+
+/**
+ * @brief Change file permissions/mode
+ * @param pathname File path
+ * @param mode New file mode (permissions)
+ * @return 0 on success, -1 on error
+ */
+int platform_chmod(const char *pathname, int mode);
+
+// ============================================================================
 // Platform Path Utilities
 // ============================================================================
 

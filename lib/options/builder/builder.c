@@ -20,7 +20,6 @@
 #include <limits.h>
 
 // Use platform utilities
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/platform/terminal.h>
 #define asprintf platform_asprintf
 

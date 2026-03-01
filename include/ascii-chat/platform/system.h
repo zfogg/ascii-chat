@@ -750,6 +750,36 @@ asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src
 asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src);
 
 /**
+ * @brief Get the last system error code
+ *
+ * Returns the last error code from the operating system.
+ * On Windows: Returns GetLastError()
+ * On POSIX: Returns errno
+ *
+ * @return System error code (Windows DWORD cast to int, or errno on POSIX)
+ *
+ * @ingroup platform
+ */
+int platform_get_last_error(void);
+
+/**
+ * @brief Get human-readable error message for a system error code
+ *
+ * Converts a system error code into a readable error message string.
+ * Uses strerror_r on POSIX and FormatMessageA on Windows.
+ *
+ * @param errnum System error code
+ * @return Pointer to error message string (may be static, do not modify or free)
+ *
+ * @note The returned string may be a static buffer. Do not modify or free it.
+ * @note On POSIX, uses strerror_r with thread-local storage
+ * @note On Windows, uses FormatMessageA with proper cleanup
+ *
+ * @ingroup platform
+ */
+const char *platform_strerror(int errnum);
+
+/**
  * @brief Resolve hostname to IPv4 address
  *
  * Performs DNS resolution to convert a hostname to an IPv4 address string.

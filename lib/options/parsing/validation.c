@@ -14,7 +14,6 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/ip.h>
 #include <ascii-chat/util/parsing.h>
 #include <ascii-chat/video/palette.h>

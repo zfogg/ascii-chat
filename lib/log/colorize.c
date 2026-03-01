@@ -9,7 +9,6 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/terminal.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/video/ansi.h>
 #include <ctype.h>
 #include <string.h>

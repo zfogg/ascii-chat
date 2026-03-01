@@ -9,7 +9,6 @@
 #include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
-#include <ascii-chat/platform/util.h>
 #include <ascii-chat/util/pcre2.h>
 #include <ascii-chat/paths.h>
 #include <string.h>
