@@ -601,7 +601,7 @@ packet_recv_result_t receive_packet_secure(socket_t sockfd, void *crypto_ctx, bo
 
   // DEBUG: Log raw header bytes for debugging packet misalignment
   char header_hex[95];
-  for (int i = 0; i < sizeof(header); i++) {
+  for (size_t i = 0; i < sizeof(header); i++) {
     sprintf(&header_hex[i * 2], "%02x", ((uint8_t *)&header)[i]);
   }
   header_hex[94] = '\0';

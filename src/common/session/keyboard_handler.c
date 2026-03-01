@@ -90,7 +90,7 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     log_debug("Keyboard input received: code=%d (0x%02x) char='%c'", key, key, (key >= 32 && key < 127) ? key : '?');
   }
 
-  switch (key) {
+  switch ((int)key) {
   // ===== HELP SCREEN TOGGLE =====
   case KEY_QUESTION: {
     if (display) {

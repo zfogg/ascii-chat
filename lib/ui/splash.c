@@ -581,7 +581,7 @@ static void *splash_animation_thread(void *arg) {
     iteration_count++;
 
     // Log progress every 1 second of actual time (not frame count)
-    if (elapsed_ms > 0 && elapsed_ms % 1000 < anim_speed) {
+    if (elapsed_ms > 0 && (int)(elapsed_ms % 1000) < anim_speed) {
       uint64_t now_ns = time_get_ns();
       uint64_t total_elapsed_ns = now_ns - loop_start_ns;
       double elapsed_sec = total_elapsed_ns / 1e9;

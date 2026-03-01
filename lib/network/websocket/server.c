@@ -792,14 +792,6 @@ static struct lws_protocols websocket_protocols[] = {
  * - Reduces multi-fragment receive stalls
  * - Improves throughput by reducing TCP round-trips
  */
-// RX BUFFER UNDERFLOW FIX: Configure permessage-deflate compression window
-// Use server_max_window_bits=15 (32KB window) for proper decompression of large messages.
-// Smaller windows (8-11) cause decompression failures on 1KB+ fragmented messages.
-// The issue was misdiagnosis - LWS needs sufficient window for fragmented message reassembly.
-static const struct lws_extension websocket_extensions[] = {
-    {"permessage-deflate", lws_extension_callback_pm_deflate, "permessage-deflate; server_max_window_bits=15"},
-    {NULL, NULL, NULL}};
-
 /**
  * @brief Keep-alive policy for WebSocket connections
  *

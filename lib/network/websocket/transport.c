@@ -412,7 +412,6 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       break;
     }
 
-    const size_t CHUNK_SIZE = 4096;  // Fragment messages into 4KB chunks
     websocket_recv_msg_t msg;
     int message_count = 0;
 

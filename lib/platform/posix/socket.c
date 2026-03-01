@@ -17,6 +17,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>

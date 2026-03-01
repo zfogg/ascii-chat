@@ -201,51 +201,6 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
 }
 
 /**
- * @brief Skip past any leading ANSI escape codes at a given byte position
- *
- * @param colored_text Text with ANSI codes
- * @param byte_pos Starting byte position
- * @return Byte position after skipping all leading ANSI codes
- */
-static size_t skip_ansi_codes(const char *colored_text, size_t byte_pos) {
-  while (colored_text[byte_pos] != '\0' && colored_text[byte_pos] == '\x1b') {
-    byte_pos++;
-    // Check if there's a next byte before reading it
-    if (colored_text[byte_pos] == '\0') {
-      break;
-    }
-    unsigned char next = (unsigned char)colored_text[byte_pos];
-    if (next == '[') {
-      // CSI sequence: \x1b[...final_byte (where final byte is 0x40-0x7E)
-      byte_pos++;
-      while (colored_text[byte_pos] != '\0') {
-        unsigned char c = (unsigned char)colored_text[byte_pos];
-        byte_pos++;
-        // Final byte ends the sequence (0x40-0x7E)
-        if (c >= 0x40 && c <= 0x7E) {
-          break;
-        }
-      }
-    } else if (next >= 0x40 && next <= 0x7E) {
-      // 2-byte Fe sequence: \x1b + final_byte (e.g., \x1b7, \x1b8)
-      byte_pos++;
-    } else if (next == '(' || next == ')' || next == '*' || next == '+') {
-      // Designate character set sequences: \x1b( + charset (3 bytes total)
-      byte_pos++; // skip designator
-      if (colored_text[byte_pos] != '\0') {
-        byte_pos++; // skip charset ID
-      }
-    } else {
-      // Unknown escape sequence type, try to skip conservatively
-      if (colored_text[byte_pos] != '\0') {
-        byte_pos++;
-      }
-    }
-  }
-  return byte_pos;
-}
-
-/**
  * @brief Map character position in plain text to byte position in colored text
  *
  * @param colored_text Original text with ANSI escape codes

@@ -644,9 +644,7 @@ int mixer_process_excluding_source(mixer_t *mixer, float *output, int num_sample
   // Validate exclude_index before using in bitshift
   // - exclude_index == MIXER_HASH_INVALID means "not found" (sentinel value from initialization)
   // - exclude_index >= MIXER_MAX_SOURCES would cause undefined behavior in bitshift
-  // - Also verify hash table lookup actually matched the client_id (collision detection)
-  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != MIXER_HASH_INVALID &&
-                        mixer->source_ids[exclude_index] == exclude_client_id);
+  bool valid_exclude = (exclude_index < MIXER_MAX_SOURCES && exclude_index != MIXER_HASH_INVALID);
 
   if (valid_exclude) {
     // Apply exclusion to prevent echo feedback
