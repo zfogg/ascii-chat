@@ -11,10 +11,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 
-# Define flags for WASM build
-add_definitions(
-    -DEMSCRIPTEN_BUILD=1
-)
+# Note: EMSCRIPTEN_BUILD must be applied PER-TARGET, not globally
+# Global add_definitions() affects all targets including native dependency builds (Opus, etc)
+# Apply only to WASM executables and common library below
 
 # Cache WASM dependencies outside build/ to persist across rebuilds
 if(ASCIICHAT_WEB_DEPS_DIR)
@@ -280,6 +279,9 @@ add_library(wasm-common OBJECT
     ${UTF8PROC_SRC}
 )
 
+# Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
+target_compile_definitions(wasm-common PRIVATE EMSCRIPTEN_BUILD=1)
+
 # Link dependencies for shared library
 target_link_libraries(wasm-common PRIVATE
     sodium
@@ -292,6 +294,9 @@ add_executable(mirror-wasm
     ${LIB_SRC_MIRROR_ONLY}
     $<TARGET_OBJECTS:wasm-common>
 )
+
+# Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
+target_compile_definitions(mirror-wasm PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Mirror mode uses SIMD for video processing
 target_compile_options(mirror-wasm PRIVATE -msimd128 -mavx2)
@@ -314,6 +319,9 @@ add_executable(client-wasm
     ${LIB_SRC_CLIENT_NETWORK}
     $<TARGET_OBJECTS:wasm-common>
 )
+
+# Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
+target_compile_definitions(client-wasm PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Link dependencies for client mode
 target_link_libraries(client-wasm PRIVATE
