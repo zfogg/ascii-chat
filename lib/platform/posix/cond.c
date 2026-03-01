@@ -81,7 +81,7 @@ int cond_timedwait_impl(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns) {
   // If we timed out (not signaled), decrement waiting_count
   // cond_on_signal() is called by another thread if we were actually signaled
   if (result == ETIMEDOUT && cond && cond->waiting_count > 0) {
-    atomic_fetch_sub((volatile _Atomic(uint64_t) *)&cond->waiting_count, 1);
+    cond->waiting_count--;
   }
 
   return result;

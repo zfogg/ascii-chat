@@ -135,12 +135,12 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
     video_frame_buffer_destroy(vfb);
     return NULL;
   }
-  atomic_store(&vfb->new_frame_available, false);
+  atomic_store_bool(&vfb->new_frame_available, false);
 
   // Initialize statistics
-  atomic_store(&vfb->total_frames_received, 0);
-  atomic_store(&vfb->total_frames_dropped, 0);
-  atomic_store(&vfb->last_frame_sequence, 0);
+  atomic_store_u64(&vfb->total_frames_received, 0);
+  atomic_store_u64(&vfb->total_frames_dropped, 0);
+  atomic_store_u64(&vfb->last_frame_sequence, 0);
 
   log_debug("Created video frame buffer for client %u with double buffering", client_id);
 
@@ -213,9 +213,9 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   }
 
   // Check if reader has consumed the previous frame
-  if (atomic_load(&vfb->new_frame_available)) {
+  if (atomic_load_bool(&vfb->new_frame_available)) {
     // Reader hasn't consumed yet - we're dropping a frame
-    uint64_t drops = atomic_fetch_add(&vfb->total_frames_dropped, 1) + 1;
+    uint64_t drops = atomic_fetch_add_u64(&vfb->total_frames_dropped, 1) + 1;
     // Throttle drop logging - only log every 100 drops to avoid spam
     if (drops == 1 || drops % 100 == 0) {
       log_dev_every(4500 * US_PER_MS_INT, "Dropping frame for client %u (reader too slow, total drops: %llu)",
@@ -234,8 +234,8 @@ void video_frame_commit(video_frame_buffer_t *vfb) {
   mutex_unlock(&vfb->swap_mutex);
 
   // Signal reader that new frame is available
-  atomic_store(&vfb->new_frame_available, true);
-  atomic_fetch_add(&vfb->total_frames_received, 1);
+  atomic_store_bool(&vfb->new_frame_available, true);
+  atomic_fetch_add_u64(&vfb->total_frames_received, 1);
 }
 
 const video_frame_t *video_frame_get_latest(video_frame_buffer_t *vfb) {

@@ -21,7 +21,7 @@
  */
 typedef struct pcre2_singleton {
   lifecycle_t lc;               ///< Per-object compilation lifecycle (UNINITIALIZED → INITIALIZED)
-  _Atomic(void *) code;   ///< Compiled regex (lazy init, atomic)
+  atomic_ptr_t code;            ///< Compiled regex (lazy init, atomic pointer)
   pcre2_jit_stack *jit_stack;   ///< JIT stack for performance
   char *pattern;                ///< Pattern string (owned by singleton, dynamically allocated)
   uint32_t flags;               ///< PCRE2 compile flags
@@ -69,7 +69,7 @@ pcre2_singleton_t *asciichat_pcre2_singleton_compile(const char *pattern, uint32
 
   /* Initialize fields */
   singleton->lc = (lifecycle_t)LIFECYCLE_INIT; ///< Per-object lifecycle for lazy compilation
-  atomic_store(&singleton->code, NULL);
+  singleton->code = NULL;
   singleton->jit_stack = NULL;
   singleton->flags = flags;
 
@@ -101,7 +101,7 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   }
 
   /* Fast path: check if already compiled (lock-free atomic load, no mutex) */
-  pcre2_code *code = atomic_load(&singleton->code);
+  pcre2_code *code = ((pcre2_code *)(singleton->code));
   if (code != NULL) {
     return code;
   }
@@ -115,10 +115,10 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   /* Try to win the compilation race using lifecycle_t */
   if (!lifecycle_init(&singleton->lc, "pcre2_pattern")) {
     /* Lost race - someone else is compiling or already compiled. Spin for their result. */
-    while (atomic_load(&singleton->code) == NULL && lifecycle_is_initialized(&singleton->lc)) {
+    while (((pcre2_code *)(singleton->code)) == NULL && lifecycle_is_initialized(&singleton->lc)) {
       /* Spin-wait for compiler to finish */
     }
-    return atomic_load(&singleton->code);
+    return ((pcre2_code *)(singleton->code));
   }
 
   /* Slow path: we won the race, need to compile. */
@@ -150,7 +150,7 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   }
 
   /* Store compiled code (atomic, so subsequent calls see it immediately) */
-  atomic_store(&singleton->code, code);
+  atomic_ptr_store(&singleton->code, code);
   /* Mark compilation as completed by moving to INITIALIZED state */
   lifecycle_init_commit(&singleton->lc);
 
@@ -167,7 +167,7 @@ bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton) {
   if (!singleton) {
     return false;
   }
-  return atomic_load(&singleton->code) != NULL;
+  return ((pcre2_code *)(singleton->code)) != NULL;
 }
 
 /**
@@ -184,7 +184,7 @@ void asciichat_pcre2_singleton_free(pcre2_singleton_t *singleton) {
   }
 
   /* Free compiled code if it exists */
-  pcre2_code *code = atomic_load(&singleton->code);
+  pcre2_code *code = ((pcre2_code *)(singleton->code));
   if (code) {
     pcre2_code_free(code);
   }
