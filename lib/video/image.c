@@ -22,8 +22,8 @@
 #include <ascii-chat/video/ascii.h>
 #include <ascii-chat/video/simd/ascii_simd.h>
 #include <ascii-chat/video/simd/common.h>
-#include <ascii-chat/video/render/scalar/halfblock.h>
-#include <ascii-chat/video/render/scalar/foreground.h>
+#include <ascii-chat/video/ascii/scalar/halfblock.h>
+#include <ascii-chat/video/ascii/scalar/foreground.h>
 
 #include <ascii-chat/video/ansi_fast.h>
 #include <ascii-chat/options/options.h>

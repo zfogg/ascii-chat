@@ -27,11 +27,11 @@
 #include <ascii-chat/video/image.h>
 #include "session/stdin_reader.h"
 #ifndef _WIN32
-#include <ascii-chat/video/render/file/renderer.h>
+#include <ascii-chat/video/ascii/file/renderer.h>
 #endif
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/video/render/neon/foreground.h>
+#include <ascii-chat/video/ascii/neon/foreground.h>
 
 #include <string.h>
 #include <stdio.h>

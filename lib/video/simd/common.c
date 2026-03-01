@@ -19,15 +19,15 @@
 // Include SIMD architecture headers for cleanup functions
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
 #if SIMD_SUPPORT_NEON
-#include <ascii-chat/video/render/neon/foreground.h>
+#include <ascii-chat/video/ascii/neon/foreground.h>
 #elif SIMD_SUPPORT_AVX2
-#include <ascii-chat/video/render/avx2/foreground.h>
+#include <ascii-chat/video/ascii/avx2/foreground.h>
 #elif SIMD_SUPPORT_SSSE3
-#include <ascii-chat/video/render/ssse3/foreground.h>
+#include <ascii-chat/video/ascii/ssse3/foreground.h>
 #elif SIMD_SUPPORT_SSE2
-#include <ascii-chat/video/render/sse2/foreground.h>
+#include <ascii-chat/video/ascii/sse2/foreground.h>
 #elif SIMD_SUPPORT_SVE
-#include <ascii-chat/video/render/sve/foreground.h>
+#include <ascii-chat/video/ascii/sve/foreground.h>
 #endif
 
 // Build 64-entry glyph LUT for vqtbl4q_u8 and other architecture's instrinsics (UTF-8 aware)

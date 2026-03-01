@@ -465,17 +465,17 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
 
 // Include architecture-specific implementations
 #if SIMD_SUPPORT_SSE2
-#include "../../video/render/sse2/foreground.h"
+#include "../../video/ascii/sse2/foreground.h"
 #endif
 #if SIMD_SUPPORT_SSSE3
-#include "../../video/render/ssse3/foreground.h"
+#include "../../video/ascii/ssse3/foreground.h"
 #endif
 #if SIMD_SUPPORT_AVX2
-#include "../../video/render/avx2/foreground.h"
+#include "../../video/ascii/avx2/foreground.h"
 #endif
 #if SIMD_SUPPORT_SVE
-#include "../../video/render/sve/foreground.h"
+#include "../../video/ascii/sve/foreground.h"
 #endif
 #if SIMD_SUPPORT_NEON
-#include "../../video/render/neon/foreground.h"
+#include "../../video/ascii/neon/foreground.h"
 #endif
