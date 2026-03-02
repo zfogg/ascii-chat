@@ -706,7 +706,6 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
-endif()
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -918,10 +917,9 @@ endif()
     endif()
 
     # Note: System library dependencies will be added below
-endif()
 
-# Add system library dependencies
-if(WIN32)
+    # Add system library dependencies (only for shared library, which is not built for musl)
+    if(WIN32)
     get_core_deps_libraries(CORE_LIBS)
     target_link_libraries(ascii-chat-shared PRIVATE
         ${WS2_32_LIB} ${USER32_LIB} ${ADVAPI32_LIB} ${DBGHELP_LIB}
@@ -952,135 +950,79 @@ if(WIN32)
     )
     target_link_libraries(ascii-chat-shared PRIVATE delayimp)
 else()
-    # For musl builds, shared library links against system glibc libraries
-    # Musl-built static libraries use incompatible TLS model (local-dynamic) and cannot be embedded in .so
-    # Shared library users will have glibc, so we use system packages via pkg-config
-    if(USE_MUSL)
-        # Use system glibc libraries for shared library (not musl static libs)
-        # Users of libasciichat.so will have glibc available
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(PORTAUDIO_SYS portaudio-2.0)
-        pkg_check_modules(ZSTD_SYS libzstd)
-        pkg_check_modules(LIBSODIUM_SYS libsodium)
-        pkg_check_modules(OPUS_SYS opus)
+    # Non-musl builds use normal dependencies
+    # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
+    get_core_deps_libraries(CORE_LIBS)
 
-        get_core_deps_sys_libraries(CORE_SYS_LIBS)
-        get_core_deps_sys_include_dirs(CORE_SYS_INCS)
+    # Check for JACK (required if PortAudio was built with JACK support)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(JACK jack)
 
-        target_link_libraries(ascii-chat-shared PRIVATE
-            ${CORE_SYS_LIBS}
-            m
-            ${CMAKE_THREAD_LIBS_INIT}
-        )
-        target_include_directories(ascii-chat-shared PRIVATE
-            ${CORE_SYS_INCS}
-        )
-
-        # Link BearSSL and mimalloc static libraries into shared library
-        # These are compiled with -fPIC and correct TLS model for shared library compatibility
-        # BearSSL is required
-        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-        # Link miniupnpc if available (UPnP/NAT-PMP support)
-        if(MINIUPNPC_FOUND)
-            target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-            target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
-            if(NATPMP_LIBRARY)
-                target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
-            endif()
+    target_link_libraries(ascii-chat-shared PRIVATE
+        ${CORE_LIBS} m ${SQLITE3_LIBRARIES}
+        ${JACK_LIBRARIES}
+    )
+    # Link miniupnpc if available (UPnP/NAT-PMP support)
+    if(MINIUPNPC_FOUND)
+        target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
+        target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
+        if(NATPMP_LIBRARY)
+            target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
         endif()
-        # Link mimalloc with force_load/whole-archive to export all symbols
-        if(USE_MIMALLOC)
-            # For FetchContent builds, use generator expression to get library path at build time
+    endif()
+    # Link BearSSL (required)
+    target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
+    # Audio codec and processing
+    target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
+    # Link mimalloc into shared library (required for SAFE_MALLOC macros)
+    # Use force_load/whole-archive to export all mimalloc symbols from the shared library
+    if(USE_MIMALLOC)
+        if(MIMALLOC_IS_SHARED_LIB)
+            # System mimalloc is a shared library - link normally (no --whole-archive)
+            # Symbols stay in separate .so, not embedded in our library
             if(TARGET mimalloc-shared)
-                add_dependencies(ascii-chat-shared mimalloc-shared)
-                # Linux musl: --whole-archive exports all symbols from static library
+                target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
+            elseif(MIMALLOC_LIBRARIES)
+                target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
+            endif()
+        elseif(TARGET mimalloc-shared)
+            # Static library - use force_load/whole-archive to include all objects
+            add_dependencies(ascii-chat-shared mimalloc-shared)
+            if(APPLE)
+                # macOS: -force_load includes all objects from static library
+                target_link_libraries(ascii-chat-shared PRIVATE -force_load $<TARGET_FILE:mimalloc-shared>)
+            else()
+                # Linux: --whole-archive includes all objects from static library
                 target_link_libraries(ascii-chat-shared PRIVATE
                     -Wl,--whole-archive $<TARGET_FILE:mimalloc-shared> -Wl,--no-whole-archive)
-            elseif(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                # Fallback: use explicit path if set (cached builds)
+            endif()
+        elseif(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
+            # Fallback: use explicit path if set (cached builds)
+            if(APPLE)
+                target_link_libraries(ascii-chat-shared PRIVATE -force_load ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
+            else()
                 target_link_libraries(ascii-chat-shared PRIVATE
                     -Wl,--whole-archive ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB} -Wl,--no-whole-archive)
-            elseif(MIMALLOC_SHARED_LIBRARIES)
-                # Another fallback: use MIMALLOC_SHARED_LIBRARIES if set
+            endif()
+        elseif(MIMALLOC_SHARED_LIBRARIES)
+            # Another fallback: use MIMALLOC_SHARED_LIBRARIES if set
+            if(APPLE)
+                target_link_libraries(ascii-chat-shared PRIVATE -force_load ${MIMALLOC_SHARED_LIBRARIES})
+            else()
                 target_link_libraries(ascii-chat-shared PRIVATE
                     -Wl,--whole-archive ${MIMALLOC_SHARED_LIBRARIES} -Wl,--no-whole-archive)
             endif()
         endif()
-    else()
-        # Non-musl builds use normal dependencies
-        # Note: Core dependencies are PkgConfig::* IMPORTED targets that include library paths automatically
-        get_core_deps_libraries(CORE_LIBS)
-
-        # Check for JACK (required if PortAudio was built with JACK support)
-        find_package(PkgConfig REQUIRED)
-        pkg_check_modules(JACK jack)
-
+    endif()
+    if(PLATFORM_DARWIN)
         target_link_libraries(ascii-chat-shared PRIVATE
-            ${CORE_LIBS} m ${SQLITE3_LIBRARIES}
-            ${JACK_LIBRARIES}
+            ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
+            ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
+            ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
+            ${CORESERVICES_FRAMEWORK} ${IOKIT_FRAMEWORK}
         )
-        # Link miniupnpc if available (UPnP/NAT-PMP support)
-        if(MINIUPNPC_FOUND)
-            target_include_directories(ascii-chat-shared PRIVATE ${MINIUPNPC_INCLUDE_DIRS})
-            target_link_libraries(ascii-chat-shared PRIVATE ${MINIUPNPC_LIBRARIES})
-            if(NATPMP_LIBRARY)
-                target_link_libraries(ascii-chat-shared PRIVATE ${NATPMP_LIBRARY})
-            endif()
-        endif()
-        # Link BearSSL (required)
-        target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
-        # Audio codec and processing
-        target_link_libraries(ascii-chat-shared PRIVATE ${OPUS_LIBRARIES})
-        # Link mimalloc into shared library (required for SAFE_MALLOC macros)
-        # Use force_load/whole-archive to export all mimalloc symbols from the shared library
-        if(USE_MIMALLOC)
-            if(MIMALLOC_IS_SHARED_LIB)
-                # System mimalloc is a shared library - link normally (no --whole-archive)
-                # Symbols stay in separate .so, not embedded in our library
-                if(TARGET mimalloc-shared)
-                    target_link_libraries(ascii-chat-shared PRIVATE mimalloc-shared)
-                elseif(MIMALLOC_LIBRARIES)
-                    target_link_libraries(ascii-chat-shared PRIVATE ${MIMALLOC_LIBRARIES})
-                endif()
-            elseif(TARGET mimalloc-shared)
-                # Static library - use force_load/whole-archive to include all objects
-                add_dependencies(ascii-chat-shared mimalloc-shared)
-                if(APPLE)
-                    # macOS: -force_load includes all objects from static library
-                    target_link_libraries(ascii-chat-shared PRIVATE -force_load $<TARGET_FILE:mimalloc-shared>)
-                else()
-                    # Linux: --whole-archive includes all objects from static library
-                    target_link_libraries(ascii-chat-shared PRIVATE
-                        -Wl,--whole-archive $<TARGET_FILE:mimalloc-shared> -Wl,--no-whole-archive)
-                endif()
-            elseif(ASCIICHAT_MIMALLOC_SHARED_LINK_LIB)
-                # Fallback: use explicit path if set (cached builds)
-                if(APPLE)
-                    target_link_libraries(ascii-chat-shared PRIVATE -force_load ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB})
-                else()
-                    target_link_libraries(ascii-chat-shared PRIVATE
-                        -Wl,--whole-archive ${ASCIICHAT_MIMALLOC_SHARED_LINK_LIB} -Wl,--no-whole-archive)
-                endif()
-            elseif(MIMALLOC_SHARED_LIBRARIES)
-                # Another fallback: use MIMALLOC_SHARED_LIBRARIES if set
-                if(APPLE)
-                    target_link_libraries(ascii-chat-shared PRIVATE -force_load ${MIMALLOC_SHARED_LIBRARIES})
-                else()
-                    target_link_libraries(ascii-chat-shared PRIVATE
-                        -Wl,--whole-archive ${MIMALLOC_SHARED_LIBRARIES} -Wl,--no-whole-archive)
-                endif()
-            endif()
-        endif()
-        if(PLATFORM_DARWIN)
-            target_link_libraries(ascii-chat-shared PRIVATE
-                ${FOUNDATION_FRAMEWORK} ${AVFOUNDATION_FRAMEWORK}
-                ${COREMEDIA_FRAMEWORK} ${COREVIDEO_FRAMEWORK}
-                ${COREAUDIO_FRAMEWORK} ${AUDIOUNIT_FRAMEWORK} ${AUDIOTOOLBOX_FRAMEWORK}
-                ${CORESERVICES_FRAMEWORK} ${IOKIT_FRAMEWORK}
-            )
-        elseif(PLATFORM_LINUX)
-            target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
-        endif()
+    elseif(PLATFORM_LINUX)
+        target_link_libraries(ascii-chat-shared PRIVATE ${CMAKE_THREAD_LIBS_INIT})
     endif()
 endif()
 
@@ -1215,6 +1157,8 @@ if(ASCIICHAT_LLVM_NM_EXECUTABLE)
         VERBATIM
     )
 endif()
+
+endif()  # End if(NOT USE_MUSL) - closes shared library configuration
 
 # =============================================================================
 # Combined Static Library (built from OBJECT libraries with custom archiver)
