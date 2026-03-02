@@ -169,7 +169,13 @@ static asciichat_error_t h265_encoder_reconfigure(h265_encoder_t *encoder, uint1
     log_warn("Failed to set preset on reconfigure");
   }
 
-  if (avcodec_open2(encoder->codec_ctx, codec, NULL) < 0) {
+  // Open codec (capture x265 library output during reconfiguration)
+  int codec_open_result = 0;
+  LOG_IO("hevc", {
+    codec_open_result = avcodec_open2(encoder->codec_ctx, codec, NULL);
+  });
+
+  if (codec_open_result < 0) {
     return SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC encoder for %ux%u", new_width, new_height);
   }
 
