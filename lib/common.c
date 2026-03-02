@@ -288,16 +288,17 @@ void asciichat_shared_destroy(void) {
   // 19. Clean up RCU-based options state
   options_state_destroy();
 
-  // 20. PCRE2 - cleanup all regex singletons together
-  asciichat_pcre2_cleanup_all();
-
-  // 21. Clean up errno context (allocated strings, backtrace symbols)
+  // 20. Clean up errno context (allocated strings, backtrace symbols)
   asciichat_errno_destroy();
 
 #ifndef NDEBUG
-  // 22. Named registry - cleanup all registered thread names and debug entries (BEFORE memory report)
+  // 21. Named registry - cleanup all registered thread names and debug entries
+  // Must come BEFORE PCRE2 cleanup since named_destroy() uses path normalization which needs PCRE2
   named_destroy();
 #endif
+
+  // 22. PCRE2 - cleanup all regex singletons together (after named_destroy)
+  asciichat_pcre2_cleanup_all();
 
   // 23. timer resolution restore
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
