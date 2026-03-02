@@ -37,10 +37,7 @@ export class ServerFixture {
       // Use separate ports for TCP and WebSocket: TCP on basePort, WebSocket on basePort+1
       const tcpPort = this.port;
       const wsPort = this.port + 1;
-      const debugLogFile = path.join(
-        process.cwd(),
-        `.server-debug-${this.port}.log`,
-      );
+      const debugLogFile = `/tmp/ascii-chat-server-${this.port}.log`;
 
       this.process = spawn(binaryPath, [
         "--log-level",
