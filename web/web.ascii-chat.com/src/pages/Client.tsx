@@ -75,6 +75,7 @@ class H265Encoder {
   private width = 0;
   private height = 0;
   private frameCount = 0;
+  private isOpen = false;
 
   static isSupported(): boolean {
     return typeof VideoEncoder !== "undefined";
@@ -99,6 +100,7 @@ class H265Encoder {
       },
       error: (err: DOMException) => {
         console.error("[H265Encoder] Encoding error:", err);
+        this.isOpen = false; // Mark encoder as closed on error
       },
     });
 
@@ -110,18 +112,23 @@ class H265Encoder {
       framerate: fps,
       hardwareAcceleration: "prefer-hardware",
     });
+    this.isOpen = true;
   }
 
   encode(frame: VideoFrame, forceKeyframe: boolean = false): void {
-    if (!this.encoder) return;
+    if (!this.encoder || !this.isOpen) return;
 
-    if (forceKeyframe) {
-      this.encoder.encode(frame, { keyFrame: true });
-    } else {
-      this.encoder.encode(frame, { keyFrame: false });
+    try {
+      if (forceKeyframe) {
+        this.encoder.encode(frame, { keyFrame: true });
+      } else {
+        this.encoder.encode(frame, { keyFrame: false });
+      }
+      this.frameCount++;
+    } catch (err) {
+      console.error("[H265Encoder] Failed to encode frame:", err);
+      this.isOpen = false; // Mark encoder as closed on any error
     }
-
-    this.frameCount++;
   }
 
   drain(): Array<{
@@ -136,6 +143,7 @@ class H265Encoder {
   }
 
   destroy(): void {
+    this.isOpen = false;
     if (this.encoder) {
       this.encoder.close();
       this.encoder = null;

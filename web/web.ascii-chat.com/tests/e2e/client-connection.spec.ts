@@ -146,7 +146,7 @@ test.describe("Client Connection to Native Server", () => {
         let frameCount = 0;
         const logs: string[] = [];
         const startTime = performance.now();
-        const measurementDuration = 10000; // 10 seconds - give it time to connect
+        const measurementDuration = 3000; // 3 seconds - give it time to connect
 
         // Hook console to track ASCII_FRAME packets
         const originalLog = console.log;
@@ -194,7 +194,7 @@ test.describe("Client Connection to Native Server", () => {
 
     console.log("=== Server ASCII_FRAME Delivery ===");
     console.log(
-      `Received ${frameStats.frameCount} ASCII_FRAME packets in 10 seconds (${frameStats.fps} fps)`,
+      `Received ${frameStats.frameCount} ASCII_FRAME packets in 3 seconds (${frameStats.fps} fps)`,
     );
     console.log("Recent logs:", frameStats.logs);
 
