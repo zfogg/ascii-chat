@@ -1283,7 +1283,8 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
  * @param size Size of the output buffer
  * @ingroup debug_named
  *
- * Creates hierarchical sub-names like "client.0.is_active" from parent and field.
+ * Creates hierarchical sub-names like "client.0#is_active" from parent and field.
+ * Uses hash separator to distinguish field suffixes from object counter suffixes.
  * Ensures safe bounds checking and null termination.
  *
  * Usage:
@@ -1291,16 +1292,18 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
  *   char sub_name[256];
  *   NAMED_FORMAT_SUBNAME(client_name, "is_active", sub_name, sizeof(sub_name));
  *   NAMED_REGISTER_ATOMIC(&client->active, sub_name);
+ *
+ * Result: "client.0#is_active" (hash separates field from parent's counter)
  */
 #ifndef NDEBUG
 #define NAMED_FORMAT_SUBNAME(parent_name, field_name, buffer, size)                                                   \
   do {                                                                                                                 \
-    snprintf((buffer), (size), "%s.%s", (parent_name), (field_name));                                                \
+    snprintf((buffer), (size), "%s#%s", (parent_name), (field_name));                                                \
   } while (0)
 #else
 #define NAMED_FORMAT_SUBNAME(parent_name, field_name, buffer, size)                                                   \
   do {                                                                                                                 \
-    snprintf((buffer), (size), "%s.%s", (parent_name), (field_name));                                                \
+    snprintf((buffer), (size), "%s#%s", (parent_name), (field_name));                                                \
   } while (0)
 #endif
 

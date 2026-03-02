@@ -392,9 +392,6 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
 
   log_info("[TCP_CREATE_STATE] 🟢 TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized", sockfd);
 
-  // Register impl_data in named registry for debug logging
-  NAMED_REGISTER(tcp_data, name, "tcp_impl", "0x%tx");
-
   // Enable TCP_NODELAY to disable Nagle's algorithm
   // This ensures small packets are sent immediately instead of being buffered
   int nodelay = 1;
@@ -413,7 +410,16 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
-  NAMED_REGISTER_TRANSPORT(transport, name);
+  // Register transport first, get its full registered name
+  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name);
+
+  // Create hierarchical sub-name for impl_data using transport name
+  char impl_name[256];
+  NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
+
+  // Register impl_data with hierarchical name
+  NAMED_REGISTER(tcp_data, impl_name, "tcp_impl", "0x%tx");
+
   return transport;
 }
 
