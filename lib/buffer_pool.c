@@ -132,7 +132,6 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
   buffer_node_t *node = (buffer_node_t *)node_ptr;
   while (node) {
     void *next_ptr = atomic_ptr_load(&node->next);
-    buffer_node_t *next = (buffer_node_t *)next_ptr;
     if (atomic_ptr_cas(&pool->free_list, &node_ptr, next_ptr)) {
       // Successfully popped - check if it's big enough
       if (node->size >= size) {

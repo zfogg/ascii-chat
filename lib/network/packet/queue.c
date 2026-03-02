@@ -72,7 +72,7 @@ packet_node_t *node_pool_get(node_pool_t *pool) {
   packet_node_t *node = (packet_node_t *)atomic_ptr_load(&pool->free_list);
   while (node) {
     packet_node_t *next = (packet_node_t *)atomic_ptr_load(&node->next);
-    if (atomic_ptr_cas(&pool->free_list, &node, next)) {
+    if (atomic_ptr_cas(&pool->free_list, (void **)&node, next)) {
       // Successfully popped - clear next pointer and increment used_count
       atomic_ptr_store(&node->next, (void *)(packet_node_t *)NULL);
       atomic_fetch_add_u64(&pool->used_count, 1);
@@ -109,7 +109,7 @@ void node_pool_put(node_pool_t *pool, packet_node_t *node) {
     packet_node_t *head = (packet_node_t *)atomic_ptr_load(&pool->free_list);
     do {
       atomic_ptr_store(&node->next, (void *)head);
-    } while (!atomic_ptr_cas(&pool->free_list, &head, node));
+    } while (!atomic_ptr_cas(&pool->free_list, (void **)&head, node));
     atomic_fetch_sub_u64(&pool->used_count, 1);
   } else {
     // This was malloc'd, so free it
@@ -237,7 +237,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     if (head) {
       packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
       // Atomically update head pointer
-      if (atomic_ptr_cas(&queue->head, &head, next)) {
+      if (atomic_ptr_cas(&queue->head, (void **)&head, next)) {
         // Successfully claimed head node
         if (next == NULL) {
           // Queue became empty, also update tail
@@ -313,7 +313,7 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     if (tail == NULL) {
       // Empty queue - atomically set both head and tail
       packet_node_t *expected = NULL;
-      if (atomic_ptr_cas(&queue->head, &expected, node)) {
+      if (atomic_ptr_cas(&queue->head, (void **)&expected, node)) {
         // Successfully set head (queue was empty)
         atomic_ptr_store(&queue->tail, (void *)node);
         break; // Enqueue successful
@@ -335,15 +335,15 @@ int packet_queue_enqueue(packet_queue_t *queue, packet_type_t type, const void *
     if (next == NULL) {
       // Tail is actually the last node - try to link new node
       packet_node_t *expected_null = NULL;
-      if (atomic_ptr_cas(&tail->next, &expected_null, node)) {
+      if (atomic_ptr_cas(&tail->next, (void **)&expected_null, node)) {
         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
-        atomic_ptr_cas(&queue->tail, &tail, node);
+        atomic_ptr_cas(&queue->tail, (void **)&tail, node);
         break; // Enqueue successful
       }
       // CAS failed - another thread appended to tail, retry
     } else {
       // Tail is lagging behind - help advance it
-      atomic_ptr_cas(&queue->tail, &tail, next);
+      atomic_ptr_cas(&queue->tail, (void **)&tail, next);
       // Retry with new tail
     }
   }
@@ -381,7 +381,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     if (head) {
       packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
       // Atomically update head pointer
-      if (atomic_ptr_cas(&queue->head, &head, next)) {
+      if (atomic_ptr_cas(&queue->head, (void **)&head, next)) {
         // Successfully claimed head node
         if (next == NULL) {
           // Queue became empty, also update tail
@@ -446,7 +446,7 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     if (tail == NULL) {
       // Empty queue - atomically set both head and tail
       packet_node_t *expected = NULL;
-      if (atomic_ptr_cas(&queue->head, &expected, node)) {
+      if (atomic_ptr_cas(&queue->head, (void **)&expected, node)) {
         // Successfully set head (queue was empty)
         atomic_ptr_store(&queue->tail, (void *)node);
         break; // Enqueue successful
@@ -468,15 +468,15 @@ int packet_queue_enqueue_packet(packet_queue_t *queue, const queued_packet_t *pa
     if (next == NULL) {
       // Tail is actually the last node - try to link new node
       packet_node_t *expected_null = NULL;
-      if (atomic_ptr_cas(&tail->next, &expected_null, node)) {
+      if (atomic_ptr_cas(&tail->next, (void **)&expected_null, node)) {
         // Successfully linked node - try to swing tail forward (best-effort, ignore failure)
-        atomic_ptr_cas(&queue->tail, &tail, node);
+        atomic_ptr_cas(&queue->tail, (void **)&tail, node);
         break; // Enqueue successful
       }
       // CAS failed - another thread appended to tail, retry
     } else {
       // Tail is lagging behind - help advance it
-      atomic_ptr_cas(&queue->tail, &tail, next);
+      atomic_ptr_cas(&queue->tail, (void **)&tail, next);
       // Retry with new tail
     }
   }
@@ -517,7 +517,7 @@ queued_packet_t *packet_queue_try_dequeue(packet_queue_t *queue) {
 
   // Atomically update head pointer
   packet_node_t *next = (packet_node_t *)atomic_ptr_load(&head->next);
-  if (atomic_ptr_cas(&queue->head, &head, next)) {
+  if (atomic_ptr_cas(&queue->head, (void **)&head, next)) {
     // Successfully claimed head node
     if (next == NULL) {
       // Queue became empty, also update tail atomically

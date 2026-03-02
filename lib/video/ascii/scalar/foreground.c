@@ -115,12 +115,12 @@ char *image_print(const image_t *p, const char *palette) {
       uint32_t run = (uint32_t)(j - x);
 
       // Emit UTF-8 character with RLE (same as SIMD)
-      ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+      ob_write(&ob, (const char *)char_info->utf8_bytes, char_info->byte_len);
       if (rep_is_profitable(run)) {
         emit_rep(&ob, run - 1);
       } else {
         for (uint32_t k = 1; k < run; k++) {
-          ob_write(&ob, char_info->utf8_bytes, char_info->byte_len);
+          ob_write(&ob, (const char *)char_info->utf8_bytes, char_info->byte_len);
         }
       }
       x = j;

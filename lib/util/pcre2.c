@@ -115,10 +115,10 @@ pcre2_code *asciichat_pcre2_singleton_get_code(pcre2_singleton_t *singleton) {
   /* Try to win the compilation race using lifecycle_t */
   if (!lifecycle_init(&singleton->lc, "pcre2_pattern")) {
     /* Lost race - someone else is compiling or already compiled. Spin for their result. */
-    while ((pcre2_code *)atomic_ptr_load(&singleton->code) == NULL && lifecycle_is_initialized(&singleton->lc)) {
+    while ((pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code) == NULL && lifecycle_is_initialized(&singleton->lc)) {
       /* Spin-wait for compiler to finish */
     }
-    return (pcre2_code *)atomic_ptr_load(&singleton->code);
+    return (pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code);
   }
 
   /* Slow path: we won the race, need to compile. */
@@ -167,7 +167,7 @@ bool asciichat_pcre2_singleton_is_initialized(pcre2_singleton_t *singleton) {
   if (!singleton) {
     return false;
   }
-  return (pcre2_code *)atomic_ptr_load(&singleton->code) != NULL;
+  return (pcre2_code *)(uintptr_t)atomic_load_u64(&singleton->code) != NULL;
 }
 
 /**

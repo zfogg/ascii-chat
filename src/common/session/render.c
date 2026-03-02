@@ -80,7 +80,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // Snapshot mode state tracking
   bool snapshot_mode = GET_OPTION(snapshot_mode);
-  uint64_t snapshot_start_time_ns = (snapshot_mode ? time_get_ns() : 0); // Initialize immediately in snapshot mode
   bool snapshot_done = false;
   bool first_frame_rendered = false;
 
