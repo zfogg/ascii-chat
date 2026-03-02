@@ -1,6 +1,6 @@
 /**
- * @file lan_discovery.h
- * @brief TUI-based service discovery for ascii-chat client
+ * @file ui/mdns.h
+ * @brief mDNS service discovery UI for ascii-chat client
  *
  * Implements interactive mDNS-based discovery of ascii-chat servers on the local network.
  * Provides a terminal UI for browsing and selecting available servers without manual IP entry.
@@ -25,7 +25,7 @@ typedef struct {
   char ipv4[16];     ///< IPv4 address (if available)
   char ipv6[46];     ///< IPv6 address (if available)
   uint32_t ttl;      ///< TTL remaining (seconds)
-} lan_discovery_server_t;
+} ui_mdns_server_t;
 
 /**
  * @brief Configuration for TUI discovery
@@ -34,7 +34,7 @@ typedef struct {
   int timeout_ms;  ///< Maximum time to wait for responses (default: 2000)
   int max_servers; ///< Maximum servers to collect (default: 20)
   bool quiet;      ///< Suppress discovery messages (default: false)
-} lan_discovery_config_t;
+} ui_mdns_config_t;
 
 /**
  * @brief Discover ascii-chat servers on the local network via mDNS
@@ -49,8 +49,8 @@ typedef struct {
  * - Returns array of discovered servers
  *
  * **Memory Management:**
- * - Caller is responsible for freeing the returned array with lan_discovery_free_results()
- * - Returned servers are valid until lan_discovery_free_results() is called
+ * - Caller is responsible for freeing the returned array with ui_mdns_free_results()
+ * - Returned servers are valid until ui_mdns_free_results() is called
  *
  * **Error Handling:**
  * - Returns NULL and sets errno on initialization failure
@@ -65,38 +65,38 @@ typedef struct {
  * @param config Discovery configuration (NULL uses defaults)
  * @param out_count Output parameter: number of discovered servers
  * @return Array of discovered servers, or NULL on error
- *         Must be freed with lan_discovery_free_results()
+ *         Must be freed with ui_mdns_free_results()
  *
  * @note Timeout includes network round-trip time, so 2000ms allows ~1.5s of actual waiting
  * @note Returns empty array (non-NULL with count=0) if no servers found, not NULL
  *
  * Example:
  * @code
- * lan_discovery_config_t config = {.timeout_ms = 2000, .max_servers = 20};
+ * ui_mdns_config_t config = {.timeout_ms = 2000, .max_servers = 20};
  * int count = 0;
- * lan_discovery_server_t *servers = lan_discovery_query(&config, &count);
+ * ui_mdns_server_t *servers = ui_mdns_query(&config, &count);
  *
  * if (servers && count > 0) {
  *     for (int i = 0; i < count; i++) {
  *         printf("%d: %s (%s:%d)\n", i+1, servers[i].name, servers[i].address, servers[i].port);
  *     }
  *     // User selects server...
- *     lan_discovery_free_results(servers);
+ *     ui_mdns_free_results(servers);
  * }
  * @endcode
  */
-lan_discovery_server_t *lan_discovery_query(const lan_discovery_config_t *config, int *out_count);
+ui_mdns_server_t *ui_mdns_query(const ui_mdns_config_t *config, int *out_count);
 
 /**
  * @brief Free results from TUI discovery query
  *
- * Releases memory allocated by lan_discovery_query().
+ * Releases memory allocated by ui_mdns_query().
  *
  * @param servers Pointer to server array (safe to pass NULL)
  *
  * @note Safe to call multiple times or with NULL pointer
  */
-void lan_discovery_free_results(lan_discovery_server_t *servers);
+void ui_mdns_free_results(ui_mdns_server_t *servers);
 
 /**
  * @brief Display discovered servers to user and prompt for selection
@@ -128,7 +128,7 @@ void lan_discovery_free_results(lan_discovery_server_t *servers);
  * @note This function performs interactive I/O - may not be suitable for automated contexts
  * @note For automated selection, use servers[0] directly instead
  */
-int lan_discovery_prompt_selection(const lan_discovery_server_t *servers, int count);
+int ui_mdns_prompt_selection(const ui_mdns_server_t *servers, int count);
 
 /**
  * @brief TUI-based server selection with formatted display
@@ -170,7 +170,7 @@ int lan_discovery_prompt_selection(const lan_discovery_server_t *servers, int co
  * @param count Number of servers (0 for "no results")
  * @return 0-based index of selected server, or -1 to cancel
  */
-int lan_discovery_select(const lan_discovery_server_t *servers, int count);
+int ui_mdns_select(const ui_mdns_server_t *servers, int count);
 
 /**
  * @brief Get best address representation for a discovered server
@@ -186,7 +186,7 @@ int lan_discovery_select(const lan_discovery_server_t *servers, int count);
  * @param server Discovered server
  * @return Pointer to best address string (points to field in server struct)
  */
-const char *lan_discovery_get_best_address(const lan_discovery_server_t *server);
+const char *ui_mdns_get_best_address(const ui_mdns_server_t *server);
 
 #ifdef __cplusplus
 }

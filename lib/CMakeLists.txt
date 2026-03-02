@@ -28,7 +28,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/keyboard_help.c
     ${LIB_DIR}/ui/splash.c
     ${LIB_DIR}/ui/server_like_status.c
-    ${LIB_DIR}/ui/lan_discovery.c
+    ${LIB_DIR}/ui/mdns.c
     # options/
     ${LIB_DIR}/options/colorscheme.c
     ${LIB_DIR}/options/options.c

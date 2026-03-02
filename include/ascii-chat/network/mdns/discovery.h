@@ -68,7 +68,7 @@
 #include <time.h>
 #include "../../common.h"
 #include "../../discovery/strings.h" // For is_session_string()
-#include "../../ui/lan_discovery.h"  // For lan_discovery_server_t
+#include "../../ui/mdns.h"  // For ui_mdns_server_t
 
 #ifdef __cplusplus
 extern "C" {
@@ -203,12 +203,12 @@ asciichat_error_t discover_session_parallel(const char *session_string, const di
  * @param out_count Output: number of servers discovered
  * @return Array of discovered servers, or NULL on error. Use discovery_mdns_destroy() to free.
  */
-lan_discovery_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count);
+ui_mdns_server_t *discovery_mdns_query(int timeout_ms, int max_servers, bool quiet, int *out_count);
 
 /**
  * @brief Free memory from mDNS discovery results
  */
-void discovery_mdns_destroy(lan_discovery_server_t *servers);
+void discovery_mdns_destroy(ui_mdns_server_t *servers);
 
 // ============================================================================
 // Utility Functions
