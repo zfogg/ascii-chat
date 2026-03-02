@@ -13,15 +13,30 @@
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
+#include <libavutil/opt.h>
 #include <libswscale/swscale.h>
+#include <libswresample/swresample.h>
 
 struct ffmpeg_encoder_s {
-  AVFormatContext *fmt_ctx;
+  // Video stream
   AVCodecContext *codec_ctx;
   AVStream *stream;
   AVFrame *frame;
   AVFrame *frame_encoded; // Frame in target pixel format for encoding
   struct SwsContext *sws_ctx;
+
+  // Audio stream
+  AVStream *audio_stream;
+  AVCodecContext *audio_codec_ctx;
+  struct SwrContext *audio_swr_ctx;
+  AVFrame *audio_frame;
+  int64_t audio_pts;
+  int audio_frame_size;       // Codec's required samples per frame
+  float *audio_partial_buf;   // Accumulator for partial frames
+  int audio_partial_len;
+
+  // Shared
+  AVFormatContext *fmt_ctx;
   AVPacket *pkt;
   int width_px;
   int height_px;
@@ -29,7 +44,47 @@ struct ffmpeg_encoder_s {
   int fps;                           // Frames per second (for duration calculation)
   int is_image;                      // Single-frame format (PNG, JPG)
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
+  int has_audio_stream;              // Whether audio stream was created
 };
+
+// Determine audio codec from file extension
+static void get_audio_codec_from_extension(const char *path, const char **audio_codec, enum AVSampleFormat *sample_fmt,
+                                           int *has_audio) {
+  const char *dot = strrchr(path, '.');
+  *has_audio = 0;
+  *audio_codec = NULL;
+  *sample_fmt = AV_SAMPLE_FMT_NONE;
+
+  if (!dot) {
+    *has_audio = 1;
+    *audio_codec = "aac";
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
+    return;
+  }
+
+  const char *ext = dot + 1;
+  if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
+    *has_audio = 1;
+    *audio_codec = "aac";
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
+  } else if (strcmp(ext, "webm") == 0) {
+    *has_audio = 1;
+    *audio_codec = "libopus";
+    *sample_fmt = AV_SAMPLE_FMT_FLT;
+  } else if (strcmp(ext, "avi") == 0) {
+    *has_audio = 1;
+    *audio_codec = "pcm_s16le";
+    *sample_fmt = AV_SAMPLE_FMT_S16;
+  } else if (strcmp(ext, "gif") == 0 || strcmp(ext, "png") == 0 || strcmp(ext, "jpg") == 0 || strcmp(ext, "jpeg") == 0) {
+    *has_audio = 0;
+    *audio_codec = NULL;
+    *sample_fmt = AV_SAMPLE_FMT_NONE;
+  } else {
+    *has_audio = 1;
+    *audio_codec = "aac";
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
+  }
+}
 
 // Determine codec, format, and pixel format from file extension
 static void get_codec_from_extension(const char *path, const char **codec, const char **format, int *is_image,
@@ -76,6 +131,138 @@ static void get_codec_from_extension(const char *path, const char **codec, const
     *format = "mp4";
     *pix_fmt = AV_PIX_FMT_YUV420P;
   }
+}
+
+// Initialize audio stream for encoder
+static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const char *output_path) {
+  const char *audio_codec_name = NULL;
+  enum AVSampleFormat target_sample_fmt = AV_SAMPLE_FMT_NONE;
+  int has_audio = 0;
+
+  get_audio_codec_from_extension(output_path, &audio_codec_name, &target_sample_fmt, &has_audio);
+
+  if (!has_audio) {
+    log_debug("encoder_init_audio_stream: no audio for format");
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Find audio encoder
+  const AVCodec *audio_codec = avcodec_find_encoder_by_name(audio_codec_name);
+  if (!audio_codec) {
+    log_warn("encoder_init_audio_stream: audio encoder '%s' not found, skipping audio", audio_codec_name);
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Create audio stream
+  enc->audio_stream = avformat_new_stream(enc->fmt_ctx, audio_codec);
+  if (!enc->audio_stream) {
+    log_warn("encoder_init_audio_stream: avformat_new_stream for audio failed");
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Allocate audio codec context
+  enc->audio_codec_ctx = avcodec_alloc_context3(audio_codec);
+  if (!enc->audio_codec_ctx) {
+    log_warn("encoder_init_audio_stream: avcodec_alloc_context3 for audio failed");
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Configure audio codec context
+  enc->audio_codec_ctx->sample_rate = 48000;         // 48kHz (from audio pipeline)
+  AVChannelLayout ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  av_channel_layout_copy(&enc->audio_codec_ctx->ch_layout, &ch_layout);
+  enc->audio_codec_ctx->sample_fmt = target_sample_fmt;
+  enc->audio_codec_ctx->time_base = (AVRational){1, 48000};
+  enc->audio_codec_ctx->bit_rate = 128000;            // 128 kbps
+
+  // Open audio codec
+  int ret = avcodec_open2(enc->audio_codec_ctx, audio_codec, NULL);
+  if (ret < 0) {
+    log_warn("encoder_init_audio_stream: avcodec_open2 for audio failed");
+    avcodec_free_context(&enc->audio_codec_ctx);
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Copy codec parameters to stream
+  ret = avcodec_parameters_from_context(enc->audio_stream->codecpar, enc->audio_codec_ctx);
+  if (ret < 0) {
+    log_warn("encoder_init_audio_stream: avcodec_parameters_from_context for audio failed");
+    avcodec_free_context(&enc->audio_codec_ctx);
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Create audio frame
+  enc->audio_frame = av_frame_alloc();
+  if (!enc->audio_frame) {
+    log_warn("encoder_init_audio_stream: av_frame_alloc for audio failed");
+    avcodec_free_context(&enc->audio_codec_ctx);
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  enc->audio_frame->sample_rate = 48000;
+  AVChannelLayout frame_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  av_channel_layout_copy(&enc->audio_frame->ch_layout, &frame_ch_layout);
+  enc->audio_frame->format = target_sample_fmt;
+
+  // Get frame size from codec (if specified)
+  enc->audio_frame_size = enc->audio_codec_ctx->frame_size;
+  if (enc->audio_frame_size == 0) {
+    // Default frame size for codecs that don't specify
+    enc->audio_frame_size = 1024;
+  }
+
+  // Allocate buffer for partial frames (accumulator)
+  enc->audio_partial_buf = SAFE_MALLOC(enc->audio_frame_size, float *);
+  enc->audio_partial_len = 0;
+
+  // Create resampler from input format (AV_SAMPLE_FMT_FLT mono 48kHz) to target format
+  enc->audio_swr_ctx = swr_alloc();
+  if (!enc->audio_swr_ctx) {
+    log_warn("encoder_init_audio_stream: swr_alloc failed");
+    SAFE_FREE(enc->audio_partial_buf);
+    av_frame_free(&enc->audio_frame);
+    avcodec_free_context(&enc->audio_codec_ctx);
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  // Set input format (mono 48kHz float32)
+  AVChannelLayout in_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  av_opt_set_chlayout(enc->audio_swr_ctx, "in_chlayout", &in_ch_layout, 0);
+  av_opt_set_int(enc->audio_swr_ctx, "in_sample_rate", 48000, 0);
+  av_opt_set_sample_fmt(enc->audio_swr_ctx, "in_sample_fmt", AV_SAMPLE_FMT_FLT, 0);
+
+  // Set output format
+  AVChannelLayout out_ch_layout = AV_CHANNEL_LAYOUT_MONO;
+  av_opt_set_chlayout(enc->audio_swr_ctx, "out_chlayout", &out_ch_layout, 0);
+  av_opt_set_int(enc->audio_swr_ctx, "out_sample_rate", 48000, 0);
+  av_opt_set_sample_fmt(enc->audio_swr_ctx, "out_sample_fmt", target_sample_fmt, 0);
+
+  // Initialize the resampler
+  ret = swr_init(enc->audio_swr_ctx);
+  if (ret < 0) {
+    log_warn("encoder_init_audio_stream: swr_init failed");
+    swr_free(&enc->audio_swr_ctx);
+    SAFE_FREE(enc->audio_partial_buf);
+    av_frame_free(&enc->audio_frame);
+    avcodec_free_context(&enc->audio_codec_ctx);
+    enc->has_audio_stream = 0;
+    return ASCIICHAT_OK;
+  }
+
+  enc->audio_pts = 0;
+  enc->has_audio_stream = 1;
+  log_debug("encoder_init_audio_stream: audio stream initialized with codec=%s, frame_size=%d", audio_codec_name,
+            enc->audio_frame_size);
+
+  return ASCIICHAT_OK;
 }
 
 asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
@@ -229,6 +416,9 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: sws_getContext failed");
   }
 
+  // Initialize audio stream if supported
+  encoder_init_audio_stream(enc, output_path);
+
   // Open output file
   if (!(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
     ret = avio_open(&enc->fmt_ctx->pb, output_path, AVIO_FLAG_WRITE);
@@ -350,13 +540,80 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   return ASCIICHAT_OK;
 }
 
+asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float *samples, int num_samples) {
+  if (!enc || !samples || num_samples <= 0)
+    return ASCIICHAT_OK; // Silently ignore invalid calls
+
+  // No audio stream for this format
+  if (!enc->has_audio_stream)
+    return ASCIICHAT_OK;
+
+  // Accumulate samples into partial buffer
+  int samples_to_process = num_samples;
+  int samples_offset = 0;
+
+  while (samples_to_process > 0) {
+    // How many samples can we add to the partial buffer?
+    int space_in_buffer = enc->audio_frame_size - enc->audio_partial_len;
+    int samples_to_copy = (samples_to_process < space_in_buffer) ? samples_to_process : space_in_buffer;
+
+    // Copy samples to partial buffer
+    memcpy(&enc->audio_partial_buf[enc->audio_partial_len], &samples[samples_offset], samples_to_copy * sizeof(float));
+    enc->audio_partial_len += samples_to_copy;
+    samples_offset += samples_to_copy;
+    samples_to_process -= samples_to_copy;
+
+    // If buffer is full, encode and write frame
+    if (enc->audio_partial_len >= enc->audio_frame_size) {
+      // Set up audio frame with accumulated samples
+      enc->audio_frame->data[0] = (uint8_t *)enc->audio_partial_buf;
+      enc->audio_frame->linesize[0] = enc->audio_frame_size * sizeof(float);
+      enc->audio_frame->nb_samples = enc->audio_frame_size;
+      enc->audio_frame->pts = enc->audio_pts;
+
+      // Send frame to encoder
+      int ret = avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
+      if (ret < 0) {
+        log_warn_every(5 * 1000000000LL, "ffmpeg: avcodec_send_frame for audio failed");
+      } else {
+        // Receive and write packets
+        while (ret >= 0) {
+          ret = avcodec_receive_packet(enc->audio_codec_ctx, enc->pkt);
+          if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+            break;
+          if (ret < 0) {
+            log_warn_every(5 * 1000000000LL, "ffmpeg: avcodec_receive_packet for audio failed");
+            break;
+          }
+
+          // Rescale timestamp and write
+          av_packet_rescale_ts(enc->pkt, enc->audio_codec_ctx->time_base, enc->audio_stream->time_base);
+          enc->pkt->stream_index = enc->audio_stream->index;
+          ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+          av_packet_unref(enc->pkt);
+          if (ret < 0) {
+            log_warn_every(5 * 1000000000LL, "ffmpeg: av_interleaved_write_frame for audio failed");
+            break;
+          }
+        }
+      }
+
+      // Update PTS for next frame
+      enc->audio_pts += enc->audio_frame_size;
+      enc->audio_partial_len = 0;
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
 asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   if (!enc)
     return ASCIICHAT_OK;
 
   NAMED_UNREGISTER(enc);
 
-  // Flush encoder
+  // Flush video encoder
   avcodec_send_frame(enc->codec_ctx, NULL);
   while (1) {
     int ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
@@ -374,6 +631,36 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     enc->pkt->stream_index = enc->stream->index;
     av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
     av_packet_unref(enc->pkt);
+  }
+
+  // Flush audio encoder if present
+  if (enc->has_audio_stream && enc->audio_codec_ctx) {
+    // Write any remaining partial audio samples as padding
+    if (enc->audio_partial_len > 0) {
+      // Zero-pad the remaining samples
+      memset(&enc->audio_partial_buf[enc->audio_partial_len], 0,
+             (enc->audio_frame_size - enc->audio_partial_len) * sizeof(float));
+      enc->audio_frame->data[0] = (uint8_t *)enc->audio_partial_buf;
+      enc->audio_frame->linesize[0] = enc->audio_frame_size * sizeof(float);
+      enc->audio_frame->nb_samples = enc->audio_frame_size;
+      enc->audio_frame->pts = enc->audio_pts;
+      avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
+    }
+
+    // Flush any remaining packets
+    avcodec_send_frame(enc->audio_codec_ctx, NULL);
+    while (1) {
+      int ret = avcodec_receive_packet(enc->audio_codec_ctx, enc->pkt);
+      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+        break;
+      if (ret < 0)
+        break;
+
+      av_packet_rescale_ts(enc->pkt, enc->audio_codec_ctx->time_base, enc->audio_stream->time_base);
+      enc->pkt->stream_index = enc->audio_stream->index;
+      av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+      av_packet_unref(enc->pkt);
+    }
   }
 
   // Set stream duration for proper metadata (must be before trailer)
@@ -430,6 +717,15 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   sws_freeContext(enc->sws_ctx);
   av_frame_free(&enc->frame);
   av_frame_free(&enc->frame_encoded);
+
+  // Cleanup audio resources
+  if (enc->has_audio_stream) {
+    swr_free(&enc->audio_swr_ctx);
+    av_frame_free(&enc->audio_frame);
+    avcodec_free_context(&enc->audio_codec_ctx);
+    SAFE_FREE(enc->audio_partial_buf);
+  }
+
   av_packet_free(&enc->pkt);
   avcodec_free_context(&enc->codec_ctx);
   if (enc->fmt_ctx)

@@ -539,6 +539,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
               display_config.render_fps);
   }
 
+  // Set audio sources for render-file output
+  if (capture && session_capture_get_media_source(capture)) {
+    display_config.render_file_audio_source = session_capture_get_media_source(capture);
+    log_debug("[SETUP_DISPLAY] Audio source set from media source for render-file");
+  }
+  if (audio_ctx && audio_ctx->capture_buffer) {
+    display_config.render_file_audio_capture_rb = audio_ctx->capture_buffer;
+    log_debug("[SETUP_DISPLAY] Audio capture ring buffer set for render-file");
+  }
+
   log_debug("[SETUP_DISPLAY] Creating display context");
   display = session_display_create(&display_config);
   if (!display) {

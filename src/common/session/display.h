@@ -102,6 +102,12 @@ typedef struct {
 
   /** @brief Video FPS for render-file encoding (0 = use default/option) */
   uint32_t render_fps;
+
+  /** @brief Audio source for render-file output (media source for file/URL audio, borrowed) */
+  void *render_file_audio_source;
+
+  /** @brief Audio capture ring buffer for render-file output (live mic, borrowed) */
+  void *render_file_audio_capture_rb;
 } session_display_config_t;
 
 /* ============================================================================

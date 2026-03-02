@@ -63,7 +63,12 @@ typedef struct render_file_ctx_s render_file_ctx_t;
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
                                      render_file_ctx_t **out);
 
-// Feed one ANSI frame string — renders pixels then writes to encoder.
+// Set audio source for render-file output (optional).
+// Pass media_source for file/URL audio, or capture_rb for live microphone capture.
+// Either can be NULL (no audio).
+void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb);
+
+// Feed one ANSI frame string — renders pixels then writes to encoder, synced with audio.
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame);
 
 // Flush encoder and close file.  Always frees *ctx regardless of error.

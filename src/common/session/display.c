@@ -289,8 +289,18 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
                                                   GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK)
       log_warn("render-file: init failed — file output disabled");
-    else
+    else {
       log_info("render-file: initialized for %s (ctx=%p)", render_file_opt, (void *)ctx->render_file);
+      // Set audio sources if render_file_set_audio_source is available
+      if (ctx->render_file && config->render_file_audio_source) {
+        render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, config->render_file_audio_source, NULL);
+        log_debug("render-file: audio source set (media_source=%p)", config->render_file_audio_source);
+      }
+      if (ctx->render_file && config->render_file_audio_capture_rb) {
+        render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, NULL, config->render_file_audio_capture_rb);
+        log_debug("render-file: audio capture ring buffer set");
+      }
+    }
   } else if (strcmp(render_file_opt, "-") == 0) {
     log_info("stdin render mode: stdout output enabled (skipping render_file encoder)");
   } else {

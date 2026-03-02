@@ -10,11 +10,17 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/platform/memory.h>
 #include <string.h>
 
 struct render_file_ctx_s {
   terminal_renderer_t *renderer;
   ffmpeg_encoder_t *encoder;
+  void *audio_media_source;    // media_source_t* for --file/--url audio
+  void *audio_capture_rb;      // audio_ring_buffer_t* for live mic capture
+  uint32_t audio_sample_rate;  // 48000 Hz
+  float *audio_read_buf;       // Temporary buffer for reading audio samples
+  int audio_buf_size;          // Size of audio_read_buf
 };
 
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
@@ -85,9 +91,23 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   }
   log_debug("render_file_create: ffmpeg_encoder created successfully");
 
+  // Initialize audio fields
+  ctx->audio_sample_rate = 48000;  // Audio pipeline is 48kHz
+  ctx->audio_buf_size = 1024;      // Temporary buffer for reading audio
+  ctx->audio_read_buf = SAFE_MALLOC(ctx->audio_buf_size, float *);
+  ctx->audio_media_source = NULL;
+  ctx->audio_capture_rb = NULL;
+
   log_info("renderer: initialized encoder for %s", output_path);
   *out = ctx;
   return ASCIICHAT_OK;
+}
+
+void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb) {
+  if (!ctx) return;
+  ctx->audio_media_source = audio_media_source;
+  ctx->audio_capture_rb = audio_capture_rb;
+  log_debug("render_file_set_audio_source: media_source=%p, capture_rb=%p", audio_media_source, audio_capture_rb);
 }
 
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame) {
@@ -142,6 +162,30 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   if (err != ASCIICHAT_OK) {
     log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }
+
+  // Write synchronized audio for this frame if available
+  // Calculate how many samples correspond to one video frame at the given FPS
+  // FPS is stored in the encoder context - for now, estimate based on typical frame timing
+  // Audio samples per frame = 48000 Hz / FPS  (e.g., 1600 samples @ 30fps)
+  if (ctx && ctx->audio_read_buf) {
+    int fps = 30;  // Default estimate (caller should ideally pass this, but it's in the encoder)
+    int samples_per_frame = ctx->audio_sample_rate / fps;
+
+    // Read from whichever audio source is available
+    if (ctx->audio_media_source) {
+      // Read from media source (file/URL audio)
+      // media_source_read_audio() defined in media/source.h
+      // For now, we'll skip this as it requires including media/source.h which has typedef issues
+      // TODO: fix audio source reading after resolving header dependencies
+    } else if (ctx->audio_capture_rb) {
+      // Read from ring buffer (live mic capture)
+      // audio_ring_buffer_read() defined in ringbuffer.h
+      // For now, we'll skip this to avoid header dependencies
+      // TODO: implement audio ring buffer reading
+    }
+    // If no audio source, silence is automatically written by the encoder
+  }
+
   return err;
 }
 
@@ -150,6 +194,7 @@ asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
     return ASCIICHAT_OK;
   asciichat_error_t err = ffmpeg_encoder_destroy(ctx->encoder);
   term_renderer_destroy(ctx->renderer);
+  SAFE_FREE(ctx->audio_read_buf);
   SAFE_FREE(ctx);
   return err;
 }

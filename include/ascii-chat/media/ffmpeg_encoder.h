@@ -216,6 +216,38 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc,
                                              const uint8_t *rgb, int pitch);
 
 /**
+ * Write audio samples to the output file.
+ *
+ * Encodes and writes audio samples to the output file. Audio samples must be in
+ * 48kHz mono float32 format. The function internally buffers and accumulates samples
+ * into codec frames before encoding.
+ *
+ * **Audio Format Requirements:**
+ * - Sample rate: 48000 Hz (48 kHz)
+ * - Channels: Mono (1 channel)
+ * - Format: 32-bit IEEE float (AV_SAMPLE_FMT_FLT)
+ *
+ * **Notes:**
+ * - Audio is only written if the output format supports audio (MP4, WebM, AVI).
+ * - Image formats (PNG, JPEG, GIF) ignore audio writes.
+ * - Samples are buffered internally and encoded in chunks as needed.
+ * - Timing is automatically synchronized with video using PTS (presentation timestamp).
+ *
+ * @param enc       Encoder handle (created with ffmpeg_encoder_create())
+ * @param samples   Pointer to audio samples in float32 format (not owned, used immediately)
+ * @param num_samples Number of samples to write (must be > 0)
+ *
+ * @return ASCIICHAT_OK on success, error code otherwise
+ *
+ * @note Input sample data is NOT owned by the encoder. The caller must ensure
+ *       the buffer remains valid throughout the call.
+ * @note Safe to call on encoders without audio streams (no-op).
+ *
+ * @see ffmpeg_encoder_create, ffmpeg_encoder_write_frame
+ */
+asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float *samples, int num_samples);
+
+/**
  * Close and finalize the output file, releasing all encoder resources.
  *
  * This function flushes any pending frames in the encoder, writes the file trailer,
