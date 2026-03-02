@@ -24,6 +24,7 @@ START_TIME=$(date +%s%N)
 timeout -k1 5 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
+  --test-pattern -S -D 1 \
   2>/dev/null | tee "$client_stdout" \
   || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
