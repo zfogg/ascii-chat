@@ -99,6 +99,10 @@ typedef struct client_info {
   atomic_t is_sending_video; // Thread-safe video stream state
   atomic_t is_sending_audio; // Thread-safe audio stream state
 
+  // Codec capabilities (from CLIENT_CAPABILITIES packet)
+  uint32_t codec_capabilities_video; // VIDEO_CODEC_CAP_* bitmask
+  uint32_t codec_capabilities_audio; // AUDIO_CODEC_CAP_* bitmask
+
   // Opus codec for audio compression/decompression
   void *opus_decoder; // opus_codec_t* - Opus decoder for this client's audio
 

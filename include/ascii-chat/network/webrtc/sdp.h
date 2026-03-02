@@ -40,6 +40,7 @@
 #include <stddef.h>
 #include "../../common.h"
 #include "../../asciichat_errno.h"
+#include "../../media/codecs.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -119,12 +120,14 @@ typedef struct {
   /* Audio media section */
   bool has_audio;             ///< Audio media included
   opus_config_t audio_config; ///< Opus codec configuration
+  uint32_t codec_capabilities_audio; ///< AUDIO_CODEC_CAP_* bitmask (which audio codecs peer supports)
 
   /* Video media section (terminal capabilities) */
   bool has_video;                        ///< Video media included
   terminal_capability_t *video_codecs;   ///< Array of supported capabilities
   size_t video_codec_count;              ///< Number of supported capabilities
   terminal_format_params_t video_format; ///< Default format parameters
+  uint32_t codec_capabilities_video;     ///< VIDEO_CODEC_CAP_* bitmask (which video codecs peer supports)
 
   /* Raw SDP string (generated from above) */
   char sdp_string[4096]; ///< Complete SDP as null-terminated string
@@ -139,13 +142,15 @@ typedef struct {
  * @brief Generate SDP offer (client side)
  *
  * Creates an SDP offer with:
- * - Opus audio codec
- * - Terminal capabilities in client preference order
+ * - Opus audio codec with audio codec capabilities (AUDIO_CODEC_CAP_*)
+ * - Terminal capabilities in client preference order with video codec capabilities (VIDEO_CODEC_CAP_*)
  *
  * @param capabilities Array of supported terminal capabilities
  * @param capability_count Number of capabilities
  * @param audio_config Opus codec configuration
  * @param format Format parameters for video section
+ * @param video_codec_caps Bitmask of supported video codecs (VIDEO_CODEC_CAP_*)
+ * @param audio_codec_caps Bitmask of supported audio codecs (AUDIO_CODEC_CAP_*)
  * @param offer_out Generated SDP offer (output)
  * @return ASCIICHAT_OK on success, error code on failure
  *
@@ -153,19 +158,23 @@ typedef struct {
  */
 asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, size_t capability_count,
                                      const opus_config_t *audio_config, const terminal_format_params_t *format,
+                                     uint32_t video_codec_caps, uint32_t audio_codec_caps,
                                      sdp_session_t *offer_out);
 
 /**
  * @brief Generate SDP answer (server side)
  *
  * Creates an SDP answer by selecting best mutually-supported mode from offer.
- * Server enforces its rendering constraints.
+ * Server enforces its rendering constraints and codec capabilities.
+ * Performs codec capability negotiation (intersection of client and server capabilities).
  *
- * @param offer Received SDP offer from client
- * @param server_capabilities Array of server-supported capabilities
+ * @param offer Received SDP offer from client (includes client's codec capabilities)
+ * @param server_capabilities Array of server-supported terminal capabilities
  * @param server_capability_count Number of server capabilities
  * @param audio_config Opus codec configuration
  * @param server_format Server's rendering constraints
+ * @param server_video_codec_caps Bitmask of server's supported video codecs (VIDEO_CODEC_CAP_*)
+ * @param server_audio_codec_caps Bitmask of server's supported audio codecs (AUDIO_CODEC_CAP_*)
  * @param answer_out Generated SDP answer (output)
  * @return ASCIICHAT_OK on success, error code on failure
  *
@@ -173,7 +182,9 @@ asciichat_error_t sdp_generate_offer(const terminal_capability_t *capabilities, 
  */
 asciichat_error_t sdp_generate_answer(const sdp_session_t *offer, const terminal_capability_t *server_capabilities,
                                       size_t server_capability_count, const opus_config_t *audio_config,
-                                      const terminal_format_params_t *server_format, sdp_session_t *answer_out);
+                                      const terminal_format_params_t *server_format,
+                                      uint32_t server_video_codec_caps, uint32_t server_audio_codec_caps,
+                                      sdp_session_t *answer_out);
 
 /* ============================================================================
  * SDP Parsing (Offer/Answer)

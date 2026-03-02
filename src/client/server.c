@@ -81,6 +81,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/media/codecs.h>
 #include <ascii-chat/buffer_pool.h>
 
 #include <string.h>
@@ -1523,6 +1524,10 @@ asciichat_error_t threaded_send_terminal_size_with_auto_detect(unsigned short wi
 
   // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
   net_packet.wants_padding = caps.wants_padding ? 1 : 0;
+
+  // Set codec capabilities (client supports all codecs by default)
+  net_packet.codec_capabilities_video = HOST_TO_NET_U32(VIDEO_CODEC_CAP_ALL);
+  net_packet.codec_capabilities_audio = HOST_TO_NET_U32(AUDIO_CODEC_CAP_ALL);
 
   // Use threaded_send_packet() which handles encryption
   return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &net_packet, sizeof(net_packet));

@@ -131,6 +131,7 @@
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/ascii/palette.h>
+#include <ascii-chat/media/codecs.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/network/packet/parsing.h>
@@ -739,6 +740,15 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
 
   log_info("RECV_IMAGE_FRAME: client_id=%u, len=%zu", client->client_id, len);
 
+  // Validate codec capability for RGBA frames
+  if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, VIDEO_CODEC_RGBA)) {
+    log_error("Client %s sent RGBA frame but does not support VIDEO_CODEC_RGBA (capabilities=0x%x)",
+              client->client_id, client->codec_capabilities_video);
+    disconnect_client_for_bad_data(client, "VIDEO_CODEC_RGBA not supported by client (capabilities=0x%x)",
+                                   client->codec_capabilities_video);
+    return;
+  }
+
   if (!data || len < sizeof(uint32_t) * 2) {
     disconnect_client_for_bad_data(client, "IMAGE_FRAME payload too small: %zu bytes", len);
     return;
@@ -925,6 +935,15 @@ void handle_image_frame_packet(client_info_t *client, void *data, size_t len) {
  *   - x265_data: H.265-encoded frame data
  */
 void handle_image_frame_h265_packet(client_info_t *client, const void *data, size_t len) {
+  // Validate codec capability for H.265 frames
+  if (!VIDEO_CODEC_SUPPORTED(client->codec_capabilities_video, VIDEO_CODEC_H265)) {
+    log_error("Client %s sent H.265 frame but does not support VIDEO_CODEC_H265 (capabilities=0x%x)",
+              client->client_id, client->codec_capabilities_video);
+    disconnect_client_for_bad_data(client, "VIDEO_CODEC_H265 not supported by client (capabilities=0x%x)",
+                                   client->codec_capabilities_video);
+    return;
+  }
+
   if (!data || len < 5) {
     disconnect_client_for_bad_data(client, "H265_FRAME payload too small: %zu bytes (min 5)", len);
     return;
@@ -1696,6 +1715,12 @@ void handle_client_capabilities_packet(client_info_t *client, const void *data, 
     SET_ERRNO(ERROR_INVALID_STATE, "Failed to initialize palette for client %d", client->client_id);
     client->client_palette_initialized = false;
   }
+
+  // Extract and store codec capabilities
+  client->codec_capabilities_video = NET_TO_HOST_U32(caps->codec_capabilities_video);
+  client->codec_capabilities_audio = NET_TO_HOST_U32(caps->codec_capabilities_audio);
+  log_info("Client %u codec capabilities: video=0x%x audio=0x%x", client->client_id,
+           client->codec_capabilities_video, client->codec_capabilities_audio);
 
   client->has_terminal_caps = true;
 

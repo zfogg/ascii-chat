@@ -77,6 +77,7 @@
 #include "../../crypto/crypto.h"
 #include "../../log/log.h"
 #include "../../util/magic.h"
+#include "../../media/codecs.h"
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -1009,7 +1010,8 @@ PACKED_ATTR /** @endcond */ crypto_parameters_packet_t;
  * @brief Terminal capabilities packet structure (Packet Type 5)
  *
  * Sent by client to server to report terminal capabilities, dimensions,
- * color support, and rendering preferences for optimal frame delivery.
+ * color support, rendering preferences, and supported codecs for optimal
+ * frame delivery.
  *
  * @ingroup packet
  */
@@ -1044,6 +1046,10 @@ typedef struct {
   uint8_t color_filter;
   /** @brief Whether client wants frame padding (1=padding enabled, 0=no padding for snapshot/piped modes) */
   uint8_t wants_padding;
+  /** @brief Video codec capabilities bitmask (VIDEO_CODEC_CAP_*) */
+  uint32_t codec_capabilities_video;
+  /** @brief Audio codec capabilities bitmask (AUDIO_CODEC_CAP_*) */
+  uint32_t codec_capabilities_audio;
 } /** @cond */
 PACKED_ATTR /** @endcond */ terminal_capabilities_packet_t;
 

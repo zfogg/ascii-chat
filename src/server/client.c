@@ -138,6 +138,7 @@
 #include <ascii-chat/audio/mixer.h>
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/video/rgba/video_frame.h>
+#include <ascii-chat/media/codecs.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/format.h>
@@ -710,6 +711,10 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   // Now we have exclusive access to the slot - do the actual registration
   client_info_t *client = &g_client_manager.clients[slot];
   memset(client, 0, sizeof(client_info_t));
+
+  // Initialize codec capabilities to zero (no codecs supported until CLIENT_CAPABILITIES received)
+  client->codec_capabilities_video = 0;
+  client->codec_capabilities_audio = 0;
 
   client->socket = socket;
   client->is_tcp_client = true;
