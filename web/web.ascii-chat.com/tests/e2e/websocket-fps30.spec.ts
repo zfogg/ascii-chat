@@ -80,10 +80,10 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
 
     console.log("✓ Client connected, measuring FPS from frame metrics...");
 
-    // Wait 2 seconds for rendering to start
-    await page.waitForTimeout(2000);
+    // Wait 500ms for rendering to start
+    await page.waitForTimeout(500);
 
-    // Measure FPS by comparing frame count over a 3-second period
+    // Measure FPS by comparing frame count over a 1.5-second period
     const startMetrics = await page.evaluate(() => {
       console.log(
         "[Test] Start metrics - window.__clientFrameMetrics =",
@@ -97,8 +97,8 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
       return { startTime: performance.now(), ...metrics };
     });
 
-    // Wait 3 more seconds for rendering to occur
-    await page.waitForTimeout(3000);
+    // Wait 1.5 more seconds for rendering to occur
+    await page.waitForTimeout(1500);
 
     const endMetrics = await page.evaluate(() => {
       console.log(
