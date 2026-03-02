@@ -128,7 +128,7 @@ void named_destroy(void) {
     log_debug("[NAMED] Freeing entry: %s (type=%s)", entry->name ? entry->name : "(null)",
               entry->type ? entry->type : "(null)");
     HASH_DEL(g_named_registry.entries, entry);
-    SAFE_FREE(entry->name);
+    free(entry->name);  // vasprintf-allocated, use free()
     SAFE_FREE(entry->type);
     SAFE_FREE(entry->format_spec);
     SAFE_FREE(entry->file);
@@ -257,11 +257,11 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
 
   if (entry) {
     // Update existing entry
-    free(entry->name);
-    free(entry->type);
-    free(entry->format_spec);
-    free(entry->file);
-    free(entry->func);
+    free(entry->name);  // vasprintf-allocated, use free()
+    SAFE_FREE(entry->type);
+    SAFE_FREE(entry->format_spec);
+    SAFE_FREE(entry->file);
+    SAFE_FREE(entry->func);
     entry->name = full_name;
     entry->type = type ? safe_strdup(type) : NULL;
     entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
@@ -304,12 +304,12 @@ void named_unregister(uintptr_t key) {
 
   if (entry) {
     HASH_DEL(g_named_registry.entries, entry);
-    free(entry->name);
-    free(entry->type);
-    free(entry->format_spec);
-    free(entry->file);
-    free(entry->func);
-    free(entry);
+    free(entry->name);  // vasprintf-allocated, use free()
+    SAFE_FREE(entry->type);
+    SAFE_FREE(entry->format_spec);
+    SAFE_FREE(entry->file);
+    SAFE_FREE(entry->func);
+    free(entry);  // malloc-allocated, use free()
   }
 
   rwlock_wrunlock_impl(&g_named_registry.entries_lock);
