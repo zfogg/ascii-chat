@@ -580,10 +580,12 @@ void debug_sync_final_cleanup(void) {
  * @param delay_ns Nanoseconds to sleep before printing
  */
 void debug_sync_print_state_delayed(uint64_t delay_ns) {
+  mutex_lock(&g_debug_state_request.mutex);
   g_debug_state_request.request_type = DEBUG_REQUEST_STATE;
   g_debug_state_request.delay_ns = delay_ns;
   atomic_store_bool(&g_debug_state_request.should_run, true);
   cond_signal(&g_debug_state_request.cond);
+  mutex_unlock(&g_debug_state_request.mutex);
 }
 
 /**
@@ -591,10 +593,12 @@ void debug_sync_print_state_delayed(uint64_t delay_ns) {
  * @param delay_ns Nanoseconds to sleep before printing
  */
 void debug_sync_print_backtrace_delayed(uint64_t delay_ns) {
+  mutex_lock(&g_debug_state_request.mutex);
   g_debug_state_request.request_type = DEBUG_REQUEST_BACKTRACE;
   g_debug_state_request.delay_ns = delay_ns;
   atomic_store_bool(&g_debug_state_request.should_run, true);
   cond_signal(&g_debug_state_request.cond);
+  mutex_unlock(&g_debug_state_request.mutex);
 }
 
 /**
