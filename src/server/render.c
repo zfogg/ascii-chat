@@ -410,6 +410,7 @@ void *client_video_render_thread(void *arg) {
 
   bool should_continue = true;
   while (should_continue && !atomic_load_bool(&g_should_exit) && !atomic_load_bool(&client->shutting_down)) {
+    START_TIMER("render_iteration");
     log_dev_every(10 * NS_PER_MS_INT, "Video render loop iteration for client %u", thread_client_id);
 
     // Check for immediate shutdown
@@ -434,7 +435,9 @@ void *client_video_render_thread(void *arg) {
     // Frame rate limiting using adaptive sleep system
     // Use queue_depth=0 and target_depth=0 for constant-rate renderer (no backlog management)
     uint64_t iter_start_ns = time_get_ns();
+    START_TIMER("render_adaptive_sleep");
     adaptive_sleep_do(&sleep_state, 0, 0);
+    STOP_TIMER_AND_LOG(dev, 0, "render_adaptive_sleep", "adaptive_sleep completed");
     uint64_t after_sleep_ns = time_get_ns();
 
     // Capture timestamp for FPS tracking and frame timestamps
@@ -517,8 +520,10 @@ void *client_video_render_thread(void *arg) {
     // debug_sync_print_state() is too expensive to call every frame (kills FPS)
 
     uint64_t frame_create_start_ns = time_get_ns();
+    START_TIMER("render_create_frame");
     char *ascii_frame = create_mixed_ascii_frame_for_client(client_id_snapshot, width_snapshot, height_snapshot, false,
                                                             &frame_size, NULL, &sources_count);
+    STOP_TIMER_AND_LOG(dev, 0, "render_create_frame", "create_mixed_ascii_frame completed");
     uint64_t frame_create_end_ns = time_get_ns();
 
     if (frame_gen_count % 120 == 0) {
@@ -578,7 +583,9 @@ void *client_video_render_thread(void *arg) {
             {
               uint64_t commit_start_ns = time_get_ns();
               // Commit the frame (swaps buffers atomically using vfb->swap_mutex, NOT rwlock)
+              START_TIMER("render_video_frame_commit");
               video_frame_commit(vfb_snapshot);
+              STOP_TIMER_AND_LOG(dev, 0, "render_video_frame_commit", "video_frame_commit completed");
               uint64_t commit_end_ns = time_get_ns();
               char commit_duration_str[32];
               time_pretty((uint64_t)(commit_end_ns - commit_start_ns), -1, commit_duration_str,
@@ -629,6 +636,7 @@ void *client_video_render_thread(void *arg) {
       time_pretty((uint64_t)(iter_end_ns - iter_start_ns), -1, total_str, sizeof(total_str));
       log_warn("  TIMING: TOTAL_ITERATION=%s", total_str);
     }
+    STOP_TIMER_AND_LOG(dev, 0, "render_iteration", "render_iteration completed (total)");
   }
 
 #ifdef DEBUG_THREADS
