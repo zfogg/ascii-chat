@@ -129,10 +129,10 @@ void named_destroy(void) {
               entry->type ? entry->type : "(null)");
     HASH_DEL(g_named_registry.entries, entry);
     free(entry->name);  // vasprintf-allocated, use free()
-    SAFE_FREE(entry->type);
-    SAFE_FREE(entry->format_spec);
-    SAFE_FREE(entry->file);
-    SAFE_FREE(entry->func);
+    if (entry->type) SAFE_FREE(entry->type);
+    if (entry->format_spec) SAFE_FREE(entry->format_spec);
+    if (entry->file) SAFE_FREE(entry->file);
+    if (entry->func) SAFE_FREE(entry->func);
     free(entry);  // entry struct itself was allocated with malloc, not SAFE_MALLOC
     entry_count++;
   }
@@ -258,10 +258,10 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
   if (entry) {
     // Update existing entry
     free(entry->name);  // vasprintf-allocated, use free()
-    SAFE_FREE(entry->type);
-    SAFE_FREE(entry->format_spec);
-    SAFE_FREE(entry->file);
-    SAFE_FREE(entry->func);
+    if (entry->type) SAFE_FREE(entry->type);
+    if (entry->format_spec) SAFE_FREE(entry->format_spec);
+    if (entry->file) SAFE_FREE(entry->file);
+    if (entry->func) SAFE_FREE(entry->func);
     entry->name = full_name;
     entry->type = type ? safe_strdup(type) : NULL;
     entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
@@ -305,10 +305,10 @@ void named_unregister(uintptr_t key) {
   if (entry) {
     HASH_DEL(g_named_registry.entries, entry);
     free(entry->name);  // vasprintf-allocated, use free()
-    SAFE_FREE(entry->type);
-    SAFE_FREE(entry->format_spec);
-    SAFE_FREE(entry->file);
-    SAFE_FREE(entry->func);
+    if (entry->type) SAFE_FREE(entry->type);
+    if (entry->format_spec) SAFE_FREE(entry->format_spec);
+    if (entry->file) SAFE_FREE(entry->file);
+    if (entry->func) SAFE_FREE(entry->func);
     free(entry);  // malloc-allocated, use free()
   }
 
@@ -543,9 +543,9 @@ static const char *named_register_packet_type_no_counter(int pkt_type, const cha
   HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
 
   if (entry) {
-    free(entry->name);
-    free(entry->type);
-    free(entry->format_spec);
+    free(entry->name);  // vasprintf-allocated, use free()
+    SAFE_FREE(entry->type);
+    SAFE_FREE(entry->format_spec);
     entry->name = safe_strdup(name);
     entry->type = safe_strdup("packet_type");
     entry->format_spec = safe_strdup("%d");
