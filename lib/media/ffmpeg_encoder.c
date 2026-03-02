@@ -8,6 +8,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/options/options.h>
 #include <string.h>
 
 #include <libavformat/avformat.h>
@@ -356,14 +357,27 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
 
   // Set stream duration for proper metadata (must be before trailer)
   if (enc->stream && enc->frame_count > 0) {
-    // Calculate duration in stream time base units
-    // time_base = 1 / time_base.den seconds per unit
-    // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
-    // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
-    int64_t duration = (int64_t)enc->frame_count * enc->stream->time_base.den / enc->fps;
+    // For snapshot mode, use the snapshot_delay duration directly to ensure the video is exactly
+    // that duration regardless of how many frames were captured. For normal mode, calculate from frame rate.
+    int64_t duration;
+    bool snapshot_mode = GET_OPTION(snapshot_mode);
+    if (snapshot_mode) {
+      double snapshot_delay = GET_OPTION(snapshot_delay);
+      // Convert snapshot_delay (seconds) to stream time base units
+      // stream duration = snapshot_delay_seconds * time_base.den
+      duration = (int64_t)(snapshot_delay * enc->stream->time_base.den);
+      log_debug("ffmpeg_encoder_destroy: Snapshot mode - Set stream duration=%lld (snapshot_delay=%.2f, frames=%d, time_base=%d/%d)",
+                (long long)duration, snapshot_delay, enc->frame_count, 1, enc->stream->time_base.den);
+    } else {
+      // Normal mode: calculate duration from frame count and FPS
+      // time_base = 1 / time_base.den seconds per unit
+      // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
+      // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
+      duration = (int64_t)enc->frame_count * enc->stream->time_base.den / enc->fps;
+      log_debug("ffmpeg_encoder_destroy: Normal mode - Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)",
+                (long long)duration, enc->frame_count, enc->fps, 1, enc->stream->time_base.den);
+    }
     enc->stream->duration = duration;
-    log_debug("ffmpeg_encoder_destroy: Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)",
-              (long long)duration, enc->frame_count, enc->fps, 1, enc->stream->time_base.den);
   }
 
   // Write trailer
