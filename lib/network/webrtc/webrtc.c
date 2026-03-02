@@ -454,6 +454,11 @@ asciichat_error_t webrtc_create_peer_connection(const webrtc_config_t *config, w
   rtcSetLocalCandidateCallback(pc_id, on_local_candidate_adapter);
   rtcSetDataChannelCallback(pc_id, on_datachannel_adapter);
 
+  /* Register peer connection with named registry */
+  char pc_name[64];
+  snprintf(pc_name, sizeof(pc_name), "webrtc_peer_connection:%d", pc_id);
+  NAMED_REGISTER(pc, pc_name, "webrtc_peer_connection_t", "0x%tx", NULL);
+
   *pc_out = pc;
   log_debug("Created WebRTC peer connection (id=%d)", pc_id);
   return ASCIICHAT_OK;
