@@ -126,6 +126,10 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
     }
 
+    // 2. KEYBOARD SYSTEM - Initialize keyboard input (may fail if stdin/tty not available)
+    // Failure is not fatal - keyboard_read_nonblocking() safely handles uninitialized state
+    keyboard_init();
+
 #ifndef NDEBUG
     if (named_init() != ASCIICHAT_OK) {
       return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize named.");

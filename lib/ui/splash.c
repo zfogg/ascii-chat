@@ -426,13 +426,9 @@ static void *splash_animation_thread(void *arg) {
   // Check if colors should be used (TTY check)
   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
 
-  // Initialize keyboard for interactive grep (if terminal is interactive)
-  bool keyboard_enabled = false;
-  if (terminal_is_interactive()) {
-    if (keyboard_init() == ASCIICHAT_OK) {
-      keyboard_enabled = true;
-    }
-  }
+  // Keyboard is pre-initialized from asciichat_shared_init()
+  // Only enable if terminal is interactive (keyboard won't work in non-TTY)
+  bool keyboard_enabled = terminal_is_interactive();
 
   // Animate with rainbow wave effect - TIME-BASED, not frame-based
   // This ensures animation speed is consistent regardless of FPS

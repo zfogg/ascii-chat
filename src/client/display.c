@@ -228,18 +228,9 @@ int display_init() {
     }
   }
 
-  // Initialize keyboard input for interactive controls (volume, color mode, flip, seek, pause)
-  // Only initialize in TTY mode to avoid interfering with piped/redirected I/O
-  if (terminal_is_stdin_tty()) {
-    asciichat_error_t kb_result = keyboard_init();
-    if (kb_result == ASCIICHAT_OK) {
-      g_keyboard_enabled = true;
-    } else {
-      // Non-fatal: client can work without keyboard support
-      log_warn("Failed to initialize keyboard input: %s", asciichat_error_string(kb_result));
-      g_keyboard_enabled = false;
-    }
-  }
+  // Keyboard is pre-initialized from asciichat_shared_init()
+  // Only enable keyboard input if stdin is a TTY (avoid interfering with piped/redirected I/O)
+  g_keyboard_enabled = terminal_is_stdin_tty();
 
   // Register display atomics with named debug registry
   static bool display_atomics_registered = false;

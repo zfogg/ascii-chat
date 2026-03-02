@@ -1239,22 +1239,19 @@ static void *status_screen_thread(void *arg) {
     keyboard_atomics_registered = true;
   }
 
-  // Initialize keyboard for interactive grep (cross-platform)
+  // Keyboard is pre-initialized from asciichat_shared_init()
+  // Only spawn keyboard thread if terminal is interactive
   bool keyboard_enabled = false;
   if (terminal_is_interactive()) {
-    log_info("Terminal is interactive, initializing keyboard...");
-    if (keyboard_init() == ASCIICHAT_OK) {
-      atomic_store_u64(&g_keyboard_thread_running, true);
-      if (asciichat_thread_create(&g_keyboard_thread, "keyboard", keyboard_thread_func, NULL) == 0) {
-        keyboard_enabled = true;
-        log_info("Keyboard thread started - press '/' to activate grep");
-      } else {
-        log_warn("Failed to create keyboard thread");
-        atomic_store_u64(&g_keyboard_thread_running, false);
-        keyboard_destroy();
-      }
+    log_info("Terminal is interactive, starting keyboard thread...");
+    atomic_store_u64(&g_keyboard_thread_running, true);
+    if (asciichat_thread_create(&g_keyboard_thread, "keyboard", keyboard_thread_func, NULL) == 0) {
+      keyboard_enabled = true;
+      log_info("Keyboard thread started - press '/' to activate grep");
     } else {
-      log_warn("Failed to initialize keyboard");
+      log_warn("Failed to create keyboard thread");
+      atomic_store_u64(&g_keyboard_thread_running, false);
+      keyboard_destroy();
     }
   } else {
     log_warn("Terminal is NOT interactive, keyboard disabled");
