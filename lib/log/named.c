@@ -749,7 +749,7 @@ const char *log_named_format_or_original(const char *message) {
 
   /* Apply formatting iteratively until the message stabilizes (no more changes) */
   const char *current = message;
-  size_t max_iterations = 10; /* Prevent infinite loops */
+  size_t max_iterations = 3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
 
   for (size_t iter = 0; iter < max_iterations; iter++) {
     int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));
@@ -763,6 +763,12 @@ const char *log_named_format_or_original(const char *message) {
     if (strcmp(current, format_buffer) == 0) {
       /* No actual change, return the current version */
       return format_buffer;
+    }
+
+    /* Safety check: if output size grew too much (likely recursion), stop processing */
+    if (strlen(format_buffer) > 512) {
+      /* Recursion detected - use original message to avoid infinite expansion */
+      return message;
     }
 
     /* Message changed, prepare for next iteration */
