@@ -513,7 +513,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Snapshot mode: check if enough frames have been rendered
       if (snapshot_mode && !snapshot_done && first_frame_rendered) {
         double snapshot_delay = GET_OPTION(snapshot_delay);
-        int fps = GET_OPTION(fps);
+        // Use actual capture target FPS, not user option
+        // This ensures render loop and encoder use the same FPS, preventing 2x duration bugs
+        uint32_t fps = 0;
+        if (capture) {
+          fps = session_capture_get_target_fps(capture);
+        }
+        if (fps == 0) {
+          fps = (uint32_t)GET_OPTION(fps); // Fallback to option
+        }
 
         // snapshot_delay controls the number of seconds to render
         // target_frames = snapshot_delay * fps (e.g., 1 second * 60 fps = 60 frames)
@@ -523,8 +531,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(product + 0.5);
 
         log_info_every(US_PER_SEC_INT,
-                       "SNAPSHOT_DEBUG: delay=%.2f fps=%d product=%.2f target_frames=%lu frame_count=%lu",
-                       snapshot_delay, fps, product, target_frames, frame_count);
+                       "SNAPSHOT_FRAME_CHECK: delay=%.2f fps=%u target_frames=%lu frame_count=%lu",
+                       snapshot_delay, fps, target_frames, frame_count);
 
         if (frame_count >= target_frames) {
           // We don't end frames with newlines so the next log would print on the same line as the frame's

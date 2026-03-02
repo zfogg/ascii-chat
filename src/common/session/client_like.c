@@ -527,14 +527,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   display_config.callback_data = NULL;
 
   // Use capture config FPS for render-file encoding
-  // For webcams, use 30 FPS as default (most devices support at least 30)
-  // For files, use the configured target FPS
-  if (capture_config.type == MEDIA_SOURCE_WEBCAM) {
-    display_config.render_fps = 30; // Safe default for webcams
-    log_debug("[SETUP_DISPLAY] Using 30 FPS for webcam render-file");
-  } else if (capture_config.target_fps > 0) {
+  // Always use the actual capture target FPS to ensure render loop and encoder use same FPS
+  if (capture_config.target_fps > 0) {
     display_config.render_fps = capture_config.target_fps;
-    log_debug("[SETUP_DISPLAY] Using capture target FPS for render-file: %u", display_config.render_fps);
+    log_debug("[SETUP_DISPLAY] Using capture target FPS for render-file: %u (type=%d)",
+              display_config.render_fps, capture_config.type);
+  } else {
+    // Fallback to option FPS if not set (shouldn't happen in normal operation)
+    display_config.render_fps = (uint32_t)GET_OPTION(fps);
+    log_debug("[SETUP_DISPLAY] Fallback: using option FPS for render-file: %u",
+              display_config.render_fps);
   }
 
   log_debug("[SETUP_DISPLAY] Creating display context");
