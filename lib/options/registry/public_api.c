@@ -22,6 +22,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
     return SET_ERRNO(ERROR_INVALID_PARAM, "Builder is NULL");
   }
 
+  registry_init_size();
 
   for (size_t i = 0; i < g_registry_size; i++) {
     const registry_entry_t *entry = &g_options_registry[i];
@@ -122,6 +123,7 @@ asciichat_error_t options_registry_add_all_to_builder(options_builder_t *builder
  * @return Pointer to registry array (read-only), or NULL on error
  */
 const registry_entry_t *options_registry_get_raw(void) {
+  registry_init_size();
   return g_options_registry;
 }
 
@@ -131,6 +133,7 @@ const registry_entry_t *options_registry_get_raw(void) {
  * @return Number of options in registry (not including NULL terminator)
  */
 size_t options_registry_get_count(void) {
+  registry_init_size();
   return g_registry_size;
 }
 
@@ -140,6 +143,7 @@ const option_descriptor_t *options_registry_find_by_name(const char *long_name) 
     return NULL;
   }
 
+  registry_init_size();
 
   const registry_entry_t *entry = registry_find_entry_by_name(long_name);
   if (!entry) {
@@ -179,6 +183,7 @@ const option_descriptor_t *options_registry_find_by_short(char short_name) {
     return NULL;
   }
 
+  registry_init_size();
 
   const registry_entry_t *entry = registry_find_entry_by_short(short_name);
   if (!entry) {
@@ -215,6 +220,7 @@ const option_descriptor_t *options_registry_get_for_mode(asciichat_mode_t mode, 
     return NULL;
   }
 
+  registry_init_size();
 
   /* Convert mode to bitmask */
   option_mode_bitmask_t mode_bitmask = 0;
@@ -279,6 +285,7 @@ const option_descriptor_t *options_registry_get_binary_options(size_t *num_optio
     return NULL;
   }
 
+  registry_init_size();
 
   /* Count binary-level options */
   size_t count = 0;
@@ -320,6 +327,7 @@ const option_descriptor_t *options_registry_get_for_display(asciichat_mode_t mod
     return NULL;
   }
 
+  registry_init_size();
 
   // Count matching options
   size_t count = 0;
@@ -365,6 +373,7 @@ const option_metadata_t *options_registry_get_metadata(const char *long_name) {
   }
 
   // Look up option in registry and return its metadata
+  registry_init_size();
   for (size_t i = 0; i < g_registry_size; i++) {
     const registry_entry_t *entry = &g_options_registry[i];
     if (entry->long_name && strcmp(entry->long_name, long_name) == 0) {

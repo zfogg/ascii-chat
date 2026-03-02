@@ -19,7 +19,6 @@
 /**
  * @brief Initialize registry from category builders
  * Populates g_options_registry by concatenating all category arrays
- * Must be called once during options_init() to build the registry
  */
 void registry_init_from_builders(void) {
   static bool initialized = false;
