@@ -840,6 +840,7 @@ static const bool default_discovery_insecure_value = OPT_ACDS_INSECURE_DEFAULT;
 static const bool default_require_server_identity_value = OPT_REQUIRE_SERVER_IDENTITY_DEFAULT;
 static const bool default_require_client_identity_value = OPT_REQUIRE_CLIENT_IDENTITY_DEFAULT;
 static const bool default_splash_value = OPT_SPLASH_DEFAULT;
+static const bool default_splash_false = false; // For --no-splash-screen option
 static const bool default_status_screen_value = OPT_STATUS_SCREEN_DEFAULT;
 static const bool default_no_check_update_value = OPT_NO_CHECK_UPDATE_DEFAULT;
 static const bool default_log_format_console_only_value = OPT_LOG_FORMAT_CONSOLE_DEFAULT;
