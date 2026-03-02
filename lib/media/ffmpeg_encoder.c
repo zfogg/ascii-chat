@@ -357,15 +357,13 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   // Set stream duration for proper metadata (must be before trailer)
   if (enc->stream && enc->frame_count > 0) {
     // Calculate duration in stream time base units
-    // time_base = num/den seconds per unit
+    // time_base = 1 / time_base.den seconds per unit
     // Each frame is 1/fps seconds, so duration = frame_count / fps seconds
-    // In time base units: duration = (frame_count / fps) / (time_base.num / time_base.den)
-    //                   = (frame_count / fps) * (time_base.den / time_base.num)
-    //                   = frame_count * time_base.den / (fps * time_base.num)
-    int64_t duration = (int64_t)enc->frame_count * enc->stream->time_base.den / (enc->fps * enc->stream->time_base.num);
+    // In time base units: duration = (frame_count / fps) * time_base.den = frame_count * time_base.den / fps
+    int64_t duration = (int64_t)enc->frame_count * enc->stream->time_base.den / enc->fps;
     enc->stream->duration = duration;
     log_debug("ffmpeg_encoder_destroy: Set stream duration=%lld (frames=%d, fps=%d, time_base=%d/%d)",
-              (long long)duration, enc->frame_count, enc->fps, enc->stream->time_base.num, enc->stream->time_base.den);
+              (long long)duration, enc->frame_count, enc->fps, 1, enc->stream->time_base.den);
   }
 
   // Write trailer

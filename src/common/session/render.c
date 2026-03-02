@@ -521,11 +521,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // snapshot_delay>0 means render that many seconds worth of frames
         uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * fps + 0.5);
 
-        // Log every iteration to debug the frame counting issue
-        if (frame_count <= 10 || frame_count % 10 == 0) {
-          log_info("SNAPSHOT_FRAME_CHECK: frame_count=%lu target_frames=%lu (delay=%.2f fps=%d)",
-                   frame_count, target_frames, snapshot_delay, fps);
-        }
+        log_debug_every(US_PER_SEC_INT, "SNAPSHOT_FRAME_CHECK: frame_count=%lu target_frames=%lu (delay=%.2f fps=%d)",
+                        frame_count, target_frames, snapshot_delay, fps);
 
         if (frame_count >= target_frames) {
           // We don't end frames with newlines so the next log would print on the same line as the frame's
@@ -540,9 +537,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
-      // Exit conditions: snapshot mode exits after capturing the final frame
-      // NOTE: Don't exit on output_paused_frame in snapshot mode - it would add an extra frame
-      if (snapshot_mode && snapshot_done) {
+      // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
+      if (snapshot_mode && (snapshot_done || output_paused_frame)) {
         // Signal application to exit in snapshot mode
         APP_CALLBACK_VOID(signal_exit);
         break;
