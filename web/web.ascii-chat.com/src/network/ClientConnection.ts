@@ -510,18 +510,9 @@ export class ClientConnection {
           );
         }
       } else if (state === ConnectionState.HANDSHAKE) {
-        // During handshake, send unencrypted
-        console.log(
-          `[ClientConnection] State is HANDSHAKE, sending unencrypted`,
-        );
-        const packet = serializePacket(packetType, payload, 0);
-        console.error(
-          `[ClientConnection] >>> SEND unencrypted packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`,
-        );
-        this.socket.send(packet);
-        console.log(
-          `[ClientConnection] Unencrypted ${name} packet sent to WebSocket`,
-        );
+        // During handshake, send unencrypted ACIP packet
+        // Delegate to sendUnencryptedAcipPacket for consistent handling
+        return this.sendUnencryptedAcipPacket(packetType, payload);
       } else {
         // In ERROR, DISCONNECTED, or CONNECTING state - don't send
         console.error(
@@ -536,6 +527,59 @@ export class ClientConnection {
       }
     } catch (error) {
       console.error(`[ClientConnection] Failed to send ${name} packet:`, error);
+      console.error(
+        `[ClientConnection] Error stack:`,
+        error instanceof Error ? error.stack : String(error),
+      );
+      throw error;
+    }
+  }
+
+  /**
+   * Send ACIP protocol control packets UNENCRYPTED
+   * Used for CLIENT_CAPABILITIES and STREAM_START which must be sent before encryption is fully setup
+   * This bypasses the encryption wrapper that's normally used for application-layer packets
+   */
+  sendUnencryptedAcipPacket(packetType: number, payload: Uint8Array): void {
+    if (!this.socket || !this.socket.isConnected()) {
+      const name = packetTypeName(packetType);
+      throw new Error(
+        `Not connected to server (cannot send ${name} type=${packetType})`,
+      );
+    }
+
+    const name = packetTypeName(packetType);
+    console.log(
+      `[ClientConnection] sendUnencryptedAcipPacket() called: type=${packetType} (${name}), payload_size=${payload.length}`,
+    );
+    console.log(
+      `[ClientConnection] Payload hex: [${Array.from(payload.slice(0, 32))
+        .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+        .join(" ")}]${payload.length > 32 ? "..." : ""}`,
+    );
+
+    try {
+      const state = getConnectionState();
+      console.log(
+        `[ClientConnection] Sending unencrypted ACIP packet in state: ${state} (${ConnectionState[state]})`,
+      );
+
+      // Send the packet directly WITHOUT encryption
+      // This is used for protocol control packets (CLIENT_CAPABILITIES, STREAM_START)
+      // that must be sent as plain ACIP packets before crypto is fully established
+      const packet = serializePacket(packetType, payload, 0);
+      console.error(
+        `[ClientConnection] >>> SEND unencrypted ACIP packet type=${packetType} (${name}) total_len=${packet.length} payload_len=${payload.length}`,
+      );
+      this.socket.send(packet);
+      console.log(
+        `[ClientConnection] Unencrypted ACIP ${name} packet sent to WebSocket`,
+      );
+    } catch (error) {
+      console.error(
+        `[ClientConnection] Failed to send unencrypted ACIP ${name} packet:`,
+        error,
+      );
       console.error(
         `[ClientConnection] Error stack:`,
         error instanceof Error ? error.stack : String(error),
