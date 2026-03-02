@@ -607,16 +607,22 @@ void log_destroy(void) {
   // Cleanup grep filter
   grep_destroy();
 
-  // Cleanup custom format structures (safe to double-free NULL)
-  if (g_log.format) {
-    log_template_free(g_log.format);
-    g_log.format = NULL;
-  }
-  if (g_log.format_console_only) {
-    log_template_free(g_log.format_console_only);
-    g_log.format_console_only = NULL;
-  }
+  // Cleanup custom format structures: nullify pointers BEFORE freeing
+  // This prevents threads from dereferencing freed memory if they load the
+  // pointers between our check and the actual free operation
+  log_template_t *format_to_free = g_log.format;
+  log_template_t *console_format_to_free = g_log.format_console_only;
+  g_log.format = NULL;
+  g_log.format_console_only = NULL;
   atomic_store_bool(&g_log.has_custom_format, false);
+
+  // Now safe to free since threads won't see these pointers anymore
+  if (format_to_free) {
+    log_template_free(format_to_free);
+  }
+  if (console_format_to_free) {
+    log_template_free(console_format_to_free);
+  }
 
   // Lock-free cleanup using atomic operations
   int old_file = atomic_load_int(&g_log.file);
