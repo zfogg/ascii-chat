@@ -76,7 +76,7 @@
 #include "display.h"
 #include "capture.h"
 #include "session/keyboard_handler.h"
-#include <ascii-chat/ui/help_screen.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -333,8 +333,8 @@ void display_render_frame(const char *frame_data) {
   display_disable_logging_for_first_frame();
 
   // Render help screen if active (suppresses frame rendering)
-  if (session_display_is_help_active(g_display_ctx)) {
-    session_display_render_help(g_display_ctx);
+  if (keyboard_help_is_active(g_display_ctx)) {
+    keyboard_help_render(g_display_ctx);
 
     // Still poll keyboard for interactive controls while help is visible
     if (g_keyboard_enabled) {

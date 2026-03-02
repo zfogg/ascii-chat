@@ -7,7 +7,7 @@
 #include "session/keyboard_handler.h"
 #include "session/capture.h"
 #include "session/display.h"
-#include <ascii-chat/ui/help_screen.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
@@ -99,9 +99,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     log_info("✓✓✓ USER PRESSED ? KEY - HELP SCREEN TOGGLE ✓✓✓");
     if (display) {
       log_info("Toggling help screen (display=%p)", (void *)display);
-      session_display_toggle_help(display);
+      keyboard_help_toggle(display);
       // Render help screen immediately so user sees it
-      session_display_render_help(display);
+      keyboard_help_render(display);
       log_info("✓ Help screen toggle complete");
     } else {
       log_error("ERROR: Cannot toggle help - display context is NULL");
@@ -111,9 +111,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
 
   // ===== HELP SCREEN CLOSE / QUIT =====
   case KEY_ESCAPE: {
-    if (display && session_display_is_help_active(display)) {
+    if (display && keyboard_help_is_active(display)) {
       // Close help screen if it's active
-      session_display_toggle_help(display);
+      keyboard_help_toggle(display);
       terminal_clear_screen();
     } else {
       // If help screen is not active, quit the app (like Ctrl-C)

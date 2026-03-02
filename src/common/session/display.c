@@ -1103,13 +1103,13 @@ asciichat_error_t session_display_write_audio(session_display_ctx_t *ctx, const 
 }
 
 /* ============================================================================
- * Help Screen Functions (from help_screen module)
+ * Keyboard Help Functions (from keyboard_help module)
  * ============================================================================ */
 
 /**
- * @brief Toggle help screen on/off (implemented in display.c for struct access)
+ * @brief Toggle keyboard help on/off (implemented in display.c for struct access)
  */
-void session_display_toggle_help(session_display_ctx_t *ctx) {
+void keyboard_help_toggle(session_display_ctx_t *ctx) {
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
@@ -1126,9 +1126,9 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
 }
 
 /**
- * @brief Check if help screen is currently active (implemented in display.c for struct access)
+ * @brief Check if keyboard help is currently active (implemented in display.c for struct access)
  */
-bool session_display_is_help_active(session_display_ctx_t *ctx) {
+bool keyboard_help_is_active(session_display_ctx_t *ctx) {
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return false;

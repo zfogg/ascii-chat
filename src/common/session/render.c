@@ -14,7 +14,7 @@
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/stdin_reader.h"
-#include <ascii-chat/ui/help_screen.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -438,7 +438,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
                        (void *)display);
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
-        bool help_is_active = display && session_display_is_help_active(display);
+        bool help_is_active = display && keyboard_help_is_active(display);
 
         // Detect transition from help to ASCII art rendering
         // When help closes, clear the screen before rendering ASCII art
@@ -448,7 +448,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
 
         if (help_is_active) {
-          session_display_render_help(display);
+          keyboard_help_render(display);
         } else {
           session_display_render_frame(display, ascii_frame);
         }
