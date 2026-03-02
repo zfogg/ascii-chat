@@ -353,7 +353,7 @@ void *client_video_render_thread(void *arg) {
   log_debug("Video render thread: client_id=%s, webrtc=%d", thread_client_id, is_webrtc);
 
   log_info("[VIDEO_RENDER_THREAD_START] ★★★ LOCK STATE at thread entry for client %u", thread_client_id);
-  debug_sync_print_state();
+  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
 
   // Wait for client to send terminal capabilities before rendering
   // Without capabilities, convert_composite_to_ascii() will fail
