@@ -20,7 +20,7 @@ sleep 0.25
 
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-timeout -k1 3.25 ./build/bin/ascii-chat \
+ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 3.25 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client \
   localhost:"$PORT" \

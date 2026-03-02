@@ -8,6 +8,8 @@ client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
 
+rm -rf "$client_log" "$server_log" "$client_stdout"
+
 echo "Gonna run on websocket port: $PORT"
 
 
@@ -23,12 +25,11 @@ sleep 0.25
 
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-timeout -k1 5 ./build/bin/ascii-chat \
+ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 10 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
-  --test-pattern -S -D 1 \
-  | tee "$client_stdout" \
-  || EXIT_CODE=$?
+  --test-pattern -S -D 3 \
+  | tee "$client_stdout" || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -74,9 +75,10 @@ else
     echo "✓ No memory errors detected"
 fi
 
+set -x
 echo ""
 echo "Running 'tail -20 $client_stdout'"
-tail -20 $client_stdout
+tail -20 "$client_stdout"
 
 echo ""
 echo "Client log: $client_log"
