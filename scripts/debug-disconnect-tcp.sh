@@ -2,8 +2,12 @@
 
 set -euo pipefail
 
+PORT=$(((RANDOM + 2000) % 8000))
+
+echo "Starting on port: $PORT"
+
 pkill -f "ascii-chat.*server" && sleep 0.5 || true
-cmake --build build >/dev/null 2>&1 && ./build/bin/ascii-chat server >/dev/null 2>&1 &
+cmake --build build >/dev/null 2>&1 && ./build/bin/ascii-chat server --port "$PORT" >/dev/null 2>&1 &
 SERVER_PID=$!
 sleep 1
 
@@ -12,7 +16,7 @@ START_TIME=$(date +%s%N)
 timeout -k1 8 ./build/bin/ascii-chat \
   --log-level debug --log-file client.log --sync-state 3 \
   client \
-  localhost:27224 \
+  localhost:"$PORT" \
   2>/dev/null \
   || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
