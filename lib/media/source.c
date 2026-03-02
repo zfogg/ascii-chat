@@ -7,6 +7,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/video/webcam/webcam.h>
+#include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/log/log.h>
@@ -52,6 +53,10 @@ struct media_source_t {
 
   // Audio integration
   void *audio_ctx; ///< Audio context for clearing buffers on seek (opaque)
+
+  // Test pattern state (for MEDIA_SOURCE_TEST)
+  image_t *test_pattern_frame;       ///< Reusable 320x240 frame buffer for test pattern
+  unsigned int test_frame_counter;   ///< Animation phase counter for test pattern
 };
 
 /* ============================================================================
@@ -370,10 +375,11 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
   }
 
   case MEDIA_SOURCE_TEST: {
-    // Test pattern doesn't need webcam context - it's handled in webcam_read()
-    // which checks GET_OPTION(test_pattern) and generates a pattern directly
+    // Test pattern state is encapsulated in media_source_t
     source->webcam_index = 0;
     source->webcam_ctx = NULL; // No context needed for test pattern
+    source->test_pattern_frame = NULL;  // Allocated lazily on first read
+    source->test_frame_counter = 0;
 
     log_debug("Media source: Test pattern");
     break;
@@ -428,6 +434,12 @@ void media_source_destroy(media_source_t *source) {
     source->original_youtube_url = NULL;
   }
 
+  // Clean up test pattern frame
+  if (source->test_pattern_frame) {
+    image_destroy(source->test_pattern_frame);
+    source->test_pattern_frame = NULL;
+  }
+
   // Destroy mutexes
   mutex_destroy(&source->decoder_mutex);
   mutex_destroy(&source->pause_mutex);
@@ -463,9 +475,58 @@ image_t *media_source_read_video(media_source_t *source) {
     }
     return NULL;
 
-  case MEDIA_SOURCE_TEST:
-    // Test pattern uses global webcam_read() which checks GET_OPTION(test_pattern)
-    return webcam_read();
+  case MEDIA_SOURCE_TEST: {
+    // Generate animated test pattern in-place (animated color bars)
+    if (!source->test_pattern_frame) {
+      source->test_pattern_frame = image_new(320, 240);
+      if (!source->test_pattern_frame) {
+        return NULL;
+      }
+    }
+
+    // Generate animated color bars that shift based on frame counter
+    unsigned int animation_phase = source->test_frame_counter / 2;  // Slow down animation
+    source->test_frame_counter++;
+
+    for (int y = 0; y < source->test_pattern_frame->h; y++) {
+      for (int x = 0; x < source->test_pattern_frame->w; x++) {
+        rgb_pixel_t *pixel = &source->test_pattern_frame->pixels[y * source->test_pattern_frame->w + x];
+
+        // Animated color bars that shift based on frame counter
+        int animated_x = (x + animation_phase) % source->test_pattern_frame->w;
+        int grid_x = animated_x / 40;
+
+        // Base pattern: color bars that animate horizontally
+        switch (grid_x % 3) {
+        case 0:  // Red
+          pixel->r = 255;
+          pixel->g = 0;
+          pixel->b = 0;
+          break;
+        case 1:  // Green
+          pixel->r = 0;
+          pixel->g = 255;
+          pixel->b = 0;
+          break;
+        case 2:  // Blue
+        default:
+          pixel->r = 0;
+          pixel->g = 0;
+          pixel->b = 255;
+          break;
+        }
+
+        // Add animated grid lines
+        if (animated_x % 40 == 0 || y % 30 == 0) {
+          pixel->r = 0;
+          pixel->g = 0;
+          pixel->b = 0;
+        }
+      }
+    }
+
+    return source->test_pattern_frame;
+  }
 
   case MEDIA_SOURCE_FILE:
   case MEDIA_SOURCE_STDIN: {

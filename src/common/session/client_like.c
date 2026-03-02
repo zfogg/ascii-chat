@@ -770,11 +770,6 @@ cleanup:
     probe_source = NULL;
   }
 
-  // Free cached webcam images and test patterns
-  log_debug("[CLEANUP] About to call webcam_destroy()");
-  webcam_destroy();
-  log_debug("[CLEANUP] webcam_destroy() returned");
-
   // Stop splash animation and enforce minimum display time (even on error path)
   // But skip completely if shutting down - don't interact with splash at all during shutdown
   // The animation thread will exit on its own when it detects shutdown_is_requested()
