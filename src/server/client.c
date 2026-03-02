@@ -2665,6 +2665,24 @@ void cleanup_client_media_buffers(client_info_t *client) {
     opus_codec_destroy((opus_codec_t *)client->opus_decoder);
     client->opus_decoder = NULL;
   }
+
+  // Clean up H.265 decoder (persistent per-client decoder)
+  if (client->h265_decoder_ctx) {
+    avcodec_free_context((AVCodecContext **)&client->h265_decoder_ctx);
+    client->h265_decoder_ctx = NULL;
+  }
+  if (client->h265_decode_frame) {
+    av_frame_free((AVFrame **)&client->h265_decode_frame);
+    client->h265_decode_frame = NULL;
+  }
+  if (client->h265_rgb_frame) {
+    av_frame_free((AVFrame **)&client->h265_rgb_frame);
+    client->h265_rgb_frame = NULL;
+  }
+  if (client->h265_sws_ctx) {
+    sws_freeContext((SwsContext *)client->h265_sws_ctx);
+    client->h265_sws_ctx = NULL;
+  }
 }
 
 void cleanup_client_packet_queues(client_info_t *client) {
@@ -2977,6 +2995,53 @@ static void acip_server_on_image_frame(const image_frame_packet_t *header, const
   log_info("[WS_TIMING] on_image_frame callback took %s (data_len=%zu)", cb_duration_str, data_len);
 }
 
+/**
+ * @brief Initialize or reuse persistent H.265 decoder for a client
+ *
+ * @return 0 on success, -1 on error
+ */
+static int h265_decoder_ensure_initialized(client_info_t *client) {
+  if (client->h265_decoder_ctx) {
+    return 0; // Already initialized
+  }
+
+  const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
+  if (!codec) {
+    log_error("H.265 decoder codec not found");
+    return -1;
+  }
+
+  AVCodecContext *dec_ctx = avcodec_alloc_context3(codec);
+  if (!dec_ctx) {
+    log_error("Failed to allocate H.265 decoder context");
+    return -1;
+  }
+
+  if (avcodec_open2(dec_ctx, codec, NULL) < 0) {
+    log_error("Failed to open H.265 decoder");
+    avcodec_free_context(&dec_ctx);
+    return -1;
+  }
+
+  AVFrame *frame = av_frame_alloc();
+  AVFrame *rgb_frame = av_frame_alloc();
+
+  if (!frame || !rgb_frame) {
+    log_error("Failed to allocate H.265 frames");
+    if (frame) av_frame_free(&frame);
+    if (rgb_frame) av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    return -1;
+  }
+
+  client->h265_decoder_ctx = dec_ctx;
+  client->h265_decode_frame = frame;
+  client->h265_rgb_frame = rgb_frame;
+
+  log_info("H.265 decoder initialized for client %s", client->client_id);
+  return 0;
+}
+
 static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uint8_t flags, const void *h265_data,
                                             size_t data_len, void *client_ctx, void *app_ctx) {
   (void)app_ctx;
@@ -3042,45 +3107,29 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   // H.265 frame with actual data - decode it
   log_info("H265_FRAME_WITH_DATA: client=%s, %ux%u, %zu bytes - DECODING", client->client_id, width, height, data_len);
 
-  const AVCodec *codec = avcodec_find_decoder(AV_CODEC_ID_HEVC);
-  if (!codec) {
-    log_error("H.265 decoder not found");
+  // Initialize persistent decoder if not already done
+  if (h265_decoder_ensure_initialized(client) < 0) {
     uint64_t callback_end_ns = time_get_ns();
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
                 sizeof(cb_duration_str));
-    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (no decoder)", cb_duration_str);
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (decoder init failed)", cb_duration_str);
     return;
   }
 
-  AVCodecContext *dec_ctx = avcodec_alloc_context3(codec);
-  if (!dec_ctx || avcodec_open2(dec_ctx, codec, NULL) < 0) {
-    log_error("Failed to create/open H.265 decoder");
-    if (dec_ctx)
-      avcodec_free_context(&dec_ctx);
-    uint64_t callback_end_ns = time_get_ns();
-    char cb_duration_str[32];
-    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
-                sizeof(cb_duration_str));
-    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (decoder failed)", cb_duration_str);
-    return;
-  }
+  AVCodecContext *dec_ctx = (AVCodecContext *)client->h265_decoder_ctx;
+  AVFrame *frame = (AVFrame *)client->h265_decode_frame;
+  AVFrame *rgb_frame = (AVFrame *)client->h265_rgb_frame;
 
+  // Allocate packet for this frame
   AVPacket *pkt = av_packet_alloc();
-  AVFrame *frame = av_frame_alloc();
-  AVFrame *rgb_frame = av_frame_alloc();
-
-  if (!pkt || !frame || !rgb_frame) {
-    log_error("Failed to allocate FFmpeg structures");
-    av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
-    avcodec_free_context(&dec_ctx);
+  if (!pkt) {
+    log_error("Failed to allocate packet");
     uint64_t callback_end_ns = time_get_ns();
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
                 sizeof(cb_duration_str));
-    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (alloc failed)", cb_duration_str);
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (pkt alloc failed)", cb_duration_str);
     return;
   }
 
@@ -3111,9 +3160,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     log_error("H.265 avcodec_send_packet failed: %s (ret=%d)", err_buf, send_ret);
     SAFE_FREE(pkt_data);
     av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
-    avcodec_free_context(&dec_ctx);
+    // DON'T free frame, rgb_frame, dec_ctx - they're persistent per-client
     uint64_t callback_end_ns = time_get_ns();
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
@@ -3123,15 +3170,26 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   int recv_ret = avcodec_receive_frame(dec_ctx, frame);
+  if (recv_ret == AVERROR(EAGAIN)) {
+    // EAGAIN is normal - decoder is buffering frames internally
+    log_dev("H.265 decoder buffering frame (EAGAIN), will output on next frame");
+    SAFE_FREE(pkt_data);
+    av_packet_free(&pkt);
+    // DON'T free frame, rgb_frame, dec_ctx - they're persistent per-client
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (decoder buffering)", cb_duration_str);
+    return;
+  }
   if (recv_ret < 0) {
     char err_buf[128];
     av_strerror(recv_ret, err_buf, sizeof(err_buf));
     log_error("H.265 avcodec_receive_frame failed: %s (ret=%d)", err_buf, recv_ret);
     SAFE_FREE(pkt_data);
     av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
-    avcodec_free_context(&dec_ctx);
+    // DON'T free frame, rgb_frame, dec_ctx - they're persistent per-client
     uint64_t callback_end_ns = time_get_ns();
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
@@ -3141,21 +3199,24 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   // Convert YUV to RGB
-  struct SwsContext *sws_ctx = sws_getContext(frame->width, frame->height, (int)frame->format, frame->width,
-                                              frame->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
-
-  if (!sws_ctx) {
-    log_error("Failed to create color converter");
-    av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
-    avcodec_free_context(&dec_ctx);
-    uint64_t callback_end_ns = time_get_ns();
-    char cb_duration_str[32];
-    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
-                sizeof(cb_duration_str));
-    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (sws failed)", cb_duration_str);
-    return;
+  // Reuse or create persistent color converter if needed
+  struct SwsContext *sws_ctx = (struct SwsContext *)client->h265_sws_ctx;
+  if (!sws_ctx || sws_ctx == NULL) {
+    sws_ctx = sws_getContext(frame->width, frame->height, (int)frame->format, frame->width,
+                             frame->height, AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
+    if (!sws_ctx) {
+      log_error("Failed to create color converter");
+      SAFE_FREE(pkt_data);
+      av_packet_free(&pkt);
+      // DON'T free frame, rgb_frame, dec_ctx - they're persistent per-client
+      uint64_t callback_end_ns = time_get_ns();
+      char cb_duration_str[32];
+      time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                  sizeof(cb_duration_str));
+      log_info("[WS_TIMING] on_image_frame_h265 callback took %s (sws failed)", cb_duration_str);
+      return;
+    }
+    client->h265_sws_ctx = sws_ctx; // Cache it for reuse
   }
 
   int rgb_buf_size = av_image_get_buffer_size(AV_PIX_FMT_RGB24, frame->width, frame->height, 1);
@@ -3163,11 +3224,9 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
 
   if (!rgb_buffer) {
     log_error("Failed to allocate RGB buffer");
-    sws_freeContext(sws_ctx);
+    SAFE_FREE(pkt_data);
     av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
-    avcodec_free_context(&dec_ctx);
+    // DON'T free sws_ctx, frame, rgb_frame, dec_ctx - they're persistent per-client
     uint64_t callback_end_ns = time_get_ns();
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
@@ -3183,11 +3242,9 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
                 rgb_frame->linesize) < 0) {
     log_error("Color conversion failed");
     SAFE_FREE(rgb_buffer);
-    sws_freeContext(sws_ctx);
+    SAFE_FREE(pkt_data);
     av_packet_free(&pkt);
-    av_frame_free(&frame);
-    av_frame_free(&rgb_frame);
-    avcodec_free_context(&dec_ctx);
+    // DON'T free sws_ctx, frame, rgb_frame, dec_ctx - they're persistent per-client
     uint64_t callback_end_ns = time_get_ns();
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
@@ -3225,13 +3282,11 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     }
   }
 
+  // Clean up temporary buffers
+  // DON'T free sws_ctx, frame, rgb_frame, dec_ctx - they're persistent per-client
   SAFE_FREE(rgb_buffer);
   SAFE_FREE(pkt_data);
-  sws_freeContext(sws_ctx);
   av_packet_free(&pkt);
-  av_frame_free(&frame);
-  av_frame_free(&rgb_frame);
-  avcodec_free_context(&dec_ctx);
 
   uint64_t callback_end_ns = time_get_ns();
   char cb_duration_str[32];
