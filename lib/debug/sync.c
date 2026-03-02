@@ -466,6 +466,7 @@ static debug_state_request_t g_debug_state_request = {
 };
 static asciichat_thread_t g_debug_thread;
 static uint64_t g_debug_main_thread_id = 0; // Main thread ID for memory reporting
+static atomic_t g_cleanup_in_progress = {0}; // Flag to prevent deadlock checks during shutdown
 
 /**
  * @brief Thread function for scheduled debug state printing
@@ -644,6 +645,10 @@ uint64_t debug_sync_get_main_thread_id(void) {
   return g_debug_main_thread_id;
 }
 
+bool debug_sync_is_cleanup_in_progress(void) {
+  return atomic_load_bool(&g_cleanup_in_progress);
+}
+
 int debug_sync_start_thread(void) {
   // Initialize mutex and condition variable for signal wakeup
   if (!g_debug_state_request.initialized) {
@@ -669,6 +674,10 @@ void debug_sync_cleanup_thread(void) {
     log_debug("[DEBUG_SYNC_CLEANUP] Thread not initialized, returning");
     return;
   }
+
+  // Set cleanup flag to prevent deadlock checks from accessing freed memory
+  // Do this after checking initialization so we don't set it unnecessarily
+  atomic_store_bool(&g_cleanup_in_progress, true);
   log_debug("[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup");
 
   log_debug("[DEBUG_SYNC_CLEANUP] Setting initialized to false");

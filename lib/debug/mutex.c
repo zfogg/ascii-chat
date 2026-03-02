@@ -671,6 +671,9 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
   log_warn_every(500 * NS_PER_MS_INT, "%s", cond_buf);
 }
 
+// Forward declare function from sync.c to check cleanup status
+extern bool debug_sync_is_cleanup_in_progress(void);
+
 /**
  * @brief Check all condition variables for deadlocks
  *
@@ -678,9 +681,14 @@ static void cond_deadlock_check_callback(uintptr_t key, const char *name, void *
  * have been waiting without signal for longer than COND_DEADLOCK_THRESHOLD_NS.
  * Called periodically by the debug thread (every 100ms).
  *
+ * Skips checks during shutdown to avoid accessing freed memory.
+ *
  * @ingroup debug_sync
  */
 void debug_sync_check_cond_deadlocks(void) {
+  if (debug_sync_is_cleanup_in_progress()) {
+    return;
+  }
   named_registry_for_each(cond_deadlock_check_callback, NULL);
 }
 
