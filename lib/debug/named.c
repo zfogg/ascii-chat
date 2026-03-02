@@ -164,96 +164,51 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   }
 
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
-    log_debug("[named_register] EXIT: lifecycle not initialized");
     return base_name;
   }
 
-  // CRITICAL: During TCP handshake, named registry is disabled to prevent deadlock
-  // The named registry lock can cause deadlock when TCP handler threads try to register
-  // mutexes while other threads hold the lock. Skipping registration here is safe because
-  // the registry is primarily used for debugging and --sync-state output.
-  // The debug info is not critical for TCP operation, only for diagnostics.
-  log_debug("[named_register] EARLY RETURN: base_name=%s type=%s (returning to prevent deadlock)", base_name, type);
-  return base_name;
+  // Use a simple static counter per type instead of complex locking
+  // This avoids deadlocks and recursion issues while still providing unique names
+  static atomic_t mutex_counter = {0};
+  static atomic_t rwlock_counter = {0};
+  static atomic_t cond_counter = {0};
+  static atomic_t atomic_counter = {0};
 
-  // Get or create per-name counter
-  name_counter_entry_t *counter_entry;
-  HASH_FIND_STR(g_named_registry.name_counters, base_name, counter_entry);
+  static char name_buffer[256];
+  uint64_t counter = 0;
 
-  if (!counter_entry) {
-    // Create new per-name counter entry
-    counter_entry = malloc(sizeof(name_counter_entry_t));
-    if (!counter_entry) {
-      log_error("named_register: malloc failed for counter_entry");
-      rwlock_wrunlock_impl(&g_named_registry.entries_lock);
-      return base_name;
-    }
-    counter_entry->base_name = safe_strdup(base_name);
-    if (!counter_entry->base_name) {
-      log_error("named_register: strdup failed for base_name");
-      free(counter_entry);
-      rwlock_wrunlock_impl(&g_named_registry.entries_lock);
-      return base_name;
-    }
-    atomic_store_u64(&counter_entry->counter, 0);
-    HASH_ADD_KEYPTR(hh, g_named_registry.name_counters, counter_entry->base_name, strlen(counter_entry->base_name),
-                    counter_entry);
+  if (strcmp(type, "mutex") == 0) {
+    counter = atomic_fetch_add_u64(&mutex_counter, 1);
+  } else if (strcmp(type, "rwlock") == 0) {
+    counter = atomic_fetch_add_u64(&rwlock_counter, 1);
+  } else if (strcmp(type, "cond") == 0) {
+    counter = atomic_fetch_add_u64(&cond_counter, 1);
+  } else if (strcmp(type, "atomic") == 0) {
+    counter = atomic_fetch_add_u64(&atomic_counter, 1);
   }
 
-  // Increment and get counter for this name
-  uint64_t counter = atomic_fetch_add_u64(&counter_entry->counter, 1);
+  snprintf(name_buffer, sizeof(name_buffer), "%s.%"PRIu64, base_name, counter);
 
-  // Generate suffixed name: "base_name.counter"
-  char *full_name = NULL;
-  int ret = asprintf(&full_name, "%s.%" PRIu64, base_name, counter);
-  if (ret < 0) {
-    log_error("named_register: asprintf failed for key=0x%tx", (ptrdiff_t)key);
-    rwlock_wrunlock_impl(&g_named_registry.entries_lock);
-    return base_name;
-  }
-
-  // Make file path relative to project root (while holding lock)
-  const char *relative_file = extract_project_relative_path(file ? file : "unknown");
-
-  // Insert/update in registry (still holding write lock)
+  // Store in registry for iteration
+  rwlock_wrlock_impl(&g_named_registry.entries_lock);
 
   named_entry_t *entry;
   HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
 
-  if (entry) {
-    // Update existing entry
-    free(entry->name);
-    free(entry->type);
-    free(entry->format_spec);
-    free(entry->file);
-    free(entry->func);
-    entry->name = full_name;
-    entry->type = type ? safe_strdup(type) : NULL;
-    entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
-    entry->file = file ? safe_strdup(relative_file) : NULL;
-    entry->line = line;
-    entry->func = func ? safe_strdup(func) : NULL;
-  } else {
-    // Create new entry
+  if (!entry) {
     entry = malloc(sizeof(named_entry_t));
     if (!entry) {
-      log_error("named_register: malloc failed for entry");
       rwlock_wrunlock_impl(&g_named_registry.entries_lock);
-      free(full_name);
       return base_name;
     }
     entry->key = key;
-    entry->name = full_name;
-    entry->type = type ? safe_strdup(type) : NULL;
-    entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
-    entry->file = file ? safe_strdup(relative_file) : NULL;
-    entry->line = line;
-    entry->func = func ? safe_strdup(func) : NULL;
+    entry->name = safe_strdup(name_buffer);
+    entry->type = safe_strdup(type);
+    entry->format_spec = safe_strdup(format_spec);
     HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
   }
 
   rwlock_wrunlock_impl(&g_named_registry.entries_lock);
-
   return entry->name;
 }
 
