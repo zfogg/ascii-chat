@@ -911,11 +911,14 @@ void server_connection_set_port(int port) {
  *
  * Returns the currently configured server port.
  *
- * @return Server port number
+ * @return Server port number (0 if not set)
  *
  * @ingroup client_connection
  */
 int server_connection_get_port(void) {
+  if (g_server_port <= 0) {
+    return 0;
+  }
   return g_server_port;
 }
 

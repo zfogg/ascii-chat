@@ -43,7 +43,7 @@
  */
 static log_template_t *parse_format_string(const char *format_str, bool console_only) {
   if (!format_str) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid format string: %s", format_str);
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid format string: NULL");
     return NULL;
   }
 
