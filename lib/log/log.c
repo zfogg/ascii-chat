@@ -841,17 +841,20 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   char colored_log_line[LOG_MSG_BUFFER_SIZE + 512];
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
 
-  /* Apply format without colors first (plain version for grep matching) */
+  /* Apply format without colors first (plain version for grep matching)
+   * Load format pointer once to prevent TOCTOU race condition where another
+   * thread frees the format between our check and use. */
+  const log_template_t *format = g_log.format;
   int plain_len = 0;
-  if (g_log.format) {
-    plain_len = log_template_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
-                                       func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
+  if (format) {
+    plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
+                                   func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
   }
 
   /* For colored output, apply format with colors enabled */
   int colored_len = 0;
-  if (use_colors && plain_len > 0 && g_log.format) {
-    colored_len = log_template_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+  if (use_colors && plain_len > 0 && format) {
+    colored_len = log_template_apply(format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                      line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
