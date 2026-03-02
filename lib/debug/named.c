@@ -73,13 +73,20 @@ static named_registry_t g_named_registry = {
 };
 
 asciichat_error_t named_init(void) {
+  // Idempotent: if already initialized, return success
+  if (lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return ASCIICHAT_OK;
+  }
+
   if (!lifecycle_init(&g_named_registry.lifecycle, "named_registry")) {
     return ASCIICHAT_OK;
   }
+
   if (rwlock_init(&g_named_registry.entries_lock, "named_registry_lock") != 0) {
     lifecycle_shutdown(&g_named_registry.lifecycle);
     return ASCIICHAT_OK;  // Continue even if rwlock init fails
   }
+
   lifecycle_init_commit(&g_named_registry.lifecycle);
   return ASCIICHAT_OK;
 }
