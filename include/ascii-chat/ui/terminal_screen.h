@@ -17,6 +17,9 @@
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/ui/frame_buffer.h>
 
+/* Forward declaration of session_log_buffer_t */
+typedef struct session_log_buffer session_log_buffer_t;
+
 /**
  * @brief Callback to render the fixed header portion of the screen
  *
@@ -72,12 +75,14 @@ void terminal_screen_render(const terminal_screen_config_t *config);
 void terminal_screen_cleanup(void);
 
 /**
- * @brief Standard log initialization for terminal screens
+ * @brief Initialize session log buffer for terminal screens
  *
- * Initializes the session log buffer that both splash and status screens use.
- * Call once at startup before rendering any screens.
+ * Creates a new session log buffer owned by this module.
+ * Splash and status screens use this buffer to display logs.
+ *
+ * @return Pointer to created buffer, or NULL on failure
  */
-void terminal_screen_log_init(void);
+session_log_buffer_t *terminal_screen_log_init(void);
 
 /**
  * @brief Standard log cleanup for terminal screens
@@ -103,3 +108,13 @@ void terminal_screen_log_clear(void);
  * @param message Log message to append (already formatted)
  */
 void terminal_screen_log_append(const char *message);
+
+/**
+ * @brief Get the current session log buffer
+ *
+ * Returns the log buffer owned by this module, or NULL if not initialized.
+ * Used by splash/status screens to register with the logger.
+ *
+ * @return Pointer to log buffer, or NULL
+ */
+session_log_buffer_t *terminal_screen_get_log_buffer(void);

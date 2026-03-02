@@ -16,7 +16,7 @@
 #include "ascii-chat/util/lifecycle.h"
 #include "ascii-chat/util/pcre2.h"
 #include "ascii-chat/util/utf8.h"
-#include "session/session_log_buffer.h"
+#include <ascii-chat/session/session_log_buffer.h>
 #include "ascii-chat/options/options.h"
 #include <ascii-chat/video/ascii/ansi.h>
 
@@ -544,7 +544,8 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate log buffer");
   }
 
-  size_t buffer_count = session_log_buffer_get_recent(buffer_entries, SESSION_LOG_BUFFER_SIZE);
+  session_log_buffer_t *log_buf = log_get_session_log_buffer();
+  size_t buffer_count = session_log_buffer_get_recent(log_buf, buffer_entries, SESSION_LOG_BUFFER_SIZE);
 
   // Check if filtering is active (either regex patterns or fixed string)
   mutex_lock(&g_grep_state.mutex);

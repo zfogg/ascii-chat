@@ -29,8 +29,8 @@
 #include <ascii-chat/log/mmap.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/log/json.h>
-#include <ascii-chat/ui/server_status.h>
 #include <ascii-chat/platform/terminal.h>
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/options/colorscheme.h>
 #include <ascii-chat/platform/thread.h>
 #include <ascii-chat/platform/mutex.h>
@@ -53,27 +53,51 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
  * Design: Logging itself is lock-free using atomic operations and atomic write() syscalls.
  * Only log rotation uses a mutex, since it involves multiple file operations that must
  * be atomic as a group (close, read tail, write temp, rename, reopen).
+ *
+ * This structure consolidates all logging system state into a single, named struct
+ * for better auditability and easier initialization/cleanup.
  */
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
-static struct log_context_t {
+static struct log_system_t {
+  /* Core logging I/O and state */
   atomic_t file;                       /* File descriptor (atomic for safe access) */
   atomic_t json_file;                  /* JSON output file descriptor (-1 = disabled) */
   atomic_t level;                      /* Log level as int for atomic ops */
-  lifecycle_t lifecycle;                  /* Initialization state machine */
-  char filename[LOG_MSG_BUFFER_SIZE];     /* Store filename (set once at init) */
-  atomic_t current_size;            /* Track current file size */
-  atomic_t terminal_output_enabled;   /* Control stderr output to terminal */
-  atomic_t level_manually_set;        /* Track if level was set manually */
-  atomic_t force_stderr;              /* Force all terminal logs to stderr (client mode) */
-  atomic_t terminal_locked;           /* True when a thread has exclusive terminal access */
-  atomic_t terminal_owner_thread; /* Thread that owns terminal output (stored as uint64) */
-  atomic_t flush_delay_ms;    /* Delay between each buffered log flush (0 = disabled) */
-  mutex_t rotation_mutex;                 /* Mutex for log rotation only (not for logging!) */
-  lifecycle_t rotation_mutex_lifecycle;   /* Rotation mutex initialization state machine */
-  log_template_t *format;                 /* Compiled log format (NULL = use default) */
-  log_template_t *format_console_only;    /* Console-only format variant */
-  atomic_t has_custom_format;         /* True if format was customized */
+  lifecycle_t lifecycle;               /* Initialization state machine */
+  char filename[LOG_MSG_BUFFER_SIZE];  /* Store filename (set once at init) */
+  atomic_t current_size;               /* Track current file size */
+
+  /* Terminal output control */
+  atomic_t terminal_output_enabled;    /* Control stderr output to terminal */
+  atomic_t force_stderr;               /* Force all terminal logs to stderr (client mode) */
+  atomic_t terminal_locked;            /* True when a thread has exclusive terminal access */
+  atomic_t terminal_owner_thread;      /* Thread that owns terminal output (stored as uint64) */
+
+  /* Log level and formatting */
+  atomic_t level_manually_set;         /* Track if level was set manually */
+  atomic_t flush_delay_ms;             /* Delay between each buffered log flush (0 = disabled) */
+  log_template_t *format;              /* Compiled log format (NULL = use default) */
+  log_template_t *format_console_only; /* Console-only format variant */
+  atomic_t has_custom_format;          /* True if format was customized */
+
+  /* Terminal capability detection and color scheme */
+  terminal_capabilities_t terminal_caps;     /* Detected terminal capabilities */
+  bool terminal_caps_initialized;            /* Whether terminal caps were detected */
+  bool terminal_caps_detecting;              /* Guard against recursion during detection */
+  compiled_color_scheme_t compiled_colors;   /* Compiled color scheme for this session */
+  bool log_colorscheme_initialized;          /* Whether color scheme was initialized */
+
+  /* Shutdown state management */
+  bool shutdown_saved_terminal_output; /* Saved state for log_shutdown_begin/end */
+  bool shutdown_in_progress;           /* Track if shutdown phase is active */
+
+  /* Log rotation */
+  mutex_t rotation_mutex;              /* Mutex for log rotation only (not for logging!) */
+  lifecycle_t rotation_mutex_lifecycle; /* Rotation mutex initialization state machine */
+
+  /* Session-specific logging (splash/status screens) */
+  atomic_ptr_t session_log_buffer;     /* Pointer to registered session log buffer (can be NULL) */
 } g_log = {
     .file = {0}, /* STDERR_FILENO (fd 2) - fd 0 is STDIN (read-only!) */
     .json_file = {.impl = (uint64_t)-1}, /* -1 = disabled (atomic_t initialized as uint64_t -1) */
@@ -82,15 +106,23 @@ static struct log_context_t {
     .filename = {0},
     .current_size = {0},
     .terminal_output_enabled = {0}, /* true */
-    .level_manually_set = {0}, /* false */
     .force_stderr = {0}, /* false */
     .terminal_locked = {0}, /* false */
     .terminal_owner_thread = {0},
+    .level_manually_set = {0}, /* false */
     .flush_delay_ms = {0},
-    .rotation_mutex_lifecycle = LIFECYCLE_INIT,
     .format = NULL,
     .format_console_only = NULL,
     .has_custom_format = {0}, /* false */
+    .terminal_caps = {0},
+    .terminal_caps_initialized = false,
+    .terminal_caps_detecting = false,
+    .compiled_colors = {0},
+    .log_colorscheme_initialized = false,
+    .shutdown_saved_terminal_output = true,
+    .shutdown_in_progress = false,
+    .rotation_mutex_lifecycle = LIFECYCLE_INIT,
+    .session_log_buffer = {0}, /* NULL */
 };
 #pragma GCC diagnostic pop
 
@@ -148,8 +180,8 @@ const char *get_level_string_padded(log_level_t level) {
 #define LOG_COLOR_COUNT 8 /* DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET */
 
 /* NOTE: Color arrays are now generated by the color scheme system in lib/ui/colors.c
- * and stored in g_compiled_colors. The log_get_color_array() function returns pointers
- * to g_compiled_colors.codes_16/256/truecolor based on terminal capabilities. */
+ * and stored in g_log.compiled_colors. The log_get_color_array() function returns pointers
+ * to g_log.compiled_colors.codes_16/256/truecolor based on terminal capabilities. */
 
 /* Internal error macro - uses g_log directly, only used in this file */
 #ifdef NDEBUG
@@ -177,20 +209,7 @@ const char *get_level_string_padded(log_level_t level) {
   } while (0)
 #endif
 
-/* Terminal capabilities cache */
-static terminal_capabilities_t g_terminal_caps = {0};
-static bool g_terminal_caps_initialized = false;
-static bool g_terminal_caps_detecting = false; /* Guard against recursion */
-
-/* Color scheme management - logging-specific state */
-static compiled_color_scheme_t g_compiled_colors = {0};
-static bool g_log_colorscheme_initialized = false;
-
 /* Note: g_colorscheme_mutex is defined in lib/ui/colors.c and declared in lib/ui/colors.h */
-
-/* Shutdown logging state */
-static bool g_shutdown_saved_terminal_output = true; /* Saved state for log_shutdown_begin/end */
-static bool g_shutdown_in_progress = false;          /* Track if shutdown phase is active */
 
 size_t get_current_time_formatted(char *time_buf) {
   /* Get wall-clock time in nanoseconds */
@@ -586,8 +605,8 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
   atomic_store_u64(&g_log.terminal_output_enabled, preserve_terminal_output);
 
   // Reset terminal detection if needed
-  if (g_terminal_caps_initialized && !g_terminal_caps.detection_reliable) {
-    g_terminal_caps_initialized = false;
+  if (g_log.terminal_caps_initialized && !g_log.terminal_caps.detection_reliable) {
+    g_log.terminal_caps_initialized = false;
   }
 
   // Detect terminal capabilities
@@ -880,11 +899,14 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
     }
   }
 
-  // Feed log to status screen buffer (use colored version if available, otherwise plain)
-  if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
-    server_status_log_append(colored_log_line);
-  } else if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
-    server_status_log_append(plain_log_line);
+  // Feed log to registered session log buffer (use colored version if available, otherwise plain)
+  session_log_buffer_t *buf = (session_log_buffer_t *)atomic_ptr_load(&g_log.session_log_buffer);
+  if (buf) {
+    if (colored_len > 0 && colored_len < (int)sizeof(colored_log_line)) {
+      session_log_buffer_append(buf, colored_log_line);
+    } else if (plain_len > 0 && plain_len < (int)sizeof(plain_log_line)) {
+      session_log_buffer_append(buf, plain_log_line);
+    }
   }
 
   // Check if terminal output is enabled (atomic load)
@@ -1435,49 +1457,49 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
 static void init_terminal_capabilities(void) {
   // Guard against recursion - this can be called indirectly via log_get_color_array()
   // from detect_terminal_capabilities() which uses logging
-  if (g_terminal_caps_detecting) {
+  if (g_log.terminal_caps_detecting) {
     return;
   }
 
-  if (!g_terminal_caps_initialized) {
+  if (!g_log.terminal_caps_initialized) {
     // Set detecting flag to prevent recursion
-    g_terminal_caps_detecting = true;
+    g_log.terminal_caps_detecting = true;
 
     // NEVER call detect_terminal_capabilities() from here - it causes infinite recursion
     // because detect_terminal_capabilities() uses log_debug() which calls log_get_color_array()
     // which calls init_terminal_capabilities() again.
     // Always use defaults here - log_redetect_terminal_capabilities() will do the actual detection
     // Use safe fallback during logging initialization to avoid recursion
-    g_terminal_caps.color_level = TERM_COLOR_16;
-    g_terminal_caps.capabilities = TERM_CAP_COLOR_16;
-    g_terminal_caps.color_count = 16;
-    g_terminal_caps.detection_reliable = false;
-    g_terminal_caps_initialized = true;
+    g_log.terminal_caps.color_level = TERM_COLOR_16;
+    g_log.terminal_caps.capabilities = TERM_CAP_COLOR_16;
+    g_log.terminal_caps.color_count = 16;
+    g_log.terminal_caps.detection_reliable = false;
+    g_log.terminal_caps_initialized = true;
 
     // Clear detecting flag
-    g_terminal_caps_detecting = false;
+    g_log.terminal_caps_detecting = false;
   }
 }
 
 /* Re-detect terminal capabilities after logging is initialized */
 void log_redetect_terminal_capabilities(void) {
   // Guard against recursion
-  if (g_terminal_caps_detecting) {
+  if (g_log.terminal_caps_detecting) {
     return;
   }
 
   // Detect if not initialized, or if we're using defaults (not reliably detected)
   // This ensures we get proper detection after logging is ready, replacing any defaults
   // Once we have reliable detection, never re-detect to keep colors consistent
-  if (!g_terminal_caps_initialized || !g_terminal_caps.detection_reliable) {
-    g_terminal_caps_detecting = true;
-    g_terminal_caps = detect_terminal_capabilities();
-    g_terminal_caps_detecting = false;
-    g_terminal_caps_initialized = true;
+  if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
+    g_log.terminal_caps_detecting = true;
+    g_log.terminal_caps = detect_terminal_capabilities();
+    g_log.terminal_caps_detecting = false;
+    g_log.terminal_caps_initialized = true;
 
     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
-    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", g_terminal_caps.color_level,
-              g_terminal_caps.capabilities, g_terminal_caps.utf8_support ? "yes" : "no", g_terminal_caps.desired_fps);
+    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", g_log.terminal_caps.color_level,
+              g_log.terminal_caps.capabilities, g_log.terminal_caps.utf8_support ? "yes" : "no", g_log.terminal_caps.desired_fps);
 
     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
   }
@@ -1488,24 +1510,24 @@ void log_redetect_terminal_capabilities(void) {
 const char **log_get_color_array(void) {
   init_terminal_capabilities();
   /* Initialize colors if not already done */
-  if (!g_log_colorscheme_initialized) {
+  if (!g_log.log_colorscheme_initialized) {
     log_init_colors();
   }
 
   /* Safety check: if colors are not initialized, return NULL to prevent crashes from null pointers */
-  if (!g_log_colorscheme_initialized) {
+  if (!g_log.log_colorscheme_initialized) {
     return NULL;
   }
 
   /* Return the compiled color scheme based on terminal capabilities
    * codes_16, codes_256, codes_truecolor are now proper arrays of pointers (const char *[8]),
    * so we can safely cast them to const char **. */
-  if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
-    return (const char **)g_compiled_colors.codes_truecolor;
-  } else if (g_terminal_caps.color_level >= TERM_COLOR_256) {
-    return (const char **)g_compiled_colors.codes_256;
+  if (g_log.terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
+    return (const char **)g_log.compiled_colors.codes_truecolor;
+  } else if (g_log.terminal_caps.color_level >= TERM_COLOR_256) {
+    return (const char **)g_log.compiled_colors.codes_256;
   } else {
-    return (const char **)g_compiled_colors.codes_16;
+    return (const char **)g_log.compiled_colors.codes_16;
   }
 }
 
@@ -1526,7 +1548,7 @@ const char *log_level_color(log_color_t color) {
 
 void log_init_colors(void) {
   /* Skip color initialization during terminal detection to avoid mutex deadlock */
-  if (g_terminal_caps_detecting) {
+  if (g_log.terminal_caps_detecting) {
     return;
   }
 
@@ -1535,7 +1557,7 @@ void log_init_colors(void) {
     return;
   }
 
-  if (g_log_colorscheme_initialized) {
+  if (g_log.log_colorscheme_initialized) {
     return;
   }
 
@@ -1548,12 +1570,12 @@ void log_init_colors(void) {
 
   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
   mutex_lock(&g_colorscheme_mutex);
-  /* Debug: Check if g_compiled_colors is actually zero-initialized */
+  /* Debug: Check if g_log.compiled_colors is actually zero-initialized */
   /* Zero the structure on first use to avoid freeing garbage pointers */
   /* (static = {0} produces garbage in this build for unknown reasons) */
   static bool first_compile = true;
   if (first_compile) {
-    memset(&g_compiled_colors, 0, sizeof(g_compiled_colors));
+    memset(&g_log.compiled_colors, 0, sizeof(g_log.compiled_colors));
     first_compile = false;
   }
 
@@ -1561,16 +1583,16 @@ void log_init_colors(void) {
   terminal_background_t background = detect_terminal_background();
   /* Determine color mode for compilation */
   terminal_color_mode_t mode;
-  if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
+  if (g_log.terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
     mode = TERM_COLOR_TRUECOLOR;
-  } else if (g_terminal_caps.color_level >= TERM_COLOR_256) {
+  } else if (g_log.terminal_caps.color_level >= TERM_COLOR_256) {
     mode = TERM_COLOR_256;
   } else {
     mode = TERM_COLOR_16;
   }
   /* Compile the color scheme to ANSI codes */
-  asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_compiled_colors);
-  g_log_colorscheme_initialized = true;
+  asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_log.compiled_colors);
+  g_log.log_colorscheme_initialized = true;
   mutex_unlock(&g_colorscheme_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */
@@ -1592,18 +1614,18 @@ void log_set_color_scheme(const color_scheme_t *scheme) {
 
   /* Determine color mode for compilation */
   terminal_color_mode_t mode;
-  if (g_terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
+  if (g_log.terminal_caps.color_level >= TERM_COLOR_TRUECOLOR) {
     mode = TERM_COLOR_TRUECOLOR;
-  } else if (g_terminal_caps.color_level >= TERM_COLOR_256) {
+  } else if (g_log.terminal_caps.color_level >= TERM_COLOR_256) {
     mode = TERM_COLOR_256;
   } else {
     mode = TERM_COLOR_16;
   }
 
   /* Compile the new color scheme */
-  asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_compiled_colors);
+  asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &g_log.compiled_colors);
 
-  g_log_colorscheme_initialized = true;
+  g_log.log_colorscheme_initialized = true;
   mutex_unlock(&g_colorscheme_mutex);
 
   /* Log outside of mutex lock to avoid recursive lock deadlock */
@@ -1647,24 +1669,24 @@ void log_disable_mmap(void) {
  * ============================================================================ */
 
 void log_shutdown_begin(void) {
-  if (g_shutdown_in_progress) {
+  if (g_log.shutdown_in_progress) {
     return; /* Already in shutdown phase */
   }
 
   /* Save current terminal output state and disable console output */
-  g_shutdown_saved_terminal_output = atomic_load_u64(&g_log.terminal_output_enabled);
+  g_log.shutdown_saved_terminal_output = atomic_load_u64(&g_log.terminal_output_enabled);
   atomic_store_bool(&g_log.terminal_output_enabled, false);
-  g_shutdown_in_progress = true;
+  g_log.shutdown_in_progress = true;
 }
 
 void log_shutdown_end(void) {
-  if (!g_shutdown_in_progress) {
+  if (!g_log.shutdown_in_progress) {
     return; /* Not in shutdown phase, skip terminal state restoration */
   }
 
   /* Restore previous terminal output state */
-  atomic_store_u64(&g_log.terminal_output_enabled, g_shutdown_saved_terminal_output);
-  g_shutdown_in_progress = false;
+  atomic_store_u64(&g_log.terminal_output_enabled, g_log.shutdown_saved_terminal_output);
+  g_log.shutdown_in_progress = false;
 }
 
 /**
@@ -1674,7 +1696,42 @@ void log_shutdown_end(void) {
  * Safe to call multiple times (idempotent).
  */
 void log_cleanup_colors(void) {
-  colorscheme_cleanup_compiled(&g_compiled_colors);
+  colorscheme_cleanup_compiled(&g_log.compiled_colors);
+}
+
+/* ============================================================================
+ * Session Log Buffer Registration
+ * ============================================================================ */
+
+/**
+ * @brief Register a session log buffer with the logger
+ *
+ * Once registered, all log messages are appended to the buffer in addition
+ * to being written to files/terminal. Used by splash and status screens.
+ *
+ * @param buf Buffer instance to register (can be NULL to unregister)
+ */
+void log_set_session_log_buffer(session_log_buffer_t *buf) {
+  atomic_ptr_store(&g_log.session_log_buffer, (void *)buf);
+}
+
+/**
+ * @brief Unregister the session log buffer
+ *
+ * No-op if no buffer is currently registered.
+ */
+void log_clear_session_log_buffer(void) {
+  atomic_ptr_store(&g_log.session_log_buffer, NULL);
+}
+
+/**
+ * @brief Get the currently registered session log buffer
+ *
+ * Returns the buffer that was previously registered with log_set_session_log_buffer().
+ * Returns NULL if no buffer is currently registered.
+ */
+session_log_buffer_t *log_get_session_log_buffer(void) {
+  return (session_log_buffer_t *)atomic_ptr_load(&g_log.session_log_buffer);
 }
 
 /* ============================================================================

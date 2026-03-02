@@ -8,7 +8,6 @@
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/render.h"
-#include "session/session_log_buffer.h"
 #include "session/stdin_reader.h"
 #include "../../client/audio.h"
 
@@ -792,11 +791,6 @@ cleanup:
   log_debug("[CLEANUP] About to call debug_sync_cleanup_thread()");
   debug_sync_cleanup_thread();
   log_debug("[CLEANUP] debug_sync_cleanup_thread() returned");
-
-  // Cleanup session log buffer (used by splash screen)
-  log_debug("[CLEANUP] About to call session_log_buffer_destroy()");
-  session_log_buffer_destroy();
-  log_debug("[CLEANUP] session_log_buffer_destroy() returned");
 
   // Disable keepawake (re-allow OS to sleep)
   log_debug("[CLEANUP] Disabling keepawake");

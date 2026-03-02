@@ -19,7 +19,7 @@
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include "session/display.h"
-#include "session/session_log_buffer.h"
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/util/ip.h>
@@ -70,14 +70,18 @@ static const rgb_pixel_t g_rainbow_colors[] = {
 #define RAINBOW_COLOR_COUNT 7
 
 // ============================================================================
-// Log Management (delegating to terminal_screen abstraction)
+// Log Management
 // ============================================================================
 
 void splash_log_init(void) {
-  terminal_screen_log_init();
+  session_log_buffer_t *buf = terminal_screen_log_init();
+  if (buf) {
+    log_set_session_log_buffer(buf);
+  }
 }
 
 void splash_log_destroy(void) {
+  log_clear_session_log_buffer();
   terminal_screen_log_destroy();
 }
 

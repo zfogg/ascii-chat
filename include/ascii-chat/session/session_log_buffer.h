@@ -38,29 +38,33 @@ typedef struct {
 typedef struct session_log_buffer session_log_buffer_t;
 
 /**
- * @brief Initialize global session log buffer
+ * @brief Create a new session log buffer instance
  *
- * Creates internal circular buffer for log capture. Safe to call multiple times.
- * Must be called before session_log_buffer_append().
+ * Allocates and initializes a circular buffer for log capture.
+ * Caller is responsible for calling session_log_buffer_destroy() when done.
  *
- * @return true on success, false on allocation failure
+ * @return Pointer to new buffer instance, or NULL on allocation failure
  */
-bool session_log_buffer_init(void);
+session_log_buffer_t *session_log_buffer_create(void);
 
 /**
- * @brief Cleanup global session log buffer
+ * @brief Cleanup session log buffer instance
  *
- * Frees internal buffer. Safe to call even if not initialized.
+ * Frees the buffer and all internal resources. Safe to call with NULL.
+ *
+ * @param buf Buffer instance to destroy (can be NULL)
  */
-void session_log_buffer_destroy(void);
+void session_log_buffer_destroy(session_log_buffer_t *buf);
 
 /**
  * @brief Clear all log entries from buffer
  *
  * Thread-safe. Resets buffer to empty state, discarding all captured logs.
  * Useful for clearing initialization logs before screen starts rendering.
+ *
+ * @param buf Buffer instance (must not be NULL)
  */
-void session_log_buffer_clear(void);
+void session_log_buffer_clear(session_log_buffer_t *buf);
 
 /**
  * @brief Append a log message to the buffer
@@ -68,9 +72,10 @@ void session_log_buffer_clear(void);
  * Thread-safe. Called from logging system to capture messages.
  * Message is copied into circular buffer (oldest entry overwritten if full).
  *
+ * @param buf Buffer instance (must not be NULL)
  * @param message Log message text (already formatted with colors)
  */
-void session_log_buffer_append(const char *message);
+void session_log_buffer_append(session_log_buffer_t *buf, const char *message);
 
 /**
  * @brief Get recent log entries from buffer
@@ -78,8 +83,9 @@ void session_log_buffer_append(const char *message);
  * Thread-safe. Copies up to max_count recent entries into out_entries.
  * Entries are returned in chronological order (oldest first).
  *
+ * @param buf Buffer instance (must not be NULL)
  * @param out_entries Output array to fill with log entries
  * @param max_count Maximum number of entries to return
  * @return Number of entries actually copied (may be less than max_count)
  */
-size_t session_log_buffer_get_recent(session_log_entry_t *out_entries, size_t max_count);
+size_t session_log_buffer_get_recent(session_log_buffer_t *buf, session_log_entry_t *out_entries, size_t max_count);

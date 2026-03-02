@@ -46,6 +46,8 @@
 struct crypto_context_t;
 struct color_scheme_t; /* Opaque - full definition in ui/colors.h, only included in logging.c */
 typedef struct color_scheme_t color_scheme_t;
+struct session_log_buffer; /* Opaque - full definition in session/session_log_buffer.h */
+typedef struct session_log_buffer session_log_buffer_t;
 
 /* Include log types (must be before network/log.h to avoid circular dependency) */
 #include "types.h"
@@ -879,6 +881,36 @@ void log_shutdown_end(void);
  * @ingroup logging
  */
 void log_cleanup_colors(void);
+
+/**
+ * @brief Register a session log buffer with the logger
+ *
+ * Once registered, all log messages are appended to the buffer in addition
+ * to being written to files/terminal. Used by splash and status screens.
+ *
+ * @param buf Buffer instance to register (can be NULL to unregister)
+ * @ingroup logging
+ */
+void log_set_session_log_buffer(session_log_buffer_t *buf);
+
+/**
+ * @brief Unregister the session log buffer
+ *
+ * No-op if no buffer is currently registered.
+ * @ingroup logging
+ */
+void log_clear_session_log_buffer(void);
+
+/**
+ * @brief Get the currently registered session log buffer
+ *
+ * Returns the buffer that was previously registered with log_set_session_log_buffer().
+ * Returns NULL if no buffer is currently registered.
+ *
+ * @return Pointer to registered buffer, or NULL
+ * @ingroup logging
+ */
+session_log_buffer_t *log_get_session_log_buffer(void);
 
 /**
  * @brief Recolor a plain (non-colored) log line with proper ANSI codes

@@ -73,7 +73,7 @@
 #include "audio.h"
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/log/interactive_grep.h>
-#include "session/session_log_buffer.h"
+#include <ascii-chat/session/session_log_buffer.h>
 #include "session/client_like.h"
 #include <ascii-chat/audio/analysis.h>
 #include <ascii-chat/video/webcam/webcam.h>

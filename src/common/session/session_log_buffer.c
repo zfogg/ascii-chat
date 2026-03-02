@@ -3,7 +3,7 @@
  * @brief Thread-safe circular log buffer for session screens
  */
 
-#include "session/session_log_buffer.h"
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/common.h>
@@ -20,91 +20,79 @@ typedef struct session_log_buffer {
   mutex_t mutex;
 } session_log_buffer_t;
 
-static session_log_buffer_t *g_log_buffer = NULL;
-
-bool session_log_buffer_init(void) {
-  if (g_log_buffer) {
-    return true; // Already initialized
+session_log_buffer_t *session_log_buffer_create(void) {
+  session_log_buffer_t *buf = SAFE_CALLOC(1, sizeof(session_log_buffer_t), session_log_buffer_t *);
+  if (!buf) {
+    return NULL;
   }
 
-  g_log_buffer = SAFE_CALLOC(1, sizeof(session_log_buffer_t), session_log_buffer_t *);
-  if (!g_log_buffer) {
-    return false;
-  }
+  atomic_store_u64(&buf->write_pos, 0);
+  atomic_store_u64(&buf->sequence, 0);
+  mutex_init(&buf->mutex, "log_buffer");
 
-  atomic_store_u64(&g_log_buffer->write_pos, 0);
-  atomic_store_u64(&g_log_buffer->sequence, 0);
-  mutex_init(&g_log_buffer->mutex, "log_buffer");
-
-  return true;
+  return buf;
 }
 
-void session_log_buffer_destroy(void) {
-  if (!g_log_buffer) {
+void session_log_buffer_destroy(session_log_buffer_t *buf) {
+  if (!buf) {
     return;
   }
 
-  // Set to NULL FIRST so append/clear/get_recent calls immediately return without using mutex
-  // This prevents use-after-free if threads are still appending during shutdown
-  session_log_buffer_t *buffer = g_log_buffer;
-  g_log_buffer = NULL;
-
-  // Now safely destroy the mutex and free memory
-  mutex_destroy(&buffer->mutex);
-  SAFE_FREE(buffer);
+  mutex_destroy(&buf->mutex);
+  SAFE_FREE(buf);
 }
 
-void session_log_buffer_clear(void) {
-  if (!g_log_buffer) {
+void session_log_buffer_clear(session_log_buffer_t *buf) {
+  if (!buf) {
     return;
   }
 
-  mutex_lock(&g_log_buffer->mutex);
+  mutex_lock(&buf->mutex);
 
   // Reset write position and sequence
-  atomic_store_u64(&g_log_buffer->write_pos, 0);
-  atomic_store_u64(&g_log_buffer->sequence, 0);
+  atomic_store_u64(&buf->write_pos, 0);
+  atomic_store_u64(&buf->sequence, 0);
 
   // Clear all entries
   for (size_t i = 0; i < SESSION_LOG_BUFFER_SIZE; i++) {
-    g_log_buffer->entries[i].message[0] = '\0';
-    g_log_buffer->entries[i].sequence = 0;
+    buf->entries[i].message[0] = '\0';
+    buf->entries[i].sequence = 0;
   }
 
-  mutex_unlock(&g_log_buffer->mutex);
+  mutex_unlock(&buf->mutex);
 }
 
-void session_log_buffer_append(const char *message) {
-  if (!g_log_buffer || !message) {
+void session_log_buffer_append(session_log_buffer_t *buf, const char *message) {
+  if (!buf || !message) {
     // Fail silently - this is called FROM the logging system
     // Using SET_ERRNO here would cause infinite recursion
     return;
   }
 
-  mutex_lock(&g_log_buffer->mutex);
+  mutex_lock(&buf->mutex);
 
-  size_t pos = atomic_load_u64(&g_log_buffer->write_pos);
-  uint64_t seq = atomic_fetch_add_u64(&g_log_buffer->sequence, 1);
+  size_t pos = atomic_load_u64(&buf->write_pos);
+  uint64_t seq = atomic_fetch_add_u64(&buf->sequence, 1);
 
-  SAFE_STRNCPY(g_log_buffer->entries[pos].message, message, SESSION_LOG_LINE_MAX);
-  g_log_buffer->entries[pos].sequence = seq;
+  SAFE_STRNCPY(buf->entries[pos].message, message, SESSION_LOG_LINE_MAX);
+  buf->entries[pos].sequence = seq;
 
-  atomic_store_u64(&g_log_buffer->write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
+  atomic_store_u64(&buf->write_pos, (pos + 1) % SESSION_LOG_BUFFER_SIZE);
 
-  mutex_unlock(&g_log_buffer->mutex);
+  mutex_unlock(&buf->mutex);
 }
 
-size_t session_log_buffer_get_recent(session_log_entry_t *out_entries, size_t max_count) {
-  if (!g_log_buffer || !out_entries || max_count == 0) {
+size_t session_log_buffer_get_recent(session_log_buffer_t *buf, session_log_entry_t *out_entries, size_t max_count) {
+  if (!buf || !out_entries || max_count == 0) {
     // Fail silently - called from display code that handles 0 gracefully
     // Using SET_ERRNO here could cause recursion if error logging is enabled
     return 0;
   }
 
-  mutex_lock(&g_log_buffer->mutex);
+  mutex_lock(&buf->mutex);
 
-  size_t write_pos = atomic_load_u64(&g_log_buffer->write_pos);
-  uint64_t total_entries = atomic_load_u64(&g_log_buffer->sequence);
+  size_t write_pos = atomic_load_u64(&buf->write_pos);
+  uint64_t total_entries = atomic_load_u64(&buf->sequence);
 
   size_t start_pos = write_pos;
   size_t entries_to_check = SESSION_LOG_BUFFER_SIZE;
@@ -117,12 +105,12 @@ size_t session_log_buffer_get_recent(session_log_entry_t *out_entries, size_t ma
   size_t count = 0;
   for (size_t i = 0; i < entries_to_check && count < max_count; i++) {
     size_t idx = (start_pos + i) % SESSION_LOG_BUFFER_SIZE;
-    if (g_log_buffer->entries[idx].sequence > 0) {
-      memcpy(&out_entries[count], &g_log_buffer->entries[idx], sizeof(session_log_entry_t));
+    if (buf->entries[idx].sequence > 0) {
+      memcpy(&out_entries[count], &buf->entries[idx], sizeof(session_log_entry_t));
       count++;
     }
   }
 
-  mutex_unlock(&g_log_buffer->mutex);
+  mutex_unlock(&buf->mutex);
   return count;
 }

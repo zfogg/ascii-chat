@@ -16,7 +16,7 @@
 #include "ascii-chat/ui/terminal_screen.h"
 #include "ascii-chat/ui/frame_buffer.h"
 #include "ascii-chat/log/interactive_grep.h"
-#include "session/session_log_buffer.h"
+#include <ascii-chat/session/session_log_buffer.h>
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/util/time.h"
 #include "ascii-chat/platform/system.h"
@@ -32,6 +32,9 @@
 
 // Module-level static frame buffer (reused across renders to avoid malloc per frame)
 static frame_buffer_t *g_frame_buf = NULL;
+
+// Module-level static session log buffer (owned by this module)
+static session_log_buffer_t *g_session_log_buffer = NULL;
 
 // Strip ANSI escape codes from a string (matches map_plain_to_colored_pos logic)
 static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
@@ -275,7 +278,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     if (result != ASCIICHAT_OK || !log_entries) {
       log_entries = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
       if (log_entries) {
-        log_count = session_log_buffer_get_recent(log_entries, SESSION_LOG_BUFFER_SIZE);
+        log_count = session_log_buffer_get_recent(g_session_log_buffer, log_entries, SESSION_LOG_BUFFER_SIZE);
       }
     }
   } else {
@@ -283,7 +286,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     session_log_entry_t *buffer_entries =
         SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
     if (buffer_entries) {
-      size_t buffer_count = session_log_buffer_get_recent(buffer_entries, SESSION_LOG_BUFFER_SIZE);
+      size_t buffer_count = session_log_buffer_get_recent(g_session_log_buffer, buffer_entries, SESSION_LOG_BUFFER_SIZE);
       log_entries = buffer_entries;
       log_count = buffer_count;
     }
@@ -585,18 +588,34 @@ void terminal_screen_cleanup(void) {
   }
 }
 
-void terminal_screen_log_init(void) {
-  session_log_buffer_init();
+session_log_buffer_t *terminal_screen_log_init(void) {
+  if (g_session_log_buffer) {
+    return g_session_log_buffer; // Already initialized
+  }
+
+  g_session_log_buffer = session_log_buffer_create();
+  return g_session_log_buffer;
 }
 
 void terminal_screen_log_destroy(void) {
-  session_log_buffer_destroy();
+  if (g_session_log_buffer) {
+    session_log_buffer_destroy(g_session_log_buffer);
+    g_session_log_buffer = NULL;
+  }
 }
 
 void terminal_screen_log_clear(void) {
-  session_log_buffer_clear();
+  if (g_session_log_buffer) {
+    session_log_buffer_clear(g_session_log_buffer);
+  }
 }
 
 void terminal_screen_log_append(const char *message) {
-  session_log_buffer_append(message);
+  if (g_session_log_buffer) {
+    session_log_buffer_append(g_session_log_buffer, message);
+  }
+}
+
+session_log_buffer_t *terminal_screen_get_log_buffer(void) {
+  return g_session_log_buffer;
 }

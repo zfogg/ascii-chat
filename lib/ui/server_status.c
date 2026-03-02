@@ -7,7 +7,7 @@
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/interactive_grep.h>
-#include "session/session_log_buffer.h"
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/system.h>
@@ -25,12 +25,17 @@
 #include <ascii-chat/atomic.h>
 
 void server_status_log_init(void) {
-  // Delegate to terminal_screen log abstraction
-  terminal_screen_log_init();
+  // Initialize the shared terminal screen log buffer
+  session_log_buffer_t *buf = terminal_screen_log_init();
+  if (buf) {
+    log_set_session_log_buffer(buf);
+  }
 }
 
 void server_status_log_destroy(void) {
-  // Delegate to terminal_screen log abstraction
+  // Unregister from logger before destroying
+  log_clear_session_log_buffer();
+  // Cleanup the shared terminal screen log buffer
   terminal_screen_log_destroy();
 }
 
