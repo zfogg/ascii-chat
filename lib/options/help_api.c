@@ -30,7 +30,6 @@ const char *options_get_help_text(asciichat_mode_t mode, const char *option_name
   }
 
   // Get the registry (initializes size if needed)
-  registry_init_size();
 
   // Search through all registered options
   for (size_t i = 0; i < g_registry_size; i++) {

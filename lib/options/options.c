@@ -84,6 +84,7 @@
 #include <ascii-chat/options/presets.h>
 #include <ascii-chat/options/actions.h>
 #include <ascii-chat/options/registry/mode_defaults.h> // Mode-aware defaults
+#include <ascii-chat/options/registry/core.h> // Registry initialization
 
 #include <ascii-chat/options/config.h>
 #include <ascii-chat/options/strings.h> // Enum/mode string conversions
@@ -869,6 +870,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   if (rcu_init_result != ASCIICHAT_OK) {
     return rcu_init_result;
   }
+
+  // Initialize options registry from category builders
+  // This must happen once during startup before any registry access
+  registry_init_from_builders();
 
   // ========================================================================
   // STAGE 1: Mode Detection and Binary-Level Option Handling
