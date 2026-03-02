@@ -79,6 +79,10 @@ h265_decoder_t *h265_decoder_create(void) {
     }
 
     log_info("FFmpeg HEVC decoder created");
+
+    // Register decoder for debugging
+    NAMED_REGISTER_H265_DECODER(dec, "h265_decoder", NULL);
+
     return dec;
 }
 

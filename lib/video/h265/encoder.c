@@ -123,6 +123,10 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
   }
 
   log_info("FFmpeg HEVC encoder created: %ux%u (codec: %s)", initial_width, initial_height, codec->name);
+
+  // Register encoder for debugging
+  NAMED_REGISTER_H265_ENCODER(enc, "h265_encoder", NULL);
+
   return enc;
 }
 

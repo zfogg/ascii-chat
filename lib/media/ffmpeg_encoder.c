@@ -494,7 +494,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   *out = enc;
 
   /* Register encoder with named registry */
-  NAMED_REGISTER(enc, output_path, "ffmpeg_encoder", "0x%tx", NULL);
+  NAMED_REGISTER_FFMPEG_ENCODER(enc, output_path, NULL);
 
   return ASCIICHAT_OK;
 }

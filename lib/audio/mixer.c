@@ -342,7 +342,8 @@ mixer_t *mixer_create(int max_sources, int sample_rate) {
 
   log_debug("Audio mixer created: max_sources=%d, sample_rate=%d", max_sources, sample_rate);
 
-  // Register sync primitives for debugging
+  // Register mixer and its sync primitives for debugging
+  NAMED_REGISTER_MIXER(mixer, "audio_mixer", NULL);
   NAMED_REGISTER_RWLOCK(&mixer->source_lock, "source_lock", (uintptr_t)(const void *)(mixer));
 
   return mixer;

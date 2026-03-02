@@ -695,6 +695,54 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
 #endif
 
 /**
+ * @brief Register an FFmpeg encoder with automatic format specifier
+ * @param encoder FFmpeg encoder pointer
+ * @param name Base name string
+ * @param parent_ptr Parent context pointer (uintptr_t cast)
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for encoder addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_FFMPEG_ENCODER(encoder, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(encoder), (name), "ffmpeg_encoder", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
+#else
+#define NAMED_REGISTER_FFMPEG_ENCODER(encoder, name, parent_ptr) (name)
+#endif
+
+/**
+ * @brief Register an H.265 encoder with automatic format specifier
+ * @param encoder H.265 encoder pointer
+ * @param name Base name string
+ * @param parent_ptr Parent context pointer (uintptr_t cast)
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for H.265 encoder addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_H265_ENCODER(encoder, name, parent_ptr)                                                                     \
+  named_register((uintptr_t)(const void *)(encoder), (name), "h265_encoder", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
+#else
+#define NAMED_REGISTER_H265_ENCODER(encoder, name, parent_ptr) (name)
+#endif
+
+/**
+ * @brief Register an H.265 decoder with automatic format specifier
+ * @param decoder H.265 decoder pointer
+ * @param name Base name string
+ * @param parent_ptr Parent context pointer (uintptr_t cast)
+ * @ingroup debug_named
+ *
+ * Convenience macro that automatically uses "0x%tx" format specifier for H.265 decoder addresses.
+ */
+#ifndef NDEBUG
+#define NAMED_REGISTER_H265_DECODER(decoder, name, parent_ptr)                                                                     \
+  named_register((uintptr_t)(const void *)(decoder), (name), "h265_decoder", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
+#else
+#define NAMED_REGISTER_H265_DECODER(decoder, name, parent_ptr) (name)
+#endif
+
+/**
  * @brief Register an audio context with automatic format specifier
  * @param ctx Audio context pointer
  * @param name Base name string
