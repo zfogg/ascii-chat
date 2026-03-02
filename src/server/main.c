@@ -2620,6 +2620,7 @@ cleanup:
   // lws_context_destroy fires LWS_CALLBACK_CLOSED for all connections, which
   // closes transports and NULLs the per-session conn_data->transport pointer.
   // After this, remove_client can safely destroy the transport objects.
+  bool websocket_exited_cleanly = true;  // Default to clean unless timeout detected
   if (g_websocket_server.context != NULL) {
     log_debug("Shutting down WebSocket server before client cleanup");
     atomic_store_u64(&g_websocket_server.running, false);
@@ -2629,25 +2630,29 @@ cleanup:
     // seeing running=false, which we just set).
     websocket_server_cancel_service(&g_websocket_server);
 
-    // Join with 1500ms timeout to allow handler threads to complete pending work
-    // Handler threads may be reassembling large WebSocket frames. We need enough
-    // time for them to finish before destroying the WebSocket context.
+    // Join with 500ms timeout. If the WebSocket thread is deadlocked in lws_service(),
+    // it won't exit and we skip the graceful handler thread cleanup to avoid prolonged
+    // shutdown hangs. Forceful cleanup will happen in websocket_server_destroy().
     if (g_websocket_server_thread_started) {
       int join_result =
-          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 1500 * NS_PER_MS_INT); // 1500ms in ns
+          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 500 * NS_PER_MS_INT); // 500ms in ns
       if (join_result != 0) {
-        log_warn("WebSocket thread did not exit cleanly within 1500ms, forcing cleanup");
+        log_warn("WebSocket thread did not exit within 500ms, skipping graceful handler cleanup");
+        websocket_exited_cleanly = false;
       }
       g_websocket_server_thread_started = false;
     }
 
-    log_debug("WebSocket thread confirmed exited, waiting for handler threads to complete...");
+    if (websocket_exited_cleanly) {
+      log_debug("WebSocket thread confirmed exited, waiting for handler threads to complete...");
+    }
   }
 
   // Wait for all client handler threads to exit BEFORE destroying WebSocket context
   // Handler threads may still be working with WebSocket connections, so we must
   // ensure they complete before destroying the context (which would abort their operations).
-  {
+  // Skip this if WebSocket thread didn't exit cleanly (deadlock detected).
+  if (websocket_exited_cleanly) {
     int retry_count = 0;
     while (retry_count < 50) { // Max 500ms wait
       rwlock_rdlock(&g_client_manager_rwlock);
@@ -2666,10 +2671,13 @@ cleanup:
       retry_count++;
     }
     log_debug("Client handler threads cleaned up, destroying WebSocket server");
+  } else {
+    log_warn("Skipping graceful handler thread cleanup due to WebSocket deadlock");
   }
 
   // Now destroy WebSocket server after all handler threads have completed
   // This ensures no handler threads are still accessing the context.
+  // (It's safe to call even if context was already destroyed forcefully above)
   websocket_server_destroy(&g_websocket_server);
   log_debug("WebSocket server destroyed");
 
