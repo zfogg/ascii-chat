@@ -120,11 +120,13 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
 
-# Debug sources only in non-Release builds
+# Named registry always included (required for all builds)
+list(APPEND CORE_SRCS ${LIB_DIR}/debug/named.c)
+
+# Additional debug sources only in non-Release builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
         ${LIB_DIR}/debug/backtrace.c
-        ${LIB_DIR}/debug/named.c
         ${LIB_DIR}/debug/mutex.c
         ${LIB_DIR}/debug/atomic.c
         ${LIB_DIR}/debug/sync.c
@@ -1231,8 +1233,19 @@ set_target_properties(ascii-chat-static-lib PROPERTIES
 )
 
 # Create a custom target to actually build the archive
+# For musl builds, ensure all musl dependency targets are built first
+set(MUSL_DEPS "")
+if(USE_MUSL)
+    if(TARGET ffmpeg-musl)
+        list(APPEND MUSL_DEPS ffmpeg-musl)
+    endif()
+    if(TARGET openssl-musl)
+        list(APPEND MUSL_DEPS openssl-musl)
+    endif()
+endif()
+
 add_custom_target(build-ascii-chat-static-lib
-    DEPENDS ${STATIC_LIB_OUTPUT}
+    DEPENDS ${STATIC_LIB_OUTPUT} ${MUSL_DEPS}
 )
 
 # Make the imported library depend on the build target
