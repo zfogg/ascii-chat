@@ -153,8 +153,11 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   atomic_store_bool(&queue->shutdown, false);
 
   const char *queue_name = NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue");
-  if (queue->node_pool)
-    NAMED_REGISTER_NODE_POOL(queue->node_pool, "queue_node_pool");
+  if (queue->node_pool) {
+    char node_pool_name[256];
+    NAMED_FORMAT_SUBNAME(queue_name, "node_pool", node_pool_name, sizeof(node_pool_name));
+    NAMED_REGISTER_NODE_POOL(queue->node_pool, node_pool_name);
+  }
 
   // Register atomic fields for sync state monitoring - descriptive names for lock-free queue tracking
   char atomic_name[256];
