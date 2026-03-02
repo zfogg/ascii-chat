@@ -692,6 +692,8 @@ endif()
 # link to the same compiled object files.
 # Note: ascii-chat-panic is always included as it provides runtime logging functions
 # that may be called by panic-instrumented code
+# Skip shared library for musl builds (static PIE binary only)
+if(NOT USE_MUSL)
 add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-util>
         $<TARGET_OBJECTS:ascii-chat-data-structures>
@@ -704,6 +706,7 @@ add_library(ascii-chat-shared SHARED
         $<TARGET_OBJECTS:ascii-chat-core>
         $<TARGET_OBJECTS:ascii-chat-panic>
     )
+endif()
     if(ASCIICHAT_ENABLE_UNITY_BUILDS)
         set_target_properties(ascii-chat-shared PROPERTIES UNITY_BUILD ON)
     endif()
@@ -842,21 +845,6 @@ add_library(ascii-chat-shared SHARED
     if(DEFINED LIBSODIUM_BUILD_TARGET)
         add_dependencies(ascii-chat-shared ${LIBSODIUM_BUILD_TARGET})
     endif()
-    # Add musl dependencies to ensure libraries are built before linking
-    if(USE_MUSL)
-        add_dependencies(ascii-chat-shared
-            zstd-musl
-            libsodium-musl
-            opus-musl
-            pcre2-musl
-            portaudio-musl
-            alsa-lib-musl
-            libexecinfo-musl
-            openssl-musl
-            ffmpeg-musl
-            libwebsockets-musl
-        )
-    endif()
 
     # Link external dependencies (libsodium, zstd, opus, etc.)
     # These are needed because shared library is created from OBJECT files,
@@ -930,6 +918,7 @@ add_library(ascii-chat-shared SHARED
     endif()
 
     # Note: System library dependencies will be added below
+endif()
 
 # Add system library dependencies
 if(WIN32)

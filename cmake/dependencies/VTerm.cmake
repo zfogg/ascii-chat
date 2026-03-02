@@ -14,10 +14,7 @@
 #   - GHOSTTY_LIBS: Backwards compatibility alias for RENDER_FILE_LIBS
 #   - GHOSTTY_INCLUDES: Backwards compatibility alias for RENDER_FILE_INCLUDES
 # =============================================================================
-
-# Include FreeType2 and Fontconfig dependencies
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FreeType2.cmake)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Fontconfig.cmake)
+# NOTE: FreeType2 and Fontconfig must be included by Dependencies.cmake before this file
 
 # Musl builds: libvterm is not built from source (no GTK ecosystem)
 if(USE_MUSL)

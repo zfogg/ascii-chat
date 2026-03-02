@@ -144,6 +144,9 @@ if(USE_MUSL)
         )
     endif()
 
+    # Create a custom target for musl builds (libraries are pre-built/cached)
+    add_custom_target(openssl-musl)
+
     return()
 endif()
 

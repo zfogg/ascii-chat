@@ -139,6 +139,9 @@ if(USE_MUSL)
         PARENT_SCOPE
     )
 
+    # Create a custom target for musl builds (libraries are pre-built/cached)
+    add_custom_target(ffmpeg-musl)
+
     return()
 endif()
 
