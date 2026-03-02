@@ -13,6 +13,7 @@
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/memory.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 
 struct render_file_ctx_s {
@@ -101,6 +102,10 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
   ctx->audio_capture_rb = NULL;
 
   log_info("renderer: initialized encoder for %s", output_path);
+
+  // Register render file context for debugging
+  NAMED_REGISTER_CONTEXT(ctx, "render_file_ctx", output_path, NULL);
+
   *out = ctx;
   return ASCIICHAT_OK;
 }

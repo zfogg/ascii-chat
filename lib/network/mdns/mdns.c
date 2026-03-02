@@ -9,6 +9,7 @@
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/socket.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 #include <stdio.h>
 #include <ascii-chat-deps/mdns/mdns.h>
@@ -60,6 +61,10 @@ asciichat_mdns_t *asciichat_mdns_init(void) {
   }
 
   log_dev("mDNS context initialized (socket: %d, buffer: %zu bytes)", mdns->socket_fd, mdns->buffer_capacity);
+
+  // Register mDNS context for debugging
+  NAMED_REGISTER_CONTEXT(mdns, "asciichat_mdns", "mdns_context", NULL);
+
   return mdns;
 }
 
