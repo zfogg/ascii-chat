@@ -807,8 +807,15 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
     return -1;
   }
 
-  /* Use log_template_apply() to generate the complete formatted output */
-  int written = log_template_apply(format, buffer, buffer_size, level, timestamp, file, line, func,
+  /* Use log_template_apply() to generate the complete formatted output
+   * Safety: reload format before use in case another thread freed it during shutdown */
+  const log_template_t *format_check = g_log.format;
+  if (!format_check) {
+    /* Format was freed during shutdown - return minimal output */
+    return -1;
+  }
+
+  int written = log_template_apply(format_check, buffer, buffer_size, level, timestamp, file, line, func,
                                    asciichat_thread_current_id(), "", use_colors, time_nanoseconds);
   if (written < 0 || written >= (int)buffer_size) {
     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, "Failed to format log header");
@@ -857,10 +864,12 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
                                    func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
   }
 
-  /* For colored output, apply format with colors enabled */
+  /* For colored output, apply format with colors enabled
+   * Re-check format in case it was freed by another thread during shutdown */
   int colored_len = 0;
-  if (use_colors && plain_len > 0 && format) {
-    colored_len = log_template_apply(format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+  const log_template_t *format_check = g_log.format;
+  if (use_colors && plain_len > 0 && format_check) {
+    colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                      line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
