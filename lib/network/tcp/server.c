@@ -158,6 +158,10 @@ asciichat_error_t tcp_server_init(tcp_server_t *server, const tcp_server_config_
   snprintf(port_name, sizeof(port_name), "server:%d", server->config.port);
   NAMED_REGISTER(server, port_name, "tcp_server", "0x%tx", NULL);
 
+  /* Register server's sync primitives with hierarchical naming */
+  NAMED_REGISTER_RWLOCK(&server->clients_rwlock, "clients_rwlock", (uintptr_t)(const void *)(server));
+  NAMED_REGISTER_ATOMIC(&server->running, "is_running", (uintptr_t)(const void *)(server));
+
   return ASCIICHAT_OK;
 }
 
