@@ -13,16 +13,18 @@ echo "Running on websocket port: $PORT"
 
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
 cmake --build build >/dev/null 2>&1
-./build/bin/ascii-chat server --port "$PORT" --websocket-port "$PORT_WS" >/dev/null 2>&1 &
+./build/bin/ascii-chat --log-file "$server_log" --log-level debug \
+  server --port "$PORT" --websocket-port "$PORT_WS" \
+  >/dev/null 2>&1 &
 SERVER_PID=$!
 sleep 0.25
 
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-timeout -k1 4 ./build/bin/ascii-chat \
-  --log-level debug --log-file client.log --sync-state 3 \
+timeout -k1 5 ./build/bin/ascii-chat \
+  --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
-  2>/dev/null | tee /tmp/client-stdout.log \
+  2>/dev/null | tee "$client_stdout" \
   || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
