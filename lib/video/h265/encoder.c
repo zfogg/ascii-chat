@@ -137,7 +137,10 @@ void h265_encoder_destroy(h265_encoder_t *encoder) {
     av_packet_free(&encoder->packet);
   }
   if (encoder->codec_ctx) {
-    avcodec_free_context(&encoder->codec_ctx);
+    // Capture x265 encoder cleanup output (final frame stats, etc.)
+    LOG_IO("hevc", {
+      avcodec_free_context(&encoder->codec_ctx);
+    });
   }
   if (encoder->yuv_buf) {
     SAFE_FREE(encoder->yuv_buf);
