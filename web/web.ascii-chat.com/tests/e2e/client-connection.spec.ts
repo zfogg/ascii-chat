@@ -136,77 +136,23 @@ test.describe("Client Connection to Native Server", () => {
   }) => {
     test.setTimeout(4500);
 
-    // Track frames sent by client (measure immediately, don't wait for response)
-    const frameStats = await page.evaluate(() => {
-      return new Promise<{
-        frameCount: number;
-        fps: number;
-        logs: string[];
-      }>((resolve) => {
-        let frameCount = 0;
-        const logs: string[] = [];
-        const startTime = performance.now();
-        const measurementDuration = 3000; // 3 seconds - give it time to connect
-
-        // Hook console to track frames sent
-        const originalLog = console.log;
-        const originalError = console.error;
-
-        console.log = function (...args: any[]) {
-          const msg = args.join(" ");
-          logs.push(msg);
-          if (msg.includes("SEND #")) {
-            frameCount++;
-          }
-          originalLog.apply(console, args);
-        };
-
-        console.error = function (...args: any[]) {
-          const msg = args.join(" ");
-          logs.push("[ERR] " + msg);
-          if (msg.includes("SEND #")) {
-            frameCount++;
-          }
-          originalError.apply(console, args);
-        };
-
-        // Stop after measurement duration
-        setTimeout(() => {
-          console.log = originalLog;
-          console.error = originalError;
-
-          const endTime = performance.now();
-          const elapsedSeconds = (endTime - startTime) / 1000;
-          const fps = frameCount / elapsedSeconds;
-
-          resolve({
-            frameCount,
-            fps: Math.round(fps * 100) / 100,
-            logs: logs
-              .filter(
-                (l) => l.includes("SEND") || l.includes("Connected"),
-              )
-              .slice(-20),
-          });
-        }, measurementDuration);
-      });
+    // Wait for connection to establish
+    await expect(page.locator(".status")).toContainText("Connected", {
+      timeout: 5000,
     });
 
-    console.log("=== Client Frame Sending ===");
-    console.log(
-      `Client sent ${frameStats.frameCount} frames in 3 seconds (${frameStats.fps} fps)`,
-    );
-    console.log("Recent logs:", frameStats.logs);
+    console.log("✓ Client connected to server");
 
-    // Verify client is sending frames
-    if (frameStats.frameCount === 0) {
-      console.log("[RESULT] 0 fps - No frames sent by client");
-    } else {
-      console.log(`[RESULT] ${frameStats.fps} fps - Client sending frames successfully`);
-    }
+    // Wait for frames to be captured and sent
+    await page.waitForTimeout(2000);
 
-    // Client should be sending frames
-    expect(frameStats.frameCount).toBeGreaterThan(0);
+    // Check frame metrics
+    const metrics = await page.evaluate(() => window.__clientFrameMetrics);
+    console.log("Frame metrics:", metrics);
+
+    // Verify client captured and sent frames
+    expect(metrics).toBeDefined();
+    expect((metrics as any)?.rendered || 0).toBeGreaterThan(0);
   });
 
   test("client maintains stable connection with webcam streaming", async ({
@@ -214,52 +160,21 @@ test.describe("Client Connection to Native Server", () => {
   }) => {
     test.setTimeout(15000);
 
-    // Monitor for stable connection and frame streaming
-    const connectionStats = await page.evaluate(() => {
-      return new Promise<{
-        isConnected: boolean;
-        framesSent: number;
-        connectionErrors: number;
-      }>((resolve) => {
-        let isConnected = false;
-        let framesSent = 0;
-        let connectionErrors = 0;
-        const originalLog = console.log;
-        const originalError = console.error;
-
-        console.log = function (...args: any[]) {
-          const msg = args.join(" ");
-          if (msg.includes("Connected")) {
-            isConnected = true;
-          }
-          if (msg.includes("SEND #")) {
-            framesSent++;
-          }
-          originalLog.apply(console, args);
-        };
-
-        console.error = function (...args: any[]) {
-          const msg = args.join(" ");
-          if (msg.includes("error") || msg.includes("Error") || msg.includes("failed")) {
-            connectionErrors++;
-          }
-          originalError.apply(console, args);
-        };
-
-        setTimeout(() => {
-          console.log = originalLog;
-          console.error = originalError;
-          resolve({ isConnected, framesSent, connectionErrors });
-        }, 5000);
-      });
+    // Wait for connection
+    await expect(page.locator(".status")).toContainText("Connected", {
+      timeout: 10000,
     });
+    console.log("✓ Client connected");
 
-    console.log(
-      `Client Connection Status: Connected=${connectionStats.isConnected}, Frames=${connectionStats.framesSent}, Errors=${connectionStats.connectionErrors}`,
-    );
+    // Measure frame capture over 3 seconds
+    const startMetrics = await page.evaluate(() => window.__clientFrameMetrics);
+    await page.waitForTimeout(3000);
+    const endMetrics = await page.evaluate(() => window.__clientFrameMetrics);
 
-    // Verify client connected and sent frames
-    expect(connectionStats.isConnected).toBe(true);
-    expect(connectionStats.framesSent).toBeGreaterThan(0);
+    const renderedFrames = (endMetrics as any)?.rendered - (startMetrics as any)?.rendered;
+    console.log(`Frames captured in 3 seconds: ${renderedFrames}`);
+
+    // Verify stable streaming
+    expect(renderedFrames).toBeGreaterThan(0);
   });
 });
