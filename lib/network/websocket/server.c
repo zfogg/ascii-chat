@@ -10,6 +10,7 @@
 #include <ascii-chat/network/websocket/server.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/websocket.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/ringbuffer.h>
@@ -59,25 +60,6 @@ static atomic_t g_writeable_callback_count = {0};
 // Forward declaration for websocket_protocols (defined later in file)
 static struct lws_protocols websocket_protocols[];
 
-/**
- * @brief Custom logging callback for libwebsockets
- * This captures LWS internal logging so we can see what's happening
- */
-static void websocket_lws_log_callback(int level, const char *line) {
-  if (level & LLL_ERR) {
-    log_error("[LWS] %s", line);
-  } else if (level & LLL_WARN) {
-    log_warn("[LWS] %s", line);
-  } else if (level & LLL_NOTICE) {
-    log_info("[LWS] %s", line);
-  }
-  // INFO: Debug and info logging disabled to reduce noise. Uncomment below if needed.
-  // else if (level & LLL_INFO) {
-  //   log_info("[LWS] %s", line);
-  // } else if (level & LLL_DEBUG) {
-  //   log_debug("[LWS] %s", line);
-  // }
-}
 
 /**
  * @brief libwebsockets callback for ACIP protocol
@@ -830,8 +812,8 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   websocket_protocols[0].user = server; // http protocol
   websocket_protocols[1].user = server; // acip protocol
 
-  // Enable libwebsockets debug logging with custom callback
-  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG, websocket_lws_log_callback);
+  // Enable libwebsockets logging through centralized logging system
+  lws_log_init_server();
 
   // Configure libwebsockets context
   struct lws_context_creation_info info = {0};

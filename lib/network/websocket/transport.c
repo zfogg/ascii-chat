@@ -34,6 +34,7 @@
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/network/crc32.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/websocket.h>
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/platform/mutex.h>
@@ -73,23 +74,6 @@
 // Forward declaration for libwebsockets callback
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
-/**
- * @brief Custom logging callback for libwebsockets (client-side)
- * Routes libwebsockets logging through our logging system
- */
-static void websocket_client_lws_log_callback(int level, const char *line) {
-  if (level & LLL_ERR) {
-    log_error("[LWS:client] %s", line);
-  } else if (level & LLL_WARN) {
-    log_warn("[LWS:client] %s", line);
-  } else if (level & LLL_NOTICE) {
-    log_info("[LWS:client] %s", line);
-  } else if (level & LLL_INFO) {
-    log_info("[LWS:client] %s", line);
-  } else if (level & LLL_DEBUG) {
-    log_debug("[LWS:client] %s", line);
-  }
-}
 
 // =============================================================================
 // Service Thread (Client-side only)
@@ -1506,8 +1490,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   };
   info.retry_and_idle_policy = &client_keep_alive_policy;
 
-  // Enable libwebsockets logging with our custom callback (DEBUG disabled to reduce noise)
-  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO, websocket_client_lws_log_callback);
+  // Enable libwebsockets logging through centralized logging system
+  lws_log_init_client();
 
   ws_data->context = lws_create_context(&info);
 
