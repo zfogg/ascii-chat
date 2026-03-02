@@ -22,6 +22,7 @@
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 
 #include <string.h>
 #include <time.h>
@@ -98,6 +99,12 @@ asciichat_error_t acds_client_connect(acds_client_t *client, const acds_client_c
   asciichat_error_t pconn_result = parallel_connect(&pconn_config, &client->socket);
   if (pconn_result == ASCIICHAT_OK) {
     client->connected = true;
+
+    /* Register ACDS client with named registry */
+    char acds_name[64];
+    snprintf(acds_name, sizeof(acds_name), "acds_client:%s:%d", config->server_address, config->server_port);
+    NAMED_REGISTER(client, acds_name, "acds_client_t", "0x%tx", NULL);
+
     log_info("Connected to ACDS server at %s:%d", config->server_address, config->server_port);
     return ASCIICHAT_OK;
   }
