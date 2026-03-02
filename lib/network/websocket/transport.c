@@ -479,6 +479,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 
 static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
+  START_TIMER("ws_send_total");
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
   // For server-side transports (owns_context=false), the connection is already established
@@ -537,8 +538,10 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       }
 
       size_t ciphertext_len;
+      START_TIMER("ws_encrypt_packet");
       crypto_result_t result =
           crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
+      STOP_TIMER_AND_LOG(info, 0, "ws_encrypt_packet", "[WS] encrypt %zu bytes", len);
       if (result != CRYPTO_OK) {
         SAFE_FREE(ciphertext);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
@@ -636,6 +639,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+    STOP_TIMER_AND_LOG(info, 0, "ws_send_total", "[WS_TOTAL] send_server %zu bytes", len);
     return ASCIICHAT_OK;
   }
 
@@ -685,6 +689,7 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
+  STOP_TIMER_AND_LOG(info, 0, "ws_send_total", "[WS_TOTAL] send_client %zu bytes", len);
   return ASCIICHAT_OK;
 }
 
