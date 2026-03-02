@@ -65,7 +65,6 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
   safe_snprintf(cmd, sizeof(cmd), "gpg --export 0x%s > \"%s\" " PLATFORM_SHELL_NULL_REDIRECT, escaped_key_id,
                 temp_path);
 
-  log_debug("Running GPG export command: gpg --export 0x%s", key_id);
   int result = 0;
   LOG_IO("gpg", {
     result = system(cmd);

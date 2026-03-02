@@ -92,7 +92,8 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
                 "gpg --local-user 0x%s --detach-sign --output \"%s\" \"%s\" " PLATFORM_SHELL_NULL_REDIRECT,
                 escaped_key_id, sig_path, msg_path);
 
-  log_debug("Signing with GPG: %s", cmd);
+  // Note: Don't log the full command as it may contain sensitive key material
+  log_debug("Signing with GPG key 0x%s", escaped_key_id);
   int status = 0;
   LOG_IO("gpg", {
     status = system(cmd);

@@ -656,6 +656,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Suppress stderr
     strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
 
+    // Note: No LOG_IO here because output is read and consumed by this function
     FILE *fp = NULL;
     if (platform_popen("llvm-symbolizer", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
       // popen() failed - fill with fallback addresses instead of leaving NULL
@@ -785,6 +786,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   }
 
   // Execute addr2line
+  // Note: No LOG_IO here because output is read and consumed by this function
   FILE *fp = NULL;
   if (platform_popen("addr2line", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to execute addr2line command");
