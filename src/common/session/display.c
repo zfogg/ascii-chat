@@ -256,6 +256,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Initialize render-file if enabled (skip "-" which is used for stdin render mode to stdout)
   // Also skip if render_file is explicitly disabled for temporary displays (splash screen)
   const char *render_file_opt = GET_OPTION(render_file);
+  log_warn("[DEBUG_RENDER_FILE_1] About to check render-file initialization");
+  log_warn("[DEBUG_RENDER_FILE_2] render_file_opt='%s' (ptr=%p)", render_file_opt ? render_file_opt : "(null)", (void *)render_file_opt);
+  log_warn("[DEBUG_RENDER_FILE_3] skip_render_file=%d, strlen=%zu", config->skip_render_file, render_file_opt ? strlen(render_file_opt) : 0);
   log_info("render-file: opt='%s', skip=%d", render_file_opt, config->skip_render_file);
   if (!config->skip_render_file && strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
     int width = (int)GET_OPTION(width);

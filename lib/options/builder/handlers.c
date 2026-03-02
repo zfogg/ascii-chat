@@ -302,7 +302,7 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
   char *endptr;
   long value = strtol(opt_value, &endptr, 10);
   if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
-    return ERROR_USAGE;
+    return SET_ERRNO(ERROR_USAGE, "Option --%s: '%s' is not a valid integer", desc ? desc->long_name : "unknown", opt_value);
   }
   int int_value = (int)value;
 

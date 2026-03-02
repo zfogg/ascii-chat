@@ -215,9 +215,11 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
     } else {
       // Webcam mode (default)
       static char webcam_index_str[32];
-      safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", GET_OPTION(webcam_index));
+      unsigned int idx = GET_OPTION(webcam_index);
+      safe_snprintf(webcam_index_str, sizeof(webcam_index_str), "%u", idx);
       auto_config.type = MEDIA_SOURCE_WEBCAM;
       auto_config.path = webcam_index_str;
+      log_debug("Webcam mode: using device index %u", idx);
     }
 
     // Default settings suitable for local display
