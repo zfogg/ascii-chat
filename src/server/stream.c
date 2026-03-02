@@ -1016,10 +1016,10 @@ char *create_mixed_ascii_frame_for_client(const char *target_client_id, unsigned
   // NOTE: We only UPDATE the count and SIGNAL the change via out parameter
   // Broadcasting CLEAR_CONSOLE must happen AFTER the new frames are written to buffers
   // to prevent race condition where CLEAR arrives before new frame is ready
-  int previous_count = atomic_load_u64(&g_previous_active_video_count);
-  if (sources_with_video != previous_count) {
+  uint64_t previous_count = atomic_load_u64(&g_previous_active_video_count);
+  if (sources_with_video != (int)previous_count) {
     // Use compare-and-swap to ensure only ONE thread detects the change
-    if (atomic_cas_u64(&g_previous_active_video_count, &previous_count, sources_with_video)) {
+    if (atomic_cas_u64(&g_previous_active_video_count, &previous_count, (uint64_t)sources_with_video)) {
       log_dev_every(
           LOG_RATE_DEFAULT,
           "Grid layout changing: %d -> %d active video sources - caller will broadcast clear AFTER buffering frame",

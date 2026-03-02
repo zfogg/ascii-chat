@@ -448,13 +448,13 @@ void *client_video_render_thread(void *arg) {
     }
 
     // Optimization: No mutex needed - all fields are atomic or stable.
-    // client_id: atomic_t - use atomic_load for thread safety
-    // width/height: atomic_t - use atomic_load
-    // active: atomic_t - use atomic_load
-    const char *client_id_snapshot = client->client_id;            // Atomic read
-    unsigned short width_snapshot = atomic_load_bool(&client->width);   // Atomic read
-    unsigned short height_snapshot = atomic_load_bool(&client->height); // Atomic read
-    bool active_snapshot = atomic_load_bool(&client->active);           // Atomic read
+    // client_id: stable string pointer
+    // width/height: stable uint16_t values (set once, never modified)
+    // active: atomic_t - use atomic_load for thread safety
+    const char *client_id_snapshot = client->client_id;            // Stable read
+    unsigned short width_snapshot = client->width;                 // Stable uint16_t
+    unsigned short height_snapshot = client->height;               // Stable uint16_t
+    bool active_snapshot = atomic_load_bool(&client->active);      // Atomic read
 
     // Check if client is still active after getting snapshot
     if (!active_snapshot) {

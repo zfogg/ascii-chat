@@ -437,7 +437,7 @@ void build_utf8_luminance_cache(const char *ascii_chars, utf8_char_t cache[256])
 }
 
 // Build 64-entry UTF-8 cache for SIMD color lookup
-void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[64]) {
+void build_utf8_ramp64_cache(const char *ascii_chars, utf8_char_t cache64[64], uint8_t char_index_ramp[256]) {
   if (!ascii_chars || !cache64 || !char_index_ramp)
     return;
 
