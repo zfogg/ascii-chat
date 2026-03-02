@@ -528,15 +528,9 @@ void *client_video_render_thread(void *arg) {
       log_warn("  TIMING: adaptive_sleep=%s, frame_create=%s", sleep_str, create_str);
     }
 
-    // RACE CONDITION FIX: If no video sources are available yet, skip frame generation
-    // This prevents sending empty/NULL frames early and allows more time for video frames to arrive
-    if (sources_count == 0) {
-      log_dev_every(100 * NS_PER_MS_INT,
-                    "Video render waiting for sources on client %u (no video sources yet, skipping frame)",
-                    thread_client_id);
-      SAFE_FREE(ascii_frame);
-      continue; // Skip to next iteration (frame rate limited by adaptive_sleep_do above)
-    }
+    // Always send frames at configured FPS, even if no external video sources yet
+    // This ensures single-client mode (like testing) still gets continuous frames
+    // The frame data (animated background or test pattern) is still valid content
 
     // DEBUG: Log frame generation details
     static uint32_t last_frame_hash = -1; // Initialize to -1 so first frame is always new
@@ -606,30 +600,11 @@ void *client_video_render_thread(void *arg) {
               log_info("[FRAME_COMMIT_TIMING] Client %u frame commit took %s (hash=0x%08x)", thread_client_id,
                        commit_duration_str, current_frame_hash);
 
-              // Phase 3 IMPLEMENTED: Transmit the rendered frame to client via WebSocket
-              // This completes the pipeline: Render → Buffer → Transmit → Client receive → Display
-              uint64_t send_start_ns = time_get_ns();
-              if (client->transport) {
-                asciichat_error_t send_result = acip_send_ascii_frame(
-                    client->transport, ascii_frame, frame_size, width_snapshot, height_snapshot, client_id_snapshot);
-                uint64_t send_end_ns = time_get_ns();
-                if (send_result != ASCIICHAT_OK) {
-                  log_warn("[FRAME_SEND_ERROR] Client %u frame transmission failed: error=%d", thread_client_id,
-                           send_result);
-                } else {
-                  log_dev_every(5 * NS_PER_MS_INT,
-                                "[FRAME_SEND_OK] Client %u transmitted frame size=%zu (%.1f KB) in %.1f ms",
-                                thread_client_id, frame_size, frame_size / 1024.0,
-                                (send_end_ns - send_start_ns) / (double)NS_PER_MS_INT);
-                }
-                if (frame_gen_count % 120 == 0) {
-                  char send_str[32];
-                  time_pretty((uint64_t)(send_end_ns - send_start_ns), -1, send_str, sizeof(send_str));
-                  log_warn("  TIMING: acip_send=%s", send_str);
-                }
-              } else {
-                log_warn("[FRAME_SEND_ERROR] Client %u has no transport (frame not sent)", thread_client_id);
-              }
+              // ARCHITECTURE: Frame transmission is handled EXCLUSIVELY by the send thread
+              // The send thread reads from this buffer and applies proper 60 FPS rate limiting
+              // Do NOT send from render thread - it bypasses rate limiting and causes network congestion
+              // Render thread responsibility: Generate frame → Write to buffer → Done
+              // Send thread responsibility: Read from buffer → Apply 60 FPS pacing → Transmit
             }
 
           } else {
