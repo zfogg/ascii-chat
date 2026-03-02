@@ -1,9 +1,9 @@
 /**
  * @file ui/mdns.h
- * @brief mDNS service discovery UI for ascii-chat client
+ * @brief mDNS service discovery UI with terminal_screen rendering
  *
  * Implements interactive mDNS-based discovery of ascii-chat servers on the local network.
- * Provides a terminal UI for browsing and selecting available servers without manual IP entry.
+ * Uses the shared terminal_screen infrastructure for consistent UI rendering with other modules.
  */
 
 #pragma once
@@ -14,6 +14,42 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/* ============================================================================
+ * Log Management
+ * ========================================================================== */
+
+/**
+ * @brief Initialize log buffer for mDNS discovery UI
+ *
+ * Delegates to terminal_screen log initialization.
+ * Call once at startup before rendering mDNS discovery screen.
+ */
+void ui_mdns_log_init(void);
+
+/**
+ * @brief Destroy mDNS discovery log buffer
+ *
+ * Delegates to terminal_screen log cleanup.
+ */
+void ui_mdns_log_destroy(void);
+
+/**
+ * @brief Clear mDNS discovery log buffer
+ *
+ * Delegates to terminal_screen log clear.
+ * Useful when starting fresh mDNS discovery screen.
+ */
+void ui_mdns_log_clear(void);
+
+/**
+ * @brief Append message to mDNS discovery log buffer
+ *
+ * Delegates to the logging system which automatically captures to session log buffer.
+ *
+ * @param message Log message to append
+ */
+void ui_mdns_log_append(const char *message);
 
 /**
  * @brief Discovered server information from mDNS

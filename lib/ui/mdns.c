@@ -1,5 +1,5 @@
 /**
- * @file mdns.c
+ * @file ui/mdns.c
  * @brief mDNS service discovery UI wrapper for interactive server selection
  *
  * Pure TUI wrapper that calls discovery_mdns_query() from discovery.c.
@@ -7,10 +7,13 @@
  */
 
 #include <ascii-chat/ui/mdns.h>
-#include <ascii-chat/network/mdns/discovery.h> // For discovery_mdns_query()
-#include <ascii-chat/common.h>
+#include <ascii-chat/ui/terminal_screen.h>
+#include <ascii-chat/ui/frame_buffer.h>
+#include <ascii-chat/network/mdns/discovery.h>
+#include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/platform/abstraction.h>
+#include <ascii-chat/common.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -18,6 +21,32 @@
 #ifndef _WIN32
 #include <unistd.h>
 #endif
+
+/* ============================================================================
+ * Log Management
+ * ========================================================================== */
+
+void ui_mdns_log_init(void) {
+  session_log_buffer_t *buf = terminal_screen_log_init();
+  if (buf) {
+    log_set_session_log_buffer(buf);
+  }
+}
+
+void ui_mdns_log_destroy(void) {
+  log_clear_session_log_buffer();
+  terminal_screen_log_destroy();
+}
+
+void ui_mdns_log_clear(void) {
+  terminal_screen_log_clear();
+}
+
+void ui_mdns_log_append(const char *message) {
+  if (message) {
+    log_info("%s", message);
+  }
+}
 
 /**
  * @brief TUI wrapper around core mDNS discovery
