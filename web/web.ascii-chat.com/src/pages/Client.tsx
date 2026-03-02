@@ -876,8 +876,17 @@ export function ClientPage() {
 
             // Try H.265 encoding if available (but prioritize RGBA for stability)
             // H.265 encoding can be slow on some systems, so we always have RGBA fallback
+            // Set window.DISABLE_H265 = true in console to disable H.265 encoding
+            const h265Disabled =
+              typeof window !== "undefined" &&
+              (window as unknown as Record<string, unknown>)["DISABLE_H265"] ===
+                true;
             let sentH265 = false;
-            if (h265EncoderRef.current && H265Encoder.isSupported()) {
+            if (
+              !h265Disabled &&
+              h265EncoderRef.current &&
+              H265Encoder.isSupported()
+            ) {
               try {
                 if (!canvasRef.current) {
                   throw new Error(
