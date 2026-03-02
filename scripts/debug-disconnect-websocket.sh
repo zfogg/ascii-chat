@@ -17,7 +17,7 @@ echo "Gonna run on websocket port: $PORT"
 
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
 
-cmake --build build --target ascii-chat
+cmake --build build
 
 ./build/bin/ascii-chat --log-file "$server_log" --log-level debug \
   server --port "$PORT" --websocket-port "$PORT_WS" \
