@@ -7,6 +7,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/platform/system.h>
 
 #include <libavcodec/avcodec.h>
 #include <libavutil/frame.h>
@@ -76,8 +77,12 @@ h265_encoder_t *h265_encoder_create(uint16_t initial_width, uint16_t initial_hei
     log_warn("Failed to set tune to zerolatency, using default");
   }
 
-  // Open codec
-  if (avcodec_open2(enc->codec_ctx, codec, NULL) < 0) {
+  // Open codec (suppress x265 library stderr output during initialization)
+  platform_stderr_redirect_handle_t h265_stderr = platform_stdout_stderr_redirect_to_null();
+  int codec_open_result = avcodec_open2(enc->codec_ctx, codec, NULL);
+  platform_stdout_stderr_restore(h265_stderr);
+
+  if (codec_open_result < 0) {
     SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC encoder");
     avcodec_free_context(&enc->codec_ctx);
     SAFE_FREE(enc);
