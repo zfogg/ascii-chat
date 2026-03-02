@@ -14,16 +14,21 @@
  *
  * @section ffmpeg_encoder_formats Supported Formats & Codecs
  *
- * | File Extension | Container | Video Codec | Pixel Format | Use Case | Characteristics |
+ * | Extension | Container | Video Codec | Audio Codec | Pixel Format | Use Case |
  * |---|---|---|---|---|---|
- * | .mp4, .mov | MP4 | H.264 (libx264) | YUV420P | General streaming | Wide compatibility, moderate compression |
- * | .webm | WebM | VP9 (libvpx-vp9) | YUV420P | Web streaming | Better quality/bitrate ratio, larger file size |
- * | .avi | AVI | MPEG-4 | YUV420P | Legacy video | Larger files, older compatibility |
- * | .gif | GIF | GIF | Palette (8-bit) | Animation loops | Lossless, limited colors, good for short clips |
- * | .png | Image | PNG | RGB24 | Still images | Lossless, no video stream, single frame output |
- * | .jpg, .jpeg | Image | MJPEG | YUVJ420P | Still images | Lossy compression, single frame output |
+ * | .mp4, .mov | MP4 | H.264 | AAC | YUV420P | General streaming, web playback |
+ * | .mkv | Matroska | H.264 | AAC | YUV420P | High-quality archival, flexible codecs |
+ * | .webm | WebM | VP9 | Opus | YUV420P | Web-optimized streaming, best compression |
+ * | .avi | AVI | MPEG-4 | PCM | YUV420P | Legacy format, older systems |
+ * | .flv | Flash | H.264 | AAC | YUV420P | Flash video, streaming history |
+ * | .ogv, .ogg | Ogg | Theora | Vorbis | YUV420P | Free/open-source streaming |
+ * | .3gp | 3GP | H.264 | AAC | YUV420P | Mobile devices, low bitrate |
+ * | .gif | GIF | GIF | None | Palette | Animated clips, social media |
+ * | .png | Image | PNG | None | RGB24 | Lossless still images, single frame |
+ * | .jpg, .jpeg | Image | MJPEG | None | YUVJ420P | Lossy still images, single frame |
  *
  * **Default format:** MP4 (if extension not recognized)
+ * **Audio:** Automatically selected based on container; image formats are audio-free
  *
  * @section ffmpeg_encoder_options Encoder Options & Quality Tradeoffs
  *

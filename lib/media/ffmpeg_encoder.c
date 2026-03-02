@@ -63,9 +63,14 @@ static void get_audio_codec_from_extension(const char *path, const char **audio_
   }
 
   const char *ext = dot + 1;
+  // Video formats with audio support
   if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
     *has_audio = 1;
     *audio_codec = "aac";
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
+  } else if (strcmp(ext, "mkv") == 0 || strcmp(ext, "mka") == 0) {
+    *has_audio = 1;
+    *audio_codec = "aac";  // Matroska supports both AAC and Opus
     *sample_fmt = AV_SAMPLE_FMT_FLTP;
   } else if (strcmp(ext, "webm") == 0) {
     *has_audio = 1;
@@ -75,11 +80,24 @@ static void get_audio_codec_from_extension(const char *path, const char **audio_
     *has_audio = 1;
     *audio_codec = "pcm_s16le";
     *sample_fmt = AV_SAMPLE_FMT_S16;
+  } else if (strcmp(ext, "flv") == 0) {
+    *has_audio = 1;
+    *audio_codec = "aac";
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
+  } else if (strcmp(ext, "ogv") == 0 || strcmp(ext, "ogg") == 0) {
+    *has_audio = 1;
+    *audio_codec = "libvorbis";
+    *sample_fmt = AV_SAMPLE_FMT_FLT;
+  } else if (strcmp(ext, "3gp") == 0) {
+    *has_audio = 1;
+    *audio_codec = "aac";
+    *sample_fmt = AV_SAMPLE_FMT_FLTP;
   } else if (strcmp(ext, "gif") == 0 || strcmp(ext, "png") == 0 || strcmp(ext, "jpg") == 0 || strcmp(ext, "jpeg") == 0) {
     *has_audio = 0;
     *audio_codec = NULL;
     *sample_fmt = AV_SAMPLE_FMT_NONE;
   } else {
+    // Default for unknown formats
     *has_audio = 1;
     *audio_codec = "aac";
     *sample_fmt = AV_SAMPLE_FMT_FLTP;
@@ -100,9 +118,19 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   }
 
   const char *ext = dot + 1;
+  // Video formats
   if (strcmp(ext, "mp4") == 0 || strcmp(ext, "mov") == 0) {
     *codec = "libx264";
     *format = "mp4";
+    *pix_fmt = AV_PIX_FMT_YUV420P;
+  } else if (strcmp(ext, "mkv") == 0) {
+    *codec = "libx264";
+    *format = "matroska";
+    *pix_fmt = AV_PIX_FMT_YUV420P;
+  } else if (strcmp(ext, "mka") == 0) {
+    // MKA is audio-only Matroska
+    *codec = "libx264";
+    *format = "matroska";
     *pix_fmt = AV_PIX_FMT_YUV420P;
   } else if (strcmp(ext, "webm") == 0) {
     *codec = "libvpx-vp9";
@@ -111,6 +139,18 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   } else if (strcmp(ext, "avi") == 0) {
     *codec = "mpeg4";
     *format = "avi";
+    *pix_fmt = AV_PIX_FMT_YUV420P;
+  } else if (strcmp(ext, "flv") == 0) {
+    *codec = "libx264";
+    *format = "flv";
+    *pix_fmt = AV_PIX_FMT_YUV420P;
+  } else if (strcmp(ext, "ogv") == 0 || strcmp(ext, "ogg") == 0) {
+    *codec = "libtheora";
+    *format = "ogg";
+    *pix_fmt = AV_PIX_FMT_YUV420P;
+  } else if (strcmp(ext, "3gp") == 0) {
+    *codec = "libx264";
+    *format = "3gp";
     *pix_fmt = AV_PIX_FMT_YUV420P;
   } else if (strcmp(ext, "gif") == 0) {
     *codec = "gif";
@@ -127,6 +167,7 @@ static void get_codec_from_extension(const char *path, const char **codec, const
     *is_image = 1;
     *pix_fmt = AV_PIX_FMT_YUVJ420P; // MJPEG uses YUVJ420P
   } else {
+    // Default for unknown formats
     *codec = "libx264";
     *format = "mp4";
     *pix_fmt = AV_PIX_FMT_YUV420P;
