@@ -28,12 +28,19 @@ sleep 0.25
 set -x
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 10 ./build/bin/ascii-chat \
+export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
+export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
+timeout -k1 10 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
   --test-pattern -S -D "$SNAPSHOT_DELAY" \
-  | tee "$client_stdout" || EXIT_CODE=$?
+  | tee "$client_stdout" || true
+EXIT_CODE=$?
 END_TIME=$(date +%s%N)
+
+# Wait for log file to be fully flushed to disk
+# This is especially important in environments like tmux where buffering may delay writes
+sleep 0.5
 
 # Calculate elapsed time in seconds
 ELAPSED_NS=$((END_TIME - START_TIME))
