@@ -207,7 +207,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   entry->name = entry_strdup(name_buffer);
   entry->type = entry_strdup(type);
   entry->format_spec = entry_strdup(format_spec);
-  entry->file = file ? entry_strdup(file) : NULL;
+  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
   entry->line = line;
   entry->func = func ? entry_strdup(func) : NULL;
 
@@ -251,7 +251,7 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
   entry->name = full_name;
   entry->type = entry_strdup(type);
   entry->format_spec = entry_strdup(format_spec);
-  entry->file = file ? entry_strdup(file) : NULL;
+  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
   entry->line = line;
   entry->func = func ? entry_strdup(func) : NULL;
 
@@ -434,7 +434,7 @@ const char *named_register_fd(int fd, const char *file, int line, const char *fu
   entry->name = entry_strdup(name_buffer);
   entry->type = entry_strdup("fd");
   entry->format_spec = entry_strdup("%d");
-  entry->file = file ? entry_strdup(file) : NULL;
+  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
   entry->line = line;
   entry->func = func ? entry_strdup(func) : NULL;
 
@@ -499,7 +499,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
   entry->name = entry_strdup(name_buffer);
   entry->type = entry_strdup("packet_type");
   entry->format_spec = entry_strdup("%d");
-  entry->file = file ? entry_strdup(file) : NULL;
+  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
   entry->line = line;
   entry->func = func ? entry_strdup(func) : NULL;
 
