@@ -205,6 +205,9 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     entry->name = safe_strdup(name_buffer);
     entry->type = safe_strdup(type);
     entry->format_spec = safe_strdup(format_spec);
+    entry->file = NULL;
+    entry->line = 0;
+    entry->func = NULL;
     HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
   }
 
