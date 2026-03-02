@@ -28,6 +28,7 @@
 
 #include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/process.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/uthash.h>
 #include <ascii-chat/platform/rwlock.h>
@@ -35,7 +36,6 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/lifecycle.h>
-#include <ascii-chat/log/io.h>
 #include <ascii-chat/log/log.h>
 
 // ============================================================================
@@ -657,10 +657,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
 
     FILE *fp = NULL;
-    LOG_IO("llvm-symbolizer", {
-      fp = popen(cmd, "r");
-    });
-    if (!fp) {
+    if (platform_popen("llvm-symbolizer", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
       // popen() failed - fill with fallback addresses instead of leaving NULL
       for (int j = 0; j < groups[g].count; j++) {
         int orig_idx = groups[g].original_indices[j];
@@ -705,7 +702,7 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
       }
     }
 
-    pclose(fp);
+    platform_pclose(&fp);
   }
 
   return result;
@@ -789,10 +786,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
 
   // Execute addr2line
   FILE *fp = NULL;
-  LOG_IO("addr2line", {
-    fp = popen(cmd, "r");
-  });
-  if (!fp) {
+  if (platform_popen("addr2line", cmd, "r", &fp) != ASCIICHAT_OK || !fp) {
     log_error("Failed to execute addr2line command");
     // Fill result array with fallback values instead of leaving NULL entries
     for (int i = 0; i < size; i++) {
@@ -855,7 +849,7 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     }
   }
 
-  pclose(fp);
+  platform_pclose(&fp);
   return result;
 }
 

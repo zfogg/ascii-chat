@@ -10,8 +10,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/log/io.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <windows.h>

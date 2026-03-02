@@ -4,9 +4,9 @@
  */
 
 #include <ascii-chat/platform/agent.h>
+#include <ascii-chat/platform/process.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
-#include <ascii-chat/log/io.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -26,20 +26,17 @@ int platform_get_ssh_agent_socket(char *path_out, size_t path_size) {
 int platform_get_gpg_agent_socket(char *path_out, size_t path_size) {
   /* Windows: Try gpgconf first */
   FILE *fp = NULL;
-  LOG_IO("gpgconf", {
-    fp = _popen("gpgconf --list-dirs agent-socket 2>nul", "r");
-  });
-  if (fp) {
+  if (platform_popen("gpgconf", "gpgconf --list-dirs agent-socket 2>nul", "r", &fp) == ASCIICHAT_OK && fp) {
     if (fgets(path_out, path_size, fp)) {
       /* Remove trailing newline */
       size_t len = strlen(path_out);
       if (len > 0 && path_out[len - 1] == '\n') {
         path_out[len - 1] = '\0';
       }
-      _pclose(fp);
+      platform_pclose(&fp);
       return 0;
     }
-    _pclose(fp);
+    platform_pclose(&fp);
   }
 
   /* Fallback to default GPG4Win location */
