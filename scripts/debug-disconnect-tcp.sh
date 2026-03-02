@@ -43,7 +43,6 @@ echo ""
 echo "=== WEBSOCKET FPS TEST ==="
 echo "Exit code: $EXIT_CODE (137=deadlock, 124=timeout/GOOD, 1=error)"
 echo "Elapsed time: ${ELAPSED_SEC}s"
-echo ""
 
 # Count actual frames written by looking for frame completion markers
 # These are the actual printf() calls that write frames to stdout
