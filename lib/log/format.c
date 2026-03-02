@@ -307,6 +307,7 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
 
 cleanup:
   log_template_free(result);
+  result = NULL;
   return NULL;
 }
 
@@ -324,16 +325,20 @@ void log_template_free(log_template_t *format) {
     for (size_t i = 0; i < format->spec_count; i++) {
       if (format->specs[i].literal) {
         free(format->specs[i].literal);
+        format->specs[i].literal = NULL;
       }
     }
     free(format->specs);
+    format->specs = NULL;
   }
 
   if (format->original) {
     free(format->original);
+    format->original = NULL;
   }
 
   free(format);
+  format = NULL;
 }
 
 /* ============================================================================
