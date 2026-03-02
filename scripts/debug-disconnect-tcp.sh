@@ -8,7 +8,7 @@ server_log=/tmp/server-logfile-"$PORT".log
 
 echo "Starting on port: $PORT"
 
-pkill -f "ascii-chat.*server" && sleep 0.5 || true
+pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
 cmake --build build >/dev/null 2>&1
 ./build/bin/ascii-chat \
   --log-file "$server_log" --log-level debug \
@@ -75,4 +75,4 @@ echo "Client log: $client_log"
 echo "Server log: $server_log"
 
 echo ""
-pkill -f "ascii-chat.*server" && sleep 0.5 || true
+pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
