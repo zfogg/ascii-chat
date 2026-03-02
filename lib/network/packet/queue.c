@@ -152,33 +152,35 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   atomic_store_u64(&queue->packets_dropped, 0);
   atomic_store_bool(&queue->shutdown, false);
 
-  NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue");
+  const char *queue_name = NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue");
   if (queue->node_pool)
     NAMED_REGISTER_NODE_POOL(queue->node_pool, "queue_node_pool");
 
   // Register atomic fields for sync state monitoring - descriptive names for lock-free queue tracking
   char atomic_name[256];
 
-  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_current_packet_count");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.current_packet_count", queue_name);
   NAMED_REGISTER_ATOMIC(&queue->count, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_total_bytes_currently_queued");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.total_bytes_currently_queued", queue_name);
   NAMED_REGISTER_ATOMIC(&queue->bytes_queued, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_lifetime_packets_enqueued_total");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.lifetime_packets_enqueued_total", queue_name);
   NAMED_REGISTER_ATOMIC(&queue->packets_enqueued, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_lifetime_packets_dequeued_total");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.lifetime_packets_dequeued_total", queue_name);
   NAMED_REGISTER_ATOMIC(&queue->packets_dequeued, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_lifetime_packets_dropped_overflow");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.lifetime_packets_dropped_overflow", queue_name);
   NAMED_REGISTER_ATOMIC(&queue->packets_dropped, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "packet_queue_is_shutdown_requested");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.is_shutdown_requested", queue_name);
   NAMED_REGISTER_ATOMIC(&queue->shutdown, atomic_name);
 
-  NAMED_REGISTER_ATOMIC_PTR(&queue->head, "packet_queue_head_node_pointer");
-  NAMED_REGISTER_ATOMIC_PTR(&queue->tail, "packet_queue_tail_node_pointer");
+  snprintf(atomic_name, sizeof(atomic_name), "%s.head_node_pointer", queue_name);
+  NAMED_REGISTER_ATOMIC_PTR(&queue->head, atomic_name);
+  snprintf(atomic_name, sizeof(atomic_name), "%s.tail_node_pointer", queue_name);
+  NAMED_REGISTER_ATOMIC_PTR(&queue->tail, atomic_name);
 
   return queue;
 }
