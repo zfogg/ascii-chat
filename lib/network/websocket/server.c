@@ -825,9 +825,6 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   server->port = config->port;
   atomic_store_bool(&server->running, true);
 
-  // Register atomic fields for sync state monitoring
-  NAMED_REGISTER_ATOMIC(&server->running, "websocket_server_is_running", NULL);
-
   // Store server pointer in protocol user data so callbacks can access it
   // Both the HTTP and ACIP protocols need access to the server
   websocket_protocols[0].user = server; // http protocol
@@ -878,10 +875,16 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     return SET_ERRNO(ERROR_THREAD, "Failed to create WebSocket handler thread pool");
   }
 
-  /* Register WebSocket context with named registry, identified by port */
+  /* Register WebSocket server with named registry */
   char ws_port_name[32];
   snprintf(ws_port_name, sizeof(ws_port_name), "ws:%d", server->port);
-  NAMED_REGISTER_WEBSOCKET(server->context, ws_port_name, NULL);
+  NAMED_REGISTER(server, ws_port_name, "websocket_server", "0x%tx", NULL);
+
+  /* Register server's sync primitives with hierarchical naming */
+  NAMED_REGISTER_ATOMIC(&server->running, "is_running", (uintptr_t)(const void *)(server));
+
+  /* Register WebSocket context as child of server */
+  NAMED_REGISTER_WEBSOCKET(server->context, "context", (uintptr_t)(const void *)(server));
 
   log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;
