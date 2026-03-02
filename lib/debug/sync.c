@@ -373,7 +373,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
 
 void debug_sync_print_state(void) {
 // Use a single large buffer for all sync state output
-#define SYNC_BUFFER_SIZE 8192
+#define SYNC_BUFFER_SIZE 65536  // Increased from 8192 to handle many syncs
   log_debug("[debug_sync_print_state] ENTRY");
 
   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
