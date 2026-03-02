@@ -4,6 +4,7 @@ set -euo pipefail
 
 PORT=$(((RANDOM + 2000) % 8000))
 client_log=/tmp/client-logfile-"$PORT".log
+client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
 
 echo "Starting on port: $PORT"
@@ -25,7 +26,7 @@ timeout -k1 3.25 ./build/bin/ascii-chat \
   localhost:"$PORT" \
   --test-pattern \
   -S -D 1 \
-  2>/dev/null | tee /tmp/client-stdout-"$PORT".log \
+  2>/dev/null | tee "$client_stdout" \
   || EXIT_CODE=$? &
 END_TIME=$(date +%s%N)
 
@@ -73,6 +74,7 @@ else
 fi
 
 echo "Client log: $client_log"
+echo "Client stdout: $client_stdout"
 echo "Server log: $server_log"
 
 echo ""

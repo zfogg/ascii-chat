@@ -2,14 +2,25 @@
 
 set -euo pipefail
 
-pkill -f "ascii-chat.*server" && sleep 0.5 || true
-cmake --build build >/dev/null 2>&1 && ./build/bin/ascii-chat server >/dev/null 2>&1 &
+PORT=$(((RANDOM + 2000) % 8000))
+client_log=/tmp/client-logfile-"$PORT".log
+client_stdout=/tmp/client-stdout-"$PORT".log
+server_log=/tmp/server-logfile-"$PORT".log
+
+
+pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
+cmake --build build >/dev/null 2>&1
+./build/bin/ascii-chat server >/dev/null 2>&1 &
 SERVER_PID=$!
-sleep 1
+sleep 0.25
 
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-timeout -k1 8 ./build/bin/ascii-chat --log-level debug --log-file client.log --sync-state 3 client ws://localhost:27226 2>/dev/null || EXIT_CODE=$?
+timeout -k1 4 ./build/bin/ascii-chat \
+  --log-level debug --log-file client.log --sync-state 3 \
+  client ws://localhost:27226 \
+  2>/dev/null | tee /tmp/client-stdout.log \
+  || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -56,4 +67,13 @@ else
 fi
 
 echo ""
-pkill -f "ascii-chat.*server" && sleep 0.5 || true
+echo "Running 'tail -20 $client_stdout'"
+tail -20 $client_stdout
+
+echo ""
+echo "Client log: $client_log"
+echo "Client stdout: $client_stdout"
+echo "Server log: $server_log"
+
+echo ""
+pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
