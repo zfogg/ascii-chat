@@ -450,15 +450,16 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
   if (entry) {
     // Use stored type if available, otherwise use type_hint
     const char *type = entry->type ? entry->type : type_hint;
+    const char *name = entry->name ? entry->name : "unknown";
 
-    if (entry->file && entry->func) {
-      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, entry->name, (ptrdiff_t)key, entry->file,
+    if (entry->file && entry->func && entry->line > 0) {
+      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key, entry->file,
                entry->line, entry->func);
     } else {
-      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)", type, entry->name, (ptrdiff_t)key);
+      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)", type, name, (ptrdiff_t)key);
     }
   } else {
-    snprintf(buffer, sizeof(buffer), "%s (0x%tx)", type_hint, (ptrdiff_t)key);
+    snprintf(buffer, sizeof(buffer), "%s (0x%tx)", type_hint ? type_hint : "unknown", (ptrdiff_t)key);
   }
 
   rwlock_rdunlock_impl(&g_named_registry.entries_lock);
