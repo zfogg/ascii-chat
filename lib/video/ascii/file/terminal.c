@@ -175,7 +175,7 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // Terminal characters are typically 2:1 (height:width) to appear normal
   if (!stretch_mode) {
     int corrected_h = r->cell_w * 2;
-    if (corrected_h != r->cell_h) {
+    if (corrected_h != r->cell_h && r->cell_h > 0) {
       log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d), adjusting baseline", r->cell_h,
                corrected_h, r->cell_w);
       // When we change cell height, scale baseline proportionally
