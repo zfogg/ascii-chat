@@ -513,14 +513,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Snapshot mode: check if enough frames have been rendered
       if (snapshot_mode && !snapshot_done && first_frame_rendered) {
         double snapshot_delay = GET_OPTION(snapshot_delay);
-        // Use actual capture target FPS, not user option
-        // This ensures render loop and encoder use the same FPS, preventing 2x duration bugs
-        uint32_t fps = 0;
-        if (capture) {
-          fps = session_capture_get_target_fps(capture);
-        }
+        // Use the display's render FPS - this matches what the encoder uses for file output
+        // and is the actual FPS being used for rendering, regardless of whether capture is
+        // from a media source or from an animation
+        uint32_t fps = session_display_get_render_fps(display);
         if (fps == 0) {
-          fps = (uint32_t)GET_OPTION(fps); // Fallback to option
+          fps = (uint32_t)GET_OPTION(fps);  // Fallback if display FPS not available
         }
 
         // snapshot_delay controls the number of seconds to render

@@ -246,6 +246,15 @@ int session_display_get_tty_fd(session_display_ctx_t *ctx);
 void *session_display_get_stdin_reader(session_display_ctx_t *ctx);
 
 /**
+ * @brief Get the render FPS configured for file output
+ * @param ctx Display context (can be NULL)
+ * @return Render FPS value, or 0 if ctx is NULL
+ *
+ * @ingroup session
+ */
+uint32_t session_display_get_render_fps(session_display_ctx_t *ctx);
+
+/**
  * @brief Check if the display has rendered its first frame
  * @param ctx Display context (can be NULL)
  * @return true if first frame has been rendered, false if not yet rendered or ctx is NULL

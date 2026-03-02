@@ -98,6 +98,9 @@ typedef struct session_display_ctx {
   /** @brief FPS counter for measuring output throughput */
   fps_counter_t *fps_counter;
 
+  /** @brief Video FPS for render-file encoding */
+  uint32_t render_fps;
+
 #ifndef _WIN32
   /** @brief Render-to-file context (NULL if disabled) */
   render_file_ctx_t *render_file;
@@ -147,6 +150,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->palette_type = config->palette_type;
   ctx->audio_playback_enabled = config->enable_audio_playback;
   ctx->audio_ctx = config->audio_ctx;
+  ctx->render_fps = config->render_fps;
   atomic_store_bool(&ctx->first_frame, true);
   atomic_store_bool(&ctx->help_screen_active, false);
 
@@ -407,6 +411,12 @@ void *session_display_get_stdin_reader(session_display_ctx_t *ctx) {
 #else
   return NULL;
 #endif
+}
+
+uint32_t session_display_get_render_fps(session_display_ctx_t *ctx) {
+  if (!ctx)
+    return 0;
+  return ctx->render_fps;
 }
 
 bool session_display_has_first_frame(session_display_ctx_t *ctx) {

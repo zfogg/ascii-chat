@@ -232,14 +232,20 @@ static log_template_t *parse_format_string(const char *format_str, bool console_
           size_t color_arg_len = p - color_start;
 
           /* Store as "LEVEL|content" for later parsing */
-          result->specs[spec_idx].type = LOG_FORMAT_COLOR;
-          result->specs[spec_idx].literal = (char *)malloc(color_arg_len + 1);
+          if (result->specs) {
+            result->specs[spec_idx].type = LOG_FORMAT_COLOR;
+            result->specs[spec_idx].literal = (char *)malloc(color_arg_len + 1);
+          }
+
           if (!result->specs[spec_idx].literal) {
             goto cleanup;
           }
-          memcpy(result->specs[spec_idx].literal, color_start, color_arg_len);
-          result->specs[spec_idx].literal[color_arg_len] = '\0';
-          result->specs[spec_idx].literal_len = color_arg_len;
+
+          if (result->specs) {
+            memcpy(result->specs[spec_idx].literal, color_start, color_arg_len);
+            result->specs[spec_idx].literal[color_arg_len] = '\0';
+            result->specs[spec_idx].literal_len = color_arg_len;
+          }
 
           spec_idx++;
           p++; /* Skip closing paren */
