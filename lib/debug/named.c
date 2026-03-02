@@ -141,6 +141,19 @@ static uint64_t cond_counter = 0;
 static uint64_t atomic_counter = 0;
 
 /**
+ * @brief Initialize a named registry entry with all fields
+ * @note Assumes entry->name is already set (may be pre-allocated or via entry_strdup)
+ */
+static void named_entry_init(named_entry_t *entry, const char *type, const char *format_spec,
+                             const char *file, int line, const char *func) {
+  entry->type = entry_strdup(type);
+  entry->format_spec = entry_strdup(format_spec);
+  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
+  entry->line = line;
+  entry->func = func ? entry_strdup(func) : NULL;
+}
+
+/**
  * @brief Look up a registered name by key (internal helper for parent resolution)
  * @param parent_key The key to look up
  * @return The registered name or NULL if not found
@@ -205,11 +218,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 
   entry->key = key;
   entry->name = entry_strdup(name_buffer);
-  entry->type = entry_strdup(type);
-  entry->format_spec = entry_strdup(format_spec);
-  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
-  entry->line = line;
-  entry->func = func ? entry_strdup(func) : NULL;
+  named_entry_init(entry, type, format_spec, file, line, func);
 
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);
@@ -247,13 +256,10 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
     return "?";
   }
 
+  // Initialize entry (name is pre-allocated as full_name)
   entry->key = key;
   entry->name = full_name;
-  entry->type = entry_strdup(type);
-  entry->format_spec = entry_strdup(format_spec);
-  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
-  entry->line = line;
-  entry->func = func ? entry_strdup(func) : NULL;
+  named_entry_init(entry, type, format_spec, file, line, func);
 
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);
@@ -432,11 +438,7 @@ const char *named_register_fd(int fd, const char *file, int line, const char *fu
   uintptr_t key = encode_fd_key(fd);
   entry->key = key;
   entry->name = entry_strdup(name_buffer);
-  entry->type = entry_strdup("fd");
-  entry->format_spec = entry_strdup("%d");
-  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
-  entry->line = line;
-  entry->func = func ? entry_strdup(func) : NULL;
+  named_entry_init(entry, "fd", "%d", file, line, func);
 
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);
@@ -497,11 +499,7 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
   uintptr_t key = encode_pkt_type_key(pkt_type);
   entry->key = key;
   entry->name = entry_strdup(name_buffer);
-  entry->type = entry_strdup("packet_type");
-  entry->format_spec = entry_strdup("%d");
-  entry->file = file ? entry_strdup(extract_project_relative_path(file)) : NULL;
-  entry->line = line;
-  entry->func = func ? entry_strdup(func) : NULL;
+  named_entry_init(entry, "packet_type", "%d", file, line, func);
 
   // Only hold lock for the hash table operation
   rwlock_wrlock(&g_named_registry.entries_lock);

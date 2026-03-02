@@ -541,7 +541,12 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       START_TIMER("ws_encrypt_packet");
       crypto_result_t result =
           crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
-      STOP_TIMER_AND_LOG(info, 0, "ws_encrypt_packet", "[WS] encrypt %zu bytes", len);
+      double _ws_encrypt_elapsed = STOP_TIMER("ws_encrypt_packet");
+      if (_ws_encrypt_elapsed >= 0.0) {
+        char _ws_encrypt_duration[32];
+        time_pretty((uint64_t)_ws_encrypt_elapsed, -1, _ws_encrypt_duration, sizeof(_ws_encrypt_duration));
+        log_info("[WS] encrypt %zu bytes in %s", len, _ws_encrypt_duration);
+      }
       if (result != CRYPTO_OK) {
         SAFE_FREE(ciphertext);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
@@ -639,7 +644,12 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-    STOP_TIMER_AND_LOG(info, 0, "ws_send_total", "[WS_TOTAL] send_server %zu bytes", len);
+    double _ws_send_server_elapsed = STOP_TIMER("ws_send_total");
+    if (_ws_send_server_elapsed >= 0.0) {
+      char _ws_send_server_duration[32];
+      time_pretty((uint64_t)_ws_send_server_elapsed, -1, _ws_send_server_duration, sizeof(_ws_send_server_duration));
+      log_info("[WS_TOTAL] send_server %zu bytes in %s", len, _ws_send_server_duration);
+    }
     return ASCIICHAT_OK;
   }
 
@@ -689,7 +699,12 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-  STOP_TIMER_AND_LOG(info, 0, "ws_send_total", "[WS_TOTAL] send_client %zu bytes", len);
+  double _ws_send_client_elapsed = STOP_TIMER("ws_send_total");
+  if (_ws_send_client_elapsed >= 0.0) {
+    char _ws_send_client_duration[32];
+    time_pretty((uint64_t)_ws_send_client_elapsed, -1, _ws_send_client_duration, sizeof(_ws_send_client_duration));
+    log_info("[WS_TOTAL] send_client %zu bytes in %s", len, _ws_send_client_duration);
+  }
   return ASCIICHAT_OK;
 }
 
