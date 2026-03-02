@@ -253,7 +253,7 @@ static void *websocket_service_thread(void *arg) {
       }
 
       if (result < 0) {
-        log_fatal("🔵 lws_service error: %d at loop %d", result, loop_count);
+        log_fatal("🔴 lws_service error: %d at loop %d", result, loop_count);
         break;
       }
     } else {
@@ -360,7 +360,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   case LWS_CALLBACK_CLIENT_CLOSED:
   case LWS_CALLBACK_CLOSED: {
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔵🔵🔵 WebSocket connection CLOSED! reason=%d, wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
+    log_fatal("🔴🔴🔴 WebSocket connection CLOSED! reason=%d, wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
               reason, (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
@@ -376,7 +376,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
   case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔵🔵🔵 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, timestamp=%llu", reason,
+    log_fatal("🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, timestamp=%llu", reason,
               in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data, (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
@@ -708,7 +708,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   while (!ws_data->is_connected && !ws_data->connection_failed) {
     uint64_t elapsed_ns = time_get_ns() - wait_start_ns;
     if (elapsed_ns > 30 * 1000000000ULL) { // 30 second total timeout
-      log_error("🔵 WEBSOCKET_RECV: Connection timeout after 30 seconds, connection_failed=%d",
+      log_error("🔴 WEBSOCKET_RECV: Connection timeout after 30 seconds, connection_failed=%d",
                 ws_data->connection_failed);
       mutex_unlock(&ws_data->state_mutex);
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
@@ -721,7 +721,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   mutex_unlock(&ws_data->state_mutex);
 
   if (connection_failed && !connected) {
-    log_error("🔵 WEBSOCKET_RECV: Connection failed during establishment");
+    log_error("🔴 WEBSOCKET_RECV: Connection failed during establishment");
     return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
   }
 
@@ -734,7 +734,7 @@ static asciichat_error_t websocket_recv(acip_transport_t *transport, void **buff
   if (!connected && !has_queued_data && ws_data->partial_size == 0) {
     // Only fail if connection is closed AND no buffered data AND no leftover from previous call
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔵 WEBSOCKET_RECV: Connection closed! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, "
+    log_fatal("🔴 WEBSOCKET_RECV: Connection closed! connected=%d, has_queued_data=%d, partial_size=%zu, wsi=%p, "
               "timestamp=%llu",
               connected, has_queued_data, ws_data->partial_size, (void *)ws_data->wsi, (unsigned long long)now_ns);
     mutex_unlock(&ws_data->recv_mutex);
@@ -1072,7 +1072,7 @@ static asciichat_error_t websocket_close(acip_transport_t *transport) {
     return ASCIICHAT_OK; // Already closed
   }
 
-  log_fatal("🔵 websocket_close called! Setting is_connected=false, wsi=%p, timestamp=%llu", (void *)ws_data->wsi,
+  log_fatal("🔴 websocket_close called! Setting is_connected=false, wsi=%p, timestamp=%llu", (void *)ws_data->wsi,
             (unsigned long long)now_ns);
   ws_data->is_connected = false;
   mutex_unlock(&ws_data->state_mutex);

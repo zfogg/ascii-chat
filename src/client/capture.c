@@ -309,7 +309,7 @@ static void *webcam_capture_thread_func(void *arg) {
 
     if (send_result != ASCIICHAT_OK) {
       const char *codec_name = use_hevc ? "H265" : "RAW";
-      log_error("🔵 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
+      log_error("🔴 CAPTURE_SEND_FAILED: IMAGE_FRAME_%s send error=%d (%s) after %.1fms, closing connection",
                 codec_name, send_result, asciichat_error_string(send_result), (double)send_duration_ns / 1e6);
       server_connection_lost();
       image_destroy(processed_image);

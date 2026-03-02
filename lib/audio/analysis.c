@@ -599,7 +599,7 @@ void audio_analysis_print_report(void) {
               (unsigned long long)g_received_tonal_samples, tonal_pct);
 
     if (g_received_beep_events > 10) {
-      log_plain("  🔵 BEEPING DETECTED: %llu short tonal bursts - likely codec artifacts or system sounds!",
+      log_plain("  🔴 BEEPING DETECTED: %llu short tonal bursts - likely codec artifacts or system sounds!",
                 (unsigned long long)g_received_beep_events);
       log_plain("     Possible causes:");
       log_plain("       - Opus codec producing tonal artifacts during silence/transitions");
@@ -651,7 +651,7 @@ void audio_analysis_print_report(void) {
 
       if (match_pct > echo_threshold_pct) {
         g_detected_echo_delay_ms = g_echo_delays_ms[best_delay_idx];
-        log_plain("  🔵 ECHO CANCELLATION NOT WORKING: Strong echo at %u ms delay!", g_detected_echo_delay_ms);
+        log_plain("  🔴 ECHO CANCELLATION NOT WORKING: Strong echo at %u ms delay!", g_detected_echo_delay_ms);
         log_plain("     Received audio contains %.1f%% samples matching sent audio from %u ms ago", match_pct,
                   g_detected_echo_delay_ms);
       } else {
@@ -676,7 +676,7 @@ void audio_analysis_print_report(void) {
     } else if (g_aec3_echo_return_loss > 3.0) {
       log_plain("  ⚠️  Moderate echo attenuation (3-10 dB)");
     } else {
-      log_plain("  🔵 Poor echo attenuation (ERL < 3 dB)");
+      log_plain("  🔴 Poor echo attenuation (ERL < 3 dB)");
     }
   }
 
@@ -814,7 +814,7 @@ void audio_analysis_print_report(void) {
     // Detect if stuttering is periodic (consistent ~50ms intervals)
     if (intervals_around_50ms >= (inter_arrival_count * 2 / 3)) {
       // More than 66% of packets are ~50ms apart - clear periodic stuttering
-      log_plain("  🔵 PERIODIC STUTTERING DETECTED: Server sends packets every ~%u ms (should be ~20ms)!",
+      log_plain("  🔴 PERIODIC STUTTERING DETECTED: Server sends packets every ~%u ms (should be ~20ms)!",
                 avg_interval_ms);
       log_plain("    - Packet inter-arrival: %u-%u ms (avg: %u ms)", min_interval_ms, max_interval_ms, avg_interval_ms);
       log_plain("    - %u/%u packets (~%u%%) are ~50ms apart (CLEAR STUTTERING PATTERN)", intervals_around_50ms,

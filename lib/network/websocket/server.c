@@ -72,13 +72,13 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   const char *proto_name = lws_get_protocol(wsi) ? lws_get_protocol(wsi)->name : "NULL";
 
   // LOG EVERY SINGLE CALLBACK WITH PROTOCOL NAME
-  log_dev("🔵 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
+  log_dev("🔴 CALLBACK: reason=%d, proto=%s, wsi=%p, len=%zu", reason, proto_name, (void *)wsi, len);
 
   switch (reason) {
   case LWS_CALLBACK_ESTABLISHED: {
     // New WebSocket connection established
     uint64_t established_ns = time_get_ns();
-    log_info("🔵🔵🔵 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
+    log_info("🔴🔴🔴 LWS_CALLBACK_ESTABLISHED FIRED! wsi=%p", (void *)wsi);
     log_info("[LWS_CALLBACK_ESTABLISHED] WebSocket client connection established at timestamp=%llu",
              (unsigned long long)established_ns);
     log_info("WebSocket client connected");
@@ -173,7 +173,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Queue handler to thread pool (no pthread_create from callback context)
     // The handler_pool was created at server startup with pre-allocated workers
-    log_info("🔵 ABOUT TO QUEUE HANDLER: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
+    log_info("🔴 ABOUT TO QUEUE HANDLER: handler=%p, ctx=%p", (void *)server->handler, (void *)client_ctx);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Queueing handler to work pool (handler=%p, ctx=%p)...",
               (void *)server->handler, (void *)client_ctx);
 
@@ -187,7 +187,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     asciichat_error_t queue_result =
         thread_pool_queue_work("websocket_handler_established", server->handler_pool, server->handler, client_ctx);
-    log_info("🔵 thread_pool_queue_work returned: %s", queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
+    log_info("🔴 thread_pool_queue_work returned: %s", queue_result == ASCIICHAT_OK ? "OK" : "ERROR");
 
     if (queue_result != ASCIICHAT_OK) {
       log_error("[LWS_CALLBACK_ESTABLISHED] FAILED: thread_pool_queue_work returned error");
@@ -429,7 +429,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     // Snapshot the transport pointer to avoid race condition with cleanup thread
     acip_transport_t *transport_snapshot = conn_data->transport;
-    log_info("🔵 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
+    log_info("🔴 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
              (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
       log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
