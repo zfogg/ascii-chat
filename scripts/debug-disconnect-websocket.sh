@@ -8,6 +8,8 @@ client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
 
+SNAPSHOT_DELAY=3.25
+
 rm -rf "$client_log" "$server_log" "$client_stdout"
 
 echo "Gonna run on websocket port: $PORT"
@@ -28,7 +30,7 @@ START_TIME=$(date +%s%N)
 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 10 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
-  --test-pattern -S -D 3 \
+  --test-pattern -S -D "$SNAPSHOT_DELAY" \
   2>/dev/null | tee "$client_stdout" || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
@@ -45,7 +47,8 @@ echo ""
 
 # Count actual frames written by looking for frame completion markers
 # These are the actual printf() calls that write frames to stdout
-FRAME_COUNT=$(grep -c "ACTUAL_FRAME_WRITTEN\|frame.*written\|grid.*rendered" "$client_log" 2>/dev/null || echo "0")
+FRAME_COUNT=$(grep -i 'unique frames rendered' "$client_log" | tail -1 | cut -d' ' -f10)
+echo "$FRAME_COUNT"
 echo "🎬 FRAME COUNT: $FRAME_COUNT frames"
 
 # Calculate actual FPS
@@ -64,6 +67,7 @@ echo "Running 'tail -20 $client_stdout'"
 tail -20 "$client_stdout"
 
 # Check for memory errors
+echo ""
 if grep -q "AddressSanitizer" "$client_stdout" 2>/dev/null; then
     echo "⚠️  ASAN errors detected:"
     grep "SUMMARY: AddressSanitizer" "$client_stdout" | head -1 || true
@@ -72,11 +76,12 @@ else
 fi
 
 # Show expected vs actual
-EXPECTED_60=$(echo "scale=0; 60 * $ELAPSED_SEC" | bc | cut -d. -f1)
-EXPECTED_30=$(echo "scale=0; 30 * $ELAPSED_SEC" | bc | cut -d. -f1)
-echo "Expected at 60 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_60 frames"
-echo "Expected at 30 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_30 frames"
-echo "Actual frames rendered: $FRAME_COUNT"
+EXPECTED_60=$(echo "scale=0; 60 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+EXPECTED_30=$(echo "scale=0; 30 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+echo ""
+echo "Expected at 60 FPS for ${SNAPSHOT_DELAY}s: ~$EXPECTED_60 frames"
+echo "Expected at 30 FPS for ${SNAPSHOT_DELAY}s: ~$EXPECTED_30 frames"
+echo "Actual frames rendered: $FRAME_COUNT (with SNAPSHOT_DELAY=${SNAPSHOT_DELAY}s of rendering time)"
 echo ""
 
 echo ""
