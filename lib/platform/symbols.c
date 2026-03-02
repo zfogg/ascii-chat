@@ -55,7 +55,6 @@ typedef enum {
 
 static symbolizer_type_t g_symbolizer_type = SYMBOLIZER_NONE;
 static atomic_t g_symbolizer_detected = {0};
-static atomic_t g_llvm_symbolizer_checked = {0};
 static atomic_t g_llvm_symbolizer_available = {0};
 static char g_llvm_symbolizer_cmd[PLATFORM_MAX_PATH_LENGTH];
 static atomic_t g_addr2line_available = {0};
@@ -626,6 +625,16 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Escape binary path for shell
     char escaped_binary_path[PLATFORM_MAX_PATH_LENGTH * 2];
     if (!escape_path_for_shell(groups[g].binary_path, escaped_binary_path, sizeof(escaped_binary_path))) {
+      // On error, fill with fallback addresses
+      for (int j = 0; j < groups[g].count; j++) {
+        int orig_idx = groups[g].original_indices[j];
+        if (!result[orig_idx]) {
+          result[orig_idx] = SAFE_MALLOC(32, char *);
+          if (result[orig_idx]) {
+            SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+          }
+        }
+      }
       continue;
     }
 
@@ -647,6 +656,16 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
 
     FILE *fp = popen(cmd, "r");
     if (!fp) {
+      // popen() failed - fill with fallback addresses instead of leaving NULL
+      for (int j = 0; j < groups[g].count; j++) {
+        int orig_idx = groups[g].original_indices[j];
+        if (!result[orig_idx]) {
+          result[orig_idx] = SAFE_MALLOC(32, char *);
+          if (result[orig_idx]) {
+            SAFE_SNPRINTF(result[orig_idx], 32, "%p", buffer[orig_idx]);
+          }
+        }
+      }
       continue;
     }
 
@@ -757,18 +776,25 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
     offset += n;
   }
 
+  // Allocate result array BEFORE executing addr2line (to avoid leak on popen failure)
+  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
+  if (!result) {
+    return NULL;
+  }
+
   // Execute addr2line
   FILE *fp = popen(cmd, "r");
   if (!fp) {
     log_error("Failed to execute addr2line command");
-    return NULL;
-  }
-
-  // Allocate result array
-  char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
-  if (!result) {
-    pclose(fp);
-    return NULL;
+    // Fill result array with fallback values instead of leaving NULL entries
+    for (int i = 0; i < size; i++) {
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+      }
+    }
+    result[size] = NULL;
+    return result;
   }
 
   // Parse output
