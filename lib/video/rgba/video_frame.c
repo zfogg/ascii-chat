@@ -130,11 +130,14 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
   }
 
   // Initialize synchronization
+  log_info("VFB_MUTEX_INIT_START: About to init mutex for client_id=%s", client_id);
   if (mutex_init(&vfb->swap_mutex, "video_frame_swap") != 0) {
+    log_error("VFB_MUTEX_INIT_FAILED: mutex_init returned error");
     SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize mutex for video frame buffer");
     video_frame_buffer_destroy(vfb);
     return NULL;
   }
+  log_info("VFB_MUTEX_INIT_DONE: mutex initialized successfully");
   atomic_store_bool(&vfb->new_frame_available, false);
 
   // Initialize statistics

@@ -592,6 +592,7 @@ static int start_client_threads(server_context_t *server_ctx, client_info_t *cli
 }
 
 client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const char *client_ip, int port) {
+  log_info("[TCP_ADD_CLIENT] ENTER: client_ip=%s, port=%d", client_ip, port);
   // Find empty slot WITHOUT holding the global lock
   // We'll re-verify under lock after allocations complete
   int slot = -1;
@@ -606,6 +607,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // Quick pre-check before expensive allocations
+  log_info("[TCP_DBG] SLOT_CHECK: existing_count=%d, max_clients=%d, slot=%d", existing_count, GET_OPTION(max_clients), slot);
   if (existing_count >= GET_OPTION(max_clients) || slot == -1) {
     const char *reject_msg = "SERVER_FULL: Maximum client limit reached\n";
     ssize_t send_result = socket_send(socket, reject_msg, strlen(reject_msg), 0);
@@ -616,21 +618,29 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // NOW acquire the lock early for generating unique client name
+  log_info("[TCP_DBG] LOCK_ACQUIRE_START");
   rwlock_wrlock(&g_client_manager_rwlock);
+  log_info("[TCP_DBG] LOCK_ACQUIRED");
 
   // Generate unique client ID (noun only, without counter or port)
   char new_client_id[MAX_CLIENT_ID_LEN];
+  log_info("[TCP_DBG] GENERATE_ID_START");
   if (generate_client_id(new_client_id, sizeof(new_client_id)) != 0) {
     rwlock_wrunlock(&g_client_manager_rwlock);
     log_error("Failed to generate unique client ID");
     return NULL;
   }
+  log_info("[TCP_DBG] GENERATE_ID_DONE: id=%s", new_client_id);
 
+  log_info("[TCP_DBG] LOCK_RELEASE_START");
   rwlock_wrunlock(&g_client_manager_rwlock);
+  log_info("[TCP_DBG] LOCK_RELEASED");
 
   // DO EXPENSIVE ALLOCATIONS OUTSIDE THE LOCK
   // This prevents blocking frame processing during client initialization
+  log_info("[TCP_DBG] VIDEO_CREATE_START: About to create video frame buffer for client_id=%s", new_client_id);
   video_frame_buffer_t *incoming_video_buffer = video_frame_buffer_create(new_client_id);
+  log_info("[TCP_DBG] VIDEO_CREATE_DONE: Video buffer creation returned %p", (void*)incoming_video_buffer);
   if (!incoming_video_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create video buffer for client %s", new_client_id);
     log_error("Failed to create video buffer for client %s", new_client_id);

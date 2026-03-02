@@ -20,8 +20,14 @@
  */
 int mutex_init(mutex_t *mutex, const char *name) {
   int err = pthread_mutex_init(&mutex->impl, NULL);
+  log_info("[MUTEX_INIT_DBG] pthread_mutex_init=%d, name=%s", err, name);
   if (err == 0) {
+    log_info("[MUTEX_INIT_DBG] About to call NAMED_REGISTER_MUTEX with name=%s at %p", name, (void *)mutex);
+    fflush(stdout);
+    fflush(stderr);
+    // Add a timeout mechanism to detect deadlocks
     mutex->name = NAMED_REGISTER_MUTEX(mutex, name);
+    log_info("[MUTEX_INIT_DBG] NAMED_REGISTER_MUTEX returned: %s", mutex->name);
     mutex->last_lock_time_ns = 0;
     mutex->last_unlock_time_ns = 0;
     mutex->currently_held_by_key = 0;
