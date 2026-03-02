@@ -626,9 +626,14 @@ void log_destroy(void) {
   // Cleanup grep filter
   grep_destroy();
 
-  // Cleanup custom format structures: All worker threads have been stopped by this point
-  // (see asciichat_shared_destroy() in lib/common.c which stops threads before calling log_destroy).
-  // Safe to free templates now without TOCTOU race concerns.
+  /* Mark logging system as shutdown FIRST (state machine transition)
+   * This signals worker threads to stop logging immediately before we free memory.
+   * This prevents TOCTOU race where a worker thread could see non-NULL format pointer
+   * after we've freed it but before lifecycle_shutdown() is called. */
+  lifecycle_shutdown(&g_log.lifecycle);
+
+  // Cleanup custom format structures: All worker threads have been signaled to stop by this point.
+  // Safe to free templates now without use-after-free concerns.
   if (g_log.format) {
     log_template_free(g_log.format);
     g_log.format = NULL;
@@ -645,9 +650,6 @@ void log_destroy(void) {
     platform_close(old_file);
   }
   atomic_store_int(&g_log.file, -1);
-
-  /* Mark logging system as shutdown (state machine transition) */
-  lifecycle_shutdown(&g_log.lifecycle);
 
   // Destroy rotation mutex
   lifecycle_shutdown(&g_log.rotation_mutex_lifecycle);
@@ -908,7 +910,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
    * thread frees the format between our check and use. */
   const log_template_t *format = g_log.format;
   int plain_len = 0;
-  if (format) {  /* Format is not freed during shutdown to avoid heap-use-after-free races */
+  if (format && lifecycle_is_initialized(&g_log.lifecycle)) {  /* Double-check lifecycle is still active */
     plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
                                    func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
   }
@@ -917,7 +919,7 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   int colored_len = 0;
   if (use_colors && plain_len > 0) {
     const log_template_t *format_check = g_log.format;
-    if (format_check) {
+    if (format_check && lifecycle_is_initialized(&g_log.lifecycle)) {  /* Re-verify lifecycle before use */
       colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                        line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     }

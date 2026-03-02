@@ -484,6 +484,7 @@ static int render_format_content(const char *content, char *buf, size_t buf_size
 int log_template_apply(const log_template_t *format, char *buf, size_t buf_size, log_level_t level,
                        const char *timestamp, const char *file, int line, const char *func, uint64_t tid,
                        const char *message, bool use_colors, uint64_t time_nanoseconds) {
+  /* Check all critical pointers - format could be freed by another thread (TOCTOU race) */
   if (!format || !buf || buf_size == 0) {
     return -1;
   }
@@ -495,13 +496,9 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
   (void)timestamp; /* May be used in future; for now, LOG_FORMAT_TIME uses custom formatting */
 
   /* Safety check: verify format->specs is valid before dereferencing
-   * This protects against use-after-free if format is freed by another thread */
-  if (!format->specs || format->spec_count == 0) {
-    return -1;
-  }
-
-  /* If specs were freed (pointer zeroed after free), bail out gracefully */
-  if (!format->specs) {
+   * This protects against use-after-free if format is freed by another thread (TOCTOU race).
+   * Between our initial NULL check and here, the main thread may have freed this memory. */
+  if (!format || !format->specs || format->spec_count == 0) {
     return -1;
   }
 
