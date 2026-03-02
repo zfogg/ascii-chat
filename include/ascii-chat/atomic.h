@@ -527,12 +527,12 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
 // These are helpers that work with static initialization
 #define _atomic_init_auto(name) {0}; \
   static void __attribute__((constructor, used)) _atomic_reg_##name(void) { \
-    NAMED_REGISTER_ATOMIC(&name, #name); \
+    NAMED_REGISTER_ATOMIC(&name, #name, NULL); \
   } typedef int _atomic_assert_##name
 
 #define _atomic_ptr_init_auto(name) {0}; \
   static void __attribute__((constructor, used)) _atomic_ptr_reg_##name(void) { \
-    NAMED_REGISTER_ATOMIC_PTR(&name, #name); \
+    NAMED_REGISTER_ATOMIC_PTR(&name, #name, NULL); \
   } typedef int _atomic_ptr_assert_##name
 
 // ============================================================================

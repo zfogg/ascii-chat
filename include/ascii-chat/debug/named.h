@@ -1093,7 +1093,7 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
 #ifndef NDEBUG
 #define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name, parent_ptr)                                                           \
   named_register((uintptr_t)(const void *)(pipeline), (name), "client_audio_pipeline", "0x%tx", __FILE__, __LINE__,    \
-                 __func__)
+                 __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
 #define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name, parent_ptr) (name)
 #endif

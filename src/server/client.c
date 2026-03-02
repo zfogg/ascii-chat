@@ -3231,7 +3231,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   struct SwsContext *sws_ctx = (struct SwsContext *)client->h265_sws_ctx;
   if (!sws_ctx || sws_ctx == NULL) {
     sws_ctx = sws_getContext(frame->width, frame->height, (int)frame->format, frame->width, frame->height,
-                             AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL);
+                             AV_PIX_FMT_RGB24, SWS_FAST_BILINEAR, NULL, NULL, NULL);
     if (!sws_ctx) {
       log_error("Failed to create color converter");
       SAFE_FREE(pkt_data);
