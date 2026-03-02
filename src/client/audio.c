@@ -277,11 +277,6 @@ static void *audio_sender_thread_func(void *arg) {
   (void)arg;
   log_debug("Audio sender thread started");
 
-  // Initialize timing system for performance profiling
-  if (!timer_is_initialized()) {
-    timer_system_init();
-  }
-
   static int send_count = 0;
 
   while (!atomic_load_bool(&g_audio_sender_should_exit)) {
@@ -537,11 +532,6 @@ static void *audio_capture_thread_func(void *arg) {
   (void)arg;
 
   log_debug("Audio capture thread started");
-
-  // Initialize timing system for performance profiling
-  if (!timer_is_initialized()) {
-    timer_system_init();
-  }
 
   // FPS tracking for audio capture thread (tracking Opus frames, ~50 FPS at 20ms per frame)
   static fps_t fps_tracker = {0};
