@@ -29,7 +29,7 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   page,
   context,
 }) => {
-  test.setTimeout(15000);
+  test.setTimeout(10000);
 
   const encryptedPackets: number[] = [];
   const asciiFrames: number[] = [];
@@ -70,10 +70,10 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
   page.on("console", (msg) => {
     const text = msg.text();
 
-    // Count ENCRYPTED packet receives
+    // Count ENCRYPTED packet receives (packet type 1200 = ENCRYPTED)
     if (
-      text.includes("[SocketBridge] <<< RECV") &&
-      text.includes("pkt_type=1200")
+      text.includes("[ClientConnection] <<< RECV packet type=1200") ||
+      (text.includes("[ClientConnection] <<< RECV") && text.includes("type=1200"))
     ) {
       encryptedPackets.push(Date.now());
       console.log(
