@@ -61,14 +61,6 @@ else
 fi
 
 
-# Show expected vs actual
-EXPECTED_60=$(echo "scale=0; 60 * $ELAPSED_SEC" | bc | cut -d. -f1)
-EXPECTED_30=$(echo "scale=0; 30 * $ELAPSED_SEC" | bc | cut -d. -f1)
-echo ""
-echo "Expected at 60 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_60 frames"
-echo "Expected at 30 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_30 frames"
-echo "Actual frames rendered: $FRAME_COUNT"
-
 # Check for memory errors
 if grep -q "AddressSanitizer" "$client_log" 2>/dev/null; then
     echo "⚠️  ASAN errors detected:"
