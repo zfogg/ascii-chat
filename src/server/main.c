@@ -120,7 +120,7 @@
 #include <ascii-chat/network/acip/handlers.h>
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
-#include <ascii-chat/ui/server_like_status.h>
+#include <ascii-chat/ui/status.h>
 #include <ascii-chat/log/interactive_grep.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -1320,8 +1320,8 @@ static void *status_screen_thread(void *arg) {
     const char *ipv4_address = g_tcp_server.config.ipv4_address;
     const char *ipv6_address = g_tcp_server.config.ipv6_address;
 
-    // Render status screen (server_like_status_update handles rate limiting internally)
-    server_like_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
+    // Render status screen (ui_status_update handles rate limiting internally)
+    ui_status_update(&g_tcp_server, g_session_string, ipv4_address, ipv6_address, GET_OPTION(port),
                          g_server_start_time, "Server", g_session_is_mdns_only, &g_last_status_update);
 
     // Sleep to maintain frame rate
@@ -1790,7 +1790,7 @@ int server_main(void) {
   // In non-interactive mode without explicit flag, logs go directly to stdout/stderr
   if ((GET_OPTION(status_screen) && terminal_is_interactive()) ||
       (GET_OPTION(status_screen_explicitly_set) && GET_OPTION(status_screen))) {
-    server_like_status_log_init();
+    ui_status_log_init();
 
     // Initialize interactive grep for status screen
     interactive_grep_init();
@@ -2521,7 +2521,7 @@ skip_acds_session:
   // Clear status screen log buffer to discard initialization logs
   // This ensures only NEW logs (generated after status screen starts) are displayed
   if (GET_OPTION(status_screen)) {
-    server_like_status_log_clear();
+    ui_status_log_clear();
   }
 
   // Start status screen thread if enabled
@@ -2675,7 +2675,7 @@ cleanup:
   // Cleanup status screen log capture (must be AFTER all client threads exit to avoid use-after-free)
   // Client threads may still be appending logs during the wait loop above, so we destroy the buffer only
   // after we've confirmed they've all exited.
-  server_like_status_log_destroy();
+  ui_status_log_destroy();
 
   // Clean up all connected clients
   log_debug("Cleaning up connected clients...");
