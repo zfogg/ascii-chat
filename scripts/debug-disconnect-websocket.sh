@@ -59,6 +59,18 @@ fi
 
 echo ""
 
+echo ""
+echo "Running 'tail -20 $client_stdout'"
+tail -20 "$client_stdout"
+
+# Check for memory errors
+if grep -q "AddressSanitizer" "$client_stdout" 2>/dev/null; then
+    echo "⚠️  ASAN errors detected:"
+    grep "SUMMARY: AddressSanitizer" "$client_stdout" | head -1 || true
+else
+    echo "✓ No memory errors detected"
+fi
+
 # Show expected vs actual
 EXPECTED_60=$(echo "scale=0; 60 * $ELAPSED_SEC" | bc | cut -d. -f1)
 EXPECTED_30=$(echo "scale=0; 30 * $ELAPSED_SEC" | bc | cut -d. -f1)
@@ -66,18 +78,6 @@ echo "Expected at 60 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_60 frames"
 echo "Expected at 30 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_30 frames"
 echo "Actual frames rendered: $FRAME_COUNT"
 echo ""
-
-# Check for memory errors
-if grep -q "AddressSanitizer" client.log 2>/dev/null; then
-    echo "⚠️  ASAN errors detected:"
-    grep "SUMMARY: AddressSanitizer" client.log | head -1 || true
-else
-    echo "✓ No memory errors detected"
-fi
-
-echo ""
-echo "Running 'tail -20 $client_stdout'"
-tail -20 "$client_stdout"
 
 echo ""
 echo "Client log: $client_log"
