@@ -34,24 +34,23 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
     log_debug("render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)");
   }
 
+  // BEFORE resolving fonts, check if matrix font and disable it for render-file (causes glyph height=0)
+  if (raw_font && strcmp(raw_font, "matrix") == 0) {
+    log_warn("render_file_create: [MATRIX] Matrix font not supported for render-file output, using system font instead");
+    raw_font = NULL;  // Force fallback to system font
+  }
+
   asciichat_error_t fe =
       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &font_is_path, &font_data, &font_data_size);
   if (fe != ASCIICHAT_OK) {
-    log_warn("renderer: font resolution failed for '%s' — using system default", raw_font[0] ? raw_font : "(default)");
+    log_warn("renderer: font resolution failed for '%s' — using system default", raw_font ? raw_font : "(explicit system)");
   }
 
   log_debug("render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)", font_spec,
             font_is_path, (void *)font_data, font_data_size);
 
-  // Use larger default font size for matrix font for better render-file quality
+  // Use reasonable default font size for render-file quality
   double font_size_pt = GET_OPTION(render_font_size);
-  if (raw_font && strcmp(raw_font, "matrix") == 0) {
-    // If using default font size (12.0) with matrix, scale up to 24.0 for better visibility
-    if (font_size_pt == 12.0) {
-      font_size_pt = 24.0;
-      log_debug("render_file_create: [MATRIX] Scaling font size from 12.0pt to 24.0pt for render-file");
-    }
-  }
 
   term_renderer_config_t tr_cfg = {
       .cols = cols,

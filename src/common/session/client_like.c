@@ -537,7 +537,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_debug("[SETUP_DISPLAY] Using capture target FPS for render-file: %u", display_config.render_fps);
   }
 
-  log_warn("[DEBUG_DISPLAY_CREATE] About to call session_display_create with render_file=%s", GET_OPTION(render_file));
   log_debug("[SETUP_DISPLAY] Creating display context");
   display = session_display_create(&display_config);
   if (!display) {
