@@ -27,6 +27,7 @@
 #include <inttypes.h>
 #include <ascii-chat/atomic.h>
 
+
 // ============================================================================
 // Helper Functions
 // ============================================================================
@@ -375,30 +376,32 @@ void debug_sync_print_state(void) {
 // Use a single large buffer for all sync state output
 #define SYNC_BUFFER_SIZE 8192
   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
-  if (!buffer)
+  if (!buffer) {
     return;
+  }
 
   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
 
   // Collect all sync state in one buffer
-  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "Synchronization Primitive State:\n");
+  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "=== Synchronization Primitive State ===\n");
 
-  // Iterate through all registered syncs
-  named_registry_for_each(mutex_iter_callback, &buf);
-  named_registry_for_each(rwlock_iter_callback, &buf);
-  named_registry_for_each(cond_iter_callback, &buf);
+  // Note: Individual mutex/rwlock/cond entries not shown because the named registry
+  // is disabled during runtime to prevent deadlocks. Use lock stacks below for deadlock analysis.
+  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "(registry disabled to prevent deadlocks)\n");
 
   // Iterate through atomic operations
-  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\nAtomic Operations State:\n");
+  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\n=== Atomic Operations State ===\n");
   named_registry_for_each(atomic_t_iter_callback, &buf);
   named_registry_for_each(atomic_ptr_iter_callback, &buf);
 
   // Print lock stacks for deadlock analysis
+  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\n=== Lock Stacks (Deadlock Detection) ===\n");
   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
 
-  // Log everything in one call
+  // Write everything in one call directly to stderr
   if (buf.offset > 0) {
-    log_info("%s", buf.buffer);
+    write(STDERR_FILENO, buf.buffer, buf.offset);
+    write(STDERR_FILENO, "\n", 1);
   }
 
   SAFE_FREE(buffer);
@@ -525,7 +528,7 @@ static void *debug_print_thread_fn(void *arg) {
       continue;
     }
 
-    // Handle --debug-state (debug builds only)
+    // Handle --sync-state (debug builds only)
     // Schedule sync state printing after specified delay (execute only once, when option is first detected)
     // Uses non-blocking scheduled printing instead of sleep to avoid blocking the debug thread
     if (!g_debug_state_request.handled_sync_state_time && IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &&
@@ -654,6 +657,11 @@ void debug_sync_cleanup_thread(void) {
     return;
   }
   log_debug("[DEBUG_SYNC_CLEANUP] Thread was initialized, proceeding with cleanup");
+
+  // Wait for any scheduled debug requests (--sync-state, --backtrace, --memory-report)
+  // to complete before signaling the thread to exit
+  log_debug("[DEBUG_SYNC_CLEANUP] Waiting for scheduled debug requests to complete");
+  platform_sleep_ns(3000000000ULL); // 3 second grace period
 
   log_debug("[DEBUG_SYNC_CLEANUP] Setting initialized to false");
   g_debug_state_request.initialized = false; // Prevent double-join
