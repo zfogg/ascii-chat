@@ -83,6 +83,18 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
   log_dev("Created buffer pool (max: %s, shrink: %llu ns, lock-free)", pretty_max,
           (unsigned long long)pool->shrink_delay_ns);
 
+  // Register pool atomics with named registry for debugging and --sync-state output
+  NAMED_REGISTER_ATOMIC_PTR(&pool->free_list, "buffer_pool.global_free_list_head_ptr");
+  NAMED_REGISTER_ATOMIC(&pool->current_bytes, "buffer_pool.global_current_bytes_in_pool");
+  NAMED_REGISTER_ATOMIC(&pool->used_bytes, "buffer_pool.global_bytes_currently_in_use");
+  NAMED_REGISTER_ATOMIC(&pool->peak_bytes, "buffer_pool.global_peak_bytes_in_use");
+  NAMED_REGISTER_ATOMIC(&pool->peak_pool_bytes, "buffer_pool.global_peak_bytes_in_pool");
+  NAMED_REGISTER_ATOMIC(&pool->hits, "buffer_pool.global_allocations_from_free_list");
+  NAMED_REGISTER_ATOMIC(&pool->allocs, "buffer_pool.global_new_buffer_allocations");
+  NAMED_REGISTER_ATOMIC(&pool->returns, "buffer_pool.global_buffers_returned_to_pool");
+  NAMED_REGISTER_ATOMIC(&pool->shrink_freed, "buffer_pool.global_buffers_freed_by_shrink");
+  NAMED_REGISTER_ATOMIC(&pool->malloc_fallbacks, "buffer_pool.global_allocations_bypassing_pool");
+
   return pool;
 }
 
