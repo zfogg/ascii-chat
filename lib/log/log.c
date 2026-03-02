@@ -607,7 +607,7 @@ void log_destroy(void) {
   // Cleanup grep filter
   grep_destroy();
 
-  // Cleanup custom format structures
+  // Cleanup custom format structures (safe to double-free NULL)
   if (g_log.format) {
     log_template_free(g_log.format);
     g_log.format = NULL;
@@ -842,12 +842,15 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
   char plain_log_line[LOG_MSG_BUFFER_SIZE + 512];
 
   /* Apply format without colors first (plain version for grep matching) */
-  int plain_len = log_template_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
-                                     func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
+  int plain_len = 0;
+  if (g_log.format) {
+    plain_len = log_template_apply(g_log.format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
+                                       func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
+  }
 
   /* For colored output, apply format with colors enabled */
   int colored_len = 0;
-  if (use_colors && plain_len > 0) {
+  if (use_colors && plain_len > 0 && g_log.format) {
     colored_len = log_template_apply(g_log.format, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                      line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     /* If applying with colors failed, fall back to plain text */
