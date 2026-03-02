@@ -167,6 +167,12 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     return base_name;
   }
 
+  // Named registry disabled to prevent deadlocks during initialization and TCP handshake.
+  // The registry can cause deadlocks when multiple threads try to register mutexes
+  // simultaneously while holding locks. Skipping registration here is safe because the
+  // registry is primarily used for debugging and --sync-state output, which are optional.
+  return base_name;
+
   // Use a simple static counter per type instead of complex locking
   // This avoids deadlocks and recursion issues while still providing unique names
   static atomic_t mutex_counter = {0};
