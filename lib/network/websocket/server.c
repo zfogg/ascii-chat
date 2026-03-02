@@ -301,6 +301,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
   }
 
   case LWS_CALLBACK_SERVER_WRITEABLE: {
+    START_TIMER("server_writeable");
     uint64_t writeable_callback_start_ns = time_get_ns();
     atomic_fetch_add_u64(&g_writeable_callback_count, 1);
     log_debug("=== LWS_CALLBACK_SERVER_WRITEABLE FIRED === wsi=%p, timestamp=%llu", (void *)wsi,
@@ -361,7 +362,9 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
       log_debug("  SERVER sending complete message: %zu bytes", msg.len);
 
+      START_TIMER("lws_write");
       int written = lws_write(wsi, msg.data + LWS_PRE, msg.len, LWS_WRITE_BINARY);
+      STOP_TIMER_AND_LOG(info, 0, "lws_write", "[LWS_WRITE]");
 
       if (written < 0) {
         log_error("Server WebSocket write error: %d", written);
@@ -422,6 +425,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     uint64_t writeable_callback_end_ns = time_get_ns();
     websocket_callback_timing_record(&g_ws_callback_timing.server_writeable, writeable_callback_start_ns,
                                      writeable_callback_end_ns);
+    STOP_TIMER_AND_LOG(info, 0, "server_writeable", "[SERVER_WRITEABLE] callback completed");
     break;
   }
 
