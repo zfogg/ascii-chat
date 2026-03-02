@@ -610,12 +610,6 @@ void terminal_screen_log_clear(void) {
   }
 }
 
-void terminal_screen_log_append(const char *message) {
-  if (g_session_log_buffer) {
-    session_log_buffer_append(g_session_log_buffer, message);
-  }
-}
-
 session_log_buffer_t *terminal_screen_get_log_buffer(void) {
   return g_session_log_buffer;
 }

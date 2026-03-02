@@ -649,6 +649,34 @@ void log_destroy(void) {
   lifecycle_shutdown(&g_log.rotation_mutex_lifecycle);
 }
 
+/**
+ * @brief Initialize the logging system internal state (system-level init)
+ *
+ * Initializes g_log struct, detects terminal capabilities, and compiles colors.
+ * Must be called once at program startup BEFORE log_init().
+ * Safe to call multiple times (idempotent).
+ */
+void log_system_init(void) {
+  // Detect terminal capabilities if not already done
+  log_redetect_terminal_capabilities();
+
+  // Initialize color scheme based on terminal capabilities
+  log_init_colors();
+}
+
+/**
+ * @brief Shutdown the logging system internal state (system-level cleanup)
+ *
+ * Clears registered session log buffer. Color cleanup is handled separately
+ * in asciichat_shared_destroy() after memory reporting.
+ * Must be called once at program shutdown AFTER log_destroy().
+ * Safe to call multiple times (idempotent).
+ */
+void log_system_destroy(void) {
+  // Unregister session log buffer if registered
+  log_clear_session_log_buffer();
+}
+
 void log_set_level(log_level_t level) {
   atomic_store_u64(&g_log.level, (int)level);
   atomic_store_bool(&g_log.level_manually_set, true);
@@ -1461,15 +1489,13 @@ static void init_terminal_capabilities(void) {
     return;
   }
 
+  // Terminal capabilities should already be initialized via log_system_init()
+  // This function is now just a safety guard for any edge cases before init
   if (!g_log.terminal_caps_initialized) {
     // Set detecting flag to prevent recursion
     g_log.terminal_caps_detecting = true;
 
-    // NEVER call detect_terminal_capabilities() from here - it causes infinite recursion
-    // because detect_terminal_capabilities() uses log_debug() which calls log_get_color_array()
-    // which calls init_terminal_capabilities() again.
-    // Always use defaults here - log_redetect_terminal_capabilities() will do the actual detection
-    // Use safe fallback during logging initialization to avoid recursion
+    // Use safe fallback during very early initialization to avoid recursion
     g_log.terminal_caps.color_level = TERM_COLOR_16;
     g_log.terminal_caps.capabilities = TERM_CAP_COLOR_16;
     g_log.terminal_caps.color_count = 16;
@@ -1509,12 +1535,14 @@ void log_redetect_terminal_capabilities(void) {
 /* Get the appropriate color array based on terminal capabilities */
 const char **log_get_color_array(void) {
   init_terminal_capabilities();
-  /* Initialize colors if not already done */
+
+  /* Colors should be initialized via log_system_init(); this is just a safety check */
   if (!g_log.log_colorscheme_initialized) {
+    /* Fallback: initialize colors if not already done (should not happen after log_system_init) */
     log_init_colors();
   }
 
-  /* Safety check: if colors are not initialized, return NULL to prevent crashes from null pointers */
+  /* Safety check: if colors are still not initialized, return NULL to prevent crashes from null pointers */
   if (!g_log.log_colorscheme_initialized) {
     return NULL;
   }

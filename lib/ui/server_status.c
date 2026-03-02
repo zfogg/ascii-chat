@@ -44,11 +44,6 @@ void server_status_log_clear(void) {
   terminal_screen_log_clear();
 }
 
-void server_status_log_append(const char *message) {
-  // Delegate to terminal_screen log abstraction
-  terminal_screen_log_append(message);
-}
-
 // ============================================================================
 // Status Display
 // ============================================================================

@@ -159,6 +159,26 @@ void log_init(const char *filename, log_level_t level, bool force_stderr, bool u
 void log_destroy(void);
 
 /**
+ * @brief Initialize the logging system internal state (system-level init)
+ *
+ * Initializes g_log struct, detects terminal capabilities, and compiles colors.
+ * Must be called once at program startup BEFORE log_init().
+ * Safe to call multiple times (idempotent).
+ * @ingroup logging
+ */
+void log_system_init(void);
+
+/**
+ * @brief Shutdown the logging system internal state (system-level cleanup)
+ *
+ * Restores terminal state and clears registered session log buffer.
+ * Must be called once at program shutdown AFTER log_destroy().
+ * Safe to call multiple times (idempotent).
+ * @ingroup logging
+ */
+void log_system_destroy(void);
+
+/**
  * @brief Set the minimum log level
  * @param level Minimum log level to output
  * @ingroup logging

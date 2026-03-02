@@ -89,10 +89,6 @@ void splash_log_clear(void) {
   terminal_screen_log_clear();
 }
 
-void splash_log_append(const char *message) {
-  terminal_screen_log_append(message);
-}
-
 /**
  * @brief Animation state for intro splash
  */

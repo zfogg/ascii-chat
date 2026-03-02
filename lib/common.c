@@ -134,7 +134,10 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
     symbol_cache_init();
 #endif
 
-    // 2. LOGGING - Initialize with provided log file
+    // 2. LOGGING - Initialize system state first, then user-level logging
+    // Initialize logging system internal state (terminal caps, colors)
+    log_system_init();
+    // Initialize with provided log file
     // Force stderr for client-like modes when stdout is piped to keep stdout clean
     bool force_stderr = is_client && terminal_is_piped_output();
     // Use LOG_DEBUG by default; will be reconfigured after options_init()
@@ -250,8 +253,9 @@ void asciichat_shared_destroy(void) {
   // 11. Error context cleanup
   asciichat_errno_destroy();
 
-  // 12. Logging cleanup - free log format buffers
+  // 12. Logging cleanup - free log format buffers and system state
   log_destroy();
+  log_system_destroy();
 
   // 13. Mutex stack cleanup - must be before memory report so stacks are freed
 #ifndef NDEBUG

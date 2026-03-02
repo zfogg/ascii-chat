@@ -100,16 +100,6 @@ void terminal_screen_log_destroy(void);
 void terminal_screen_log_clear(void);
 
 /**
- * @brief Append a message to the terminal screen log buffer
- *
- * Called by the logging system to capture messages that will be displayed
- * in the scrolling log area of splash/status screens.
- *
- * @param message Log message to append (already formatted)
- */
-void terminal_screen_log_append(const char *message);
-
-/**
  * @brief Get the current session log buffer
  *
  * Returns the log buffer owned by this module, or NULL if not initialized.
