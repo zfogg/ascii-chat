@@ -26,7 +26,7 @@ timeout -k1 3.25 ./build/bin/ascii-chat \
   --test-pattern \
   -S -D 1 \
   | tee /tmp/client-stdout-"$PORT".log \
-  || EXIT_CODE=$?
+  || EXIT_CODE=$? &
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -76,4 +76,5 @@ echo "Client log: $client_log"
 echo "Server log: $server_log"
 
 echo ""
+sleep 4
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
