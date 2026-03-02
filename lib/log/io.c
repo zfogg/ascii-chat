@@ -65,6 +65,10 @@ void log_io_stop(log_io_t capture, const char *prefix) {
     return;  // Capture was not started successfully
   }
 
+  // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe
+  fflush(stdout);
+  fflush(stderr);
+
   // Restore stdout and stderr
   dup2(capture.saved_stdout_fd, STDOUT_FILENO);
   dup2(capture.saved_stderr_fd, STDERR_FILENO);
@@ -75,10 +79,6 @@ void log_io_stop(log_io_t capture, const char *prefix) {
   if (capture.pipe_fd >= 0) {
     char buffer[LOG_IO_BUFFER_SIZE];
     ssize_t bytes_read;
-
-    // Flush stdout/stderr to ensure all output is in the pipe
-    fflush(stdout);
-    fflush(stderr);
 
     // Read all available data from the pipe
     while ((bytes_read = read(capture.pipe_fd, buffer, sizeof(buffer) - 1)) > 0) {
