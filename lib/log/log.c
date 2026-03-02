@@ -626,14 +626,18 @@ void log_destroy(void) {
   // Cleanup grep filter
   grep_destroy();
 
-  // Cleanup custom format structures: Don't free format templates to avoid TOCTOU races
-  // Threads may have already loaded the format pointer before this cleanup runs.
-  // Since this is only called at program exit, the OS will reclaim all memory anyway.
-  // Instead of freeing (which creates a use-after-free risk), we just mark as not custom.
-  g_log.format = NULL;
-  g_log.format_console_only = NULL;
+  // Cleanup custom format structures: All worker threads have been stopped by this point
+  // (see asciichat_shared_destroy() in lib/common.c which stops threads before calling log_destroy).
+  // Safe to free templates now without TOCTOU race concerns.
+  if (g_log.format) {
+    log_template_free(g_log.format);
+    g_log.format = NULL;
+  }
+  if (g_log.format_console_only) {
+    log_template_free(g_log.format_console_only);
+    g_log.format_console_only = NULL;
+  }
   atomic_store_bool(&g_log.has_custom_format, false);
-  // Note: format memory intentionally not freed to prevent heap-use-after-free races
 
   // Lock-free cleanup using atomic operations
   int old_file = atomic_load_int(&g_log.file);
