@@ -65,18 +65,21 @@ typedef struct {
 } lifecycle_t;
 
 /// Static initializer for module-global lifecycle variables (no sync primitive)
-#define LIFECYCLE_INIT {.state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0}}
+#define LIFECYCLE_INIT                                                                                                 \
+  {                                                                                                                    \
+    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_NONE, .sync = {0}                          \
+  }
 
 /// Static initializer for lifecycle with mutex
 #define LIFECYCLE_INIT_MUTEX(m)                                                                                        \
   {                                                                                                                    \
-    .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m) }                       \
+    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_MUTEX, .sync = {.mutex = (m) }             \
   }
 
 /// Static initializer for lifecycle with rwlock
 #define LIFECYCLE_INIT_RWLOCK(r)                                                                                       \
   {                                                                                                                    \
-    .state = LIFECYCLE_UNINITIALIZED, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r) }                     \
+    .state = {.impl = LIFECYCLE_UNINITIALIZED}, .sync_type = LIFECYCLE_SYNC_RWLOCK, .sync = {.rwlock = (r) }           \
   }
 
 /**

@@ -438,9 +438,9 @@ typedef struct {
 static debug_state_request_t g_debug_state_request = {
     .request_type = DEBUG_REQUEST_STATE,
     .delay_ns = 0,
-    .should_run = false,
-    .should_exit = false,
-    .signal_triggered = false,
+    .should_run = {.impl = 0},
+    .should_exit = {.impl = 0},
+    .signal_triggered = {.impl = 0},
     .memory_report_interval_ns = 0,
     .last_memory_report_time_ns = 0,
     .initialized = false,
