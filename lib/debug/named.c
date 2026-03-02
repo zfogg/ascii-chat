@@ -1,13 +1,15 @@
 /**
  * @file lib/debug/named.c
- * @brief Lock-free named object registry for debugging
+ * @brief Named object registry for debugging
  * @ingroup debug_named
  *
- * Uses atomic operations and lock-free linked lists to avoid deadlocks.
- * No rwlocks, no blocking operations - purely atomic CAS-based registration.
+ * Provides a centralized registry for naming any addressable resource.
+ * Uses uthash for O(1) lookup by uintptr_t key.
+ * Rwlock protects the hash table with minimal critical section.
  */
 
 #include "ascii-chat/debug/named.h"
+#include "ascii-chat/platform/rwlock.h"
 #include <ascii-chat/uthash.h>
 #include "ascii-chat/log/log.h"
 #include "ascii-chat/util/path.h"
@@ -16,9 +18,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ascii-chat/atomic.h>
 #include <inttypes.h>
-#include <limits.h>
 
 #ifndef NDEBUG
 
@@ -26,18 +26,21 @@
 #define DESCRIBE_BUFFER_SIZE 768
 
 /**
- * @brief Safe string duplication
+ * @brief String duplication using regular malloc (not SAFE_MALLOC)
+ *
+ * Uses regular malloc/free to avoid lock acquisition in memory tracking
+ * system, which can cause deadlocks when called while holding entries_lock.
  */
-static char *safe_strdup(const char *s) {
+static char *entry_strdup(const char *s) {
   if (!s) return NULL;
   size_t len = strlen(s) + 1;
-  char *dup = SAFE_MALLOC(len, char *);
+  char *dup = malloc(len);
   if (dup) strcpy(dup, s);
   return dup;
 }
 
 /**
- * @brief Registry entry - linked list node
+ * @brief Registry entry for uthash
  */
 typedef struct named_entry {
   uintptr_t key;
@@ -47,25 +50,35 @@ typedef struct named_entry {
   char *file;
   int line;
   char *func;
-  struct named_entry *next;
+  UT_hash_handle hh;  // uthash handle
 } named_entry_t;
 
 /**
- * @brief Global lock-free registry
+ * @brief Global registry with uthash and rwlock
+ *
+ * Uses uthash for O(1) lookups protected by rwlock.
+ * Rwlock is held ONLY during HASH_ADD/HASH_FIND operations.
+ * No mutations occur while holding the lock - avoids deadlocks.
  */
 typedef struct {
-  atomic_ptr_t entries_head;
+  named_entry_t *entries;  // uthash hash table
+  rwlock_t entries_lock;   // Protects hash table
   lifecycle_t lifecycle;
 } named_registry_t;
 
 static named_registry_t g_named_registry = {
-    .entries_head = {0},
+    .entries = NULL,
+    .entries_lock = {0},
     .lifecycle = LIFECYCLE_INIT,
 };
 
 asciichat_error_t named_init(void) {
   if (!lifecycle_init(&g_named_registry.lifecycle, "named_registry")) {
     return ASCIICHAT_OK;
+  }
+  if (rwlock_init(&g_named_registry.entries_lock, "named_registry_lock") != 0) {
+    lifecycle_shutdown(&g_named_registry.lifecycle);
+    return ASCIICHAT_OK;  // Continue even if rwlock init fails
   }
   lifecycle_init_commit(&g_named_registry.lifecycle);
   return ASCIICHAT_OK;
@@ -76,26 +89,29 @@ void named_destroy(void) {
     return;
   }
 
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    named_entry_t *next = entry->next;
-    free(entry->name);
-    if (entry->type) SAFE_FREE(entry->type);
-    if (entry->format_spec) SAFE_FREE(entry->format_spec);
-    if (entry->file) SAFE_FREE(entry->file);
-    if (entry->func) SAFE_FREE(entry->func);
-    free(entry);
-    entry = next;
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
+    named_entry_t *next = e->hh.next;
+    free(e->name);
+    if (e->type) free(e->type);
+    if (e->format_spec) free(e->format_spec);
+    if (e->file) free(e->file);
+    if (e->func) free(e->func);
+    free(e);
+    e = next;
   }
+  g_named_registry.entries = NULL;
+  rwlock_wrunlock(&g_named_registry.entries_lock);
+  rwlock_destroy(&g_named_registry.entries_lock);
 }
 
 /**
  * @brief Lock-free atomic counters for unique naming
  */
-static atomic_t mutex_counter = {0};
-static atomic_t rwlock_counter = {0};
-static atomic_t cond_counter = {0};
-static atomic_t atomic_counter = {0};
+static uint64_t mutex_counter = 0;
+static uint64_t rwlock_counter = 0;
+static uint64_t cond_counter = 0;
+static uint64_t atomic_counter = 0;
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
                            const char *file, int line, const char *func) {
@@ -107,38 +123,37 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     return base_name;
   }
 
-  // Generate unique name using atomic counters (no locks needed)
+  // Generate unique name using atomic counters
   uint64_t counter = 0;
   if (strcmp(type, "mutex") == 0) {
-    counter = atomic_fetch_add_u64(&mutex_counter, 1);
+    counter = __sync_fetch_and_add(&mutex_counter, 1);
   } else if (strcmp(type, "rwlock") == 0) {
-    counter = atomic_fetch_add_u64(&rwlock_counter, 1);
+    counter = __sync_fetch_and_add(&rwlock_counter, 1);
   } else if (strcmp(type, "cond") == 0) {
-    counter = atomic_fetch_add_u64(&cond_counter, 1);
+    counter = __sync_fetch_and_add(&cond_counter, 1);
   } else if (strcmp(type, "atomic") == 0) {
-    counter = atomic_fetch_add_u64(&atomic_counter, 1);
+    counter = __sync_fetch_and_add(&atomic_counter, 1);
   }
 
   char name_buffer[256];
   snprintf(name_buffer, sizeof(name_buffer), "%s.%"PRIu64, base_name, counter);
 
-  // Lock-free registration: prepend to linked list using CAS
+  // Allocate entry BEFORE acquiring lock (avoid long critical section)
   named_entry_t *entry = malloc(sizeof(named_entry_t));
   if (!entry) return base_name;
 
   entry->key = key;
-  entry->name = safe_strdup(name_buffer);
-  entry->type = safe_strdup(type);
-  entry->format_spec = safe_strdup(format_spec);
-  entry->file = NULL;
-  entry->line = 0;
-  entry->func = NULL;
+  entry->name = entry_strdup(name_buffer);
+  entry->type = entry_strdup(type);
+  entry->format_spec = entry_strdup(format_spec);
+  entry->file = file ? entry_strdup(file) : NULL;
+  entry->line = line;
+  entry->func = func ? entry_strdup(func) : NULL;
 
-  // CAS loop to prepend atomically
-  named_entry_t *head = atomic_ptr_load(&g_named_registry.entries_head);
-  do {
-    entry->next = head;
-  } while (!atomic_ptr_cas(&g_named_registry.entries_head, &head, entry));
+  // Only hold lock for the hash table operation
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;
 }
@@ -153,6 +168,7 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
     return fmt;
   }
 
+  // Format the name BEFORE acquiring lock
   va_list args;
   va_start(args, fmt);
   char *full_name = NULL;
@@ -163,7 +179,7 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
     return "?";
   }
 
-  // Lock-free registration
+  // Allocate entry BEFORE acquiring lock
   named_entry_t *entry = malloc(sizeof(named_entry_t));
   if (!entry) {
     free(full_name);
@@ -172,23 +188,38 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
 
   entry->key = key;
   entry->name = full_name;
-  entry->type = safe_strdup(type);
-  entry->format_spec = safe_strdup(format_spec);
-  entry->file = file ? safe_strdup(file) : NULL;
+  entry->type = entry_strdup(type);
+  entry->format_spec = entry_strdup(format_spec);
+  entry->file = file ? entry_strdup(file) : NULL;
   entry->line = line;
-  entry->func = func ? safe_strdup(func) : NULL;
+  entry->func = func ? entry_strdup(func) : NULL;
 
-  named_entry_t *head = atomic_ptr_load(&g_named_registry.entries_head);
-  do {
-    entry->next = head;
-  } while (!atomic_ptr_cas(&g_named_registry.entries_head, &head, entry));
+  // Only hold lock for the hash table operation
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;
 }
 
 void named_unregister(uintptr_t key) {
-  // Not implemented - entries stay in list until shutdown
-  (void)key;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return;
+  }
+
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  if (entry) {
+    HASH_DEL(g_named_registry.entries, entry);
+    free(entry->name);
+    if (entry->type) free(entry->type);
+    if (entry->format_spec) free(entry->format_spec);
+    if (entry->file) free(entry->file);
+    if (entry->func) free(entry->func);
+    free(entry);
+  }
+  rwlock_wrunlock(&g_named_registry.entries_lock);
 }
 
 const char *named_update_name(uintptr_t key, const char *new_base_name) {
@@ -198,30 +229,42 @@ const char *named_update_name(uintptr_t key, const char *new_base_name) {
 }
 
 const char *named_get(uintptr_t key) {
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->name;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->name : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 const char *named_get_type(uintptr_t key) {
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->type;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->type : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 const char *named_get_format_spec(uintptr_t key) {
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->format_spec;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->format_spec : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 const char *named_describe(uintptr_t key, const char *type_hint) {
@@ -229,23 +272,29 @@ const char *named_describe(uintptr_t key, const char *type_hint) {
 
   static _Thread_local char buffer[DESCRIBE_BUFFER_SIZE];
 
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) {
-      const char *type = entry->type ? entry->type : type_hint;
-      const char *name = entry->name ? entry->name : "unknown";
-      if (entry->file && entry->func && entry->line > 0) {
-        snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key,
-                 entry->file, entry->line, entry->func);
-      } else {
-        snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)", type, name, (ptrdiff_t)key);
-      }
-      return buffer;
-    }
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    snprintf(buffer, sizeof(buffer), "%s (0x%tx)", type_hint, (ptrdiff_t)key);
+    return buffer;
   }
 
-  snprintf(buffer, sizeof(buffer), "%s (0x%tx)", type_hint ? type_hint : "unknown", (ptrdiff_t)key);
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+
+  if (entry) {
+    const char *type = entry->type ? entry->type : type_hint;
+    const char *name = entry->name ? entry->name : "unknown";
+    if (entry->file && entry->func && entry->line > 0) {
+      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx) @ %s:%d:%s()", type, name, (ptrdiff_t)key,
+               entry->file, entry->line, entry->func);
+    } else {
+      snprintf(buffer, sizeof(buffer), "%s/%s (0x%tx)", type, name, (ptrdiff_t)key);
+    }
+  } else {
+    snprintf(buffer, sizeof(buffer), "%s (0x%tx)", type_hint ? type_hint : "unknown", (ptrdiff_t)key);
+  }
+
   return buffer;
 }
 
@@ -264,20 +313,20 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data) {
     return;
   }
 
-  // Snapshot entries
+  // Snapshot entries while holding read lock
   named_iter_entry_t entries[256];
   int count = 0;
 
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry && count < 256) {
-    entries[count].key = entry->key;
-    strncpy(entries[count].name, entry->name ? entry->name : "?", MAX_NAME_LEN - 1);
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  for (named_entry_t *e = g_named_registry.entries; e != NULL && count < 256; e = e->hh.next) {
+    entries[count].key = e->key;
+    strncpy(entries[count].name, e->name ? e->name : "?", MAX_NAME_LEN - 1);
     entries[count].name[MAX_NAME_LEN - 1] = '\0';
     count++;
-    entry = entry->next;
   }
+  rwlock_rdunlock(&g_named_registry.entries_lock);
 
-  // Call callback outside the snapshot loop
+  // Call callback outside the lock
   for (int i = 0; i < count; i++) {
     callback(entries[i].key, entries[i].name, user_data);
   }
@@ -291,20 +340,16 @@ const char *named_search_by_type_id(const char *type, void *id) {
 
 /**
  * @brief Encode FD into a unique key namespace
- *
- * File descriptors are small integers (typically 0-1024), so we use a high bit
- * to distinguish them from actual pointers. We use UINTPTR_MAX - fd to ensure
- * no collision with real pointers (which are typically small on 64-bit systems).
  */
 static inline uintptr_t encode_fd_key(int fd) {
-  return ((uintptr_t)UINTPTR_MAX - (unsigned int)fd);
+  return ((uintptr_t)-1 - (unsigned int)fd);
 }
 
 /**
  * @brief Encode packet type into a unique key namespace
  */
 static inline uintptr_t encode_pkt_type_key(int pkt_type) {
-  return ((uintptr_t)UINTPTR_MAX - 100000U - (unsigned int)pkt_type);
+  return ((uintptr_t)-1 - 100000U - (unsigned int)pkt_type);
 }
 
 const char *named_register_fd(int fd, const char *file, int line, const char *func) {
@@ -319,23 +364,23 @@ const char *named_register_fd(int fd, const char *file, int line, const char *fu
   char name_buffer[256];
   snprintf(name_buffer, sizeof(name_buffer), "fd=%d", fd);
 
-  // Lock-free registration
+  // Allocate entry BEFORE acquiring lock
   named_entry_t *entry = malloc(sizeof(named_entry_t));
   if (!entry) return "?";
 
   uintptr_t key = encode_fd_key(fd);
   entry->key = key;
-  entry->name = safe_strdup(name_buffer);
-  entry->type = safe_strdup("fd");
-  entry->format_spec = safe_strdup("%d");
-  entry->file = file ? safe_strdup(file) : NULL;
+  entry->name = entry_strdup(name_buffer);
+  entry->type = entry_strdup("fd");
+  entry->format_spec = entry_strdup("%d");
+  entry->file = file ? entry_strdup(file) : NULL;
   entry->line = line;
-  entry->func = func ? safe_strdup(func) : NULL;
+  entry->func = func ? entry_strdup(func) : NULL;
 
-  named_entry_t *head = atomic_ptr_load(&g_named_registry.entries_head);
-  do {
-    entry->next = head;
-  } while (!atomic_ptr_cas(&g_named_registry.entries_head, &head, entry));
+  // Only hold lock for the hash table operation
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;
 }
@@ -343,25 +388,33 @@ const char *named_register_fd(int fd, const char *file, int line, const char *fu
 const char *named_get_fd(int fd) {
   if (fd < 0) return NULL;
 
-  uintptr_t key = encode_fd_key(fd);
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->name;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  uintptr_t key = encode_fd_key(fd);
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->name : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 const char *named_get_fd_format_spec(int fd) {
   if (fd < 0) return NULL;
 
-  uintptr_t key = encode_fd_key(fd);
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->format_spec;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  uintptr_t key = encode_fd_key(fd);
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->format_spec : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 const char *named_register_packet_type(int pkt_type, const char *file, int line, const char *func) {
@@ -376,23 +429,23 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
   char name_buffer[256];
   snprintf(name_buffer, sizeof(name_buffer), "PACKET_TYPE=%d", pkt_type);
 
-  // Lock-free registration
+  // Allocate entry BEFORE acquiring lock
   named_entry_t *entry = malloc(sizeof(named_entry_t));
   if (!entry) return "?";
 
   uintptr_t key = encode_pkt_type_key(pkt_type);
   entry->key = key;
-  entry->name = safe_strdup(name_buffer);
-  entry->type = safe_strdup("packet_type");
-  entry->format_spec = safe_strdup("%d");
-  entry->file = file ? safe_strdup(file) : NULL;
+  entry->name = entry_strdup(name_buffer);
+  entry->type = entry_strdup("packet_type");
+  entry->format_spec = entry_strdup("%d");
+  entry->file = file ? entry_strdup(file) : NULL;
   entry->line = line;
-  entry->func = func ? safe_strdup(func) : NULL;
+  entry->func = func ? entry_strdup(func) : NULL;
 
-  named_entry_t *head = atomic_ptr_load(&g_named_registry.entries_head);
-  do {
-    entry->next = head;
-  } while (!atomic_ptr_cas(&g_named_registry.entries_head, &head, entry));
+  // Only hold lock for the hash table operation
+  rwlock_wrlock(&g_named_registry.entries_lock);
+  HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+  rwlock_wrunlock(&g_named_registry.entries_lock);
 
   return entry->name;
 }
@@ -400,25 +453,33 @@ const char *named_register_packet_type(int pkt_type, const char *file, int line,
 const char *named_get_packet_type(int pkt_type) {
   if (pkt_type < 0) return NULL;
 
-  uintptr_t key = encode_pkt_type_key(pkt_type);
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->name;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  uintptr_t key = encode_pkt_type_key(pkt_type);
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->name : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 const char *named_get_packet_type_format_spec(int pkt_type) {
   if (pkt_type < 0) return NULL;
 
-  uintptr_t key = encode_pkt_type_key(pkt_type);
-  named_entry_t *entry = atomic_ptr_load(&g_named_registry.entries_head);
-  while (entry) {
-    if (entry->key == key) return entry->format_spec;
-    entry = entry->next;
+  if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    return NULL;
   }
-  return NULL;
+
+  uintptr_t key = encode_pkt_type_key(pkt_type);
+  rwlock_rdlock(&g_named_registry.entries_lock);
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &key, sizeof(uintptr_t), entry);
+  const char *result = entry ? entry->format_spec : NULL;
+  rwlock_rdunlock(&g_named_registry.entries_lock);
+  return result;
 }
 
 void named_registry_register_packet_types(void) {
@@ -427,7 +488,7 @@ void named_registry_register_packet_types(void) {
 
 #else // Release builds
 
-int named_init(void) { return 0; }
+asciichat_error_t named_init(void) { return ASCIICHAT_OK; }
 void named_destroy(void) {}
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
                            const char *file, int line, const char *func) {
