@@ -134,7 +134,7 @@ test.describe("Client Connection to Native Server", () => {
   test("should fail - server not sending ASCII_FRAME packets (known bug)", async ({
     page,
   }) => {
-    test.setTimeout(15000);
+    test.setTimeout(4500);
 
     // Track ASCII_FRAME packets being received (measure immediately, don't wait for Connected)
     const frameStats = await page.evaluate(() => {
