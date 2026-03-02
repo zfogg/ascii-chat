@@ -1177,6 +1177,39 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
 #define NAMED_REGISTER_CONTEXT(context, context_type, name) (name)
 #endif
 
+/**
+ * @brief Get name of a pointer/key or format as address fallback
+ * @param key The uintptr_t key to look up
+ * @param buffer Output buffer for the result
+ * @param size Size of the output buffer
+ * @ingroup debug_named
+ *
+ * Tries to look up the registered name for the key. If found, copies it to buffer.
+ * If not found, formats the key as "0x%tx" (hexadecimal address).
+ *
+ * Useful in hot paths like logging where you want the name if available, but need
+ * a reasonable fallback for unregistered keys.
+ *
+ * In release builds (NDEBUG), always formats as address.
+ */
+#ifndef NDEBUG
+#define NAMED_GET_BY_PTR(key, buffer, size)                                                                            \
+  do {                                                                                                                 \
+    const char *_name = named_get(key);                                                                               \
+    if (_name) {                                                                                                       \
+      strncpy((buffer), (_name), (size) - 1);                                                                         \
+      (buffer)[(size) - 1] = '\0';                                                                                    \
+    } else {                                                                                                           \
+      snprintf((buffer), (size), "0x%tx", (ptrdiff_t)(key));                                                          \
+    }                                                                                                                  \
+  } while (0)
+#else
+#define NAMED_GET_BY_PTR(key, buffer, size)                                                                            \
+  do {                                                                                                                 \
+    snprintf((buffer), (size), "0x%tx", (ptrdiff_t)(key));                                                            \
+  } while (0)
+#endif
+
 #ifdef __cplusplus
 }
 #endif

@@ -76,7 +76,9 @@ static int format_mutex_timing(const mutex_t *mutex, char *buffer, size_t size) 
   }
 
   if (mutex->currently_held_by_key != 0) {
-    snprintf(held_str, sizeof(held_str), "[LOCKED_BY=0x%lx]", (unsigned long)mutex->currently_held_by_key);
+    char thread_name[256];
+    NAMED_GET_BY_PTR(mutex->currently_held_by_key, thread_name, sizeof(thread_name));
+    snprintf(held_str, sizeof(held_str), "[LOCKED_BY=%s]", thread_name);
   } else {
     snprintf(held_str, sizeof(held_str), "[FREE]");
   }
@@ -130,8 +132,9 @@ static int format_rwlock_timing(const rwlock_t *rwlock, char *buffer, size_t siz
   }
 
   if (rwlock->write_held_by_key != 0) {
-    snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=0x%lx]",
-             (unsigned long)rwlock->write_held_by_key);
+    char thread_name[256];
+    NAMED_GET_BY_PTR(rwlock->write_held_by_key, thread_name, sizeof(thread_name));
+    snprintf(write_held_str, sizeof(write_held_str), "[WRITE_LOCKED_BY=%s]", thread_name);
   }
 
   uint64_t read_count = atomic_load_u64(&rwlock->read_lock_count);
