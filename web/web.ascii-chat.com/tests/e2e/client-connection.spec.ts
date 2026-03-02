@@ -160,7 +160,21 @@ test.describe("Client Connection to Native Server", () => {
       log.includes("ENCRYPTED") && log.includes("RECV")
     ).length;
 
+    // Count inner packet types from decrypted packets
+    const audioOpusCount = consoleLogs.filter((log) =>
+      log.includes("Inner packet type: 4001 (AUDIO_OPUS_BATCH)")
+    ).length;
+    const imageFrameCount = consoleLogs.filter((log) =>
+      log.includes("Inner packet type: 3000 (IMAGE_FRAME)")
+    ).length;
+    const imageFrameH265Count = consoleLogs.filter((log) =>
+      log.includes("Inner packet type: 3002 (IMAGE_FRAME_H265)")
+    ).length;
+
     console.log(`Packets received: ENCRYPTED=${encryptedCount}, ASCII_FRAME=${asciiFrameCount}`);
+    console.log(
+      `Inner packet types: AUDIO_OPUS_BATCH=${audioOpusCount}, IMAGE_FRAME=${imageFrameCount}, IMAGE_FRAME_H265=${imageFrameH265Count}`
+    );
 
     // Check frame metrics
     const metrics = await page.evaluate(
