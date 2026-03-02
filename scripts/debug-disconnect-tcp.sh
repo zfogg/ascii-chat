@@ -23,6 +23,7 @@ timeout -k1 3.25 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client \
   localhost:"$PORT" \
+  --test-pattern \
   -S -D 1 \
   | tee /tmp/client-stdout-"$PORT".log \
   || EXIT_CODE=$?
