@@ -175,6 +175,22 @@ const char *server_connection_get_ip();
 void server_connection_set_ip(const char *ip);
 
 /**
+ * @brief Set the server port
+ * @param port Server port number
+ *
+ * @ingroup client_connection
+ */
+void server_connection_set_port(int port);
+
+/**
+ * @brief Get the server port
+ * @return Server port number
+ *
+ * @ingroup client_connection
+ */
+int server_connection_get_port(void);
+
+/**
  * @brief Close server connection gracefully
  *
  * @ingroup client_connection

@@ -345,7 +345,11 @@ int client_crypto_init(void) {
   const char *server_ip = server_connection_get_ip();
   log_debug("CLIENT_CRYPTO_INIT: server_connection_get_ip() returned: '%s'", server_ip ? server_ip : "NULL");
   SAFE_STRNCPY(g_crypto_ctx.server_ip, server_ip ? server_ip : "", sizeof(g_crypto_ctx.server_ip) - 1);
-  g_crypto_ctx.server_port = (uint16_t)port;
+
+  // Use port from server_connection_set_port() if available (e.g., from WebSocket URL),
+  // otherwise use the port from options (TCP/default path)
+  int connection_port = server_connection_get_port();
+  g_crypto_ctx.server_port = (uint16_t)(connection_port > 0 ? connection_port : port);
   log_debug("CLIENT_CRYPTO_INIT: Set server_ip='%s', server_port=%u", g_crypto_ctx.server_ip, g_crypto_ctx.server_port);
 
   // Configure server key verification if specified

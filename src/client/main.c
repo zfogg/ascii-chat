@@ -579,6 +579,7 @@ int client_main(void) {
       .should_exit = should_exit,
       .signal_exit = signal_exit,
       .server_connection_set_ip = server_connection_set_ip,
+      .server_connection_set_port = server_connection_set_port,
       .client_crypto_set_mode = client_crypto_set_mode,
       .client_crypto_init = client_crypto_init,
       .client_crypto_handshake = client_crypto_handshake,

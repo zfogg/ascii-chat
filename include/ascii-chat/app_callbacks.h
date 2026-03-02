@@ -21,6 +21,7 @@ typedef struct {
 
   // Server/client crypto setup
   void (*server_connection_set_ip)(const char *ip);
+  void (*server_connection_set_port)(int port);
   void (*client_crypto_set_mode)(uint8_t mode);
   int (*client_crypto_init)(void);
   int (*client_crypto_handshake)(socket_t sockfd);
@@ -104,6 +105,18 @@ const app_callbacks_t *app_callbacks_get(void);
  * Usage: APP_CALLBACK_VOID_STR(server_connection_set_ip, ip_addr)
  */
 #define APP_CALLBACK_VOID_STR(callback_name, value)                                                                    \
+  do {                                                                                                                 \
+    const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
+    if (__cb && __cb->callback_name) {                                                                                 \
+      __cb->callback_name(value);                                                                                      \
+    }                                                                                                                  \
+  } while (0)
+
+/**
+ * Call a void(int) callback
+ * Usage: APP_CALLBACK_VOID_INT(server_connection_set_port, port)
+ */
+#define APP_CALLBACK_VOID_INT(callback_name, value)                                                                    \
   do {                                                                                                                 \
     const app_callbacks_t *__cb = app_callbacks_get();                                                                 \
     if (__cb && __cb->callback_name) {                                                                                 \

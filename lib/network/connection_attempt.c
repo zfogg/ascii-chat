@@ -244,6 +244,12 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)", crypto_mode,
               ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
 
+    // Set server IP and port for crypto handshake known_hosts verification
+    // This is required for the crypto layer to properly validate server identity
+    APP_CALLBACK_VOID_STR(server_connection_set_ip, url_parts.host);
+    APP_CALLBACK_VOID_INT(server_connection_set_port, url_parts.port);
+    log_debug("Set server IP=%s, port=%d for WebSocket crypto handshake", url_parts.host, url_parts.port);
+
     // Set crypto mode before initialization via callback
     const crypto_context_t *crypto_ctx = NULL;
 

@@ -174,6 +174,16 @@ static uint32_t g_my_client_id = 0;
 static char g_server_ip[256] = {0};
 
 /**
+ * @brief Server port for known_hosts verification
+ *
+ * Stores the port number for the server connection. Used in conjunction with
+ * g_server_ip for known_hosts entry lookups.
+ *
+ * @ingroup client_connection
+ */
+static int g_server_port = 0;
+
+/**
  * @brief Mutex protecting socket send operations
  *
  * Ensures thread-safe packet transmission by preventing interleaved packets
@@ -879,6 +889,34 @@ void server_connection_set_ip(const char *ip) {
     g_server_ip[0] = '\0';
     log_debug("Server IP cleared");
   }
+}
+
+/**
+ * @brief Set the server port
+ *
+ * Updates the global server port. Used by new connection code paths
+ * that don't use the legacy server_connect() function.
+ *
+ * @param port Server port number
+ *
+ * @ingroup client_connection
+ */
+void server_connection_set_port(int port) {
+  g_server_port = port;
+  log_debug("Server port set to: %d", g_server_port);
+}
+
+/**
+ * @brief Get the server port
+ *
+ * Returns the currently configured server port.
+ *
+ * @return Server port number
+ *
+ * @ingroup client_connection
+ */
+int server_connection_get_port(void) {
+  return g_server_port;
 }
 
 /**
