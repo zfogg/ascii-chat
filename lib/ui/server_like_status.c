@@ -1,9 +1,9 @@
 /**
- * @file lib/ui/server_status.c
- * @brief Server status screen display with live log feed at FPS rate
+ * @file lib/ui/server_like_status.c
+ * @brief Server-like status screen display with live log feed at FPS rate
  */
 
-#include <ascii-chat/ui/server_status.h>
+#include <ascii-chat/ui/server_like_status.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
 #include <ascii-chat/log/interactive_grep.h>
@@ -24,7 +24,7 @@
 #include <time.h>
 #include <ascii-chat/atomic.h>
 
-void server_status_log_init(void) {
+void server_like_status_log_init(void) {
   // Initialize the shared terminal screen log buffer
   session_log_buffer_t *buf = terminal_screen_log_init();
   if (buf) {
@@ -32,14 +32,14 @@ void server_status_log_init(void) {
   }
 }
 
-void server_status_log_destroy(void) {
+void server_like_status_log_destroy(void) {
   // Unregister from logger before destroying
   log_clear_session_log_buffer();
   // Cleanup the shared terminal screen log buffer
   terminal_screen_log_destroy();
 }
 
-void server_status_log_clear(void) {
+void server_like_status_log_clear(void) {
   // Delegate to terminal_screen log abstraction
   terminal_screen_log_clear();
 }
@@ -48,11 +48,11 @@ void server_status_log_clear(void) {
 // Status Display
 // ============================================================================
 
-asciichat_error_t server_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
+asciichat_error_t server_like_status_gather(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                                        const char *ipv6_address, uint16_t port, time_t start_time,
-                                       const char *mode_name, bool session_is_mdns_only, server_status_t *out_status) {
+                                       const char *mode_name, bool session_is_mdns_only, server_like_status_t *out_status) {
   if (!server || !out_status || !mode_name) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for server_status_gather");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters for server_like_status_gather");
   }
 
   memset(out_status, 0, sizeof(*out_status));
@@ -100,8 +100,8 @@ asciichat_error_t server_status_gather(tcp_server_t *server, const char *session
  *
  * Lines are truncated if they exceed terminal width.
  */
-static void render_server_status_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
-  const server_status_t *status = (const server_status_t *)user_data;
+static void render_server_like_status_header(frame_buffer_t *buf, terminal_size_t term_size, void *user_data) {
+  const server_like_status_t *status = (const server_like_status_t *)user_data;
   if (!status) {
     return;
   }
@@ -190,7 +190,7 @@ static void render_server_status_header(frame_buffer_t *buf, terminal_size_t ter
   frame_buffer_printf(buf, "\033[0m\n");
 }
 
-void server_status_display(const server_status_t *status) {
+void server_like_status_display(const server_like_status_t *status) {
   if (!status) {
     return;
   }
@@ -214,7 +214,7 @@ void server_status_display(const server_status_t *status) {
   // Use terminal_screen abstraction for rendering
   terminal_screen_config_t config = {
       .fixed_header_lines = 4,
-      .render_header = render_server_status_header,
+      .render_header = render_server_like_status_header,
       .user_data = (void *)status,
       .show_logs = true,
   };
@@ -226,7 +226,7 @@ void server_status_display(const server_status_t *status) {
  * @brief Display status screen with keyboard input support
  * Returns true if status screen should continue, false if Escape was pressed to exit
  */
-bool server_status_display_interactive(const server_status_t *status) {
+bool server_like_status_display_interactive(const server_like_status_t *status) {
   if (!status) {
     return true;
   }
@@ -255,7 +255,7 @@ bool server_status_display_interactive(const server_status_t *status) {
   // Use terminal_screen abstraction for rendering
   terminal_screen_config_t config = {
       .fixed_header_lines = 4,
-      .render_header = render_server_status_header,
+      .render_header = render_server_like_status_header,
       .user_data = (void *)status,
       .show_logs = true,
   };
@@ -286,7 +286,7 @@ bool server_status_display_interactive(const server_status_t *status) {
   return !should_exit_status; // Return false if user wants to exit
 }
 
-void server_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
+void server_like_status_update(tcp_server_t *server, const char *session_string, const char *ipv4_address,
                           const char *ipv6_address, uint16_t port, time_t start_time, const char *mode_name,
                           bool session_is_mdns_only, uint64_t *last_update_ns) {
   if (!server || !last_update_ns) {
@@ -310,10 +310,10 @@ void server_status_update(tcp_server_t *server, const char *session_string, cons
     return; // Too soon, skip frame
   }
 
-  server_status_t status;
-  if (server_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
+  server_like_status_t status;
+  if (server_like_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
                            session_is_mdns_only, &status) == ASCIICHAT_OK) {
-    server_status_display(&status);
+    server_like_status_display(&status);
     *last_update_ns = now_us;
   }
 }
