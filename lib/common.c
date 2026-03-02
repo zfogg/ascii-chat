@@ -277,12 +277,6 @@ void asciichat_shared_destroy(void) {
   print_mimalloc_stats();
 #endif
 
-#ifndef NDEBUG
-  // 14a. Named registry - cleanup BEFORE memory report so thread info appears in report
-  // Must come BEFORE PCRE2 cleanup since named_destroy() uses path normalization which needs PCRE2
-  named_destroy();
-#endif
-
 #if defined(DEBUG_MEMORY) && !defined(NDEBUG)
   debug_memory_report();
 #endif
@@ -301,28 +295,34 @@ void asciichat_shared_destroy(void) {
   // 18. Clean up errno context (allocated strings, backtrace symbols)
   asciichat_errno_destroy();
 
-  // 19. PCRE2 - cleanup all regex singletons (after named_destroy)
+#ifndef NDEBUG
+  // 19. Named registry - cleanup all registered thread names and debug entries
+  // Must come BEFORE PCRE2 cleanup since named_destroy() uses path normalization which needs PCRE2
+  named_destroy();
+#endif
+
+  // 20. PCRE2 - cleanup all regex singletons together (after named_destroy)
   asciichat_pcre2_cleanup_all();
 
-  // 20. timer resolution restore
+  // 21. timer resolution restore
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
-  // 21. Clean up SIMD caches
+  // 22. Clean up SIMD caches
   simd_caches_destroy_all();
 
-  // 22. Clean up symbol cache
+  // 23. Clean up symbol cache
   // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
   // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
   // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
   symbol_cache_destroy();
 
-  // 23. Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
+  // 24. Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
   // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
   // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
   buffer_pool_cleanup_global();
 
 #ifndef NDEBUG
-  // 24. Symbol cache cleanup
+  // 25. Symbol cache cleanup
   symbol_cache_destroy();
 #endif
 }
