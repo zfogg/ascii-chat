@@ -156,11 +156,15 @@ void named_destroy(void) {
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
                            const char *file, int line, const char *func) {
+  log_debug("[named_register] ENTRY: base_name=%s type=%s key=0x%tx", base_name ? base_name : "?", type ? type : "?", (ptrdiff_t)key);
+
   if (!base_name || !type || !format_spec) {
+    log_debug("[named_register] EXIT: null parameter");
     return "?";
   }
 
   if (!lifecycle_is_initialized(&g_named_registry.lifecycle)) {
+    log_debug("[named_register] EXIT: lifecycle not initialized");
     return base_name;
   }
 
@@ -169,6 +173,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
   // mutexes while other threads hold the lock. Skipping registration here is safe because
   // the registry is primarily used for debugging and --sync-state output.
   // The debug info is not critical for TCP operation, only for diagnostics.
+  log_debug("[named_register] EARLY RETURN: base_name=%s type=%s (returning to prevent deadlock)", base_name, type);
   return base_name;
 
   // Get or create per-name counter

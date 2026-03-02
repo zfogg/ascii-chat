@@ -359,7 +359,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
       char elapsed_str[64];
       time_pretty(elapsed, -1, elapsed_str, sizeof(elapsed_str));
 
-      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] %s @ %p (%s) %s", j, entry->mutex_name,
+      *offset += snprintf(buffer + *offset, buffer_size - *offset, "    [%d] mutex @ %p (%s) %s", j,
                           (void *)entry->mutex_key, state_str, elapsed_str);
     }
   }
@@ -374,9 +374,13 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
 void debug_sync_print_state(void) {
 // Use a single large buffer for all sync state output
 #define SYNC_BUFFER_SIZE 8192
+  log_debug("[debug_sync_print_state] ENTRY");
+
   char *buffer = SAFE_MALLOC(SYNC_BUFFER_SIZE, char *);
-  if (!buffer)
+  if (!buffer) {
+    log_debug("[debug_sync_print_state] Failed to allocate buffer");
     return;
+  }
 
   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
 
@@ -384,21 +388,29 @@ void debug_sync_print_state(void) {
   buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "Synchronization Primitive State:\n");
 
   // Iterate through all registered syncs
+  log_debug("[debug_sync_print_state] Iterating mutexes");
   named_registry_for_each(mutex_iter_callback, &buf);
+  log_debug("[debug_sync_print_state] Iterating rwlocks");
   named_registry_for_each(rwlock_iter_callback, &buf);
+  log_debug("[debug_sync_print_state] Iterating conds");
   named_registry_for_each(cond_iter_callback, &buf);
 
   // Iterate through atomic operations
   buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\nAtomic Operations State:\n");
+  log_debug("[debug_sync_print_state] Iterating atomics");
   named_registry_for_each(atomic_t_iter_callback, &buf);
   named_registry_for_each(atomic_ptr_iter_callback, &buf);
 
   // Print lock stacks for deadlock analysis
+  log_debug("[debug_sync_print_state] Getting lock stacks");
   debug_sync_print_lock_stacks(buf.buffer, buf.buffer_size, &buf.offset);
 
   // Log everything in one call
+  log_debug("[debug_sync_print_state] Buffer size: %zu bytes", buf.offset);
   if (buf.offset > 0) {
-    log_info("%s", buf.buffer);
+    log_info("SYNC_STATE:\n%s", buf.buffer);
+  } else {
+    log_info("SYNC_STATE: (empty)");
   }
 
   SAFE_FREE(buffer);
