@@ -607,22 +607,14 @@ void log_destroy(void) {
   // Cleanup grep filter
   grep_destroy();
 
-  // Cleanup custom format structures: nullify pointers BEFORE freeing
-  // This prevents threads from dereferencing freed memory if they load the
-  // pointers between our check and the actual free operation
-  log_template_t *format_to_free = g_log.format;
-  log_template_t *console_format_to_free = g_log.format_console_only;
+  // Cleanup custom format structures: Don't free format templates to avoid TOCTOU races
+  // Threads may have already loaded the format pointer before this cleanup runs.
+  // Since this is only called at program exit, the OS will reclaim all memory anyway.
+  // Instead of freeing (which creates a use-after-free risk), we just mark as not custom.
   g_log.format = NULL;
   g_log.format_console_only = NULL;
   atomic_store_bool(&g_log.has_custom_format, false);
-
-  // Now safe to free since threads won't see these pointers anymore
-  if (format_to_free) {
-    log_template_free(format_to_free);
-  }
-  if (console_format_to_free) {
-    log_template_free(console_format_to_free);
-  }
+  // Note: format memory intentionally not freed to prevent heap-use-after-free races
 
   // Lock-free cleanup using atomic operations
   int old_file = atomic_load_int(&g_log.file);
@@ -808,10 +800,10 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
   }
 
   /* Use log_template_apply() to generate the complete formatted output
-   * Safety: reload format before use in case another thread freed it during shutdown */
+   * Safety: reload format immediately before use. Format is never freed to avoid TOCTOU races. */
   const log_template_t *format_check = g_log.format;
   if (!format_check) {
-    /* Format was freed during shutdown - return minimal output */
+    /* Format not available - return minimal output */
     return -1;
   }
 
@@ -859,18 +851,19 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
    * thread frees the format between our check and use. */
   const log_template_t *format = g_log.format;
   int plain_len = 0;
-  if (format) {
+  if (format) {  /* Format is not freed during shutdown to avoid heap-use-after-free races */
     plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
                                    func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
   }
 
-  /* For colored output, apply format with colors enabled
-   * Re-check format in case it was freed by another thread during shutdown */
+  /* For colored output, apply format with colors enabled */
   int colored_len = 0;
-  const log_template_t *format_check = g_log.format;
-  if (use_colors && plain_len > 0 && format_check) {
-    colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
-                                     line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
+  if (use_colors && plain_len > 0) {
+    const log_template_t *format_check = g_log.format;
+    if (format_check) {
+      colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
+                                       line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
+    }
     /* If applying with colors failed, fall back to plain text */
     if (colored_len <= 0) {
       // Applying with colors failed - use plain text (no colors)
