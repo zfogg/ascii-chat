@@ -1277,6 +1277,9 @@ if(FFMPEG_FOUND)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${FFMPEG_LIBRARIES})
 endif()
 
+# Link yyjson for structured logging (required)
+target_link_libraries(ascii-chat-static-lib-deps INTERFACE ${YYJSON_LIBRARIES})
+
 # Platform-specific system libraries
 if(WIN32)
     target_link_libraries(ascii-chat-static-lib-deps INTERFACE
