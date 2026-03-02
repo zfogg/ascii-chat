@@ -6,6 +6,7 @@
 #include <ascii-chat/media/ffmpeg_decoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/video/rgba/image.h>
@@ -447,47 +448,51 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
-  // Suppress FFmpeg's probing output by redirecting both stdout and stderr to /dev/null
-  // FFmpeg may write directly to either stream, so we suppress both
-  platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
+  // Capture FFmpeg's probing output (FFmpeg may write directly to either stream)
+  int ret = 0;
+  LOG_IO("ffmpeg", {
+    // Configure FFmpeg options for HTTP streaming performance
+    AVDictionary *options = NULL;
 
-  // Configure FFmpeg options for HTTP streaming performance
-  AVDictionary *options = NULL;
+    // For HTTP/HTTPS streams: enable fast probing and reconnection (validated via production-grade URL regex)
+    if (path && url_is_valid(path)) {
+      // Limit probing to 32KB for faster format detection
+      av_dict_set(&options, "probesize", "32768", 0);
+      // Analyze for 100ms max to determine streams quickly
+      av_dict_set(&options, "analyzeduration", "100000", 0);
+      // Enable auto-reconnection for interrupted connections
+      av_dict_set(&options, "reconnect", "1", 0);
+      // Allow reconnection for streamed protocols
+      av_dict_set(&options, "reconnect_streamed", "1", 0);
+      // Set reasonable I/O timeout (10 seconds)
+      av_dict_set(&options, "rw_timeout", "10000000", 0);
+      // Enable HTTP persistent connection (keep-alive) for better performance
+      av_dict_set(&options, "http_persistent", "1", 0);
+      // Reduce connect timeout to fail faster if server is unreachable
+      av_dict_set(&options, "connect_timeout", "5000000", 0);
+    }
 
-  // For HTTP/HTTPS streams: enable fast probing and reconnection (validated via production-grade URL regex)
-  if (path && url_is_valid(path)) {
-    // Limit probing to 32KB for faster format detection
-    av_dict_set(&options, "probesize", "32768", 0);
-    // Analyze for 100ms max to determine streams quickly
-    av_dict_set(&options, "analyzeduration", "100000", 0);
-    // Enable auto-reconnection for interrupted connections
-    av_dict_set(&options, "reconnect", "1", 0);
-    // Allow reconnection for streamed protocols
-    av_dict_set(&options, "reconnect_streamed", "1", 0);
-    // Set reasonable I/O timeout (10 seconds)
-    av_dict_set(&options, "rw_timeout", "10000000", 0);
-    // Enable HTTP persistent connection (keep-alive) for better performance
-    av_dict_set(&options, "http_persistent", "1", 0);
-    // Reduce connect timeout to fail faster if server is unreachable
-    av_dict_set(&options, "connect_timeout", "5000000", 0);
-  }
+    // Open input file
+    ret = avformat_open_input(&decoder->format_ctx, path, NULL, &options);
+    av_dict_free(&options); // Free options dictionary
 
-  // Open input file
-  int ret = avformat_open_input(&decoder->format_ctx, path, NULL, &options);
-  av_dict_free(&options); // Free options dictionary
+    if (ret >= 0) {
+      // Find stream info
+      if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
+        ret = -1;
+      }
+    }
+  });
 
   if (ret < 0) {
-    platform_stdout_stderr_restore(stdio_handle);
-    SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open media file: %s", path);
-    SAFE_FREE(decoder);
-    return NULL;
-  }
-
-  // Find stream info
-  if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
-    platform_stdout_stderr_restore(stdio_handle);
-    SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info");
-    avformat_close_input(&decoder->format_ctx);
+    if (ret == -1) {
+      SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info");
+    } else {
+      SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open media file: %s", path);
+    }
+    if (decoder->format_ctx) {
+      avformat_close_input(&decoder->format_ctx);
+    }
     SAFE_FREE(decoder);
     return NULL;
   }
@@ -498,9 +503,6 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
     decoder->format_ctx->interrupt_callback.callback = ffmpeg_interrupt_callback;
     decoder->format_ctx->interrupt_callback.opaque = decoder;
   }
-
-  // Restore stdout and stderr after FFmpeg initialization
-  platform_stdout_stderr_restore(stdio_handle);
 
   // Open video codec
   asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,
@@ -695,29 +697,33 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   decoder->format_ctx->pb = decoder->avio_ctx;
 
-  // Suppress FFmpeg's probing output by redirecting both stdout and stderr to /dev/null
-  platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
+  // Capture FFmpeg's probing output
+  int ret = 0;
+  LOG_IO("ffmpeg", {
+    // Open input from stdin
+    ret = avformat_open_input(&decoder->format_ctx, NULL, NULL, NULL);
+    if (ret >= 0) {
+      // Find stream info
+      if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
+        ret = -1;
+      }
+    }
+  });
 
-  // Open input from stdin
-  if (avformat_open_input(&decoder->format_ctx, NULL, NULL, NULL) < 0) {
-    platform_stdout_stderr_restore(stdio_handle);
-    SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open stdin");
+  if (ret < 0) {
+    if (ret == -1) {
+      SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info from stdin");
+    } else {
+      SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open stdin");
+    }
     av_freep(&decoder->avio_ctx->buffer);
     avio_context_free(&decoder->avio_ctx);
-    avformat_free_context(decoder->format_ctx);
+    if (decoder->format_ctx) {
+      avformat_free_context(decoder->format_ctx);
+    }
     SAFE_FREE(decoder);
     return NULL;
   }
-
-  // Find stream info
-  if (avformat_find_stream_info(decoder->format_ctx, NULL) < 0) {
-    platform_stdout_stderr_restore(stdio_handle);
-    SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info from stdin");
-    ffmpeg_decoder_destroy(decoder);
-    return NULL;
-  }
-
-  platform_stdout_stderr_restore(stdio_handle);
 
   // Open codecs (same as file-based decoder)
   asciichat_error_t err = open_codec_context(decoder->format_ctx, AVMEDIA_TYPE_VIDEO, &decoder->video_stream_idx,

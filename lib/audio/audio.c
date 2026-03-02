@@ -9,6 +9,7 @@
 #include <ascii-chat/audio/client_pipeline.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/util/endian.h>
 #include <ascii-chat/util/time.h>       // For START_TIMER/STOP_TIMER macros
 #include <ascii-chat/util/lifecycle.h>  // For lifecycle_t
@@ -65,14 +66,10 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   // First initialization - call Pa_Initialize() exactly once
   // Suppress PortAudio backend probe errors (ALSA/JACK/OSS warnings)
   // These are harmless - PortAudio tries multiple backends until one works
-  fflush(stderr);
-  fflush(stdout);
-  platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
-
-  PaError err = Pa_Initialize();
-
-  // Restore stdout and stderr before checking errors
-  platform_stdout_stderr_restore(stdio_handle);
+  PaError err;
+  LOG_IO("portaudio", {
+    err = Pa_Initialize();
+  });
 
   if (err != paNoError) {
     return SET_ERRNO(ERROR_AUDIO, "Failed to initialize PortAudio: %s", Pa_GetErrorText(err));
