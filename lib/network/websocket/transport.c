@@ -38,6 +38,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/platform/system.h>
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <libwebsockets.h>
@@ -1479,7 +1480,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   };
   info.retry_and_idle_policy = &client_keep_alive_policy;
 
+  // Suppress libwebsockets stderr output during context creation
+  platform_stderr_redirect_handle_t lws_stderr = platform_stdout_stderr_redirect_to_null();
   ws_data->context = lws_create_context(&info);
+  platform_stdout_stderr_restore(lws_stderr);
+
   if (!ws_data->context) {
     SAFE_FREE(ws_data->send_buffer);
     cond_destroy(&ws_data->state_cond);
@@ -1509,7 +1514,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.userdata = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");
+  // Suppress libwebsockets stderr output during connection
+  lws_stderr = platform_stdout_stderr_redirect_to_null();
   ws_data->wsi = lws_client_connect_via_info(&connect_info);
+  platform_stdout_stderr_restore(lws_stderr);
   log_debug("lws_client_connect_via_info returned: %p", (void *)ws_data->wsi);
   if (!ws_data->wsi) {
     lws_context_destroy(ws_data->context);

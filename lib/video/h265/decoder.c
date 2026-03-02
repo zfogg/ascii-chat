@@ -6,6 +6,7 @@
 #include <ascii-chat/video/h265/decoder.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/debug/named.h>
+#include <ascii-chat/platform/system.h>
 
 #include <libavcodec/avcodec.h>
 #include <libavutil/frame.h>
@@ -48,8 +49,12 @@ h265_decoder_t *h265_decoder_create(void) {
         return NULL;
     }
 
-    // Open decoder
-    if (avcodec_open2(dec->codec_ctx, codec, NULL) < 0) {
+    // Open decoder (suppress x265 library stderr output during initialization)
+    platform_stderr_redirect_handle_t h265_stderr = platform_stdout_stderr_redirect_to_null();
+    int codec_open_result = avcodec_open2(dec->codec_ctx, codec, NULL);
+    platform_stdout_stderr_restore(h265_stderr);
+
+    if (codec_open_result < 0) {
         SET_ERRNO(ERROR_MEDIA_INIT, "Failed to open HEVC decoder");
         avcodec_free_context(&dec->codec_ctx);
         SAFE_FREE(dec);
