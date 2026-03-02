@@ -372,6 +372,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Just continue to next iteration, don't exit
         continue;
       }
+
+      // Event-driven mode: increment frame count (synchronous mode increments at line 347)
+      frame_count++;
     }
 
     // Check for terminal resize (if auto_width or auto_height is enabled)
@@ -508,24 +511,29 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered");
       }
 
-      // Snapshot mode: check if delay has elapsed after rendering a frame
+      // Snapshot mode: check if enough frames have been rendered
       if (snapshot_mode && !snapshot_done && first_frame_rendered) {
-        uint64_t current_time_ns = time_get_ns();
-        double elapsed_sec = time_ns_to_s(time_elapsed_ns(snapshot_start_time_ns, current_time_ns));
         double snapshot_delay = GET_OPTION(snapshot_delay);
+        int fps = GET_OPTION(fps);
 
-        log_debug_every(US_PER_SEC_INT, "SNAPSHOT_DELAY_CHECK: elapsed=%.2f delay=%.2f", elapsed_sec, snapshot_delay);
-
+        // snapshot_delay controls the number of seconds to render
+        // target_frames = snapshot_delay * fps (e.g., 1 second * 60 fps = 60 frames)
         // snapshot_delay=0 means exit immediately after rendering first frame
-        // snapshot_delay>0 means wait that many seconds after render loop start
-        if (elapsed_sec >= snapshot_delay) {
+        // snapshot_delay>0 means render that many seconds worth of frames
+        uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * fps + 0.5);
+
+        log_debug_every(US_PER_SEC_INT, "SNAPSHOT_FRAME_CHECK: frame_count=%lu target_frames=%lu (delay=%.2f fps=%d)",
+                        frame_count, target_frames, snapshot_delay, fps);
+
+        if (frame_count >= target_frames) {
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
           if (snapshot_mode && terminal_is_interactive()) {
             printf("\n");
           }
-          log_info_every(1 * NS_PER_SEC_INT, "Snapshot delay %.2f seconds elapsed, exiting", snapshot_delay);
+          log_info_every(1 * NS_PER_SEC_INT, "Snapshot frame count %.0f seconds (%" PRIu64 " frames) reached, exiting",
+                         snapshot_delay, target_frames);
           snapshot_done = true;
         }
       }
