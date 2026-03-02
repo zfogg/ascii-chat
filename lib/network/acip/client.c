@@ -239,8 +239,9 @@ asciichat_error_t acip_send_image_frame_h265(acip_transport_t *transport, h265_e
   }
 
   // Allocate output buffer for H.265 encoding
-  // Maximum output: 5 bytes header + encoded data
-  size_t output_buffer_size = 5 + (width * height); // Conservative estimate
+  // H.265 can produce output larger than input due to codec overhead
+  // Use 2x multiplier to account for worst-case frame content
+  size_t output_buffer_size = 5 + (width * height * 2);
   uint8_t *output_buffer = buffer_pool_alloc(NULL, output_buffer_size);
   if (!output_buffer) {
     log_debug("★ ACIP_SEND_IMAGE_FRAME_H265: Failed to allocate output buffer");
