@@ -916,9 +916,6 @@ void server_connection_set_port(int port) {
  * @ingroup client_connection
  */
 int server_connection_get_port(void) {
-  if (g_server_port <= 0) {
-    return 0;
-  }
   return g_server_port;
 }
 

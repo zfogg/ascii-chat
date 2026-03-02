@@ -20,23 +20,14 @@
  */
 
 int platform_vsnprintf(char *str, size_t size, const char *format, va_list ap) {
-  if (!str || !format || size == 0) {
-    return -1;
-  }
   return vsnprintf(str, size, format, ap);
 }
 
 int platform_vasprintf(char **strp, const char *format, va_list ap) {
-  if (!strp || !format) {
-    return -1;
-  }
   return vasprintf(strp, format, ap);
 }
 
 int platform_asprintf(char **strp, const char *format, ...) {
-  if (!strp || !format) {
-    return -1;
-  }
   va_list args;
   va_start(args, format);
   int ret = vasprintf(strp, format, args);
