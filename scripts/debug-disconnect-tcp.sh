@@ -7,10 +7,14 @@ client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
 
+SNAPSHOT_DELAY=3.5
+
 echo "Starting on port: $PORT"
 
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
-cmake --build build >/dev/null 2>&1
+
+cmake --build build
+
 ./build/bin/ascii-chat \
   --log-file "$server_log" --log-level debug \
   server --port "$PORT" \
@@ -25,9 +29,9 @@ ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 3.25 ./build/bin/ascii-chat 
   client \
   localhost:"$PORT" \
   --test-pattern \
-  -S -D 1 \
+  -S -D "$SNAPSHOT_DELAY" \
   2>/dev/null | tee "$client_stdout" \
-  || EXIT_CODE=$? &
+  || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -43,7 +47,8 @@ echo ""
 
 # Count actual frames written by looking for frame completion markers
 # These are the actual printf() calls that write frames to stdout
-FRAME_COUNT=$(grep -c "ACTUAL_FRAME_WRITTEN\|frame.*written\|grid.*rendered" client.log 2>/dev/null || echo "0")
+FRAME_COUNT=$(grep -i 'unique frames rendered' "$client_log" | tail -1 | cut -d' ' -f10)
+echo ""
 echo "🎬 FRAME COUNT: $FRAME_COUNT frames"
 
 # Calculate actual FPS
@@ -55,15 +60,14 @@ else
     echo "📊 ACTUAL FPS: 0 (insufficient time)"
 fi
 
-echo ""
 
 # Show expected vs actual
 EXPECTED_60=$(echo "scale=0; 60 * $ELAPSED_SEC" | bc | cut -d. -f1)
 EXPECTED_30=$(echo "scale=0; 30 * $ELAPSED_SEC" | bc | cut -d. -f1)
+echo ""
 echo "Expected at 60 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_60 frames"
 echo "Expected at 30 FPS for ${ELAPSED_SEC}s: ~$EXPECTED_30 frames"
 echo "Actual frames rendered: $FRAME_COUNT"
-echo ""
 
 # Check for memory errors
 if grep -q "AddressSanitizer" "$client_log" 2>/dev/null; then
@@ -73,10 +77,17 @@ else
     echo "✓ No memory errors detected"
 fi
 
+# Show expected vs actual
+EXPECTED_60=$(echo "scale=0; 60 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+EXPECTED_30=$(echo "scale=0; 30 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+echo ""
+echo "Expected at 60 FPS for ${SNAPSHOT_DELAY}s: ~$EXPECTED_60 frames"
+echo "Expected at 30 FPS for ${SNAPSHOT_DELAY}s: ~$EXPECTED_30 frames"
+echo "Actual frames rendered: $FRAME_COUNT (with SNAPSHOT_DELAY=${SNAPSHOT_DELAY}s of rendering time)"
+
+echo ""
 echo "Client log: $client_log"
 echo "Client stdout: $client_stdout"
 echo "Server log: $server_log"
 
-echo ""
-sleep 4
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
