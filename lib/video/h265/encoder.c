@@ -185,17 +185,48 @@ static asciichat_error_t h265_encoder_reconfigure(h265_encoder_t *encoder, uint1
   return ASCIICHAT_OK;
 }
 
-static void h265_encoder_ascii_to_yuv420(const uint8_t *ascii_data, uint16_t width, uint16_t height, uint8_t *yuv_buf) {
+static void h265_encoder_ascii_to_yuv420(const uint8_t *rgb_data, uint16_t width, uint16_t height, uint8_t *yuv_buf) {
   uint8_t *y_plane = yuv_buf;
   uint8_t *u_plane = y_plane + width * height;
   uint8_t *v_plane = u_plane + (width / 2) * (height / 2);
 
-  // Copy ASCII data to Y plane (use grayscale values as-is)
-  memcpy(y_plane, ascii_data, width * height);
+  // Convert RGB24 to YUV420p
+  // Y = 0.299*R + 0.587*G + 0.114*B (standard luma formula)
+  // U = -0.14713*R - 0.28886*G + 0.436*B (offset by 128)
+  // V = 0.615*R - 0.51499*G - 0.10001*B (offset by 128)
 
-  // Set U/V planes to neutral gray (128)
-  memset(u_plane, 128, (width / 2) * (height / 2));
-  memset(v_plane, 128, (width / 2) * (height / 2));
+  // Process Y plane (each pixel)
+  for (uint32_t i = 0; i < (uint32_t)width * (uint32_t)height; i++) {
+    uint8_t r = rgb_data[i * 3];
+    uint8_t g = rgb_data[i * 3 + 1];
+    uint8_t b = rgb_data[i * 3 + 2];
+
+    // Calculate Y (luma)
+    y_plane[i] = (uint8_t)(((66 * r + 129 * g + 25 * b + 128) >> 8) + 16);
+  }
+
+  // Process U and V planes (subsampled 2x2)
+  for (uint32_t y = 0; y < (uint32_t)height; y += 2) {
+    for (uint32_t x = 0; x < (uint32_t)width; x += 2) {
+      // Average 2x2 RGB block for chroma
+      uint32_t idx00 = ((y) * width + x) * 3;
+      uint32_t idx10 = ((y) * width + x + 1) * 3;
+      uint32_t idx01 = ((y + 1) * width + x) * 3;
+      uint32_t idx11 = ((y + 1) * width + x + 1) * 3;
+
+      uint16_t r_avg = (rgb_data[idx00] + rgb_data[idx10] + rgb_data[idx01] + rgb_data[idx11]) / 4;
+      uint16_t g_avg = (rgb_data[idx00 + 1] + rgb_data[idx10 + 1] + rgb_data[idx01 + 1] + rgb_data[idx11 + 1]) / 4;
+      uint16_t b_avg = (rgb_data[idx00 + 2] + rgb_data[idx10 + 2] + rgb_data[idx01 + 2] + rgb_data[idx11 + 2]) / 4;
+
+      // Calculate U (Cb)
+      int16_t u = (int16_t)((((-38 * r_avg - 74 * g_avg + 112 * b_avg + 128) >> 8) + 128));
+      u_plane[(y / 2) * (width / 2) + (x / 2)] = (uint8_t)(u < 0 ? 0 : (u > 255 ? 255 : u));
+
+      // Calculate V (Cr)
+      int16_t v = (int16_t)((((112 * r_avg - 94 * g_avg - 18 * b_avg + 128) >> 8) + 128));
+      v_plane[(y / 2) * (width / 2) + (x / 2)] = (uint8_t)(v < 0 ? 0 : (v > 255 ? 255 : v));
+    }
+  }
 }
 
 asciichat_error_t h265_encode(h265_encoder_t *encoder, uint16_t width, uint16_t height, const uint8_t *ascii_data,

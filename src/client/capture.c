@@ -275,6 +275,16 @@ static void *webcam_capture_thread_func(void *arg) {
     const char *video_codec = GET_OPTION(video_codec);
     bool use_hevc = video_codec && strcmp(video_codec, "raw") != 0;  // Default to HEVC unless explicitly "raw"
 
+    // Request keyframe periodically to force encoder flush (every 30 frames)
+    // This ensures we get some encoded output even when the encoder is buffering inter-frames
+    static uint32_t keyframe_interval = 30;
+    static uint32_t frames_since_keyframe = 0;
+    if (use_hevc && (frames_since_keyframe++ >= keyframe_interval)) {
+      h265_encoder_request_keyframe(g_h265_encoder);
+      frames_since_keyframe = 0;
+      log_debug("Requesting H.265 keyframe for encoder flush");
+    }
+
     asciichat_error_t send_result;
     if (use_hevc) {
       log_debug_every(LOG_RATE_SLOW, "Capture thread: sending IMAGE_FRAME_H265 %ux%u", processed_image->w,

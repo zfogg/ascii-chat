@@ -3084,11 +3084,10 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     return;
   }
 
-  pkt->data = (uint8_t *)h265_data;
-  pkt->size = (int)data_len;
-
-  if (avcodec_send_packet(dec_ctx, pkt) < 0 || avcodec_receive_frame(dec_ctx, frame) < 0) {
-    log_error("H.265 decode failed");
+  // Copy H.265 data into packet (network buffer will be reused after callback returns)
+  uint8_t *pkt_data = SAFE_MALLOC(data_len, uint8_t *);
+  if (!pkt_data) {
+    log_error("Failed to allocate packet data buffer");
     av_packet_free(&pkt);
     av_frame_free(&frame);
     av_frame_free(&rgb_frame);
@@ -3097,7 +3096,47 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
     char cb_duration_str[32];
     time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
                 sizeof(cb_duration_str));
-    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (decode error)", cb_duration_str);
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (packet alloc failed)", cb_duration_str);
+    return;
+  }
+
+  memcpy(pkt_data, h265_data, data_len);
+  pkt->data = pkt_data;
+  pkt->size = (int)data_len;
+
+  int send_ret = avcodec_send_packet(dec_ctx, pkt);
+  if (send_ret < 0) {
+    char err_buf[128];
+    av_strerror(send_ret, err_buf, sizeof(err_buf));
+    log_error("H.265 avcodec_send_packet failed: %s (ret=%d)", err_buf, send_ret);
+    SAFE_FREE(pkt_data);
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (send_packet error)", cb_duration_str);
+    return;
+  }
+
+  int recv_ret = avcodec_receive_frame(dec_ctx, frame);
+  if (recv_ret < 0) {
+    char err_buf[128];
+    av_strerror(recv_ret, err_buf, sizeof(err_buf));
+    log_error("H.265 avcodec_receive_frame failed: %s (ret=%d)", err_buf, recv_ret);
+    SAFE_FREE(pkt_data);
+    av_packet_free(&pkt);
+    av_frame_free(&frame);
+    av_frame_free(&rgb_frame);
+    avcodec_free_context(&dec_ctx);
+    uint64_t callback_end_ns = time_get_ns();
+    char cb_duration_str[32];
+    time_pretty((uint64_t)((double)(callback_end_ns - callback_start_ns)), -1, cb_duration_str,
+                sizeof(cb_duration_str));
+    log_info("[WS_TIMING] on_image_frame_h265 callback took %s (receive_frame error)", cb_duration_str);
     return;
   }
 
@@ -3187,6 +3226,7 @@ static void acip_server_on_image_frame_h265(uint32_t width, uint32_t height, uin
   }
 
   SAFE_FREE(rgb_buffer);
+  SAFE_FREE(pkt_data);
   sws_freeContext(sws_ctx);
   av_packet_free(&pkt);
   av_frame_free(&frame);
