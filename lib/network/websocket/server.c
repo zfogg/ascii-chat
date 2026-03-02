@@ -850,9 +850,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
 
   // Disable ALL default timeouts and keep-alive mechanisms
   // Use only the explicit retry_and_idle_policy we set above (30/35 seconds)
-  info.ka_time = 0;      // Disable TCP keep-alive probes (use WebSocket pings instead)
-  info.ka_probes = 0;    // Disable TCP probes
-  info.ka_interval = 0;  // Disable TCP probe intervals
+  info.ka_time = 0;           // Disable TCP keep-alive probes (use WebSocket pings instead)
+  info.ka_probes = 0;         // Disable TCP probes
+  info.ka_interval = 0;       // Disable TCP probe intervals
   info.keepalive_timeout = 0; // Disable HTTP keep-alive timeout entirely
 
   // Explicitly set a very large idle timeout to prevent early disconnection
@@ -915,14 +915,15 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
     service_call_count++;
     log_debug_every(500 * US_PER_MS_INT, "[LWS_SERVICE] Call #%d, context=%s", service_call_count,
                     NAMED_DESCRIBE(server->context, "websocket_server"));
-    int result = lws_service(server->context, 16);
+    int result = lws_service(server->context, 1);
     if (result < 0) {
       log_error("libwebsockets service error: %d", result);
       break;
     }
   }
 
-  log_info("WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)");
+  log_info(
+      "WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)");
   return ASCIICHAT_OK;
 }
 
