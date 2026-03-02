@@ -847,6 +847,7 @@ static bool parse_binary_bool_arg(const char *arg, bool *field, const char *long
 // ============================================================================
 
 asciichat_error_t options_init(int argc, char **argv) {
+  log_debug("options_init: starting with argc=%d, argv[0]=%s, argv[1]=%s", argc, argv[0], argc > 1 ? argv[1] : "N/A");
   // NOTE: --grep filter is initialized in main.c BEFORE any logging starts
   // This allows ALL logs (including from shared_init) to be filtered
   // Validate arguments (safety check for tests)
@@ -1580,8 +1581,10 @@ asciichat_error_t options_init(int argc, char **argv) {
   // Note: json is already saved via extract_binary_level/restore_binary_level mechanism
   // Parse mode-specific arguments
   option_mode_bitmask_t mode_bitmask = (1 << mode_saved_for_parsing);
+  log_debug("About to parse options_config with mode_bitmask=%u, mode_argc=%d", mode_bitmask, mode_argc);
   asciichat_error_t result =
       options_config_parse(config, mode_argc, mode_argv, &opts, mode_bitmask, &remaining_argc, &remaining_argv);
+  log_debug("options_config_parse returned: %d", result);
   // Restore flip_x and flip_y - they should keep their values unless explicitly overridden
   opts.flip_x = saved_flip_x_for_parse;
   opts.flip_y = saved_flip_y_for_parse;
@@ -1591,7 +1594,12 @@ asciichat_error_t options_init(int argc, char **argv) {
     SAFE_FREE(allocated_mode_argv);
     // Convert ERROR_CONFIG to ERROR_USAGE for command-line parsing errors
     if (result == ERROR_CONFIG) {
-      return ERROR_USAGE;
+      asciichat_error_context_t err_ctx;
+      const char *error_detail = "invalid options";
+      if (HAS_ERRNO(&err_ctx)) {
+        error_detail = err_ctx.context_message;
+      }
+      return SET_ERRNO(ERROR_USAGE, "Failed to parse options: %s", error_detail);
     }
     return result;
   }

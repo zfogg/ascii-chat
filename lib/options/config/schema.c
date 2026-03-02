@@ -267,11 +267,21 @@ asciichat_error_t config_schema_build_from_configs(const options_config_t **conf
   for (size_t cfg_idx = 0; cfg_idx < num_configs; cfg_idx++) {
     const options_config_t *config = configs[cfg_idx];
     if (!config) {
+      log_debug("Config %zu is NULL, skipping", cfg_idx);
+      continue;
+    }
+
+    if (!config->descriptors || config->num_descriptors == 0) {
+      log_debug("Config %zu has no descriptors", cfg_idx);
       continue;
     }
 
     for (size_t i = 0; i < config->num_descriptors && descriptor_count < 256; i++) {
       const option_descriptor_t *desc = &config->descriptors[i];
+      if (!desc) {
+        log_warn("Descriptor at index %zu in config %zu is NULL", i, cfg_idx);
+        continue;
+      }
       if (should_add_descriptor(desc, all_descriptors, descriptor_count)) {
         all_descriptors[descriptor_count++] = desc;
       }

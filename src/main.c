@@ -704,7 +704,7 @@ int main(int argc, char *argv[]) {
     if (HAS_ERRNO(&error_ctx)) {
       fprintf(stderr, "Error: %s\n", error_ctx.context_message);
     } else {
-      fprintf(stderr, "Error: Failed to initialize options\n");
+      fprintf(stderr, "Error: Failed to initialize options (error code: %d)\n", options_result);
     }
     (void)fflush(stderr);
 
