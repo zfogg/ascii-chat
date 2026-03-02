@@ -3,14 +3,17 @@
 set -euo pipefail
 
 PORT=$(((RANDOM + 2000) % 8000))
+PORT_WS=$(((RANDOM + 2000) % 8000))
 client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
 
+echo "Running on websocket port: $PORT"
+
 
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
 cmake --build build >/dev/null 2>&1
-./build/bin/ascii-chat server >/dev/null 2>&1 &
+./build/bin/ascii-chat server --port "$PORT" --websocket-port "$PORT_WS" >/dev/null 2>&1 &
 SERVER_PID=$!
 sleep 0.25
 
@@ -18,7 +21,7 @@ EXIT_CODE=0
 START_TIME=$(date +%s%N)
 timeout -k1 4 ./build/bin/ascii-chat \
   --log-level debug --log-file client.log --sync-state 3 \
-  client ws://localhost:27226 \
+  client ws://localhost:"$PORT_WS" \
   2>/dev/null | tee /tmp/client-stdout.log \
   || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
@@ -76,4 +79,6 @@ echo "Client stdout: $client_stdout"
 echo "Server log: $server_log"
 
 echo ""
+set -x
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
+set +x
