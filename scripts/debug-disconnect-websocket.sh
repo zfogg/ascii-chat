@@ -29,7 +29,7 @@ ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 ASCII_CHAT_QUESTION_PROMPT_RESPONSE
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
   --test-pattern -S -D 3 \
-  | tee "$client_stdout" || EXIT_CODE=$?
+  2>/dev/null | tee "$client_stdout" || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -75,7 +75,6 @@ else
     echo "✓ No memory errors detected"
 fi
 
-set -x
 echo ""
 echo "Running 'tail -20 $client_stdout'"
 tail -20 "$client_stdout"
@@ -86,6 +85,4 @@ echo "Client stdout: $client_stdout"
 echo "Server log: $server_log"
 
 echo ""
-set -x
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
-set +x
