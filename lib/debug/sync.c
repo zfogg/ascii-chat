@@ -196,8 +196,9 @@ static int format_cond_timing(const cond_t *cond, char *buffer, size_t size) {
 
   uint64_t waiting_count = atomic_load_u64(&cond->waiting_count);
   if (waiting_count > 0) {
-    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%" PRIu64 " threads, last=0x%lx]", waiting_count,
-             (unsigned long)cond->last_waiting_key);
+    char thread_name[256];
+    NAMED_GET_BY_PTR(cond->last_waiting_key, thread_name, sizeof(thread_name));
+    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%" PRIu64 " threads, last=%s]", waiting_count, thread_name);
   } else {
     snprintf(status_str, sizeof(status_str), "[IDLE]");
   }

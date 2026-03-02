@@ -174,7 +174,7 @@ static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_
   // Check if this is the main thread (saved during initialization)
   uint64_t main_tid = debug_sync_get_main_thread_id();
   if (main_tid != 0 && tid == main_tid) {
-    safe_snprintf(thread_name_buf, buf_size, "thread/main (0x%lx)", tid);
+    safe_snprintf(thread_name_buf, buf_size, "thread/main");
     return;
   }
 
@@ -182,10 +182,12 @@ static void capture_thread_name(uint64_t tid, char *thread_name_buf, size_t buf_
   const char *name = named_get((uintptr_t)tid);
   if (name) {
     // Found a registered name, format it with the type
-    safe_snprintf(thread_name_buf, buf_size, "thread/%s (0x%lx)", name, tid);
+    safe_snprintf(thread_name_buf, buf_size, "thread/%s", name);
   } else {
-    // Not registered - just show hex tid
-    safe_snprintf(thread_name_buf, buf_size, "0x%lx", tid);
+    // Not registered - format using NAMED_GET_BY_INT
+    char tid_buf[64];
+    NAMED_GET_BY_INT(tid, tid_buf, sizeof(tid_buf));
+    safe_snprintf(thread_name_buf, buf_size, "thread/%s", tid_buf);
   }
 }
 

@@ -1210,6 +1210,37 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
   } while (0)
 #endif
 
+/**
+ * @brief Get name of an integer ID or format as hex fallback
+ * @param id The integer ID to look up (e.g., thread ID, FD, packet type)
+ * @param buffer Output buffer for the result
+ * @param size Size of the output buffer
+ * @ingroup debug_named
+ *
+ * Tries to look up the registered name for an integer ID. If found, copies it to buffer.
+ * If not found, formats the ID as "0x%lx" (hexadecimal).
+ *
+ * Use this for thread IDs and other small integer identifiers.
+ * In release builds (NDEBUG), always formats as hex.
+ */
+#ifndef NDEBUG
+#define NAMED_GET_BY_INT(id, buffer, size)                                                                             \
+  do {                                                                                                                 \
+    const char *_name = named_get((uintptr_t)(id));                                                                   \
+    if (_name) {                                                                                                       \
+      strncpy((buffer), (_name), (size) - 1);                                                                         \
+      (buffer)[(size) - 1] = '\0';                                                                                    \
+    } else {                                                                                                           \
+      snprintf((buffer), (size), "0x%lx", (unsigned long)(id));                                                       \
+    }                                                                                                                  \
+  } while (0)
+#else
+#define NAMED_GET_BY_INT(id, buffer, size)                                                                             \
+  do {                                                                                                                 \
+    snprintf((buffer), (size), "0x%lx", (unsigned long)(id));                                                         \
+  } while (0)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
