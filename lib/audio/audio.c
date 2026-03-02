@@ -38,18 +38,16 @@
 // Uses lifecycle_t for thread-safe, lock-free initialization tracking
 static lifecycle_t g_pa_lc = LIFECYCLE_INIT;
 
-// Track how many times Pa_Initialize and Pa_Terminate are called (for debugging)
-static int g_pa_init_count = 0;
-static int g_pa_terminate_count = 0;
-
 /**
  * @brief Ensure PortAudio is initialized
  *
- * This is the single centralized function that initializes PortAudio.
+ * This is the single centralized function that initializes PortAudio exactly once.
  * All code paths (audio_init, device enumeration) call this to prevent
  * multiple independent Pa_Initialize() calls and duplicate ALSA/PulseAudio probing.
  *
  * Uses lifecycle_t for thread-safe, lock-free initialization tracking.
+ * PortAudio remains initialized for the lifetime of the process.
+ * Call audio_terminate_portaudio_final() from asciichat_shared_destroy() to clean up.
  *
  * @return ASCIICHAT_OK on success, error code on failure
  */
@@ -71,7 +69,6 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
   fflush(stdout);
   platform_stderr_redirect_handle_t stdio_handle = platform_stdout_stderr_redirect_to_null();
 
-  g_pa_init_count++;
   PaError err = Pa_Initialize();
 
   // Restore stdout and stderr before checking errors
@@ -85,18 +82,6 @@ static asciichat_error_t audio_ensure_portaudio_initialized(void) {
 }
 
 /**
- * @brief Release PortAudio (no-op with lifecycle_t)
- *
- * With the lifecycle_t pattern (no refcounting), this is a no-op.
- * PortAudio remains initialized for the lifetime of the process.
- * Use audio_terminate_portaudio_final() to actually terminate PortAudio.
- */
-static void audio_release_portaudio(void) {
-  // No-op with lifecycle_t (no refcounting)
-  log_debug_every(1000, "audio_release_portaudio() called (lifecycle managed)");
-}
-
-/**
  * @brief Terminate PortAudio and free all device resources
  *
  * This must be called to actually free device structures allocated by ALSA/libpulse.
@@ -107,7 +92,6 @@ void audio_terminate_portaudio_final(void) {
     log_debug("[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio");
 
     PaError err = Pa_Terminate();
-    g_pa_terminate_count++;
 
     log_debug("[PORTAUDIO_TERM] Pa_Terminate() returned: %s", Pa_GetErrorText(err));
   }
@@ -1220,7 +1204,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker mutex");
   }
@@ -1232,7 +1215,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_THREAD, "Failed to initialize worker condition variable");
   }
@@ -1247,7 +1229,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker capture batch buffer");
   }
@@ -1262,7 +1243,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker render batch buffer");
   }
@@ -1278,7 +1258,6 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
     audio_ring_buffer_destroy(ctx->raw_capture_rb);
     audio_ring_buffer_destroy(ctx->playback_buffer);
     audio_ring_buffer_destroy(ctx->capture_buffer);
-    audio_release_portaudio();
     mutex_destroy(&ctx->state_mutex);
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate worker playback batch buffer");
   }
@@ -1345,10 +1324,6 @@ void audio_destroy(audio_context_t *ctx) {
     log_debug("Audio system cleanup complete (all resources released)");
   } else {
   }
-
-  // MUST happen for both initialized and non-initialized contexts
-  // If audio_init() called Pa_Initialize() but failed partway, refcount must be decremented
-  audio_release_portaudio();
 }
 
 void audio_set_pipeline(audio_context_t *ctx, void *pipeline) {
@@ -1851,12 +1826,10 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
 
   int num_devices = Pa_GetDeviceCount();
   if (num_devices < 0) {
-    audio_release_portaudio();
     return SET_ERRNO(ERROR_AUDIO, "Failed to get device count: %s", Pa_GetErrorText(num_devices));
   }
 
   if (num_devices == 0) {
-    audio_release_portaudio();
     return ASCIICHAT_OK; // No devices found
   }
 
@@ -1877,14 +1850,12 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
   }
 
   if (device_count == 0) {
-    audio_release_portaudio();
     return ASCIICHAT_OK; // No matching devices
   }
 
   // Allocate device array
   audio_device_info_t *devices = SAFE_CALLOC(device_count, sizeof(audio_device_info_t), audio_device_info_t *);
   if (!devices) {
-    audio_release_portaudio();
     return SET_ERRNO(ERROR_MEMORY, "Failed to allocate audio device info array");
   }
 
@@ -1912,9 +1883,6 @@ static asciichat_error_t audio_list_devices_internal(audio_device_info_t **out_d
     devices[idx].is_default_output = (i == default_output);
     idx++;
   }
-
-  // Release PortAudio (centralized refcount management)
-  audio_release_portaudio();
 
   *out_devices = devices;
   *out_count = idx;

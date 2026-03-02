@@ -48,9 +48,6 @@ struct session_capture_ctx {
   /** @brief Underlying media source (webcam, file, stdin, test) */
   media_source_t *source;
 
-  /** @brief Whether we own the media source (true) or it was provided externally (false) */
-  bool source_owned;
-
   /** @brief Adaptive sleep state for frame rate limiting */
   adaptive_sleep_state_t sleep_state;
 
@@ -167,7 +164,6 @@ session_capture_ctx_t *session_network_capture_create(uint32_t target_fps) {
   // Audio and keyboard will be set up separately by callers
   ctx->audio_enabled = false;
   ctx->source = NULL;
-  ctx->source_owned = false;
 
   // Initialize adaptive sleep for consistency
   uint64_t baseline_sleep_ns = NS_PER_SEC_INT / ctx->target_fps;
@@ -247,16 +243,8 @@ session_capture_ctx_t *session_capture_create(const session_capture_config_t *co
   ctx->using_file_audio = false;
   ctx->file_has_audio = false;
 
-  // Use pre-created media source if provided, otherwise create a new one
-  // (Allows reusing media source from probing phase to avoid redundant yt-dlp calls)
-  if (config->media_source) {
-    ctx->source = config->media_source;
-    ctx->source_owned = false; // Caller owns this source
-    log_debug("Using pre-created media source (avoids redundant YouTube extraction)");
-  } else {
-    ctx->source = media_source_create(config->type, config->path);
-    ctx->source_owned = true; // We own this source and must destroy it
-  }
+  // Create media source from config type and path
+  ctx->source = media_source_create(config->type, config->path);
 
   if (!ctx->source) {
     // Preserve existing error if set, otherwise set generic error
@@ -368,8 +356,8 @@ void session_capture_destroy(session_capture_ctx_t *ctx) {
     return;
   }
 
-  // Destroy media source only if we own it (not if provided by caller)
-  if (ctx->source && ctx->source_owned) {
+  // Destroy media source
+  if (ctx->source) {
     media_source_destroy(ctx->source);
     ctx->source = NULL;
   }
@@ -580,15 +568,4 @@ void session_capture_set_audio_context(session_capture_ctx_t *ctx, void *audio_c
   if (ctx) {
     ctx->audio_ctx = audio_ctx;
   }
-}
-
-asciichat_error_t session_capture_sync_audio_to_video(session_capture_ctx_t *ctx) {
-  // DEPRECATED: This function is deprecated. Seeking audio to match video causes
-  // audio playback interruptions. Audio and video stay naturally synchronized when
-  // decoding independently from the same source.
-
-  if (!ctx || !ctx->initialized || !ctx->source) {
-    return ERROR_INVALID_PARAM;
-  }
-  return media_source_sync_audio_to_video(ctx->source);
 }

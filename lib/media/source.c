@@ -816,40 +816,6 @@ asciichat_error_t media_source_rewind(media_source_t *source) {
   }
 }
 
-asciichat_error_t media_source_sync_audio_to_video(media_source_t *source) {
-  // DEPRECATED: This function is deprecated and causes audio playback issues.
-  // Seeking the audio decoder to match video position every ~1 second causes
-  // audio skips and loops. Audio and video naturally stay synchronized when
-  // decoding independently from the same source.
-
-  log_warn("DEPRECATED: media_source_sync_audio_to_video() called - this function causes audio playback issues. "
-           "Use natural decode rates instead.");
-
-  if (!source) {
-    return ERROR_INVALID_PARAM;
-  }
-
-  // Only applicable to FILE and STDIN types
-  if (source->type != MEDIA_SOURCE_FILE && source->type != MEDIA_SOURCE_STDIN) {
-    return ASCIICHAT_OK; // No-op for WEBCAM/TEST
-  }
-
-  // For shared decoders (YouTube URLs), no sync needed (same decoder for both)
-  if (source->is_shared_decoder) {
-    return ASCIICHAT_OK;
-  }
-
-  // NOTE: The actual sync code is disabled because it causes problems.
-  // Get video decoder's current PTS
-  // double video_pts = ffmpeg_decoder_get_position(source->video_decoder);
-  // If we have a valid PTS, seek audio decoder to that position
-  // if (video_pts >= 0.0) {
-  //   return ffmpeg_decoder_seek_to_timestamp(source->audio_decoder, video_pts);
-  // }
-
-  return ASCIICHAT_OK;
-}
-
 asciichat_error_t media_source_seek(media_source_t *source, double timestamp_sec) {
   if (!source) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Media source is NULL");

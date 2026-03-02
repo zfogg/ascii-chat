@@ -15,7 +15,6 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/common.h>  // For simd_caches_destroy_all()
-#include <ascii-chat/video/webcam/webcam.h> // For webcam_destroy()
 #include <ascii-chat/options/colorscheme.h> // For colorscheme_destroy()
 #include <ascii-chat/util/time.h>           // For timer_system_destroy()
 #include <ascii-chat/util/pcre2.h>          // For asciichat_pcre2_cleanup_all()
@@ -216,55 +215,52 @@ void asciichat_shared_destroy(void) {
   debug_atomic_shutdown();
 #endif
 
-  // 1. Webcam - cleanup resources
-  webcam_destroy();
-
-  // 2. Terminal screen - cleanup frame buffer
+  // 1. Terminal screen - cleanup frame buffer
   terminal_screen_cleanup();
 
-  // 3. SIMD caches - cleanup CPU-specific caches
+  // 2. SIMD caches - cleanup CPU-specific caches
   simd_caches_destroy_all();
 
-  // 4. Discovery service strings cache - cleanup session string cache
+  // 3. Discovery service strings cache - cleanup session string cache
   acds_strings_destroy();
 
-  // 5. Logging - in correct order (end first, then begin)
+  // 4. Logging - in correct order (end first, then begin)
   log_shutdown_end();
   log_shutdown_begin();
 
-  // 6. Known hosts - cleanup authentication state
+  // 5. Known hosts - cleanup authentication state
   known_hosts_destroy();
 
-  // 7. Options state - cleanup RCU-based options
+  // 6. Options state - cleanup RCU-based options
   options_state_destroy();
 
-  // 8. Buffer pool - cleanup global buffer pool
+  // 7. Buffer pool - cleanup global buffer pool
   buffer_pool_cleanup_global();
 
-  // 9. Platform cleanup - restores terminal, cleans up platform resources
+  // 8. Platform cleanup - restores terminal, cleans up platform resources
   // (includes symbol cache cleanup on Windows)
   platform_destroy();
 
-  // 10. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
+  // 9. Keyboard - restore terminal settings (redundant with platform_destroy but safe)
   keyboard_destroy();
 
-  // 11. Timer system - cleanup timers (may still log!)
+  // 10. Timer system - cleanup timers (may still log!)
   timer_system_destroy();
 
-  // 12. Error context cleanup
+  // 11. Error context cleanup
   asciichat_errno_destroy();
 
-  // 13. Logging cleanup - free log format buffers
+  // 12. Logging cleanup - free log format buffers
   log_destroy();
 
-  // 14. Mutex stack cleanup - must be before memory report so stacks are freed
+  // 13. Mutex stack cleanup - must be before memory report so stacks are freed
 #ifndef NDEBUG
   mutex_stack_cleanup();
   // Final cleanup: free the main thread's debug allocations
   debug_sync_final_cleanup();
 #endif
 
-  // 15. Memory stats (debug builds only) - runs with colors still available
+  // 14. Memory stats (debug builds only) - runs with colors still available
   //     Note: PCRE2 singletons are cleaned up later via atexit handler (runs after this function)
   //     This ensures code can still use PCRE2 during normal program shutdown
   //     Note: debug_memory_report() is also called manually during shutdown in server_main()
@@ -277,48 +273,48 @@ void asciichat_shared_destroy(void) {
   debug_memory_report();
 #endif
 
-  // 17. Color cleanup - free compiled ANSI strings (AFTER memory report)
+  // 15. Color cleanup - free compiled ANSI strings (AFTER memory report)
   log_cleanup_colors();
   colorscheme_destroy();
 
-  // 18. Clean up binary path cache explicitly
+  // 16. Clean up binary path cache explicitly
   // Note: This is also called by platform_destroy() via atexit(), but it's idempotent
   platform_cleanup_binary_path_cache();
 
-  // 19. Clean up RCU-based options state
+  // 17. Clean up RCU-based options state
   options_state_destroy();
 
-  // 20. Clean up errno context (allocated strings, backtrace symbols)
+  // 18. Clean up errno context (allocated strings, backtrace symbols)
   asciichat_errno_destroy();
 
 #ifndef NDEBUG
-  // 21. Named registry - cleanup all registered thread names and debug entries
+  // 19. Named registry - cleanup all registered thread names and debug entries
   // Must come BEFORE PCRE2 cleanup since named_destroy() uses path normalization which needs PCRE2
   named_destroy();
 #endif
 
-  // 22. PCRE2 - cleanup all regex singletons together (after named_destroy)
+  // 20. PCRE2 - cleanup all regex singletons together (after named_destroy)
   asciichat_pcre2_cleanup_all();
 
-  // 23. timer resolution restore
+  // 21. timer resolution restore
   platform_restore_timer_resolution(); // Restore timer resolution (no-op on POSIX)
 
-  // 24. Clean up SIMD caches
+  // 22. Clean up SIMD caches
   simd_caches_destroy_all();
 
-  // 25. Clean up symbol cache
+  // 23. Clean up symbol cache
   // This must be called BEFORE log_destroy() as symbol_cache_destroy() uses log_debug()
   // Safe to call even if atexit() runs - it's idempotent (checks g_symbol_cache_initialized)
   // Also called via platform_destroy() atexit handler, but explicit call ensures proper ordering
   symbol_cache_destroy();
 
-  // 26. Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
+  // 24. Clean up global buffer pool (explicitly, as atexit may not run on Ctrl-C)
   // Note: This is also registered with atexit(), but calling it explicitly is safe (idempotent)
   // Safe to call even if atexit() runs - it checks g_global_buffer_pool and sets it to NULL
   buffer_pool_cleanup_global();
 
 #ifndef NDEBUG
-  // 23. Symbol cache cleanup
+  // 25. Symbol cache cleanup
   symbol_cache_destroy();
 #endif
 }
