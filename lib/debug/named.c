@@ -164,13 +164,8 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     return base_name;
   }
 
-  // Try to acquire lock (non-blocking) to prevent deadlock during critical paths
-  // If we can't acquire the lock immediately, skip registration to avoid blocking
-  int lock_result = pthread_rwlock_trywrlock(&g_named_registry.entries_lock.impl);
-  if (lock_result != 0) {
-    // Lock is contended by another thread, skip registration to prevent deadlock
-    return base_name;
-  }
+  // Acquire single write lock for entire operation - prevents deadlock from multiple lock acquisitions
+  rwlock_wrlock_impl(&g_named_registry.entries_lock);
 
   // Get or create per-name counter
   name_counter_entry_t *counter_entry;
