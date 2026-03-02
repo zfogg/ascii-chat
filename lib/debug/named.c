@@ -96,8 +96,24 @@ void named_destroy(void) {
   lifecycle_shutdown(&g_named_registry.lifecycle);
 
   rwlock_wrlock(&g_named_registry.entries_lock);
+
+  // Find the registry's own rwlock entry (allocated during named_init bootstrap)
+  // This entry will be unregistered by rwlock_destroy, so we must not free it here
+  uintptr_t registry_lock_key = (uintptr_t)(const void *)&g_named_registry.entries_lock;
+  named_entry_t *registry_lock_entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &registry_lock_key, sizeof(uintptr_t), registry_lock_entry);
+
   for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
     named_entry_t *next = e->hh.next;
+
+    // Skip the registry lock entry - it will be cleaned up by rwlock_destroy
+    // which calls NAMED_UNREGISTER after we release the lock
+    if (e == registry_lock_entry) {
+      e = next;
+      continue;
+    }
+
+    // Free all other entries
     free(e->name);
     if (e->type) free(e->type);
     if (e->format_spec) free(e->format_spec);
@@ -106,8 +122,13 @@ void named_destroy(void) {
     free(e);
     e = next;
   }
-  g_named_registry.entries = NULL;
+
   rwlock_wrunlock(&g_named_registry.entries_lock);
+
+  // rwlock_destroy will call NAMED_UNREGISTER on the lock entry, which will:
+  // 1. Acquire the lock (now safe since we released it)
+  // 2. Find and remove the lock entry from the hash
+  // 3. Free the lock entry's fields
   rwlock_destroy(&g_named_registry.entries_lock);
 }
 
