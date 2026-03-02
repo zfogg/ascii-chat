@@ -15,6 +15,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/common/buffer_sizes.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/debug/named.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -394,6 +395,29 @@ media_source_t *media_source_create(media_source_type_t type, const char *path) 
     SAFE_FREE(source);
     return NULL;
   }
+
+  /* Register media source with named registry */
+  char media_type_str[64];
+  switch (type) {
+  case MEDIA_SOURCE_WEBCAM:
+    snprintf(media_type_str, sizeof(media_type_str), "media_source:webcam");
+    break;
+  case MEDIA_SOURCE_FILE:
+    snprintf(media_type_str, sizeof(media_type_str), "media_source:file");
+    break;
+  case MEDIA_SOURCE_TEST:
+    snprintf(media_type_str, sizeof(media_type_str), "media_source:test");
+    break;
+  default:
+    snprintf(media_type_str, sizeof(media_type_str), "media_source:unknown");
+    break;
+  }
+  NAMED_REGISTER(source, media_type_str, "media_source_t", "0x%tx", NULL);
+
+  /* Register media source's sync primitives with hierarchical naming */
+  NAMED_REGISTER_MUTEX(&source->decoder_mutex, "decoder_mutex", (uintptr_t)(const void *)(source));
+  NAMED_REGISTER_MUTEX(&source->pause_mutex, "pause_mutex", (uintptr_t)(const void *)(source));
+  NAMED_REGISTER_MUTEX(&source->seek_access_mutex, "seek_access_mutex", (uintptr_t)(const void *)(source));
 
   return source;
 }
