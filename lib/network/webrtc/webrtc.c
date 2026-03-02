@@ -620,7 +620,7 @@ asciichat_error_t webrtc_create_datachannel(webrtc_peer_connection_t *pc, const 
   *dc_out = dc;
 
   // Register data channel with debug naming system
-  NAMED_REGISTER_DATACHANNEL(dc, label);
+  NAMED_REGISTER_DATACHANNEL(dc, label, NULL);
 
   log_debug("Created DataChannel '%s' (dc_id=%d, pc_id=%d)", label, dc_id, pc->rtc_id);
   return ASCIICHAT_OK;

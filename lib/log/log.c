@@ -877,6 +877,12 @@ static int format_log_header(char *buffer, size_t buffer_size, log_level_t level
  */
 static void write_to_terminal_atomic(log_level_t level, const char *timestamp, const char *file, int line,
                                      const char *func, const char *fmt, va_list args, uint64_t time_nanoseconds) {
+  // Prevent logging during shutdown - if logging lifecycle is being destroyed,
+  // bail out to avoid use-after-free of the log template
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
+    return; /* Logging is being shut down, skip */
+  }
+
   // Choose output file descriptor using unified routing logic
   int fd = terminal_choose_log_fd(level);
   FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;

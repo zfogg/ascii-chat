@@ -1142,9 +1142,16 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   cond_broadcast(&ws_data->state_cond);
   cond_broadcast(&ws_data->recv_cond);
 
+  // Cancel any pending libwebsockets service calls to interrupt blocking lws_service()
+  // This prevents the service thread from getting stuck in lws_service()
+  if (ws_data->context) {
+    log_debug("[WEBSOCKET_DESTROY] Cancelling libwebsockets service");
+    lws_cancel_service(ws_data->context);
+  }
+
   // Give threads a brief moment to detect the flag and exit
   // Threads should check is_destroying before acquiring mutexes
-  platform_sleep_us(100 * US_PER_MS_INT); // 100ms for threads to detect flag
+  platform_sleep_us(50 * US_PER_MS_INT); // 50ms for threads to detect flag
 
   // Stop service thread (client-side only)
   if (ws_data->service_running) {
@@ -1158,10 +1165,6 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   // Skip lws_wsi_close() to avoid segfault in libwebsockets during cleanup
   // The context_destroy below will handle cleanup properly
   ws_data->wsi = NULL;
-
-  // Give libwebsockets a moment to process the close handshake
-  // This ensures any pending callbacks complete before we destroy the context
-  platform_sleep_us(50 * US_PER_MS_INT); // 50ms for close handshake
 
   // Destroy WebSocket context (only if we own it - client transports only)
   if (ws_data->context && ws_data->owns_context) {
@@ -1584,15 +1587,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // Return immediately so the main thread can respond to keyboard input.
   log_debug("WebSocket transport created, service thread will establish connection asynchronously");
 
-  // Register transport first, get its full registered name
-  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+  // Register transport
+  NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
-  // Create hierarchical sub-name for impl_data using transport name
-  char impl_name[256];
-  NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
-
-  // Register websocket implementation data with hierarchical name
-  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, impl_name, (uintptr_t)(const void *)(transport));
+  // Register websocket implementation data with transport as parent
+  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
 
   // Return transport immediately - connection will be established by service thread
   // If connection fails, recv() will detect is_connected=false and return error
@@ -1779,15 +1778,11 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
 
   log_info("Created WebSocket server transport (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
 
-  // Register transport first, get its full registered name
-  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+  // Register transport
+  NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
-  // Create hierarchical sub-name for impl_data using transport name
-  char impl_name[256];
-  NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
-
-  // Register websocket implementation data with hierarchical name
-  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, impl_name, (uintptr_t)(const void *)(transport));
+  // Register websocket implementation data with transport as parent
+  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
 
   return transport;
 }

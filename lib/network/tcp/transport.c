@@ -410,15 +410,11 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   log_info("[TCP_CREATE_STATE] ✅ CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s",
            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
-  // Register transport first, get its full registered name
-  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+  // Register transport
+  NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
-  // Create hierarchical sub-name for impl_data using transport name
-  char impl_name[256];
-  NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
-
-  // Register impl_data with hierarchical name
-  NAMED_REGISTER(tcp_data, impl_name, "tcp_impl", "0x%tx", NULL);
+  // Register impl_data with transport as parent
+  NAMED_REGISTER(tcp_data, "impl", "tcp_impl", "0x%tx", (uintptr_t)(const void *)(transport));
 
   return transport;
 }

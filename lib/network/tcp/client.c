@@ -116,18 +116,12 @@ tcp_client_t *tcp_client_create(void) {
     return NULL;
   }
 
-  const char *client_name = NAMED_REGISTER_CLIENT(client, "client");
+  NAMED_REGISTER_CLIENT(client, "client", NULL);
 
-  // Register atomic fields for debug tracking - descriptive names for sync state monitoring
-  char atomic_name[256];
-  NAMED_FORMAT_SUBNAME(client_name, "is_connection_active", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&client->connection_active, atomic_name, NULL);
-
-  NAMED_FORMAT_SUBNAME(client_name, "has_connection_been_lost", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&client->connection_lost, atomic_name, NULL);
-
-  NAMED_FORMAT_SUBNAME(client_name, "should_attempt_reconnection", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&client->should_reconnect, atomic_name, NULL);
+  // Register atomic fields for debug tracking - parent_key handles hierarchical naming
+  NAMED_REGISTER_ATOMIC(&client->connection_active, "is_connection_active", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->connection_lost, "has_connection_been_lost", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->should_reconnect, "should_attempt_reconnection", (uintptr_t)(const void *)(client));
 
   log_debug("TCP client created successfully");
   return client;

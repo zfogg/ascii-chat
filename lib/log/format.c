@@ -500,8 +500,23 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
     return -1;
   }
 
+  /* If specs were freed (pointer zeroed after free), bail out gracefully */
+  if (!format->specs) {
+    return -1;
+  }
+
   for (size_t i = 0; i < format->spec_count; i++) {
+    /* Re-check specs pointer in loop to catch use-after-free during iteration */
+    if (!format->specs || i >= format->spec_count) {
+      break; /* Format was freed, stop processing */
+    }
     const log_format_spec_t *spec = &format->specs[i];
+
+    /* Additional safety check: if spec is null or invalid, stop processing */
+    if (!spec) {
+      break;
+    }
+
     int written = 0;
 
     switch (spec->type) {

@@ -816,27 +816,19 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   }
 
   // Register the ring buffer itself with a unique name
-  const char *rb_name = NAMED_REGISTER_AUDIO_RINGBUF(rb, context_name, NULL);
-
-  char atomic_name[256];
-
-#define REGISTER_AUDIO_ATOMIC(field, description) \
-    NAMED_FORMAT_SUBNAME(rb_name, description, atomic_name, sizeof(atomic_name)); \
-    NAMED_REGISTER_ATOMIC(&rb->field, atomic_name, NULL)
+  NAMED_REGISTER_AUDIO_RINGBUF(rb, context_name, NULL);
 
   // Ring buffer indices (lock-free producer-consumer)
-  REGISTER_AUDIO_ATOMIC(write_index, "write_index_producer_position");
-  REGISTER_AUDIO_ATOMIC(read_index, "read_index_consumer_position");
+  NAMED_REGISTER_ATOMIC(&rb->write_index, "write_index_producer_position", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->read_index, "read_index_consumer_position", (uintptr_t)(const void *)(rb));
 
   // Jitter buffer state management
-  REGISTER_AUDIO_ATOMIC(jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag");
-  REGISTER_AUDIO_ATOMIC(crossfade_samples_remaining, "crossfade_samples_remaining_count");
-  REGISTER_AUDIO_ATOMIC(crossfade_fade_in, "crossfade_fade_in_direction_flag");
+  NAMED_REGISTER_ATOMIC(&rb->jitter_buffer_filled, "jitter_buffer_has_filled_threshold_flag", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->crossfade_samples_remaining, "crossfade_samples_remaining_count", (uintptr_t)(const void *)(rb));
+  NAMED_REGISTER_ATOMIC(&rb->crossfade_fade_in, "crossfade_fade_in_direction_flag", (uintptr_t)(const void *)(rb));
 
   // Audio quality monitoring
-  REGISTER_AUDIO_ATOMIC(underrun_count, "audio_underrun_event_counter");
-
-#undef REGISTER_AUDIO_ATOMIC
+  NAMED_REGISTER_ATOMIC(&rb->underrun_count, "audio_underrun_event_counter", (uintptr_t)(const void *)(rb));
 }
 
 void audio_ring_buffer_unregister_atomics(audio_ring_buffer_t *rb) {

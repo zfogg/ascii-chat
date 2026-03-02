@@ -881,7 +881,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   /* Register WebSocket context with named registry, identified by port */
   char ws_port_name[32];
   snprintf(ws_port_name, sizeof(ws_port_name), "ws:%d", server->port);
-  NAMED_REGISTER_WEBSOCKET(server->context, ws_port_name);
+  NAMED_REGISTER_WEBSOCKET(server->context, ws_port_name, NULL);
 
   log_info("WebSocket server initialized on port %d with static file serving", config->port);
   return ASCIICHAT_OK;

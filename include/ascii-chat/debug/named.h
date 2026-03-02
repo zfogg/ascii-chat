@@ -1275,37 +1275,6 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
   } while (0)
 #endif
 
-/**
- * @brief Format a sub-name by appending a field suffix to a parent name
- * @param parent_name The registered parent object name (e.g., "client.0")
- * @param field_name The field or property name (e.g., "is_active")
- * @param buffer Output buffer for the formatted sub-name
- * @param size Size of the output buffer
- * @ingroup debug_named
- *
- * Creates hierarchical sub-names like "client.0#is_active" from parent and field.
- * Uses hash separator to distinguish field suffixes from object counter suffixes.
- * Ensures safe bounds checking and null termination.
- *
- * Usage:
- *   const char *client_name = NAMED_REGISTER_CLIENT(client, "client");
- *   char sub_name[256];
- *   NAMED_FORMAT_SUBNAME(client_name, "is_active", sub_name, sizeof(sub_name));
- *   NAMED_REGISTER_ATOMIC(&client->active, sub_name);
- *
- * Result: "client.0#is_active" (hash separates field from parent's counter)
- */
-#ifndef NDEBUG
-#define NAMED_FORMAT_SUBNAME(parent_name, field_name, buffer, size)                                                   \
-  do {                                                                                                                 \
-    snprintf((buffer), (size), "%s#%s", (parent_name), (field_name));                                                \
-  } while (0)
-#else
-#define NAMED_FORMAT_SUBNAME(parent_name, field_name, buffer, size)                                                   \
-  do {                                                                                                                 \
-    snprintf((buffer), (size), "%s#%s", (parent_name), (field_name));                                                \
-  } while (0)
-#endif
 
 #ifdef __cplusplus
 }

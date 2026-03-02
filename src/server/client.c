@@ -248,42 +248,27 @@ static void register_client_info_atomics(client_info_t *client) {
     return;
   }
 
-  // Get the client's registered name
-  const char *client_name = named_get((uintptr_t)(const void *)client);
-  if (!client_name) {
-    // Fallback if not yet registered
-    client_name = client->client_id;
-  }
-
-  char atomic_name[256];
-
-#define REGISTER_CLIENT_ATOMIC(field, description)                                                                     \
-  NAMED_FORMAT_SUBNAME(client_name, description, atomic_name, sizeof(atomic_name));                                    \
-  NAMED_REGISTER_ATOMIC(&client->field, atomic_name, (uintptr_t)(const void *)(client))
-
   // Video streaming state
-  REGISTER_CLIENT_ATOMIC(is_sending_video, "is_sending_video");
+  NAMED_REGISTER_ATOMIC(&client->is_sending_video, "is_sending_video", (uintptr_t)(const void *)(client));
 
   // Audio streaming state
-  REGISTER_CLIENT_ATOMIC(is_sending_audio, "is_sending_audio");
+  NAMED_REGISTER_ATOMIC(&client->is_sending_audio, "is_sending_audio", (uintptr_t)(const void *)(client));
 
   // Connection state
-  REGISTER_CLIENT_ATOMIC(active, "active");
-  REGISTER_CLIENT_ATOMIC(shutting_down, "shutting_down");
-  REGISTER_CLIENT_ATOMIC(protocol_disconnect_requested, "protocol_disconnect_requested");
+  NAMED_REGISTER_ATOMIC(&client->active, "active", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->shutting_down, "shutting_down", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->protocol_disconnect_requested, "protocol_disconnect_requested", (uintptr_t)(const void *)(client));
 
   // Thread management flags
-  REGISTER_CLIENT_ATOMIC(dispatch_thread_running, "dispatch_thread_running");
-  REGISTER_CLIENT_ATOMIC(send_thread_running, "send_thread_running");
-  REGISTER_CLIENT_ATOMIC(video_render_thread_running, "video_render_thread_running");
-  REGISTER_CLIENT_ATOMIC(audio_render_thread_running, "audio_render_thread_running");
+  NAMED_REGISTER_ATOMIC(&client->dispatch_thread_running, "dispatch_thread_running", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->send_thread_running, "send_thread_running", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->video_render_thread_running, "video_render_thread_running", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->audio_render_thread_running, "audio_render_thread_running", (uintptr_t)(const void *)(client));
 
   // Frame source tracking
-  REGISTER_CLIENT_ATOMIC(last_rendered_grid_sources, "last_rendered_grid_sources_count");
-  REGISTER_CLIENT_ATOMIC(last_sent_grid_sources, "last_sent_grid_sources_count");
-  REGISTER_CLIENT_ATOMIC(frames_sent_count, "total_frames_sent_count");
-
-#undef REGISTER_CLIENT_ATOMIC
+  NAMED_REGISTER_ATOMIC(&client->last_rendered_grid_sources, "last_rendered_grid_sources_count", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->last_sent_grid_sources, "last_sent_grid_sources_count", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_ATOMIC(&client->frames_sent_count, "total_frames_sent_count", (uintptr_t)(const void *)(client));
 }
 
 static void handle_client_error_packet(client_info_t *client, const void *data, size_t len) {
