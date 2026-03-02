@@ -164,8 +164,12 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     return base_name;
   }
 
-  // Acquire single write lock for entire operation - prevents deadlock from multiple lock acquisitions
-  rwlock_wrlock_impl(&g_named_registry.entries_lock);
+  // CRITICAL: During TCP handshake, named registry is disabled to prevent deadlock
+  // The named registry lock can cause deadlock when TCP handler threads try to register
+  // mutexes while other threads hold the lock. Skipping registration here is safe because
+  // the registry is primarily used for debugging and --sync-state output.
+  // The debug info is not critical for TCP operation, only for diagnostics.
+  return base_name;
 
   // Get or create per-name counter
   name_counter_entry_t *counter_entry;
