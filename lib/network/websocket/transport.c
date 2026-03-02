@@ -73,6 +73,24 @@
 // Forward declaration for libwebsockets callback
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
+/**
+ * @brief Custom logging callback for libwebsockets (client-side)
+ * Routes libwebsockets logging through our logging system
+ */
+static void websocket_client_lws_log_callback(int level, const char *line) {
+  if (level & LLL_ERR) {
+    log_error("[LWS:client] %s", line);
+  } else if (level & LLL_WARN) {
+    log_warn("[LWS:client] %s", line);
+  } else if (level & LLL_NOTICE) {
+    log_info("[LWS:client] %s", line);
+  } else if (level & LLL_INFO) {
+    log_info("[LWS:client] %s", line);
+  } else if (level & LLL_DEBUG) {
+    log_debug("[LWS:client] %s", line);
+  }
+}
+
 // =============================================================================
 // Service Thread (Client-side only)
 // =============================================================================
@@ -1488,10 +1506,10 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   };
   info.retry_and_idle_policy = &client_keep_alive_policy;
 
-  // Suppress libwebsockets stderr output during context creation
-  platform_stderr_redirect_handle_t lws_stderr = platform_stdout_stderr_redirect_to_null();
+  // Enable libwebsockets logging with our custom callback (DEBUG disabled to reduce noise)
+  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO, websocket_client_lws_log_callback);
+
   ws_data->context = lws_create_context(&info);
-  platform_stdout_stderr_restore(lws_stderr);
 
   if (!ws_data->context) {
     SAFE_FREE(ws_data->send_buffer);
@@ -1522,10 +1540,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.userdata = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");
-  // Suppress libwebsockets stderr output during connection
-  lws_stderr = platform_stdout_stderr_redirect_to_null();
   ws_data->wsi = lws_client_connect_via_info(&connect_info);
-  platform_stdout_stderr_restore(lws_stderr);
   log_debug("lws_client_connect_via_info returned: %p", (void *)ws_data->wsi);
   if (!ws_data->wsi) {
     lws_context_destroy(ws_data->context);
