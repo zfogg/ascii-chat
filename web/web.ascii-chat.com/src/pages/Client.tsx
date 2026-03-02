@@ -826,7 +826,7 @@ export function ClientPage() {
   const lastFrameHashRef = useRef(0);
   const uniqueFrameCountRef = useRef(0);
   const videFrameUpdateCountRef = useRef(0); // Track actual VIDEO updates
-  const captureTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const captureTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const createWebcamCaptureLoop = useCallback(() => {
     let lastLogTime = performance.now();
 
@@ -888,9 +888,7 @@ export function ClientPage() {
           ) {
             try {
               if (!canvasRef.current) {
-                throw new Error(
-                  "Canvas not available for VideoFrame creation",
-                );
+                throw new Error("Canvas not available for VideoFrame creation");
               }
 
               // Create VideoFrame from canvas for H.265 encoding
@@ -899,8 +897,7 @@ export function ClientPage() {
               });
 
               // Request keyframe every 60 frames
-              const forceKeyframe =
-                captureLoopFrameCountRef.current % 60 === 0;
+              const forceKeyframe = captureLoopFrameCountRef.current % 60 === 0;
               h265EncoderRef.current.encode(videoFrame, forceKeyframe);
               videoFrame.close();
 
@@ -954,7 +951,7 @@ export function ClientPage() {
     };
 
     return sendOneFrame;
-  }, [captureFrame, connectionState, settings.targetFps]);
+  }, [captureFrame, connectionState]);
 
   // Create capture function ref
   useEffect(() => {
@@ -974,7 +971,9 @@ export function ClientPage() {
           webcamCaptureLoopRef.current();
         }
       }, sendInterval);
-      console.log(`[Client] Started frame send timer: ${sendInterval.toFixed(1)}ms interval (${settings.targetFps} FPS)`);
+      console.log(
+        `[Client] Started frame send timer: ${sendInterval.toFixed(1)}ms interval (${settings.targetFps} FPS)`,
+      );
     } else {
       // Stop timer when disconnected
       if (captureTimerRef.current) {
