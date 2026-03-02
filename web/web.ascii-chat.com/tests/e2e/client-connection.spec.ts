@@ -141,18 +141,20 @@ test.describe("Client Connection to Native Server", () => {
       timeout: 5000,
     });
 
-    console.log("✓ Client connected to server successfully");
+    console.log("✓ Client connected to server");
 
-    // Verify page has webcam capture element
-    const hasVideo = await page.evaluate(() => {
-      return document.querySelector("canvas") !== null ||
-             document.querySelector("video") !== null;
-    });
+    // Wait for initial frames to be captured
+    await page.waitForTimeout(1500);
 
-    console.log(`✓ Webcam capture active: ${hasVideo}`);
+    // Check frame metrics
+    const metrics = await page.evaluate(
+      () => (window as any).__clientFrameMetrics
+    );
 
-    // Verify successful connection - if we got here without timeout, the client is working
-    expect(true).toBe(true);
+    console.log("Frame metrics after connection:", metrics);
+
+    // Verify client is rendering frames
+    expect(metrics?.rendered).toBeGreaterThan(0);
   });
 
   test("client maintains stable connection with webcam streaming", async ({
@@ -166,21 +168,34 @@ test.describe("Client Connection to Native Server", () => {
     });
     console.log("✓ Client connected");
 
-    // Keep connection stable for 2 seconds
+    // Capture initial metrics
+    const startMetrics = await page.evaluate(
+      () => (window as any).__clientFrameMetrics
+    );
+    console.log("Start metrics:", startMetrics);
+
+    // Stream for 2 seconds
     await page.waitForTimeout(2000);
 
-    // Verify connection still established
-    const statusText = await page.locator(".status").innerText();
-    console.log(`✓ Connection still active: ${statusText}`);
+    // Capture end metrics
+    const endMetrics = await page.evaluate(
+      () => (window as any).__clientFrameMetrics
+    );
+    console.log("End metrics:", endMetrics);
 
-    // Verify xterm is rendering
-    const hasXterm = await page.evaluate(() => {
-      return document.querySelector(".xterm") !== null;
-    });
+    // Calculate frame delta
+    const renderedDelta =
+      (endMetrics?.rendered || 0) - (startMetrics?.rendered || 0);
+    const uniqueDelta =
+      (endMetrics?.uniqueRendered || 0) -
+      (startMetrics?.uniqueRendered || 0);
 
-    console.log(`✓ Terminal rendering: ${hasXterm}`);
+    console.log(
+      `Frames delta: rendered=${renderedDelta}, unique=${uniqueDelta}`
+    );
 
-    // Test passes if we maintained connection without errors
-    expect(statusText).toContain("Connected");
+    // Verify streaming is active
+    expect(renderedDelta).toBeGreaterThan(0);
+    expect(uniqueDelta).toBeGreaterThan(0);
   });
 });
