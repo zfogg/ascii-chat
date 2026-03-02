@@ -874,12 +874,19 @@ export function ClientPage() {
               );
             }
 
-            // Try H.265 encoding if available
+            // Try H.265 encoding if available (but prioritize RGBA for stability)
+            // H.265 encoding can be slow on some systems, so we always have RGBA fallback
             let sentH265 = false;
             if (h265EncoderRef.current && H265Encoder.isSupported()) {
               try {
+                if (!canvasRef.current) {
+                  throw new Error(
+                    "Canvas not available for VideoFrame creation",
+                  );
+                }
+
                 // Create VideoFrame from canvas for H.265 encoding
-                const videoFrame = new VideoFrame(canvasRef.current!, {
+                const videoFrame = new VideoFrame(canvasRef.current, {
                   timestamp: now * 1000, // microseconds
                 });
 
@@ -900,14 +907,19 @@ export function ClientPage() {
                       chunk.data,
                     );
                     conn.sendPacket(PacketType.IMAGE_FRAME_H265, payload);
-                    console.log(
-                      `[Client] Sent IMAGE_FRAME_H265: ${chunk.data.length} bytes, flags=0x${chunk.flags.toString(16)}`,
-                    );
                   }
                   sentH265 = true;
                 }
               } catch (err) {
-                console.error("[Client] H.265 encoding failed:", err);
+                console.error(
+                  "[Client] H.265 encoding failed, will use RGBA:",
+                  err,
+                );
+                // Disable H.265 for rest of session if encoding fails
+                if (h265EncoderRef.current) {
+                  h265EncoderRef.current.destroy();
+                  h265EncoderRef.current = null;
+                }
               }
             }
 
