@@ -30,6 +30,22 @@
 #define DESCRIBE_BUFFER_SIZE 768 // Increased for file:line:func info
 
 // ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * @brief Safe string duplication using SAFE_MALLOC
+ * Allocates memory tracked by SAFE_MALLOC/SAFE_FREE system
+ */
+static char *safe_strdup(const char *s) {
+  if (!s) return NULL;
+  size_t len = strlen(s) + 1;
+  char *dup = SAFE_MALLOC(len, char *);
+  if (dup) strcpy(dup, s);
+  return dup;
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -112,12 +128,12 @@ void named_destroy(void) {
     log_debug("[NAMED] Freeing entry: %s (type=%s)", entry->name ? entry->name : "(null)",
               entry->type ? entry->type : "(null)");
     HASH_DEL(g_named_registry.entries, entry);
-    free(entry->name);
-    free(entry->type);
-    free(entry->format_spec);
-    free(entry->file);
-    free(entry->func);
-    free(entry);
+    SAFE_FREE(entry->name);
+    SAFE_FREE(entry->type);
+    SAFE_FREE(entry->format_spec);
+    SAFE_FREE(entry->file);
+    SAFE_FREE(entry->func);
+    free(entry);  // entry struct itself was allocated with malloc, not SAFE_MALLOC
     entry_count++;
   }
   log_debug("[NAMED] Freed %d entries", entry_count);
@@ -127,8 +143,8 @@ void named_destroy(void) {
   int counter_count = 0;
   HASH_ITER(hh, g_named_registry.name_counters, counter_entry, counter_tmp) {
     HASH_DEL(g_named_registry.name_counters, counter_entry);
-    free(counter_entry->base_name);
-    free(counter_entry);
+    SAFE_FREE(counter_entry->base_name);
+    free(counter_entry);  // counter_entry struct itself was allocated with malloc, not SAFE_MALLOC
     counter_count++;
   }
   log_debug("[NAMED] Freed %d name counters", counter_count);
@@ -162,7 +178,7 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
       rwlock_wrunlock_impl(&g_named_registry.entries_lock);
       return base_name;
     }
-    counter_entry->base_name = strdup(base_name);
+    counter_entry->base_name = safe_strdup(base_name);
     if (!counter_entry->base_name) {
       log_error("named_register: strdup failed for base_name");
       free(counter_entry);
@@ -203,11 +219,11 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     free(entry->file);
     free(entry->func);
     entry->name = full_name;
-    entry->type = type ? strdup(type) : NULL;
-    entry->format_spec = format_spec ? strdup(format_spec) : NULL;
-    entry->file = file ? strdup(relative_file) : NULL;
+    entry->type = type ? safe_strdup(type) : NULL;
+    entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
+    entry->file = file ? safe_strdup(relative_file) : NULL;
     entry->line = line;
-    entry->func = func ? strdup(func) : NULL;
+    entry->func = func ? safe_strdup(func) : NULL;
   } else {
     // Create new entry
     entry = malloc(sizeof(named_entry_t));
@@ -219,11 +235,11 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     }
     entry->key = key;
     entry->name = full_name;
-    entry->type = type ? strdup(type) : NULL;
-    entry->format_spec = format_spec ? strdup(format_spec) : NULL;
-    entry->file = file ? strdup(relative_file) : NULL;
+    entry->type = type ? safe_strdup(type) : NULL;
+    entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
+    entry->file = file ? safe_strdup(relative_file) : NULL;
     entry->line = line;
-    entry->func = func ? strdup(func) : NULL;
+    entry->func = func ? safe_strdup(func) : NULL;
     HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
   }
 
@@ -283,11 +299,11 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
     free(entry->file);
     free(entry->func);
     entry->name = full_name;
-    entry->type = type ? strdup(type) : NULL;
-    entry->format_spec = format_spec ? strdup(format_spec) : NULL;
-    entry->file = file ? strdup(relative_file) : NULL;
+    entry->type = type ? safe_strdup(type) : NULL;
+    entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
+    entry->file = file ? safe_strdup(relative_file) : NULL;
     entry->line = line;
-    entry->func = func ? strdup(func) : NULL;
+    entry->func = func ? safe_strdup(func) : NULL;
   } else {
     // Create new entry
     entry = malloc(sizeof(named_entry_t));
@@ -299,11 +315,11 @@ const char *named_register_fmt(uintptr_t key, const char *type, const char *form
     }
     entry->key = key;
     entry->name = full_name;
-    entry->type = type ? strdup(type) : NULL;
-    entry->format_spec = format_spec ? strdup(format_spec) : NULL;
-    entry->file = file ? strdup(relative_file) : NULL;
+    entry->type = type ? safe_strdup(type) : NULL;
+    entry->format_spec = format_spec ? safe_strdup(format_spec) : NULL;
+    entry->file = file ? safe_strdup(relative_file) : NULL;
     entry->line = line;
-    entry->func = func ? strdup(func) : NULL;
+    entry->func = func ? safe_strdup(func) : NULL;
     HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
   }
 
@@ -366,7 +382,7 @@ const char *named_update_name(uintptr_t key, const char *new_base_name) {
       rwlock_wrunlock_impl(&g_named_registry.entries_lock);
       return entry->name;
     }
-    counter_entry->base_name = strdup(new_base_name);
+    counter_entry->base_name = safe_strdup(new_base_name);
     if (!counter_entry->base_name) {
       log_error("named_update_name: strdup failed for base_name");
       free(counter_entry);
@@ -565,9 +581,9 @@ static const char *named_register_packet_type_no_counter(int pkt_type, const cha
     free(entry->name);
     free(entry->type);
     free(entry->format_spec);
-    entry->name = strdup(name);
-    entry->type = strdup("packet_type");
-    entry->format_spec = strdup("%d");
+    entry->name = safe_strdup(name);
+    entry->type = safe_strdup("packet_type");
+    entry->format_spec = safe_strdup("%d");
   } else {
     entry = malloc(sizeof(named_entry_t));
     if (!entry) {
@@ -575,10 +591,10 @@ static const char *named_register_packet_type_no_counter(int pkt_type, const cha
       return name;
     }
     entry->key = key;
-    entry->name = strdup(name);
-    entry->type = strdup("packet_type");
-    entry->format_spec = strdup("%d");
-    entry->file = strdup(relative_file);
+    entry->name = safe_strdup(name);
+    entry->type = safe_strdup("packet_type");
+    entry->format_spec = safe_strdup("%d");
+    entry->file = safe_strdup(relative_file);
     entry->line = 0;
     entry->func = NULL;
     HASH_ADD(hh, g_named_registry.entries, key, sizeof(key), entry);
