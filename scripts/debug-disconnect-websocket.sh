@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-PORT=$(((RANDOM + 2000) % 8000))
-PORT_WS=$(((RANDOM + 2000) % 8000))
+PORT=$(((RANDOM % 6000) + 2000))
+PORT_WS=$(((RANDOM % 6000) + 2000))
 client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
@@ -25,7 +25,7 @@ timeout -k1 5 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
   --test-pattern -S -D 1 \
-  2>/dev/null | tee "$client_stdout" \
+  | tee "$client_stdout" \
   || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 

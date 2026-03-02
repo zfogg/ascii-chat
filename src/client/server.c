@@ -379,6 +379,11 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     if (url_parse(address, &url_parts) == ASCIICHAT_OK) {
       log_info("Connecting via WebSocket: %s (scheme=%s, host=%s, port=%d)", ws_url, url_parts.scheme, url_parts.host,
                url_parts.port);
+
+      // Set server IP and port for crypto handshake
+      // This ensures the crypto context has proper server address info for known_hosts verification
+      server_connection_set_ip(url_parts.host);
+      log_debug("CLIENT_CONNECT: Set server IP to %s from WebSocket URL", url_parts.host);
     } else {
       log_info("Connecting via WebSocket: %s", ws_url);
     }

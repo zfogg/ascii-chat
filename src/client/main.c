@@ -260,7 +260,6 @@ static void shutdown_client() {
   protocol_stop_connection();
 
   // Destroy client worker thread pool (all threads already stopped by protocol_stop_connection)
-  log_debug("[SHUTDOWN] 6. About to destroy thread pool");
   if (g_client_worker_pool) {
     thread_pool_destroy(g_client_worker_pool);
     g_client_worker_pool = NULL;

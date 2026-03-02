@@ -200,10 +200,15 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     // WebSocket connection path
     const char *ws_url = server_address;
 
-    // Parse for debug logging
+    // Parse for debug logging and server IP extraction
     url_parts_t url_parts = {0};
     if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
       log_debug("WebSocket URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
+
+      // Set server IP for crypto handshake
+      // This ensures the crypto context has proper server address info for known_hosts verification
+      APP_CALLBACK_VOID_STR(server_connection_set_ip, url_parts.host);
+      log_debug("Set server IP to %s from WebSocket URL", url_parts.host);
     }
 
     log_info("Attempting WebSocket connection to %s", ws_url);

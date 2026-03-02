@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-PORT=$(((RANDOM + 2000) % 8000))
+PORT=$(((RANDOM % 6000) + 2000))
 client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
