@@ -59,6 +59,91 @@ import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { useRenderLoop } from "../hooks/useRenderLoop";
 
+/**
+ * H.265/HEVC encoder using WebCodecs VideoEncoder API.
+ * Encodes canvas frames to H.265 bitstream for transmission to server.
+ * Requires Chrome 113+ or Edge (Firefox/Safari don't support H.265 encoding).
+ */
+class H265Encoder {
+  private encoder: VideoEncoder | null = null;
+  private pendingChunks: Array<{
+    flags: number;
+    width: number;
+    height: number;
+    data: Uint8Array;
+  }> = [];
+  private width = 0;
+  private height = 0;
+  private frameCount = 0;
+
+  static isSupported(): boolean {
+    return typeof VideoEncoder !== "undefined";
+  }
+
+  async initialize(width: number, height: number, fps: number): Promise<void> {
+    this.width = width;
+    this.height = height;
+    this.frameCount = 0;
+
+    this.encoder = new VideoEncoder({
+      output: (chunk: EncodedVideoChunk) => {
+        const flags = chunk.type === "key" ? 0x01 : 0x00;
+        const buffer = new Uint8Array(chunk.byteLength);
+        chunk.copyTo(buffer);
+        this.pendingChunks.push({
+          flags,
+          width: this.width,
+          height: this.height,
+          data: buffer,
+        });
+      },
+      error: (err: DOMException) => {
+        console.error("[H265Encoder] Encoding error:", err);
+      },
+    });
+
+    this.encoder.configure({
+      codec: "hvc1", // H.265/HEVC base profile
+      width,
+      height,
+      bitrate: Math.max(500_000, width * height * 2 * fps), // adaptive bitrate
+      framerate: fps,
+      hardwareAcceleration: "prefer-hardware",
+    });
+  }
+
+  encode(frame: VideoFrame, forceKeyframe: boolean = false): void {
+    if (!this.encoder) return;
+
+    if (forceKeyframe) {
+      this.encoder.encode(frame, { keyFrame: true });
+    } else {
+      this.encoder.encode(frame, { keyFrame: false });
+    }
+
+    this.frameCount++;
+  }
+
+  drain(): Array<{
+    flags: number;
+    width: number;
+    height: number;
+    data: Uint8Array;
+  }> {
+    const chunks = this.pendingChunks;
+    this.pendingChunks = [];
+    return chunks;
+  }
+
+  destroy(): void {
+    if (this.encoder) {
+      this.encoder.close();
+      this.encoder = null;
+    }
+    this.pendingChunks = [];
+  }
+}
+
 const CAPABILITIES_PACKET_SIZE = 168; // Includes codec capabilities (added 8 bytes)
 const STREAM_TYPE_VIDEO = 0x01;
 const STREAM_TYPE_AUDIO = 0x02;
@@ -67,7 +152,11 @@ const STREAM_TYPE_AUDIO = 0x02;
 const VIDEO_CODEC_CAP_RGBA = 1 << 0;   // Bit 0: RGBA support
 const VIDEO_CODEC_CAP_H265 = 1 << 1;   // Bit 1: H.265/HEVC support
 const VIDEO_CODEC_CAP_JPEG = 1 << 2;   // Bit 2: JPEG support
-const VIDEO_CODEC_CAP_ALL = VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265 | VIDEO_CODEC_CAP_JPEG;
+
+// Only advertise H.265 if browser supports WebCodecs encoding
+const VIDEO_CODEC_CAP_SUPPORTED = H265Encoder.isSupported()
+  ? VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265
+  : VIDEO_CODEC_CAP_RGBA;
 
 const AUDIO_CODEC_CAP_RAW = 1 << 0;    // Bit 0: Raw PCM support
 const AUDIO_CODEC_CAP_OPUS = 1 << 1;   // Bit 1: Opus support
@@ -151,8 +240,8 @@ function buildCapabilitiesPacket(
   bytes[159] = 1; // wants_padding
 
   // Codec capabilities (network byte order, big-endian)
-  // Offset 160-163: video codec capabilities (supports RGBA, H.265, JPEG)
-  view.setUint32(160, VIDEO_CODEC_CAP_ALL, false);
+  // Offset 160-163: video codec capabilities (RGBA always, H.265 if browser supports)
+  view.setUint32(160, VIDEO_CODEC_CAP_SUPPORTED, false);
   // Offset 164-167: audio codec capabilities (supports Raw PCM, Opus)
   view.setUint32(164, AUDIO_CODEC_CAP_ALL, false);
 
@@ -203,6 +292,34 @@ function buildImageFramePayload(
   return bytes;
 }
 
+/**
+ * Build IMAGE_FRAME_H265 payload: H.265 encoded video frame.
+ * Server expects: [flags:u8][width:u16 BE][height:u16 BE][h265_data...]
+ * flags: 0x01 = KEYFRAME, 0x02 = SIZE_CHANGE
+ */
+function buildImageFrameH265Payload(
+  flags: number,
+  width: number,
+  height: number,
+  h265Data: Uint8Array,
+): Uint8Array {
+  const headerSize = 5; // 1 + 2 + 2 bytes
+  const totalSize = headerSize + h265Data.byteLength;
+  const buf = new ArrayBuffer(totalSize);
+  const view = new DataView(buf);
+  const bytes = new Uint8Array(buf);
+
+  // Header: flags (1), width (2 BE), height (2 BE)
+  view.setUint8(0, flags);
+  view.setUint16(1, width, false); // big-endian
+  view.setUint16(3, height, false); // big-endian
+
+  // H.265 bitstream data
+  bytes.set(h265Data, headerSize);
+
+  return bytes;
+}
+
 const STATE_NAMES: Record<number, string> = {
   [ConnectionState.DISCONNECTED]: "Disconnected",
   [ConnectionState.CONNECTING]: "Connecting",
@@ -223,6 +340,7 @@ export function ClientPage() {
   const frameCountRef = useRef<number>(0);
   const receivedFrameCountRef = useRef<number>(0);
   const frameReceiptTimesRef = useRef<number[]>([]);
+  const h265EncoderRef = useRef<H265Encoder | null>(null);
 
   const [status, setStatus] = useState<string>("Connecting...");
   const [publicKey, setPublicKey] = useState<string>("");
@@ -713,16 +831,56 @@ export function ClientPage() {
               );
             }
 
-            const payload = buildImageFramePayload(
-              frame.data,
-              frame.width,
-              frame.height,
-            );
+            // Try H.265 encoding if available
+            if (h265EncoderRef.current && H265Encoder.isSupported()) {
+              try {
+                // Create VideoFrame from canvas for H.265 encoding
+                const videoFrame = new VideoFrame(canvasRef.current!, {
+                  timestamp: now * 1000, // microseconds
+                });
 
-            try {
-              conn.sendPacket(PacketType.IMAGE_FRAME, payload);
-            } catch (err) {
-              console.error("[Client] Failed to send IMAGE_FRAME:", err);
+                // Request keyframe every 60 frames
+                const forceKeyframe = captureLoopFrameCountRef.current % 60 === 0;
+                h265EncoderRef.current.encode(videoFrame, forceKeyframe);
+                videoFrame.close();
+
+                // Send any available encoded chunks
+                const chunks = h265EncoderRef.current.drain();
+                for (const chunk of chunks) {
+                  const payload = buildImageFrameH265Payload(
+                    chunk.flags,
+                    chunk.width,
+                    chunk.height,
+                    chunk.data,
+                  );
+                  conn.sendPacket(PacketType.IMAGE_FRAME_H265, payload);
+                  console.log(
+                    `[Client] Sent IMAGE_FRAME_H265: ${chunk.data.length} bytes, flags=0x${chunk.flags.toString(16)}`,
+                  );
+                }
+              } catch (err) {
+                console.error("[Client] H.265 encoding failed, falling back to RGBA:", err);
+                // Fallback to RGBA
+                const payload = buildImageFramePayload(
+                  frame.data,
+                  frame.width,
+                  frame.height,
+                );
+                conn.sendPacket(PacketType.IMAGE_FRAME, payload);
+              }
+            } else {
+              // No H.265 support, send RGBA
+              const payload = buildImageFramePayload(
+                frame.data,
+                frame.width,
+                frame.height,
+              );
+
+              try {
+                conn.sendPacket(PacketType.IMAGE_FRAME, payload);
+              } catch (err) {
+                console.error("[Client] Failed to send IMAGE_FRAME:", err);
+              }
             }
           } else {
             console.warn(
@@ -870,6 +1028,24 @@ export function ClientPage() {
       frameIntervalRef.current = 1000 / settings.targetFps;
       frameQueueRef.current = [];
 
+      // Initialize H.265 encoder if supported
+      if (H265Encoder.isSupported() && canvasRef.current && videoRef.current) {
+        try {
+          const w = canvasRef.current.width || 1280;
+          const h = canvasRef.current.height || 720;
+          console.log(`[Client] Initializing H.265 encoder: ${w}x${h} @ ${settings.targetFps} FPS`);
+          h265EncoderRef.current = new H265Encoder();
+          await h265EncoderRef.current.initialize(w, h, settings.targetFps);
+          console.log("[Client] H.265 encoder initialized successfully");
+        } catch (err) {
+          console.error("[Client] H.265 encoder initialization failed:", err);
+          h265EncoderRef.current?.destroy();
+          h265EncoderRef.current = null;
+        }
+      } else if (!H265Encoder.isSupported()) {
+        console.log("[Client] H.265 encoding not supported in this browser, using RGBA fallback");
+      }
+
       console.log("[Client] Starting render loops...");
       console.log(
         `[Client] frameInterval set to: ${frameIntervalRef.current}ms (${settings.targetFps} FPS)`,
@@ -904,6 +1080,12 @@ export function ClientPage() {
 
     if (videoRef.current) {
       videoRef.current.srcObject = null;
+    }
+
+    // Clean up H.265 encoder
+    if (h265EncoderRef.current) {
+      h265EncoderRef.current.destroy();
+      h265EncoderRef.current = null;
     }
 
     frameQueueRef.current = [];
