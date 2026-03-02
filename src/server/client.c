@@ -637,7 +637,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
+  log_info("[TCP_DBG] VIDEO_DONE: About to create audio buffer");
   audio_ring_buffer_t *incoming_audio_buffer = audio_ring_buffer_create_for_capture();
+  log_info("[TCP_DBG] AUDIO_DONE: Audio buffer created");
   if (!incoming_audio_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to create audio buffer for client %s", new_client_id);
     log_error("Failed to create audio buffer for client %s", new_client_id);
@@ -645,7 +647,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
+  log_info("[TCP_DBG] AUDIO_QUEUE_START: Creating audio queue");
   packet_queue_t *audio_queue = packet_queue_create_with_pools(500, 1000, false);
+  log_info("[TCP_DBG] AUDIO_QUEUE_DONE");
   if (!audio_queue) {
     LOG_ERRNO_IF_SET("Failed to create audio queue for client");
     audio_ring_buffer_destroy(incoming_audio_buffer);
@@ -653,7 +657,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
     return NULL;
   }
 
+  log_info("[TCP_DBG] OUTGOING_VID_START: Creating outgoing video buffer");
   video_frame_buffer_t *outgoing_video_buffer = video_frame_buffer_create(new_client_id);
+  log_info("[TCP_DBG] OUTGOING_VID_DONE");
   if (!outgoing_video_buffer) {
     LOG_ERRNO_IF_SET("Failed to create outgoing video buffer for client");
     packet_queue_destroy(audio_queue);
@@ -673,7 +679,9 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // NOW acquire the lock for the critical section: slot assignment + registration
+  log_info("[TCP_DBG] LOCK_START: About to acquire client manager write lock");
   rwlock_wrlock(&g_client_manager_rwlock);
+  log_info("[TCP_DBG] LOCK_ACQUIRED: Client manager lock acquired");
 
   // Re-check slot availability under lock (another thread might have taken it)
   if (g_client_manager.clients[slot].client_id[0] != '\0') {
