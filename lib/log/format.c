@@ -483,6 +483,12 @@ int log_template_apply(const log_template_t *format, char *buf, size_t buf_size,
 
   (void)timestamp; /* May be used in future; for now, LOG_FORMAT_TIME uses custom formatting */
 
+  /* Safety check: verify format->specs is valid before dereferencing
+   * This protects against use-after-free if format is freed by another thread */
+  if (!format->specs || format->spec_count == 0) {
+    return -1;
+  }
+
   for (size_t i = 0; i < format->spec_count; i++) {
     const log_format_spec_t *spec = &format->specs[i];
     int written = 0;
