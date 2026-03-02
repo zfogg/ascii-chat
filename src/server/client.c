@@ -232,14 +232,16 @@ static const client_dispatch_entry_t g_client_dispatch_hash[CLIENT_DISPATCH_HASH
 static inline void cleanup_client_all_buffers(client_info_t *client);
 
 /**
- * @brief Register all atomic fields in a client_info_t structure with descriptive names
+ * @brief Register all internal fields in a client_info_t structure with hierarchical names
  *
  * This function is called after a new client is initialized to register all of its
- * atomic fields with the named registry, enabling debug tracking of atomic operations
+ * sync primitives and child structures with the named registry, enabling debug tracking
  * via --sync-state output.
  *
- * Each atomic is named following the pattern: "client.<client_id>.<field_name>"
- * to provide clear identification of which client each atomic belongs to.
+ * Establishes hierarchical parent-child relationships:
+ * - Mutexes and condition variables have client as parent
+ * - Child structures (buffers, queues) have client as parent
+ * - Atomics are also registered with client as parent
  *
  * @param client Pointer to the client_info_t structure
  */
@@ -247,6 +249,30 @@ static void register_client_info_atomics(client_info_t *client) {
   if (!client || !client->client_id[0]) {
     return;
   }
+
+  // Synchronization primitives (mutexes, condition variables)
+  NAMED_REGISTER_MUTEX(&client->client_state_mutex, "client_state_mutex", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_MUTEX(&client->send_mutex, "send_mutex", (uintptr_t)(const void *)(client));
+  NAMED_REGISTER_COND(&client->dispatch_queue_cond, "dispatch_queue_cond", (uintptr_t)(const void *)(client));
+
+  // Child structures (buffers, queues) - register with client as parent for hierarchical naming
+  if (client->incoming_video_buffer) {
+    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->incoming_video_buffer, "incoming_video_buffer", (uintptr_t)(const void *)(client));
+  }
+  if (client->outgoing_video_buffer) {
+    NAMED_REGISTER_VIDEO_FRAME_BUFFER(client->outgoing_video_buffer, "outgoing_video_buffer", (uintptr_t)(const void *)(client));
+  }
+  if (client->incoming_audio_buffer) {
+    NAMED_REGISTER_AUDIO_RINGBUF(client->incoming_audio_buffer, "incoming_audio_buffer", (uintptr_t)(const void *)(client));
+  }
+  if (client->audio_queue) {
+    NAMED_REGISTER_PACKET_QUEUE(client->audio_queue, "audio_queue", (uintptr_t)(const void *)(client));
+  }
+  if (client->received_packet_queue) {
+    NAMED_REGISTER_PACKET_QUEUE(client->received_packet_queue, "received_packet_queue", (uintptr_t)(const void *)(client));
+  }
+  // Crypto context is always present (embedded in client_info_t)
+  NAMED_REGISTER_CRYPTO_CONTEXT(&client->crypto_handshake_ctx, "crypto_handshake_ctx", (uintptr_t)(const void *)(client));
 
   // Video streaming state
   NAMED_REGISTER_ATOMIC(&client->is_sending_video, "is_sending_video", (uintptr_t)(const void *)(client));
