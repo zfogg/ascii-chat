@@ -20,9 +20,15 @@
 int mutex_init(mutex_t *mutex, const char *name) {
   InitializeCriticalSectionAndSpinCount(&mutex->impl, 4000);
   mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
+#ifndef NDEBUG
   mutex->last_lock_time_ns = 0;
   mutex->last_unlock_time_ns = 0;
   mutex->currently_held_by_key = 0;
+  mutex->lock_count = 0;
+  mutex->unlock_count = 0;
+  mutex->trylock_count = 0;
+  mutex->trylock_success_count = 0;
+#endif
   return 0;
 }
 
@@ -54,7 +60,9 @@ int mutex_lock_impl(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock_impl(mutex_t *mutex) {
-  return TryEnterCriticalSection(&mutex->impl) ? 0 : 16; // EBUSY = 16
+  BOOL success = TryEnterCriticalSection(&mutex->impl);
+  mutex_on_trylock(mutex, success ? true : false);
+  return success ? 0 : 16; // EBUSY = 16
 }
 
 /**

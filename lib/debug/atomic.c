@@ -1,15 +1,14 @@
 /**
  * @file debug/atomic.c
- * @brief Debug tracking for atomic operations
+ * @brief Debug formatting and state tracking for atomic operations
  * @ingroup debug
  * @date March 2026
  *
- * Implements debug hooks for atomic operations and integration with
- * the named.c registry for named atomic tracking.
+ * Implements debug-specific functions: initialization/shutdown, and
+ * state formatting for display via --sync-state.
  *
- * No mutexes here: debug hooks use non-atomic field updates which is
- * acceptable for debug statistics. Recursion prevention: uses raw C11
- * atomics only, never calls back into atomic_t system.
+ * Hook implementations (atomic_on_load, atomic_on_store, etc.) are now
+ * in lib/atomic.c alongside the wrapper functions they support.
  */
 
 #include <ascii-chat/debug/atomic.h>
@@ -36,65 +35,6 @@ void debug_atomic_shutdown(void) {
 
 bool debug_atomic_is_initialized(void) {
     return g_atomic_debug_initialized;
-}
-
-
-// ============================================================================
-// Debug Hooks (called from _impl functions in debug builds)
-// ============================================================================
-
-void atomic_on_load(atomic_t *a) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->last_load_time_ns = time_get_ns();
-    a->load_count++;
-}
-
-void atomic_on_store(atomic_t *a) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->last_store_time_ns = time_get_ns();
-    a->store_count++;
-}
-
-void atomic_on_cas(atomic_t *a, bool success) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->cas_count++;
-    if (success) {
-        a->cas_success_count++;
-        a->last_store_time_ns = time_get_ns();
-    }
-}
-
-void atomic_on_fetch(atomic_t *a) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->fetch_count++;
-    a->last_store_time_ns = time_get_ns();
-}
-
-void atomic_ptr_on_load(atomic_ptr_t *a) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->last_load_time_ns = time_get_ns();
-    a->load_count++;
-}
-
-void atomic_ptr_on_store(atomic_ptr_t *a) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->last_store_time_ns = time_get_ns();
-    a->store_count++;
-}
-
-void atomic_ptr_on_cas(atomic_ptr_t *a, bool success) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->cas_count++;
-    if (success) {
-        a->cas_success_count++;
-        a->last_store_time_ns = time_get_ns();
-    }
-}
-
-void atomic_ptr_on_exchange(atomic_ptr_t *a) {
-    if (!a || !g_atomic_debug_initialized) return;
-    a->exchange_count++;
-    a->last_store_time_ns = time_get_ns();
 }
 
 // ============================================================================

@@ -20,17 +20,23 @@
  */
 int mutex_init(mutex_t *mutex, const char *name) {
   int err = pthread_mutex_init(&mutex->impl, NULL);
-  log_info("[MUTEX_INIT_DBG] pthread_mutex_init=%d, name=%s", err, name);
   if (err == 0) {
+    log_info("[MUTEX_INIT_DBG] pthread_mutex_init=%d, name=%s", err, name);
     log_info("[MUTEX_INIT_DBG] About to call NAMED_REGISTER_MUTEX with name=%s at %p", name, (void *)mutex);
     fflush(stdout);
     fflush(stderr);
     // Add a timeout mechanism to detect deadlocks
     mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
     log_info("[MUTEX_INIT_DBG] NAMED_REGISTER_MUTEX returned: %s", mutex->name);
+#ifndef NDEBUG
     mutex->last_lock_time_ns = 0;
     mutex->last_unlock_time_ns = 0;
     mutex->currently_held_by_key = 0;
+    mutex->lock_count = 0;
+    mutex->unlock_count = 0;
+    mutex->trylock_count = 0;
+    mutex->trylock_success_count = 0;
+#endif
   }
   return err;
 }
@@ -72,16 +78,24 @@ int mutex_lock_impl(mutex_t *mutex) {
  * @return 0 on success, EBUSY if already locked, other error code on failure
  */
 int mutex_trylock_impl(mutex_t *mutex) {
+#ifndef NDEBUG
   // Track lock attempt on stack
   mutex_stack_push_pending((uintptr_t)mutex, mutex->name);
+#endif
 
   int err = pthread_mutex_trylock(&mutex->impl);
   if (err == 0) {
     // Mark as successfully locked
+#ifndef NDEBUG
     mutex_stack_mark_locked((uintptr_t)mutex);
+#endif
+    mutex_on_trylock(mutex, true);
   } else {
     // Lock failed, remove from stack
+#ifndef NDEBUG
     mutex_stack_pop((uintptr_t)mutex);
+#endif
+    mutex_on_trylock(mutex, false);
   }
   return err;
 }

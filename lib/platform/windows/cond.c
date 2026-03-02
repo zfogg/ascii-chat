@@ -22,11 +22,22 @@
 int cond_init(cond_t *cond, const char *name) {
   InitializeConditionVariable(&cond->impl);
   cond->name = NAMED_REGISTER_COND(cond, name, NULL);
+#ifndef NDEBUG
   cond->last_signal_time_ns = 0;
   cond->last_broadcast_time_ns = 0;
   cond->last_wait_time_ns = 0;
-  cond->waiting_count = (atomic_t){0};
+  cond->waiting_count = (atomic_t){.impl = 0, .last_store_time_ns = 0, .last_load_time_ns = 0, \
+                                    .store_count = 0, .load_count = 0, .cas_count = 0, \
+                                    .cas_success_count = 0, .fetch_count = 0};
   cond->last_waiting_key = 0;
+  cond->last_wait_mutex = NULL;
+  cond->last_wait_file = NULL;
+  cond->last_wait_line = 0;
+  cond->last_wait_func = NULL;
+  cond->wait_count = 0;
+  cond->signal_count = 0;
+  cond->broadcast_count = 0;
+#endif
   return 0;
 }
 

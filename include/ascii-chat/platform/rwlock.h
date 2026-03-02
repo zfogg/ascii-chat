@@ -35,32 +35,42 @@
 #ifdef _WIN32
 #include "windows_compat.h"
 /**
- * @brief Read-write lock type (Windows: SRWLOCK with name)
+ * @brief Read-write lock type (Windows: SRWLOCK with debug tracking)
  * @ingroup platform
  */
 typedef struct {
     SRWLOCK impl;            ///< Underlying Windows SRW lock
+#ifndef NDEBUG
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
     uintptr_t write_held_by_key;    ///< Registry key of thread holding write lock (0 if not held)
     atomic_t read_lock_count;       ///< Number of threads holding read locks (thread-safe atomic)
+    uint64_t rdlock_count;          ///< Total read lock acquisitions
+    uint64_t wrlock_count;          ///< Total write lock acquisitions
+    uint64_t unlock_count;          ///< Total unlocks
+#endif
 } rwlock_t;
 #else
 #include <pthread.h>
 /**
- * @brief Read-write lock type (POSIX: pthread_rwlock_t with name)
+ * @brief Read-write lock type (POSIX: pthread_rwlock_t with debug tracking)
  * @ingroup platform
  */
 typedef struct {
     pthread_rwlock_t impl;   ///< Underlying POSIX rwlock
+#ifndef NDEBUG
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
     uintptr_t write_held_by_key;    ///< Registry key of thread holding write lock (0 if not held)
     atomic_t read_lock_count;       ///< Number of threads holding read locks (thread-safe atomic)
+    uint64_t rdlock_count;          ///< Total read lock acquisitions
+    uint64_t wrlock_count;          ///< Total write lock acquisitions
+    uint64_t unlock_count;          ///< Total unlocks
+#endif
 } rwlock_t;
 #endif
 
@@ -122,33 +132,64 @@ int rwlock_destroy(rwlock_t *lock);
  * @param rwlock Pointer to the rwlock that was read-locked
  *
  * Called by platform-specific implementations after read lock acquisition.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void rwlock_on_rdlock(rwlock_t *rwlock);
+#else
+#define rwlock_on_rdlock(rwlock) ((void)0)
+#endif
 
 /**
  * @brief Hook called when a write lock is successfully acquired
  * @param rwlock Pointer to the rwlock that was write-locked
  *
  * Called by platform-specific implementations after write lock acquisition.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void rwlock_on_wrlock(rwlock_t *rwlock);
+#else
+#define rwlock_on_wrlock(rwlock) ((void)0)
+#endif
 
 /**
  * @brief Hook called when an rwlock is unlocked (read or write)
  * @param rwlock Pointer to the rwlock that was unlocked
  *
  * Called by platform-specific implementations before lock release.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void rwlock_on_unlock(rwlock_t *rwlock);
+#else
+#define rwlock_on_unlock(rwlock) ((void)0)
+#endif
+
+/**
+ * @brief Format and log the current state of a read-write lock
+ * @param rwlock Pointer to the read-write lock
+ * @param file Source file of the caller
+ * @param line Source line of the caller
+ * @param func Source function of the caller
+ *
+ * Logs detailed state information about the rwlock (timing, counts, held-by info)
+ * at the specified location. Debug builds only; no-op in release builds.
+ *
+ * @ingroup platform
+ */
+#ifndef NDEBUG
+void rwlock_log_state(const rwlock_t *rwlock, const char *file, int line, const char *func);
+#define LOG_RWLOCK_STATE(rwlock) rwlock_log_state(rwlock, __FILE__, __LINE__, __func__)
+#else
+#define LOG_RWLOCK_STATE(rwlock) ((void)0)
+#endif
 
 /**
  * @brief Initialize a read-write lock (implementation function)

@@ -25,11 +25,18 @@ int rwlock_init(rwlock_t *lock, const char *name) {
   int err = pthread_rwlock_init(&lock->impl, NULL);
   if (err == 0) {
     lock->name = NAMED_REGISTER_RWLOCK(lock, name, NULL);
+#ifndef NDEBUG
     lock->last_rdlock_time_ns = 0;
     lock->last_wrlock_time_ns = 0;
     lock->last_unlock_time_ns = 0;
-    atomic_store_u64(&lock->read_lock_count, 0);
+    lock->read_lock_count = (atomic_t){.impl = 0, .last_store_time_ns = 0, .last_load_time_ns = 0, \
+                                       .store_count = 0, .load_count = 0, .cas_count = 0, \
+                                       .cas_success_count = 0, .fetch_count = 0};
     lock->write_held_by_key = 0;
+    lock->rdlock_count = 0;
+    lock->wrlock_count = 0;
+    lock->unlock_count = 0;
+#endif
   }
   return err;
 }

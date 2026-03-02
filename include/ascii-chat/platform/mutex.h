@@ -32,28 +32,40 @@
 #ifdef _WIN32
 #include "windows_compat.h"
 /**
- * @brief Mutex type (Windows: CRITICAL_SECTION with name)
+ * @brief Mutex type (Windows: CRITICAL_SECTION with debug tracking)
  * @ingroup platform
  */
 typedef struct {
     CRITICAL_SECTION impl;   ///< Underlying Windows critical section
+#ifndef NDEBUG
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
     uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
+    uint64_t lock_count;            ///< Total lock acquisitions
+    uint64_t unlock_count;          ///< Total unlocks
+    uint64_t trylock_count;         ///< Total trylock attempts
+    uint64_t trylock_success_count; ///< Successful trylocks
+#endif
 } mutex_t;
 #else
 #include <pthread.h>
 /**
- * @brief Mutex type (POSIX: pthread_mutex_t with name)
+ * @brief Mutex type (POSIX: pthread_mutex_t with debug tracking)
  * @ingroup platform
  */
 typedef struct {
     pthread_mutex_t impl;    ///< Underlying POSIX mutex
+#ifndef NDEBUG
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
     uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
+    uint64_t lock_count;            ///< Total lock acquisitions
+    uint64_t unlock_count;          ///< Total unlocks
+    uint64_t trylock_count;         ///< Total trylock attempts
+    uint64_t trylock_success_count; ///< Successful trylocks
+#endif
 } mutex_t;
 #endif
 
@@ -105,22 +117,65 @@ int mutex_destroy(mutex_t *mutex);
  * @param mutex Pointer to the mutex that was locked
  *
  * Called by platform-specific implementations after lock acquisition.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void mutex_on_lock(mutex_t *mutex);
+#else
+#define mutex_on_lock(mutex) ((void)0)
+#endif
 
 /**
  * @brief Hook called when a mutex is unlocked
  * @param mutex Pointer to the mutex that was unlocked
  *
  * Called by platform-specific implementations before lock release.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void mutex_on_unlock(mutex_t *mutex);
+#else
+#define mutex_on_unlock(mutex) ((void)0)
+#endif
+
+/**
+ * @brief Hook called when a mutex trylock is attempted
+ * @param mutex Pointer to the mutex
+ * @param success Whether the trylock succeeded
+ *
+ * Called by platform-specific implementations after trylock attempt.
+ * Records timing and success/failure statistics (debug builds only).
+ *
+ * @ingroup platform
+ */
+#ifndef NDEBUG
+void mutex_on_trylock(mutex_t *mutex, bool success);
+#else
+#define mutex_on_trylock(mutex, success) ((void)0)
+#endif
+
+/**
+ * @brief Format and log the current state of a mutex
+ * @param mutex Pointer to the mutex
+ * @param file Source file of the caller
+ * @param line Source line of the caller
+ * @param func Source function of the caller
+ *
+ * Logs detailed state information about the mutex (timing, counts, held-by info)
+ * at the specified location. Debug builds only; no-op in release builds.
+ *
+ * @ingroup platform
+ */
+#ifndef NDEBUG
+void mutex_log_state(const mutex_t *mutex, const char *file, int line, const char *func);
+#define LOG_MUTEX_STATE(mutex) mutex_log_state(mutex, __FILE__, __LINE__, __func__)
+#else
+#define LOG_MUTEX_STATE(mutex) ((void)0)
+#endif
 
 /**
  * @brief Lock a mutex (implementation function)

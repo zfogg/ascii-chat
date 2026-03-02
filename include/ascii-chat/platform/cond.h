@@ -33,11 +33,12 @@
 #ifdef _WIN32
 #include "windows_compat.h"
 /**
- * @brief Condition variable type (Windows: CONDITION_VARIABLE with name)
+ * @brief Condition variable type (Windows: CONDITION_VARIABLE with debug tracking)
  * @ingroup platform
  */
 typedef struct {
     CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
+#ifndef NDEBUG
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
@@ -48,15 +49,20 @@ typedef struct {
     const char *last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
     int        last_wait_line;      ///< Callsite line of most recent cond_wait (for deadlock detection)
     const char *last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
+    uint64_t wait_count;            ///< Total wait calls
+    uint64_t signal_count;          ///< Total signal calls
+    uint64_t broadcast_count;       ///< Total broadcast calls
+#endif
 } cond_t;
 #else
 #include <pthread.h>
 /**
- * @brief Condition variable type (POSIX: pthread_cond_t with name)
+ * @brief Condition variable type (POSIX: pthread_cond_t with debug tracking)
  * @ingroup platform
  */
 typedef struct {
     pthread_cond_t impl;     ///< Underlying POSIX condition variable
+#ifndef NDEBUG
     const char *name;        ///< Human-readable name for debugging
     uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
@@ -67,6 +73,10 @@ typedef struct {
     const char *last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
     int        last_wait_line;      ///< Callsite line of most recent cond_wait (for deadlock detection)
     const char *last_wait_func;     ///< Callsite function of most recent cond_wait (for deadlock detection)
+    uint64_t wait_count;            ///< Total wait calls
+    uint64_t signal_count;          ///< Total signal calls
+    uint64_t broadcast_count;       ///< Total broadcast calls
+#endif
 } cond_t;
 #endif
 
@@ -171,11 +181,15 @@ int cond_broadcast(cond_t *cond);
  * @param func Source function of the wait callsite (for deadlock detection)
  *
  * Called by platform-specific implementations before blocking on wait.
- * Records timing, callsite information, and associated mutex for deadlock detection.
+ * Records timing, callsite information, and associated mutex for deadlock detection (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void cond_on_wait(cond_t *cond, mutex_t *mutex, const char *file, int line, const char *func);
+#else
+#define cond_on_wait(cond, mutex, file, line, func) ((void)0)
+#endif
 
 // Forward declare debug_sync functions (only in debug builds)
 #ifndef NDEBUG
@@ -189,22 +203,49 @@ bool debug_sync_is_initialized(void);
  * @param cond Pointer to the condition variable being signaled
  *
  * Called by platform-specific implementations after waking one thread.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void cond_on_signal(cond_t *cond);
+#else
+#define cond_on_signal(cond) ((void)0)
+#endif
 
 /**
  * @brief Hook called when a condition variable is broadcast
  * @param cond Pointer to the condition variable being broadcast
  *
  * Called by platform-specific implementations after waking all threads.
- * Records timing and other diagnostic data.
+ * Records timing and other diagnostic data (debug builds only).
  *
  * @ingroup platform
  */
+#ifndef NDEBUG
 void cond_on_broadcast(cond_t *cond);
+#else
+#define cond_on_broadcast(cond) ((void)0)
+#endif
+
+/**
+ * @brief Format and log the current state of a condition variable
+ * @param cond Pointer to the condition variable
+ * @param file Source file of the caller
+ * @param line Source line of the caller
+ * @param func Source function of the caller
+ *
+ * Logs detailed state information about the condition variable (timing, counts, waiting threads)
+ * at the specified location. Debug builds only; no-op in release builds.
+ *
+ * @ingroup platform
+ */
+#ifndef NDEBUG
+void cond_log_state(const cond_t *cond, const char *file, int line, const char *func);
+#define LOG_COND_STATE(cond) cond_log_state(cond, __FILE__, __LINE__, __func__)
+#else
+#define LOG_COND_STATE(cond) ((void)0)
+#endif
 
 /**
  * @name Condition Variable Wait Macros

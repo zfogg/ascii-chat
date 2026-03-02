@@ -15,7 +15,7 @@
 
 #include <stdatomic.h>
 #include <ascii-chat/atomic.h>
-#include <ascii-chat/debug/atomic.h>
+#include <ascii-chat/util/time.h>
 
 
 // ============================================================================
@@ -281,6 +281,67 @@ uint64_t atomic_exchange_u64(atomic_t *a, uint64_t new_value) {
     uint64_t result = atomic_exchange((_Atomic(uint64_t) *)&a->impl, new_value);
     atomic_on_store(a);
     return result;
+}
+
+// ============================================================================
+// Debug Hooks (called from wrapper functions in debug builds)
+// ============================================================================
+
+// Forward declare the initialization state from lib/debug/atomic.c
+extern bool debug_atomic_is_initialized(void);
+
+void atomic_on_load(atomic_t *a) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_load_time_ns = time_get_ns();
+    a->load_count++;
+}
+
+void atomic_on_store(atomic_t *a) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_store_time_ns = time_get_ns();
+    a->store_count++;
+}
+
+void atomic_on_cas(atomic_t *a, bool success) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->cas_count++;
+    if (success) {
+        a->cas_success_count++;
+        a->last_store_time_ns = time_get_ns();
+    }
+}
+
+void atomic_on_fetch(atomic_t *a) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->fetch_count++;
+    a->last_store_time_ns = time_get_ns();
+}
+
+void atomic_ptr_on_load(atomic_ptr_t *a) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_load_time_ns = time_get_ns();
+    a->load_count++;
+}
+
+void atomic_ptr_on_store(atomic_ptr_t *a) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->last_store_time_ns = time_get_ns();
+    a->store_count++;
+}
+
+void atomic_ptr_on_cas(atomic_ptr_t *a, bool success) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->cas_count++;
+    if (success) {
+        a->cas_success_count++;
+        a->last_store_time_ns = time_get_ns();
+    }
+}
+
+void atomic_ptr_on_exchange(atomic_ptr_t *a) {
+    if (!a || !debug_atomic_is_initialized()) return;
+    a->exchange_count++;
+    a->last_store_time_ns = time_get_ns();
 }
 
 #endif  // !NDEBUG
