@@ -61,6 +61,9 @@ opus_codec_t *opus_codec_create_encoder(opus_application_t application, int samp
 
   log_debug("Opus encoder created: sample_rate=%d, bitrate=%d bps, DTX enabled", sample_rate, bitrate);
 
+  // Register Opus encoder for debugging
+  NAMED_REGISTER_CONTEXT(codec, "opus_encoder", "opus_codec", NULL);
+
   return codec;
 }
 
@@ -95,6 +98,9 @@ opus_codec_t *opus_codec_create_decoder(int sample_rate) {
   codec->tmp_buffer = NULL;
 
   log_debug("Opus decoder created: sample_rate=%d", sample_rate);
+
+  // Register Opus decoder for debugging
+  NAMED_REGISTER_CONTEXT(codec, "opus_decoder", "opus_codec", NULL);
 
   return codec;
 }

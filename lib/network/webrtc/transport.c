@@ -35,6 +35,7 @@
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/platform/cond.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 
 /**
@@ -475,6 +476,9 @@ acip_transport_t *acip_webrtc_transport_create(webrtc_peer_connection_t *peer_co
   transport->impl_data = wrtc_data;
 
   log_info("Created WebRTC transport (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
+
+  // Register WebRTC transport implementation data with transport as parent
+  NAMED_REGISTER(wrtc_data, "impl", "webrtc_impl", "0x%tx", (uintptr_t)(const void *)(transport));
 
   return transport;
 }
