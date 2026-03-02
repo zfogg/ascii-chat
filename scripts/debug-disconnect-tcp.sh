@@ -3,21 +3,28 @@
 set -euo pipefail
 
 PORT=$(((RANDOM + 2000) % 8000))
+client_log=/tmp/client-logfile-"$PORT".log
+server_log=/tmp/server-logfile-"$PORT".log
 
 echo "Starting on port: $PORT"
 
 pkill -f "ascii-chat.*server" && sleep 0.5 || true
-cmake --build build >/dev/null 2>&1 && ./build/bin/ascii-chat server --port "$PORT" >/dev/null 2>&1 &
+cmake --build build >/dev/null 2>&1
+./build/bin/ascii-chat \
+  --log-file "$server_log" --log-level debug \
+  server --port "$PORT" \
+  >/dev/null 2>&1 &
 SERVER_PID=$!
-sleep 1
+sleep 0.25
 
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-timeout -k1 8 ./build/bin/ascii-chat \
-  --log-level debug --log-file client.log --sync-state 3 \
+timeout -k1 3.25 ./build/bin/ascii-chat \
+  --log-level debug --log-file "$client_log" --sync-state 3 \
   client \
   localhost:"$PORT" \
-  2>/dev/null \
+  -S -D 1 \
+  | tee /tmp/client-stdout-"$PORT".log \
   || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
@@ -57,12 +64,15 @@ echo "Actual frames rendered: $FRAME_COUNT"
 echo ""
 
 # Check for memory errors
-if grep -q "AddressSanitizer" client.log 2>/dev/null; then
+if grep -q "AddressSanitizer" "$client_log" 2>/dev/null; then
     echo "⚠️  ASAN errors detected:"
-    grep "SUMMARY: AddressSanitizer" client.log | head -1 || true
+    grep "SUMMARY: AddressSanitizer" "$client_log" | head -1 || true
 else
     echo "✓ No memory errors detected"
 fi
+
+echo "Client log: $client_log"
+echo "Server log: $server_log"
 
 echo ""
 pkill -f "ascii-chat.*server" && sleep 0.5 || true
