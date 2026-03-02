@@ -131,15 +131,21 @@ test.describe("Client Connection to Native Server", () => {
     await expect(page.locator(".status")).toBeVisible({ timeout: 5000 });
   });
 
-  test("client successfully connects and sends frames", async ({
-    page,
-  }) => {
+  test("client successfully connects and sends frames", async ({ page }) => {
     test.setTimeout(4500);
 
     // Capture console output to analyze packets
     const consoleLogs: string[] = [];
     page.on("console", (msg) => {
-      consoleLogs.push(msg.text());
+      const text = msg.text();
+      consoleLogs.push(text);
+      // Log key packets
+      if (
+        text.includes("STREAM_START") ||
+        text.includes("CLIENT_CAPABILITIES")
+      ) {
+        console.log(`[CAPTURE] ${text}`);
+      }
     });
 
     // Wait for connection to establish
@@ -154,31 +160,33 @@ test.describe("Client Connection to Native Server", () => {
 
     // Check what packets were received
     const asciiFrameCount = consoleLogs.filter((log) =>
-      log.includes("ASCII_FRAME")
+      log.includes("ASCII_FRAME"),
     ).length;
-    const encryptedCount = consoleLogs.filter((log) =>
-      log.includes("ENCRYPTED") && log.includes("RECV")
+    const encryptedCount = consoleLogs.filter(
+      (log) => log.includes("ENCRYPTED") && log.includes("RECV"),
     ).length;
 
     // Count inner packet types from decrypted packets
     const audioOpusCount = consoleLogs.filter((log) =>
-      log.includes("Inner packet type: 4001 (AUDIO_OPUS_BATCH)")
+      log.includes("Inner packet type: 4001 (AUDIO_OPUS_BATCH)"),
     ).length;
     const imageFrameCount = consoleLogs.filter((log) =>
-      log.includes("Inner packet type: 3000 (IMAGE_FRAME)")
+      log.includes("Inner packet type: 3000 (IMAGE_FRAME)"),
     ).length;
     const imageFrameH265Count = consoleLogs.filter((log) =>
-      log.includes("Inner packet type: 3002 (IMAGE_FRAME_H265)")
+      log.includes("Inner packet type: 3002 (IMAGE_FRAME_H265)"),
     ).length;
 
-    console.log(`Packets received: ENCRYPTED=${encryptedCount}, ASCII_FRAME=${asciiFrameCount}`);
     console.log(
-      `Inner packet types: AUDIO_OPUS_BATCH=${audioOpusCount}, IMAGE_FRAME=${imageFrameCount}, IMAGE_FRAME_H265=${imageFrameH265Count}`
+      `Packets received: ENCRYPTED=${encryptedCount}, ASCII_FRAME=${asciiFrameCount}`,
+    );
+    console.log(
+      `Inner packet types: AUDIO_OPUS_BATCH=${audioOpusCount}, IMAGE_FRAME=${imageFrameCount}, IMAGE_FRAME_H265=${imageFrameH265Count}`,
     );
 
     // Check frame metrics
     const metrics = await page.evaluate(
-      () => (window as any).__clientFrameMetrics
+      () => (window as any).__clientFrameMetrics,
     );
 
     console.log("Frame metrics after connection:", metrics);
@@ -205,7 +213,7 @@ test.describe("Client Connection to Native Server", () => {
 
     // Capture initial metrics
     const startMetrics = await page.evaluate(
-      () => (window as any).__clientFrameMetrics
+      () => (window as any).__clientFrameMetrics,
     );
     console.log("Start metrics:", startMetrics);
 
@@ -214,7 +222,7 @@ test.describe("Client Connection to Native Server", () => {
 
     // Capture end metrics
     const endMetrics = await page.evaluate(
-      () => (window as any).__clientFrameMetrics
+      () => (window as any).__clientFrameMetrics,
     );
     console.log("End metrics:", endMetrics);
 
@@ -222,11 +230,10 @@ test.describe("Client Connection to Native Server", () => {
     const renderedDelta =
       (endMetrics?.rendered || 0) - (startMetrics?.rendered || 0);
     const uniqueDelta =
-      (endMetrics?.uniqueRendered || 0) -
-      (startMetrics?.uniqueRendered || 0);
+      (endMetrics?.uniqueRendered || 0) - (startMetrics?.uniqueRendered || 0);
 
     console.log(
-      `Frames delta: rendered=${renderedDelta}, unique=${uniqueDelta}`
+      `Frames delta: rendered=${renderedDelta}, unique=${uniqueDelta}`,
     );
 
     // Verify streaming is active

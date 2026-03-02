@@ -1,15 +1,15 @@
 /**
- * @file ui/help_screen.h
- * @brief 🆘 Interactive help screen for session keyboard shortcuts
+ * @file ui/keyboard_help.h
+ * @brief 🆘 Interactive keyboard help overlay for session keyboard shortcuts
  * @ingroup session
  * @addtogroup session
  * @{
  *
- * Provides an interactive help screen overlay that displays:
+ * Provides an interactive keyboard help overlay that displays:
  * - Available keyboard shortcuts
  * - Current program state (volume, color mode, webcam flip, audio, mute status)
  *
- * The help screen is toggled with '?' key and suppresses frame rendering
+ * The keyboard help is toggled with '?' key and suppresses frame rendering
  * while network reception continues in the background.
  *
  * **Display State:**
@@ -18,7 +18,7 @@
  * - Real-time updates of option values (no network latency)
  *
  * **Threading:**
- * - Help state: Atomic bool for lock-free access
+ * - Keyboard help state: Atomic bool for lock-free access
  * - Terminal writes: Serialized via session_display_write_raw()
  * - Option reads: Lock-free via RCU (GET_OPTION macro)
  *
@@ -32,40 +32,40 @@
 #include <stdbool.h>
 
 /* ============================================================================
- * Help Screen Control Functions
+ * Keyboard Help Control Functions
  * @{
  */
 
 /**
- * @brief Toggle help screen on/off
+ * @brief Toggle keyboard help on/off
  * @param ctx Display context (must not be NULL)
  *
- * Atomically toggles the help screen active state. When active, the help
- * screen is displayed and frame rendering is suppressed. Network reception
+ * Atomically toggles the keyboard help active state. When active, the keyboard
+ * help is displayed and frame rendering is suppressed. Network reception
  * continues in the background.
  *
  * @note Thread-safe: Uses atomic bool for lock-free toggle
  * @ingroup session
  */
-void session_display_toggle_help(session_display_ctx_t *ctx);
+void keyboard_help_toggle(session_display_ctx_t *ctx);
 
 /**
- * @brief Check if help screen is currently active
+ * @brief Check if keyboard help is currently active
  * @param ctx Display context (must not be NULL)
- * @return true if help screen is active, false otherwise
+ * @return true if keyboard help is active, false otherwise
  *
- * Non-blocking check of help screen state.
+ * Non-blocking check of keyboard help state.
  *
  * @note Thread-safe: Uses atomic load
  * @ingroup session
  */
-bool session_display_is_help_active(session_display_ctx_t *ctx);
+bool keyboard_help_is_active(session_display_ctx_t *ctx);
 
 /**
- * @brief Render help screen TUI overlay
+ * @brief Render keyboard help TUI overlay
  * @param ctx Display context (must not be NULL)
  *
- * Renders a centered help screen showing:
+ * Renders a centered keyboard help screen showing:
  * - Keyboard shortcuts and their functions
  * - Current program state values:
  *   - Volume (displayed as bar graph: ████████░░ 80%)
@@ -87,7 +87,7 @@ bool session_display_is_help_active(session_display_ctx_t *ctx);
  * @note Uses session_display_write_raw() for atomic terminal output
  * @ingroup session
  */
-void session_display_render_help(session_display_ctx_t *ctx);
+void keyboard_help_render(session_display_ctx_t *ctx);
 
 /** @} */
 

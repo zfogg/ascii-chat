@@ -157,17 +157,16 @@ const STREAM_TYPE_VIDEO = 0x01;
 const STREAM_TYPE_AUDIO = 0x02;
 
 // Codec capability bitmasks (must match include/ascii-chat/media/codecs.h)
-const VIDEO_CODEC_CAP_RGBA = 1 << 0;   // Bit 0: RGBA support
-const VIDEO_CODEC_CAP_H265 = 1 << 1;   // Bit 1: H.265/HEVC support
-const VIDEO_CODEC_CAP_JPEG = 1 << 2;   // Bit 2: JPEG support
+const VIDEO_CODEC_CAP_RGBA = 1 << 0; // Bit 0: RGBA support
+const VIDEO_CODEC_CAP_H265 = 1 << 1; // Bit 1: H.265/HEVC support
 
 // Only advertise H.265 if browser supports WebCodecs encoding
 const VIDEO_CODEC_CAP_SUPPORTED = H265Encoder.isSupported()
   ? VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265
   : VIDEO_CODEC_CAP_RGBA;
 
-const AUDIO_CODEC_CAP_RAW = 1 << 0;    // Bit 0: Raw PCM support
-const AUDIO_CODEC_CAP_OPUS = 1 << 1;   // Bit 1: Opus support
+const AUDIO_CODEC_CAP_RAW = 1 << 0; // Bit 0: Raw PCM support
+const AUDIO_CODEC_CAP_OPUS = 1 << 1; // Bit 1: Opus support
 const AUDIO_CODEC_CAP_ALL = AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS;
 
 // Helper functions to map Settings types to WASM enums
@@ -211,7 +210,15 @@ function buildStreamStartPacket(includeAudio: boolean = false): Uint8Array {
   // Network byte order (big-endian)
   view.setUint32(0, streamType, false);
 
-  return new Uint8Array(buf);
+  const payload = new Uint8Array(buf);
+  console.log(
+    `[Client] STREAM_START payload: type=0x${streamType.toString(16)}, bytes=[${Array.from(
+      payload,
+    )
+      .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+      .join(" ")}]`,
+  );
+  return payload;
 }
 
 function buildCapabilitiesPacket(
@@ -252,6 +259,25 @@ function buildCapabilitiesPacket(
   view.setUint32(160, VIDEO_CODEC_CAP_SUPPORTED, false);
   // Offset 164-167: audio codec capabilities (supports Raw PCM, Opus)
   view.setUint32(164, AUDIO_CODEC_CAP_ALL, false);
+
+  // Log capabilities packet structure for debugging
+  console.log(
+    `[Client] CAPABILITIES packet: size=${bytes.length}, width=${cols}, height=${rows}, video_caps=0x${VIDEO_CODEC_CAP_SUPPORTED.toString(
+      16,
+    )}, audio_caps=0x${AUDIO_CODEC_CAP_ALL.toString(16)}`,
+  );
+  console.log(
+    `[Client] CAPABILITIES first 32 bytes: [${Array.from(bytes.slice(0, 32))
+      .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+      .join(" ")}]`,
+  );
+  console.log(
+    `[Client] CAPABILITIES last 8 bytes (codecs at offset 160-167): [${Array.from(
+      bytes.slice(160, 168),
+    )
+      .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+      .join(" ")}]`,
+  );
 
   return bytes;
 }
@@ -848,7 +874,8 @@ export function ClientPage() {
                 });
 
                 // Request keyframe every 60 frames
-                const forceKeyframe = captureLoopFrameCountRef.current % 60 === 0;
+                const forceKeyframe =
+                  captureLoopFrameCountRef.current % 60 === 0;
                 h265EncoderRef.current.encode(videoFrame, forceKeyframe);
                 videoFrame.close();
 
@@ -867,7 +894,10 @@ export function ClientPage() {
                   );
                 }
               } catch (err) {
-                console.error("[Client] H.265 encoding failed, falling back to RGBA:", err);
+                console.error(
+                  "[Client] H.265 encoding failed, falling back to RGBA:",
+                  err,
+                );
                 // Fallback to RGBA
                 const payload = buildImageFramePayload(
                   frame.data,
@@ -1041,7 +1071,9 @@ export function ClientPage() {
         try {
           const w = canvasRef.current.width || 1280;
           const h = canvasRef.current.height || 720;
-          console.log(`[Client] Initializing H.265 encoder: ${w}x${h} @ ${settings.targetFps} FPS`);
+          console.log(
+            `[Client] Initializing H.265 encoder: ${w}x${h} @ ${settings.targetFps} FPS`,
+          );
           h265EncoderRef.current = new H265Encoder();
           await h265EncoderRef.current.initialize(w, h, settings.targetFps);
           console.log("[Client] H.265 encoder initialized successfully");
@@ -1051,7 +1083,9 @@ export function ClientPage() {
           h265EncoderRef.current = null;
         }
       } else if (!H265Encoder.isSupported()) {
-        console.log("[Client] H.265 encoding not supported in this browser, using RGBA fallback");
+        console.log(
+          "[Client] H.265 encoding not supported in this browser, using RGBA fallback",
+        );
       }
 
       console.log("[Client] Starting render loops...");

@@ -86,8 +86,8 @@ typedef struct session_display_ctx {
   /** @brief Audio context for playback (borrowed, not owned) */
   void *audio_ctx;
 
-  /** @brief Help screen active flag (toggled with '?') - atomic for thread-safe access */
-  atomic_t help_screen_active;
+  /** @brief Keyboard help active flag (toggled with '?') - atomic for thread-safe access */
+  atomic_t keyboard_help_active;
 
   /** @brief Digital rain effect context (NULL if disabled) */
   digital_rain_t *digital_rain;
@@ -152,7 +152,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   ctx->audio_ctx = config->audio_ctx;
   ctx->render_fps = config->render_fps;
   atomic_store_bool(&ctx->first_frame, true);
-  atomic_store_bool(&ctx->help_screen_active, false);
+  atomic_store_bool(&ctx->keyboard_help_active, false);
 
   // Initialize FPS counter
   ctx->fps_counter = fps_counter_create();
@@ -710,7 +710,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
   // Suppress frame rendering when help screen is active
   // Network reception continues in background, frames are just not displayed
-  if (atomic_load_bool(&ctx->help_screen_active)) {
+  if (atomic_load_bool(&ctx->keyboard_help_active)) {
     return;
   }
 
@@ -1121,8 +1121,8 @@ void session_display_toggle_help(session_display_ctx_t *ctx) {
     return;
   }
 
-  bool current = atomic_load_bool(&ctx->help_screen_active);
-  atomic_store_bool(&ctx->help_screen_active, !current);
+  bool current = atomic_load_bool(&ctx->keyboard_help_active);
+  atomic_store_bool(&ctx->keyboard_help_active, !current);
 }
 
 /**
@@ -1139,5 +1139,5 @@ bool session_display_is_help_active(session_display_ctx_t *ctx) {
     return false;
   }
 
-  return atomic_load_bool(&ctx->help_screen_active);
+  return atomic_load_bool(&ctx->keyboard_help_active);
 }

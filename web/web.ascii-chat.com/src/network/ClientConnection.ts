@@ -467,11 +467,19 @@ export class ClientConnection {
     console.log(
       `[ClientConnection] sendPacket() called: type=${packetType} (${name}), payload_size=${payload.length}`,
     );
+    console.log(
+      `[ClientConnection] Payload hex: [${Array.from(payload.slice(0, 32))
+        .map((b) => `0x${b.toString(16).padStart(2, "0")}`)
+        .join(" ")}]${payload.length > 32 ? "..." : ""}`,
+    );
 
     try {
       const state = getConnectionState();
       console.log(
         `[ClientConnection] Current connection state: ${state} (${ConnectionState[state]})`,
+      );
+      console.error(
+        `[ClientConnection] STATE_CHECK: about to send ${name}, state=${state} CONNECTED=${ConnectionState.CONNECTED} HANDSHAKE=${ConnectionState.HANDSHAKE}`,
       );
 
       if (state === ConnectionState.CONNECTED) {
@@ -517,7 +525,13 @@ export class ClientConnection {
       } else {
         // In ERROR, DISCONNECTED, or CONNECTING state - don't send
         console.error(
-          `[ClientConnection] Cannot send ${name} in state ${ConnectionState[state]} - packet dropped`,
+          `[ClientConnection] ❌ PACKET DROPPED: ${name} in state ${state} (${ConnectionState[state]})`,
+        );
+        console.error(
+          `[ClientConnection] State values: DISCONNECTED=${ConnectionState.DISCONNECTED} CONNECTING=${ConnectionState.CONNECTING} HANDSHAKE=${ConnectionState.HANDSHAKE} CONNECTED=${ConnectionState.CONNECTED} ERROR=${ConnectionState.ERROR}`,
+        );
+        console.error(
+          `[ClientConnection] Packet details: type=${packetType} size=${payload.length} name=${name}`,
         );
       }
     } catch (error) {

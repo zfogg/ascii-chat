@@ -73,7 +73,8 @@ test("Browser receives multiple ENCRYPTED packets from server", async ({
     // Count ENCRYPTED packet receives (packet type 1200 = ENCRYPTED)
     if (
       text.includes("[ClientConnection] <<< RECV packet type=1200") ||
-      (text.includes("[ClientConnection] <<< RECV") && text.includes("type=1200"))
+      (text.includes("[ClientConnection] <<< RECV") &&
+        text.includes("type=1200"))
     ) {
       encryptedPackets.push(Date.now());
       console.log(

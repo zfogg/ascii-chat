@@ -1,10 +1,10 @@
 /**
- * @file ui/help_screen.c
- * @brief Help screen TUI rendering implementation
+ * @file ui/keyboard_help.c
+ * @brief Keyboard help overlay TUI rendering implementation
  * @ingroup session
  */
 
-#include <ascii-chat/ui/help_screen.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include "session/display.h"
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/options.h>
@@ -23,7 +23,7 @@
 #define DISABLED_COLOR LOG_COLOR_ERROR /* Red */
 
 /* ============================================================================
- * Help Screen Rendering
+ * Keyboard Help Rendering
  * ============================================================================ */
 
 /**
@@ -313,20 +313,20 @@ static void append_settings_line(char *buffer, size_t *buf_pos, size_t BUFFER_SI
 }
 
 /**
- * @brief Render help screen centered on terminal
+ * @brief Render keyboard help centered on terminal
  */
-void session_display_render_help(session_display_ctx_t *ctx) {
+void keyboard_help_render(session_display_ctx_t *ctx) {
   if (!ctx) {
-    log_error("session_display_render_help: ctx is NULL!");
+    log_error("keyboard_help_render: ctx is NULL!");
     return;
   }
 
-  log_info("session_display_render_help: STARTING");
+  log_info("keyboard_help_render: STARTING");
 
   // Get terminal dimensions
   int term_width = (int)terminal_get_effective_width();
   int term_height = (int)terminal_get_effective_height();
-  log_info("session_display_render_help: term_width=%d, term_height=%d", term_width, term_height);
+  log_info("keyboard_help_render: term_width=%d, term_height=%d", term_width, term_height);
 
   // Use available terminal width, capped at preferred width
   int box_width = term_width;
@@ -530,30 +530,30 @@ void session_display_render_help(session_display_ctx_t *ctx) {
 
 #undef APPEND
 
-  log_info("session_display_render_help: buffer prepared, buf_pos=%zu", buf_pos);
+  log_info("keyboard_help_render: buffer prepared, buf_pos=%zu", buf_pos);
 
   // Write buffer to terminal
   session_display_write_raw(ctx, buffer, buf_pos);
-  log_info("session_display_render_help: buffer written to terminal");
+  log_info("keyboard_help_render: buffer written to terminal");
 
   // Flush output
   if (ctx && session_display_has_tty(ctx)) {
     int tty_fd = session_display_get_tty_fd(ctx);
-    log_info("session_display_render_help: tty_fd=%d", tty_fd);
+    log_info("keyboard_help_render: tty_fd=%d", tty_fd);
     if (tty_fd >= 0) {
       (void)terminal_flush(tty_fd);
-      log_info("session_display_render_help: terminal flushed");
+      log_info("keyboard_help_render: terminal flushed");
     }
   }
 
   SAFE_FREE(buffer);
-  log_info("session_display_render_help: COMPLETE");
+  log_info("keyboard_help_render: COMPLETE");
 }
 
 /* ============================================================================
- * Help Screen State Management
+ * Keyboard Help State Management
  *
- * Note: session_display_toggle_help() and session_display_is_help_active()
+ * Note: keyboard_help_toggle() and keyboard_help_is_active()
  * are implemented in display.c where they have access to the internal
- * struct session_display_ctx definition containing help_screen_active.
+ * struct session_display_ctx definition containing keyboard_help_active.
  * ============================================================================ */

@@ -25,7 +25,7 @@ set(CORE_SRCS
     ${LIB_DIR}/ui/frame_buffer.c
     ${LIB_DIR}/ui/fps_counter.c
     ${LIB_DIR}/ui/terminal_screen.c
-    ${LIB_DIR}/ui/help_screen.c
+    ${LIB_DIR}/ui/keyboard_help.c
     ${LIB_DIR}/ui/splash.c
     ${LIB_DIR}/ui/server_status.c
     ${LIB_DIR}/ui/discovery_status.c
