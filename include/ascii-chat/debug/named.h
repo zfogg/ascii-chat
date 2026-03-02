@@ -1241,6 +1241,40 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
   } while (0)
 #endif
 
+/**
+ * @brief Copy a string to buffer, with bounds checking
+ * @param str The string to copy (may be NULL)
+ * @param buffer Output buffer
+ * @param size Size of the output buffer
+ * @ingroup debug_named
+ *
+ * Safe string copy that handles NULL inputs and ensures null termination.
+ * Useful for formatting optional or variable string fields.
+ *
+ * In release builds (NDEBUG), copies the string as-is.
+ */
+#ifndef NDEBUG
+#define NAMED_GET_BY_STR(str, buffer, size)                                                                            \
+  do {                                                                                                                 \
+    if ((str)) {                                                                                                       \
+      strncpy((buffer), (str), (size) - 1);                                                                           \
+      (buffer)[(size) - 1] = '\0';                                                                                    \
+    } else {                                                                                                           \
+      (buffer)[0] = '\0';                                                                                              \
+    }                                                                                                                  \
+  } while (0)
+#else
+#define NAMED_GET_BY_STR(str, buffer, size)                                                                            \
+  do {                                                                                                                 \
+    if ((str)) {                                                                                                       \
+      strncpy((buffer), (str), (size) - 1);                                                                           \
+      (buffer)[(size) - 1] = '\0';                                                                                    \
+    } else {                                                                                                           \
+      (buffer)[0] = '\0';                                                                                              \
+    }                                                                                                                  \
+  } while (0)
+#endif
+
 #ifdef __cplusplus
 }
 #endif
