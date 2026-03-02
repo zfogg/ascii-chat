@@ -321,8 +321,8 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
     frame_num++;
   }
 
-  // Output colored to stderr and plain to log file
-  fprintf(stderr, "%s", colored_buffer);
+  // Output backtrace through logging system (no direct fprintf to avoid ANSI codes in captured output)
+  log_warn("%s", plain_buffer);
   log_file_msg("%s", plain_buffer);
 }
 
