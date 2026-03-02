@@ -1,15 +1,15 @@
 /**
  * E2E performance test for Client mode rendering
  *
- * Verifies that client mode can connect, render, and maintain FPS > 15.
- * Run with: bun run test:e2e -- tests/e2e/performance-check.spec.ts
+ * Verifies that client mode can connect, render, and maintain FPS >= 30 over WebSocket.
+ * Run with: bun run test:e2e -- tests/e2e/websocket-fps30.spec.ts
  */
 
 import { test, expect } from "@playwright/test";
 import { ServerFixture, getRandomPort } from "./server-fixture";
 
 const WEB_CLIENT_URL = "http://localhost:3000/client";
-const TEST_TIMEOUT = 15000;
+const TEST_TIMEOUT = 4000;
 
 // Use fake media device for E2E tests (real hardware may not be available)
 test.use({
