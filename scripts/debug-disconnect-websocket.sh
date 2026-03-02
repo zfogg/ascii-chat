@@ -25,8 +25,7 @@ cmake --build build --target ascii-chat
 SERVER_PID=$!
 sleep 0.25
 
-set -x
-EXIT_CODE=0
+EXIT_CODE='(will be set after program runs)'
 START_TIME=$(date +%s%N)
 export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
 export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
