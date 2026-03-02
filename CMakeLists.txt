@@ -343,7 +343,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/tooling/Query.cmake)
 # IMPORTANT: Defer must run BEFORE panic so that:
 # 1. Defer analyzes clean original sources (correct scope analysis)
 # 2. Panic then transforms defer's output (just adds logging)
-ascii_defer_prepare()
+# Skip defer tool for musl builds (C++ header compatibility issues with musl libc++)
+if(NOT USE_MUSL)
+    ascii_defer_prepare()
+endif()
 ascii_panic_prepare()
 # Query tool is independent of defer/panic - it doesn't do source transformation
 ascii_query_prepare()
@@ -358,7 +361,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/PCH.cmake)
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/src ${CMAKE_BINARY_DIR}/src)
 ascii_panic_finalize()
-ascii_defer_finalize()
+if(NOT USE_MUSL)
+    ascii_defer_finalize()
+endif()
 ascii_query_finalize()
 
 # =============================================================================

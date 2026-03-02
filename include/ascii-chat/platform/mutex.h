@@ -37,8 +37,8 @@
  */
 typedef struct {
     CRITICAL_SECTION impl;   ///< Underlying Windows critical section
+    const char *name;        ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    const char *name;        ///< Human-readable name for debugging
     uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
     uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)
@@ -56,8 +56,8 @@ typedef struct {
  */
 typedef struct {
     pthread_mutex_t impl;    ///< Underlying POSIX mutex
+    const char *name;        ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    const char *name;        ///< Human-readable name for debugging
     uint64_t last_lock_time_ns;   ///< Timestamp of last lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns; ///< Timestamp of last unlock (nanoseconds)
     uintptr_t currently_held_by_key; ///< Registry key of thread holding the lock (0 if free)

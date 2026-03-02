@@ -40,8 +40,8 @@
  */
 typedef struct {
     SRWLOCK impl;            ///< Underlying Windows SRW lock
+    const char *name;        ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    const char *name;        ///< Human-readable name for debugging
     uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)
@@ -60,8 +60,8 @@ typedef struct {
  */
 typedef struct {
     pthread_rwlock_t impl;   ///< Underlying POSIX rwlock
+    const char *name;        ///< Human-readable name for named registry (all builds)
 #ifndef NDEBUG
-    const char *name;        ///< Human-readable name for debugging
     uint64_t last_rdlock_time_ns;  ///< Timestamp of last read lock acquisition (nanoseconds)
     uint64_t last_wrlock_time_ns;  ///< Timestamp of last write lock acquisition (nanoseconds)
     uint64_t last_unlock_time_ns;  ///< Timestamp of last unlock (nanoseconds)

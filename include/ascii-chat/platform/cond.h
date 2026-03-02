@@ -38,12 +38,12 @@
  */
 typedef struct {
     CONDITION_VARIABLE impl; ///< Underlying Windows condition variable
+    const char *name;        ///< Human-readable name for named registry (all builds)
+    atomic_t waiting_count;        ///< Number of threads currently waiting (functional - needed for all builds)
 #ifndef NDEBUG
-    const char *name;        ///< Human-readable name for debugging
     uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
     uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
-    atomic_t waiting_count;        ///< Number of threads currently waiting
     uintptr_t last_waiting_key;     ///< Registry key of most recent waiter
     mutex_t *last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
     const char *last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)
@@ -62,12 +62,12 @@ typedef struct {
  */
 typedef struct {
     pthread_cond_t impl;     ///< Underlying POSIX condition variable
+    const char *name;        ///< Human-readable name for named registry (all builds)
+    atomic_t waiting_count;        ///< Number of threads currently waiting (functional - needed for all builds)
 #ifndef NDEBUG
-    const char *name;        ///< Human-readable name for debugging
     uint64_t last_signal_time_ns;  ///< Timestamp of last signal (nanoseconds)
     uint64_t last_broadcast_time_ns; ///< Timestamp of last broadcast (nanoseconds)
     uint64_t last_wait_time_ns;    ///< Timestamp of last wait (nanoseconds)
-    atomic_t waiting_count;        ///< Number of threads currently waiting
     uintptr_t last_waiting_key;     ///< Registry key of most recent waiter
     mutex_t *last_wait_mutex;       ///< Associated mutex at most recent wait (for deadlock detection)
     const char *last_wait_file;     ///< Callsite file of most recent cond_wait (for deadlock detection)

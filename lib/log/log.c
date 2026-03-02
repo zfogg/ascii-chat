@@ -190,9 +190,10 @@ const char *get_level_string_padded(log_level_t level) {
     asciichat_set_errno_with_message(error, NULL, 0, NULL, message, ##__VA_ARGS__);                                    \
     static const char *msg_header = "CRITICAL LOGGING SYSTEM ERROR: ";                                                 \
     safe_fprintf(stderr, "%s %s\n", colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
-    platform_write(g_log.file, msg_header, strlen(msg_header));                                                        \
-    platform_write(g_log.file, message, strlen(message));                                                              \
-    platform_write(g_log.file, "\n", 1);                                                                               \
+    int _log_fd = atomic_load_int(&g_log.file);                                                                        \
+    platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
+    platform_write(_log_fd, message, strlen(message));                                                                 \
+    platform_write(_log_fd, "\n", 1);                                                                                  \
     platform_print_backtrace(0);                                                                                       \
   } while (0)
 #else
