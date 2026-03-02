@@ -328,8 +328,6 @@ static void *audio_sender_thread_func(void *arg) {
     }
   }
 
-  log_debug("Audio sender thread exiting");
-
   // Clean up thread-local error context before exit
   asciichat_errno_destroy();
 
