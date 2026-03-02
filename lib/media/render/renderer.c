@@ -1,10 +1,10 @@
 /**
- * @file video/ascii/file/renderer.c
- * @ingroup video
+ * @file media/render/renderer.c
+ * @ingroup media
  * @brief render_file_* — ties together font resolution, platform renderer, FFmpeg encoder
  */
 #ifndef _WIN32
-#include <ascii-chat/video/ascii/file/renderer.h>
+#include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/platform/font.h>
 #include <ascii-chat/options/options.h>

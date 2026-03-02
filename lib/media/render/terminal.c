@@ -1,6 +1,6 @@
 /**
- * @file video/ascii/file/terminal.c
- * @ingroup video
+ * @file media/render/terminal.c
+ * @ingroup media
  * @brief Pixel renderer for render-file: libvterm + FreeType2 software compositor
  *
  * Cross-platform implementation using:
@@ -11,7 +11,7 @@
  * No platform-specific code (#if guards) needed — this code compiles on all platforms.
  */
 
-#include <ascii-chat/video/ascii/file/renderer.h>
+#include <ascii-chat/media/render/renderer.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>

@@ -28,18 +28,18 @@ if(FFMPEG_FOUND)
         ${CMAKE_SOURCE_DIR}/lib/media/source.c
         ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_decoder.c
         ${CMAKE_SOURCE_DIR}/lib/media/yt_dlp.c
+        # Media render-file (audio + video) - moved from lib/video/ascii/file/
+        ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
+        # Bundled fonts and generated C code (generated at CMake configure time)
+        ${CMAKE_SOURCE_DIR}/lib/media/font.c
+        "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
+        "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
     )
-    # Render-to-file (Unix only)
+    # Render-to-file (Unix only) - libvterm + FreeType2 render-file backend
     if(NOT WIN32)
         list(APPEND VIDEO_SRCS
-            ${CMAKE_CURRENT_SOURCE_DIR}/ascii/file/renderer.c
-            ${CMAKE_SOURCE_DIR}/lib/media/ffmpeg_encoder.c
-            # Bundled fonts and generated C code (generated at CMake configure time)
-            ${CMAKE_SOURCE_DIR}/lib/media/font.c
-            "${CMAKE_BINARY_DIR}/generated/data/fonts/matrix_resurrected.c"
-            "${CMAKE_BINARY_DIR}/generated/data/fonts/default.c"
-            # libvterm + FreeType2 render-file backend
-            ${CMAKE_CURRENT_SOURCE_DIR}/ascii/file/terminal.c
+            ${CMAKE_SOURCE_DIR}/lib/media/render/renderer.c
+            ${CMAKE_SOURCE_DIR}/lib/media/render/terminal.c
         )
     endif()
 endif()

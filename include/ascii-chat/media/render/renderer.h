@@ -1,7 +1,7 @@
 /**
- * @file video/render/file/renderer.h
- * @ingroup video
- * @brief Terminal-to-pixel renderer and render-file output
+ * @file media/render/renderer.h
+ * @ingroup media
+ * @brief Terminal-to-pixel renderer and render-file output (audio + video)
  *
  * Platform-specific renderers (Linux: FreeType+ghostty_vt, macOS: ghostty+Metal)
  * implement the functions declared here. render_file_* is the public orchestrator
