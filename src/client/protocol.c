@@ -1040,7 +1040,7 @@ static void *data_reception_thread_func(void *arg) {
     }
   }
 
-  log_warn("[FRAME_RECV_LOOP] 🔴 THREAD_EXITING: received %d packets total, connection inactive or shutdown requested",
+  log_warn("[FRAME_RECV_LOOP] 🔵 THREAD_EXITING: received %d packets total, connection inactive or shutdown requested",
            packet_count);
 
 #ifdef DEBUG_THREADS

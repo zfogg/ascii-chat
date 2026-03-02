@@ -275,7 +275,7 @@ static asciichat_error_t tcp_recv(acip_transport_t *transport, void **buffer, si
 static asciichat_error_t tcp_close(acip_transport_t *transport) {
   tcp_transport_data_t *tcp = (tcp_transport_data_t *)transport->impl_data;
 
-  log_warn("[TCP_CLOSE_STATE] 🔴 CLOSE_REQUESTED: transport=%p, sockfd=%d, was_connected=%s", (void *)transport,
+  log_warn("[TCP_CLOSE_STATE] 🔵 CLOSE_REQUESTED: transport=%p, sockfd=%d, was_connected=%s", (void *)transport,
            tcp->sockfd, tcp->is_connected ? "yes" : "no");
 
   if (!tcp->is_connected) {
@@ -285,7 +285,7 @@ static asciichat_error_t tcp_close(acip_transport_t *transport) {
 
   // Note: We do NOT close the socket - caller owns it
   // We just mark ourselves as disconnected
-  log_warn("[TCP_CLOSE_STATE] 🔴 MARKING_DISCONNECTED: transport=%p, sockfd=%d (socket NOT closed - caller owns it)",
+  log_warn("[TCP_CLOSE_STATE] 🔵 MARKING_DISCONNECTED: transport=%p, sockfd=%d (socket NOT closed - caller owns it)",
            (void *)transport, tcp->sockfd);
   tcp->is_connected = false;
 
@@ -429,7 +429,7 @@ void acip_transport_destroy(acip_transport_t *transport) {
     return;
   }
 
-  log_warn("[TRANSPORT_DESTROY] 🔴 DESTROY_START: transport=%p, impl_data=%p", (void *)transport, transport->impl_data);
+  log_warn("[TRANSPORT_DESTROY] 🔵 DESTROY_START: transport=%p, impl_data=%p", (void *)transport, transport->impl_data);
 
   // Get type before we destroy for logging
   acip_transport_type_t type = 0;
@@ -441,9 +441,9 @@ void acip_transport_destroy(acip_transport_t *transport) {
   // Close if still connected
   if (transport->methods && transport->methods->close && transport->methods->is_connected &&
       transport->methods->is_connected(transport)) {
-    log_warn("[TRANSPORT_DESTROY] 🔴 STILL_CONNECTED: calling close() first (type=%d)", type);
+    log_warn("[TRANSPORT_DESTROY] 🔵 STILL_CONNECTED: calling close() first (type=%d)", type);
     asciichat_error_t close_result = transport->methods->close(transport);
-    log_info("[TRANSPORT_DESTROY] 🔴 CLOSE_CALLED: result=%d", close_result != ASCIICHAT_OK ? -1 : 0);
+    log_info("[TRANSPORT_DESTROY] 🔵 CLOSE_CALLED: result=%d", close_result != ASCIICHAT_OK ? -1 : 0);
   } else {
     log_debug("[TRANSPORT_DESTROY] ✅ ALREADY_CLOSED: skipping close (type=%d)", type);
   }

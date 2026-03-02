@@ -1644,7 +1644,7 @@ void *client_dispatch_thread(void *arg) {
              sizeof(packet_header_t));
 
     if (total_len < sizeof(packet_header_t)) {
-      log_error("🔴 DISPATCH_THREAD[%u]: Packet too small (%zu < %zu), DROPPING", client_id, total_len,
+      log_error("🔵 DISPATCH_THREAD[%u]: Packet too small (%zu < %zu), DROPPING", client_id, total_len,
                 sizeof(packet_header_t));
       packet_queue_free_packet(queued_pkt);
       continue;
@@ -1669,7 +1669,7 @@ void *client_dispatch_thread(void *arg) {
         size_t plaintext_size = ciphertext_len + 1024;
         uint8_t *plaintext = SAFE_MALLOC(plaintext_size, uint8_t *);
         if (!plaintext) {
-          log_error("🔴 DISPATCH_THREAD[%u]: Failed to allocate plaintext buffer for decryption", client_id);
+          log_error("🔵 DISPATCH_THREAD[%u]: Failed to allocate plaintext buffer for decryption", client_id);
           packet_queue_free_packet(queued_pkt);
           continue;
         }
@@ -1679,7 +1679,7 @@ void *client_dispatch_thread(void *arg) {
                                                        plaintext, plaintext_size, &plaintext_len);
 
         if (crypto_result != CRYPTO_OK) {
-          log_error("🔴 DISPATCH_THREAD[%u]: Failed to decrypt packet: %s", client_id,
+          log_error("🔵 DISPATCH_THREAD[%u]: Failed to decrypt packet: %s", client_id,
                     crypto_result_to_string(crypto_result));
           SAFE_FREE(plaintext);
           packet_queue_free_packet(queued_pkt);
@@ -1687,7 +1687,7 @@ void *client_dispatch_thread(void *arg) {
         }
 
         if (plaintext_len < sizeof(packet_header_t)) {
-          log_error("🔴 DISPATCH_THREAD[%u]: Decrypted packet too small: %zu < %zu", client_id, plaintext_len,
+          log_error("🔵 DISPATCH_THREAD[%u]: Decrypted packet too small: %zu < %zu", client_id, plaintext_len,
                     sizeof(packet_header_t));
           SAFE_FREE(plaintext);
           packet_queue_free_packet(queued_pkt);
@@ -1711,14 +1711,14 @@ void *client_dispatch_thread(void *arg) {
                                                                         payload_len, client, &g_acip_server_callbacks);
 
           if (dispatch_result != ASCIICHAT_OK) {
-            log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for decrypted packet type=%d: %s", client_id, packet_type,
+            log_error("🔵 DISPATCH_THREAD[%u]: Handler failed for decrypted packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
           } else {
             log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched decrypted packet type=%d", client_id,
                      packet_type);
           }
         } else {
-          log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch decrypted packet - transport is NULL", client_id);
+          log_error("🔵 DISPATCH_THREAD[%u]: Cannot dispatch decrypted packet - transport is NULL", client_id);
         }
 
         // Free the decrypted buffer
@@ -1732,13 +1732,13 @@ void *client_dispatch_thread(void *arg) {
                                                                         payload_len, client, &g_acip_server_callbacks);
 
           if (dispatch_result != ASCIICHAT_OK) {
-            log_error("🔴 DISPATCH_THREAD[%u]: Handler failed for packet type=%d: %s", client_id, packet_type,
+            log_error("🔵 DISPATCH_THREAD[%u]: Handler failed for packet type=%d: %s", client_id, packet_type,
                       asciichat_error_string(dispatch_result));
           } else {
             log_info("✅ DISPATCH_THREAD[%u]: Successfully dispatched packet type=%d", client_id, packet_type);
           }
         } else {
-          log_error("🔴 DISPATCH_THREAD[%u]: Cannot dispatch packet - transport is NULL", client_id);
+          log_error("🔵 DISPATCH_THREAD[%u]: Cannot dispatch packet - transport is NULL", client_id);
         }
       }
     }
@@ -1837,7 +1837,7 @@ void *client_receive_thread(void *arg) {
       if (acip_result != ASCIICHAT_OK) {
         asciichat_error_context_t err_ctx;
         if (HAS_ERRNO(&err_ctx)) {
-          log_error("🔴 ACIP error for client %s: code=%u msg=%s", client->client_id, err_ctx.code,
+          log_error("🔵 ACIP error for client %s: code=%u msg=%s", client->client_id, err_ctx.code,
                     err_ctx.context_message);
           if (err_ctx.code == ERROR_NETWORK) {
             log_debug("Client %s disconnected (network error): %s", client->client_id, err_ctx.context_message);
@@ -1935,7 +1935,7 @@ void *client_receive_thread(void *arg) {
                                                 client_id_hash, false);
 
       if (enqueue_result < 0) {
-        log_error("🔴 RECV_THREAD[%s]: Failed to queue received packet (queue full?) - DROPPING FRAME",
+        log_error("🔵 RECV_THREAD[%s]: Failed to queue received packet (queue full?) - DROPPING FRAME",
                   client->client_id);
         if (allocated_buffer) {
           buffer_pool_free(NULL, allocated_buffer, packet_len);
