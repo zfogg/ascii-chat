@@ -2051,7 +2051,18 @@ void *client_send_thread_func(void *arg) {
       bool crypto_ready = !GET_OPTION(no_encrypt) && client->crypto_initialized &&
                           crypto_handshake_is_ready(&client->crypto_handshake_ctx);
       mutex_unlock(&client->client_state_mutex);
-      (void)crypto_ready; // Currently unused - kept for potential future encryption support
+
+      // Audio packets cannot be sent until crypto handshake completes (protocol requirement)
+      if (!crypto_ready) {
+        log_dev_every(1000 * US_PER_MS_INT,
+                      "SKIP_AUDIO: client=%s handshake not ready, dropping %d audio packets",
+                      client->client_id, audio_packet_count);
+        // Drop audio packets until handshake completes
+        for (int i = 0; i < audio_packet_count; i++) {
+          packet_queue_free_packet(audio_packets[i]);
+        }
+        audio_packet_count = 0;
+      }
 
       asciichat_error_t result = ASCIICHAT_OK;
 
