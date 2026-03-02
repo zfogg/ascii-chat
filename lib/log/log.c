@@ -1087,7 +1087,7 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
     // Text format: output to file and terminal
     // No heap allocation - use log_buffer directly
     // Write to file (atomic write syscall) - use original buffer (with ANSI codes)
-    int file_fd = atomic_load_u64(&g_log.file);
+    int file_fd = (int)atomic_load_u64(&g_log.file);
     if (file_fd >= 0 && file_fd != STDERR_FILENO) {
       write_to_log_file_atomic(log_buffer, msg_len, NULL);
     }
