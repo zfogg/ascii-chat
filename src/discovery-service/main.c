@@ -31,7 +31,6 @@
 #include <ascii-chat/network/nat/upnp.h>
 #include <ascii-chat/network/mdns/mdns.h>
 #include <ascii-chat/network/websocket/server.h>
-#include <ascii-chat/ui/discovery_status.h>
 
 // Global server instance for signal handler
 static acds_server_t *g_server = NULL;
@@ -80,19 +79,6 @@ static void acds_handle_signal(int sig) {
   }
   acds_signal_exit();
   // UPnP context will be cleaned up after server shutdown
-}
-
-/**
- * @brief Callback for periodic status screen updates
- */
-static void discovery_status_update_callback(void *user_data) {
-  acds_server_t *server = (acds_server_t *)user_data;
-  if (!server) {
-    return;
-  }
-
-  discovery_status_update(&server->tcp_server, (discovery_database_t *)server->db, server->config.address,
-                          server->config.address6, server->config.port, g_discovery_start_time, &g_last_status_update);
 }
 
 int acds_main(void) {
@@ -332,13 +318,9 @@ int acds_main(void) {
     log_info("WebSocket server initialized on port %d", GET_OPTION(websocket_port));
   }
 
-  // Set up status screen callback if enabled
+  // Initialize status tracking variables
   g_discovery_start_time = time(NULL);
   g_last_status_update = g_discovery_start_time;
-  if (GET_OPTION(status_screen)) {
-    server.tcp_server.config.status_update_fn = discovery_status_update_callback;
-    server.tcp_server.config.status_update_data = &server;
-  }
 
   // Check if shutdown was requested during initialization
   if (acds_should_exit()) {
@@ -429,15 +411,6 @@ int acds_main(void) {
   signal(SIGINT, acds_handle_signal);
   signal(SIGTERM, acds_handle_signal);
 
-  // Display initial status if enabled
-  if (GET_OPTION(status_screen)) {
-    discovery_status_t status;
-    if (discovery_status_gather(&server.tcp_server, (discovery_database_t *)server.db, config.address, config.address6,
-                                config.port, g_discovery_start_time, &status) == ASCIICHAT_OK) {
-      discovery_status_display(&status);
-      g_last_status_update = g_discovery_start_time;
-    }
-  }
 
   // Run server
   result = acds_server_run(&server);
