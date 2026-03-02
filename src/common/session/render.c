@@ -82,7 +82,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   bool snapshot_done = false;
   bool first_frame_rendered = false;
-  uint64_t snapshot_start_ns = 0;  // Timestamp when first frame arrives
 
   // Help screen state tracking for clear-screen transition
   bool help_was_active = false;
@@ -488,10 +487,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Free frame before checking exit conditions to avoid double-free
       SAFE_FREE(ascii_frame);
 
-      // Snapshot mode timing: mark that first frame has been rendered and record timestamp
+      // Snapshot mode timing: mark that first frame has been rendered
       if (snapshot_mode && !first_frame_rendered) {
         first_frame_rendered = true;
-        snapshot_start_ns = time_get_ns();
         log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered at time 0");
       }
 
