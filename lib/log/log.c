@@ -943,6 +943,11 @@ void log_msg(log_level_t level, const char *file, int line, const char *func, co
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;
   }
+  // Safety check: if main format template has been freed during shutdown, skip logging
+  // This prevents heap-use-after-free when threads call logging after log_destroy() has freed g_log.format
+  if (!g_log.format) {
+    return;
+  }
   if (level < (log_level_t)atomic_load_u64(&g_log.level)) {
     return;
   }
