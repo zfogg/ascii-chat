@@ -765,12 +765,6 @@ const char *log_named_format_or_original(const char *message) {
       return format_buffer;
     }
 
-    /* Safety check: if output size grew too much (likely recursion), stop processing */
-    if (strlen(format_buffer) > 512) {
-      /* Recursion detected - use original message to avoid infinite expansion */
-      return message;
-    }
-
     /* Message changed, prepare for next iteration */
     if (current == message) {
       /* First iteration, use format_buffer as input for next iteration */
