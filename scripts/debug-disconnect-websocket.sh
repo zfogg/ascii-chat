@@ -8,11 +8,13 @@ client_log=/tmp/client-logfile-"$PORT".log
 client_stdout=/tmp/client-stdout-"$PORT".log
 server_log=/tmp/server-logfile-"$PORT".log
 
-echo "Running on websocket port: $PORT"
+echo "Gonna run on websocket port: $PORT"
 
 
 pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
-cmake --build build >/dev/null 2>&1
+
+cmake --build build
+
 ./build/bin/ascii-chat --log-file "$server_log" --log-level debug \
   server --port "$PORT" --websocket-port "$PORT_WS" \
   >/dev/null 2>&1 &
