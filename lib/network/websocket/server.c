@@ -939,6 +939,13 @@ void websocket_server_destroy(websocket_server_t *server) {
 
   atomic_store_bool(&server->running, false);
 
+  // Cancel any pending libwebsockets service calls to interrupt blocking lws_service()
+  // This prevents the event loop from getting stuck in lws_service()
+  if (server->context) {
+    log_debug("[WEBSOCKET_SERVER_DESTROY] Cancelling libwebsockets service");
+    lws_cancel_service(server->context);
+  }
+
   // Unregister atomic fields
   NAMED_UNREGISTER(&server->running);
 
