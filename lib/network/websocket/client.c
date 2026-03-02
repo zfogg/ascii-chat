@@ -59,13 +59,13 @@ websocket_client_t *websocket_client_create(const char *name) {
 
   // Register atomic fields for sync state monitoring - descriptive names showing control purpose
   char atomic_name[256];
-  snprintf(atomic_name, sizeof(atomic_name), "%s.connection_is_active", ws_name);
+  NAMED_FORMAT_SUBNAME(ws_name, "connection_is_active", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&client->connection_active, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.connection_was_lost", ws_name);
+  NAMED_FORMAT_SUBNAME(ws_name, "connection_was_lost", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&client->connection_lost, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.needs_reconnection_attempt", ws_name);
+  NAMED_FORMAT_SUBNAME(ws_name, "needs_reconnection_attempt", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&client->should_reconnect, atomic_name);
 
   log_debug("WebSocket client created");

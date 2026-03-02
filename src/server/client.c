@@ -258,7 +258,7 @@ static void register_client_info_atomics(client_info_t *client) {
   char atomic_name[256];
 
 #define REGISTER_CLIENT_ATOMIC(field, description)                                                                     \
-  safe_snprintf(atomic_name, sizeof(atomic_name), "%s." description, client_name);                                     \
+  NAMED_FORMAT_SUBNAME(client_name, description, atomic_name, sizeof(atomic_name));                                    \
   NAMED_REGISTER_ATOMIC(&client->field, atomic_name)
 
   // Video streaming state

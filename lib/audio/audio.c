@@ -821,7 +821,7 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   char atomic_name[256];
 
 #define REGISTER_AUDIO_ATOMIC(field, description) \
-    snprintf(atomic_name, sizeof(atomic_name), "%s." description, rb_name); \
+    NAMED_FORMAT_SUBNAME(rb_name, description, atomic_name, sizeof(atomic_name)); \
     NAMED_REGISTER_ATOMIC(&rb->field, atomic_name)
 
   // Ring buffer indices (lock-free producer-consumer)

@@ -159,27 +159,27 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   // Register atomic fields for sync state monitoring - descriptive names for lock-free queue tracking
   char atomic_name[256];
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.current_packet_count", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "current_packet_count", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&queue->count, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.total_bytes_currently_queued", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "total_bytes_currently_queued", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&queue->bytes_queued, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.lifetime_packets_enqueued_total", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "lifetime_packets_enqueued_total", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&queue->packets_enqueued, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.lifetime_packets_dequeued_total", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "lifetime_packets_dequeued_total", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&queue->packets_dequeued, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.lifetime_packets_dropped_overflow", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "lifetime_packets_dropped_overflow", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&queue->packets_dropped, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.is_shutdown_requested", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "is_shutdown_requested", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&queue->shutdown, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.head_node_pointer", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "head_node_pointer", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC_PTR(&queue->head, atomic_name);
-  snprintf(atomic_name, sizeof(atomic_name), "%s.tail_node_pointer", queue_name);
+  NAMED_FORMAT_SUBNAME(queue_name, "tail_node_pointer", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC_PTR(&queue->tail, atomic_name);
 
   return queue;

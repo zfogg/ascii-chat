@@ -120,13 +120,13 @@ tcp_client_t *tcp_client_create(void) {
 
   // Register atomic fields for debug tracking - descriptive names for sync state monitoring
   char atomic_name[256];
-  snprintf(atomic_name, sizeof(atomic_name), "%s.is_connection_active", client_name);
+  NAMED_FORMAT_SUBNAME(client_name, "is_connection_active", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&client->connection_active, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.has_connection_been_lost", client_name);
+  NAMED_FORMAT_SUBNAME(client_name, "has_connection_been_lost", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&client->connection_lost, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "%s.should_attempt_reconnection", client_name);
+  NAMED_FORMAT_SUBNAME(client_name, "should_attempt_reconnection", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC(&client->should_reconnect, atomic_name);
 
   log_debug("TCP client created successfully");
