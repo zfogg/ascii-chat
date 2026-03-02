@@ -12,6 +12,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/process.h>
@@ -65,7 +66,10 @@ static int gpg_export_public_key(const char *key_id, uint8_t *public_key_out) {
                 temp_path);
 
   log_debug("Running GPG export command: gpg --export 0x%s", key_id);
-  int result = system(cmd);
+  int result = 0;
+  LOG_IO("gpg", {
+    result = system(cmd);
+  });
   if (result != 0) {
     log_error("Failed to export GPG public key for key ID: %s (exit code: %d)", key_id, result);
     platform_delete_temp_file(temp_path);

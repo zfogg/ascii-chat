@@ -9,6 +9,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/platform/question.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/filesystem.h>
@@ -593,7 +594,10 @@ static asciichat_error_t openpgp_decrypt_with_gpg(const char *armored_text, char
       "--export-options export-minimal,no-export-attributes \"$KEY_FPR\" > '%s' " PLATFORM_SHELL_NULL_REDIRECT,
       homedir_path, input_path, homedir_path, homedir_path, passphrase, output_path);
 
-  int status = system(command);
+  int status = 0;
+  LOG_IO("gpg", {
+    status = system(command);
+  });
 
   // Clean up input file (no longer needed)
   platform_unlink(input_path);

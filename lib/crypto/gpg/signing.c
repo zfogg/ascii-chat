@@ -11,6 +11,7 @@
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/validation.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/filesystem.h>
 #include <ascii-chat/platform/process.h>
@@ -92,7 +93,10 @@ int gpg_sign_with_key(const char *key_id, const uint8_t *message, size_t message
                 escaped_key_id, sig_path, msg_path);
 
   log_debug("Signing with GPG: %s", cmd);
-  int status = system(cmd);
+  int status = 0;
+  LOG_IO("gpg", {
+    status = system(cmd);
+  });
   if (status != 0) {
     log_error("GPG signing failed (exit code %d)", status);
     goto cleanup;
