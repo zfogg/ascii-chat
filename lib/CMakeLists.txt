@@ -17,7 +17,7 @@ set(CORE_SRCS
     ${LIB_DIR}/log/colorize.c
     ${LIB_DIR}/log/mmap.c
     ${LIB_DIR}/log/grep.c
-    ${LIB_DIR}/log/interactive_grep.c
+    ${LIB_DIR}/log/search.c
     ${LIB_DIR}/log/json.c
     # platform/terminal.c - unified color detection
     ${LIB_DIR}/platform/terminal.c

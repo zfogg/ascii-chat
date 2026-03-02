@@ -842,12 +842,12 @@ bool terminal_has_dark_background(void) {
   }
 
   // Don't query terminal during interactive grep mode (avoids PTY state issues causing spurious ESC bytes in stdin)
-  // Use forward declaration since we can't include interactive_grep.h here (circular dependency through session/session_log_buffer.h)
-  extern bool interactive_grep_is_active(void);
+  // Use forward declaration since we can't include log_search.h here (circular dependency through session/session_log_buffer.h)
+  extern bool log_search_is_active(void);
 
   // Try to query actual terminal background color via OSC 11
   uint8_t bg_r, bg_g, bg_b;
-  if (!interactive_grep_is_active() && terminal_query_background_color(&bg_r, &bg_g, &bg_b)) {
+  if (!log_search_is_active() && terminal_query_background_color(&bg_r, &bg_g, &bg_b)) {
     // Calculate luminance from actual background color
     float luminance = _calculate_luminance(bg_r, bg_g, bg_b);
     return (luminance < 0.5f); // Dark if luminance < 50%

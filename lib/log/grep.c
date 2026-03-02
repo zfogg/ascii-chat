@@ -22,7 +22,7 @@
 #include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/thread.h>
-#include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/search.h>
 
 #include <string.h>
 #include <stdint.h>
@@ -163,7 +163,7 @@ static void get_highlight_color(uint8_t *r, uint8_t *g, uint8_t *b) {
   // Note: Skip querying during interactive grep mode to avoid PTY state issues
   // that can cause spurious ESC bytes in stdin
   uint8_t bg_r = 0, bg_g = 0, bg_b = 0;
-  bool has_bg_color = interactive_grep_is_active() ? false : terminal_query_background_color(&bg_r, &bg_g, &bg_b);
+  bool has_bg_color = log_search_is_active() ? false : terminal_query_background_color(&bg_r, &bg_g, &bg_b);
 
   bool is_dark;
   if (has_bg_color) {
@@ -749,11 +749,11 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
   }
 
   // When interactive grep is active, check if it has global flag
-  bool is_interactive_grep = interactive_grep_is_active();
+  bool is_log_search = log_search_is_active();
   bool should_use_global_pattern = false;
   grep_pattern_t *global_pat = NULL;
 
-  if (!is_interactive_grep) {
+  if (!is_log_search) {
     // If any pattern has global flag, highlight ALL matches for that pattern
     // Find first pattern with global flag
     for (int i = 0; i < g_filter_state.pattern_count; i++) {
@@ -763,7 +763,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         break;
       }
     }
-  } else if (interactive_grep_get_global_highlight()) {
+  } else if (log_search_get_global_highlight()) {
     // Interactive grep is active and has /g flag - do global matching on the provided pattern
     // We'll do all-match highlighting using the match position to extract the pattern
     // and re-match for all occurrences
@@ -782,9 +782,9 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     if (global_pat && global_pat->singleton) {
       code = asciichat_pcre2_singleton_get_code(global_pat->singleton);
       match_data = get_thread_match_data();
-    } else if (is_interactive_grep) {
+    } else if (is_log_search) {
       // Interactive grep global highlighting - get pattern from grep state
-      void *grep_singleton_void = interactive_grep_get_pattern_singleton();
+      void *grep_singleton_void = log_search_get_pattern_singleton();
       if (grep_singleton_void) {
         pcre2_singleton_t *grep_singleton = (pcre2_singleton_t *)grep_singleton_void;
         code = asciichat_pcre2_singleton_get_code(grep_singleton);
@@ -794,18 +794,18 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
         }
       } else {
         // No regex pattern - check if it's a fixed string pattern in interactive grep
-        int pattern_len = interactive_grep_get_input_len();
-        const char *pattern = interactive_grep_get_input_buffer();
+        int pattern_len = log_search_get_input_len();
+        const char *pattern = log_search_get_input_buffer();
         if (pattern_len > 0 && pattern && pattern_len < (int)sizeof(fixed_string_pattern)) {
           SAFE_STRNCPY(fixed_string_pattern, pattern, sizeof(fixed_string_pattern) - 1);
           is_fixed_string_pattern = true;
-          case_insensitive_fixed = interactive_grep_get_case_insensitive();
+          case_insensitive_fixed = log_search_get_case_insensitive();
         }
       }
     }
 
     if (!code && !is_fixed_string_pattern) {
-      if (match_data && is_interactive_grep) {
+      if (match_data && is_log_search) {
         pcre2_match_data_free(match_data); // Free if we created it
       }
       return colored_text; // Fall back to no highlighting
@@ -969,7 +969,7 @@ const char *grep_highlight_colored(const char *colored_text, const char *plain_t
     *dst = '\0';
 
     // Clean up match data if we created it for interactive grep
-    if (is_interactive_grep && match_data && !global_pat) {
+    if (is_log_search && match_data && !global_pat) {
       pcre2_match_data_free(match_data);
     }
 

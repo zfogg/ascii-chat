@@ -15,7 +15,7 @@
 #include "session/display.h"
 #include "session/stdin_reader.h"
 #include <ascii-chat/ui/keyboard_help.h>
-#include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/search.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -216,8 +216,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (keyboard_handler && keyboard_enabled) {
           keyboard_key_t key = keyboard_read_nonblocking();
           if (key != KEY_NONE) {
-            if (interactive_grep_should_handle(key)) {
-              interactive_grep_handle_key(key);
+            if (log_search_should_handle(key)) {
+              log_search_handle_key(key);
             } else {
               keyboard_handler(capture, key, user_data);
             }
@@ -268,8 +268,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           keyboard_key_t key = keyboard_read_nonblocking();
           if (key != KEY_NONE) {
             // Check if interactive grep should handle this key
-            if (interactive_grep_should_handle(key)) {
-              interactive_grep_handle_key(key);
+            if (log_search_should_handle(key)) {
+              log_search_handle_key(key);
               continue; // Force immediate re-render
             }
 
@@ -489,9 +489,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (key != KEY_NONE) {
           log_debug("KEYBOARD: Key pressed: code=%d char='%c'", key, (key >= 32 && key < 127) ? key : '?');
           // Check if interactive grep should handle this key
-          if (interactive_grep_should_handle(key)) {
+          if (log_search_should_handle(key)) {
             log_debug("KEYBOARD: Grep handler taking key %d", key);
-            interactive_grep_handle_key(key);
+            log_search_handle_key(key);
             continue; // Force immediate re-render
           }
 

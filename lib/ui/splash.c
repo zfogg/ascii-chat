@@ -17,7 +17,7 @@
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/search.h>
 #include "session/display.h"
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/util/display.h>
@@ -492,13 +492,13 @@ static void *splash_animation_thread(void *arg) {
       keyboard_key_t key = keyboard_read_nonblocking();
       if (key == KEY_ESCAPE) {
         // Escape key: cancel grep if active, otherwise cancel splash
-        if (interactive_grep_is_active()) {
-          interactive_grep_exit_mode(false); // Cancel grep without applying
+        if (log_search_is_active()) {
+          log_search_exit_mode(false); // Cancel grep without applying
         } else {
           atomic_store_bool(&g_splash_state.should_stop, true); // Exit splash screen
         }
-      } else if (key != KEY_NONE && interactive_grep_should_handle(key)) {
-        interactive_grep_handle_key(key);
+      } else if (key != KEY_NONE && log_search_should_handle(key)) {
+        log_search_handle_key(key);
         // Continue to render immediately with grep active
       }
     }
@@ -591,7 +591,7 @@ static void *splash_animation_thread(void *arg) {
     }
 
     // Sleep to control frame rate (unless grep needs immediate rerender)
-    if (!interactive_grep_needs_rerender()) {
+    if (!log_search_needs_rerender()) {
       uint64_t sleep_start_ns = time_get_ns();
       platform_sleep_ms(anim_speed);
       uint64_t sleep_end_ns = time_get_ns();

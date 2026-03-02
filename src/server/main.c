@@ -121,7 +121,7 @@
 #include <ascii-chat/network/acip/server.h>
 #include <ascii-chat/network/acip/client.h>
 #include <ascii-chat/ui/status.h>
-#include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/search.h>
 #include <ascii-chat/log/json.h>
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/debug/memory.h>
@@ -583,8 +583,8 @@ static void server_handle_sigint(int sigint) {
 
   // If in grep input mode, cancel grep instead of shutting down.
   // Uses atomic reads only (no mutex) - safe from signal context.
-  if (interactive_grep_is_entering_atomic()) {
-    interactive_grep_signal_cancel();
+  if (log_search_is_entering_atomic()) {
+    log_search_signal_cancel();
     return;
   }
 
@@ -1269,8 +1269,8 @@ static void *status_screen_thread(void *arg) {
 
     // Check if SIGINT handler cancelled grep mode (Ctrl+C while in grep).
     // The signal handler sets an atomic flag instead of touching mutex-protected state.
-    if (interactive_grep_check_signal_cancel()) {
-      interactive_grep_exit_mode(false);
+    if (log_search_check_signal_cancel()) {
+      log_search_exit_mode(false);
       grep_was_just_cancelled = true;
     }
 
@@ -1293,19 +1293,19 @@ static void *status_screen_thread(void *arg) {
         skip_next_slash = false;
 
         // Let grep handle its keys
-        if (interactive_grep_should_handle(key)) {
-          bool was_not_in_grep = !interactive_grep_is_entering();
-          bool was_in_grep = interactive_grep_is_entering();
+        if (log_search_should_handle(key)) {
+          bool was_not_in_grep = !log_search_is_entering();
+          bool was_in_grep = log_search_is_entering();
 
-          interactive_grep_handle_key(key);
+          log_search_handle_key(key);
 
           // If we just entered grep mode with '/', skip next '/' from buffer
-          if (was_not_in_grep && interactive_grep_is_entering() && key == '/') {
+          if (was_not_in_grep && log_search_is_entering() && key == '/') {
             skip_next_slash = true;
           }
 
           // If grep was cancelled, stop processing keys
-          if (was_in_grep && !interactive_grep_is_entering()) {
+          if (was_in_grep && !log_search_is_entering()) {
             grep_was_just_cancelled = true;
             break;
           }
@@ -1793,7 +1793,7 @@ int server_main(void) {
     ui_status_log_init();
 
     // Initialize interactive grep for status screen
-    interactive_grep_init();
+    log_search_init();
   }
 
   // Initialize crypto after logging is ready

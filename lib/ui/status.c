@@ -6,7 +6,7 @@
 #include <ascii-chat/ui/status.h>
 #include <ascii-chat/ui/terminal_screen.h>
 #include <ascii-chat/ui/frame_buffer.h>
-#include <ascii-chat/log/interactive_grep.h>
+#include <ascii-chat/log/search.h>
 #include <ascii-chat/session/session_log_buffer.h>
 #include <ascii-chat/log/grep.h>
 #include <ascii-chat/platform/abstraction.h>
@@ -207,7 +207,7 @@ void ui_status_display(const ui_status_t *status) {
   // Only do this once (check if not already entering)
   static bool grep_mode_entered = false;
   if (!grep_mode_entered && grep_get_last_pattern() && grep_get_last_pattern()[0] != '\0') {
-    interactive_grep_enter_mode();
+    log_search_enter_mode();
     grep_mode_entered = true;
   }
 
@@ -242,7 +242,7 @@ bool ui_status_display_interactive(const ui_status_t *status) {
   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
   static bool grep_mode_entered = false;
   if (!grep_mode_entered && grep_get_last_pattern() && grep_get_last_pattern()[0] != '\0') {
-    interactive_grep_enter_mode();
+    log_search_enter_mode();
     grep_mode_entered = true;
   }
 
@@ -268,13 +268,13 @@ bool ui_status_display_interactive(const ui_status_t *status) {
     keyboard_key_t key = keyboard_read_nonblocking();
     if (key == KEY_ESCAPE) {
       // Escape key: cancel grep if active, otherwise exit status screen
-      if (interactive_grep_is_active()) {
-        interactive_grep_exit_mode(false); // Cancel grep without applying
+      if (log_search_is_active()) {
+        log_search_exit_mode(false); // Cancel grep without applying
       } else {
         should_exit_status = true; // Exit status screen
       }
-    } else if (key != KEY_NONE && interactive_grep_should_handle(key)) {
-      interactive_grep_handle_key(key);
+    } else if (key != KEY_NONE && log_search_should_handle(key)) {
+      log_search_handle_key(key);
     }
   }
 

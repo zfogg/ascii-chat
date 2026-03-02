@@ -1,8 +1,8 @@
 /**
- * @file ui/interactive_grep.h
- * @brief Interactive grep filtering for terminal screens
+ * @file log/search.h
+ * @brief Interactive search filtering for terminal screens
  *
- * Provides vim-style `/` grep functionality for status and splash screens.
+ * Provides vim-style `/` search functionality for status and splash screens.
  * Users can press `/` to activate search mode, type a pattern with full
  * /pattern/flags syntax support, and see logs filter in real-time.
  *
@@ -27,13 +27,13 @@
 #include <stddef.h>
 
 /**
- * @brief Interactive grep mode states
+ * @brief Search mode states
  */
 typedef enum {
-  GREP_MODE_INACTIVE, ///< Not in grep mode
-  GREP_MODE_ENTERING, ///< '/' pressed, typing pattern
-  GREP_MODE_ACTIVE    ///< Pattern accepted and filtering
-} grep_mode_t;
+  LOG_SEARCH_MODE_INACTIVE, ///< Not in search mode
+  LOG_SEARCH_MODE_ENTERING, ///< '/' pressed, typing pattern
+  LOG_SEARCH_MODE_ACTIVE    ///< Pattern accepted and filtering
+} log_search_mode_t;
 
 /* ============================================================================
  * Lifecycle Functions
@@ -43,17 +43,17 @@ typedef enum {
  * @brief Initialize interactive grep subsystem
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Must be called before using any other interactive_grep functions.
+ * Must be called before using any other log_search functions.
  * Initializes state, mutex, and loads CLI --grep patterns if any.
  */
-asciichat_error_t interactive_grep_init(void);
+asciichat_error_t log_search_init(void);
 
 /**
  * @brief Clean up interactive grep subsystem
  *
  * Frees all allocated resources. Safe to call multiple times.
  */
-void interactive_grep_destroy(void);
+void log_search_destroy(void);
 
 /* ============================================================================
  * Mode Management
@@ -65,7 +65,7 @@ void interactive_grep_destroy(void);
  * Saves current CLI --grep patterns, activates input mode,
  * and prepares for interactive pattern entry.
  */
-void interactive_grep_enter_mode(void);
+void log_search_enter_mode(void);
 
 /**
  * @brief Exit search mode
@@ -74,19 +74,19 @@ void interactive_grep_enter_mode(void);
  * If accepting: Parses pattern with /pattern/flags syntax, compiles with PCRE2,
  * and activates filtering. If canceling: Restores CLI --grep patterns.
  */
-void interactive_grep_exit_mode(bool accept);
+void log_search_exit_mode(bool accept);
 
 /**
  * @brief Check if currently in input mode (typing pattern)
  * @return true if in GREP_MODE_ENTERING, false otherwise
  */
-bool interactive_grep_is_entering(void);
+bool log_search_is_entering(void);
 
 /**
  * @brief Check if filtering is active
  * @return true if in GREP_MODE_ENTERING or GREP_MODE_ACTIVE, false if INACTIVE
  */
-bool interactive_grep_is_active(void);
+bool log_search_is_active(void);
 
 /* ============================================================================
  * Keyboard Handling
@@ -101,7 +101,7 @@ bool interactive_grep_is_active(void);
  * - '/' when not in input mode (to enter mode)
  * - All keys when in GREP_MODE_ENTERING (to edit pattern)
  */
-bool interactive_grep_should_handle(int key);
+bool log_search_should_handle(int key);
 
 /**
  * @brief Process keyboard input for grep
@@ -115,7 +115,7 @@ bool interactive_grep_should_handle(int key);
  * Enter compiles and activates pattern.
  * Escape cancels and restores previous patterns.
  */
-asciichat_error_t interactive_grep_handle_key(keyboard_key_t key);
+asciichat_error_t log_search_handle_key(keyboard_key_t key);
 
 /* ============================================================================
  * Log Filtering and Display
@@ -136,7 +136,7 @@ asciichat_error_t interactive_grep_handle_key(keyboard_key_t key);
  *
  * If no log file or read error: Falls back to in-memory buffer only.
  */
-asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **out_entries, size_t *out_count);
+asciichat_error_t log_search_gather_and_filter_logs(session_log_entry_t **out_entries, size_t *out_count);
 
 /**
  * @brief Render grep input line at bottom of screen
@@ -147,7 +147,7 @@ asciichat_error_t interactive_grep_gather_and_filter_logs(session_log_entry_t **
  *
  * If pattern is invalid (validator returns false), shows red background.
  */
-void interactive_grep_render_input_line(int width);
+void log_search_render_input_line(int width);
 
 /**
  * @brief Get match info for highlighting a log message
@@ -159,7 +159,7 @@ void interactive_grep_render_input_line(int width);
  * Used by display code to apply highlighting to matching portions of logs.
  * Returns match position for use with log_filter_highlight().
  */
-bool interactive_grep_get_match_info(const char *message, size_t *out_match_start, size_t *out_match_len);
+bool log_search_get_match_info(const char *message, size_t *out_match_start, size_t *out_match_len);
 
 /**
  * @brief Check if global highlighting (/g flag) is enabled in current pattern
@@ -168,7 +168,7 @@ bool interactive_grep_get_match_info(const char *message, size_t *out_match_star
  * Used by filter highlighting code to determine if all matches should be highlighted
  * or just the first match. Returns false when interactive grep is inactive.
  */
-bool interactive_grep_get_global_highlight(void);
+bool log_search_get_global_highlight(void);
 
 /**
  * @brief Get the compiled regex pattern for interactive grep (internal use)
@@ -178,7 +178,7 @@ bool interactive_grep_get_global_highlight(void);
  * highlighting in interactive grep mode. Returns NULL when not in active mode
  * or if pattern is fixed string type (no regex compilation).
  */
-void *interactive_grep_get_pattern_singleton(void);
+void *log_search_get_pattern_singleton(void);
 
 /* ============================================================================
  * Signal-Safe Interface
@@ -190,7 +190,7 @@ void *interactive_grep_get_pattern_singleton(void);
  *
  * Uses atomic load only (no mutex). Safe to call from signal handlers.
  */
-bool interactive_grep_is_entering_atomic(void);
+bool log_search_is_entering_atomic(void);
 
 /**
  * @brief Cancel grep mode from a signal handler (async-signal-safe)
@@ -198,7 +198,7 @@ bool interactive_grep_is_entering_atomic(void);
  * Sets an atomic flag that the status screen loop checks on its next
  * iteration. Does not use mutexes or allocate memory.
  */
-void interactive_grep_signal_cancel(void);
+void log_search_signal_cancel(void);
 
 /**
  * @brief Check and clear the signal-cancel flag
@@ -206,7 +206,7 @@ void interactive_grep_signal_cancel(void);
  *
  * Called by the status screen loop to detect signal-initiated cancellation.
  */
-bool interactive_grep_check_signal_cancel(void);
+bool log_search_check_signal_cancel(void);
 
 /* ============================================================================
  * Re-render Notification
@@ -219,7 +219,7 @@ bool interactive_grep_check_signal_cancel(void);
  * Uses atomic flag for lock-free checking in render loops.
  * Automatically clears flag after returning true.
  */
-bool interactive_grep_needs_rerender(void);
+bool log_search_needs_rerender(void);
 
 /* ============================================================================
  * Internal Access (for atomic rendering)
@@ -232,36 +232,36 @@ bool interactive_grep_needs_rerender(void);
  * Used by terminal rendering to perform atomic read of grep input
  * for consistent rendering without flicker.
  */
-void *interactive_grep_get_mutex(void);
+void *log_search_get_mutex(void);
 
 /**
  * @brief Get current input buffer length (must hold mutex)
  * @return Length of the current grep input pattern
  *
- * Must be called while holding the mutex from interactive_grep_get_mutex().
+ * Must be called while holding the mutex from log_search_get_mutex().
  */
-int interactive_grep_get_input_len(void);
+int log_search_get_input_len(void);
 
 /**
  * @brief Get current cursor position in input buffer (must hold mutex)
  * @return Cursor position (0-based index within input buffer)
  *
- * Must be called while holding the mutex from interactive_grep_get_mutex().
+ * Must be called while holding the mutex from log_search_get_mutex().
  */
-int interactive_grep_get_cursor_position(void);
+int log_search_get_cursor_position(void);
 
 /**
  * @brief Get current input buffer content (must hold mutex)
  * @return Pointer to the input buffer (valid only while holding mutex)
  *
- * Must be called while holding the mutex from interactive_grep_get_mutex().
+ * Must be called while holding the mutex from log_search_get_mutex().
  */
-const char *interactive_grep_get_input_buffer(void);
+const char *log_search_get_input_buffer(void);
 
 /**
  * @brief Check if case-insensitive flag is set (must hold mutex)
  * @return true if /i flag is set, false otherwise
  *
- * Must be called while holding the mutex from interactive_grep_get_mutex().
+ * Must be called while holding the mutex from log_search_get_mutex().
  */
-bool interactive_grep_get_case_insensitive(void);
+bool log_search_get_case_insensitive(void);

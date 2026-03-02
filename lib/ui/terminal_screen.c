@@ -15,7 +15,7 @@
 
 #include "ascii-chat/ui/terminal_screen.h"
 #include "ascii-chat/ui/frame_buffer.h"
-#include "ascii-chat/log/interactive_grep.h"
+#include "ascii-chat/log/search.h"
 #include <ascii-chat/session/session_log_buffer.h>
 #include "ascii-chat/util/display.h"
 #include "ascii-chat/util/time.h"
@@ -166,7 +166,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     g_last_term_size_check_us = now_us;
   }
 
-  bool grep_entering = interactive_grep_is_entering();
+  bool grep_entering = log_search_is_entering();
 
   // When transitioning out of grep mode, clear the log cache so all logs are redrawn
   // (grep mode may have shown filtered logs, need to refresh for normal view)
@@ -176,7 +176,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   }
 
   // Also clear cache when pattern changes while still in grep mode (e.g., user backspaces to empty)
-  if (grep_entering && interactive_grep_needs_rerender()) {
+  if (grep_entering && log_search_needs_rerender()) {
     terminal_screen_clear_cache();
   }
 
@@ -260,7 +260,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     // Terminal too small for logs, flush header and return
     frame_buffer_flush(g_frame_buf);
     if (grep_entering) {
-      interactive_grep_render_input_line(g_cached_term_size.cols);
+      log_search_render_input_line(g_cached_term_size.cols);
     }
     return;
   }
@@ -273,8 +273,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   session_log_entry_t *log_entries = NULL;
   size_t log_count = 0;
 
-  if (interactive_grep_is_active()) {
-    asciichat_error_t result = interactive_grep_gather_and_filter_logs(&log_entries, &log_count);
+  if (log_search_is_active()) {
+    asciichat_error_t result = log_search_gather_and_filter_logs(&log_entries, &log_count);
     if (result != ASCIICHAT_OK || !log_entries) {
       log_entries = SAFE_MALLOC(SESSION_LOG_BUFFER_SIZE * sizeof(session_log_entry_t), session_log_entry_t *);
       if (log_entries) {
@@ -394,7 +394,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
       // Apply highlighting if match found in plain text
       size_t match_start = 0, match_len = 0;
-      if (interactive_grep_get_match_info(plain_text, &match_start, &match_len) && match_len > 0) {
+      if (log_search_get_match_info(plain_text, &match_start, &match_len) && match_len > 0) {
         // Validate match is within bounds
         size_t plain_len = strlen(plain_text);
         if (match_start < plain_len && (match_start + match_len) <= plain_len) {
@@ -418,7 +418,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       // Only use cached pointers when NOT filtering to avoid cache misses on every frame.
       // This prevents the "spam" effect where all logs redraw constantly during grep searches.
       bool same_as_before = false;
-      if (!interactive_grep_is_active()) {
+      if (!log_search_is_active()) {
         same_as_before = (log_idx < g_prev_log_count && g_prev_log_ptrs[log_idx] == original_msg);
       }
 
@@ -523,12 +523,12 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
     if (pos > 0 && pos < (int)sizeof(grep_ui_buffer) - 256) {
       // Lock while reading grep state to ensure atomic render
       // Get the search pattern under mutex protection
-      mutex_t *grep_mutex = interactive_grep_get_mutex();
+      mutex_t *grep_mutex = log_search_get_mutex();
       if (grep_mutex) {
         mutex_lock(grep_mutex);
-        int pattern_len = interactive_grep_get_input_len();
-        const char *pattern = interactive_grep_get_input_buffer();
-        int cursor_pos = interactive_grep_get_cursor_position();
+        int pattern_len = log_search_get_input_len();
+        const char *pattern = log_search_get_input_buffer();
+        int cursor_pos = log_search_get_cursor_position();
 
         // Validate pattern_len and cursor_pos are within reasonable bounds
         if (pattern_len < 0 || pattern_len > 256) {
