@@ -25,7 +25,7 @@ sleep 0.25
 
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
-ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 10 ./build/bin/ascii-chat \
+ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 10 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
   --test-pattern -S -D 3 \
