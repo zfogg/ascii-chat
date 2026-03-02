@@ -2021,6 +2021,9 @@ int server_main(void) {
     FATAL(ERROR_THREAD, "Failed to initialize client manager rwlock");
   }
 
+  // Register global sync primitives for debugging
+  NAMED_REGISTER_RWLOCK(&g_client_manager_rwlock, "client_manager_rwlock", NULL);
+
   // Lock debug system already initialized earlier in main()
 
   // Check if SIGINT/SIGTERM was received during initialization

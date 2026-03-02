@@ -95,6 +95,9 @@ buffer_pool_t *buffer_pool_create(size_t max_bytes, uint64_t shrink_delay_ns) {
   NAMED_REGISTER_ATOMIC(&pool->shrink_freed, "buffer_pool.global_buffers_freed_by_shrink", NULL);
   NAMED_REGISTER_ATOMIC(&pool->malloc_fallbacks, "buffer_pool.global_allocations_bypassing_pool", NULL);
 
+  // Register sync primitives for debugging
+  NAMED_REGISTER_MUTEX(&pool->shrink_mutex, "shrink_mutex", (uintptr_t)(const void *)(pool));
+
   return pool;
 }
 

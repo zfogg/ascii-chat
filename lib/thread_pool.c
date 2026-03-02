@@ -102,6 +102,9 @@ thread_pool_t *thread_pool_create(const char *pool_name) {
 
   NAMED_REGISTER_THREAD_POOL(pool, pool->name, NULL);
 
+  // Register sync primitives for debugging
+  NAMED_REGISTER_MUTEX(&pool->threads_mutex, "threads_mutex", (uintptr_t)(const void *)(pool));
+
   log_debug("Thread pool '%s' created (long-lived thread mode)", pool->name);
   return pool;
 }
@@ -192,6 +195,11 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
   }
 
   NAMED_REGISTER_THREAD_POOL(pool, pool->name, NULL);
+
+  // Register sync primitives for debugging
+  NAMED_REGISTER_MUTEX(&pool->threads_mutex, "threads_mutex", (uintptr_t)(const void *)(pool));
+  NAMED_REGISTER_MUTEX(&pool->work_queue_mutex, "work_queue_mutex", (uintptr_t)(const void *)(pool));
+  NAMED_REGISTER_COND(&pool->work_available, "work_available", (uintptr_t)(const void *)(pool));
 
   log_info("[ThreadPool] Created work queue pool '%s' with %zu worker threads", pool->name, num_workers);
   return pool;
