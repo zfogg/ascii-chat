@@ -388,9 +388,6 @@ void debug_sync_print_state(void) {
 
   sync_buffer_t buf = {.buffer = buffer, .buffer_size = SYNC_BUFFER_SIZE, .offset = 0};
 
-  // Collect all sync state in one buffer
-  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "Synchronization Primitive State:\n");
-
   // Iterate through all registered syncs
   log_debug("[debug_sync_print_state] Iterating mutexes");
   named_registry_for_each(mutex_iter_callback, &buf);
@@ -399,9 +396,6 @@ void debug_sync_print_state(void) {
   log_debug("[debug_sync_print_state] Iterating conds");
   named_registry_for_each(cond_iter_callback, &buf);
 
-  // Iterate through atomic operations
-  buf.offset += snprintf(buf.buffer + buf.offset, buf.buffer_size - buf.offset, "\nAtomic Operations State:\n");
-  log_debug("[debug_sync_print_state] Iterating atomics");
   named_registry_for_each(atomic_t_iter_callback, &buf);
   named_registry_for_each(atomic_ptr_iter_callback, &buf);
 
@@ -525,7 +519,8 @@ static void *debug_print_thread_fn(void *arg) {
     mutex_stack_detect_deadlocks();
 
 #ifndef NDEBUG
-    // Periodic memory report (if enabled)
+    // Periodic memory report (if enabled and DEBUG_MEMORY is configured)
+#ifdef DEBUG_MEMORY
     if (g_debug_state_request.memory_report_interval_ns > 0) {
       uint64_t now = time_get_ns();
       uint64_t last_time = g_debug_state_request.last_memory_report_time_ns;
@@ -536,6 +531,7 @@ static void *debug_print_thread_fn(void *arg) {
         g_debug_state_request.last_memory_report_time_ns = now;
       }
     }
+#endif
 
     options_t *opts = options_get();
     if (!opts) {
