@@ -92,9 +92,8 @@ asciichat_error_t named_init(void) {
 }
 
 void named_destroy(void) {
-  if (!lifecycle_shutdown(&g_named_registry.lifecycle)) {
-    return;
-  }
+  // Always attempt to shut down the lifecycle, but always cleanup entries
+  lifecycle_shutdown(&g_named_registry.lifecycle);
 
   rwlock_wrlock(&g_named_registry.entries_lock);
   for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
