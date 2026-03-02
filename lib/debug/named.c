@@ -164,9 +164,15 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     return base_name;
   }
 
-  // Get or create per-name counter
-  rwlock_wrlock_impl(&g_named_registry.entries_lock);
+  // Try to acquire lock (non-blocking) to prevent deadlock during critical paths
+  // If we can't acquire the lock immediately, skip registration to avoid blocking
+  int lock_result = pthread_rwlock_trywrlock(&g_named_registry.entries_lock.impl);
+  if (lock_result != 0) {
+    // Lock is contended by another thread, skip registration to prevent deadlock
+    return base_name;
+  }
 
+  // Get or create per-name counter
   name_counter_entry_t *counter_entry;
   HASH_FIND_STR(g_named_registry.name_counters, base_name, counter_entry);
 
@@ -192,21 +198,20 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
 
   // Increment and get counter for this name
   uint64_t counter = atomic_fetch_add_u64(&counter_entry->counter, 1);
-  rwlock_wrunlock_impl(&g_named_registry.entries_lock);
 
   // Generate suffixed name: "base_name.counter"
   char *full_name = NULL;
   int ret = asprintf(&full_name, "%s.%" PRIu64, base_name, counter);
   if (ret < 0) {
     log_error("named_register: asprintf failed for key=0x%tx", (ptrdiff_t)key);
+    rwlock_wrunlock_impl(&g_named_registry.entries_lock);
     return base_name;
   }
 
-  // Make file path relative to project root
+  // Make file path relative to project root (while holding lock)
   const char *relative_file = extract_project_relative_path(file ? file : "unknown");
 
-  // Lock and insert/update in registry
-  rwlock_wrlock_impl(&g_named_registry.entries_lock);
+  // Insert/update in registry (still holding write lock)
 
   named_entry_t *entry;
   HASH_FIND(hh, g_named_registry.entries, &key, sizeof(key), entry);
