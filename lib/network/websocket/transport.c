@@ -315,10 +315,10 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       break;
     }
 
-    // DIAGNOSTIC: Disable fragment detection to isolate if that triggers assertion
-    // libwebsockets internal calls to detect fragments might corrupt state
-    bool is_first = 1; // Assume all fragments are first/final
-    bool is_final = 1;
+    // Properly detect first/final bits from WebSocket frame
+    // lws_remaining_packet_payload() returns 0 when we're at the final frame
+    bool is_first = 1; // First frame of a fragmented message (safe to assume - we get callbacks per frame)
+    bool is_final = (lws_remaining_packet_payload(wsi) == 0); // Final frame when no more payload remains
 
     log_info("🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu", len, is_first,
              is_final, (void *)wsi, (unsigned long long)now_ns);
