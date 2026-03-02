@@ -1263,6 +1263,24 @@ asciichat_error_t audio_init(audio_context_t *ctx) {
 
   ctx->initialized = true;
   atomic_store_bool(&ctx->shutting_down, false);
+
+  /* Register audio context with named registry */
+  NAMED_REGISTER(ctx, "audio_context", "audio_context_t", "0x%tx", NULL);
+
+  /* Register audio context's sync primitives with hierarchical naming */
+  NAMED_REGISTER_MUTEX(&ctx->state_mutex, "state_mutex", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_MUTEX(&ctx->worker_mutex, "worker_mutex", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_COND(&ctx->worker_cond, "worker_cond", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_ATOMIC(&ctx->worker_should_stop, "worker_should_stop", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_ATOMIC(&ctx->shutting_down, "shutting_down", (uintptr_t)(const void *)(ctx));
+
+  /* Register ring buffers as child structures with audio context as parent */
+  NAMED_REGISTER_AUDIO_RINGBUF(ctx->capture_buffer, "capture_buffer", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_AUDIO_RINGBUF(ctx->playback_buffer, "playback_buffer", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_AUDIO_RINGBUF(ctx->raw_capture_rb, "raw_capture_rb", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_AUDIO_RINGBUF(ctx->raw_render_rb, "raw_render_rb", (uintptr_t)(const void *)(ctx));
+  NAMED_REGISTER_AUDIO_RINGBUF(ctx->processed_playback_rb, "processed_playback_rb", (uintptr_t)(const void *)(ctx));
+
   log_info("Audio system initialized successfully (worker thread architecture enabled)");
   return ASCIICHAT_OK;
 }
