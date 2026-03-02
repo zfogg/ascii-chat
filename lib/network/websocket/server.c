@@ -919,20 +919,7 @@ asciichat_error_t websocket_server_run(websocket_server_t *server) {
     }
   }
 
-  log_info("WebSocket server event loop exited, destroying context from event loop thread");
-
-  // Destroy context from the event loop thread. When called from a different
-  // thread after the event loop has stopped, lws_context_destroy tries to
-  // gracefully close WebSocket connections but can't process close responses
-  // (no event loop running), so it waits for the close handshake timeout
-  // (5+ seconds). Destroying from the event loop thread avoids this.
-  if (server->context) {
-    NAMED_UNREGISTER(server->context);
-    lws_context_destroy(server->context);
-    server->context = NULL;
-  }
-
-  log_info("WebSocket server context destroyed");
+  log_info("WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)");
   return ASCIICHAT_OK;
 }
 

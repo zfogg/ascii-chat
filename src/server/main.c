@@ -2632,26 +2632,24 @@ cleanup:
     // seeing running=false, which we just set).
     websocket_server_cancel_service(&g_websocket_server);
 
-    // Join with 500ms timeout for responsive shutdown
-    // Most systems exit quickly since we set running=false and called cancel_service.
-    // 500ms is enough time but still responsive to timeout -k signals.
+    // Join with 1500ms timeout to allow handler threads to complete pending work
+    // Handler threads may be reassembling large WebSocket frames. We need enough
+    // time for them to finish before destroying the WebSocket context.
     if (g_websocket_server_thread_started) {
       int join_result =
-          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 500 * NS_PER_MS_INT); // 500ms in ns
+          asciichat_thread_join_timeout(&g_websocket_server_thread, NULL, 1500 * NS_PER_MS_INT); // 1500ms in ns
       if (join_result != 0) {
-        log_warn("WebSocket thread did not exit cleanly within 500ms, forcing cleanup");
+        log_warn("WebSocket thread did not exit cleanly within 1500ms, forcing cleanup");
       }
       g_websocket_server_thread_started = false;
     }
 
-    // Context is destroyed by websocket_server_run from the event loop thread.
-    // websocket_server_destroy handles the case where it's already NULL or context already destroyed.
-    websocket_server_destroy(&g_websocket_server);
-    log_debug("WebSocket server shut down");
+    log_debug("WebSocket thread confirmed exited, waiting for handler threads to complete...");
   }
 
-  // Wait for all client handler threads to exit (this ensures all their allocations are freed)
-  // The timeout/forceful exit scenario can leave threads alive; give them a moment to clean up
+  // Wait for all client handler threads to exit BEFORE destroying WebSocket context
+  // Handler threads may still be working with WebSocket connections, so we must
+  // ensure they complete before destroying the context (which would abort their operations).
   {
     int retry_count = 0;
     while (retry_count < 50) { // Max 500ms wait
@@ -2670,7 +2668,13 @@ cleanup:
       platform_sleep_us(10 * US_PER_MS_INT); // 10ms
       retry_count++;
     }
+    log_debug("Client handler threads cleaned up, destroying WebSocket server");
   }
+
+  // Now destroy WebSocket server after all handler threads have completed
+  // This ensures no handler threads are still accessing the context.
+  websocket_server_destroy(&g_websocket_server);
+  log_debug("WebSocket server destroyed");
 
   // Cleanup status screen log capture (must be AFTER all client threads exit to avoid use-after-free)
   // Client threads may still be appending logs during the wait loop above, so we destroy the buffer only
