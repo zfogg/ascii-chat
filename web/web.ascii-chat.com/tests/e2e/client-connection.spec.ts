@@ -136,6 +136,12 @@ test.describe("Client Connection to Native Server", () => {
   }) => {
     test.setTimeout(4500);
 
+    // Capture console output to analyze packets
+    const consoleLogs: string[] = [];
+    page.on("console", (msg) => {
+      consoleLogs.push(msg.text());
+    });
+
     // Wait for connection to establish
     await expect(page.locator(".status")).toContainText("Connected", {
       timeout: 5000,
@@ -144,7 +150,17 @@ test.describe("Client Connection to Native Server", () => {
     console.log("✓ Client connected to server");
 
     // Wait for initial frames to be captured
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(2000);
+
+    // Check what packets were received
+    const asciiFrameCount = consoleLogs.filter((log) =>
+      log.includes("ASCII_FRAME")
+    ).length;
+    const encryptedCount = consoleLogs.filter((log) =>
+      log.includes("ENCRYPTED") && log.includes("RECV")
+    ).length;
+
+    console.log(`Packets received: ENCRYPTED=${encryptedCount}, ASCII_FRAME=${asciiFrameCount}`);
 
     // Check frame metrics
     const metrics = await page.evaluate(
@@ -153,8 +169,13 @@ test.describe("Client Connection to Native Server", () => {
 
     console.log("Frame metrics after connection:", metrics);
 
-    // Verify client is rendering frames
-    expect(metrics?.rendered).toBeGreaterThan(0);
+    // Verify client received some frames from server
+    if (asciiFrameCount > 0) {
+      expect(metrics?.rendered).toBeGreaterThan(0);
+    } else {
+      console.log("⚠️  No ASCII_FRAME packets received from server");
+      expect(asciiFrameCount).toBeGreaterThan(0);
+    }
   });
 
   test("client maintains stable connection with webcam streaming", async ({
