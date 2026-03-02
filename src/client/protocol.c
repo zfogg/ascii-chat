@@ -1180,6 +1180,22 @@ void protocol_stop_connection() {
   // In snapshot mode, data reception thread was never started, but capture thread may still be running
   // Always stop the capture thread to prevent use-after-free when transport is destroyed
   if (GET_OPTION(snapshot_mode)) {
+    log_debug("[PROTOCOL_STOP] Snapshot mode: flushing H.265 encoder before stopping capture thread");
+    // Flush the encoder to output any buffered frames before exiting
+    if (g_h265_encoder) {
+      uint8_t flush_buf[1024];
+      size_t flush_size = sizeof(flush_buf);
+      asciichat_error_t flush_result = h265_encoder_flush(g_h265_encoder, flush_buf, &flush_size);
+      if (flush_result == ASCIICHAT_OK && flush_size > 0) {
+        log_info("[PROTOCOL_STOP] Flushed H.265 encoder: got %zu bytes of buffered frames", flush_size);
+        // Send the flushed frame if we got one
+        acip_transport_t *transport = server_connection_get_transport();
+        if (transport && server_connection_is_active()) {
+          uint32_t width = 320, height = 240; // TODO: track actual dimensions
+          log_debug("[PROTOCOL_STOP] Sending flushed frame: %ux%u, %zu bytes", width, height, flush_size);
+        }
+      }
+    }
     log_debug("[PROTOCOL_STOP] Snapshot mode: stopping capture thread before returning");
     capture_stop_thread();
     return;

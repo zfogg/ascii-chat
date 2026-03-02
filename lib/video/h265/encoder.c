@@ -296,6 +296,76 @@ void h265_encoder_request_keyframe(h265_encoder_t *encoder) {
   }
 }
 
+asciichat_error_t h265_encoder_flush(h265_encoder_t *encoder, uint8_t *output_buf, size_t *output_size) {
+  if (!encoder || !output_buf || !output_size) {
+    return SET_ERRNO(ERROR_INTERNAL, "Invalid encoder or output parameters for flush");
+  }
+
+  if (*output_size < 5) {
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small (minimum 5 bytes)");
+  }
+
+  // Send NULL frame to signal end of stream (flushes encoder)
+  log_debug("H265_FLUSH: Sending NULL frame to encoder to flush buffered data");
+  int send_ret = avcodec_send_frame(encoder->codec_ctx, NULL);
+  if (send_ret < 0) {
+    log_error("H265_FLUSH: avcodec_send_frame(NULL) failed: %d", send_ret);
+    return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to flush encoder");
+  }
+
+  // Try to receive a packet
+  log_debug("H265_FLUSH: Attempting to receive flushed packet...");
+  int recv_ret = avcodec_receive_packet(encoder->codec_ctx, encoder->packet);
+  if (recv_ret == AVERROR(EAGAIN)) {
+    log_dev("H265_FLUSH: EAGAIN - no more frames available");
+    *output_size = 0;
+    return ASCIICHAT_OK;
+  }
+  if (recv_ret == AVERROR_EOF) {
+    log_debug("H265_FLUSH: EOF - encoder is flushed");
+    *output_size = 0;
+    return ASCIICHAT_OK;
+  }
+  if (recv_ret < 0) {
+    log_error("H265_FLUSH: avcodec_receive_packet failed: %d", recv_ret);
+    return SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to receive flushed packet");
+  }
+
+  log_debug("H265_FLUSH: Got flushed packet: size=%d", (int)encoder->packet->size);
+
+  // Check if packet size exceeds output buffer
+  size_t header_size = 5;
+  size_t packet_size = encoder->packet->size;
+  size_t required_size = header_size + packet_size;
+
+  if (required_size > *output_size) {
+    return SET_ERRNO(ERROR_NETWORK_SIZE, "Output buffer too small: need %zu, have %zu", required_size, *output_size);
+  }
+
+  // Write header: [flags][width:u16][height:u16]
+  uint8_t flags = 0;
+  if (encoder->frame->pict_type == AV_PICTURE_TYPE_I) {
+    flags |= H265_ENCODER_FLAG_KEYFRAME;
+    encoder->keyframes++;
+  }
+
+  output_buf[0] = flags;
+  output_buf[1] = (encoder->current_width >> 8) & 0xFF;
+  output_buf[2] = encoder->current_width & 0xFF;
+  output_buf[3] = (encoder->current_height >> 8) & 0xFF;
+  output_buf[4] = encoder->current_height & 0xFF;
+
+  // Write encoded data
+  if (packet_size > 0) {
+    memcpy(output_buf + header_size, encoder->packet->data, packet_size);
+  }
+
+  *output_size = required_size;
+  encoder->total_frames++;
+
+  return ASCIICHAT_OK;
+}
+
 void h265_encoder_get_stats(h265_encoder_t *encoder, uint64_t *total_frames, uint64_t *keyframes,
                             uint32_t *avg_bitrate) {
   if (!encoder)

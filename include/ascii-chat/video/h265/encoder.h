@@ -86,6 +86,34 @@ asciichat_error_t h265_encode(
 void h265_encoder_request_keyframe(h265_encoder_t *encoder);
 
 /**
+ * Flush remaining buffered frames from encoder
+ *
+ * Sends a NULL frame to the encoder to flush all buffered frames.
+ * This should be called before destroying the encoder or when you need
+ * to ensure all encoded data is retrieved.
+ *
+ * @param encoder Encoder handle
+ * @param output_buf Buffer for encoded output
+ * @param output_size Input: buffer size, Output: actual encoded size
+ * @return Error code (ASCIICHAT_OK on success, ASCIICHAT_OK with size=0 when no more data)
+ *
+ * USAGE:
+ *   // After final h265_encode() call, flush remaining frames
+ *   while (size > 0) {
+ *     size = max_size;
+ *     h265_encoder_flush(encoder, buf, &size);
+ *     if (size > 0) {
+ *       // Send the flushed frame...
+ *     }
+ *   }
+ */
+asciichat_error_t h265_encoder_flush(
+    h265_encoder_t *encoder,
+    uint8_t *output_buf,
+    size_t *output_size
+);
+
+/**
  * Get encoder statistics
  *
  * @param encoder Encoder handle
