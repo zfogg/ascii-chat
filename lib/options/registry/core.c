@@ -22,6 +22,11 @@
  * Must be called once during options_init() to build the registry
  */
 void registry_init_from_builders(void) {
+  static bool initialized = false;
+  if (initialized) {
+    return;
+  }
+
   size_t offset = 0;
   for (int i = 0; g_category_builders[i].entries != NULL; i++) {
     // Count entries in this category (until sentinel terminator)
@@ -56,6 +61,8 @@ void registry_init_from_builders(void) {
                                                     .mode_bitmask = OPTION_MODE_NONE,
                                                     .metadata = {0}};
   }
+
+  initialized = true;
 }
 
 /**
