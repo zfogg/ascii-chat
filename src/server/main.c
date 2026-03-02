@@ -1524,12 +1524,12 @@ static void *websocket_client_handler(void *arg) {
   SAFE_SNPRINTF(crypto_name, sizeof(crypto_name), "crypto_client_%s", client->client_id);
 
   log_info("[WS_HANDLER] ★★★ LOCK STATE BEFORE crypto_handshake_init()");
-  debug_sync_print_state();
+  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
   log_debug("[WS_HANDLER] Calling crypto_handshake_init()...");
   asciichat_error_t handshake_init_result =
       crypto_handshake_init(crypto_name, &client->crypto_handshake_ctx, true /* is_server */);
   log_info("[WS_HANDLER] ★★★ DEBUG: Printing lock state after crypto_handshake_init");
-  debug_sync_print_state();
+  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
   if (handshake_init_result != ASCIICHAT_OK) {
     log_error("[WS_HANDLER] FAILED: crypto_handshake_init returned %d: %s", handshake_init_result,
               asciichat_error_string(handshake_init_result));
@@ -1983,7 +1983,7 @@ int server_main(void) {
 
   // DEBUG: Print lock state immediately after WebSocket init
   log_info("★★★ LOCK STATE AFTER WEBSOCKET INIT ★★★");
-  debug_sync_print_state();
+  // debug_sync_print_state();  // Disabled: causes AddressSanitizer stack-use-after-return crash
 
   // =========================================================================
   // UPnP Port Mapping (Quick Win for Direct TCP)

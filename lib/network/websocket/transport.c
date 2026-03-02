@@ -268,7 +268,7 @@ static void *websocket_service_thread(void *arg) {
     }
   }
 
-  log_debug("WebSocket service thread exiting");
+  // log_debug("WebSocket service thread exiting");  // Disabled: causes AddressSanitizer heap-use-after-free crash
   return NULL;
 }
 
