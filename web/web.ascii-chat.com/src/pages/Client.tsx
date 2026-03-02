@@ -826,147 +826,171 @@ export function ClientPage() {
   const lastFrameHashRef = useRef(0);
   const uniqueFrameCountRef = useRef(0);
   const videFrameUpdateCountRef = useRef(0); // Track actual VIDEO updates
+  const captureTimerRef = useRef<NodeJS.Timeout | null>(null);
   const createWebcamCaptureLoop = useCallback(() => {
-    let sendFrameTimeRef = performance.now();
     let lastLogTime = performance.now();
-    return () => {
-      captureLoopCountRef.current++;
+
+    // Timer-based frame sending to match server render loop (not RAF-based)
+    // RAF fires at monitor refresh rate (60+ Hz) regardless of frame send interval
+    // Timer ensures we send at exactly the target FPS, matching C client behavior
+    const sendOneFrame = () => {
       const now = performance.now();
-      const elapsed = now - sendFrameTimeRef;
-      const sendInterval = 1000 / settings.targetFps; // Send at target FPS
 
       // Log every 100ms regardless of frame sends
       if (now - lastLogTime > 100) {
         lastLogTime = now;
         console.log(
-          `[Client] RAF cycle: calls=${captureLoopCountRef.current}, frames_sent=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, video_updates=${videFrameUpdateCountRef.current}, ready=${
+          `[Client] Frame send: count=${captureLoopFrameCountRef.current}, unique=${uniqueFrameCountRef.current}, video_updates=${videFrameUpdateCountRef.current}, ready=${
             !!clientRef.current && connectionState === ConnectionState.CONNECTED
           }`,
         );
       }
 
-      if (elapsed >= sendInterval) {
-        sendFrameTimeRef = now;
-        // Call captureAndSendFrame through ref to get the latest version
-        const conn = clientRef.current;
-        if (conn && connectionState === ConnectionState.CONNECTED) {
-          const frame = captureFrame();
-          if (frame && frame.data) {
-            captureLoopFrameCountRef.current++;
-            const frameHash = computeFrameHash(frame.data);
+      // Call captureAndSendFrame through ref to get the latest version
+      const conn = clientRef.current;
+      if (conn && connectionState === ConnectionState.CONNECTED) {
+        const frame = captureFrame();
+        if (frame && frame.data) {
+          captureLoopFrameCountRef.current++;
+          const frameHash = computeFrameHash(frame.data);
 
-            // Log EVERY frame sent, not just unique ones
-            const isNewFrame = frameHash !== lastFrameHashRef.current;
-            if (isNewFrame) {
-              uniqueFrameCountRef.current++;
-              videFrameUpdateCountRef.current++;
-              lastFrameHashRef.current = frameHash;
-              console.log(
-                `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(
-                  16,
-                )}, size=${frame.data.length}`,
-              );
-            } else {
-              console.log(
-                `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(
-                  16,
-                )}, size=${frame.data.length}`,
-              );
-            }
-
-            // Try H.265 encoding if available (but prioritize RGBA for stability)
-            // H.265 encoding can be slow on some systems, so we always have RGBA fallback
-            // Set window.DISABLE_H265 = true in console to disable H.265 encoding
-            const h265Disabled =
-              typeof window !== "undefined" &&
-              (window as unknown as Record<string, unknown>)["DISABLE_H265"] ===
-                true;
-            let sentH265 = false;
-            if (
-              !h265Disabled &&
-              h265EncoderRef.current &&
-              H265Encoder.isSupported()
-            ) {
-              try {
-                if (!canvasRef.current) {
-                  throw new Error(
-                    "Canvas not available for VideoFrame creation",
-                  );
-                }
-
-                // Create VideoFrame from canvas for H.265 encoding
-                const videoFrame = new VideoFrame(canvasRef.current, {
-                  timestamp: now * 1000, // microseconds
-                });
-
-                // Request keyframe every 60 frames
-                const forceKeyframe =
-                  captureLoopFrameCountRef.current % 60 === 0;
-                h265EncoderRef.current.encode(videoFrame, forceKeyframe);
-                videoFrame.close();
-
-                // Send any available encoded chunks (may be empty since encoder is async)
-                const chunks = h265EncoderRef.current.drain();
-                if (chunks.length > 0) {
-                  for (const chunk of chunks) {
-                    const payload = buildImageFrameH265Payload(
-                      chunk.flags,
-                      chunk.width,
-                      chunk.height,
-                      chunk.data,
-                    );
-                    conn.sendPacket(PacketType.IMAGE_FRAME_H265, payload);
-                  }
-                  sentH265 = true;
-                }
-              } catch (err) {
-                console.error(
-                  "[Client] H.265 encoding failed, will use RGBA:",
-                  err,
-                );
-                // Disable H.265 for rest of session if encoding fails
-                if (h265EncoderRef.current) {
-                  h265EncoderRef.current.destroy();
-                  h265EncoderRef.current = null;
-                }
-              }
-            }
-
-            // Always send RGBA if H.265 didn't produce chunks or failed
-            if (!sentH265) {
-              const payload = buildImageFramePayload(
-                frame.data,
-                frame.width,
-                frame.height,
-              );
-
-              try {
-                conn.sendPacket(PacketType.IMAGE_FRAME, payload);
-              } catch (err) {
-                console.error("[Client] Failed to send IMAGE_FRAME:", err);
-              }
-            }
+          // Log EVERY frame sent, not just unique ones
+          const isNewFrame = frameHash !== lastFrameHashRef.current;
+          if (isNewFrame) {
+            uniqueFrameCountRef.current++;
+            videFrameUpdateCountRef.current++;
+            lastFrameHashRef.current = frameHash;
+            console.log(
+              `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(
+                16,
+              )}, size=${frame.data.length}`,
+            );
           } else {
-            console.warn(
-              `[Client] captureFrame returned null at call ${captureLoopCountRef.current}`,
+            console.log(
+              `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(
+                16,
+              )}, size=${frame.data.length}`,
             );
           }
+
+          // Try H.265 encoding if available (but prioritize RGBA for stability)
+          // H.265 encoding can be slow on some systems, so we always have RGBA fallback
+          // Set window.DISABLE_H265 = true in console to disable H.265 encoding
+          const h265Disabled =
+            typeof window !== "undefined" &&
+            (window as unknown as Record<string, unknown>)["DISABLE_H265"] ===
+              true;
+          let sentH265 = false;
+          if (
+            !h265Disabled &&
+            h265EncoderRef.current &&
+            H265Encoder.isSupported()
+          ) {
+            try {
+              if (!canvasRef.current) {
+                throw new Error(
+                  "Canvas not available for VideoFrame creation",
+                );
+              }
+
+              // Create VideoFrame from canvas for H.265 encoding
+              const videoFrame = new VideoFrame(canvasRef.current, {
+                timestamp: now * 1000, // microseconds
+              });
+
+              // Request keyframe every 60 frames
+              const forceKeyframe =
+                captureLoopFrameCountRef.current % 60 === 0;
+              h265EncoderRef.current.encode(videoFrame, forceKeyframe);
+              videoFrame.close();
+
+              // Send any available encoded chunks (may be empty since encoder is async)
+              const chunks = h265EncoderRef.current.drain();
+              if (chunks.length > 0) {
+                for (const chunk of chunks) {
+                  const payload = buildImageFrameH265Payload(
+                    chunk.flags,
+                    chunk.width,
+                    chunk.height,
+                    chunk.data,
+                  );
+                  conn.sendPacket(PacketType.IMAGE_FRAME_H265, payload);
+                }
+                sentH265 = true;
+              }
+            } catch (err) {
+              console.error(
+                "[Client] H.265 encoding failed, will use RGBA:",
+                err,
+              );
+              // Disable H.265 for rest of session if encoding fails
+              if (h265EncoderRef.current) {
+                h265EncoderRef.current.destroy();
+                h265EncoderRef.current = null;
+              }
+            }
+          }
+
+          // Always send RGBA if H.265 didn't produce chunks or failed
+          if (!sentH265) {
+            const payload = buildImageFramePayload(
+              frame.data,
+              frame.width,
+              frame.height,
+            );
+
+            try {
+              conn.sendPacket(PacketType.IMAGE_FRAME, payload);
+            } catch (err) {
+              console.error("[Client] Failed to send IMAGE_FRAME:", err);
+            }
+          }
+        } else {
+          console.warn(
+            `[Client] captureFrame returned null at call ${captureLoopCountRef.current}`,
+          );
         }
       }
-
-      // Schedule next frame
-      if (webcamCaptureLoopRef.current) {
-        animationFrameRef.current = requestAnimationFrame(
-          webcamCaptureLoopRef.current,
-        );
-      }
     };
+
+    return sendOneFrame;
   }, [captureFrame, connectionState, settings.targetFps]);
 
-  // Update the ref whenever dependencies change (including connectionState)
+  // Create capture function ref
   useEffect(() => {
     webcamCaptureLoopRef.current = createWebcamCaptureLoop();
   }, [createWebcamCaptureLoop]);
+
+  // Start/stop timer when connection changes
+  useEffect(() => {
+    if (
+      connectionState === ConnectionState.CONNECTED &&
+      webcamCaptureLoopRef.current
+    ) {
+      // Start timer to send frames at target FPS
+      const sendInterval = 1000 / settings.targetFps;
+      captureTimerRef.current = setInterval(() => {
+        if (webcamCaptureLoopRef.current) {
+          webcamCaptureLoopRef.current();
+        }
+      }, sendInterval);
+      console.log(`[Client] Started frame send timer: ${sendInterval.toFixed(1)}ms interval (${settings.targetFps} FPS)`);
+    } else {
+      // Stop timer when disconnected
+      if (captureTimerRef.current) {
+        clearInterval(captureTimerRef.current);
+        captureTimerRef.current = null;
+        console.log("[Client] Stopped frame send timer");
+      }
+    }
+
+    return () => {
+      if (captureTimerRef.current) {
+        clearInterval(captureTimerRef.current);
+        captureTimerRef.current = null;
+      }
+    };
+  }, [connectionState, settings.targetFps]);
 
   const startWebcam = useCallback(async () => {
     console.log("[Client] startWebcam() called");
@@ -1140,9 +1164,10 @@ export function ClientPage() {
   }, [connectionState, settings.width, settings.height, settings.targetFps]);
 
   const stopWebcam = useCallback(() => {
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+    // Stop timer (connection state change will also stop it)
+    if (captureTimerRef.current) {
+      clearInterval(captureTimerRef.current);
+      captureTimerRef.current = null;
     }
 
     if (streamRef.current) {
