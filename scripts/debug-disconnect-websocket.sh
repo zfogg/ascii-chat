@@ -25,13 +25,14 @@ cmake --build build
 SERVER_PID=$!
 sleep 0.25
 
+set -x
 EXIT_CODE=0
 START_TIME=$(date +%s%N)
 ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK=1 ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k1 10 ./build/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 3 \
   client ws://localhost:"$PORT_WS" \
   --test-pattern -S -D "$SNAPSHOT_DELAY" \
-  2>/dev/null | tee "$client_stdout" || EXIT_CODE=$?
+  | tee "$client_stdout" || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -47,7 +48,8 @@ echo ""
 
 # Count actual frames written by looking for frame completion markers
 # These are the actual printf() calls that write frames to stdout
-FRAME_COUNT=$(grep -i 'unique frames rendered' "$client_log" | tail -1 | cut -d' ' -f10)
+# Extract the number before "unique" using a more specific pattern
+FRAME_COUNT=$(grep -i 'unique frames rendered' "$client_log" 2>/dev/null | tail -1 | grep -oE '[0-9]+ unique' | grep -oE '^[0-9]+' || echo "0")
 echo "$FRAME_COUNT"
 echo "🎬 FRAME COUNT: $FRAME_COUNT frames"
 
