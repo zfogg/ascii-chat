@@ -35,6 +35,8 @@
 #include <ascii-chat/util/path.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/log/io.h>
+#include <ascii-chat/log/log.h>
 
 // ============================================================================
 // Constants
@@ -654,7 +656,10 @@ static char **run_llvm_symbolizer_batch(void *const *buffer, int size) {
     // Suppress stderr
     strncat(cmd, "2>/dev/null", sizeof(cmd) - strlen(cmd) - 1);
 
-    FILE *fp = popen(cmd, "r");
+    FILE *fp = NULL;
+    LOG_IO("llvm-symbolizer", {
+      fp = popen(cmd, "r");
+    });
     if (!fp) {
       // popen() failed - fill with fallback addresses instead of leaving NULL
       for (int j = 0; j < groups[g].count; j++) {
@@ -783,7 +788,10 @@ static char **run_addr2line_batch(void *const *buffer, int size) {
   }
 
   // Execute addr2line
-  FILE *fp = popen(cmd, "r");
+  FILE *fp = NULL;
+  LOG_IO("addr2line", {
+    fp = popen(cmd, "r");
+  });
   if (!fp) {
     log_error("Failed to execute addr2line command");
     // Fill result array with fallback values instead of leaving NULL entries

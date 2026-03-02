@@ -10,6 +10,8 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
+#include <ascii-chat/log/io.h>
+#include <ascii-chat/log/log.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
@@ -31,7 +33,10 @@ asciichat_error_t platform_popen(const char *name, const char *command, const ch
     return ERROR_INVALID_PARAM;
   }
 
-  FILE *stream = popen(command, mode);
+  FILE *stream = NULL;
+  LOG_IO(name, {
+    stream = popen(command, mode);
+  });
   if (!stream) {
     return SET_ERRNO_SYS(ERROR_PROCESS_FAILED, "Failed to execute command: %s", command);
   }

@@ -7,6 +7,7 @@
 #include <ascii-chat/platform/agent.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
@@ -20,7 +21,10 @@ int platform_get_ssh_agent_socket(char *path_out, size_t path_size) {
 
 int platform_get_gpg_agent_socket(char *path_out, size_t path_size) {
   /* Try gpgconf first */
-  FILE *fp = popen("gpgconf --list-dirs agent-socket 2>/dev/null", "r");
+  FILE *fp = NULL;
+  LOG_IO("gpgconf", {
+    fp = popen("gpgconf --list-dirs agent-socket 2>/dev/null", "r");
+  });
   if (fp) {
     if (fgets(path_out, path_size, fp)) {
       /* Remove trailing newline */

@@ -7,6 +7,7 @@
 #include <ascii-chat/media/yt_dlp.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/platform/process.h>
 #include <ascii-chat/util/url.h>
@@ -140,7 +141,10 @@ static void yt_dlp_cache_set(const char *url, const char *yt_dlp_options, const 
  * ============================================================================ */
 
 bool yt_dlp_is_available(void) {
-  int ret = system("yt-dlp --version >/dev/null 2>&1");
+  int ret = 0;
+  LOG_IO("yt-dlp", {
+    ret = system("yt-dlp --version >/dev/null 2>&1");
+  });
   return (ret == 0);
 }
 
