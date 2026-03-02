@@ -760,7 +760,7 @@ client_info_t *add_client(server_context_t *server_ctx, socket_t socket, const c
   }
 
   // Register client with named debug system using the generated name
-  (void)NAMED_REGISTER_CLIENT(client, client->display_name);
+  (void)NAMED_REGISTER_CLIENT(client, client->display_name, NULL);
 
   // Register all atomic fields for debug tracking
   register_client_info_atomics(client);

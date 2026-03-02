@@ -389,10 +389,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_ID(id, name, type, fmt)                                                                         \
+#define NAMED_REGISTER_ID(id, name, type, fmt, parent_ptr)                                                             \
   named_register((uintptr_t)(intptr_t)(id), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_ID(id, name, type) (name)
+#define NAMED_REGISTER_ID(id, name, type, fmt, parent_ptr) (name)
 #endif
 
 /**
@@ -1171,10 +1171,10 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
  * Usage: NAMED_REGISTER_CONTEXT(ctx, "ssl_context", "tls_server");
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_CONTEXT(context, context_type, name)                                                            \
+#define NAMED_REGISTER_CONTEXT(context, context_type, name, parent_ptr)                                                 \
   named_register((uintptr_t)(const void *)(context), (name), (context_type), "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_CONTEXT(context, context_type, name) (name)
+#define NAMED_REGISTER_CONTEXT(context, context_type, name, parent_ptr) (name)
 #endif
 
 /**

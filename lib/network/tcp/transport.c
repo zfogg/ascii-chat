@@ -411,7 +411,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
            (void *)transport, sockfd, crypto_ctx ? "enabled" : "disabled");
 
   // Register transport first, get its full registered name
-  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name);
+  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
   // Create hierarchical sub-name for impl_data using transport name
   char impl_name[256];

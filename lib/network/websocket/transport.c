@@ -1585,14 +1585,14 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   log_debug("WebSocket transport created, service thread will establish connection asynchronously");
 
   // Register transport first, get its full registered name
-  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name);
+  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
   // Create hierarchical sub-name for impl_data using transport name
   char impl_name[256];
   NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
 
   // Register websocket implementation data with hierarchical name
-  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, impl_name);
+  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, impl_name, (uintptr_t)(const void *)(transport));
 
   // Return transport immediately - connection will be established by service thread
   // If connection fails, recv() will detect is_connected=false and return error
@@ -1780,14 +1780,14 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
   log_info("Created WebSocket server transport (crypto: %s)", crypto_ctx ? "enabled" : "disabled");
 
   // Register transport first, get its full registered name
-  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name);
+  const char *transport_name = NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
   // Create hierarchical sub-name for impl_data using transport name
   char impl_name[256];
   NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
 
   // Register websocket implementation data with hierarchical name
-  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, impl_name);
+  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, impl_name, (uintptr_t)(const void *)(transport));
 
   return transport;
 }
