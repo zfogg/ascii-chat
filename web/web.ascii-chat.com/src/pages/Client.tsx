@@ -875,6 +875,7 @@ export function ClientPage() {
             }
 
             // Try H.265 encoding if available
+            let sentH265 = false;
             if (h265EncoderRef.current && H265Encoder.isSupported()) {
               try {
                 // Create VideoFrame from canvas for H.265 encoding
@@ -888,35 +889,30 @@ export function ClientPage() {
                 h265EncoderRef.current.encode(videoFrame, forceKeyframe);
                 videoFrame.close();
 
-                // Send any available encoded chunks
+                // Send any available encoded chunks (may be empty since encoder is async)
                 const chunks = h265EncoderRef.current.drain();
-                for (const chunk of chunks) {
-                  const payload = buildImageFrameH265Payload(
-                    chunk.flags,
-                    chunk.width,
-                    chunk.height,
-                    chunk.data,
-                  );
-                  conn.sendPacket(PacketType.IMAGE_FRAME_H265, payload);
-                  console.log(
-                    `[Client] Sent IMAGE_FRAME_H265: ${chunk.data.length} bytes, flags=0x${chunk.flags.toString(16)}`,
-                  );
+                if (chunks.length > 0) {
+                  for (const chunk of chunks) {
+                    const payload = buildImageFrameH265Payload(
+                      chunk.flags,
+                      chunk.width,
+                      chunk.height,
+                      chunk.data,
+                    );
+                    conn.sendPacket(PacketType.IMAGE_FRAME_H265, payload);
+                    console.log(
+                      `[Client] Sent IMAGE_FRAME_H265: ${chunk.data.length} bytes, flags=0x${chunk.flags.toString(16)}`,
+                    );
+                  }
+                  sentH265 = true;
                 }
               } catch (err) {
-                console.error(
-                  "[Client] H.265 encoding failed, falling back to RGBA:",
-                  err,
-                );
-                // Fallback to RGBA
-                const payload = buildImageFramePayload(
-                  frame.data,
-                  frame.width,
-                  frame.height,
-                );
-                conn.sendPacket(PacketType.IMAGE_FRAME, payload);
+                console.error("[Client] H.265 encoding failed:", err);
               }
-            } else {
-              // No H.265 support, send RGBA
+            }
+
+            // Always send RGBA if H.265 didn't produce chunks or failed
+            if (!sentH265) {
               const payload = buildImageFramePayload(
                 frame.data,
                 frame.width,
