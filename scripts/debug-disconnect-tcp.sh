@@ -25,7 +25,7 @@ timeout -k1 3.25 ./build/bin/ascii-chat \
   localhost:"$PORT" \
   --test-pattern \
   -S -D 1 \
-  | tee /tmp/client-stdout-"$PORT".log \
+  2>/dev/null | tee /tmp/client-stdout-"$PORT".log \
   || EXIT_CODE=$? &
 END_TIME=$(date +%s%N)
 
