@@ -511,31 +511,40 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered at time 0");
       }
 
-      // Snapshot mode: check if enough time has elapsed
+      // Snapshot mode: check if enough frames have been captured for the desired output duration
       if (snapshot_mode && !snapshot_done && first_frame_rendered) {
         double snapshot_delay = GET_OPTION(snapshot_delay);
 
-        // Check elapsed time since first frame arrived
-        uint64_t now_ns = time_get_ns();
-        uint64_t elapsed_ns = time_elapsed_ns(snapshot_start_ns, now_ns);
-        double elapsed_sec = (double)elapsed_ns / NS_PER_SEC_INT;
+        // Get the actual capture frame rate to calculate target frames
+        // snapshot_delay specifies the OUTPUT video duration (in seconds)
+        // target_frames = snapshot_delay * capture_fps
+        uint32_t capture_fps = 0;
+        if (capture) {
+          capture_fps = session_capture_get_target_fps(capture);
+        }
+        if (capture_fps == 0) {
+          capture_fps = (uint32_t)GET_OPTION(fps);
+        }
+
+        // Calculate target frame count for the desired output duration
+        // snapshot_delay=0 means exit after first frame
+        // snapshot_delay>0 means record enough frames for that many seconds of output video
+        uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
 
         log_info_every(US_PER_SEC_INT,
-                       "SNAPSHOT_TIME_CHECK: delay=%.2f elapsed=%.3f frame_count=%lu",
-                       snapshot_delay, elapsed_sec, frame_count);
+                       "SNAPSHOT_FRAME_CHECK: delay=%.2f fps=%u target_frames=%lu frame_count=%lu",
+                       snapshot_delay, capture_fps, target_frames, frame_count);
 
-        // Exit when elapsed time reaches the snapshot delay
-        // snapshot_delay=0 means exit after first frame
-        // snapshot_delay>0 means record for that many seconds of wall-clock time
-        if (snapshot_delay == 0.0 || elapsed_sec >= snapshot_delay) {
+        // Exit when we've captured enough frames for the desired output duration
+        if (frame_count >= target_frames) {
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
           if (snapshot_mode && terminal_is_interactive()) {
             printf("\n");
           }
-          log_info_every(1 * NS_PER_SEC_INT, "Snapshot delay %.2f seconds elapsed (%" PRIu64 " frames captured), exiting",
-                         snapshot_delay, frame_count);
+          log_info_every(1 * NS_PER_SEC_INT, "Snapshot frame count %.0f seconds (%" PRIu64 " frames) reached, exiting",
+                         snapshot_delay, target_frames);
           snapshot_done = true;
         }
       }
