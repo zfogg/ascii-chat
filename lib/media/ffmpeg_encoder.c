@@ -260,7 +260,7 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
   }
 
   // Allocate buffer for partial frames (accumulator)
-  enc->audio_partial_buf = SAFE_MALLOC(enc->audio_frame_size, float *);
+  enc->audio_partial_buf = SAFE_MALLOC(enc->audio_frame_size * sizeof(float), float *);
   enc->audio_partial_len = 0;
 
   // Create resampler from input format (AV_SAMPLE_FMT_FLT mono 48kHz) to target format
