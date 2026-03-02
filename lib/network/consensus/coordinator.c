@@ -9,6 +9,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/debug/named.h>
 #include <string.h>
 
 /* Round scheduling constants */
@@ -70,6 +71,14 @@ asciichat_error_t consensus_coordinator_create(const uint8_t my_id[16], const co
   coordinator->last_round_start_ns = time_get_ns();
   coordinator->next_round_id = 1;
   coordinator->has_stored_result = false;
+
+  /* Register coordinator with named registry */
+  char coordinator_name[64];
+  snprintf(coordinator_name, sizeof(coordinator_name), "consensus_coordinator:node_%u", my_id[0]);
+  NAMED_REGISTER(coordinator, coordinator_name, "consensus_coordinator_t", "0x%tx", NULL);
+
+  /* Register child state with coordinator as parent */
+  NAMED_REGISTER(coordinator->state, "state", "consensus_state_t", "0x%tx", (uintptr_t)(const void *)(coordinator));
 
   log_debug("Coordinator created for node %u, first round in 5 minutes", my_id[0]);
 
