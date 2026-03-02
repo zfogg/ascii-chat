@@ -45,7 +45,7 @@ echo ""
 
 # Count actual frames written by looking for frame completion markers
 # These are the actual printf() calls that write frames to stdout
-FRAME_COUNT=$(grep -c "ACTUAL_FRAME_WRITTEN\|frame.*written\|grid.*rendered" client.log 2>/dev/null || echo "0")
+FRAME_COUNT=$(grep -c "ACTUAL_FRAME_WRITTEN\|frame.*written\|grid.*rendered" "$client_log" 2>/dev/null || echo "0")
 echo "🎬 FRAME COUNT: $FRAME_COUNT frames"
 
 # Calculate actual FPS
