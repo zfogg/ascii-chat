@@ -193,6 +193,7 @@ export enum PacketType {
   // Video
   ASCII_FRAME = 3000,
   IMAGE_FRAME = 3001,
+  IMAGE_FRAME_H265 = 3002, // H.265/HEVC encoded video frames
 
   // Audio
   AUDIO_BATCH = 4000,
@@ -239,6 +240,7 @@ export function packetTypeName(type: number): string {
     [PacketType.REMOTE_LOG]: "REMOTE_LOG",
     [PacketType.ASCII_FRAME]: "ASCII_FRAME",
     [PacketType.IMAGE_FRAME]: "IMAGE_FRAME",
+    [PacketType.IMAGE_FRAME_H265]: "IMAGE_FRAME_H265",
     [PacketType.AUDIO_BATCH]: "AUDIO_BATCH",
     [PacketType.AUDIO_OPUS_BATCH]: "AUDIO_OPUS_BATCH",
     [PacketType.CLIENT_CAPABILITIES]: "CLIENT_CAPABILITIES",

@@ -59,9 +59,19 @@ import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { useRenderLoop } from "../hooks/useRenderLoop";
 
-const CAPABILITIES_PACKET_SIZE = 160;
+const CAPABILITIES_PACKET_SIZE = 168; // Includes codec capabilities (added 8 bytes)
 const STREAM_TYPE_VIDEO = 0x01;
 const STREAM_TYPE_AUDIO = 0x02;
+
+// Codec capability bitmasks (must match include/ascii-chat/media/codecs.h)
+const VIDEO_CODEC_CAP_RGBA = 1 << 0;   // Bit 0: RGBA support
+const VIDEO_CODEC_CAP_H265 = 1 << 1;   // Bit 1: H.265/HEVC support
+const VIDEO_CODEC_CAP_JPEG = 1 << 2;   // Bit 2: JPEG support
+const VIDEO_CODEC_CAP_ALL = VIDEO_CODEC_CAP_RGBA | VIDEO_CODEC_CAP_H265 | VIDEO_CODEC_CAP_JPEG;
+
+const AUDIO_CODEC_CAP_RAW = 1 << 0;    // Bit 0: Raw PCM support
+const AUDIO_CODEC_CAP_OPUS = 1 << 1;   // Bit 1: Opus support
+const AUDIO_CODEC_CAP_ALL = AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS;
 
 // Helper functions to map Settings types to WASM enums
 function mapColorMode(mode: string): ClientColorMode {
@@ -139,6 +149,12 @@ function buildCapabilitiesPacket(
   bytes[157] = Math.min(targetFps, 144); // desired_fps (0-144)
   bytes[158] = 0; // color_filter (none)
   bytes[159] = 1; // wants_padding
+
+  // Codec capabilities (network byte order, big-endian)
+  // Offset 160-163: video codec capabilities (supports RGBA, H.265, JPEG)
+  view.setUint32(160, VIDEO_CODEC_CAP_ALL, false);
+  // Offset 164-167: audio codec capabilities (supports Raw PCM, Opus)
+  view.setUint32(164, AUDIO_CODEC_CAP_ALL, false);
 
   return bytes;
 }
