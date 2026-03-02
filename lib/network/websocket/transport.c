@@ -220,15 +220,13 @@ static void *websocket_service_thread(void *arg) {
     }
 
     // Service libwebsockets (processes network events, triggers callbacks)
-    // CRITICAL: Rate limit lws_service() to avoid libwebsockets assertions
-    // Calling lws_service() too frequently triggers internal assertion failures
+    // Call frequently (1ms) to handle both incoming AND outgoing data responsively
     uint64_t now_ns = time_get_ns();
     uint64_t time_since_last_service = now_ns - last_service_call;
     int result = 0;
 
-    // Only call lws_service() every 50ms to avoid assertion failures
-    // while still processing handshake and connection maintenance
-    if (time_since_last_service >= 50000000ULL) { // 50ms
+    // Call lws_service() every 1ms for low-latency frame transmission and reception
+    if (time_since_last_service >= 1000000ULL) { // 1ms
       last_service_call = now_ns;
       uint64_t service_start_ns = now_ns;
 
@@ -241,8 +239,8 @@ static void *websocket_service_thread(void *arg) {
         }
       } else {
         // Call lws_service with valid context
-        // Use 50ms timeout for client-side (needs responsive handshake)
-        result = lws_service(ws_data->context, 50);
+        // Use 1ms timeout for responsive frame transmission and reception
+        result = lws_service(ws_data->context, 1);
       }
       uint64_t service_end_ns = time_get_ns();
 
@@ -258,7 +256,7 @@ static void *websocket_service_thread(void *arg) {
       }
     } else {
       // Sleep briefly between lws_service() calls to avoid busy-waiting
-      platform_sleep_us(10000); // 10ms
+      platform_sleep_us(100); // 0.1ms
     }
 
     // Check if connection is still alive
