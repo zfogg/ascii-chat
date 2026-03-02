@@ -248,10 +248,17 @@ static void register_client_info_atomics(client_info_t *client) {
     return;
   }
 
+  // Get the client's registered name
+  const char *client_name = named_get((uintptr_t)(const void *)client);
+  if (!client_name) {
+    // Fallback if not yet registered
+    client_name = client->client_id;
+  }
+
   char atomic_name[256];
 
 #define REGISTER_CLIENT_ATOMIC(field, description)                                                                     \
-  safe_snprintf(atomic_name, sizeof(atomic_name), "client.%s." description, client->client_id);                        \
+  safe_snprintf(atomic_name, sizeof(atomic_name), "%s." description, client_name);                                     \
   NAMED_REGISTER_ATOMIC(&client->field, atomic_name)
 
   // Video streaming state

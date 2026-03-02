@@ -152,20 +152,20 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
            (void *)vfb, (void *)vfb->back_buffer, (void *)&vfb->frames[1], (void *)vfb->frames[0].data,
            (void *)vfb->frames[1].data, vfb->allocated_buffer_size);
 
-  NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer");
+  const char *vfb_name = NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer");
 
-  // Register atomic fields with descriptive names tied to client_id
+  // Register atomic fields with descriptive names using the parent's registered name
   char atomic_name[256];
-  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.new_frame_available_flag", client_id);
+  snprintf(atomic_name, sizeof(atomic_name), "%s.new_frame_available_flag", vfb_name);
   NAMED_REGISTER_ATOMIC(&vfb->new_frame_available, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.total_frames_received_counter", client_id);
+  snprintf(atomic_name, sizeof(atomic_name), "%s.total_frames_received_counter", vfb_name);
   NAMED_REGISTER_ATOMIC(&vfb->total_frames_received, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.total_frames_dropped_counter", client_id);
+  snprintf(atomic_name, sizeof(atomic_name), "%s.total_frames_dropped_counter", vfb_name);
   NAMED_REGISTER_ATOMIC(&vfb->total_frames_dropped, atomic_name);
 
-  snprintf(atomic_name, sizeof(atomic_name), "video_frame_buffer.%s.last_frame_sequence_number", client_id);
+  snprintf(atomic_name, sizeof(atomic_name), "%s.last_frame_sequence_number", vfb_name);
   NAMED_REGISTER_ATOMIC(&vfb->last_frame_sequence, atomic_name);
 
   return vfb;
