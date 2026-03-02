@@ -20,7 +20,6 @@
 #include <string.h>
 #include <inttypes.h>
 
-#ifndef NDEBUG
 
 #define MAX_NAME_LEN 256
 #define DESCRIBE_BUFFER_SIZE 768
@@ -545,35 +544,3 @@ void named_registry_register_packet_types(void) {
   // No-op
 }
 
-#else // Release builds
-
-asciichat_error_t named_init(void) { return ASCIICHAT_OK; }
-void named_destroy(void) {}
-const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
-                           const char *file, int line, const char *func, uintptr_t parent_key) {
-  (void)key; (void)type; (void)format_spec; (void)file; (void)line; (void)func; (void)parent_key;
-  return base_name ? base_name : "?";
-}
-const char *named_register_fmt(uintptr_t key, const char *type, const char *format_spec, const char *file, int line,
-                               const char *func, const char *fmt, ...) {
-  (void)key; (void)type; (void)format_spec; (void)file; (void)line; (void)func;
-  return fmt ? fmt : "?";
-}
-void named_unregister(uintptr_t key) { (void)key; }
-const char *named_update_name(uintptr_t key, const char *new_base_name) { (void)key; (void)new_base_name; return NULL; }
-const char *named_get(uintptr_t key) { (void)key; return NULL; }
-const char *named_get_type(uintptr_t key) { (void)key; return NULL; }
-const char *named_get_format_spec(uintptr_t key) { (void)key; return NULL; }
-const char *named_describe(uintptr_t key, const char *type_hint) { return type_hint ? type_hint : "object"; }
-const char *named_describe_thread(void *thread) { (void)thread; return "thread"; }
-void named_registry_for_each(named_iter_callback_t callback, void *user_data) { (void)callback; (void)user_data; }
-const char *named_search_by_type_id(const char *type, void *id) { (void)type; (void)id; return NULL; }
-const char *named_register_fd(int fd, const char *file, int line, const char *func) { (void)fd; (void)file; (void)line; (void)func; return "?"; }
-const char *named_get_fd(int fd) { (void)fd; return NULL; }
-const char *named_get_fd_format_spec(int fd) { (void)fd; return NULL; }
-const char *named_register_packet_type(int pkt_type, const char *file, int line, const char *func) { (void)pkt_type; (void)file; (void)line; (void)func; return "?"; }
-const char *named_get_packet_type(int pkt_type) { (void)pkt_type; return NULL; }
-const char *named_get_packet_type_format_spec(int pkt_type) { (void)pkt_type; return NULL; }
-void named_registry_register_packet_types(void) {}
-
-#endif
