@@ -25,7 +25,7 @@ asciichat_error_t crypto_handshake_init(const char *name, crypto_handshake_conte
   }
 
   // Register crypto context with debug naming system
-  NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name);
+  NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, NULL);
 
   // Zero out the context
   memset(ctx, 0, sizeof(crypto_handshake_context_t));
@@ -249,7 +249,7 @@ asciichat_error_t crypto_handshake_init_with_password(const char *name, crypto_h
   }
 
   // Register crypto context with debug naming system
-  NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name);
+  NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, NULL);
 
   // Zero out the context
   memset(ctx, 0, sizeof(crypto_handshake_context_t));

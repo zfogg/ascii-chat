@@ -67,7 +67,7 @@ static HRESULT enumerate_devices_and_print(void) {
     hr = IMFActivate_GetAllocatedString(devices[i], &MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME, &friendlyName, &nameLength);
     if (SUCCEEDED(hr) && friendlyName) {
       // Convert wide string to multibyte for logging
-      int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL, NULL);
+      int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL);
       if (len > 0) {
         char *mbName = SAFE_MALLOC((size_t)len, void *);
         if (mbName && WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, mbName, len, NULL, NULL)) {
@@ -331,7 +331,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   /* Register webcam context with named registry */
   char device_name[32];
   snprintf(device_name, sizeof(device_name), "device:%u", device_index);
-  NAMED_REGISTER(cam, device_name, "webcam", "0x%tx");
+  NAMED_REGISTER(cam, device_name, "webcam", "0x%tx", NULL);
 
   return ASCIICHAT_OK;
 
@@ -709,9 +709,9 @@ asciichat_error_t webcam_list_devices(webcam_device_info_t **out_devices, unsign
                                         &nameLength);
     if (SUCCEEDED(hr) && friendlyName) {
       // Convert wide string to UTF-8
-      int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL, NULL);
+      int len = WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, NULL, 0, NULL);
       if (len > 0 && len < WEBCAM_DEVICE_NAME_MAX) {
-        WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, devices[i].name, WEBCAM_DEVICE_NAME_MAX, NULL, NULL);
+        WideCharToMultiByte(CP_UTF8, 0, friendlyName, -1, devices[i].name, WEBCAM_DEVICE_NAME_MAX, NULL);
       } else {
         SAFE_STRNCPY(devices[i].name, "<Unknown>", WEBCAM_DEVICE_NAME_MAX);
       }

@@ -418,7 +418,7 @@ acip_transport_t *acip_tcp_transport_create(const char *name, socket_t sockfd, c
   NAMED_FORMAT_SUBNAME(transport_name, "impl", impl_name, sizeof(impl_name));
 
   // Register impl_data with hierarchical name
-  NAMED_REGISTER(tcp_data, impl_name, "tcp_impl", "0x%tx");
+  NAMED_REGISTER(tcp_data, impl_name, "tcp_impl", "0x%tx", NULL);
 
   return transport;
 }

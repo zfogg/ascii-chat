@@ -466,10 +466,10 @@ void atomic_ptr_on_exchange(atomic_ptr_t *a);
  * atomic_t g_counter = {0};
  *
  * // In main/init:
- * ATOMIC_REGISTER_AUTO(g_counter);
+ * ATOMIC_REGISTER_AUTO(g_counter, NULL);
  * @endcode
  */
-#define ATOMIC_REGISTER_AUTO(name) NAMED_REGISTER_ATOMIC(&(name), #name)
+#define ATOMIC_REGISTER_AUTO(name, parent_ptr) NAMED_REGISTER_ATOMIC(&(name), #name, (uintptr_t)(const void *)(parent_ptr))
 
 /**
  * @brief Register an atomic pointer variable for debug tracking with automatic name generation

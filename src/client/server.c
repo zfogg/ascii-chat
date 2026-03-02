@@ -316,9 +316,9 @@ int server_connection_init() {
   // Register connection atomics for debug sync state monitoring (one-time registration)
   static bool connection_atomics_registered = false;
   if (!connection_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_connection_active, "server_connection_active_flag");
-    NAMED_REGISTER_ATOMIC(&g_connection_lost, "server_connection_lost_flag");
-    NAMED_REGISTER_ATOMIC(&g_should_reconnect, "should_attempt_reconnection_flag");
+    NAMED_REGISTER_ATOMIC(&g_connection_active, "server_connection_active_flag", NULL);
+    NAMED_REGISTER_ATOMIC(&g_connection_lost, "server_connection_lost_flag", NULL);
+    NAMED_REGISTER_ATOMIC(&g_should_reconnect, "should_attempt_reconnection_flag", NULL);
     connection_atomics_registered = true;
   }
 

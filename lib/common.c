@@ -119,45 +119,97 @@ asciichat_error_t asciichat_shared_init(const char *log_file, bool is_client) {
   // NOTE: This function is called BEFORE options_init(), so we can't use GET_OPTION()
   // Palette config and quiet mode will be applied after options_init() is called
 
+  fprintf(stderr, "[SHARED_INIT] Starting, g_shared_initialized=%d\n", g_shared_initialized);
+  fflush(stderr);
+
   // Only register initialization tracking once
   if (!g_shared_initialized) {
     // 1. TIMER SYSTEM - Initialize first so timing is available for everything else
+    fprintf(stderr, "[SHARED_INIT] Calling timer_system_init()\n");
+    fflush(stderr);
     if (!timer_system_init()) {
+      fprintf(stderr, "[SHARED_INIT] ERROR: timer_system_init() failed\n");
+      fflush(stderr);
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize timer system");
     }
+    fprintf(stderr, "[SHARED_INIT] timer_system_init() OK\n");
+    fflush(stderr);
 
-    // 2. KEYBOARD SYSTEM - Initialize keyboard input (may fail if stdin/tty not available)
-    // Failure is not fatal - keyboard_read_nonblocking() safely handles uninitialized state
-    keyboard_init();
+    // KEYBOARD SYSTEM must be initialized BEFORE logging since keyboard_init() calls log_info()
+    // But we need to initialize logging AFTER timer_system_init() and BEFORE keyboard_init()
+    // So we move keyboard_init() to AFTER log_init()
 
 #ifndef NDEBUG
+    fprintf(stderr, "[SHARED_INIT] Calling named_init()\n");
+    fflush(stderr);
     if (named_init() != ASCIICHAT_OK) {
+      fprintf(stderr, "[SHARED_INIT] ERROR: named_init() failed\n");
+      fflush(stderr);
       return SET_ERRNO(ERROR_PLATFORM_INIT, "Failed to initialize named.");
     }
+    fprintf(stderr, "[SHARED_INIT] named_init() OK\n");
+    fflush(stderr);
     debug_memory_ensure_init();
     symbol_cache_init();
 #endif
 
     // 2. LOGGING - Initialize system state first, then user-level logging
     // Initialize logging system internal state (terminal caps, colors)
+    fprintf(stderr, "[SHARED_INIT] Calling log_system_init()\n");
+    fflush(stderr);
     log_system_init();
+    fprintf(stderr, "[SHARED_INIT] log_system_init() done\n");
+    fflush(stderr);
+
     // Initialize with provided log file
     // Force stderr for client-like modes when stdout is piped to keep stdout clean
+    fprintf(stderr, "[SHARED_INIT] Calling terminal_is_piped_output()\n");
+    fflush(stderr);
     bool force_stderr = is_client && terminal_is_piped_output();
+    fprintf(stderr, "[SHARED_INIT] terminal_is_piped_output() returned, force_stderr=%d\n", force_stderr);
+    fflush(stderr);
+
     // Use LOG_DEBUG by default; will be reconfigured after options_init()
+    fprintf(stderr, "[SHARED_INIT] Calling log_init(log_file=%p, force_stderr=%d)\n", (void *)log_file, force_stderr);
+    fflush(stderr);
     log_init(log_file, LOG_DEBUG, force_stderr, false /* don't use_mmap */);
+    fprintf(stderr, "[SHARED_INIT] log_init() done\n");
+    fflush(stderr);
+
+    // 2. KEYBOARD SYSTEM - Initialize keyboard input AFTER logging (may fail if stdin/tty not available)
+    // Failure is not fatal - keyboard_read_nonblocking() safely handles uninitialized state
+    fprintf(stderr, "[SHARED_INIT] Calling keyboard_init()\n");
+    fflush(stderr);
+    keyboard_init();
+    fprintf(stderr, "[SHARED_INIT] keyboard_init() done\n");
+    fflush(stderr);
 
     // 3. PLATFORM - Initialize platform-specific functionality (Winsock, etc)
+    fprintf(stderr, "[SHARED_INIT] Calling platform_init()\n");
+    fflush(stderr);
     if (platform_init() != ASCIICHAT_OK) {
+      fprintf(stderr, "[SHARED_INIT] ERROR: platform_init() failed\n");
+      fflush(stderr);
       FATAL(ERROR_PLATFORM_INIT, "Failed to initialize platform");
     }
+    fprintf(stderr, "[SHARED_INIT] platform_init() OK\n");
+    fflush(stderr);
 
     // 4. BUFFER POOL - Initialize global shared buffer pool
+    fprintf(stderr, "[SHARED_INIT] Calling buffer_pool_init_global()\n");
+    fflush(stderr);
     buffer_pool_init_global();
+    fprintf(stderr, "[SHARED_INIT] buffer_pool_init_global() done\n");
+    fflush(stderr);
 
     // Mark that we've initialized (prevents re-registration of subsystems)
+    fprintf(stderr, "[SHARED_INIT] Marking g_shared_initialized=true\n");
+    fflush(stderr);
     g_shared_initialized = true;
   }
+
+  fprintf(stderr, "[SHARED_INIT] Returning ASCIICHAT_OK\n");
+  fflush(stderr);
 
   // NOTE: This library function does NOT register atexit() handlers.
   // Library code should not own the process lifecycle. The application

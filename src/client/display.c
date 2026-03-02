@@ -235,7 +235,7 @@ int display_init() {
   // Register display atomics with named debug registry
   static bool display_atomics_registered = false;
   if (!display_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_is_first_frame_of_connection, "first_frame_of_display_connection");
+    NAMED_REGISTER_ATOMIC(&g_is_first_frame_of_connection, "first_frame_of_display_connection", NULL);
     display_atomics_registered = true;
   }
 

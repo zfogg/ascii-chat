@@ -1076,8 +1076,8 @@ int protocol_start_connection() {
   // Register protocol atomics with named debug registry
   static bool protocol_atomics_registered = false;
   if (!protocol_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_data_thread_exited, "protocol_data_reception_thread_exit_confirmation");
-    NAMED_REGISTER_ATOMIC(&g_frames_rendered, "protocol_frames_successfully_rendered");
+    NAMED_REGISTER_ATOMIC(&g_data_thread_exited, "protocol_data_reception_thread_exit_confirmation", NULL);
+    NAMED_REGISTER_ATOMIC(&g_frames_rendered, "protocol_frames_successfully_rendered", NULL);
     protocol_atomics_registered = true;
   }
 

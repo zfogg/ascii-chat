@@ -93,26 +93,26 @@ app_client_t *app_client_create(void) {
 
   // Audio subsystem control and status
   snprintf(atomic_name, sizeof(atomic_name), "app_client.audio_sender_thread_should_exit_signal");
-  NAMED_REGISTER_ATOMIC(&client->audio_sender_should_exit, atomic_name);
+  NAMED_REGISTER_ATOMIC(&client->audio_sender_should_exit, atomic_name, NULL);
 
   snprintf(atomic_name, sizeof(atomic_name), "app_client.audio_capture_thread_has_exited_status");
-  NAMED_REGISTER_ATOMIC(&client->audio_capture_thread_exited, atomic_name);
+  NAMED_REGISTER_ATOMIC(&client->audio_capture_thread_exited, atomic_name, NULL);
 
   // Protocol and network data handling
   snprintf(atomic_name, sizeof(atomic_name), "app_client.protocol_data_dispatch_thread_has_exited_status");
-  NAMED_REGISTER_ATOMIC(&client->data_thread_exited, atomic_name);
+  NAMED_REGISTER_ATOMIC(&client->data_thread_exited, atomic_name, NULL);
 
   // Media capture control and status
   snprintf(atomic_name, sizeof(atomic_name), "app_client.media_capture_thread_has_exited_status");
-  NAMED_REGISTER_ATOMIC(&client->capture_thread_exited, atomic_name);
+  NAMED_REGISTER_ATOMIC(&client->capture_thread_exited, atomic_name, NULL);
 
   // Keepalive and connection health monitoring
   snprintf(atomic_name, sizeof(atomic_name), "app_client.keepalive_ping_thread_has_exited_status");
-  NAMED_REGISTER_ATOMIC(&client->ping_thread_exited, atomic_name);
+  NAMED_REGISTER_ATOMIC(&client->ping_thread_exited, atomic_name, NULL);
 
   // Display frame sequencing
   snprintf(atomic_name, sizeof(atomic_name), "app_client.is_first_frame_of_new_connection_flag");
-  NAMED_REGISTER_ATOMIC(&client->is_first_frame_of_connection, atomic_name);
+  NAMED_REGISTER_ATOMIC(&client->is_first_frame_of_connection, atomic_name, NULL);
 
   log_debug("App client created");
 

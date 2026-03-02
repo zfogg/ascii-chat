@@ -640,7 +640,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 
   char decoder_name[256];
   snprintf(decoder_name, sizeof(decoder_name), "%s", path);
-  NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name);
+  NAMED_REGISTER_FFMPEG_DECODER(decoder, decoder_name, NULL);
 
   return decoder;
 }
@@ -813,7 +813,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
-  NAMED_REGISTER_FFMPEG_DECODER(decoder, "stdin");
+  NAMED_REGISTER_FFMPEG_DECODER(decoder, "stdin", NULL);
 
   return decoder;
 }

@@ -481,7 +481,7 @@ int capture_start_thread() {
   // Register capture atomics with named debug registry
   static bool capture_atomics_registered = false;
   if (!capture_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_capture_thread_exited, "capture_webcam_thread_exit_confirmation");
+    NAMED_REGISTER_ATOMIC(&g_capture_thread_exited, "capture_webcam_thread_exit_confirmation", NULL);
     capture_atomics_registered = true;
   }
 

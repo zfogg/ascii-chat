@@ -97,7 +97,7 @@ void named_destroy(void);
  * In release builds (NDEBUG), this is a no-op and returns base_name.
  */
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
-                           const char *file, int line, const char *func);
+                           const char *file, int line, const char *func, uintptr_t parent_key);
 
 /**
  * @brief Register a resource with a formatted name, type, and location info (no auto-suffix)
@@ -314,10 +314,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER(ptr, name, type, fmt)                                                                           \
-  named_register((uintptr_t)(const void *)(ptr), (name), (type), (fmt), __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER(ptr, name, type, fmt, parent_ptr)                                                                 \
+  named_register((uintptr_t)(const void *)(ptr), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER(ptr, name, type, fmt) (name)
+#define NAMED_REGISTER(ptr, name, type, fmt, parent_ptr) (name)
 #endif
 
 /**
@@ -390,7 +390,7 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  */
 #ifndef NDEBUG
 #define NAMED_REGISTER_ID(id, name, type, fmt)                                                                         \
-  named_register((uintptr_t)(intptr_t)(id), (name), (type), (fmt), __FILE__, __LINE__, __func__)
+  named_register((uintptr_t)(intptr_t)(id), (name), (type), (fmt), __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
 #define NAMED_REGISTER_ID(id, name, type) (name)
 #endif
@@ -431,10 +431,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for mutex addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_MUTEX(mutex, name)                                                                              \
-  named_register((uintptr_t)(const void *)(mutex), (name), "mutex", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_MUTEX(mutex, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(mutex), (name), "mutex", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_MUTEX(mutex, name) (name)
+#define NAMED_REGISTER_MUTEX(mutex, name, parent_ptr) (name)
 #endif
 
 /**
@@ -446,10 +446,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for rwlock addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_RWLOCK(lock, name)                                                                              \
-  named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_RWLOCK(lock, name) (name)
+#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) (name)
 #endif
 
 /**
@@ -461,10 +461,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for cond addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_COND(cond, name)                                                                                \
-  named_register((uintptr_t)(const void *)(cond), (name), "cond", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_COND(cond, name, parent_ptr)                                                                     \
+  named_register((uintptr_t)(const void *)(cond), (name), "cond", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_COND(cond, name) (name)
+#define NAMED_REGISTER_COND(cond, name, parent_ptr) (name)
 #endif
 
 /**
@@ -476,11 +476,11 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for socket addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_SOCKET(socket, name)                                                                            \
-  named_register((uintptr_t)(intptr_t)(socket), (name), "socket", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_SOCKET(socket, name, parent_ptr)                                                                 \
+  named_register((uintptr_t)(intptr_t)(socket), (name), "socket", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #define NAMED_UNREGISTER_SOCKET(socket) NAMED_UNREGISTER_ID((socket))
 #else
-#define NAMED_REGISTER_SOCKET(socket, name) (name)
+#define NAMED_REGISTER_SOCKET(socket, name, parent_ptr) (name)
 #define NAMED_UNREGISTER_SOCKET(socket) ((void)0)
 #endif
 
@@ -493,10 +493,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for websocket addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_WEBSOCKET(websocket, name)                                                                      \
-  named_register((uintptr_t)(const void *)(websocket), (name), "websocket", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_WEBSOCKET(websocket, name, parent_ptr)                                                           \
+  named_register((uintptr_t)(const void *)(websocket), (name), "websocket", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_WEBSOCKET(websocket, name) (name)
+#define NAMED_REGISTER_WEBSOCKET(websocket, name, parent_ptr) (name)
 #endif
 
 /**
@@ -508,10 +508,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for datachannel addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_DATACHANNEL(datachannel, name)                                                                  \
-  named_register((uintptr_t)(const void *)(datachannel), (name), "datachannel", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_DATACHANNEL(datachannel, name, parent_ptr)                                                        \
+  named_register((uintptr_t)(const void *)(datachannel), (name), "datachannel", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_DATACHANNEL(datachannel, name) (name)
+#define NAMED_REGISTER_DATACHANNEL(datachannel, name, parent_ptr) (name)
 #endif
 
 /**
@@ -523,10 +523,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for work item addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_THREADPOOL_WORK(work, name)                                                                     \
-  named_register((uintptr_t)(const void *)(work), (name), "work", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_THREADPOOL_WORK(work, name, parent_ptr)                                                          \
+  named_register((uintptr_t)(const void *)(work), (name), "work", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_THREADPOOL_WORK(work, name) (name)
+#define NAMED_REGISTER_THREADPOOL_WORK(work, name, parent_ptr) (name)
 #endif
 
 /**
@@ -538,10 +538,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for client addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_CLIENT(client, name)                                                                            \
-  named_register((uintptr_t)(const void *)(client), (name), "client", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_CLIENT(client, name, parent_ptr)                                                                 \
+  named_register((uintptr_t)(const void *)(client), (name), "client", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_CLIENT(client, name) (name)
+#define NAMED_REGISTER_CLIENT(client, name, parent_ptr) (name)
 #endif
 
 /**
@@ -553,10 +553,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for crypto context addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name)                                                                       \
-  named_register((uintptr_t)(const void *)(ctx), (name), "crypto", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, parent_ptr)                                                           \
+  named_register((uintptr_t)(const void *)(ctx), (name), "crypto", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name) (name)
+#define NAMED_REGISTER_CRYPTO_CONTEXT(ctx, name, parent_ptr) (name)
 #endif
 
 /**
@@ -568,10 +568,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for transport addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_TRANSPORT(transport, name)                                                                      \
-  named_register((uintptr_t)(const void *)(transport), (name), "transport", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_TRANSPORT(transport, name, parent_ptr)                                                                      \
+  named_register((uintptr_t)(const void *)(transport), (name), "transport", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_TRANSPORT(transport, name) (name)
+#define NAMED_REGISTER_TRANSPORT(transport, name, parent_ptr) (name)
 #endif
 
 /**
@@ -583,10 +583,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for frame buffer addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FRAME_BUFFER(buf, name)                                                                         \
-  named_register((uintptr_t)(const void *)(buf), (name), "frame_buffer", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_FRAME_BUFFER(buf, name, parent_ptr)                                                                         \
+  named_register((uintptr_t)(const void *)(buf), (name), "frame_buffer", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_FRAME_BUFFER(buf, name) (name)
+#define NAMED_REGISTER_FRAME_BUFFER(buf, name, parent_ptr) (name)
 #endif
 
 /**
@@ -598,10 +598,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for packet queue addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_PACKET_QUEUE(queue, name)                                                                       \
-  named_register((uintptr_t)(const void *)(queue), (name), "packet_queue", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_PACKET_QUEUE(queue, name, parent_ptr)                                                                       \
+  named_register((uintptr_t)(const void *)(queue), (name), "packet_queue", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_PACKET_QUEUE(queue, name) (name)
+#define NAMED_REGISTER_PACKET_QUEUE(queue, name, parent_ptr) (name)
 #endif
 
 /**
@@ -613,10 +613,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for ring buffer addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_AUDIO_RINGBUF(buf, name)                                                                        \
-  named_register((uintptr_t)(const void *)(buf), (name), "audio_ringbuf", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_AUDIO_RINGBUF(buf, name, parent_ptr)                                                                        \
+  named_register((uintptr_t)(const void *)(buf), (name), "audio_ringbuf", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_AUDIO_RINGBUF(buf, name) (name)
+#define NAMED_REGISTER_AUDIO_RINGBUF(buf, name, parent_ptr) (name)
 #endif
 
 /**
@@ -628,10 +628,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for mixer addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_MIXER(mixer, name)                                                                              \
-  named_register((uintptr_t)(const void *)(mixer), (name), "mixer", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_MIXER(mixer, name, parent_ptr)                                                                              \
+  named_register((uintptr_t)(const void *)(mixer), (name), "mixer", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_MIXER(mixer, name) (name)
+#define NAMED_REGISTER_MIXER(mixer, name, parent_ptr) (name)
 #endif
 
 /**
@@ -643,10 +643,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for audio codec addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_AUDIO_CODEC(codec, name)                                                                        \
-  named_register((uintptr_t)(const void *)(codec), (name), "audio_codec", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_AUDIO_CODEC(codec, name, parent_ptr)                                                                        \
+  named_register((uintptr_t)(const void *)(codec), (name), "audio_codec", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_AUDIO_CODEC(codec, name) (name)
+#define NAMED_REGISTER_AUDIO_CODEC(codec, name, parent_ptr) (name)
 #endif
 
 /**
@@ -658,10 +658,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for video encoder addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_VIDEO_ENCODER(encoder, name)                                                                    \
-  named_register((uintptr_t)(const void *)(encoder), (name), "video_encoder", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_VIDEO_ENCODER(encoder, name, parent_ptr)                                                                    \
+  named_register((uintptr_t)(const void *)(encoder), (name), "video_encoder", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_VIDEO_ENCODER(encoder, name) (name)
+#define NAMED_REGISTER_VIDEO_ENCODER(encoder, name, parent_ptr) (name)
 #endif
 
 /**
@@ -673,10 +673,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for buffer pool addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_BUFFER_POOL(pool, name)                                                                         \
-  named_register((uintptr_t)(const void *)(pool), (name), "buffer_pool", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_BUFFER_POOL(pool, name, parent_ptr)                                                                         \
+  named_register((uintptr_t)(const void *)(pool), (name), "buffer_pool", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_BUFFER_POOL(pool, name) (name)
+#define NAMED_REGISTER_BUFFER_POOL(pool, name, parent_ptr) (name)
 #endif
 
 /**
@@ -688,10 +688,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for decoder addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FFMPEG_DECODER(decoder, name)                                                                   \
-  named_register((uintptr_t)(const void *)(decoder), (name), "ffmpeg_decoder", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_FFMPEG_DECODER(decoder, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(decoder), (name), "ffmpeg_decoder", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_FFMPEG_DECODER(decoder, name) (name)
+#define NAMED_REGISTER_FFMPEG_DECODER(decoder, name, parent_ptr) (name)
 #endif
 
 /**
@@ -703,10 +703,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for audio context addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_AUDIO_CONTEXT(ctx, name)                                                                        \
-  named_register((uintptr_t)(const void *)(ctx), (name), "audio_context", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_AUDIO_CONTEXT(ctx, name, parent_ptr)                                                                        \
+  named_register((uintptr_t)(const void *)(ctx), (name), "audio_context", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_AUDIO_CONTEXT(ctx, name) (name)
+#define NAMED_REGISTER_AUDIO_CONTEXT(ctx, name, parent_ptr) (name)
 #endif
 
 /**
@@ -718,10 +718,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for rate limiter addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_RATE_LIMITER(limiter, name)                                                                     \
-  named_register((uintptr_t)(const void *)(limiter), (name), "rate_limiter", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_RATE_LIMITER(limiter, name, parent_ptr)                                                                     \
+  named_register((uintptr_t)(const void *)(limiter), (name), "rate_limiter", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_RATE_LIMITER(limiter, name) (name)
+#define NAMED_REGISTER_RATE_LIMITER(limiter, name, parent_ptr) (name)
 #endif
 
 /**
@@ -733,10 +733,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for WAV writer addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_WAV_WRITER(writer, name)                                                                        \
-  named_register((uintptr_t)(const void *)(writer), (name), "wav_writer", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_WAV_WRITER(writer, name, parent_ptr)                                                                        \
+  named_register((uintptr_t)(const void *)(writer), (name), "wav_writer", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_WAV_WRITER(writer, name) (name)
+#define NAMED_REGISTER_WAV_WRITER(writer, name, parent_ptr) (name)
 #endif
 
 /**
@@ -748,10 +748,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for media source addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_MEDIA_SOURCE(source, name)                                                                      \
-  named_register((uintptr_t)(const void *)(source), (name), "media_source", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_MEDIA_SOURCE(source, name, parent_ptr)                                                                      \
+  named_register((uintptr_t)(const void *)(source), (name), "media_source", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_MEDIA_SOURCE(source, name) (name)
+#define NAMED_REGISTER_MEDIA_SOURCE(source, name, parent_ptr) (name)
 #endif
 
 /**
@@ -830,10 +830,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for atomic addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_ATOMIC(a, name)                                                                                     \
-  named_register((uintptr_t)(const void *)(a), (name), "atomic", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_ATOMIC(a, name, parent_ptr)                                                                                     \
+  named_register((uintptr_t)(const void *)(a), (name), "atomic", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_ATOMIC(a, name) (name)
+#define NAMED_REGISTER_ATOMIC(a, name, parent_ptr) (name)
 #endif
 
 /**
@@ -845,10 +845,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * Convenience macro that automatically uses "0x%tx" format specifier for atomic_ptr addresses.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_ATOMIC_PTR(a, name)                                                                                 \
-  named_register((uintptr_t)(const void *)(a), (name), "atomic_ptr", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_ATOMIC_PTR(a, name, parent_ptr)                                                                                 \
+  named_register((uintptr_t)(const void *)(a), (name), "atomic_ptr", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_ATOMIC_PTR(a, name) (name)
+#define NAMED_REGISTER_ATOMIC_PTR(a, name, parent_ptr) (name)
 #endif
 
 // ============================================================================
@@ -867,10 +867,10 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  * In release builds (NDEBUG), this is a no-op.
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_THREAD(thread, name)                                                                            \
-  named_register(asciichat_thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_THREAD(thread, name, parent_ptr)                                                                 \
+  named_register(asciichat_thread_to_key((thread)), (name), "thread", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_THREAD(thread, name) ((void)0)
+#define NAMED_REGISTER_THREAD(thread, name, parent_ptr) ((void)0)
 #endif
 
 /**
@@ -987,10 +987,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_TCP_CLIENT(client, name)                                                                        \
-  named_register((uintptr_t)(const void *)(client), (name), "tcp_client", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_TCP_CLIENT(client, name, parent_ptr)                                                                        \
+  named_register((uintptr_t)(const void *)(client), (name), "tcp_client", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_TCP_CLIENT(client, name) (name)
+#define NAMED_REGISTER_TCP_CLIENT(client, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1000,10 +1000,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name)                                                                  \
-  named_register((uintptr_t)(const void *)(client), (name), "websocket_client", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name, parent_ptr)                                                                  \
+  named_register((uintptr_t)(const void *)(client), (name), "websocket_client", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name) (name)
+#define NAMED_REGISTER_WEBSOCKET_CLIENT(client, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1013,10 +1013,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_APP_CLIENT(client, name)                                                                        \
-  named_register((uintptr_t)(const void *)(client), (name), "app_client", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_APP_CLIENT(client, name, parent_ptr)                                                                        \
+  named_register((uintptr_t)(const void *)(client), (name), "app_client", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_APP_CLIENT(client, name) (name)
+#define NAMED_REGISTER_APP_CLIENT(client, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1026,10 +1026,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name)                                                                   \
-  named_register((uintptr_t)(const void *)(buf), (name), "video_frame_buffer", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(buf), (name), "video_frame_buffer", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name) (name)
+#define NAMED_REGISTER_VIDEO_FRAME_BUFFER(buf, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1039,10 +1039,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_NODE_POOL(pool, name)                                                                           \
-  named_register((uintptr_t)(const void *)(pool), (name), "node_pool", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_NODE_POOL(pool, name, parent_ptr)                                                                           \
+  named_register((uintptr_t)(const void *)(pool), (name), "node_pool", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_NODE_POOL(pool, name) (name)
+#define NAMED_REGISTER_NODE_POOL(pool, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1052,10 +1052,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_THREAD_POOL(pool, name)                                                                         \
-  named_register((uintptr_t)(const void *)(pool), (name), "thread_pool", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_THREAD_POOL(pool, name, parent_ptr)                                                                         \
+  named_register((uintptr_t)(const void *)(pool), (name), "thread_pool", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_THREAD_POOL(pool, name) (name)
+#define NAMED_REGISTER_THREAD_POOL(pool, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1065,10 +1065,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_OPTIONS_BUILDER(builder, name)                                                                  \
-  named_register((uintptr_t)(const void *)(builder), (name), "options_builder", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_OPTIONS_BUILDER(builder, name, parent_ptr)                                                                  \
+  named_register((uintptr_t)(const void *)(builder), (name), "options_builder", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_OPTIONS_BUILDER(builder, name) (name)
+#define NAMED_REGISTER_OPTIONS_BUILDER(builder, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1078,10 +1078,10 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name)                                                                   \
-  named_register((uintptr_t)(const void *)(swap), (name), "simple_frame_swap", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(swap), (name), "simple_frame_swap", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name) (name)
+#define NAMED_REGISTER_SIMPLE_FRAME_SWAP(swap, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1091,18 +1091,18 @@ typedef void (*named_iter_callback_t)(uintptr_t key, const char *name, void *use
  * @ingroup debug_named
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name)                                                           \
+#define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name, parent_ptr)                                                           \
   named_register((uintptr_t)(const void *)(pipeline), (name), "client_audio_pipeline", "0x%tx", __FILE__, __LINE__,    \
                  __func__)
 #else
-#define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name) (name)
+#define NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(pipeline, name, parent_ptr) (name)
 #endif
 
 #ifdef DEBUG_MEMORY
-#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name)                                                                      \
-  named_register((uintptr_t)(const void *)(data), (name), "websocket_impl", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name, parent_ptr)                                                                      \
+  named_register((uintptr_t)(const void *)(data), (name), "websocket_impl", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name) (name)
+#define NAMED_REGISTER_WEBSOCKET_IMPL(data, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1138,10 +1138,10 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
  * Usage: NAMED_REGISTER_LWS_CONTEXT(lws_ctx, "ws_server");
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_LWS_CONTEXT(context, name)                                                                      \
-  named_register((uintptr_t)(const void *)(context), (name), "lws_context", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_LWS_CONTEXT(context, name, parent_ptr)                                                                      \
+  named_register((uintptr_t)(const void *)(context), (name), "lws_context", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_LWS_CONTEXT(context, name) (name)
+#define NAMED_REGISTER_LWS_CONTEXT(context, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1154,10 +1154,10 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
  * Usage: NAMED_REGISTER_FFMPEG_CONTEXT(avctx, "ffmpeg_input");
  */
 #ifndef NDEBUG
-#define NAMED_REGISTER_FFMPEG_CONTEXT(context, name)                                                                   \
-  named_register((uintptr_t)(const void *)(context), (name), "ffmpeg_context", "0x%tx", __FILE__, __LINE__, __func__)
+#define NAMED_REGISTER_FFMPEG_CONTEXT(context, name, parent_ptr)                                                                   \
+  named_register((uintptr_t)(const void *)(context), (name), "ffmpeg_context", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
-#define NAMED_REGISTER_FFMPEG_CONTEXT(context, name) (name)
+#define NAMED_REGISTER_FFMPEG_CONTEXT(context, name, parent_ptr) (name)
 #endif
 
 /**
@@ -1172,7 +1172,7 @@ void named_registry_for_each(named_iter_callback_t callback, void *user_data);
  */
 #ifndef NDEBUG
 #define NAMED_REGISTER_CONTEXT(context, context_type, name)                                                            \
-  named_register((uintptr_t)(const void *)(context), (name), (context_type), "0x%tx", __FILE__, __LINE__, __func__)
+  named_register((uintptr_t)(const void *)(context), (name), (context_type), "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
 #else
 #define NAMED_REGISTER_CONTEXT(context, context_type, name) (name)
 #endif

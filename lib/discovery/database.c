@@ -551,7 +551,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   sqlite3_stmt *stmt = NULL;
   rc = sqlite3_prepare_v2(db, insert_sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     session_entry_destroy(session);
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant insert: %s", sqlite3_errmsg(db));
   }
@@ -565,7 +565,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   sqlite3_finalize(stmt);
 
   if (rc != SQLITE_DONE) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     session_entry_destroy(session);
     return SET_ERRNO(ERROR_CONFIG, "Failed to insert participant: %s", sqlite3_errmsg(db));
   }
@@ -609,7 +609,7 @@ asciichat_error_t database_session_join(sqlite3 *db, const acip_session_join_t *
   if (rc != SQLITE_OK) {
     log_error("Failed to commit transaction: %s", err_msg ? err_msg : "unknown");
     sqlite3_free(err_msg);
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     session_entry_destroy(session);
     return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
   }
@@ -719,7 +719,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   const char *del_sql = "DELETE FROM participants WHERE participant_id = ? AND session_string = ?";
   rc = sqlite3_prepare_v2(db, del_sql, -1, &stmt, NULL);
   if (rc != SQLITE_OK) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     return SET_ERRNO(ERROR_CONFIG, "Failed to prepare participant delete: %s", sqlite3_errmsg(db));
   }
 
@@ -729,13 +729,13 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   sqlite3_finalize(stmt);
 
   if (rc != SQLITE_DONE) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     return SET_ERRNO(ERROR_CONFIG, "Failed to delete participant: %s", sqlite3_errmsg(db));
   }
 
   int changes = sqlite3_changes(db);
   if (changes == 0) {
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     return SET_ERRNO(ERROR_INVALID_STATE, "Participant not in session");
   }
 
@@ -787,7 +787,7 @@ asciichat_error_t database_session_leave(sqlite3 *db, const uint8_t session_id[1
   if (rc != SQLITE_OK) {
     log_error("Failed to commit transaction: %s", err_msg ? err_msg : "unknown");
     sqlite3_free(err_msg);
-    sqlite3_exec(db, "ROLLBACK;", NULL, NULL, NULL);
+    sqlite3_exec(db, "ROLLBACK;", NULL, NULL);
     return SET_ERRNO(ERROR_CONFIG, "Failed to commit transaction");
   }
 

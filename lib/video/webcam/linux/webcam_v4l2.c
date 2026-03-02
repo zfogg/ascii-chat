@@ -537,7 +537,7 @@ asciichat_error_t webcam_init_context(webcam_context_t **ctx, unsigned short int
   log_dev("V4L2 webcam initialized successfully on %s with async camera thread", device_path);
 
   /* Register webcam context with named registry */
-  NAMED_REGISTER(context, device_path, "webcam", "0x%tx");
+  NAMED_REGISTER(context, device_path, "webcam", "0x%tx", NULL);
 
   return 0;
 }

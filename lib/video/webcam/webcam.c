@@ -49,7 +49,7 @@ asciichat_error_t webcam_init(unsigned short int webcam_index) {
   /* Register global webcam context with named registry */
   char webcam_name[32];
   SAFE_SNPRINTF(webcam_name, sizeof(webcam_name), "webcam:%u", webcam_index);
-  NAMED_REGISTER(global_webcam_ctx, webcam_name, "webcam", "0x%tx");
+  NAMED_REGISTER(global_webcam_ctx, webcam_name, "webcam", "0x%tx", NULL);
 
   // Get image dimensions
   int width, height;

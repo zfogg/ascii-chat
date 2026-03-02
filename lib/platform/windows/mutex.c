@@ -19,7 +19,7 @@
  */
 int mutex_init(mutex_t *mutex, const char *name) {
   InitializeCriticalSectionAndSpinCount(&mutex->impl, 4000);
-  mutex->name = NAMED_REGISTER(mutex, name, "mutex");
+  mutex->name = NAMED_REGISTER_MUTEX(mutex, name, NULL);
   mutex->last_lock_time_ns = 0;
   mutex->last_unlock_time_ns = 0;
   mutex->currently_held_by_key = 0;

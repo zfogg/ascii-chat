@@ -24,7 +24,7 @@ int rwlock_init_impl(rwlock_t *lock) {
 
 int rwlock_init(rwlock_t *lock, const char *name) {
   InitializeSRWLock(&lock->impl);
-  lock->name = NAMED_REGISTER(lock, name, "rwlock");
+  lock->name = NAMED_REGISTER_RWLOCK(lock, name, NULL);
   lock->last_rdlock_time_ns = 0;
   lock->last_wrlock_time_ns = 0;
   lock->last_unlock_time_ns = 0;

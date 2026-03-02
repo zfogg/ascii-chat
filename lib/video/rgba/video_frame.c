@@ -152,21 +152,21 @@ video_frame_buffer_t *video_frame_buffer_create(const char *client_id) {
            (void *)vfb, (void *)vfb->back_buffer, (void *)&vfb->frames[1], (void *)vfb->frames[0].data,
            (void *)vfb->frames[1].data, vfb->allocated_buffer_size);
 
-  const char *vfb_name = NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer");
+  const char *vfb_name = NAMED_REGISTER_VIDEO_FRAME_BUFFER(vfb, "buffer", NULL);
 
   // Register atomic fields with descriptive names using the parent's registered name
   char atomic_name[256];
   NAMED_FORMAT_SUBNAME(vfb_name, "new_frame_available_flag", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&vfb->new_frame_available, atomic_name);
+  NAMED_REGISTER_ATOMIC(&vfb->new_frame_available, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(vfb_name, "total_frames_received_counter", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&vfb->total_frames_received, atomic_name);
+  NAMED_REGISTER_ATOMIC(&vfb->total_frames_received, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(vfb_name, "total_frames_dropped_counter", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&vfb->total_frames_dropped, atomic_name);
+  NAMED_REGISTER_ATOMIC(&vfb->total_frames_dropped, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(vfb_name, "last_frame_sequence_number", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&vfb->last_frame_sequence, atomic_name);
+  NAMED_REGISTER_ATOMIC(&vfb->last_frame_sequence, atomic_name, NULL);
 
   return vfb;
 }

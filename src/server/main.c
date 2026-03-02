@@ -1233,9 +1233,9 @@ static void *status_screen_thread(void *arg) {
   // Register keyboard atomics with named debug registry
   static bool keyboard_atomics_registered = false;
   if (!keyboard_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_keyboard_thread_running, "server_keyboard_thread_running_flag");
-    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_head, "server_keyboard_queue_head_position");
-    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_tail, "server_keyboard_queue_tail_position");
+    NAMED_REGISTER_ATOMIC(&g_keyboard_thread_running, "server_keyboard_thread_running_flag", NULL);
+    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_head, "server_keyboard_queue_head_position", NULL);
+    NAMED_REGISTER_ATOMIC(&g_keyboard_queue_tail, "server_keyboard_queue_tail_position", NULL);
     keyboard_atomics_registered = true;
   }
 
@@ -1776,7 +1776,7 @@ int server_main(void) {
   // This function focuses on server-specific initialization
 
   // Register atomic for debug tracking
-  ATOMIC_REGISTER_AUTO(g_should_exit);
+  ATOMIC_REGISTER_AUTO(g_should_exit, NULL);
 
   // Register shutdown check callback for library code
   shutdown_register_callback(check_shutdown);

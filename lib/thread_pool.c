@@ -100,7 +100,7 @@ thread_pool_t *thread_pool_create(const char *pool_name) {
     return NULL;
   }
 
-  NAMED_REGISTER_THREAD_POOL(pool, pool->name);
+  NAMED_REGISTER_THREAD_POOL(pool, pool->name, NULL);
 
   log_debug("Thread pool '%s' created (long-lived thread mode)", pool->name);
   return pool;
@@ -191,7 +191,7 @@ thread_pool_t *thread_pool_create_with_workers(const char *pool_name, size_t num
     log_debug("[ThreadPool] Created worker thread %zu for pool '%s'", i, pool->name);
   }
 
-  NAMED_REGISTER_THREAD_POOL(pool, pool->name);
+  NAMED_REGISTER_THREAD_POOL(pool, pool->name, NULL);
 
   log_info("[ThreadPool] Created work queue pool '%s' with %zu worker threads", pool->name, num_workers);
   return pool;
@@ -271,7 +271,7 @@ asciichat_error_t thread_pool_queue_work(const char *name, thread_pool_t *pool, 
   entry->next = NULL;
 
   // Register work with debug naming system
-  NAMED_REGISTER_THREADPOOL_WORK(entry, name);
+  NAMED_REGISTER_THREADPOOL_WORK(entry, name, NULL);
 
   // Add to work queue (at the end)
   mutex_lock(&pool->work_queue_mutex);

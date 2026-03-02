@@ -816,13 +816,13 @@ void audio_ring_buffer_register_atomics(audio_ring_buffer_t *rb, const char *con
   }
 
   // Register the ring buffer itself with a unique name
-  const char *rb_name = NAMED_REGISTER_AUDIO_RINGBUF(rb, context_name);
+  const char *rb_name = NAMED_REGISTER_AUDIO_RINGBUF(rb, context_name, NULL);
 
   char atomic_name[256];
 
 #define REGISTER_AUDIO_ATOMIC(field, description) \
     NAMED_FORMAT_SUBNAME(rb_name, description, atomic_name, sizeof(atomic_name)); \
-    NAMED_REGISTER_ATOMIC(&rb->field, atomic_name)
+    NAMED_REGISTER_ATOMIC(&rb->field, atomic_name, NULL)
 
   // Ring buffer indices (lock-free producer-consumer)
   REGISTER_AUDIO_ATOMIC(write_index, "write_index_producer_position");

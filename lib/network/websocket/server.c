@@ -826,7 +826,7 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   atomic_store_bool(&server->running, true);
 
   // Register atomic fields for sync state monitoring
-  NAMED_REGISTER_ATOMIC(&server->running, "websocket_server_is_running");
+  NAMED_REGISTER_ATOMIC(&server->running, "websocket_server_is_running", NULL);
 
   // Store server pointer in protocol user data so callbacks can access it
   // Both the HTTP and ACIP protocols need access to the server

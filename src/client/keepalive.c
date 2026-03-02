@@ -240,7 +240,7 @@ int keepalive_start_thread() {
   // Register keepalive atomics with named debug registry
   static bool keepalive_atomics_registered = false;
   if (!keepalive_atomics_registered) {
-    NAMED_REGISTER_ATOMIC(&g_ping_thread_exited, "keepalive_ping_thread_exit_confirmation");
+    NAMED_REGISTER_ATOMIC(&g_ping_thread_exited, "keepalive_ping_thread_exit_confirmation", NULL);
     keepalive_atomics_registered = true;
   }
 

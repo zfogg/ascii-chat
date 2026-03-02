@@ -99,7 +99,7 @@ int asciichat_thread_create(asciichat_thread_t *thread, const char *name, void *
   // Create thread with wrapper function, passing wrapper as argument
   int err = pthread_create(thread, NULL, asciichat_thread_wrapper_impl, (void *)wrapper);
   if (err == 0 && name && thread) {
-    NAMED_REGISTER_THREAD(*thread, name);
+    NAMED_REGISTER_THREAD(*thread, name, NULL);
   } else if (err != 0) {
     // If thread creation failed, free the wrapper we allocated
     SAFE_FREE(wrapper);

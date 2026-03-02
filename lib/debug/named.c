@@ -120,8 +120,21 @@ static uint64_t rwlock_counter = 0;
 static uint64_t cond_counter = 0;
 static uint64_t atomic_counter = 0;
 
+/**
+ * @brief Look up a registered name by key (internal helper for parent resolution)
+ * @param parent_key The key to look up
+ * @return The registered name or NULL if not found
+ * @note Caller must hold read lock
+ */
+static const char *named_lookup_name_unlocked(uintptr_t parent_key) {
+  if (parent_key == 0) return NULL;
+  named_entry_t *entry = NULL;
+  HASH_FIND(hh, g_named_registry.entries, &parent_key, sizeof(uintptr_t), entry);
+  return entry ? entry->name : NULL;
+}
+
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
-                           const char *file, int line, const char *func) {
+                           const char *file, int line, const char *func, uintptr_t parent_key) {
   if (!base_name || !type || !format_spec) {
     return "?";
   }
@@ -130,20 +143,41 @@ const char *named_register(uintptr_t key, const char *base_name, const char *typ
     return base_name;
   }
 
-  // Generate unique name using atomic counters
-  uint64_t counter = 0;
-  if (strcmp(type, "mutex") == 0) {
-    counter = __sync_fetch_and_add(&mutex_counter, 1);
-  } else if (strcmp(type, "rwlock") == 0) {
-    counter = __sync_fetch_and_add(&rwlock_counter, 1);
-  } else if (strcmp(type, "cond") == 0) {
-    counter = __sync_fetch_and_add(&cond_counter, 1);
-  } else if (strcmp(type, "atomic") == 0) {
-    counter = __sync_fetch_and_add(&atomic_counter, 1);
+  // If parent_key provided, look up parent name and create hierarchical name
+  char final_base_name[256];
+  if (parent_key != 0) {
+    rwlock_rdlock(&g_named_registry.entries_lock);
+    const char *parent_name = named_lookup_name_unlocked(parent_key);
+    rwlock_rdunlock(&g_named_registry.entries_lock);
+
+    if (parent_name) {
+      snprintf(final_base_name, sizeof(final_base_name), "%s#%s", parent_name, base_name);
+    } else {
+      // Parent not found, fall back to base name
+      snprintf(final_base_name, sizeof(final_base_name), "%s", base_name);
+    }
+  } else {
+    snprintf(final_base_name, sizeof(final_base_name), "%s", base_name);
   }
 
+  // Generate unique name using atomic counters (only for non-hierarchical names)
   char name_buffer[256];
-  snprintf(name_buffer, sizeof(name_buffer), "%s.%"PRIu64, base_name, counter);
+  if (parent_key == 0) {
+    uint64_t counter = 0;
+    if (strcmp(type, "mutex") == 0) {
+      counter = __sync_fetch_and_add(&mutex_counter, 1);
+    } else if (strcmp(type, "rwlock") == 0) {
+      counter = __sync_fetch_and_add(&rwlock_counter, 1);
+    } else if (strcmp(type, "cond") == 0) {
+      counter = __sync_fetch_and_add(&cond_counter, 1);
+    } else if (strcmp(type, "atomic") == 0) {
+      counter = __sync_fetch_and_add(&atomic_counter, 1);
+    }
+    snprintf(name_buffer, sizeof(name_buffer), "%s.%"PRIu64, final_base_name, counter);
+  } else {
+    // Hierarchical names don't get counters - parent already has one
+    snprintf(name_buffer, sizeof(name_buffer), "%s", final_base_name);
+  }
 
   // Allocate entry BEFORE acquiring lock (avoid long critical section)
   named_entry_t *entry = malloc(sizeof(named_entry_t));
@@ -498,8 +532,8 @@ void named_registry_register_packet_types(void) {
 asciichat_error_t named_init(void) { return ASCIICHAT_OK; }
 void named_destroy(void) {}
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
-                           const char *file, int line, const char *func) {
-  (void)key; (void)type; (void)format_spec; (void)file; (void)line; (void)func;
+                           const char *file, int line, const char *func, uintptr_t parent_key) {
+  (void)key; (void)type; (void)format_spec; (void)file; (void)line; (void)func; (void)parent_key;
   return base_name ? base_name : "?";
 }
 const char *named_register_fmt(uintptr_t key, const char *type, const char *format_spec, const char *file, int line,

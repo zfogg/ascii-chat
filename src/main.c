@@ -178,7 +178,7 @@ atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
   do { \
     static bool _global_atomics_registered = false; \
     if (!_global_atomics_registered) { \
-      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag"); \
+      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL); \
       _global_atomics_registered = true; \
     } \
   } while(0)
@@ -250,7 +250,7 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
   static atomic_t ctrl_c_count = {0};
   static bool ctrl_c_count_registered = false;
   if (!ctrl_c_count_registered) {
-    NAMED_REGISTER_ATOMIC(&ctrl_c_count, "ctrl_c_interrupt_count");
+    NAMED_REGISTER_ATOMIC(&ctrl_c_count, "ctrl_c_interrupt_count", NULL);
     ctrl_c_count_registered = true;
   }
   if (atomic_fetch_add_int(&ctrl_c_count, 1) + 1 > 1) {
@@ -430,7 +430,6 @@ static void on_exit_show_cursor(void) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
-
   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
   g_argc = argc;
   g_argv = argv;
@@ -457,7 +456,7 @@ int main(int argc, char *argv[]) {
 
   // Register the main thread IMMEDIATELY after named_init() to ensure it's available for all subsequent allocations
 #ifndef NDEBUG
-  NAMED_REGISTER_THREAD(asciichat_thread_self(), "main");
+  NAMED_REGISTER_THREAD(asciichat_thread_self(), "main", NULL);
   // Also save main thread ID for memory reporting (must be very early)
   debug_sync_set_main_thread_id();
 #endif

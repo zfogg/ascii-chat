@@ -77,7 +77,7 @@ socket_t socket_create(const char *name, int domain, int type, int protocol) {
   // For other domains, use as-is
   socket_t sock = socket(domain, type, protocol);
   if (socket_is_valid(sock)) {
-    NAMED_REGISTER_SOCKET(sock, name);
+    NAMED_REGISTER_SOCKET(sock, name, NULL);
   }
   return sock;
 }
@@ -111,7 +111,7 @@ socket_t socket_accept(socket_t sock, struct sockaddr *addr, socklen_t *addrlen,
   }
 
   // Register the accepted socket with the named registry
-  NAMED_REGISTER_SOCKET(client_sock, name);
+  NAMED_REGISTER_SOCKET(client_sock, name, NULL);
 
   // Optimize the socket for high-throughput video streaming
   socket_optimize_for_streaming(client_sock);

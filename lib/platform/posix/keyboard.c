@@ -45,15 +45,40 @@ static bool g_tty_fd_owned = false;
  * ============================================================================ */
 
 asciichat_error_t keyboard_init(void) {
+  fprintf(stderr, "[KB_INIT] Starting\n");
+  fflush(stderr);
   log_info("keyboard_init: STARTING");
   // If already initialized, return success
+  fprintf(stderr, "[KB_INIT] Checking if already initialized\n");
+  fflush(stderr);
   if (lifecycle_is_initialized(&g_keyboard_lc)) {
+    fprintf(stderr, "[KB_INIT] Already initialized, returning\n");
+    fflush(stderr);
     log_debug("keyboard_init: Already initialized");
     return ASCIICHAT_OK;
   }
 
+  // Skip keyboard initialization if stdout is piped (keyboard input not possible in non-interactive mode)
+  // tcsetattr() can hang when stdout is piped in tmux, so we skip it entirely for piped output
+  if (terminal_is_piped_output()) {
+    fprintf(stderr, "[KB_INIT] Output is piped, skipping keyboard initialization (not interactive)\n");
+    fflush(stderr);
+    log_info("keyboard_init: Skipping (output is piped, non-interactive mode)");
+    // Mark as initialized anyway so keyboard_read_nonblocking() knows not to try
+    if (!lifecycle_init(&g_keyboard_lc, "keyboard")) {
+      return ASCIICHAT_OK; // Another thread initialized
+    }
+    fprintf(stderr, "[KB_INIT] Marked as initialized (piped mode)\n");
+    fflush(stderr);
+    return ASCIICHAT_OK;
+  }
+
   // CAS to claim initialization
+  fprintf(stderr, "[KB_INIT] Attempting lifecycle_init\n");
+  fflush(stderr);
   if (!lifecycle_init(&g_keyboard_lc, "keyboard")) {
+    fprintf(stderr, "[KB_INIT] Lost init race\n");
+    fflush(stderr);
     log_debug("keyboard_init: Lost init race, another thread initialized");
     return ASCIICHAT_OK; // Already initialized
   }
@@ -67,38 +92,60 @@ asciichat_error_t keyboard_init(void) {
 
   // Check if stdin is a TTY - if so, use it directly
   // This is important for tmux sessions where stdin receives input from tmux send-keys
+  fprintf(stderr, "[KB_INIT] Calling isatty()\n");
+  fflush(stderr);
   if (isatty(STDIN_FILENO)) {
+    fprintf(stderr, "[KB_INIT] stdin is TTY\n");
+    fflush(stderr);
     log_info("keyboard_init: stdin is a TTY - using stdin for keyboard input");
     if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
+      fprintf(stderr, "[KB_INIT] tcgetattr(stdin) failed\n");
+      fflush(stderr);
       log_error("keyboard_init: FAILED - tcgetattr(stdin) failed");
       lifecycle_init_abort(&g_keyboard_lc);
       return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from stdin");
     }
     config_fd = STDIN_FILENO;
     use_stdin = true;
+    fprintf(stderr, "[KB_INIT] stdin TTY setup OK\n");
+    fflush(stderr);
     log_info("keyboard_init: Successfully using stdin for keyboard input");
   } else {
     // stdin is not a TTY - try /dev/tty as fallback
+    fprintf(stderr, "[KB_INIT] stdin is not TTY, trying /dev/tty\n");
+    fflush(stderr);
     log_info("keyboard_init: stdin is not a TTY - attempting to open /dev/tty as fallback");
+    fprintf(stderr, "[KB_INIT] Calling open(/dev/tty)\n");
+    fflush(stderr);
     g_tty_fd = open("/dev/tty", O_RDWR);
+    fprintf(stderr, "[KB_INIT] open(/dev/tty) returned %d\n", g_tty_fd);
+    fflush(stderr);
     if (g_tty_fd >= 0) {
       // Try to get terminal settings from /dev/tty
       if (tcgetattr(g_tty_fd, &g_original_termios) >= 0) {
+        fprintf(stderr, "[KB_INIT] /dev/tty tcgetattr OK\n");
+        fflush(stderr);
         log_info("keyboard_init: Successfully using /dev/tty for keyboard input");
         config_fd = g_tty_fd;
         g_tty_fd_owned = true;
         use_stdin = false;
       } else {
         // tcgetattr failed on /dev/tty - close it
+        fprintf(stderr, "[KB_INIT] /dev/tty tcgetattr failed\n");
+        fflush(stderr);
         log_warn("keyboard_init: tcgetattr(/dev/tty) failed");
         close(g_tty_fd);
         g_tty_fd = -1;
         g_tty_fd_owned = false;
+        fprintf(stderr, "[KB_INIT] Neither stdin nor /dev/tty available\n");
+        fflush(stderr);
         log_error("keyboard_init: FAILED - neither stdin nor /dev/tty available for keyboard input");
         lifecycle_init_abort(&g_keyboard_lc);
         return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to get terminal attributes from both stdin and /dev/tty");
       }
     } else {
+      fprintf(stderr, "[KB_INIT] open(/dev/tty) failed, errno=%d\n", errno);
+      fflush(stderr);
       log_error("keyboard_init: FAILED - /dev/tty not available (errno=%d)", errno);
       lifecycle_init_abort(&g_keyboard_lc);
       return SET_ERRNO_SYS(ERROR_PLATFORM_INIT, "Failed to open /dev/tty and stdin is not a TTY");
@@ -106,6 +153,8 @@ asciichat_error_t keyboard_init(void) {
   }
 
   // Save original settings and create raw mode version
+  fprintf(stderr, "[KB_INIT] Creating new termios settings\n");
+  fflush(stderr);
   new_termios = g_original_termios;
 
   // Disable canonical mode (line buffering) and echo.
@@ -123,7 +172,11 @@ asciichat_error_t keyboard_init(void) {
   new_termios.c_cc[VTIME] = 0;
 
   // Apply new settings
+  fprintf(stderr, "[KB_INIT] Calling tcsetattr()\n");
+  fflush(stderr);
   if (tcsetattr(config_fd, TCSANOW, &new_termios) < 0) {
+    fprintf(stderr, "[KB_INIT] tcsetattr() failed\n");
+    fflush(stderr);
     if (!use_stdin && g_tty_fd >= 0) {
       close(g_tty_fd);
       g_tty_fd = -1;
@@ -138,6 +191,8 @@ asciichat_error_t keyboard_init(void) {
   // read() to return EAGAIN spuriously.
 
   // Mark as initialized (still under lock-free CAS)
+  fprintf(stderr, "[KB_INIT] SUCCESS\n");
+  fflush(stderr);
   log_info("keyboard_init: SUCCESS - using %s for keyboard input", use_stdin ? "stdin" : "/dev/tty");
   return ASCIICHAT_OK;
 }

@@ -44,7 +44,7 @@ node_pool_t *node_pool_create(size_t pool_size) {
   pool->pool_size = pool_size;
   atomic_store_u64(&pool->used_count, 0);
 
-  NAMED_REGISTER_NODE_POOL(pool, "node_pool");
+  NAMED_REGISTER_NODE_POOL(pool, "node_pool", NULL);
 
   return pool;
 }
@@ -152,7 +152,7 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   atomic_store_u64(&queue->packets_dropped, 0);
   atomic_store_bool(&queue->shutdown, false);
 
-  const char *queue_name = NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue");
+  const char *queue_name = NAMED_REGISTER_PACKET_QUEUE(queue, "packet_queue", NULL);
   if (queue->node_pool) {
     char node_pool_name[256];
     NAMED_FORMAT_SUBNAME(queue_name, "node_pool", node_pool_name, sizeof(node_pool_name));
@@ -163,22 +163,22 @@ packet_queue_t *packet_queue_create_with_pools(size_t max_size, size_t node_pool
   char atomic_name[256];
 
   NAMED_FORMAT_SUBNAME(queue_name, "current_packet_count", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&queue->count, atomic_name);
+  NAMED_REGISTER_ATOMIC(&queue->count, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(queue_name, "total_bytes_currently_queued", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&queue->bytes_queued, atomic_name);
+  NAMED_REGISTER_ATOMIC(&queue->bytes_queued, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(queue_name, "lifetime_packets_enqueued_total", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&queue->packets_enqueued, atomic_name);
+  NAMED_REGISTER_ATOMIC(&queue->packets_enqueued, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(queue_name, "lifetime_packets_dequeued_total", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&queue->packets_dequeued, atomic_name);
+  NAMED_REGISTER_ATOMIC(&queue->packets_dequeued, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(queue_name, "lifetime_packets_dropped_overflow", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&queue->packets_dropped, atomic_name);
+  NAMED_REGISTER_ATOMIC(&queue->packets_dropped, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(queue_name, "is_shutdown_requested", atomic_name, sizeof(atomic_name));
-  NAMED_REGISTER_ATOMIC(&queue->shutdown, atomic_name);
+  NAMED_REGISTER_ATOMIC(&queue->shutdown, atomic_name, NULL);
 
   NAMED_FORMAT_SUBNAME(queue_name, "head_node_pointer", atomic_name, sizeof(atomic_name));
   NAMED_REGISTER_ATOMIC_PTR(&queue->head, atomic_name);
