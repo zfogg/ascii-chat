@@ -143,16 +143,19 @@ test.describe("Client Connection to Native Server", () => {
 
     console.log("✓ Client connected to server");
 
-    // Wait for frames to be captured and sent
-    await page.waitForTimeout(2000);
+    // Wait for frames to be captured and sent, with polling for metrics
+    let framesRendered = 0;
+    for (let i = 0; i < 10; i++) {
+      await page.waitForTimeout(200);
+      const metrics = await page.evaluate(() => (window as any).__clientFrameMetrics?.rendered || 0);
+      framesRendered = Math.max(framesRendered, metrics);
+      if (framesRendered > 0) break;
+    }
 
-    // Check frame metrics
-    const metrics = await page.evaluate(() => window.__clientFrameMetrics);
-    console.log("Frame metrics:", metrics);
+    console.log(`Client rendered ${framesRendered} frames`);
 
     // Verify client captured and sent frames
-    expect(metrics).toBeDefined();
-    expect((metrics as any)?.rendered || 0).toBeGreaterThan(0);
+    expect(framesRendered).toBeGreaterThan(0);
   });
 
   test("client maintains stable connection with webcam streaming", async ({
@@ -166,13 +169,20 @@ test.describe("Client Connection to Native Server", () => {
     });
     console.log("✓ Client connected");
 
-    // Measure frame capture over 3 seconds
-    const startMetrics = await page.evaluate(() => window.__clientFrameMetrics);
-    await page.waitForTimeout(3000);
-    const endMetrics = await page.evaluate(() => window.__clientFrameMetrics);
+    // Wait for metrics to initialize
+    let startMetrics = 0;
+    for (let i = 0; i < 10; i++) {
+      await page.waitForTimeout(100);
+      startMetrics = await page.evaluate(() => (window as any).__clientFrameMetrics?.rendered || 0);
+      if (startMetrics > 0) break;
+    }
 
-    const renderedFrames = (endMetrics as any)?.rendered - (startMetrics as any)?.rendered;
-    console.log(`Frames captured in 3 seconds: ${renderedFrames}`);
+    // Measure frame capture over 2 seconds
+    await page.waitForTimeout(2000);
+    const endMetrics = await page.evaluate(() => (window as any).__clientFrameMetrics?.rendered || 0);
+
+    const renderedFrames = endMetrics - startMetrics;
+    console.log(`Frames captured: start=${startMetrics}, end=${endMetrics}, delta=${renderedFrames}`);
 
     // Verify stable streaming
     expect(renderedFrames).toBeGreaterThan(0);
