@@ -874,11 +874,14 @@ int parse_mirror_media(const char *arg, void *config, char **remaining, int num_
     return -1;
   }
 
-  // Cast config to options_t
-  options_t *opts = (options_t *)config;
+  log_debug("parse_mirror_media: Processing argument: '%s'", arg);
+
+  // Access media_file and media_url fields from options_state struct (same as other positional parsers)
+  char *media_file = (char *)config + offsetof(struct options_state, media_file);
+  char *media_url = (char *)config + offsetof(struct options_state, media_url);
 
   // Enforce mutual exclusion with --file flag
-  if (opts->media_file[0] != '\0') {
+  if (media_file[0] != '\0') {
     if (error_msg) {
       *error_msg = platform_strdup("cannot use both --file and a positional argument");
     }
@@ -886,25 +889,23 @@ int parse_mirror_media(const char *arg, void *config, char **remaining, int num_
   }
 
   // Enforce mutual exclusion with --url flag
-  if (opts->media_url[0] != '\0') {
+  if (media_url[0] != '\0') {
     if (error_msg) {
       *error_msg = platform_strdup("cannot use both --url and a positional argument");
     }
     return -1;
   }
 
-  log_debug("parse_mirror_media: Processing argument: '%s'", arg);
-
   // Check if it's an accessible file path (priority 1)
   if (platform_access(arg, PLATFORM_ACCESS_READ) == 0) {
     log_debug("Argument '%s' is an accessible file", arg);
-    SAFE_SNPRINTF(opts->media_file, OPTIONS_BUFF_SIZE, "%s", arg);
+    SAFE_SNPRINTF(media_file, OPTIONS_BUFF_SIZE, "%s", arg);
     return 1; // Consumed 1 argument
   }
 
   // Not a file; treat as URL (yt-dlp/ffmpeg will handle any errors)
   log_debug("Argument '%s' not found as file; treating as URL", arg);
-  SAFE_SNPRINTF(opts->media_url, OPTIONS_BUFF_SIZE, "%s", arg);
+  SAFE_SNPRINTF(media_url, OPTIONS_BUFF_SIZE, "%s", arg);
   return 1; // Consumed 1 argument
 }
 
