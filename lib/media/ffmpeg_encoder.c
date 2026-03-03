@@ -427,14 +427,14 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   AVDictionary *opts = NULL;
 
   // Muxer flags configuration
-  // For stdout/non-seekable output, disable seekable-dependent optimizations
+  // For stdout/non-seekable output, use fragmented MP4 (frag_keyframe)
   // For regular files, use faststart (moov at front for streaming)
   bool is_stdout = (output_path && strcmp(output_path, "-") == 0);
   if (is_stdout) {
-    // Use minimal flags for streaming to stdout - don't require seeking
-    // empty_moov writes moov before mdat, allowing playback before full file is written
-    av_dict_set(&opts, "movflags", "empty_moov", 0);
-    log_debug("ffmpeg_encoder_create: Using streaming MP4 (empty_moov) for stdout output");
+    // Use fragmented MP4 for stdout - starts a new fragment at each video keyframe
+    // This allows streaming without requiring file seeking (FFmpeg docs recommended)
+    av_dict_set(&opts, "movflags", "+frag_keyframe", 0);
+    log_debug("ffmpeg_encoder_create: Using fragmented MP4 (+frag_keyframe) for stdout output");
   } else {
     // Move moov atom to the front (faststart) - helps with streaming and player compatibility
     av_dict_set(&opts, "movflags", "faststart", 0);
