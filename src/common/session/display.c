@@ -867,7 +867,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Flush both C runtime and kernel buffers for immediate frame display
     log_debug("FRAME_FLUSH: Flushing stdout");
     (void)fflush(stdout);
-    (void)terminal_flush(STDOUT_FILENO);
+    // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
+    int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+    (void)terminal_flush(flush_fd);
 
     // Render FPS counter overlay if enabled
     if (ctx->fps_counter && GET_OPTION(fps_counter)) {
@@ -898,7 +900,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush both C runtime and kernel buffers for immediate frame display
     (void)fflush(stdout);
-    (void)terminal_flush(STDOUT_FILENO);
+    // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
+    int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+    (void)terminal_flush(flush_fd);
   } else {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
     // Write frame data with newline and flush
@@ -917,7 +921,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 
     // Flush both C runtime and kernel buffers to ensure frame reaches destination immediately
     (void)fflush(stdout);
-    (void)terminal_flush(STDOUT_FILENO);
+    // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
+    int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+    (void)terminal_flush(flush_fd);
   }
 
   // Track actual frame writes to terminal (increment counter after ANY write path)
