@@ -140,12 +140,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_set_force_stderr(true);
   }
 
-  // Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
+  // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
+  // (implemented via should_force_stderr check above)
   const char *render_file_early = GET_OPTION(render_file);
   if (render_file_early && render_file_early[0] != '\0' &&
       (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
-    log_set_force_stderr(true);
-    log_info("Force stderr mode enabled: --render-file=- will output binary video to stdout");
+    log_info("--render-file=- will output binary video to stdout, logging sent to stderr");
   }
 
   // ============================================================================
@@ -405,8 +405,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
 
   // Check for stdin render mode: read ASCII frames from stdin, render to video
+  // Only enable stdin render mode if:
+  // 1. render-file is "-" (output to stdout)
+  // 2. stdin is not a TTY
+  // 3. AND there's NO media source explicitly configured
+  //    (no test pattern, file, or URL - webcam is default but should not block stdin mode)
   const char *render_file_opt = GET_OPTION(render_file);
-  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty());
+  bool has_explicit_media = (GET_OPTION(test_pattern) ||
+                             (media_url_val && strlen(media_url_val) > 0) ||
+                             (media_file_val && strlen(media_file_val) > 0));
+  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty() && !has_explicit_media);
 
   if (stdin_render_mode) {
     // Stdin render mode: read ASCII frames from stdin, output video to stdout
@@ -602,7 +610,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       audio_available = false;
     }
   }
-  log_debug("[SETUP_COMPLETE] All setup complete, about to start connection loop");
+  log_info("[SETUP_COMPLETE] All setup complete, about to start connection loop");
 
   // ============================================================================
   // RUN: Mode-Specific Main Loop with Reconnection
@@ -612,7 +620,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   int attempt = 0;
   int max_attempts = config->max_reconnect_attempts;
 
-  log_debug("[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d", max_attempts);
+  log_info("[CLIENT_LIKE_LOOP] Starting connection loop, max_attempts=%d", max_attempts);
 
   while (true) {
     attempt++;

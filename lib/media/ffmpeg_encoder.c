@@ -56,9 +56,16 @@ static void get_audio_codec_from_extension(const char *path, const char **audio_
   *sample_fmt = AV_SAMPLE_FMT_NONE;
 
   if (!dot) {
-    *has_audio = 1;
-    *audio_codec = "aac";
-    *sample_fmt = AV_SAMPLE_FMT_FLTP;
+    // Use Opus for stdout (pipe/non-seekable output, part of WebM), otherwise default to AAC
+    if (path && strcmp(path, "-") == 0) {
+      *has_audio = 1;
+      *audio_codec = "libopus";
+      *sample_fmt = AV_SAMPLE_FMT_FLT;
+    } else {
+      *has_audio = 1;
+      *audio_codec = "aac";
+      *sample_fmt = AV_SAMPLE_FMT_FLTP;
+    }
     return;
   }
 
@@ -112,8 +119,14 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   *pix_fmt = AV_PIX_FMT_YUV420P; // Default
 
   if (!dot) {
-    *codec = "libx264";
-    *format = "mp4";
+    // Use WebM for stdout (pipe/non-seekable output), otherwise default to MP4
+    if (path && strcmp(path, "-") == 0) {
+      *codec = "libvpx-vp9";
+      *format = "webm";
+    } else {
+      *codec = "libx264";
+      *format = "mp4";
+    }
     return;
   }
 
@@ -460,9 +473,15 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   // Initialize audio stream if supported
   encoder_init_audio_stream(enc, output_path);
 
-  // Open output file
+  // Open output file or stdout
   if (!(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
-    ret = avio_open(&enc->fmt_ctx->pb, output_path, AVIO_FLAG_WRITE);
+    // For stdout output, use "pipe:1" (FFmpeg's standard for writing to stdout)
+    const char *open_path = output_path;
+    if (output_path && strcmp(output_path, "-") == 0) {
+      open_path = "pipe:1"; // Use pipe:1 for stdout
+      log_debug("ffmpeg: Redirecting '-' to 'pipe:1' for stdout output");
+    }
+    ret = avio_open(&enc->fmt_ctx->pb, open_path, AVIO_FLAG_WRITE);
     if (ret < 0) {
       sws_freeContext(enc->sws_ctx);
       av_frame_free(&enc->frame);
@@ -471,7 +490,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
       avcodec_free_context(&enc->codec_ctx);
       avformat_free_context(enc->fmt_ctx);
       SAFE_FREE(enc);
-      return SET_ERRNO(ERROR_INIT, "ffmpeg: avio_open failed for '%s'", output_path);
+      return SET_ERRNO(ERROR_INIT, "ffmpeg: avio_open failed for '%s'", open_path);
     }
   }
 
