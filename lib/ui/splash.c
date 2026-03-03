@@ -698,15 +698,23 @@ int splash_intro_done(void) {
   // BEFORE we try to access the terminal for frame rendering
   atomic_store_u64(&g_splash_state.intro_done_time_ns, time_get_ns());
 
+  // Determine timeout for waiting on animation thread
+  // In snapshot mode, use minimal timeout to avoid blocking frame capture
+  // In normal mode, use standard timeout to ensure clean animation exit
+  int64_t timeout_ms = 2500LL;
+  if (GET_OPTION(snapshot_mode)) {
+    timeout_ms = 10LL;  // Minimal wait in snapshot mode - don't block capture
+  }
+
   // CRITICAL: Wait for the animation thread to fully exit BEFORE returning
   // This prevents race condition where both splash thread and frame rendering thread
   // try to access the terminal simultaneously
   // Animation thread will stop when 2 seconds have elapsed since splash start
-  // Use 2.5 second timeout to allow animation to complete its 2-second minimum display time
+  // Use configurable timeout to allow animation to complete its 2-second minimum display time
   bool expected = true;
   if (atomic_cas_bool(&g_splash_state.thread_created, &expected, false)) {
     // Successfully marked that we will join - now wait for thread to exit
-    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, 2500LL * NS_PER_MS_INT);
+    asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ms * NS_PER_MS_INT);
   }
 
   atomic_store_bool(&g_splash_state.is_running, false);
