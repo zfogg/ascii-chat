@@ -83,6 +83,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   bool snapshot_done = false;
   bool first_frame_rendered = false;
+  uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
 
   // Help screen state tracking for clear-screen transition
   bool help_was_active = false;
@@ -486,19 +487,24 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
+      // Snapshot mode timing: mark when first frame has been rendered
+      // This must be set AFTER successful rendering to ensure delay starts when first frame is displayed
+      if (snapshot_mode && !first_frame_rendered && should_write) {
+        first_frame_rendered = true;
+        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered, starting delay timer");
+      }
+
+      // Increment frames rendered counter (after first frame) for snapshot delay calculation
+      if (first_frame_rendered && should_write) {
+        frames_rendered_since_first++;
+      }
+
       // Free frame before checking exit conditions to avoid double-free
       SAFE_FREE(ascii_frame);
     }
 
-    // Snapshot mode timing: mark that first frame has been processed (regardless of conversion success)
-    // This ensures snapshot timing works even if frame conversion fails
-    if (snapshot_mode && !first_frame_rendered) {
-      first_frame_rendered = true;
-      log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame processed at time 0");
-    }
-
     // Snapshot mode: check if enough frames have been captured for the desired output duration
-    // This check runs every iteration, not just when ascii_frame succeeds
+    // This check runs every iteration after first frame is rendered
     if (snapshot_mode && !snapshot_done && first_frame_rendered) {
       double snapshot_delay = GET_OPTION(snapshot_delay);
 
@@ -520,13 +526,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // Calculate target frame count for the desired output duration
       // snapshot_delay=0 means exit after first frame
       // snapshot_delay>0 means record enough frames for that many seconds of output video
+      // Timer starts when first ASCII frame is rendered, not from program initialization
       uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
 
-      log_info("[SNAPSHOT] frame_count=%lu target_frames=%lu delay=%.1f fps=%u", frame_count, target_frames,
-               snapshot_delay, capture_fps);
+      log_info("[SNAPSHOT] frames_since_first=%lu target_frames=%lu delay=%.1f fps=%u",
+               frames_rendered_since_first, target_frames, snapshot_delay, capture_fps);
 
       // Exit when we've captured enough frames for the desired output duration
-      if (frame_count >= target_frames) {
+      if (frames_rendered_since_first >= target_frames) {
         // We don't end frames with newlines so the next log would print on the same line as the frame's
         // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
         // so piped snapshots don't have a weird newline in stdout that they don't need.
