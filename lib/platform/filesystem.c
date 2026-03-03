@@ -181,8 +181,3 @@ bool platform_is_binary_in_path(const char *bin_name) {
   return found;
 }
 
-/**
- * @brief Get the path to the currently running executable
- * Implemented in posix/filesystem.c and windows/filesystem.c
- */
-extern bool platform_get_executable_path(char *exe_path, size_t path_size);
