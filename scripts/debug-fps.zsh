@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env zsh
 
 set -euo pipefail
 
@@ -6,6 +6,11 @@ set -euo pipefail
 # Usage: ./debug-connectivity.sh [--build-dir <dir>] [--protocol <tcp|ws|wss>]
 BUILD_DIR="build"
 PROTOCOL="tcp"  # Default protocol
+
+export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
+export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
+
+extra_client_args=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -40,11 +45,19 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+SNAPSHOT_DELAY=3.5
+
 PORT=$(((RANDOM % 6000) + 2000))
+PORT_WS=$(((RANDOM % 6000) + 2000))
+
 tmpdir=$(mktemp -d "/tmp/XXX-ascii-chat-debug-fps")
+
 client_log="$tmpdir/client-logfile-$PORT.log"
 client_stdout="$tmpdir/client-stdout-$PORT.log"
 server_log="$tmpdir/server-logfile-$PORT.log"
+
+cert_file="/tmp/wss-test-cert.pem"
+key_file="/tmp/wss-test-key.pem"
 
 echo "Starting connectivity test on port: $PORT"
 echo "Protocol: $PROTOCOL"
@@ -58,76 +71,48 @@ cmake --build "$BUILD_DIR"
 # Protocol-specific configuration
 case "$PROTOCOL" in
   tcp)
-    SNAPSHOT_DELAY=3.5
     PROTOCOL_PREFIX="tcp"
     echo "Testing TCP connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
-
-    # Start TCP server
-    "$BUILD_DIR"/bin/ascii-chat \
-      --log-file "$server_log" --log-level debug \
-      server --port "$PORT" \
-      >/dev/null 2>&1 &
-    SERVER_PID=$!
-    sleep 0.25
-
-    # Start TCP client using tcp:// URL scheme
-    EXIT_CODE=0
-    START_TIME=$(date +%s%N)
-    ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k2.0 5 "$BUILD_DIR"/bin/ascii-chat \
-      --log-level debug --log-file "$client_log" --sync-state 3 \
-      client \
-      "${PROTOCOL_PREFIX}://localhost:$PORT" \
-      --test-pattern \
-      -S -D "$SNAPSHOT_DELAY" \
-      2>/dev/null | tee "$client_stdout" \
-      || EXIT_CODE=$?
-    END_TIME=$(date +%s%N)
     ;;
 
   ws|wss)
-    SNAPSHOT_DELAY=3.25
-    PORT_WS=$(((RANDOM % 6000) + 2000))
-
     if [[ "$PROTOCOL" == "wss" ]]; then
       PROTOCOL_PREFIX="wss"
       echo "Testing WebSocket Secure (WSS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
-
-      # Generate self-signed certificate and key for testing
-      cert_file="$tmpdir/wss-test-cert-${PORT}.pem"
-      key_file="$tmpdir/wss-test-key-${PORT}.pem"
-
       echo "Generating self-signed certificate..."
-      openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
-        -days 1 -nodes -subj "/CN=localhost" >/dev/null 2>&1
-
+      if [ ! -f "$cert_file" ] || [ ! -f "$key_file" ]; then
+        openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
+          -days 1 -nodes -subj "/CN=localhost"
+      fi
       server_wss_args="--websocket-tls-cert $cert_file --websocket-tls-key $key_file"
     else
       PROTOCOL_PREFIX="ws"
       echo "Testing WebSocket (WS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
       server_wss_args=""
     fi
-
-    # Start WebSocket server
-    # shellcheck disable=SC2086
-    "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
-      server --port "$PORT" --websocket-port "$PORT_WS" $server_wss_args \
-      >/dev/null 2>&1 &
-    SERVER_PID=$!
-    sleep 0.25
-
-    # Start WebSocket client
-    EXIT_CODE=0
-    START_TIME=$(date +%s%N)
-    export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
-    export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
-    timeout -k1 10 "$BUILD_DIR"/bin/ascii-chat \
-      --log-level debug --log-file "$client_log" --sync-state 3 \
-      client "${PROTOCOL_PREFIX}://localhost:${PORT_WS}" \
-      --test-pattern -S -D "$SNAPSHOT_DELAY" \
-      2>/dev/null | tee "$client_stdout" || EXIT_CODE=$?
-    END_TIME=$(date +%s%N)
     ;;
 esac
+
+# Start WebSocket server
+# shellcheck disable=SC2086
+"$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
+  server --port "$PORT" --websocket-port "$PORT_WS" $server_wss_args \
+  >/dev/null 2>&1 &
+SERVER_PID=$!
+sleep 0.25
+
+# Start TCP client using tcp:// URL scheme
+set -x
+START_TIME=$(date +%s%N)
+echo timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$BUILD_DIR"/bin/ascii-chat \
+  --log-level debug --log-file "$client_log" --sync-state 1 \
+  client "${PROTOCOL_PREFIX}://localhost:$PORT" \
+  --test-pattern \
+  --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
+  2>/dev/null \
+  | tee "$client_stdout"
+EXIT_CODE=$?
+END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
 ELAPSED_NS=$((END_TIME - START_TIME))
