@@ -273,13 +273,19 @@ void terminal_enable_ansi(void) {
  * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  // Flush kernel output buffer for this file descriptor
-  // fsync() forces the kernel to write buffered data to the terminal immediately
+  // For TTY devices, use tcflush() to flush the terminal output buffer
+  // For regular files/pipes, use fsync() to flush kernel buffers
   // This is critical for smooth animation where each frame must appear before the next
-  // Note: TTYs don't support fsync(), which returns EINVAL or EBADF - that's normal
+
+  // Try tcflush first (works for TTY devices)
+  if (tcflush(fd, TCOFLUSH) == 0) {
+    return ASCIICHAT_OK;
+  }
+
+  // If tcflush fails (not a TTY), try fsync for regular files
   if (fsync(fd) < 0) {
-    // ENOTSUP: not supported (some filesystems), EINVAL: invalid for non-regular files (TTYs)
-    // EBADF: bad file descriptor. All of these are OK for TTYs/pipes - just skip fsync
+    // ENOTSUP: not supported, EINVAL: not a regular file (pipes), EBADF: bad fd
+    // These are OK - just means this fd type doesn't support flushing
     if (errno != ENOTSUP && errno != EINVAL && errno != EBADF) {
       return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
     }
