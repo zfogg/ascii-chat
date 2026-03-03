@@ -1700,12 +1700,30 @@ asciichat_error_t options_init(int argc, char **argv) {
   for (int i = 0; i < mode_argc; i++) {
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--splash-screen") == 0 || strncmp(mode_argv[i], "--splash-screen=", 16) == 0)) {
-      opts.splash_screen = true;
+      // Parse the value if provided (--splash-screen=true/false)
+      bool splash_value = true; // Default to true for plain --splash-screen
+      if (strncmp(mode_argv[i], "--splash-screen=", 16) == 0) {
+        const char *value = mode_argv[i] + 16;
+        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 ||
+            strcasecmp(value, "0") == 0 || strcasecmp(value, "off") == 0) {
+          splash_value = false;
+        }
+      }
+      opts.splash_screen = splash_value;
       opts.splash_screen_explicitly_set = true;
     }
     if (mode_argv[i] &&
         (strcmp(mode_argv[i], "--status-screen") == 0 || strncmp(mode_argv[i], "--status-screen=", 16) == 0)) {
-      opts.status_screen = true;
+      // Parse the value if provided (--status-screen=true/false)
+      bool status_value = true; // Default to true for plain --status-screen
+      if (strncmp(mode_argv[i], "--status-screen=", 16) == 0) {
+        const char *value = mode_argv[i] + 16;
+        if (strcasecmp(value, "false") == 0 || strcasecmp(value, "no") == 0 ||
+            strcasecmp(value, "0") == 0 || strcasecmp(value, "off") == 0) {
+          status_value = false;
+        }
+      }
+      opts.status_screen = status_value;
       opts.status_screen_explicitly_set = true;
     }
 #ifndef NDEBUG
