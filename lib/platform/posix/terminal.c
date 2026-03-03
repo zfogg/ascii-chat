@@ -268,22 +268,16 @@ void terminal_enable_ansi(void) {
  * @param fd File descriptor for TTY output
  * @return 0 on success, -1 on failure
  *
- * For TTY file descriptors, use tcdrain() which waits until all output has been
- * transmitted. For regular files/pipes, use fsync() to force kernel buffer flush.
+ * Note: For TTY file descriptors, fsync() returns EINVAL because TTYs are
+ * character devices without persistent storage. We use tcdrain() for TTYs
+ * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  // Check if this is a TTY
-  if (isatty(fd)) {
-    // For TTYs, use tcdrain() to wait for transmission
-    // This ensures all pending output is sent to the terminal
-    if (tcdrain(fd) < 0) {
-      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to drain terminal output");
-    }
-  } else {
-    // For files/pipes, use fsync() to flush kernel buffers
-    if (fsync(fd) < 0 && errno != ENOTSUP) {
-      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
-    }
+  // Flush kernel output buffer for this file descriptor
+  // fsync() forces the kernel to write buffered data to the terminal immediately
+  // This is critical for smooth animation where each frame must appear before the next
+  if (fsync(fd) < 0 && errno != ENOTSUP) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
   }
   return ASCIICHAT_OK;
 }
