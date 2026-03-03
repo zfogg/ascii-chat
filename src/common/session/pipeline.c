@@ -189,11 +189,12 @@ static void *pipeline_capture_thread(void *arg) {
         if (!img) {
             if (session_capture_at_end(pipeline->capture)) {
                 log_info("[PIPELINE_CAPTURE] End of media reached");
-                // Push EOF sentinels
-                pipeline_frame_t sentinel = {0};
-                frame_queue_push(pipeline->display_queue, SAFE_MALLOC(sizeof(sentinel), pipeline_frame_t *), 10 * NS_PER_MS_INT);
+                // Push EOF sentinels (zero-initialized)
+                pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
+                frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
                 if (pipeline->has_render_file) {
-                    frame_queue_push(pipeline->encode_queue, SAFE_MALLOC(sizeof(sentinel), pipeline_frame_t *), 10 * NS_PER_MS_INT);
+                    pipeline_frame_t *sentinel2 = SAFE_CALLOC(1, sizeof(*sentinel2), pipeline_frame_t *);
+                    frame_queue_push(pipeline->encode_queue, sentinel2, 10 * NS_PER_MS_INT);
                 }
                 break;
             }
@@ -213,11 +214,12 @@ static void *pipeline_capture_thread(void *arg) {
 
             if (elapsed >= snapshot_delay) {
                 log_info("[PIPELINE_CAPTURE] Snapshot elapsed=%.3f reached delay=%.2f", elapsed, snapshot_delay);
-                // Push EOF sentinels
-                pipeline_frame_t sentinel = {0};
-                frame_queue_push(pipeline->display_queue, SAFE_MALLOC(sizeof(sentinel), pipeline_frame_t *), 10 * NS_PER_MS_INT);
+                // Push EOF sentinels (zero-initialized)
+                pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
+                frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
                 if (pipeline->has_render_file) {
-                    frame_queue_push(pipeline->encode_queue, SAFE_MALLOC(sizeof(sentinel), pipeline_frame_t *), 10 * NS_PER_MS_INT);
+                    pipeline_frame_t *sentinel2 = SAFE_CALLOC(1, sizeof(*sentinel2), pipeline_frame_t *);
+                    frame_queue_push(pipeline->encode_queue, sentinel2, 10 * NS_PER_MS_INT);
                 }
                 break;
             }
@@ -239,8 +241,10 @@ static void *pipeline_capture_thread(void *arg) {
         display_copy->pixels = SAFE_MALLOC(frame->w * frame->h * 3, uint8_t *);
         memcpy(display_copy->pixels, frame->pixels, frame->w * frame->h * 3);
 
+        log_info("[PIPELINE_CAPTURE_PUSH_DISPLAY] Pushing %dx%d frame to display_queue", display_copy->w, display_copy->h);
         if (!frame_queue_push(pipeline->display_queue, display_copy, 0)) {
             // Non-blocking: drop if queue full
+            log_warn("[PIPELINE_CAPTURE_DROP] Display queue full, dropping frame");
             free_frame(display_copy);
         }
 
@@ -371,19 +375,25 @@ asciichat_error_t session_pipeline_run_main(
 
         if (!frame) continue;  // timeout, check should_exit again
 
+        // Log frame details IMMEDIATELY after popping
+        log_debug("[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d",
+                  (void *)frame, (void *)frame->pixels, frame->w, frame->h);
+
         if (!frame->pixels) {
             // EOF sentinel
+            log_info("[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping");
             free_frame(frame);
             break;
         }
 
         // Validate frame before processing (catch memory corruption)
         if (!frame_is_valid(frame)) {
-            log_error("Skipping frame with corrupted dimensions");
+            log_error("Skipping frame with corrupted dimensions: w=%d, h=%d", frame->w, frame->h);
             free_frame(frame);
             continue;
         }
 
+        log_info("[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
         // Convert to ASCII
         image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
         char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
