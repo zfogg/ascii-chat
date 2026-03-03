@@ -587,30 +587,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
   if (snapshot_mode) {
-    // In snapshot mode, distribute total duration across all frames
-    // Each frame gets: total_duration_in_time_base_units / frame_count
-    // This ensures frames span the full snapshot_delay duration
-    extern uint64_t g_snapshot_actual_duration_ms;
-    extern uint64_t g_snapshot_last_capture_elapsed_ns;
-
-    if (enc->frame_count > 0) {
-      // Calculate frame duration = (requested_duration_seconds * time_base.den) / frame_count
-      // Use snapshot_delay (what user requested with -D), not actual capture time
-      double snapshot_delay = GET_OPTION(snapshot_delay);
-      double total_duration_sec = snapshot_delay;
-      int64_t total_duration_units = (int64_t)(total_duration_sec * (double)enc->codec_ctx->time_base.den);
-      frame_duration = total_duration_units / (enc->frame_count + 1);  // +1 because we're still encoding
-
-      if (enc->frame_count < 5 || enc->frame_count % 10 == 0) {
-        log_info("ffmpeg: snapshot frame %d: duration=%.3f sec (total=%.3f, frames=%d)",
-                enc->frame_count,
-                (double)frame_duration * enc->codec_ctx->time_base.num / enc->codec_ctx->time_base.den,
-                total_duration_sec, enc->frame_count + 1);
-      }
-    } else {
-      // Fallback to FPS-based if duration not available yet
-      frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
-    }
+    // In snapshot mode, use FPS-based frame duration
+    // The stream metadata duration will be set to snapshot_delay in destroy()
+    // FFmpeg will use the stream duration as authoritative for final playback length
+    frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
   } else {
     // Normal mode: use FPS-based frame duration
     frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
