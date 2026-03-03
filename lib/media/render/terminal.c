@@ -72,6 +72,13 @@ static uint32_t matrix_char_map(uint32_t ascii_char) {
  */
 static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, uint8_t fr, uint8_t fg, uint8_t fb,
                        uint8_t br, uint8_t bg, uint8_t bb) {
+  // DEBUG: Log first blit to see colors being used
+  static int blit_count = 0;
+  if (blit_count++ < 10) {
+    log_info("BLIT_GLYPH[%d]: px=%d py=%d bitmap(%ux%u) FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)",
+             blit_count, px, py, bm->width, bm->rows, fr, fg, fb, br, bg, bb);
+  }
+
   for (unsigned row = 0; row < bm->rows; row++) {
     int dy = py + (int)row;
     if (dy < 0 || dy >= r->height_px)
@@ -82,9 +89,18 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
         continue;
       uint8_t a = bm->buffer[row * bm->pitch + col];
       uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 3;
-      dst[0] = (uint8_t)((fr * a + br * (255 - a)) / 255);
-      dst[1] = (uint8_t)((fg * a + bg * (255 - a)) / 255);
-      dst[2] = (uint8_t)((fb * a + bb * (255 - a)) / 255);
+      uint8_t r_val = (uint8_t)((fr * a + br * (255 - a)) / 255);
+      uint8_t g_val = (uint8_t)((fg * a + bg * (255 - a)) / 255);
+      uint8_t b_val = (uint8_t)((fb * a + bb * (255 - a)) / 255);
+
+      // DEBUG: Sample first pixel to check output color
+      if (blit_count <= 3 && row == 0 && col == 0) {
+        log_info("  BLIT_PIXEL[%d]: (row=%u,col=%u,alpha=%u) → RGB(%u,%u,%u)", blit_count, row, col, a, r_val, g_val, b_val);
+      }
+
+      dst[0] = r_val;
+      dst[1] = g_val;
+      dst[2] = b_val;
     }
   }
 }
@@ -168,21 +184,29 @@ asciichat_error_t term_renderer_create(const term_renderer_config_t *cfg, termin
   // This ensures text doesn't overflow cells. Using size->metrics.height (line spacing)
   // instead of bitmap.rows causes cells to be too large and text to overflow.
   r->cell_h = r->ft_face->glyph->bitmap.rows;
-  r->baseline = r->ft_face->glyph->bitmap_top;
-  log_debug("DEBUG: cell_h=%d (from bitmap.rows), baseline=%d", r->cell_h, r->baseline);
+  int raw_bitmap_top = r->ft_face->glyph->bitmap_top;
+  log_debug("DEBUG: cell_h=%d (from bitmap.rows), raw_bitmap_top=%d", r->cell_h, raw_bitmap_top);
 
   // Apply aspect ratio correction unless --stretch is specified
   // Terminal characters are typically 2:1 (height:width) to appear normal
   if (!stretch_mode) {
     int corrected_h = r->cell_w * 2;
     if (corrected_h != r->cell_h && r->cell_h > 0) {
-      log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d), adjusting baseline", r->cell_h,
-               corrected_h, r->cell_w);
-      // When we change cell height, scale baseline proportionally
-      r->baseline = (r->baseline * corrected_h) / r->cell_h;
+      log_info("ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d)", r->cell_h, corrected_h, r->cell_w);
       r->cell_h = corrected_h;
     }
   }
+
+  // Position baseline vertically within the cell.
+  // Baseline should be positioned at approximately 75% of cell height to allow proper
+  // glyph rendering with space both above and below. This prevents glyphs from being
+  // clipped at the cell boundaries.
+  //
+  // Baseline position: y_glyph = py + r->baseline - g->bitmap_top
+  // We want: 0 <= baseline - bitmap_top < cell_h (glyph fits within cell)
+  // Choose: baseline = (3 * cell_h) / 4 (positions at 75% height)
+  r->baseline = (3 * r->cell_h) / 4;
+  log_debug("DEBUG: baseline set to %d (75%% of cell_h=%d)", r->baseline, r->cell_h);
 
   r->width_px = r->cols * r->cell_w;
   r->height_px = r->rows * r->cell_h;
@@ -226,6 +250,13 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
   // Clear framebuffer to ensure no leftover pixels from previous frames
   uint8_t def_bg = (r->theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
   memset(r->framebuffer, def_bg, (size_t)r->pitch * r->height_px);
+
+  // DEBUG: Log cell dimensions and font info
+  static int feed_count = 0;
+  if (feed_count++ < 2) {
+    log_info("TERM_RENDERER_FEED[%d]: Grid=%dx%d, Cell=(%d,%d)px, Output=(%dx%d)px, Baseline=%d",
+             feed_count, r->cols, r->rows, r->cell_w, r->cell_h, r->width_px, r->height_px, r->baseline);
+  }
 
   static const char home[] = "\033[H";
   vterm_input_write(r->vt, home, sizeof(home) - 1);
@@ -315,6 +346,12 @@ asciichat_error_t term_renderer_feed(terminal_renderer_t *r, const char *ansi_fr
         bb = cell.bg.rgb.blue;
       } else {
         br = bg = bb = def_bg;
+      }
+
+      // DEBUG: Log color extraction for sample cells
+      if ((row == 0 && col % 50 == 0) || (row == 5 && col % 50 == 0)) {
+        log_info("COLORS_EXTRACTED: row=%d col=%d char=0x%02x FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)",
+                 row, col, cell.chars[0], fr, fg, fb, br, bg, bb);
       }
 
       int px = col * r->cell_w, py = row * r->cell_h;
