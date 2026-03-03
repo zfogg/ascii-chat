@@ -178,7 +178,8 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     endif()
 
     # Build OpenSSL 3.4.0 if not cached
-    if(NOT EXISTS "${OPENSSL_PREFIX}/lib/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/lib/libcrypto.a")
+    # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
+    if(NOT EXISTS "${OPENSSL_PREFIX}/lib64/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/lib64/libcrypto.a")
         message(STATUS "  OpenSSL 3.4.0 not found in cache, building from source...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
@@ -251,7 +252,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         message(STATUS "  ${BoldGreen}OpenSSL 3.4.0${ColorReset} built and cached successfully")
     else()
-        message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/lib${ColorReset}")
+        message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/lib64${ColorReset}")
     endif()
 
     # Create imported targets for OpenSSL 3.4.0

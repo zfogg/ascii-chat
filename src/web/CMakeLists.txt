@@ -37,7 +37,9 @@ FetchContent_Declare(Sodium
     GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
 )
 set(SODIUM_DISABLE_TESTS ON)
-FetchContent_MakeAvailable(Sodium)
+if(BUILD_WEB)
+    FetchContent_MakeAvailable(Sodium)
+endif()
 
 # PCRE2
 FetchContent_Declare(pcre2
@@ -46,7 +48,9 @@ FetchContent_Declare(pcre2
 )
 set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-FetchContent_MakeAvailable(pcre2)
+if(BUILD_WEB)
+    FetchContent_MakeAvailable(pcre2)
+endif()
 
 # Opus codec (for client mode audio encoding/decoding)
 FetchContent_Declare(Opus
@@ -58,7 +62,9 @@ set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
 set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
 # Set minimum CMake version for Opus
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-FetchContent_MakeAvailable(Opus)
+if(BUILD_WEB)
+    FetchContent_MakeAvailable(Opus)
+endif()
 
 # Ensure Opus source headers take precedence over system headers
 if(TARGET opus)
@@ -81,7 +87,9 @@ set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
 set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
 set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
 set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
-FetchContent_MakeAvailable(zstd)
+if(BUILD_WEB)
+    FetchContent_MakeAvailable(zstd)
+endif()
 
 # Restore original message log level
 set(CMAKE_MESSAGE_LOG_LEVEL "${CMAKE_MESSAGE_LOG_LEVEL_BACKUP}")
@@ -470,27 +478,29 @@ set_target_properties(mirror-web PROPERTIES OUTPUT_NAME "mirror")
 set_target_properties(client-web PROPERTIES OUTPUT_NAME "client")
 
 # Copy outputs to web/src/wasm/dist/ (so Vite can import them)
-add_custom_command(TARGET mirror-web POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/mirror.js
-        ${CMAKE_CURRENT_BINARY_DIR}/mirror.wasm
-        ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
-    COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
-)
+if(BUILD_WEB)
+    add_custom_command(TARGET mirror-web POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/mirror.js
+            ${CMAKE_CURRENT_BINARY_DIR}/mirror.wasm
+            ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
+        COMMENT "Copying mirror WASM files to web/src/wasm/dist/"
+    )
 
-add_custom_command(TARGET client-web POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
-    COMMAND ${CMAKE_COMMAND} -E copy
-        ${CMAKE_CURRENT_BINARY_DIR}/client.js
-        ${CMAKE_CURRENT_BINARY_DIR}/client.wasm
-        ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
-    COMMENT "Copying client WASM files to web/src/wasm/dist/"
-)
+    add_custom_command(TARGET client-web POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist
+        COMMAND ${CMAKE_COMMAND} -E copy
+            ${CMAKE_CURRENT_BINARY_DIR}/client.js
+            ${CMAKE_CURRENT_BINARY_DIR}/client.wasm
+            ${CMAKE_SOURCE_DIR}/../../../web/web.ascii-chat.com/src/wasm/dist/
+        COMMENT "Copying client WASM files to web/src/wasm/dist/"
+    )
 
 # Combined WASM target (builds both mirror and client)
-add_custom_target(web
-    DEPENDS mirror-web client-web
-    COMMENT "All WASM modules built"
-)
+    add_custom_target(web
+        DEPENDS mirror-web client-web
+        COMMENT "All WASM modules built"
+    )
+endif()
 
