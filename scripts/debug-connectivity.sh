@@ -58,6 +58,7 @@ cmake --build "$BUILD_DIR"
 case "$PROTOCOL" in
   tcp)
     SNAPSHOT_DELAY=3.5
+    PROTOCOL_PREFIX="tcp"
     echo "Testing TCP connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
 
     # Start TCP server
@@ -68,13 +69,13 @@ case "$PROTOCOL" in
     SERVER_PID=$!
     sleep 0.25
 
-    # Start TCP client
+    # Start TCP client using tcp:// URL scheme
     EXIT_CODE=0
     START_TIME=$(date +%s%N)
     ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k2.0 5 "$BUILD_DIR"/bin/ascii-chat \
       --log-level debug --log-file "$client_log" --sync-state 3 \
       client \
-      localhost:"$PORT" \
+      "${PROTOCOL_PREFIX}://localhost:$PORT" \
       --test-pattern \
       -S -D "$SNAPSHOT_DELAY" \
       2>/dev/null | tee "$client_stdout" \
