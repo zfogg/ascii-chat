@@ -1169,11 +1169,9 @@ int protocol_start_connection() {
  * @ingroup client_protocol
  */
 void protocol_stop_connection() {
-  // Log final frame count before shutting down
+  // Log final frame count before shutting down (always log for diagnostic purposes)
   int final_frame_count = atomic_load_u64(&g_frames_rendered);
-  if (final_frame_count > 0) {
-    log_info("📊 CLIENT SESSION STATS: %d unique frames rendered during connection", final_frame_count);
-  }
+  log_info("📊 CLIENT SESSION STATS: %d unique frames rendered during connection", final_frame_count);
 
   log_debug("[PROTOCOL_STOP] 1. Starting protocol_stop_connection");
 
