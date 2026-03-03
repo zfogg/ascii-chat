@@ -389,7 +389,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
+    pre_convert_ns = time_get_ns();
     char *ascii_frame = session_display_convert_to_ascii(display, image);
+    post_convert_ns = time_get_ns();
+    uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (ascii_frame) {
       log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
