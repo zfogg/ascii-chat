@@ -48,6 +48,7 @@ struct ffmpeg_encoder_s {
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
   int has_audio_stream;              // Whether audio stream was created
   int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
+  uint64_t previous_captured_ns;     // Previous frame's capture timestamp (for snapshot mode)
   double snapshot_actual_duration;   // Actual wall-clock duration in snapshot mode (seconds)
   uint64_t snapshot_elapsed_ns;      // Current elapsed time in snapshot mode for dynamic frame duration
 
@@ -341,6 +342,25 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   ffmpeg_encoder_t *enc = SAFE_CALLOC(1, sizeof(*enc), ffmpeg_encoder_t *);
   enc->width_px = width_px;
   enc->height_px = height_px;
+
+  // For snapshot mode, use a reduced FPS to achieve the desired output duration
+  // Estimate: typical webcam at 30fps capturing for snapshot_delay seconds
+  // Expected frames = 30 * snapshot_delay
+  // output_fps = expected_frames / snapshot_delay = 30
+  // This way, packet durations (1/fps seconds) will naturally sum to the correct total
+  bool snapshot_mode = GET_OPTION(snapshot_mode);
+  double snapshot_delay = GET_OPTION(snapshot_delay);
+  log_debug("ffmpeg_encoder_create: snapshot_mode=%d, snapshot_delay=%.1f", snapshot_mode, snapshot_delay);
+  if (snapshot_mode) {
+    // Use a lower FPS so frame durations span the snapshot_delay period
+    // Assume ~30fps input, so we'll get ~30*delay frames
+    // Set output FPS so that frame_count * (1/output_fps) = snapshot_delay
+    // output_fps = frame_count / snapshot_delay ≈ 30
+    fps = 30;  // Conservative estimate for typical webcam
+    log_info("ffmpeg_encoder_create: Snapshot mode with snapshot_delay=%.1f - using reduced fps=%d for proper duration",
+             snapshot_delay, fps);
+  }
+
   enc->fps = fps;
   enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
 
@@ -588,8 +608,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
   if (snapshot_mode) {
     // In snapshot mode, use FPS-based frame duration
-    // The stream metadata duration will be set to snapshot_delay in destroy()
-    // FFmpeg will use the stream duration as authoritative for final playback length
+    // The final duration will be adjusted to match snapshot_delay in destroy()
     frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
   } else {
     // Normal mode: use FPS-based frame duration
@@ -649,6 +668,8 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   }
 
   // Receive packets from encoder and write to file
+  static int write_frame_pkt_count = 0;
+
   while (ret >= 0) {
     ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
     if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
@@ -658,6 +679,8 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
       break;
     }
 
+    write_frame_pkt_count++;
+
     // Set packet duration in codec time base (duration of one frame at target FPS)
     // This ensures proper stream duration calculation
     if (enc->pkt->duration == 0) {
@@ -666,6 +689,29 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
     av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
     enc->pkt->stream_index = enc->stream->index;
+
+    // In snapshot mode, apply adjusted duration if snapshot_actual_duration is set
+    // This happens when we get the actual duration from the capture thread
+    bool is_snapshot_mode = GET_OPTION(snapshot_mode);
+    if (is_snapshot_mode && enc->snapshot_actual_duration > 0 && enc->frame_count > 0) {
+      int64_t adjusted_dur = (int64_t)((enc->snapshot_actual_duration * enc->stream->time_base.den) / enc->frame_count);
+      // Only apply if it's significantly different from the default
+      if (adjusted_dur > enc->pkt->duration * 2) {
+        enc->pkt->duration = adjusted_dur;
+        log_debug("ffmpeg: write_frame packet %d duration adjusted to %lld units based on actual duration",
+                  write_frame_pkt_count, (long long)enc->pkt->duration);
+      }
+    } else if (!is_snapshot_mode && write_frame_pkt_count < 3) {
+      log_debug("ffmpeg: write_frame pkt %d, duration=%lld, snapshot_mode=%d, actual_dur=%.2f, frame_count=%d",
+                write_frame_pkt_count, (long long)enc->pkt->duration, is_snapshot_mode, enc->snapshot_actual_duration,
+                enc->frame_count);
+    }
+
+    if (write_frame_pkt_count <= 2 || write_frame_pkt_count >= 16) {
+      log_debug("ffmpeg: write_frame pkt %d with final duration=%lld (%.6f sec in stream time_base), total frames=%d",
+                write_frame_pkt_count, (long long)enc->pkt->duration,
+                (double)enc->pkt->duration / enc->stream->time_base.den, enc->frame_count);
+    }
 
     ret = av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
     av_packet_unref(enc->pkt);
@@ -755,8 +801,19 @@ void ffmpeg_encoder_set_snapshot_actual_duration(ffmpeg_encoder_t *enc, double a
   if (!enc)
     return;
   enc->snapshot_actual_duration = actual_duration_sec;
-  log_info("ffmpeg_encoder_set_snapshot_actual_duration: Setting duration to %.3f seconds (already encoded %d frames)",
-          actual_duration_sec, enc->frame_count);
+
+  // If we already have frame count, we can calculate the adjusted packet duration now
+  // This will be used for any remaining frames and during flush
+  if (enc->frame_count > 0 && actual_duration_sec > 0) {
+    // Calculate the packet duration that would make all frames fit in actual_duration_sec
+    // packet_duration_units = (actual_duration_sec * time_base.den) / frame_count
+    // This is only a starting point - the actual duration might be different if more frames are captured
+    log_debug("ffmpeg_encoder_set_snapshot_actual_duration: %.3f sec with %d frames so far",
+              actual_duration_sec, enc->frame_count);
+  } else {
+    log_info("ffmpeg_encoder_set_snapshot_actual_duration: Setting duration to %.3f seconds (already encoded %d frames)",
+            actual_duration_sec, enc->frame_count);
+  }
 }
 
 asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
@@ -765,9 +822,28 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
 
   NAMED_UNREGISTER(enc);
 
+  // In snapshot mode, calculate the FPS needed to match the target duration
+  bool snapshot_mode = GET_OPTION(snapshot_mode);
+  int64_t adjusted_packet_duration = 0;
+  double snapshot_delay = GET_OPTION(snapshot_delay);
+
+  if (snapshot_mode && enc->frame_count > 0 && snapshot_delay > 0) {
+    // Calculate output FPS that distributes frames across snapshot_delay seconds
+    // output_fps = frame_count / snapshot_delay
+    // packet_duration (in stream time_base) = stream_time_base.den / output_fps
+    //                                        = (stream_time_base.den * snapshot_delay) / frame_count
+    adjusted_packet_duration = (int64_t)((snapshot_delay * enc->stream->time_base.den) / enc->frame_count);
+    log_info("ffmpeg_encoder_destroy: Snapshot mode - adjusting packet durations for %d frames over %.2f seconds",
+             enc->frame_count, snapshot_delay);
+    log_debug("  Adjusted packet duration: %lld units (%.6f seconds per frame)",
+              (long long)adjusted_packet_duration,
+              (double)adjusted_packet_duration / enc->stream->time_base.den);
+  }
+
   // Flush video encoder (capture libx264 final statistics)
   LOG_IO("ffmpeg", {
     avcodec_send_frame(enc->codec_ctx, NULL);
+    int flush_pkt_count = 0;
     while (1) {
       int ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
       if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
@@ -775,12 +851,21 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       if (ret < 0)
         break;
 
+      flush_pkt_count++;
+
       // Set packet duration in codec time base if not already set
       if (enc->pkt->duration == 0) {
         enc->pkt->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
       }
 
+      // In snapshot mode, rescale to stream time_base and apply adjusted duration if set
+      int64_t duration_before = enc->pkt->duration;
       av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
+      if (snapshot_mode && adjusted_packet_duration > 0) {
+        enc->pkt->duration = adjusted_packet_duration;
+        log_debug("ffmpeg_encoder_destroy: Flush packet %d duration adjusted from %lld to %lld",
+                  flush_pkt_count, (long long)duration_before, (long long)adjusted_packet_duration);
+      }
       enc->pkt->stream_index = enc->stream->index;
       av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
       av_packet_unref(enc->pkt);
