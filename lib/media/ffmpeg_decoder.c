@@ -255,7 +255,7 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
     sb->size += bytes_read;
   }
 
-  log_info("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
+  log_debug("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
   return sb;
 }
 
@@ -762,10 +762,9 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
-  log_info("ffmpeg_decoder_create_stdin called (buffer=%p)", (void*)g_stdin_buffer);
   // Buffer entire stdin on first call (shared between video and audio decoders)
   if (!g_stdin_buffer) {
-    log_info("Reading stdin into buffer...");
+    log_debug("Reading stdin into buffer...");
     g_stdin_buffer = stdin_buffer_read_all();
     if (!g_stdin_buffer) {
       SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to read stdin into buffer");
@@ -786,18 +785,24 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
-  // No AVIO buffer needed - we'll use memory-based reading from g_stdin_buffer
-  decoder->avio_buffer = NULL;
-
   // Create seekable AVIO context for buffered stdin (reset position for each decoder)
   g_stdin_buffer->pos = 0;
-  decoder->avio_ctx = avio_alloc_context(NULL,        // buffer (not used)
-                                         0,           // buffer_size (not used)
-                                         0,           // write_flag
-                                         g_stdin_buffer, // opaque
+
+  // Allocate a small internal buffer for AVIO (required by avio_alloc_context)
+  decoder->avio_buffer = SAFE_MALLOC(AVIO_BUFFER_SIZE, unsigned char *);
+  if (!decoder->avio_buffer) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate AVIO buffer");
+    SAFE_FREE(decoder);
+    return NULL;
+  }
+
+  decoder->avio_ctx = avio_alloc_context(decoder->avio_buffer,  // internal buffer for AVIO
+                                         AVIO_BUFFER_SIZE,       // buffer size
+                                         0,                      // write_flag
+                                         g_stdin_buffer,         // opaque (our data buffer)
                                          memory_read_packet,
-                                         NULL,        // write_packet
-                                         memory_seek_packet  // seek (memory is seekable)
+                                         NULL,                   // write_packet
+                                         memory_seek_packet      // seek (memory is seekable)
   );
 
   if (!decoder->avio_ctx) {

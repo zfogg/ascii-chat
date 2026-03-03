@@ -351,6 +351,19 @@ void session_display_write_raw(session_display_ctx_t *ctx, const char *data, siz
 void session_display_render_fps_overlay(session_display_ctx_t *ctx);
 
 /**
+ * @brief Set the actual wall-clock duration for snapshot mode frame timing
+ * @param ctx Display context (must not be NULL)
+ * @param actual_duration_sec Actual elapsed time in seconds
+ *
+ * In snapshot mode, this function provides the actual wall-clock duration of frame capture,
+ * allowing the encoder to calculate correct frame durations so the output video spans
+ * exactly the specified duration.
+ *
+ * @ingroup session
+ */
+void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec);
+
+/**
  * @brief Reset terminal to default state
  * @param ctx Display context (must not be NULL)
  *

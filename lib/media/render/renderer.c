@@ -227,6 +227,12 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   return err;
 }
 
+void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec) {
+  if (!ctx || !ctx->encoder)
+    return;
+  ffmpeg_encoder_set_snapshot_actual_duration(ctx->encoder, actual_duration_sec);
+}
+
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
   if (!ctx)
     return ASCIICHAT_OK;

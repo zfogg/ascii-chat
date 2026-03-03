@@ -71,6 +71,9 @@ void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_sour
 // Feed one ANSI frame string — renders pixels then writes to encoder, synced with audio.
 asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame);
 
+// Set actual wall-clock duration for snapshot mode (passes through to encoder).
+void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec);
+
 // Flush encoder and close file.  Always frees *ctx regardless of error.
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx);
 

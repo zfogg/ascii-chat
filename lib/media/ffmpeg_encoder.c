@@ -49,6 +49,7 @@ struct ffmpeg_encoder_s {
   int has_audio_stream;              // Whether audio stream was created
   int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
   double snapshot_actual_duration;   // Actual wall-clock duration in snapshot mode (seconds)
+  uint64_t snapshot_elapsed_ns;      // Current elapsed time in snapshot mode for dynamic frame duration
 };
 
 // Determine audio codec from file extension
@@ -539,6 +540,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   enc->frame_count = 0;
   enc->video_pts = 0;
   enc->snapshot_actual_duration = 0.0;
+  enc->snapshot_elapsed_ns = 0;
   *out = enc;
 
   /* Register encoder with named registry */
@@ -566,14 +568,35 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->height_px, enc->frame_encoded->data,
             enc->frame_encoded->linesize);
 
-  // Set frame duration based on configured FPS
-  // In snapshot mode, the encoder destroy function will adjust stream->duration to span snapshot_delay
-  // So we don't need to guess about frame count here - just use normal FPS-based duration
-  enc->frame_encoded->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+  // Set frame duration based on mode
+  int64_t frame_duration;
+  bool snapshot_mode = GET_OPTION(snapshot_mode);
+
+  if (snapshot_mode) {
+    // In snapshot mode, calculate frame duration to span exactly snapshot_delay seconds
+    // Use actual_duration if set by render loop, otherwise estimate from snapshot_delay
+    double snapshot_delay = GET_OPTION(snapshot_delay);
+    double effective_duration = (enc->snapshot_actual_duration > 0.0) ? enc->snapshot_actual_duration : snapshot_delay;
+
+    // Frame duration = effective_duration / (frame_count + 1)
+    // The +1 is because we're calculating DURING encoding, so frame_count is one less than final
+    int estimated_frames = enc->frame_count + 1;
+    if (estimated_frames < 1) estimated_frames = 1;
+
+    // Frame duration (in time_base units)
+    frame_duration = (int64_t)((effective_duration / (double)estimated_frames) * enc->codec_ctx->time_base.den / enc->codec_ctx->time_base.num);
+    log_dev("ffmpeg: snapshot frame duration = %.3f seconds (effective_duration=%.2f, frames=%d)",
+            (double)frame_duration * enc->codec_ctx->time_base.num / enc->codec_ctx->time_base.den, effective_duration, estimated_frames);
+  } else {
+    // Normal mode: use FPS-based frame duration
+    frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+  }
+
+  enc->frame_encoded->duration = frame_duration;
 
   // Set frame PTS as cumulative time in time_base units
   enc->frame_encoded->pts = enc->video_pts;
-  enc->video_pts += enc->frame_encoded->duration;
+  enc->video_pts += frame_duration;
 
   // Send frame to encoder
   int ret = avcodec_send_frame(enc->codec_ctx, enc->frame_encoded);

@@ -580,12 +580,20 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
     if (snapshot_mode && (snapshot_done || output_paused_frame)) {
       // Calculate elapsed time from first frame rendered to now
+      double elapsed_sec = 0.0;
       if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
         uint64_t now_ns = time_get_ns();
         uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
-        double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+        elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
         log_info("SNAPSHOT: EXIT - Elapsed time: %.3f seconds (snapshot_delay=%.2f)", elapsed_sec, GET_OPTION(snapshot_delay));
       }
+
+      // Pass actual elapsed time to display module for render-file encoding
+      // This allows the encoder to calculate correct frame durations
+      if (display) {
+        session_display_set_snapshot_actual_duration(display, elapsed_sec);
+      }
+
       // Signal application to exit in snapshot mode
       APP_CALLBACK_VOID(signal_exit);
       break;
@@ -630,6 +638,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     if (is_synchronous && capture) {
       // Use user-specified FPS from options, not capture context FPS
       uint32_t target_fps = (uint32_t)GET_OPTION(fps);
+
+      // In snapshot mode, disable FPS limiting (set target_fps=0) to capture as many frames as possible
+      // This lets the decoder/encoder run at max speed during the snapshot capture window
+      if (snapshot_mode) {
+        target_fps = 0;  // Skip sleep to maximize frame capture
+      }
+
       if (target_fps > 0) {
         uint64_t frame_end_ns = time_get_ns();
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
