@@ -850,26 +850,37 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
     (void)terminal_flush(flush_fd);
   } else {
     // Non-interactive piped output
-    char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
-    if (write_buf) {
-      memcpy(write_buf, display_frame, frame_len);
-      write_buf[frame_len] = '\n';
-      (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+    // BUT: Don't write ASCII frames to stdout if render_file is using stdout (--render-file="-")
+    if (!ctx->render_file) {
+      // No render-file, safe to write ASCII frames to stdout
+      char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
+      if (write_buf) {
+        memcpy(write_buf, display_frame, frame_len);
+        write_buf[frame_len] = '\n';
+        (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
 
-      // Start snapshot timer on first ASCII frame rendered
+        // Start snapshot timer on first ASCII frame rendered
+        if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
+          g_snapshot_first_frame_rendered = true;
+          g_snapshot_first_frame_rendered_ns = time_get_ns();
+          log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
+        }
+
+        SAFE_FREE(write_buf);
+      }
+
+      // Flush buffers
+      (void)fflush(stdout);
+      int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+      (void)terminal_flush(flush_fd);
+    } else {
+      // render_file is using stdout: skip ASCII output to avoid mixing with video
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
-        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
+        log_info("SNAPSHOT: FIRST FRAME RENDERED (render_file piped) - Timer started");
       }
-
-      SAFE_FREE(write_buf);
     }
-
-    // Flush buffers
-    (void)fflush(stdout);
-    int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-    (void)terminal_flush(flush_fd);
   }
 
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
