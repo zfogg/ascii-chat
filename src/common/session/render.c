@@ -395,20 +395,19 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     post_convert_ns = time_get_ns();
     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
+    // Declare variables that need scope beyond the if (ascii_frame) block
+    bool is_paused_frame = initial_paused_frame_rendered && is_paused;
+    bool output_paused_frame = snapshot_mode && is_paused_frame;
+    uint64_t pre_render_ns = 0, post_render_ns = 0;
+
     if (ascii_frame) {
       log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
-      // Detect when we have a paused frame (first frame after pausing)
-      bool is_paused_frame = initial_paused_frame_rendered && is_paused;
-
-      // When paused with snapshot mode, output the initial frame immediately
-      bool output_paused_frame = snapshot_mode && is_paused_frame;
 
       // Always attempt to render frames; the display context will handle filtering based on:
       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
       // - Piped mode: render all frames without cursor control (for continuous capture)
       // - Snapshot mode on non-TTY: only the display context renders the final frame
       bool should_write = true;
-      uint64_t pre_render_ns = 0, post_render_ns = 0; // Declare outside if block for timing
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         // Profile: render frame
@@ -471,57 +470,63 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
       // Free frame before checking exit conditions to avoid double-free
       SAFE_FREE(ascii_frame);
+    }
 
-      // Snapshot mode timing: mark that first frame has been rendered
-      if (snapshot_mode && !first_frame_rendered) {
-        first_frame_rendered = true;
-        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered at time 0");
+    // Snapshot mode timing: mark that first frame has been processed (regardless of conversion success)
+    // This ensures snapshot timing works even if frame conversion fails
+    if (snapshot_mode && !first_frame_rendered) {
+      first_frame_rendered = true;
+      log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame processed at time 0");
+    }
+
+    // Snapshot mode: check if enough frames have been captured for the desired output duration
+    // This check runs every iteration, not just when ascii_frame succeeds
+    if (snapshot_mode && !snapshot_done && first_frame_rendered) {
+      double snapshot_delay = GET_OPTION(snapshot_delay);
+
+      // Get the actual capture frame rate to calculate target frames
+      // snapshot_delay specifies the OUTPUT video duration (in seconds)
+      // target_frames = snapshot_delay * capture_fps
+      uint32_t capture_fps = 0;
+      if (capture) {
+        capture_fps = session_capture_get_target_fps(capture);
+      }
+      if (capture_fps == 0) {
+        capture_fps = (uint32_t)GET_OPTION(fps);
+      }
+      // Ensure minimum FPS for calculations to prevent 0-frame animations
+      if (capture_fps == 0) {
+        capture_fps = 30; // Default fallback FPS
       }
 
-      // Snapshot mode: check if enough frames have been captured for the desired output duration
-      if (snapshot_mode && !snapshot_done && first_frame_rendered) {
-        double snapshot_delay = GET_OPTION(snapshot_delay);
+      // Calculate target frame count for the desired output duration
+      // snapshot_delay=0 means exit after first frame
+      // snapshot_delay>0 means record enough frames for that many seconds of output video
+      uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
 
-        // Get the actual capture frame rate to calculate target frames
-        // snapshot_delay specifies the OUTPUT video duration (in seconds)
-        // target_frames = snapshot_delay * capture_fps
-        uint32_t capture_fps = 0;
-        if (capture) {
-          capture_fps = session_capture_get_target_fps(capture);
-        }
-        if (capture_fps == 0) {
-          capture_fps = (uint32_t)GET_OPTION(fps);
-        }
-        // Ensure minimum FPS for calculations to prevent 0-frame animations
-        if (capture_fps == 0) {
-          capture_fps = 30; // Default fallback FPS
-        }
+      log_info("[SNAPSHOT] frame_count=%lu target_frames=%lu delay=%.1f fps=%u", frame_count, target_frames, snapshot_delay, capture_fps);
 
-        // Calculate target frame count for the desired output duration
-        // snapshot_delay=0 means exit after first frame
-        // snapshot_delay>0 means record enough frames for that many seconds of output video
-        uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
-
-        log_info("[SNAPSHOT] frame_count=%lu target_frames=%lu delay=%.1f fps=%u", frame_count, target_frames, snapshot_delay, capture_fps);
-
-        // Exit when we've captured enough frames for the desired output duration
-        if (frame_count >= target_frames) {
-          // We don't end frames with newlines so the next log would print on the same line as the frame's
-          // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
-          // so piped snapshots don't have a weird newline in stdout that they don't need.
-          if (snapshot_mode && terminal_is_interactive()) {
-            printf("\n");
-          }
-          snapshot_done = true;
+      // Exit when we've captured enough frames for the desired output duration
+      if (frame_count >= target_frames) {
+        // We don't end frames with newlines so the next log would print on the same line as the frame's
+        // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
+        // so piped snapshots don't have a weird newline in stdout that they don't need.
+        if (snapshot_mode && terminal_is_interactive()) {
+          printf("\n");
         }
+        snapshot_done = true;
       }
+    }
 
-      // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
-      if (snapshot_mode && (snapshot_done || output_paused_frame)) {
-        // Signal application to exit in snapshot mode
-        APP_CALLBACK_VOID(signal_exit);
-        break;
-      }
+    // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
+    if (snapshot_mode && (snapshot_done || output_paused_frame)) {
+      // Signal application to exit in snapshot mode
+      APP_CALLBACK_VOID(signal_exit);
+      break;
+    }
+
+    // Frame rendering and timing details (moved down since snapshot exit is now above it)
+    if (ascii_frame) {
 
       // Measure frame completion right after rendering, BEFORE keyboard polling
       // This gives us accurate timing for just the core frame operations
