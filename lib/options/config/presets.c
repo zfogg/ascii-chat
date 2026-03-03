@@ -200,6 +200,17 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                  "POSITIONAL ARGUMENTS", client_examples, ARRAY_SIZE(client_examples),
                                  OPTION_MODE_CLIENT, parse_client_address);
 
+  // Mirror mode: [file|url] - file path or URL to stream
+  static const char *mirror_media_examples[] = {
+      "/path/to/video.mp4",
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "https://example.com/stream.m3u8"};
+  options_builder_add_positional(b, "file|url",
+                                 "(optional) Media file path or URL to stream. If omitted, uses webcam. "
+                                 "Cannot be combined with --file or --url.",
+                                 false, "POSITIONAL ARGUMENTS", mirror_media_examples,
+                                 ARRAY_SIZE(mirror_media_examples), OPTION_MODE_MIRROR, parse_mirror_media);
+
   // Add usage lines for all modes
   options_builder_add_usage(b, NULL, NULL, true, "Start a new session (share the session string)");
   options_builder_add_usage(b, NULL, "<session-string>", true, "Join an existing session");
@@ -207,7 +218,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
   options_builder_add_usage(b, "server", "[bind-address] [bind-address]", true,
                             "Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, "client", "[address]", true, "Connect to server (defaults to localhost:27224)");
-  options_builder_add_usage(b, "mirror", NULL, true, "View local webcam or media file as ASCII art");
+  options_builder_add_usage(b, "mirror", "[file|url]", true, "View local webcam or media file or URL as ASCII art");
   options_builder_add_usage(b, "discovery-service", "[bind-address] [bind-address]", true,
                             "Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)");
   options_builder_add_usage(b, NULL, "[mode] --help", false, "Show help for a specific mode");

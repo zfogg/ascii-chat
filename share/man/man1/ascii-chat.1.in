@@ -28,6 +28,7 @@ using a local console, a remote SSH session, or any terminal emulator.
 .PP
 .B ascii-chat mirror
 [\fImode-options\fR]
+[\fIfile|url\fR]
 .PP
 .B ascii-chat discovery-service
 [\fIbind-address\fR]

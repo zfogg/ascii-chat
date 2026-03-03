@@ -241,6 +241,34 @@ int parse_server_bind_address(const char *arg, void *config, char **remaining, i
 int parse_client_address(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
 
 /**
+ * @brief Parse mirror mode media positional argument
+ * @param arg File path or URL argument
+ * @param config Pointer to options struct (must contain media_file and media_url fields)
+ * @param remaining Remaining positional args (unused)
+ * @param num_remaining Count of remaining args
+ * @param error_msg Error message output (set on failure, caller must free)
+ * @return 1 if consumed the argument, -1 on error
+ *
+ * Mirror mode media argument parsing rules:
+ * - Cannot be used together with --file or --url flags (mutually exclusive)
+ * - Attempts to access argument as a file path first (using platform_access)
+ * - If file doesn't exist or isn't readable, treats as URL
+ * - Sets either media_file or media_url field depending on what's detected
+ *
+ * Example usage with options_builder_add_positional():
+ * ```c
+ * options_builder_add_positional(
+ *     builder,
+ *     "file|url",
+ *     "(optional) Media file path or URL to stream",
+ *     false,  // Not required (defaults to webcam)
+ *     parse_mirror_media
+ * );
+ * ```
+ */
+int parse_mirror_media(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg);
+
+/**
  * @brief Custom parser for --verbose flag
  *
  * Allows --verbose to work both as a flag (without argument) and with an optional

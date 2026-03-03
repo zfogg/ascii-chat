@@ -851,6 +851,64 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
 }
 
 // ============================================================================
+// Mirror Mode Media Positional Argument Parser
+// ============================================================================
+
+/**
+ * @brief Parse mirror mode positional argument (file path or URL)
+ *
+ * Logic:
+ * 1. Enforce mutual exclusion with --file and --url flags
+ * 2. Check if argument is an accessible file path first
+ * 3. If not a file, treat as URL (yt-dlp/ffmpeg will handle errors)
+ * 4. Set media_file or media_url accordingly
+ */
+int parse_mirror_media(const char *arg, void *config, char **remaining, int num_remaining, char **error_msg) {
+  (void)remaining;
+  (void)num_remaining;
+
+  if (!arg || !config) {
+    if (error_msg) {
+      *error_msg = platform_strdup("Internal error: NULL argument or config");
+    }
+    return -1;
+  }
+
+  // Cast config to options_t
+  options_t *opts = (options_t *)config;
+
+  // Enforce mutual exclusion with --file flag
+  if (opts->media_file[0] != '\0') {
+    if (error_msg) {
+      *error_msg = platform_strdup("cannot use both --file and a positional argument");
+    }
+    return -1;
+  }
+
+  // Enforce mutual exclusion with --url flag
+  if (opts->media_url[0] != '\0') {
+    if (error_msg) {
+      *error_msg = platform_strdup("cannot use both --url and a positional argument");
+    }
+    return -1;
+  }
+
+  log_debug("parse_mirror_media: Processing argument: '%s'", arg);
+
+  // Check if it's an accessible file path (priority 1)
+  if (platform_access(arg, PLATFORM_ACCESS_READ) == 0) {
+    log_debug("Argument '%s' is an accessible file", arg);
+    SAFE_SNPRINTF(opts->media_file, OPTIONS_BUFF_SIZE, "%s", arg);
+    return 1; // Consumed 1 argument
+  }
+
+  // Not a file; treat as URL (yt-dlp/ffmpeg will handle any errors)
+  log_debug("Argument '%s' not found as file; treating as URL", arg);
+  SAFE_SNPRINTF(opts->media_url, OPTIONS_BUFF_SIZE, "%s", arg);
+  return 1; // Consumed 1 argument
+}
+
+// ============================================================================
 // Palette Characters Parser
 // ============================================================================
 
