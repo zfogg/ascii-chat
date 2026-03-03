@@ -492,6 +492,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (capture_fps == 0) {
           capture_fps = (uint32_t)GET_OPTION(fps);
         }
+        // Ensure minimum FPS for calculations to prevent 0-frame animations
+        if (capture_fps == 0) {
+          capture_fps = 30; // Default fallback FPS
+        }
 
         // Calculate target frame count for the desired output duration
         // snapshot_delay=0 means exit after first frame
