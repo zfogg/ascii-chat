@@ -75,7 +75,7 @@ if(USE_MUSL)
                 -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
                 -DLWS_WITHOUT_TEST_PING=ON
                 -DLWS_WITHOUT_TEST_CLIENT=ON
-                -DLWS_WITH_SSL=OFF
+                -DLWS_WITH_SSL=ON
                 -DLWS_WITH_LIBEV=OFF
                 -DLWS_WITH_LIBUV=OFF
                 -DLWS_WITH_LIBEVENT=OFF
@@ -186,7 +186,7 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
             -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
             -DLWS_WITHOUT_TEST_PING=ON
             -DLWS_WITHOUT_TEST_CLIENT=ON
-            -DLWS_WITH_SSL=OFF
+            -DLWS_WITH_SSL=ON
             -DLWS_WITH_LIBEV=OFF
             -DLWS_WITH_LIBUV=OFF
             -DLWS_WITH_LIBEVENT=OFF
