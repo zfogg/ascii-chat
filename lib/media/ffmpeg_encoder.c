@@ -324,6 +324,8 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
 
 asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, int height_px, int fps,
                                         ffmpeg_encoder_t **out) {
+  log_info("[FFMPEG_ENCODER_CREATE] START: output=%s, %dx%d @ %dfps", output_path, width_px, height_px, fps);
+
   if (!output_path || !out || width_px <= 0 || height_px <= 0)
     return SET_ERRNO(ERROR_INVALID_PARAM, "ffmpeg_encoder_create: invalid parameters");
 
@@ -546,6 +548,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   /* Register encoder with named registry */
   NAMED_REGISTER_FFMPEG_ENCODER(enc, output_path, NULL);
 
+  log_info("[FFMPEG_ENCODER_CREATE] SUCCESS: encoder initialized, frame_count=0, fps=%d, dims=%dx%d", enc->fps, enc->width_px, enc->height_px);
   return ASCIICHAT_OK;
 }
 
@@ -553,6 +556,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   if (!enc || !rgb)
     return SET_ERRNO(ERROR_INVALID_PARAM, "ffmpeg_encoder_write_frame: NULL input");
 
+  log_info("[FFMPEG_ENCODER_WRITE] frame %d, pitch=%d, dims=%dx%d", enc->frame_count, pitch, enc->width_px, enc->height_px);
   log_debug("ffmpeg_encoder_write_frame: frame %d, pitch=%d, dims=%dx%d", enc->frame_count, pitch, enc->width_px,
             enc->height_px);
 

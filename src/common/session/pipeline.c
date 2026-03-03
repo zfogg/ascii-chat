@@ -136,6 +136,24 @@ static void free_frame(pipeline_frame_t *f) {
     SAFE_FREE(f);
 }
 
+// Validate frame dimensions to detect corruption
+static bool frame_is_valid(const pipeline_frame_t *f) {
+    if (!f) {
+        log_error("Frame pointer is NULL");
+        return false;
+    }
+    // Reasonable bounds: width/height should be between 1 and 10000
+    if (f->w <= 0 || f->w > 10000 || f->h <= 0 || f->h > 10000) {
+        log_error("Invalid frame dimensions detected: w=%d, h=%d (likely corrupted)", f->w, f->h);
+        return false;
+    }
+    if (!f->pixels) {
+        log_error("Frame pixels pointer is NULL");
+        return false;
+    }
+    return true;
+}
+
 /* ============================================================================
  * Pipeline Context
  * ============================================================================ */
@@ -229,7 +247,10 @@ static void *pipeline_capture_thread(void *arg) {
         if (pipeline->has_render_file) {
             if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
                 // Blocking: keep trying to enqueue for file output
+                log_warn("[PIPELINE_CAPTURE] Failed to enqueue frame for encoding (timeout), dropping frame");
                 free_frame(frame);
+            } else {
+                log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w, frame->h);
             }
         } else {
             free_frame(frame);
@@ -257,6 +278,13 @@ static void *pipeline_encode_thread(void *arg) {
             // EOF sentinel
             free_frame(frame);
             break;
+        }
+
+        // Validate frame before processing (catch memory corruption)
+        if (!frame_is_valid(frame)) {
+            log_error("Skipping frame with corrupted dimensions in encode thread");
+            free_frame(frame);
+            continue;
         }
 
         // Encode frame: wrap in image_t and call encoder
@@ -290,8 +318,11 @@ asciichat_error_t session_pipeline_create(
 
     // Check if display has render_file configured (will be checked in encode thread)
     // We store a flag to know whether to enqueue frames for encoding
-    p->has_render_file = session_display_get_render_fps(display) > 0 ||
-                         session_display_has_render_file(display);
+    double render_fps = session_display_get_render_fps(display);
+    bool has_file = session_display_has_render_file(display);
+    p->has_render_file = render_fps > 0 || has_file;
+    log_info("[PIPELINE_CREATE] render_fps=%.1f, has_render_file=%d, enable_encode_thread=%d",
+             render_fps, has_file, p->has_render_file);
 
     atomic_store_bool(&p->stop, false);
     atomic_store_u64(&p->first_frame_ns, 0);
@@ -344,6 +375,13 @@ asciichat_error_t session_pipeline_run_main(
             // EOF sentinel
             free_frame(frame);
             break;
+        }
+
+        // Validate frame before processing (catch memory corruption)
+        if (!frame_is_valid(frame)) {
+            log_error("Skipping frame with corrupted dimensions");
+            free_frame(frame);
+            continue;
         }
 
         // Convert to ASCII

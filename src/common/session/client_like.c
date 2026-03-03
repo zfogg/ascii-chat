@@ -143,6 +143,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Note: Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
   // (implemented via should_force_stderr check above)
   const char *render_file_early = GET_OPTION(render_file);
+  log_info("[CLIENT_LIKE_RUN] render_file_early=%s (ptr=%p)",
+           render_file_early ? render_file_early : "(null)", (void *)render_file_early);
   if (render_file_early && render_file_early[0] != '\0' &&
       (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
     log_info("--render-file=- will output binary video to stdout, logging sent to stderr");

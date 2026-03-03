@@ -198,6 +198,17 @@ char *ascii_convert_with_capabilities(image_t *original, const ssize_t width, co
     return NULL;
   }
 
+  // Validate original image dimensions to detect corruption
+  if (original->w <= 0 || original->w > 10000 || original->h <= 0 || original->h > 10000) {
+    log_error("Invalid original image dimensions detected: w=%d, h=%d (likely corrupted)", original->w, original->h);
+    return NULL;
+  }
+
+  if (original->pixels == NULL) {
+    log_error("Original image pixels pointer is NULL");
+    return NULL;
+  }
+
   // Start with the target dimensions requested by the user
   ssize_t resized_width = width;
   ssize_t resized_height = height;

@@ -28,6 +28,8 @@ struct render_file_ctx_s {
 
 asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
                                      render_file_ctx_t **out) {
+  log_info("[RENDER_FILE_CREATE] CALLED with output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p",
+           output_path ? output_path : "(null)", cols, rows, fps, theme, (void *)out);
   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
 
   // Resolve font spec → platform-appropriate file path, family name, or bundled data.
