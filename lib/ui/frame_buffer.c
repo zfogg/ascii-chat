@@ -149,13 +149,25 @@ void frame_buffer_clear_screen(frame_buffer_t *buf) {
   frame_buffer_append(buf, "\033[2J\033[H", 8);
 }
 
+// Global configuration for terminal screen output FD (used by splash/status screens)
+static int g_terminal_screen_output_fd = STDOUT_FILENO;
+
 void frame_buffer_flush(frame_buffer_t *buf) {
   if (!buf || buf->len == 0 || !buf->data) {
     return;
   }
 
-  // Write entire buffer to stdout in one atomic operation
-  platform_write_all(STDOUT_FILENO, buf->data, buf->len);
+  // Write entire buffer to configured FD in one atomic operation
+  // Uses the terminal screen output FD which may be stderr when piped
+  platform_write_all(g_terminal_screen_output_fd, buf->data, buf->len);
+}
+
+void frame_buffer_set_screen_output_fd(int fd) {
+  g_terminal_screen_output_fd = fd;
+}
+
+int frame_buffer_get_screen_output_fd(void) {
+  return g_terminal_screen_output_fd;
 }
 
 size_t frame_buffer_get_length(const frame_buffer_t *buf) {

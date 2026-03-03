@@ -147,3 +147,20 @@ void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color
  * Automatically centers the text accounting for ANSI escape codes.
  */
 int frame_buffer_render_centered(frame_buffer_t *buf, const char *text, int cols);
+
+/**
+ * @brief Set output file descriptor for terminal screen (splash/status) rendering
+ *
+ * @param fd File descriptor (STDOUT_FILENO for TTY, STDERR_FILENO for piped output)
+ *
+ * Controls where splash and status screens write their output.
+ * Used internally by terminal_screen_render() for consistent output routing.
+ */
+void frame_buffer_set_screen_output_fd(int fd);
+
+/**
+ * @brief Get current output file descriptor for terminal screens
+ *
+ * @return File descriptor (STDOUT_FILENO or STDERR_FILENO)
+ */
+int frame_buffer_get_screen_output_fd(void);

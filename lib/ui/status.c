@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 #include <ascii-chat/atomic.h>
 
 void ui_status_log_init(void) {
@@ -201,6 +202,12 @@ void ui_status_display(const ui_status_t *status) {
   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
   if (!terminal_is_interactive() && !GET_OPTION(status_screen_explicitly_set)) {
     return;
+  }
+
+  // Redirect status screen to stderr when stdout is piped (not a TTY)
+  // This keeps stdout clean for frame data while status goes to stderr
+  if (!isatty(STDOUT_FILENO)) {
+    terminal_screen_set_output_fd(STDERR_FILENO);
   }
 
   // If --grep pattern was provided, enter interactive grep mode with it pre-populated

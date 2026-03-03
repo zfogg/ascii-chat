@@ -383,6 +383,8 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     int log_idx = 0;
     int lines_used = 0;
+    int fd = frame_buffer_get_screen_output_fd();
+    FILE *output_file = (fd == STDERR_FILENO) ? stderr : stdout;
 
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *original_msg = log_entries[i].message;
@@ -425,13 +427,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
         if (lines_for_this == 1) {
-          fprintf(stdout, "\n");
+          fprintf(output_file, "\n");
         } else {
-          fprintf(stdout, "\x1b[%dB", lines_for_this);
+          fprintf(output_file, "\x1b[%dB", lines_for_this);
         }
       } else {
         // Content changed - overwrite and clear tail.
-        fprintf(stdout, "%s\n", msg);
+        fprintf(output_file, "%s\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
@@ -459,7 +461,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         // Truncate to fit: progressively test shorter substrings until one fits
         int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
         if (target_width <= 0) {
-          fprintf(stdout, "...\x1b[K\n");
+          fprintf(output_file, "...\x1b[K\n");
         } else {
           size_t src_len = strlen(prev_msg);
           bool found = false;
@@ -476,19 +478,19 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
             if (test_width <= target_width) {
               // Found a length that fits
-              fprintf(stdout, "%s...\x1b[K\n", test_buf);
+              fprintf(output_file, "%s...\x1b[K\n", test_buf);
               found = true;
               break;
             }
           }
 
           if (!found) {
-            fprintf(stdout, "...\x1b[K\n");
+            fprintf(output_file, "...\x1b[K\n");
           }
         }
       } else {
         // Fits without truncation
-        fprintf(stdout, "%s\x1b[K\n", prev_msg);
+        fprintf(output_file, "%s\x1b[K\n", prev_msg);
       }
 
       remaining--;
@@ -496,14 +498,14 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Fill remaining blank lines with color reset to prevent color bleed
     for (int i = 0; i < remaining; i++) {
-      fprintf(stdout, "\n");
+      fprintf(output_file, "\n");
     }
 
     g_prev_log_count = log_idx;
     g_prev_total_lines = lines_used;
 
     // Flush buffered output before rendering grep UI to ensure correct order
-    fflush(stdout);
+    fflush(output_file);
 
     // Atomic grep UI rendering: combine cursor positioning and input line into
     // a single write to prevent log output from interrupting the escape sequences.
@@ -571,7 +573,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Write entire grep UI (cursor positioning + input) in single operation
     if (pos > 0 && pos <= (int)sizeof(grep_ui_buffer)) {
-      platform_write_all(STDOUT_FILENO, grep_ui_buffer, (size_t)pos);
+      platform_write_all(fd, grep_ui_buffer, (size_t)pos);
     }
 
     // Restore logging level after grep rendering completes
@@ -612,4 +614,8 @@ void terminal_screen_log_clear(void) {
 
 session_log_buffer_t *terminal_screen_get_log_buffer(void) {
   return g_session_log_buffer;
+}
+
+void terminal_screen_set_output_fd(int fd) {
+  frame_buffer_set_screen_output_fd(fd);
 }

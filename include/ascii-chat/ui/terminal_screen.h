@@ -108,3 +108,13 @@ void terminal_screen_log_clear(void);
  * @return Pointer to log buffer, or NULL
  */
 session_log_buffer_t *terminal_screen_get_log_buffer(void);
+
+/**
+ * @brief Set output file descriptor for terminal screens (splash/status)
+ *
+ * @param fd File descriptor (STDOUT_FILENO for TTY, STDERR_FILENO for piped)
+ *
+ * Configures where splash and status screens write their output.
+ * Should be called before terminal_screen_render() to control output destination.
+ */
+void terminal_screen_set_output_fd(int fd);
