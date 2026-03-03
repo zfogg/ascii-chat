@@ -182,6 +182,11 @@ static atomic_t g_data_thread_exited = {0};
  */
 static atomic_t g_frames_rendered = {0};
 
+// Snapshot delay tracking: time when first frame was rendered in snapshot mode
+// Used to check if snapshot_delay has elapsed when connection is lost
+// Non-static so it can be accessed from main.c for monitoring
+uint64_t g_snapshot_first_frame_time_ns = 0;
+
 /* ============================================================================
  * Multi-User Client State
  * ============================================================================ */
@@ -429,6 +434,9 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
     if (!first_frame_recorded) {
       first_frame_time_ns = time_get_ns();
+      g_snapshot_first_frame_time_ns = first_frame_time_ns;  // Also store globally for access from data_reception_thread
+      log_info("[SNAPSHOT_INIT] SET g_snapshot_first_frame_time_ns=%llu first_frame_time_ns=%llu",
+               (unsigned long long)g_snapshot_first_frame_time_ns, (unsigned long long)first_frame_time_ns);
       first_frame_recorded = true;
 
       if (GET_OPTION(snapshot_delay) == 0) {
@@ -442,11 +450,21 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     } else {
       uint64_t current_time_ns = time_get_ns();
       double elapsed = time_ns_to_s(time_elapsed_ns(first_frame_time_ns, current_time_ns));
+      double snapshot_delay = GET_OPTION(snapshot_delay);
 
-      if (elapsed >= GET_OPTION(snapshot_delay)) {
+      // Log every 0.5 seconds to debug timing
+      static uint64_t last_debug_log_ns = 0;
+      if (current_time_ns - last_debug_log_ns > 500 * 1000 * 1000) {  // 500ms
+        log_info("SNAPSHOT_DELAY_CHECK: elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu",
+                 elapsed, snapshot_delay, (unsigned long long)first_frame_time_ns, (unsigned long long)current_time_ns);
+        last_debug_log_ns = current_time_ns;
+      }
+
+      if (elapsed >= snapshot_delay) {
         char duration_str[32];
         time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
-        log_debug("Snapshot captured after %s!", duration_str);
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED: Snapshot captured after %s! (target=%.3f) AT handle_ascii_frame_packet",
+                 duration_str, snapshot_delay);
         take_snapshot = true;
         signal_exit();
       }
@@ -984,6 +1002,16 @@ static void *data_reception_thread_func(void *arg) {
     // Main loop: receive and process packets while connection is active
     // When connection becomes inactive or shutdown is requested, thread exits cleanly
 
+    // Debug: periodically check loop condition
+    if (packet_count % 50 == 0) {
+      bool exit_flag = should_exit();
+      bool conn_active = server_connection_is_active();
+      if (packet_count > 0) {
+        log_debug("[FRAME_RECV_LOOP] DEBUG: packet_count=%d, should_exit=%d, server_connection_is_active=%d",
+                  packet_count, exit_flag, conn_active);
+      }
+    }
+
     // Receive and dispatch packet using ACIP transport API
     // This combines packet reception, decryption, parsing, handler dispatch, and cleanup
     acip_transport_t *transport = server_connection_get_transport();
@@ -1017,32 +1045,74 @@ static void *data_reception_thread_func(void *arg) {
     } else {
       // Handle receive/dispatch errors - ALWAYS exit on network errors
       // NOTE: Log to file even if terminal logging is disabled (important for debugging)
-      log_error("[FRAME_RECV_LOOP] ❌ RECV_ERROR: acip_result=%d: %s (after %d packets received)", acip_result,
+      log_warn("[FRAME_RECV_LOOP] ⚠️  RECV_ERROR_BEFORE_SNAPSHOT_CHECK: acip_result=%d: %s (after %d packets received)", acip_result,
                 asciichat_error_string(acip_result), packet_count);
 
-      // Network errors (ERROR_NETWORK, ERROR_NETWORK_PROTOCOL, etc) always disconnect
-      if (acip_result == ERROR_NETWORK || acip_result == ERROR_NETWORK_PROTOCOL) {
-        log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets, exiting loop",
-                 packet_count);
-        server_connection_lost();
-        break;
-      }
+      // Before breaking due to error, check if snapshot_delay timer has fired in snapshot mode
+      bool should_break_now = true;
+      if (GET_OPTION(snapshot_mode) && g_snapshot_first_frame_time_ns > 0) {
+        uint64_t current_time_ns = time_get_ns();
+        double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
+        double snapshot_delay = GET_OPTION(snapshot_delay);
 
-      // Check errno context for additional error details
-      asciichat_error_context_t err_ctx;
-      if (HAS_ERRNO(&err_ctx)) {
-        if (err_ctx.code == ERROR_CRYPTO) {
-          // Security violation - exit immediately
-          log_error("[FRAME_RECV_LOOP] ❌ SECURITY_VIOLATION: Server crypto policy violated - EXITING");
-          log_error("SECURITY: This is a critical security violation - exiting immediately");
-          exit(1);
+        if (elapsed >= snapshot_delay) {
+          char duration_str[32];
+          time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
+          log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_ERROR): Snapshot captured after %s! (target=%.3f)",
+                   duration_str, snapshot_delay);
+          signal_exit();
+          should_break_now = false;  // Don't disconnect, let normal shutdown handle it
         }
       }
 
-      // Other errors - still disconnect to prevent infinite loop
-      log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting", packet_count + 1, packet_count);
-      server_connection_lost();
-      break;
+      if (should_break_now) {
+        // Network errors (ERROR_NETWORK, ERROR_NETWORK_PROTOCOL, etc) always disconnect
+        if (acip_result == ERROR_NETWORK || acip_result == ERROR_NETWORK_PROTOCOL) {
+          log_warn("[FRAME_RECV_LOOP] ⚠️  NETWORK_ERROR: Server disconnected after %d packets, exiting loop",
+                   packet_count);
+          server_connection_lost();
+          break;
+        }
+
+        // Check errno context for additional error details
+        asciichat_error_context_t err_ctx;
+        if (HAS_ERRNO(&err_ctx)) {
+          if (err_ctx.code == ERROR_CRYPTO) {
+            // Security violation - exit immediately
+            log_error("[FRAME_RECV_LOOP] ❌ SECURITY_VIOLATION: Server crypto policy violated - EXITING");
+            log_error("SECURITY: This is a critical security violation - exiting immediately");
+            exit(1);
+          }
+        }
+
+        // Other errors - still disconnect to prevent infinite loop
+        log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting", packet_count + 1, packet_count);
+        server_connection_lost();
+        break;
+      }
+    }
+  }
+
+  // Before exiting due to connection loss, check if snapshot_delay timer has fired
+  // If it has, take the snapshot and exit cleanly instead of abandoning the snapshot
+  if (GET_OPTION(snapshot_mode)) {
+    log_debug("[FRAME_RECV_LOOP] ⏰ SNAPSHOT_CHECK_ON_EXIT: snapshot_mode enabled, g_snapshot_first_frame_time_ns=%llu",
+              (unsigned long long)g_snapshot_first_frame_time_ns);
+
+    if (g_snapshot_first_frame_time_ns > 0) {
+      uint64_t current_time_ns = time_get_ns();
+      double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
+      double snapshot_delay = GET_OPTION(snapshot_delay);
+
+      log_debug("[FRAME_RECV_LOOP] ⏰ SNAPSHOT_CHECK_DETAILS: elapsed=%.3f target=%.3f", elapsed, snapshot_delay);
+
+      if (elapsed >= snapshot_delay) {
+        char duration_str[32];
+        time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_CONNECTION_LOSS): Snapshot captured after %s! (target=%.3f)",
+                 duration_str, snapshot_delay);
+        signal_exit();
+      }
     }
   }
 

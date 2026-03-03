@@ -56,9 +56,9 @@ static asciichat_error_t tcp_send_all(socket_t sockfd, const void *data, size_t 
     }
 
     if (sent < 0) {
-      log_error("★ TCP_SEND_ALL: socket_send failed at offset %zu/%zu", total_sent, len);
+      log_error("★ TCP_SEND_ALL: socket_send FAILED at offset %zu/%zu, errno=%d (%s)", total_sent, len, errno, SAFE_STRERROR(errno));
       return SET_ERRNO_SYS(ERROR_NETWORK,
-                           "Socket send failed (tried to send %zu bytes, %zu remaining, already sent %zu)", len,
+                           "Socket send failed: %s (tried to send %zu bytes, %zu remaining, already sent %zu)", SAFE_STRERROR(errno), len,
                            remaining, total_sent);
     }
     if (sent == 0) {

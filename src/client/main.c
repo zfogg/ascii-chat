@@ -524,18 +524,77 @@ static asciichat_error_t client_run(session_capture_ctx_t *capture, session_disp
   }
 
   // Monitor connection until it breaks or shutdown is requested
+  static bool snapshot_check_logged_once = false;
   while (!should_exit() && server_connection_is_active()) {
     if (protocol_connection_lost()) {
       log_debug("Connection lost detected");
       break;
     }
+
+    // Check if snapshot_delay timer has fired (in case frames stopped arriving)
+    // This is a safety check for when frame reception is sparse or stops entirely
+    extern uint64_t g_snapshot_first_frame_time_ns;
+    bool snapshot_mode_enabled = GET_OPTION(snapshot_mode);
+
+    if (!snapshot_check_logged_once) {
+      log_info("CLIENT_MAIN_LOOP: snapshot_mode=%d first_frame_time=%llu snapshot_delay=%.1f",
+               snapshot_mode_enabled, (unsigned long long)g_snapshot_first_frame_time_ns,
+               GET_OPTION(snapshot_delay));
+      snapshot_check_logged_once = true;
+    }
+
+    if (snapshot_mode_enabled && g_snapshot_first_frame_time_ns > 0) {
+      uint64_t current_time_ns = time_get_ns();
+      double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
+      double snapshot_delay = GET_OPTION(snapshot_delay);
+
+      // Log progress every 500ms
+      static uint64_t last_progress_log_ns = 0;
+      if (current_time_ns - last_progress_log_ns > 500 * 1000 * 1000) {
+        log_debug("[MAIN_LOOP_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f first_frame_ns=%llu current_ns=%llu",
+                  elapsed, snapshot_delay, (unsigned long long)g_snapshot_first_frame_time_ns, (unsigned long long)current_time_ns);
+        last_progress_log_ns = current_time_ns;
+      }
+
+      if (elapsed >= snapshot_delay) {
+        char duration_str[32];
+        time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED (IN_MAIN_LOOP): Snapshot captured after %s! (target=%.3f)",
+                 duration_str, snapshot_delay);
+        signal_exit();
+        break;  // Exit loop, proper shutdown will follow
+      }
+    }
+
     platform_sleep_us(100 * US_PER_MS_INT);
   }
 
   if (should_exit()) {
     log_debug("Shutdown requested, cleaning up connection");
   } else {
-    log_debug("Connection lost, preparing for reconnection attempt");
+    log_info("[ELSE_BRANCH] Connection lost path (should_exit=0, connection_active=0)");
+    // Connection lost - check if snapshot_delay timer has fired before exiting
+    extern uint64_t g_snapshot_first_frame_time_ns;
+    if (GET_OPTION(snapshot_mode) && g_snapshot_first_frame_time_ns > 0) {
+      uint64_t current_time_ns = time_get_ns();
+      double elapsed = time_ns_to_s(time_elapsed_ns(g_snapshot_first_frame_time_ns, current_time_ns));
+      double snapshot_delay = GET_OPTION(snapshot_delay);
+
+      log_info("[CONNECTION_LOSS_SNAPSHOT_CHECK] elapsed=%.3f target=%.3f (checking if timer fired)", elapsed, snapshot_delay);
+
+      if (elapsed >= snapshot_delay) {
+        char duration_str[32];
+        time_pretty((uint64_t)(elapsed * 1e9), -1, duration_str, sizeof(duration_str));
+        log_info("🎬 SNAPSHOT TIMEOUT FIRED (ON_CONNECTION_LOSS): Snapshot captured after %s! (target=%.3f)",
+                 duration_str, snapshot_delay);
+        signal_exit();
+        // Don't return yet, allow normal cleanup to proceed below
+      }
+    }
+
+    if (!should_exit()) {
+      log_debug("Connection lost, preparing for reconnection attempt");
+    }
   }
 
   // Clean up this connection for potential reconnection
