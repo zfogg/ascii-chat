@@ -13,6 +13,7 @@
 #include "session/render.h"
 #include "session/capture.h"
 #include "session/display.h"
+#include "session/pipeline.h"
 #include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/ui/splash.h>
@@ -85,6 +86,19 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     return ERROR_INVALID_PARAM;
   }
 
+  // SYNCHRONOUS MODE: Use threaded pipeline for capture + render
+  if (capture != NULL) {
+    session_pipeline_t *pipeline = NULL;
+    asciichat_error_t pipeline_err = session_pipeline_create(capture, display, &pipeline);
+    if (pipeline_err != ASCIICHAT_OK) {
+      return pipeline_err;
+    }
+
+    asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
+    session_pipeline_destroy(pipeline);
+    return run_err;
+  }
+
   // Snapshot mode state tracking
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   bool snapshot_done = false;
@@ -108,16 +122,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   }
   log_info("session_render_loop: OK to proceed with main loop");
 
-  // Pause mode state tracking
-  bool initial_paused_frame_rendered = false;
-  bool was_paused = false;
-  bool is_paused = false;
 
   // Keyboard input initialization (if keyboard handler is provided)
   // Disable keyboard only in snapshot mode
   // Keyboard is pre-initialized from asciichat_shared_init()
   // Allow keyboard input in all other modes if handler provided
   bool keyboard_enabled = keyboard_handler && !snapshot_mode;
+
+  // Pause mode state tracking (for pause/unpause transitions in event-driven mode)
+  bool initial_paused_frame_rendered = false;
+  bool is_paused = false;
   log_info("render_loop: Keyboard setup - handler=%p snapshot=%s enabled=%s", (void *)keyboard_handler,
            snapshot_mode ? "YES" : "NO", keyboard_enabled ? "YES" : "NO");
 
@@ -181,201 +195,19 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t post_convert_ns = 0;
     uint64_t conversion_elapsed_ns = 0;
 
-    if (false) {  // Synchronous path now handled by pipeline; this is event-driven only
-      capture_start_ns = time_get_ns();
-      // SYNCHRONOUS MODE: Use session_capture context
-      log_info("[SYNC_MODE] Processing frame %lu, capture=%p", frame_count, (void *)capture);
+    // EVENT-DRIVEN MODE: Frames come from callbacks
+    // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
+    sleep_cb(user_data);
+    image = capture_cb(user_data);
 
-      // Check if we're in stdin render mode (reading ASCII frames from stdin)
-      terminal_fd_reader_t *stdin_reader = (terminal_fd_reader_t *)session_display_get_stdin_reader(display);
-      log_info("[SYNC_MODE] stdin_reader=%p (stdin mode: %s)", (void *)stdin_reader, stdin_reader ? "YES" : "NO");
-      if (stdin_reader) {
-        // STDIN RENDER MODE: Read ASCII frame text directly from stdin
-        char *ascii_frame = NULL;
-        asciichat_error_t stdin_err = terminal_fd_reader_next(stdin_reader, &ascii_frame);
-        if (stdin_err != ASCIICHAT_OK) {
-          log_error_every(200 * MS_PER_SEC_INT, "Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
-          break; // Exit render loop on error
-        }
-
-        if (!ascii_frame) {
-          // EOF reached - exit render loop
-          log_info_every(200 * MS_PER_SEC_INT, "stdin_render_mode: EOF reached, exiting render loop");
-          break;
-        }
-
-        frame_count++;
-        log_debug_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count,
-                        strlen(ascii_frame));
-
-        // Render ASCII frame using display (will encode via render_file if configured)
-        // When --render-file="-", FFmpeg encodes binary data to stdout
-        session_display_render_frame(display, ascii_frame);
-
-        SAFE_FREE(ascii_frame);
-
-        // Handle keyboard input in stdin render mode
-        // Allow keyboard regardless of TTY status, consistent with main capture path
-        if (keyboard_handler && keyboard_enabled) {
-          keyboard_key_t key = keyboard_read_nonblocking();
-          if (key != KEY_NONE) {
-            if (log_search_should_handle(key)) {
-              log_search_handle_key(key);
-            } else {
-              keyboard_handler(capture, key, user_data);
-            }
-          }
-        }
-
-        // Frame timing for stdin mode
-        uint64_t frame_end_ns = time_get_ns();
-        uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
-        uint64_t target_frame_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps));
-
-        // Sleep to maintain target FPS if frame was faster than target
-        if (frame_elapsed_ns < target_frame_ns) {
-          uint64_t sleep_ns = target_frame_ns - frame_elapsed_ns;
-          platform_sleep_ns(sleep_ns);
-        }
-
-        // Skip the normal image capture for this frame
-        continue;
-      }
-
-      // Check pause state and handle initial frame rendering
-      media_source_t *source = session_capture_get_media_source(capture);
-      is_paused = source && media_source_is_paused(source);
-
-      // Detect pause transition - mark initial frame as rendered so polling starts
-      if (!was_paused && is_paused) {
-        initial_paused_frame_rendered = true;
-        log_debug_every(1 * NS_PER_SEC_INT, "Media paused, enabling keyboard polling");
-      }
-
-      // Detect unpause transition to reset flag
-      if (was_paused && !is_paused) {
-        initial_paused_frame_rendered = false;
-        log_debug_every(1 * NS_PER_SEC_INT, "Media unpaused, resuming frame capture");
-      }
-      was_paused = is_paused;
-
-      // If paused and already rendered initial frame, skip frame capture and poll for resume
-      if (is_paused && initial_paused_frame_rendered) {
-        // Sleep briefly to avoid busy-waiting while paused
-        uint64_t idle_sleep_ns = (uint64_t)(NS_PER_SEC_INT / GET_OPTION(fps)); // Frame period in nanoseconds
-        platform_sleep_ns(idle_sleep_ns);
-
-        // Keep polling keyboard to allow unpausing (even if keyboard wasn't formally initialized)
-        // keyboard_read_nonblocking() is safe to call even if keyboard_init() wasn't called - it just returns KEY_NONE
-        if (keyboard_handler) {
-          keyboard_key_t key = keyboard_read_nonblocking();
-          if (key != KEY_NONE) {
-            // Check if interactive grep should handle this key
-            if (log_search_should_handle(key)) {
-              log_search_handle_key(key);
-              continue; // Force immediate re-render
-            }
-
-            keyboard_handler(capture, key, user_data);
-          }
-        }
-        continue; // Skip frame capture and rendering, keep loop running
-      }
-
-      // Profile: frame capture with poll-based blocking
-      uint64_t loop_retry_count = 0;
-      uint64_t capture_elapsed_ns = 0;
-
-      do {
-        // Check for exit request before blocking on frame read
-        if (should_exit(user_data)) {
-          break;
-        }
-
-        image = session_capture_read_frame(capture);
-
-        if (!image) {
-          // Check if we've reached end of file for media sources
-          if (session_capture_at_end(capture)) {
-            log_info_every(1 * NS_PER_SEC_INT, "Media source reached end of file");
-            break; // Exit render loop - end of media
-          }
-
-          // Check for exit request
-          if (should_exit(user_data)) {
-            break;
-          }
-
-          // With poll()-based blocking reads, timeouts mean no frame available
-          // Retry once with minimal delay to handle transient state
-          loop_retry_count++;
-          if (loop_retry_count > 1) {
-            // No frame after retry - skip this iteration rather than spinning
-            log_debug_every(1 * NS_PER_SEC_INT, "FRAME_SKIP: No frame available after %lu retries", loop_retry_count);
-            loop_retry_count = 0;
-            continue;
-          }
-
-          // Single retry with 1ms delay (poll already waited 100ms)
-          platform_sleep_us(1 * US_PER_MS_INT); // 1ms
-          continue;
-        }
-
-        // Frame obtained successfully
-        if (loop_retry_count > 0) {
-          double wait_ms = (double)capture_elapsed_ns / NS_PER_MS;
-          log_debug_every(US_PER_SEC_INT, "FRAME_OBTAINED: after %lu retries, waited %.1f ms", loop_retry_count,
-                          wait_ms);
-        }
-        break; // Exit retry loop
-      } while (true);
-
-      // If we still don't have an image after retries, check if we've reached end of file
-      // (This happens during network latency or when prefetch thread is catching up)
-      if (!image) {
-        // Exit main render loop if we've reached end of media file
-        if (session_capture_at_end(capture)) {
-          log_debug("[SHUTDOWN] Media EOF detected, exiting render loop");
-          break;
-        }
-        continue;
-      }
-
-      // Capture phase complete - record timestamp for phase breakdown
-      capture_end_ns = time_get_ns();
-
-      frame_count++;
-
-      // Log capture time every 30 frames
-      if (frame_count % 30 == 0) {
-        char capture_str[32];
-        time_pretty(capture_elapsed_ns, -1, capture_str, sizeof(capture_str));
-        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CAPTURE=%s", frame_count, capture_str);
-      }
-
-      // Pause after first frame if requested via --pause flag
-      // We read the frame first, then pause, so the initial frame is available for rendering
-      if (!is_paused && frame_count == 1 && GET_OPTION(pause) && source) {
-        media_source_pause(source);
-        is_paused = true;
-        // Note: initial_paused_frame_rendered will be set in next iteration when pause is detected above
-        log_debug_every(1 * NS_PER_SEC_INT, "Paused media source after first frame");
-      }
-
-    } else {
-      // Both sleep_cb and capture_cb are guaranteed non-NULL by validation above
-      sleep_cb(user_data);
-      image = capture_cb(user_data);
-
-      if (!image) {
-        // No frame available - this is normal in async modes (network latency, etc.)
-        // Just continue to next iteration, don't exit
-        continue;
-      }
-
-      // Event-driven mode: increment frame count (synchronous mode increments at line 347)
-      frame_count++;
+    if (!image) {
+      // No frame available - this is normal in async modes (network latency, etc.)
+      // Just continue to next iteration, don't exit
+      continue;
     }
+
+    // Event-driven mode: increment frame count
+    frame_count++;
 
     // Check for terminal resize (if auto_width or auto_height is enabled)
     // This allows the render to adapt immediately when the user resizes the terminal
@@ -610,35 +442,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       }
     }
 
-    // Audio-Video Synchronization: Keep audio and video in sync by periodically adjusting audio to match video time
-    // Frame rate limiting: Only sleep if we're ahead of schedule
-    // If decoder is slow and we're already behind, don't add extra sleep
-    // In snapshot mode, skip all frame rate limiting to capture as many frames as possible
-    if (is_synchronous && capture && !snapshot_mode) {
-      // Use user-specified FPS from options, not capture context FPS
-      uint32_t target_fps = (uint32_t)GET_OPTION(fps);
-      if (target_fps > 0) {
-        uint64_t frame_end_ns = time_get_ns();
-        uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
-        uint64_t frame_target_ns = NS_PER_SEC_INT / target_fps;
-
-        char frame_time_str[32], target_time_str[32];
-        time_pretty(frame_elapsed_ns, -1, frame_time_str, sizeof(frame_time_str));
-        time_pretty(frame_target_ns, -1, target_time_str, sizeof(target_time_str));
-        log_dev_every(500 * NS_PER_MS_INT, "RENDER[%lu] TIMING_TOTAL: frame_time=%s target_time=%s", frame_count,
-                      frame_time_str, target_time_str);
-
-        // Only sleep if we have time budget remaining
-        // If already behind, skip sleep to catch up
-        if (frame_elapsed_ns < frame_target_ns) {
-          uint64_t sleep_ns = frame_target_ns - frame_elapsed_ns;
-          // Sleep with 500us overhead reserved for recovery
-          if (sleep_ns > 500 * US_PER_MS_INT) {
-            platform_sleep_ns((sleep_ns - 500 * US_PER_MS_INT));
-          }
-        }
-      }
-    }
+    // In event-driven mode, frame rate limiting is handled by the sleep_cb callback
+    // Synchronous mode (with capture context) uses the pipeline and returns early above
 
     // Note: Images returned by media sources are cached/reused and should NOT be destroyed
     // The image pointers are managed by the source and will be cleaned up on source shutdown

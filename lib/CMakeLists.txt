@@ -108,6 +108,7 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/src/common/session/consensus_integration.c
     ${CMAKE_SOURCE_DIR}/src/common/session/capture.c
     ${CMAKE_SOURCE_DIR}/src/common/session/display.c
+    ${CMAKE_SOURCE_DIR}/src/common/session/pipeline.c
     ${CMAKE_SOURCE_DIR}/src/common/session/render.c
     ${CMAKE_SOURCE_DIR}/src/common/session/settings.c
     ${CMAKE_SOURCE_DIR}/src/common/session/audio.c

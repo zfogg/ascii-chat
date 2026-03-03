@@ -249,6 +249,15 @@ int session_display_get_tty_fd(session_display_ctx_t *ctx);
 void *session_display_get_stdin_reader(session_display_ctx_t *ctx);
 
 /**
+ * @brief Check if display has render-file configured
+ * @param ctx Display context (can be NULL)
+ * @return true if render-file is configured, false otherwise
+ *
+ * @ingroup session
+ */
+bool session_display_has_render_file(session_display_ctx_t *ctx);
+
+/**
  * @brief Get the render FPS configured for file output
  * @param ctx Display context (can be NULL)
  * @return Render FPS value, or 0 if ctx is NULL
@@ -312,6 +321,30 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  */
 
 /**
+ * @brief Write ASCII frame to terminal only (no encoding)
+ * @param ctx Display context (must not be NULL)
+ * @param frame_data ASCII frame data (must not be NULL)
+ *
+ * Writes ANSI string to terminal/stdout without encoding to file.
+ * Used by the main thread in the threaded pipeline.
+ *
+ * @ingroup session
+ */
+void session_display_write_ascii(session_display_ctx_t *ctx, const char *frame_data);
+
+/**
+ * @brief Encode frame to render-file (FFmpeg only, no terminal output)
+ * @param ctx Display context (must not be NULL)
+ * @param image Raw image to encode (must not be NULL)
+ *
+ * Encodes image via render_file/FFmpeg encoder. No-op if --render-file not set.
+ * Used by the encode thread in the threaded pipeline.
+ *
+ * @ingroup session
+ */
+void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image);
+
+/**
  * @brief Render an ASCII frame to the terminal
  * @param ctx Display context (must not be NULL)
  * @param frame_data ASCII frame data to render (must not be NULL)
@@ -321,6 +354,7 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
  * RLE expansion if needed, and snapshot mode behavior.
  *
  * In snapshot mode, renders all frames during the snapshot window.
+ * (Legacy function; new code should use split functions for threading.)
  *
  * @ingroup session
  */
