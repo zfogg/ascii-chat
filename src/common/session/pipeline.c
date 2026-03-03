@@ -332,19 +332,11 @@ static void *pipeline_encode_thread(void *arg) {
             log_info("[PIPELINE_ENCODE] Processing frame %llu: %dx%d", (unsigned long long)frames_processed, frame->w, frame->h);
         }
 
-        // Convert raw frame to ASCII art (same as display thread does)
-        // This ensures the video shows what the user sees on screen
+        // Encode frame (convert_to_ascii is called internally by encode_frame)
+        // Avoid double-conversion that was causing state desynchronization between display/encode threads
         image_t raw_image = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
-        char *ascii_frame = session_display_convert_to_ascii(pipeline->display, &raw_image);
-
-        if (ascii_frame) {
-            // Encode the ASCII-rendered output using the converted frame
-            session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
-            SAFE_FREE(ascii_frame);
-            frames_processed++;
-        } else {
-            log_warn("[PIPELINE_ENCODE] Failed to convert frame %llu to ASCII", (unsigned long long)frames_processed);
-        }
+        session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
+        frames_processed++;
 
         free_frame(frame);
     }
