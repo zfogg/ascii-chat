@@ -53,8 +53,7 @@ if(USE_MUSL)
         set(MUSL_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/MuslGcc.cmake")
 
         ExternalProject_Add(libwebsockets-musl
-            URL https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.5.2.tar.gz
-            URL_HASH SHA256:04244efb7a6438c8c6bfc79b21214db5950f72c9cf57e980af57ca321aae87b2
+            URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
             DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             PREFIX ${LWS_BUILD_DIR}
             STAMP_DIR ${LWS_BUILD_DIR}/stamps
@@ -168,8 +167,7 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
     message(STATUS "  libwebsockets not in cache, building from source with extensions enabled...")
 
     ExternalProject_Add(libwebsockets-native
-        URL https://github.com/warmcat/libwebsockets/archive/refs/tags/v4.5.2.tar.gz
-        URL_HASH SHA256=04244efb7a6438c8c6bfc79b21214db5950f72c9cf57e980af57ca321aae87b2
+        URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
         DOWNLOAD_EXTRACT_TIMESTAMP TRUE
         PREFIX ${LWS_NATIVE_BUILD_DIR}
         STAMP_DIR ${LWS_NATIVE_BUILD_DIR}/stamps
