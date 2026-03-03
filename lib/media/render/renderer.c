@@ -167,10 +167,25 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
              sample_g_mid, sample_b_mid);
   }
 
-  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch, captured_ns);
+  // CRITICAL: Copy pixel buffer before encoding
+  // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
+  // overwritten on the next frame. We must copy the data before passing to the encoder.
+  uint8_t *pixels_copy = NULL;
+  if (pixels) {
+    size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
+    pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
+    memcpy(pixels_copy, pixels, pixel_buffer_size);
+    log_info("render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)",
+             pixel_buffer_size, (void *)pixels, (void *)pixels_copy);
+  }
+
+  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels_copy, pitch, captured_ns);
   if (err != ASCIICHAT_OK) {
     log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }
+
+  // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
+  SAFE_FREE(pixels_copy);
 
   // Write synchronized audio for this frame if available
   // Calculate how many samples correspond to one video frame
