@@ -398,13 +398,17 @@ bool splash_should_display(bool is_intro) {
   // Check option flags (display splash if enabled, regardless of TTY for testing)
   if (is_intro) {
     // Allow splash in snapshot mode if loading from URL/file (has loading time)
-    // Skip splash only for quick webcam snapshots
+    // Skip splash only for quick webcam snapshots (unless explicitly enabled)
     bool splash_screen_opt = GET_OPTION(splash_screen);
+    bool splash_explicitly_set = GET_OPTION(splash_screen_explicitly_set);
     bool is_snapshot = GET_OPTION(snapshot_mode);
     bool has_media = (GET_OPTION(media_url) && strlen(GET_OPTION(media_url)) > 0) ||
                      (GET_OPTION(media_file) && strlen(GET_OPTION(media_file)) > 0);
 
-    bool should_display = splash_screen_opt && (!is_snapshot || has_media);
+    // Show splash if enabled, but in snapshot mode only if:
+    // 1. Has media file/URL, OR
+    // 2. Explicitly enabled with --splash-screen=true
+    bool should_display = splash_screen_opt && (!is_snapshot || has_media || splash_explicitly_set);
     fprintf(stderr, "[SPLASH_CHECK] splash_screen_opt=%d snapshot=%d has_media=%d => should_display=%d\n",
             splash_screen_opt, is_snapshot, has_media, should_display);
     log_info("splash_should_display(intro): splash_screen=%d snapshot=%d has_media=%d => %d", splash_screen_opt,
