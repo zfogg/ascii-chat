@@ -606,16 +606,46 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   int64_t frame_duration;
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
+  if (enc->frame_count == 0) {
+    log_info("ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d, using actual frame deltas", snapshot_mode);
+  }
+
   if (snapshot_mode) {
-    // In snapshot mode, use FPS-based frame duration
-    // The final duration will be adjusted to match snapshot_delay in destroy()
-    frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+    // In snapshot mode, use ACTUAL elapsed time between frames for proper duration matching
+    // Calculate duration from actual capture timestamp differences
+    // IMPORTANT: Use codec's time_base here; FFmpeg will rescale to stream time_base later
+    if (enc->frame_count > 0 && enc->previous_captured_ns > 0) {
+      // Frame duration = time since last frame, converted to codec time_base units with high precision
+      uint64_t elapsed_ns = captured_ns - enc->previous_captured_ns;
+      // Convert nanoseconds to codec time_base units using exact calculation
+      // formula: duration = elapsed_ns * time_base.den / (time_base.num * 1e9)
+      frame_duration = (int64_t)(elapsed_ns * enc->codec_ctx->time_base.den /
+                                 ((uint64_t)enc->codec_ctx->time_base.num * 1000000000ULL));
+      if (frame_duration == 0) {
+        // Frames too close together, use minimum 1 unit
+        frame_duration = 1;
+      }
+    } else {
+      // First frame: use a reasonable default (1 frame at output fps)
+      frame_duration = 1;  // 1 unit at codec time_base (1/fps)
+    }
   } else {
     // Normal mode: use FPS-based frame duration
     frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
   }
 
   enc->frame_encoded->duration = frame_duration;
+
+  // Track this frame's capture timestamp for duration calculation of next frame
+  if (snapshot_mode) {
+    uint64_t frame_dur_ms = (enc->previous_captured_ns > 0) ? (captured_ns - enc->previous_captured_ns) / 1000000 : 0;
+    if (enc->frame_count <= 2) {
+      log_info("ffmpeg: frame %d SET duration=%lld units (%.3fms since last, codec_base=1/%d)",
+               enc->frame_count, (long long)frame_duration, (double)frame_dur_ms,
+               enc->codec_ctx->time_base.den);
+    }
+    enc->previous_captured_ns = captured_ns;
+  }
 
   // Calculate PTS from actual capture timestamp
   // time_base is {1, fps}, so 1 PTS unit = 1/fps seconds
