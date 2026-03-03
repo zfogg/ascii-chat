@@ -276,8 +276,13 @@ asciichat_error_t terminal_flush(int fd) {
   // Flush kernel output buffer for this file descriptor
   // fsync() forces the kernel to write buffered data to the terminal immediately
   // This is critical for smooth animation where each frame must appear before the next
-  if (fsync(fd) < 0 && errno != ENOTSUP) {
-    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+  // Note: TTYs don't support fsync(), which returns EINVAL or EBADF - that's normal
+  if (fsync(fd) < 0) {
+    // ENOTSUP: not supported (some filesystems), EINVAL: invalid for non-regular files (TTYs)
+    // EBADF: bad file descriptor. All of these are OK for TTYs/pipes - just skip fsync
+    if (errno != ENOTSUP && errno != EINVAL && errno != EBADF) {
+      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
+    }
   }
   return ASCIICHAT_OK;
 }
