@@ -10,9 +10,6 @@
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
-#include <stdio.h>
-#include <time.h>
-#include <unistd.h>
 
 #include <libavformat/avformat.h>
 #include <libavcodec/avcodec.h>
@@ -49,7 +46,6 @@ struct ffmpeg_encoder_s {
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
   int has_audio_stream;              // Whether audio stream was created
   int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
-  char temp_file_path[256];          // Temporary file path when buffering stdout
 };
 
 // Determine audio codec from file extension
@@ -336,16 +332,13 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   enc->fps = fps;
   enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
 
-  // When piping to stdout, buffer to a temp file since MP4 requires seeking for moov atom
-  const char *actual_output_path = output_path;
-  if (enc->is_stdout_pipe) {
-    snprintf(enc->temp_file_path, sizeof(enc->temp_file_path), "/tmp/ascii-chat-pipe-%d.mp4", (int)time(NULL));
-    actual_output_path = enc->temp_file_path;
-    log_debug("ffmpeg_encoder_create: Buffering stdout to temp file: %s", enc->temp_file_path);
+  // For codec/format detection, use output_path unless it's "-" (stdout)
+  // For stdout, use "fake.mp4" to default to MP4 format
+  const char *detection_path = output_path;
+  if (output_path && strcmp(output_path, "-") == 0) {
+    detection_path = "fake.mp4"; // Fake path for format detection when piping to stdout
+    log_debug("ffmpeg_encoder_create: Using MP4 format for stdout piping");
   }
-
-  // For codec/format detection, use the actual output path
-  const char *detection_path = actual_output_path;
 
   const char *codec_name = NULL, *format_name = NULL;
   get_codec_from_extension(detection_path, &codec_name, &format_name, &enc->is_image, &enc->target_pix_fmt);
@@ -353,8 +346,8 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   log_debug("ffmpeg_encoder_create: %s (%s, %dx%d @ %dfps, %s)", output_path, codec_name, width_px, height_px, fps,
             enc->is_image ? "image" : "video");
 
-  // Allocate output media context (use actual path, which may be temp file for stdout)
-  int ret = avformat_alloc_output_context2(&enc->fmt_ctx, NULL, format_name, actual_output_path);
+  // Allocate output media context
+  int ret = avformat_alloc_output_context2(&enc->fmt_ctx, NULL, format_name, output_path);
   if (ret < 0) {
     SAFE_FREE(enc);
     return SET_ERRNO(ERROR_INIT, "ffmpeg: avformat_alloc_output_context2 failed");
@@ -434,14 +427,18 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   AVDictionary *opts = NULL;
 
   // Muxer flags configuration
+  // For stdout/non-seekable output, disable seekable-dependent optimizations
   // For regular files, use faststart (moov at front for streaming)
-  // For stdout, don't use special flags (let FFmpeg write standard MP4)
   bool is_stdout = (output_path && strcmp(output_path, "-") == 0);
-  if (!is_stdout) {
+  if (is_stdout) {
+    // Use minimal flags for streaming to stdout - don't require seeking
+    // empty_moov writes moov before mdat, allowing playback before full file is written
+    av_dict_set(&opts, "movflags", "empty_moov", 0);
+    log_debug("ffmpeg_encoder_create: Using streaming MP4 (empty_moov) for stdout output");
+  } else {
     // Move moov atom to the front (faststart) - helps with streaming and player compatibility
     av_dict_set(&opts, "movflags", "faststart", 0);
   }
-  // For stdout: no special movflags - standard MP4 structure
 
   if (enc->is_image) {
     // Use -update flag for single frame output
@@ -493,9 +490,15 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   // Initialize audio stream if supported
   encoder_init_audio_stream(enc, output_path);
 
-  // Open output file (or temp file when buffering stdout)
+  // Open output file or stdout
   if (!(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE)) {
-    ret = avio_open(&enc->fmt_ctx->pb, actual_output_path, AVIO_FLAG_WRITE);
+    // For stdout output, use "pipe:1" (FFmpeg's standard for writing to stdout)
+    const char *open_path = output_path;
+    if (output_path && strcmp(output_path, "-") == 0) {
+      open_path = "pipe:1"; // Use pipe:1 for stdout
+      log_debug("ffmpeg: Redirecting '-' to 'pipe:1' for stdout output");
+    }
+    ret = avio_open(&enc->fmt_ctx->pb, open_path, AVIO_FLAG_WRITE);
     if (ret < 0) {
       sws_freeContext(enc->sws_ctx);
       av_frame_free(&enc->frame);
@@ -504,7 +507,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
       avcodec_free_context(&enc->codec_ctx);
       avformat_free_context(enc->fmt_ctx);
       SAFE_FREE(enc);
-      return SET_ERRNO(ERROR_INIT, "ffmpeg: avio_open failed for '%s'", actual_output_path);
+      return SET_ERRNO(ERROR_INIT, "ffmpeg: avio_open failed for '%s'", open_path);
     }
   }
 
@@ -809,26 +812,6 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   avcodec_free_context(&enc->codec_ctx);
   if (enc->fmt_ctx)
     avformat_free_context(enc->fmt_ctx);
-
-  // If buffering stdout, copy temp file to stdout
-  if (enc->is_stdout_pipe && enc->temp_file_path[0]) {
-    FILE *temp_file = fopen(enc->temp_file_path, "rb");
-    if (temp_file) {
-      log_debug("ffmpeg_encoder_destroy: copying temp file to stdout");
-      // Copy temp file to stdout in 64KB chunks
-      uint8_t *buffer = SAFE_MALLOC(65536, uint8_t *);
-      size_t bytes_read;
-      while ((bytes_read = fread(buffer, 1, 65536, temp_file)) > 0) {
-        fwrite(buffer, 1, bytes_read, stdout);
-      }
-      SAFE_FREE(buffer);
-      fclose(temp_file);
-      // Clean up temp file
-      unlink(enc->temp_file_path);
-    } else {
-      log_warn("ffmpeg_encoder_destroy: Failed to copy temp file to stdout");
-    }
-  }
 
   log_debug("ffmpeg_encoder_destroy: wrote %d frames", enc->frame_count);
   SAFE_FREE(enc);
