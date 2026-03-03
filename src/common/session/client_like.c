@@ -118,7 +118,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   asciichat_error_t result = ASCIICHAT_OK;
 
   // Keep track of what's been initialized for cleanup
-  session_display_ctx_t *temp_display = NULL;
   session_capture_ctx_t *capture = NULL;
   session_display_ctx_t *display = NULL;
   audio_context_t *audio_ctx = NULL;
@@ -167,39 +166,54 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   log_debug("session_client_like_run(): Keepawake setup complete");
 
   // ============================================================================
-  // SETUP: Splash Screen (before media initialization)
+  // SETUP: Display Context (before splash for unified TTY initialization)
   // ============================================================================
 
-  log_debug("session_client_like_run(): Creating temporary display for splash");
+  // Create display context early to share TTY initialization between splash and rendering
+  // This prevents double TTY init which was corrupting the terminal state
+  session_display_config_t display_config = {0};
+  display_config.snapshot_mode = GET_OPTION(snapshot_mode);
+  display_config.palette_type = GET_OPTION(palette_type);
+  display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
+  display_config.color_mode = TERM_COLOR_AUTO;
+  display_config.should_exit_callback = display_should_exit_adapter;
+  display_config.callback_data = NULL;
+  display_config.skip_render_file = true; // Skip render-file during splash phase
 
-  // Create temporary display for splash with render-file disabled
-  session_display_config_t splash_config = {
-      .snapshot_mode = GET_OPTION(snapshot_mode),
-      .palette_type = GET_OPTION(palette_type),
-      .custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL,
-      .color_mode = TERM_COLOR_AUTO,
-      .skip_render_file = true, // Skip render-file for temporary splash display
-  };
-  temp_display = session_display_create(&splash_config);
-  if (temp_display) {
-    splash_intro_start(temp_display);
-    log_debug("session_client_like_run(): splash_intro_start() returned");
-
-    // Detect if we're using media vs webcam (needed for splash timing)
-    const char *media_url = GET_OPTION(media_url);
-    const char *media_file = GET_OPTION(media_file);
-    bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
-
-    // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
-    if (!has_media && !GET_OPTION(snapshot_mode)) {
-      platform_sleep_ms(250);
-    }
-    log_debug("session_client_like_run(): After splash sleep");
-
-    // Restore stderr now that splash animation and post-splash logging are done
-    // This allows logs to appear on screen again after this point
-    splash_restore_stderr();
+  log_debug("[SETUP_DISPLAY_EARLY] Creating display context (before splash)");
+  display = session_display_create(&display_config);
+  if (!display) {
+    log_debug("[SETUP_DISPLAY_EARLY] session_display_create() returned NULL");
+    log_fatal("Failed to initialize display context");
+    result = ERROR_DISPLAY;
+    goto cleanup;
   }
+  log_debug("[SETUP_DISPLAY_EARLY] Display context created, will use for splash");
+
+  // ============================================================================
+  // SETUP: Splash Screen (using unified display context)
+  // ============================================================================
+
+  log_debug("session_client_like_run(): Starting splash with display context");
+
+  // Use the display context we just created for splash animation
+  splash_intro_start(display);
+  log_debug("session_client_like_run(): splash_intro_start() returned");
+
+  // Detect if we're using media vs webcam (needed for splash timing)
+  const char *media_url = GET_OPTION(media_url);
+  const char *media_file = GET_OPTION(media_file);
+  bool has_media = (media_url && strlen(media_url) > 0) || (media_file && strlen(media_file) > 0);
+
+  // Show splash briefly for webcam, but skip sleep for media (which takes time anyway)
+  if (!has_media && !GET_OPTION(snapshot_mode)) {
+    platform_sleep_ms(250);
+  }
+  log_debug("session_client_like_run(): After splash sleep");
+
+  // Restore stderr now that splash animation and post-splash logging are done
+  // This allows logs to appear on screen again after this point
+  splash_restore_stderr();
 
   // ============================================================================
   // SETUP: Terminal Logging in Snapshot Mode
@@ -511,59 +525,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
   }
 
-  // ============================================================================
-  // SETUP: Display Context
-  // ============================================================================
-
-  session_display_config_t display_config = {0};
-  display_config.snapshot_mode = GET_OPTION(snapshot_mode);
-  display_config.palette_type = GET_OPTION(palette_type);
-  display_config.custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL;
-  display_config.color_mode = TERM_COLOR_AUTO;
-  display_config.enable_audio_playback = audio_available;
-  display_config.audio_ctx = audio_ctx;
-  display_config.should_exit_callback = display_should_exit_adapter;
-  display_config.callback_data = NULL;
-
-  // Use capture config FPS for render-file encoding
-  // Always use the actual capture target FPS to ensure render loop and encoder use same FPS
-  if (capture_config.target_fps > 0) {
-    display_config.render_fps = capture_config.target_fps;
-    log_debug("[SETUP_DISPLAY] Using capture target FPS for render-file: %u (type=%d)",
-              display_config.render_fps, capture_config.type);
-  } else {
-    // Fallback to option FPS if not set (shouldn't happen in normal operation)
-    display_config.render_fps = (uint32_t)GET_OPTION(fps);
-    log_debug("[SETUP_DISPLAY] Fallback: using option FPS for render-file: %u",
-              display_config.render_fps);
-  }
-
-  // Set audio sources for render-file output
-  if (capture && session_capture_get_media_source(capture)) {
-    display_config.render_file_audio_source = session_capture_get_media_source(capture);
-    log_debug("[SETUP_DISPLAY] Audio source set from media source for render-file");
-  }
-  if (audio_ctx && audio_ctx->capture_buffer) {
-    display_config.render_file_audio_capture_rb = audio_ctx->capture_buffer;
-    log_debug("[SETUP_DISPLAY] Audio capture ring buffer set for render-file");
-  }
-
-  log_debug("[SETUP_DISPLAY] Creating display context");
-  display = session_display_create(&display_config);
-  if (!display) {
-    log_debug("[SETUP_DISPLAY] session_display_create() returned NULL - checking error");
-    asciichat_error_context_t ctx;
-    if (HAS_ERRNO(&ctx)) {
-      log_debug("[SETUP_DISPLAY] Error context: %s", ctx.context_message);
-    } else {
-      log_debug("[SETUP_DISPLAY] No error context available");
-    }
-    log_fatal("Failed to initialize display");
-
-    result = ERROR_DISPLAY;
-    goto cleanup;
-  }
-  log_debug("[SETUP_DISPLAY] Display context created");
 
   // Pass stdin_reader to display if in stdin render mode
   if (stdin_render_mode && g_stdin_reader) {
@@ -591,23 +552,14 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_debug("[SETUP_SPLASH] Ending splash due to early shutdown request");
     splash_intro_done();
     splash_wait_for_animation();
-    if (temp_display) {
-      session_display_destroy(temp_display);
-      temp_display = NULL;
-    }
     result = ASCIICHAT_OK;
     goto cleanup;
   }
 
-  // Wait for splash animation to finish before destroying display
-  // (splash_anim thread uses the terminal, must not be disrupted by display destroy)
+  // Wait for splash animation to finish before proceeding to render loop
+  // (splash_anim thread uses the display, must not be disrupted before cleanup)
   splash_intro_done();
   splash_wait_for_animation();
-
-  if (temp_display) {
-    session_display_destroy(temp_display);
-    temp_display = NULL;
-  }
 
   // ============================================================================
   // SETUP: Start Audio Playback

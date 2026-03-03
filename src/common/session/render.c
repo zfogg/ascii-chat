@@ -131,7 +131,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   log_info("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
 
-
   while (!should_exit(user_data)) {
     loop_iteration++;
     log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s", loop_iteration, snapshot_done ? "YES" : "NO");
@@ -142,7 +141,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
     if (snapshot_mode && snapshot_done) {
       log_info("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start");
-      fprintf(stderr, "[DEBUG_SNAPSHOT_EXIT] snapshot_mode=%d, snapshot_done=%d\n", snapshot_mode, snapshot_done);
       break;
     }
 
@@ -508,7 +506,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // snapshot_delay>0 means record enough frames for that many seconds of output video
       uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
 
-      log_info("[SNAPSHOT] frame_count=%lu target_frames=%lu delay=%.1f fps=%u", frame_count, target_frames, snapshot_delay, capture_fps);
+      log_info("[SNAPSHOT] frame_count=%lu target_frames=%lu delay=%.1f fps=%u", frame_count, target_frames,
+               snapshot_delay, capture_fps);
 
       // Exit when we've captured enough frames for the desired output duration
       if (frame_count >= target_frames) {

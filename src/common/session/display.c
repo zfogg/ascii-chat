@@ -274,8 +274,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     if (GET_OPTION(snapshot_mode) && config->render_fps > 0) {
       // Snapshot mode with known capture rate - use capture rate for correct duration
       encoder_fps = config->render_fps;
-      log_debug("render-file: SNAPSHOT MODE - using capture rate FPS=%u (snapshot_delay=%.2f sec)",
-                encoder_fps, GET_OPTION(snapshot_delay));
+      log_debug("render-file: SNAPSHOT MODE - using capture rate FPS=%u (snapshot_delay=%.2f sec)", encoder_fps,
+                GET_OPTION(snapshot_delay));
     } else if (config->render_fps > 0) {
       // Normal mode with known capture rate - use it
       encoder_fps = config->render_fps;
@@ -283,11 +283,12 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     } else {
       // No capture rate available - use option default
       encoder_fps = (uint32_t)GET_OPTION(fps);
-      if (encoder_fps == 0) encoder_fps = 60;
+      if (encoder_fps == 0)
+        encoder_fps = 60;
       log_debug("render-file: Using option FPS=%u (no capture rate available)", encoder_fps);
     }
-    log_info("render-file: Final encoder FPS=%u (config_render_fps=%u, option_fps=%u)",
-             encoder_fps, config->render_fps, (uint32_t)GET_OPTION(fps));
+    log_info("render-file: Final encoder FPS=%u (config_render_fps=%u, option_fps=%u)", encoder_fps, config->render_fps,
+             (uint32_t)GET_OPTION(fps));
     asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, (int)encoder_fps,
                                                   GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK)
