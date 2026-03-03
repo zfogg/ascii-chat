@@ -270,21 +270,14 @@ static void *pipeline_capture_thread(void *arg) {
         }
 
         if (pipeline->has_render_file) {
-            // Only encode frames after the rendering system is ready (first frame has been rendered)
-            // This avoids encoding black frames during initialization
-            extern bool g_snapshot_first_frame_rendered;
-            if (g_snapshot_first_frame_rendered) {
-                if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
-                    // Blocking: keep trying to enqueue for file output
-                    log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
-                    free_frame(frame);
-                } else {
-                    log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w, frame->h);
-                }
-            } else {
-                // Skip encoding until first frame is rendered - avoids black frames at start
-                log_debug("[PIPELINE_CAPTURE_SKIP] Skipping encode (rendering not ready yet)");
+            // Encode all captured frames, including frames before display rendering starts
+            // The encoder will use them with correct timestamps regardless of display timing
+            if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
+                // Blocking: keep trying to enqueue for file output
+                log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
                 free_frame(frame);
+            } else {
+                log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w, frame->h);
             }
         } else {
             free_frame(frame);
@@ -321,9 +314,17 @@ static void *pipeline_encode_thread(void *arg) {
             continue;
         }
 
-        // Encode frame: wrap in image_t and call encoder with capture timestamp
-        image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
-        session_display_encode_frame(pipeline->display, &tmp, frame->captured_ns);
+        // Convert raw frame to ASCII art (same as display thread does)
+        // This ensures the video shows what the user sees on screen
+        image_t raw_image = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
+        char *ascii_frame = session_display_convert_to_ascii(pipeline->display, &raw_image);
+
+        if (ascii_frame) {
+            // Encode the ASCII-rendered output using the converted frame
+            session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
+            SAFE_FREE(ascii_frame);
+        }
+
         free_frame(frame);
     }
 
