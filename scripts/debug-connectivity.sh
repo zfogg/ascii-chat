@@ -1,0 +1,177 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# Optional --build-dir and --protocol parameters
+# Usage: ./debug-connectivity.sh [--build-dir <dir>] [--protocol <tcp|ws|wss>]
+BUILD_DIR="build"
+PROTOCOL="tcp"  # Default protocol
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --build-dir)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: --build-dir requires a directory argument" >&2
+        exit 1
+      fi
+      BUILD_DIR="$2"
+      shift 2
+      ;;
+    --protocol)
+      if [[ -z "${2:-}" ]]; then
+        echo "Error: --protocol requires tcp, ws, or wss" >&2
+        exit 1
+      fi
+      case "$2" in
+        tcp|ws|wss)
+          PROTOCOL="$2"
+          shift 2
+          ;;
+        *)
+          echo "Error: Invalid protocol '$2'. Must be tcp, ws, or wss" >&2
+          exit 1
+          ;;
+      esac
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      exit 1
+      ;;
+  esac
+done
+
+PORT=$(((RANDOM % 6000) + 2000))
+client_log=/tmp/client-logfile-"$PORT".log
+client_stdout=/tmp/client-stdout-"$PORT".log
+server_log=/tmp/server-logfile-"$PORT".log
+
+echo "Starting connectivity test on port: $PORT"
+echo "Protocol: $PROTOCOL"
+echo "Using build directory: $BUILD_DIR"
+echo ""
+
+pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
+
+cmake --build "$BUILD_DIR"
+
+# Protocol-specific configuration
+case "$PROTOCOL" in
+  tcp)
+    SNAPSHOT_DELAY=3.5
+    echo "Testing TCP connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+
+    # Start TCP server
+    "$BUILD_DIR"/bin/ascii-chat \
+      --log-file "$server_log" --log-level debug \
+      server --port "$PORT" \
+      >/dev/null 2>&1 &
+    SERVER_PID=$!
+    sleep 0.25
+
+    # Start TCP client
+    EXIT_CODE=0
+    START_TIME=$(date +%s%N)
+    ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' timeout -k2.0 5 "$BUILD_DIR"/bin/ascii-chat \
+      --log-level debug --log-file "$client_log" --sync-state 3 \
+      client \
+      localhost:"$PORT" \
+      --test-pattern \
+      -S -D "$SNAPSHOT_DELAY" \
+      2>/dev/null | tee "$client_stdout" \
+      || EXIT_CODE=$?
+    END_TIME=$(date +%s%N)
+    ;;
+
+  ws|wss)
+    SNAPSHOT_DELAY=3.25
+    PORT_WS=$(((RANDOM % 6000) + 2000))
+
+    if [[ "$PROTOCOL" == "wss" ]]; then
+      PROTOCOL_PREFIX="wss"
+      echo "Testing WebSocket Secure (WSS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+    else
+      PROTOCOL_PREFIX="ws"
+      echo "Testing WebSocket (WS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+    fi
+
+    # Start WebSocket server
+    "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
+      server --port "$PORT" --websocket-port "$PORT_WS" \
+      >/dev/null 2>&1 &
+    SERVER_PID=$!
+    sleep 0.25
+
+    # Start WebSocket client
+    EXIT_CODE=0
+    START_TIME=$(date +%s%N)
+    export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
+    export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
+    timeout -k1 10 "$BUILD_DIR"/bin/ascii-chat \
+      --log-level debug --log-file "$client_log" --sync-state 3 \
+      client "${PROTOCOL_PREFIX}://localhost:${PORT_WS}" \
+      --test-pattern -S -D "$SNAPSHOT_DELAY" \
+      | tee "$client_stdout" || EXIT_CODE=$?
+    END_TIME=$(date +%s%N)
+    ;;
+esac
+
+# Calculate elapsed time in seconds
+ELAPSED_NS=$((END_TIME - START_TIME))
+ELAPSED_SEC=$(echo "scale=2; $ELAPSED_NS / 1000000000" | bc)
+
+# Extract and display frame statistics
+echo ""
+echo "=== CONNECTIVITY TEST RESULTS ==="
+echo "Protocol: ${PROTOCOL^^}"
+echo "Exit code: $EXIT_CODE (0=success, 124=timeout, 137=deadlock, 139=segfault, 1=error)"
+echo "Elapsed time: ${ELAPSED_SEC}s"
+echo ""
+
+# Count actual frames written by looking for frame completion markers
+FRAME_COUNT=$(grep -i 'unique frames rendered' "$client_log" 2>/dev/null | tail -1 | grep -oE '[0-9]+ unique' | grep -oE '^[0-9]+' || echo "0")
+echo "🎬 FRAME COUNT: $FRAME_COUNT frames"
+
+# Calculate actual FPS based on snapshot rendering time (not total elapsed time)
+if (( $(echo "$SNAPSHOT_DELAY > 0" | bc -l) )); then
+    ACTUAL_FPS=$(echo "scale=2; $FRAME_COUNT / $SNAPSHOT_DELAY" | bc)
+    echo "📊 ACTUAL FPS: $ACTUAL_FPS"
+else
+    ACTUAL_FPS=0
+    echo "📊 ACTUAL FPS: 0 (insufficient snapshot delay)"
+fi
+
+echo ""
+
+# Check for memory errors
+if grep -q "AddressSanitizer" "$client_log" 2>/dev/null; then
+    echo "⚠️  ASAN errors detected:"
+    grep "SUMMARY: AddressSanitizer" "$client_log" | head -1 || true
+else
+    echo "✓ No memory errors detected"
+fi
+
+# Show expected vs actual
+case "$PROTOCOL" in
+  tcp)
+    EXPECTED_60=$(echo "scale=0; 60 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+    EXPECTED_30=$(echo "scale=0; 30 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+    ;;
+  ws|wss)
+    EXPECTED_60=$(echo "scale=0; 60 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+    EXPECTED_30=$(echo "scale=0; 30 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
+    ;;
+esac
+
+echo ""
+echo "Expected at 60 FPS for ${SNAPSHOT_DELAY}s: ~$EXPECTED_60 frames"
+echo "Expected at 30 FPS for ${SNAPSHOT_DELAY}s: ~$EXPECTED_30 frames"
+echo "Actual frames rendered: $FRAME_COUNT (with SNAPSHOT_DELAY=${SNAPSHOT_DELAY}s of rendering time)"
+
+echo ""
+echo "📋 Log files:"
+echo "  Client log:    $client_log"
+echo "  Client stdout: $client_stdout"
+echo "  Server log:    $server_log"
+
+echo ""
+pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
