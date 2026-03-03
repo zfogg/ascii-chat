@@ -45,6 +45,7 @@ struct ffmpeg_encoder_s {
   int is_image;                      // Single-frame format (PNG, JPG)
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
   int has_audio_stream;              // Whether audio stream was created
+  int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
 };
 
 // Determine audio codec from file extension
@@ -329,9 +330,18 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   enc->width_px = width_px;
   enc->height_px = height_px;
   enc->fps = fps;
+  enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
+
+  // For codec/format detection, use output_path unless it's "-" (stdout)
+  // For stdout, use "fake.mp4" to default to MP4 format
+  const char *detection_path = output_path;
+  if (output_path && strcmp(output_path, "-") == 0) {
+    detection_path = "fake.mp4"; // Fake path for format detection when piping to stdout
+    log_debug("ffmpeg_encoder_create: Using MP4 format for stdout piping");
+  }
 
   const char *codec_name = NULL, *format_name = NULL;
-  get_codec_from_extension(output_path, &codec_name, &format_name, &enc->is_image, &enc->target_pix_fmt);
+  get_codec_from_extension(detection_path, &codec_name, &format_name, &enc->is_image, &enc->target_pix_fmt);
 
   log_debug("ffmpeg_encoder_create: %s (%s, %dx%d @ %dfps, %s)", output_path, codec_name, width_px, height_px, fps,
             enc->is_image ? "image" : "video");
@@ -415,8 +425,20 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
 
   // Muxer options for proper MP4 container structure
   AVDictionary *opts = NULL;
-  // Move moov atom to the front (faststart) - helps with streaming and player compatibility
-  av_dict_set(&opts, "movflags", "faststart", 0);
+
+  // Muxer flags configuration
+  // For stdout/non-seekable output, disable seekable-dependent optimizations
+  // For regular files, use faststart (moov at front for streaming)
+  bool is_stdout = (output_path && strcmp(output_path, "-") == 0);
+  if (is_stdout) {
+    // Use minimal flags for streaming to stdout - don't require seeking
+    // empty_moov writes moov before mdat, allowing playback before full file is written
+    av_dict_set(&opts, "movflags", "empty_moov", 0);
+    log_debug("ffmpeg_encoder_create: Using streaming MP4 (empty_moov) for stdout output");
+  } else {
+    // Move moov atom to the front (faststart) - helps with streaming and player compatibility
+    av_dict_set(&opts, "movflags", "faststart", 0);
+  }
 
   if (enc->is_image) {
     // Use -update flag for single frame output
@@ -588,6 +610,11 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
     if (ret < 0) {
       log_warn_every(5 * 1000000000LL, "ffmpeg: av_interleaved_write_frame failed");
       break;
+    }
+
+    // Flush output buffer for stdout to ensure frames are written immediately
+    if (enc->is_stdout_pipe) {
+      avio_flush(enc->fmt_ctx->pb);
     }
   }
 
