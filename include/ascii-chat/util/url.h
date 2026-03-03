@@ -12,9 +12,9 @@
  *
  * CORE FEATURES:
  * ==============
- * - Production-grade HTTP(S) and WebSocket URL validation via PCRE2
+ * - Production-grade HTTP(S), WebSocket, and TCP URL validation via PCRE2
  * - Comprehensive URL parsing (extract scheme, host, port, path)
- * - Scheme support: http, https, ws, wss (case-insensitive)
+ * - Scheme support: http, https, ws, wss, tcp (case-insensitive)
  * - IPv4, IPv6, and hostname support (localhost, bare hosts, FQDNs)
  * - Private IP filtering (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - JIT-compiled regex for 10-100x performance boost
@@ -64,7 +64,7 @@ typedef struct {
 } url_parts_t;
 
 /**
- * @brief Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket)
+ * @brief Fast URL validation using production-grade regex (HTTP/HTTPS/WebSocket/TCP)
  * @param url Input URL string to validate
  * @return True if URL is valid, false otherwise
  *
@@ -72,7 +72,7 @@ typedef struct {
  * compilation for 10-100x performance over manual parsing.
  *
  * URL ACCEPTANCE CRITERIA:
- * - Scheme: http, https, ws, or wss (case-insensitive)
+ * - Scheme: http, https, ws, wss, or tcp (case-insensitive)
  * - Host: Public IPv4, IPv6, localhost, FQDN, or bare hostname
  * - Rejects: Private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - Port: Optional, must be 1-65535 if present
@@ -90,23 +90,23 @@ typedef struct {
 bool url_is_valid(const char *url);
 
 /**
- * @brief Parse HTTP(S) and WebSocket URL into components
+ * @brief Parse HTTP(S), WebSocket, and TCP URL into components
  * @param url Input URL string to parse
  * @param parts_out Output structure for parsed components (must not be NULL)
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * Validates and parses an HTTP(S) or WebSocket URL into its component parts using
+ * Validates and parses an HTTP(S), WebSocket, or TCP URL into its component parts using
  * production-grade PCRE2 regex with JIT compilation.
  *
  * URL ACCEPTANCE CRITERIA:
- * - Scheme: http, https, ws, or wss (case-insensitive)
+ * - Scheme: http, https, ws, wss, or tcp (case-insensitive)
  * - Host: Public IPv4, IPv6, localhost, FQDN, or bare hostname
  * - Rejects: Private IPs (10.x, 172.16-31.x, 192.168.x, 127.x, 169.254.x)
  * - Port: Optional, 1-65535
  * - Path/Query/Fragment: Optional
  *
  * EXTRACTED COMPONENTS:
- * - scheme: "http", "https", "ws", or "wss" (always present)
+ * - scheme: "http", "https", "ws", "wss", or "tcp" (always present)
  * - host: Hostname, IPv4, or IPv6 (always present)
  * - port: Port number (0 if not specified)
  * - userinfo: user:pass@ prefix (NULL if not present)
@@ -217,5 +217,70 @@ bool url_is_websocket(const char *url);
  * @ingroup util
  */
 bool url_looks_like_websocket(const char *url);
+
+/**
+ * @brief Check if URL scheme is TCP
+ * @param scheme Scheme string to check (case-insensitive)
+ * @return True if scheme is "tcp", false otherwise
+ *
+ * Utility function to determine if a parsed URL is a TCP URL.
+ *
+ * @par Example
+ * @code
+ * url_parts_t parts = {0};
+ * if (url_parse("tcp://example.com:5000", &parts) == ASCIICHAT_OK) {
+ *     if (url_is_tcp_scheme(parts.scheme)) {
+ *         // Handle TCP connection
+ *     }
+ *     url_parts_destroy(&parts);
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_is_tcp_scheme(const char *scheme);
+
+/**
+ * @brief Check if a URL string is a valid TCP URL
+ * @param url URL string to validate
+ * @return True if URL is valid and has TCP scheme, false otherwise
+ *
+ * Parses a URL and checks if it has a TCP scheme. This is the primary
+ * function for TCP URL validation - use this instead of manually calling
+ * url_parse() and url_is_tcp_scheme().
+ *
+ * @par Example
+ * @code
+ * if (url_is_tcp("tcp://example.com:5000")) {
+ *     // Safe to use as TCP URL
+ *     connection_attempt_tcp(&ctx, "tcp://example.com:5000");
+ * } else if (url_is_valid(address)) {
+ *     // Use regular HTTP(S) transport
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_is_tcp(const char *url);
+
+/**
+ * @brief Quick check if a string is a TCP URL
+ * @param url String to check
+ * @return True if string starts with tcp://, false otherwise
+ *
+ * Fast check without full URL parsing. Useful for determining transport type.
+ *
+ * @par Example
+ * @code
+ * if (url_looks_like_tcp("tcp://example.com:5000")) {
+ *     // Use TCP transport
+ * } else if (url_is_valid(address)) {
+ *     // Use regular HTTP(S) transport
+ * }
+ * @endcode
+ *
+ * @ingroup util
+ */
+bool url_looks_like_tcp(const char *url);
 
 /** @} */

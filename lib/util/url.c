@@ -25,8 +25,8 @@
  * ═══════════════════════════════════════════════════════════════════════════ */
 
 static const char *URL_REGEX_PATTERN =
-    // SCHEME: http, https, ws, or wss (case-insensitive)
-    "^(?<scheme>https?|wss?)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
+    // SCHEME: http, https, ws, wss, or tcp (case-insensitive)
+    "^(?<scheme>https?|wss?|tcp)://(?:(?<userinfo>\\S+(?::\\S*)?)@)?"
     // HOST: one of three alternatives below
     "(?<host>"
     "(?:"
@@ -327,4 +327,39 @@ bool url_looks_like_websocket(const char *url) {
 
   /* Quick check for ws:// or wss:// prefix (case-insensitive) */
   return (strncasecmp(url, "ws://", 5) == 0 || strncasecmp(url, "wss://", 6) == 0);
+}
+
+bool url_is_tcp_scheme(const char *scheme) {
+  if (!scheme || !*scheme) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "scheme is NULL or empty");
+    return false;
+  }
+
+  /* Case-insensitive comparison for "tcp" */
+  return (strcasecmp(scheme, "tcp") == 0);
+}
+
+bool url_is_tcp(const char *url) {
+  if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");
+    return false;
+  }
+
+  /* Parse URL to validate and check scheme */
+  url_parts_t parts = {0};
+  asciichat_error_t result = url_parse(url, &parts);
+  bool is_tcp = (result == ASCIICHAT_OK && url_is_tcp_scheme(parts.scheme));
+  url_parts_destroy(&parts);
+
+  return is_tcp;
+}
+
+bool url_looks_like_tcp(const char *url) {
+  if (!url || !*url) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "url is NULL or empty");
+    return false;
+  }
+
+  /* Quick check for tcp:// prefix (case-insensitive) */
+  return (strncasecmp(url, "tcp://", 6) == 0);
 }

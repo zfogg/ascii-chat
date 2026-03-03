@@ -811,6 +811,79 @@ ParameterizedTest(url_test_case_t *test, url_validator, integration, .fini = cle
 }
 
 /* ============================================================================
+ * Test Suite: TCP URLs
+ * ============================================================================ */
+
+static url_test_case_t tcp_urls[] = {
+    // Basic TCP URLs
+    {"tcp://example.com:5000", "basic TCP URL"},
+    {"tcp://localhost:8000", "TCP localhost"},
+    {"tcp://127.0.0.1:9000", "TCP loopback"},
+    {"tcp://192.168.1.1:1234", "TCP private IP"},
+    {"tcp://10.0.0.1:5555", "TCP 10.x network"},
+
+    // IPv6 TCP URLs
+    {"tcp://[::1]:3000", "TCP IPv6 loopback"},
+    {"tcp://[2001:db8::1]:5000", "TCP IPv6 address"},
+    {"tcp://[fe80::1%25eth0]:8080", "TCP IPv6 with zone ID"},
+
+    // TCP with paths and queries
+    {"tcp://example.com:5000/path", "TCP with path"},
+    {"tcp://example.com:5000/path?query=value", "TCP with query"},
+    {"tcp://example.com:5000/path?q=1#fragment", "TCP with all parts"},
+
+    // Different port ranges
+    {"tcp://example.com:1", "TCP min port"},
+    {"tcp://example.com:65535", "TCP max port"},
+    {"tcp://example.com:8080", "TCP common port"},
+
+    // Userinfo (optional)
+    {"tcp://user:pass@example.com:5000", "TCP with userinfo"},
+    {"tcp://user@example.com:5000", "TCP with user only"},
+};
+
+ParameterizedTestParameters(url_validator, tcp_urls) {
+  return cr_make_param_array(url_test_case_t, tcp_urls, sizeof(tcp_urls) / sizeof(url_test_case_t));
+}
+
+ParameterizedTest(url_test_case_t *test, url_validator, tcp_urls, .fini = cleanup) {
+  assert_url_valid(test->url, test->note);
+}
+
+/* ============================================================================
+ * Test Suite: TCP URL Detection
+ * ============================================================================ */
+
+Test(url_validator, tcp_detection_url_is_tcp) {
+  // Test url_is_tcp()
+  cr_assert(url_is_tcp("tcp://example.com:5000"), "Should detect valid TCP URL");
+  cr_assert(url_is_tcp("tcp://localhost:8080"), "Should detect TCP localhost");
+  cr_assert(url_is_tcp("TCP://EXAMPLE.COM:5000"), "Should detect case-insensitive TCP");
+  cr_assert_not(url_is_tcp("http://example.com:5000"), "Should reject HTTP URL");
+  cr_assert_not(url_is_tcp("https://example.com:443"), "Should reject HTTPS URL");
+  cr_assert_not(url_is_tcp("ws://example.com:8000"), "Should reject WebSocket URL");
+}
+
+Test(url_validator, tcp_detection_url_looks_like_tcp) {
+  // Test url_looks_like_tcp() - fast check without full parsing
+  cr_assert(url_looks_like_tcp("tcp://example.com:5000"), "Should detect tcp:// prefix");
+  cr_assert(url_looks_like_tcp("TCP://EXAMPLE.COM:5000"), "Should detect case-insensitive");
+  cr_assert_not(url_looks_like_tcp("http://example.com:5000"), "Should reject HTTP");
+  cr_assert_not(url_looks_like_tcp("https://example.com:443"), "Should reject HTTPS");
+  cr_assert_not(url_looks_like_tcp("http:///example.com:5000"), "Should reject malformed");
+}
+
+Test(url_validator, tcp_detection_url_is_tcp_scheme) {
+  // Test url_is_tcp_scheme()
+  cr_assert(url_is_tcp_scheme("tcp"), "Should detect 'tcp' scheme");
+  cr_assert(url_is_tcp_scheme("TCP"), "Should detect case-insensitive 'TCP'");
+  cr_assert(url_is_tcp_scheme("TcP"), "Should detect mixed case 'TcP'");
+  cr_assert_not(url_is_tcp_scheme("http"), "Should reject 'http'");
+  cr_assert_not(url_is_tcp_scheme("https"), "Should reject 'https'");
+  cr_assert_not(url_is_tcp_scheme("ws"), "Should reject 'ws'");
+}
+
+/* ============================================================================
  * Test Suite: Edge Cases
  * ============================================================================ */
 // Use verbose logging with debug level enabled and stdout/stderr not disabled

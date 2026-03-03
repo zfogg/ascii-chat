@@ -123,8 +123,8 @@ static bool url_is_direct_stream(const char *url) {
   if (!url)
     return false;
 
-  // RTSP and RTMP are streaming protocols, always direct
-  if (strncmp(url, "rtsp://", 7) == 0 || strncmp(url, "rtmp://", 7) == 0) {
+  // RTSP, RTMP, and TCP are streaming protocols, always direct
+  if (strncmp(url, "rtsp://", 7) == 0 || strncmp(url, "rtmp://", 7) == 0 || strncmp(url, "tcp://", 6) == 0) {
     return true;
   }
 
