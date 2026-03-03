@@ -41,9 +41,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 PORT=$(((RANDOM % 6000) + 2000))
-client_log=/tmp/client-logfile-"$PORT".log
-client_stdout=/tmp/client-stdout-"$PORT".log
-server_log=/tmp/server-logfile-"$PORT".log
+tmpdir=$(mktemp -d "XXX-ascii-chat-debug-fps")
+client_log="$tmpdir/client-logfile-$PORT.log"
+client_stdout="$tmpdir/client-stdout-$PORT.log"
+server_log="$tmpdir/server-logfile-$PORT.log"
 
 echo "Starting connectivity test on port: $PORT"
 echo "Protocol: $PROTOCOL"
@@ -92,8 +93,8 @@ case "$PROTOCOL" in
       echo "Testing WebSocket Secure (WSS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
 
       # Generate self-signed certificate and key for testing
-      cert_file="/tmp/wss-test-cert-${PORT}.pem"
-      key_file="/tmp/wss-test-key-${PORT}.pem"
+      cert_file="$tmpdir/wss-test-cert-${PORT}.pem"
+      key_file="$tmpdir/wss-test-key-${PORT}.pem"
 
       echo "Generating self-signed certificate..."
       openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
