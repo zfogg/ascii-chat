@@ -15,6 +15,7 @@
 #include "session/display.h"
 #include "session/stdin_reader.h"
 #include <ascii-chat/ui/keyboard_help.h>
+#include <ascii-chat/ui/splash.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -129,6 +130,17 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   int loop_iteration = 0;
   log_info("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+
+  // Wait for splash animation to complete before rendering first frame
+  // This prevents ASCII art from mixing with splash screen output
+  static bool splash_wait_done = false;
+  if (!splash_wait_done) {
+    splash_wait_done = true;
+    // Re-enable logging briefly for splash wait, then disable again
+    log_set_terminal_output(true);
+    splash_wait_for_animation();
+    log_set_terminal_output(false);
+  }
 
   while (!should_exit(user_data)) {
     loop_iteration++;
@@ -407,7 +419,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       // - TTY mode: render all frames with cursor control (even in snapshot mode, for animation)
       // - Piped mode: render all frames without cursor control (for continuous capture)
       // - Snapshot mode on non-TTY: only the display context renders the final frame
-      bool should_write = true;
+      // BUT: don't render if splash screen is still animating - wait for it to finish
+      bool splash_running = splash_is_running();
+      bool should_write = !splash_running;
+      if (frame_count == 1) {
+        log_dev("[RENDER_FRAME] Frame 1: splash_is_running=%s, should_write=%s", splash_running ? "YES" : "NO", should_write ? "YES" : "NO");
+      }
       if (should_write) {
         // is_final = true when: snapshot done, or paused frame (for both snapshot and pause modes)
         // Profile: render frame
