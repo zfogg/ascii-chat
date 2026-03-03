@@ -454,6 +454,15 @@ uint32_t session_display_get_render_fps(session_display_ctx_t *ctx) {
   return ctx->render_fps;
 }
 
+void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps) {
+  if (!ctx)
+    return;
+  ctx->render_fps = fps;
+  if (fps > 0) {
+    log_debug("session_display_set_render_fps: Updated render FPS to %u (for correct video duration)", fps);
+  }
+}
+
 bool session_display_has_first_frame(session_display_ctx_t *ctx) {
   if (!ctx) {
     return false;

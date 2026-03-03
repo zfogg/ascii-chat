@@ -267,6 +267,15 @@ bool session_display_has_render_file(session_display_ctx_t *ctx);
 uint32_t session_display_get_render_fps(session_display_ctx_t *ctx);
 
 /**
+ * @brief Set the render FPS for file output encoding
+ * @param ctx Display context
+ * @param fps Target FPS for video encoding (detected from input media)
+ *
+ * @ingroup session
+ */
+void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps);
+
+/**
  * @brief Check if the display has rendered its first frame
  * @param ctx Display context (can be NULL)
  * @return true if first frame has been rendered, false if not yet rendered or ctx is NULL
