@@ -4,6 +4,7 @@
  * @ingroup platform
  */
 
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <time.h>

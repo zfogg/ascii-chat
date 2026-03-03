@@ -7,6 +7,7 @@
 #ifdef _WIN32
 
 #include <ascii-chat/platform/api.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/internal.h>
 #include <ascii-chat/platform/socket.h>
 #include <ascii-chat/debug/named.h>

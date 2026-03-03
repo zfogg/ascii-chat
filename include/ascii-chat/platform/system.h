@@ -298,49 +298,6 @@ typedef struct {
  */
 asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count);
 
-/**
- * @brief Console control event types (cross-platform Ctrl+C handling)
- *
- * @ingroup platform
- */
-typedef enum {
-  CONSOLE_CTRL_C = 0,     /**< Ctrl+C pressed (SIGINT equivalent) */
-  CONSOLE_CTRL_BREAK = 1, /**< Ctrl+Break pressed (Windows only, maps to SIGINT on Unix) */
-  CONSOLE_CLOSE = 2,      /**< Console window closed */
-  CONSOLE_LOGOFF = 3,     /**< User logoff event (Windows only) */
-  CONSOLE_SHUTDOWN = 4    /**< System shutdown event (Windows only) */
-} console_ctrl_event_t;
-
-/**
- * @brief Console control handler callback type
- * @param event The control event that occurred
- * @return true if the event was handled, false to pass to next handler
- *
- * @note On Windows, this is called from a separate thread, not from signal context
- * @note On Unix, this is called from signal context (limited safe operations)
- *
- * @ingroup platform
- */
-typedef bool (*console_ctrl_handler_t)(console_ctrl_event_t event);
-
-/**
- * @brief Register a console control handler (for Ctrl+C, etc.)
- * @param handler Handler function to register, or NULL to unregister
- * @return true on success, false on failure
- *
- * This provides cross-platform handling for console control events like Ctrl+C.
- * - On Windows: Uses SetConsoleCtrlHandler() for proper signal handling
- * - On Unix: Uses sigaction() for SIGINT/SIGTERM handling
- *
- * Unlike platform_signal() which uses CRT signal() on Windows (known issues),
- * this function uses the native Windows API for reliable Ctrl+C handling.
- *
- * @note Only one handler is supported at a time. Registering a new handler
- *       replaces the previous one.
- *
- * @ingroup platform
- */
-bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler);
 
 /**
  * @brief Get an environment variable value
@@ -366,28 +323,6 @@ const char *platform_getenv(const char *name);
  * @ingroup platform
  */
 int platform_setenv(const char *name, const char *value);
-
-/**
- * @brief Check if a file descriptor is a terminal
- * @param fd File descriptor to check
- * @return Non-zero if fd is a terminal, 0 otherwise
- *
- * @ingroup platform
- */
-int platform_isatty(int fd);
-
-/**
- * @brief Get the name of the terminal associated with a file descriptor
- * @param fd File descriptor
- * @return Pointer to terminal name string (or NULL), may be static, do not free
- *
- * Returns the name of the terminal device associated with the file descriptor.
- *
- * @note The returned string may be a static buffer. Do not modify or free it.
- *
- * @ingroup platform
- */
-const char *platform_ttyname(int fd);
 
 /**
  * @brief Synchronize a file descriptor to disk

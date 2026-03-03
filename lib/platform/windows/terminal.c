@@ -6,6 +6,7 @@
 
 #ifdef _WIN32
 
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/asciichat_errno.h>
