@@ -119,15 +119,15 @@ void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_sour
   log_debug("render_file_set_audio_source: media_source=%p, capture_rb=%p", audio_media_source, audio_capture_rb);
 }
 
-asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame) {
+asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns) {
   // Write to debug file directly to bypass logging system
   FILE *dbg = fopen("/tmp/render-debug.txt", "a");
   if (dbg) {
-    fprintf(dbg, "[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu\n", (void *)ctx,
-            ansi_frame ? strlen(ansi_frame) : 0);
+    fprintf(dbg, "[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu, captured_ns=%llu\n", (void *)ctx,
+            ansi_frame ? strlen(ansi_frame) : 0, (unsigned long long)captured_ns);
     fclose(dbg);
   }
-  log_info("render_file_write_frame: CALLED - ctx=%p", (void *)ctx);
+  log_info("render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu", (void *)ctx, (unsigned long long)captured_ns);
 
   if (!ctx) {
     log_warn("render_file_write_frame: ctx is NULL");
@@ -167,7 +167,7 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
              sample_g_mid, sample_b_mid);
   }
 
-  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch);
+  err = ffmpeg_encoder_write_frame(ctx->encoder, pixels, pitch, captured_ns);
   if (err != ASCIICHAT_OK) {
     log_warn("render_file_write_frame: ffmpeg_encoder_write_frame failed: %s", asciichat_error_string(err));
   }

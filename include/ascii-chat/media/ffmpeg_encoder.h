@@ -203,9 +203,16 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path,
  * For tightly-packed RGB data: `pitch = width_px × 3`.
  * For padded/aligned buffers: `pitch` must reflect the actual row size.
  *
- * @param enc   Encoder handle (created with ffmpeg_encoder_create())
- * @param rgb   Pointer to frame data in RGB24 format (not copied, used immediately)
- * @param pitch Byte offset between rows (must match actual buffer layout)
+ * **Timestamp Parameter:**
+ * The `captured_ns` parameter is the wall-clock timestamp (in nanoseconds) when
+ * the frame was captured. This ensures video playback uses actual capture timing,
+ * not encoder processing time. For correct frame timing in the output video,
+ * captured_ns should be the time when the frame was acquired from the media source.
+ *
+ * @param enc         Encoder handle (created with ffmpeg_encoder_create())
+ * @param rgb         Pointer to frame data in RGB24 format (not copied, used immediately)
+ * @param pitch       Byte offset between rows (must match actual buffer layout)
+ * @param captured_ns Wall-clock timestamp in nanoseconds when frame was captured
  *
  * @return ASCIICHAT_OK on success, error code otherwise
  *
@@ -218,7 +225,8 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path,
  * @see ffmpeg_encoder_create, ffmpeg_encoder_destroy
  */
 asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc,
-                                             const uint8_t *rgb, int pitch);
+                                             const uint8_t *rgb, int pitch,
+                                             uint64_t captured_ns);
 
 /**
  * Write audio samples to the output file.

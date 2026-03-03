@@ -342,7 +342,7 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *frame_d
  *
  * @ingroup session
  */
-void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image);
+void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns);
 
 /**
  * @brief Render an ASCII frame to the terminal

@@ -305,9 +305,9 @@ static void *pipeline_encode_thread(void *arg) {
             continue;
         }
 
-        // Encode frame: wrap in image_t and call encoder
+        // Encode frame: wrap in image_t and call encoder with capture timestamp
         image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
-        session_display_encode_frame(pipeline->display, &tmp);
+        session_display_encode_frame(pipeline->display, &tmp, frame->captured_ns);
         free_frame(frame);
     }
 

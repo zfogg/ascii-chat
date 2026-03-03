@@ -881,11 +881,11 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
   }
 }
 
-void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image) {
+void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image, uint64_t captured_ns) {
   static int call_count = 0;
   if (call_count++ < 5) {
-    log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, ctx->render_file=%p)",
-             (void *)ctx, (void *)image, ctx ? (void *)ctx->render_file : NULL);
+    log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, captured_ns=%llu, ctx->render_file=%p)",
+             (void *)ctx, (void *)image, (unsigned long long)captured_ns, ctx ? (void *)ctx->render_file : NULL);
   }
 
   if (!ctx || !ctx->initialized) {
@@ -913,7 +913,7 @@ void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *ima
 
   // Write ASCII to render-file encoder
 #ifndef _WIN32
-  asciichat_error_t fe = render_file_write_frame(ctx->render_file, ascii);
+  asciichat_error_t fe = render_file_write_frame(ctx->render_file, ascii, captured_ns);
   if (fe != ASCIICHAT_OK) {
     log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }

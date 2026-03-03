@@ -50,6 +50,9 @@ struct ffmpeg_encoder_s {
   int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
   double snapshot_actual_duration;   // Actual wall-clock duration in snapshot mode (seconds)
   uint64_t snapshot_elapsed_ns;      // Current elapsed time in snapshot mode for dynamic frame duration
+
+  // Frame timing from capture timestamps
+  uint64_t first_frame_captured_ns;  // Wall-clock timestamp of first frame (0 = not set)
 };
 
 // Determine audio codec from file extension
@@ -543,6 +546,7 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   enc->video_pts = 0;
   enc->snapshot_actual_duration = 0.0;
   enc->snapshot_elapsed_ns = 0;
+  enc->first_frame_captured_ns = 0;  // Initialize first frame timestamp
   *out = enc;
 
   /* Register encoder with named registry */
@@ -552,13 +556,20 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_t *rgb, int pitch) {
+asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_t *rgb, int pitch,
+                                             uint64_t captured_ns) {
   if (!enc || !rgb)
     return SET_ERRNO(ERROR_INVALID_PARAM, "ffmpeg_encoder_write_frame: NULL input");
 
+  // Initialize first frame capture time on first call
+  if (enc->first_frame_captured_ns == 0) {
+    enc->first_frame_captured_ns = captured_ns;
+    log_debug("ffmpeg_encoder_write_frame: first frame captured at %llu ns", (unsigned long long)captured_ns);
+  }
+
   log_info("[FFMPEG_ENCODER_WRITE] frame %d, pitch=%d, dims=%dx%d", enc->frame_count, pitch, enc->width_px, enc->height_px);
-  log_debug("ffmpeg_encoder_write_frame: frame %d, pitch=%d, dims=%dx%d", enc->frame_count, pitch, enc->width_px,
-            enc->height_px);
+  log_debug("ffmpeg_encoder_write_frame: frame %d, pitch=%d, dims=%dx%d, captured_ns=%llu", enc->frame_count, pitch, enc->width_px,
+            enc->height_px, (unsigned long long)captured_ns);
 
   // Set up RGB frame for conversion
   uint8_t *data[1] = {(uint8_t *)rgb};
@@ -598,9 +609,18 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
 
   enc->frame_encoded->duration = frame_duration;
 
-  // Set frame PTS as cumulative time in time_base units
-  enc->frame_encoded->pts = enc->video_pts;
+  // Calculate PTS from actual capture timestamp
+  // time_base is {1, fps}, so 1 PTS unit = 1/fps seconds
+  // Convert elapsed nanoseconds to PTS units: elapsed_ns * fps / 1_000_000_000
+  uint64_t elapsed_ns = captured_ns - enc->first_frame_captured_ns;
+  int64_t pts_from_timestamp = (int64_t)((elapsed_ns * (uint64_t)enc->fps) / 1000000000ULL);
+
+  // Use timestamp-based PTS, but maintain cumulative counter for fallback
+  enc->frame_encoded->pts = pts_from_timestamp;
   enc->video_pts += frame_duration;
+
+  log_debug("ffmpeg_encoder_write_frame: PTS calculation - elapsed_ns=%llu, pts_from_timestamp=%lld, fps=%d",
+            (unsigned long long)elapsed_ns, (long long)pts_from_timestamp, enc->fps);
 
   // Send frame to encoder
   int ret = avcodec_send_frame(enc->codec_ctx, enc->frame_encoded);

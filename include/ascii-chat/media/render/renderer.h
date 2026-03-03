@@ -69,7 +69,9 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb);
 
 // Feed one ANSI frame string — renders pixels then writes to encoder, synced with audio.
-asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame);
+// captured_ns is the wall-clock timestamp (in nanoseconds) when the frame was captured
+// for proper frame timing in the output video.
+asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns);
 
 // Set actual wall-clock duration for snapshot mode (passes through to encoder).
 void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec);
