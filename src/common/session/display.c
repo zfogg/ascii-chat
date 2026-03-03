@@ -170,9 +170,9 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // In piped mode, force all logs to stderr to prevent frame data corruption
   if (terminal_should_force_stderr()) {
     log_set_force_stderr(true);
-    // Disable buffering entirely for stdout to ensure frames appear immediately
-    // This is critical for piped/redirected output where frames would otherwise stay buffered
-    (void)setvbuf(stdout, NULL, _IONBF, 0);
+    // Set stdout to line buffering to ensure output is flushed at newlines
+    // This helps with snapshot mode where each frame ends with a newline
+    (void)setvbuf(stdout, NULL, _IOLBF, 0);
   }
 
   // Detect terminal capabilities
@@ -843,7 +843,6 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       // This prevents partial frames from being displayed if output is interrupted
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
-      (void)fflush(stdout); // Flush any previous buffered output first
       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
@@ -856,7 +855,6 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     } else {
       // Fallback if allocation fails: write cursor then frame (not ideal but prevents crash)
       log_warn("FRAME_BUFFER_ALLOC_FAILED: Falling back to separate writes (cursor + frame)");
-      (void)fflush(stdout); // Flush any previous buffered output first
       (void)terminal_cursor_home(STDOUT_FILENO);
       ssize_t written = platform_write_all(STDOUT_FILENO, display_frame, frame_len);
       log_debug("FRAME_WRITE_FALLBACK: Wrote %zd bytes of frame data (requested %zu)", written, frame_len);
@@ -875,7 +873,6 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Piped to an interactive terminal: output ASCII frames
     // Combine frame and newline into single write call
     // Allocate temporary buffer for frame + newline to minimize syscalls
-    (void)fflush(stdout); // Flush any previous buffered output first
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
@@ -901,7 +898,6 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   } else {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
     // Write frame data with newline and flush
-    (void)fflush(stdout); // Flush any previous buffered output first
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
