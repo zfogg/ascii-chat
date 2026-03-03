@@ -702,6 +702,15 @@ int parse_client_address(const char *arg, void *config, char **remaining, int nu
     return 1; // Consumed 1 argument
   }
 
+  // Check for TCP URL (tcp://) - passed through directly to FFmpeg
+  // TCP URLs are used for streaming media from custom TCP servers
+  if (strncmp(arg, "tcp://", 6) == 0) {
+    log_debug("Detected TCP URL: %s", arg);
+    SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, "%s", arg);
+    // Don't set port - TCP transport handles URL parsing internally
+    return 1; // Consumed 1 argument
+  }
+
   // Check if this is a session string (format: adjective-noun-noun)
   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
   bool is_session = is_session_string(arg);

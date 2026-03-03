@@ -193,8 +193,28 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     return SET_ERRNO(ERROR_NETWORK, "Connection attempt aborted due to shutdown request");
   }
 
-  // Check for WebSocket URL - handle separately from TCP
+  // Check for WebSocket URL or TCP URL - handle separately from bare TCP addresses
   log_debug("connection_attempt_tcp: server_address='%s', port=%u", server_address, server_port);
+
+  // Check for TCP URL scheme (tcp://) and parse it to extract host and port
+  char tcp_address_buf[512] = {0};
+  const char *effective_address = server_address;
+  uint16_t effective_port = server_port;
+
+  if (url_is_tcp(server_address)) {
+    url_parts_t url_parts = {0};
+    if (url_parse(server_address, &url_parts) == ASCIICHAT_OK) {
+      log_debug("TCP URL parsed: host=%s, port=%d, scheme=%s", url_parts.host, url_parts.port, url_parts.scheme);
+      // Copy host to local buffer since url_parts will be destroyed
+      SAFE_STRNCPY(tcp_address_buf, url_parts.host, sizeof(tcp_address_buf) - 1);
+      effective_address = tcp_address_buf;
+      effective_port = (url_parts.port > 0) ? (uint16_t)url_parts.port : server_port;
+      log_debug("TCP URL converted to address='%s', port=%u", effective_address, effective_port);
+      url_parts_destroy(&url_parts);
+    } else {
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Failed to parse TCP URL: %s", server_address);
+    }
+  }
 
   if (url_is_websocket(server_address)) {
     // WebSocket connection path
@@ -332,7 +352,8 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
   ctx->timeout_ns = CONN_TIMEOUT_TCP;
 
   // Attempt TCP connection (reconnect_attempt is 0-based, convert for tcp_client_connect)
-  int tcp_result = tcp_client_connect(tcp_client, server_address, server_port, (int)ctx->reconnect_attempt,
+  // Use effective_address/port which may be parsed from tcp:// URL scheme
+  int tcp_result = tcp_client_connect(tcp_client, effective_address, effective_port, (int)ctx->reconnect_attempt,
                                       ctx->reconnect_attempt == 0, ctx->reconnect_attempt > 0);
 
   if (tcp_result != 0) {
@@ -427,7 +448,7 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     return SET_ERRNO(ERROR_NETWORK, "Failed to create ACIP transport");
   }
 
-  log_info("TCP connection established to %s:%u", server_address, server_port);
+  log_info("TCP connection established to %s:%u", effective_address, effective_port);
   connection_state_transition(ctx, CONN_STATE_CONNECTED);
   ctx->active_transport = transport;
 
