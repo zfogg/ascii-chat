@@ -266,20 +266,26 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       capture_config.target_fps = (uint32_t)user_fps;
       log_info("Using user-specified FPS: %u", capture_config.target_fps);
     } else {
-      // Probe FPS for HTTP URLs
-      probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
-      if (probe_source) {
-        double url_fps = media_source_get_video_fps(probe_source);
-        log_info("Detected HTTP stream video FPS: %.1f", url_fps);
-        if (url_fps > 0.0) {
-          capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+      // SNAPSHOT: Skip FPS probing before splash to preserve video frames for snapshot delay
+      if (GET_OPTION(snapshot_mode)) {
+        log_debug("Skipping FPS probe in snapshot mode - using default 60 FPS");
+        capture_config.target_fps = 60;
+      } else {
+        // Probe FPS for HTTP URLs
+        probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
+        if (probe_source) {
+          double url_fps = media_source_get_video_fps(probe_source);
+          log_info("Detected HTTP stream video FPS: %.1f", url_fps);
+          if (url_fps > 0.0) {
+            capture_config.target_fps = (uint32_t)(url_fps + 0.5);
+          } else {
+            log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
+            capture_config.target_fps = 60;
+          }
         } else {
-          log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
+          log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
           capture_config.target_fps = 60;
         }
-      } else {
-        log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
-        capture_config.target_fps = 60;
       }
     }
   } else if (media_file_val && strlen(media_file_val) > 0) {
@@ -300,20 +306,26 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         capture_config.target_fps = (uint32_t)user_fps;
         log_info("Using user-specified FPS: %u", capture_config.target_fps);
       } else {
-        // Probe FPS for local files
-        probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
-        if (probe_source) {
-          double file_fps = media_source_get_video_fps(probe_source);
-          log_info("Detected file video FPS: %.1f", file_fps);
-          if (file_fps > 0.0) {
-            capture_config.target_fps = (uint32_t)(file_fps + 0.5);
+        // SNAPSHOT: Skip FPS probing before splash to preserve video frames for snapshot delay
+        if (GET_OPTION(snapshot_mode)) {
+          log_debug("Skipping FPS probe in snapshot mode - using default 60 FPS");
+          capture_config.target_fps = 60;
+        } else {
+          // Probe FPS for local files
+          probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
+          if (probe_source) {
+            double file_fps = media_source_get_video_fps(probe_source);
+            log_info("Detected file video FPS: %.1f", file_fps);
+            if (file_fps > 0.0) {
+              capture_config.target_fps = (uint32_t)(file_fps + 0.5);
+            } else {
+              log_warn("FPS detection failed, using default 60 FPS");
+              capture_config.target_fps = 60;
+            }
           } else {
-            log_warn("FPS detection failed, using default 60 FPS");
+            log_warn("Failed to create probe source for FPS detection, using default 60 FPS");
             capture_config.target_fps = 60;
           }
-        } else {
-          log_warn("Failed to create probe source for FPS detection, using default 60 FPS");
-          capture_config.target_fps = 60;
         }
       }
     }
@@ -456,18 +468,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     if (fps > 0) {
       log_debug("Network capture FPS set to %d from options", fps);
     }
-  } else if (!stdin_render_mode) {
-    // Mirror mode: create capture context with local media source
-    log_debug("Mirror mode detected - using mirror capture with local media source");
-    uint64_t mirror_cap_start = time_get_ns();
-    capture = session_mirror_capture_create(&capture_config);
-    double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
-    log_info("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms", mirror_cap_ms);
-    if (!capture) {
-      log_fatal("Failed to initialize mirror capture source");
-      result = ERROR_MEDIA_INIT;
-      goto cleanup;
-    }
   }
 
   // ============================================================================
@@ -559,6 +559,24 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // (splash_anim thread uses the display, must not be disrupted before cleanup)
   splash_intro_done();
   splash_wait_for_animation();
+
+  // ============================================================================
+  // SETUP: Create Mirror Capture (after splash screen finishes)
+  // ============================================================================
+
+  if (!stdin_render_mode && !capture) {
+    // Mirror mode: create capture context with local media source (NOW, after splash finishes)
+    log_debug("Mirror mode detected - creating mirror capture after splash screen");
+    uint64_t mirror_cap_start = time_get_ns();
+    capture = session_mirror_capture_create(&capture_config);
+    double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
+    log_info("★ INIT_CHECKPOINT: Mirror capture created in %.1f ms (after splash)", mirror_cap_ms);
+    if (!capture) {
+      log_fatal("Failed to initialize mirror capture source");
+      result = ERROR_MEDIA_INIT;
+      goto cleanup;
+    }
+  }
 
   // ============================================================================
   // SETUP: Start Audio Playback
