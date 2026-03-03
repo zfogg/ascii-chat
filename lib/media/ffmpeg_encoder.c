@@ -119,14 +119,9 @@ static void get_codec_from_extension(const char *path, const char **codec, const
   *pix_fmt = AV_PIX_FMT_YUV420P; // Default
 
   if (!dot) {
-    // Use WebM for stdout (pipe/non-seekable output), otherwise default to MP4
-    if (path && strcmp(path, "-") == 0) {
-      *codec = "libvpx-vp9";
-      *format = "webm";
-    } else {
-      *codec = "libx264";
-      *format = "mp4";
-    }
+    // Default to MP4 for any output without extension (including stdout piping)
+    *codec = "libx264";
+    *format = "mp4";
     return;
   }
 
