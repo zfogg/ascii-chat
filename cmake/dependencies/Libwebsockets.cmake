@@ -163,8 +163,19 @@ include(ExternalProject)
 set(LWS_NATIVE_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libwebsockets")
 set(LWS_NATIVE_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libwebsockets-build")
 
-if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
+# Compute OpenSSL 3.4.0 path that libwebsockets will use
+set(LWS_OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+
+# Force rebuild of libwebsockets if OpenSSL 3.4.0 is missing
+# (This ensures libwebsockets is built AFTER OpenSSL when initially cached with wrong TLS backend)
+set(LWS_OPENSSL_LIBS_EXIST FALSE)
+if(EXISTS "${LWS_OPENSSL_PREFIX}/lib64/libssl.a" AND EXISTS "${LWS_OPENSSL_PREFIX}/lib64/libcrypto.a")
+    set(LWS_OPENSSL_LIBS_EXIST TRUE)
+endif()
+
+if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a" OR NOT LWS_OPENSSL_LIBS_EXIST)
     message(STATUS "  libwebsockets not in cache, building from source with extensions enabled...")
+    message(STATUS "  libwebsockets will use OpenSSL 3.4.0 from: ${LWS_OPENSSL_PREFIX}")
 
     ExternalProject_Add(libwebsockets-native
         URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
@@ -177,7 +188,7 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${LWS_NATIVE_PREFIX}
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_C_FLAGS=-Wno-error=incompatible-pointer-types-discards-qualifiers
+            -DCMAKE_C_FLAGS=-Wno-error=incompatible-pointer-types-discards-qualifiers\ -Wno-sign-conversion
             -DLWS_WITH_SHARED=OFF
             -DLWS_WITH_STATIC=ON
             -DLWS_WITHOUT_TESTAPPS=ON
@@ -186,6 +197,11 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
             -DLWS_WITHOUT_TEST_PING=ON
             -DLWS_WITHOUT_TEST_CLIENT=ON
             -DLWS_WITH_SSL=ON
+            -DLWS_WITH_MBEDTLS=OFF
+            -DOPENSSL_ROOT_DIR=${LWS_OPENSSL_PREFIX}
+            -DOPENSSL_INCLUDE_DIR=${LWS_OPENSSL_PREFIX}/include
+            -DOPENSSL_CRYPTO_LIBRARY=${LWS_OPENSSL_PREFIX}/lib64/libcrypto.a
+            -DOPENSSL_SSL_LIBRARY=${LWS_OPENSSL_PREFIX}/lib64/libssl.a
             -DLWS_WITH_LIBEV=OFF
             -DLWS_WITH_LIBUV=OFF
             -DLWS_WITH_LIBEVENT=OFF

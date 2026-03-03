@@ -157,6 +157,129 @@ if(TARGET OpenSSL::Crypto)
 endif()
 
 # =============================================================================
+# Native Linux/macOS: Build OpenSSL 3.4.0 from source for libwebsockets
+# =============================================================================
+if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Configuring ${BoldBlue}OpenSSL 3.4.0${ColorReset} from source for libwebsockets...")
+
+    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-build")
+    set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
+
+    # Detect target architecture for OpenSSL Configure
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(OPENSSL_TARGET "linux-aarch64")
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
+        set(OPENSSL_TARGET "linux-x86_64")
+    elseif(APPLE)
+        set(OPENSSL_TARGET "darwin64-arm64-cc")
+    else()
+        set(OPENSSL_TARGET "linux-generic64")
+    endif()
+
+    # Build OpenSSL 3.4.0 if not cached
+    if(NOT EXISTS "${OPENSSL_PREFIX}/lib/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/lib/libcrypto.a")
+        message(STATUS "  OpenSSL 3.4.0 not found in cache, building from source...")
+
+        file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
+        file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
+
+        # Download OpenSSL source
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-3.4.0.tar.gz")
+        if(NOT EXISTS "${OPENSSL_TARBALL}")
+            message(STATUS "  Downloading OpenSSL 3.4.0...")
+            file(DOWNLOAD
+                "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz"
+                "${OPENSSL_TARBALL}"
+                EXPECTED_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
+                SHOW_PROGRESS
+            )
+        endif()
+
+        # Extract tarball
+        if(NOT EXISTS "${OPENSSL_SOURCE_DIR}/Configure")
+            message(STATUS "  Extracting OpenSSL...")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xzf "${OPENSSL_TARBALL}"
+                WORKING_DIRECTORY "${OPENSSL_BUILD_DIR}"
+                RESULT_VARIABLE EXTRACT_RESULT
+            )
+            if(NOT EXTRACT_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to extract OpenSSL tarball")
+            endif()
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-3.4.0" "${OPENSSL_SOURCE_DIR}")
+        endif()
+
+        # Configure OpenSSL
+        message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
+        execute_process(
+            COMMAND "${OPENSSL_SOURCE_DIR}/Configure"
+                ${OPENSSL_TARGET}
+                --prefix=${OPENSSL_PREFIX}
+                no-shared
+                no-tests
+                -fPIC
+            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            RESULT_VARIABLE CONFIG_RESULT
+            OUTPUT_VARIABLE CONFIG_OUTPUT
+            ERROR_VARIABLE CONFIG_ERROR
+        )
+        if(NOT CONFIG_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}")
+        endif()
+
+        message(STATUS "  Building OpenSSL (this takes a few minutes)...")
+        execute_process(
+            COMMAND make -j
+            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            RESULT_VARIABLE BUILD_RESULT
+        )
+        if(NOT BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to build OpenSSL")
+        endif()
+
+        # Install OpenSSL
+        message(STATUS "  Installing OpenSSL...")
+        execute_process(
+            COMMAND make install_sw
+            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            RESULT_VARIABLE INSTALL_RESULT
+        )
+        if(NOT INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install OpenSSL")
+        endif()
+
+        message(STATUS "  ${BoldGreen}OpenSSL 3.4.0${ColorReset} built and cached successfully")
+    else()
+        message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/lib${ColorReset}")
+    endif()
+
+    # Create imported targets for OpenSSL 3.4.0
+    # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
+    if(NOT TARGET OpenSSL::Crypto)
+        add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
+        set_target_properties(OpenSSL::Crypto PROPERTIES
+            IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libcrypto.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
+        )
+    endif()
+
+    if(NOT TARGET OpenSSL::SSL)
+        add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
+        set_target_properties(OpenSSL::SSL PROPERTIES
+            IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libssl.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
+            INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
+        )
+    endif()
+
+    set(OpenSSL_FOUND TRUE)
+    set(OPENSSL_VERSION "3.4.0")
+    message(STATUS "  ${BoldGreen}✓${ColorReset} OpenSSL 3.4.0 configured for native build")
+    return()
+endif()
+
+# =============================================================================
 # macOS Release: Try static libraries first when ASCIICHAT_SHARED_DEPS is OFF
 # =============================================================================
 set(_OPENSSL_STATIC_FOUND FALSE)
