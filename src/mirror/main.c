@@ -210,6 +210,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/util/time.h>
+#include <ascii-chat/common.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
@@ -249,25 +250,44 @@ static void mirror_keyboard_handler(session_capture_ctx_t *capture, int key, voi
 static image_t *mirror_capture_cb(void *user_data) {
   session_capture_ctx_t *capture = (session_capture_ctx_t *)user_data;
   if (!capture) {
-    log_error("[MIRROR_CAPTURE_CB] capture context is NULL!");
+    log_error("[MIRROR] capture context is NULL!");
     return NULL;
   }
-  log_debug("[MIRROR_CAPTURE_CB] Reading frame from capture=%p", (void *)capture);
+
   image_t *frame = session_capture_read_frame(capture);
-  log_debug("[MIRROR_CAPTURE_CB] Got frame: %p", (void *)frame);
   return frame;
 }
+
+// Track frame timing for adaptive sleep
+static uint64_t g_last_frame_end_ns = 0;
 
 // Sleep callback wrapper for mirror mode
 static void mirror_sleep_cb(void *user_data) {
   (void)user_data;
-  // Sleep for one frame at target FPS
   int fps = GET_OPTION(fps);
   if (fps <= 0) {
     return; // No FPS limit, don't sleep
   }
-  uint64_t frame_period_ns = (uint64_t)(NS_PER_SEC_INT / fps);
-  platform_sleep_ns(frame_period_ns);
+
+  uint64_t now_ns = time_get_ns();
+  uint64_t target_frame_period_ns = (uint64_t)(NS_PER_SEC_INT / fps);
+
+  // If we have a previous frame timing, calculate adaptive sleep
+  if (g_last_frame_end_ns > 0) {
+    uint64_t actual_elapsed_ns = now_ns - g_last_frame_end_ns;
+    // Only sleep if we're running faster than target FPS
+    if (actual_elapsed_ns < target_frame_period_ns) {
+      uint64_t sleep_ns = target_frame_period_ns - actual_elapsed_ns;
+      platform_sleep_ns(sleep_ns);
+    }
+    // If we're running slow, don't sleep (let frame play at natural speed)
+  } else {
+    // First frame - just sleep the target period
+    platform_sleep_ns(target_frame_period_ns);
+  }
+
+  // Update timing for next frame
+  g_last_frame_end_ns = time_get_ns();
 }
 
 static asciichat_error_t mirror_run(session_capture_ctx_t *capture, session_display_ctx_t *display, void *user_data) {
