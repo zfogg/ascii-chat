@@ -172,7 +172,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     log_set_force_stderr(true);
     // Set stdout to line buffering to ensure output is flushed at newlines
     // This helps with snapshot mode where each frame ends with a newline
-    //(void)setvbuf(stdout, NULL, _IOLBF, 0);
+    (void)setvbuf(stdout, NULL, _IOLBF, 0);
   }
 
   // Detect terminal capabilities
@@ -860,8 +860,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       log_debug("FRAME_WRITE_FALLBACK: Wrote %zd bytes of frame data (requested %zu)", written, frame_len);
     }
 
-    // Flush terminal to ensure all data reaches the display
+    // Flush both C library buffer and kernel buffer to ensure all data reaches the display
     log_debug("FRAME_FLUSH: Flushing stdout");
+    (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
 
     // Render FPS counter overlay if enabled
@@ -891,7 +892,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
 
-    // Flush kernel write buffer so piped data appears immediately to readers
+    // Flush both C library buffer and kernel buffer so piped data appears immediately to readers
+    (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
   } else {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
@@ -909,7 +911,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
 
-    // Flush output to ensure frame reaches destination in snapshot mode
+    // Flush both C library buffer and kernel buffer to ensure frame reaches destination in snapshot mode
+    (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
   }
 
