@@ -7,6 +7,7 @@
 #include <ascii-chat/media/ffmpeg_encoder.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
+#include <ascii-chat/log/io.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/options.h>
 #include <string.h>
@@ -229,8 +230,11 @@ static asciichat_error_t encoder_init_audio_stream(ffmpeg_encoder_t *enc, const 
   enc->audio_codec_ctx->time_base = (AVRational){1, 48000};
   enc->audio_codec_ctx->bit_rate = 128000;            // 128 kbps
 
-  // Open audio codec
-  int ret = avcodec_open2(enc->audio_codec_ctx, audio_codec, NULL);
+  // Open audio codec (capture FFmpeg logs)
+  int ret = 0;
+  LOG_IO("ffmpeg", {
+    ret = avcodec_open2(enc->audio_codec_ctx, audio_codec, NULL);
+  });
   if (ret < 0) {
     log_warn("encoder_init_audio_stream: avcodec_open2 for audio failed");
     avcodec_free_context(&enc->audio_codec_ctx);
@@ -404,8 +408,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     log_debug("ffmpeg_encoder: x264 preset=slow with maximum quality settings");
   }
 
-  // Open codec
-  ret = avcodec_open2(enc->codec_ctx, codec, &codec_opts);
+  // Open codec (capture libx264 startup logs)
+  LOG_IO("ffmpeg", {
+    ret = avcodec_open2(enc->codec_ctx, codec, &codec_opts);
+  });
   av_dict_free(&codec_opts);
   if (ret < 0) {
     avcodec_free_context(&enc->codec_ctx);
@@ -511,8 +517,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     }
   }
 
-  // Write header
-  ret = avformat_write_header(enc->fmt_ctx, &opts);
+  // Write header (capture FFmpeg format muxer logs)
+  LOG_IO("ffmpeg", {
+    ret = avformat_write_header(enc->fmt_ctx, &opts);
+  });
   av_dict_free(&opts); // Free options after use
   if (ret < 0) {
     avio_closep(&enc->fmt_ctx->pb);
@@ -695,25 +703,27 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
 
   NAMED_UNREGISTER(enc);
 
-  // Flush video encoder
-  avcodec_send_frame(enc->codec_ctx, NULL);
-  while (1) {
-    int ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
-    if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-      break;
-    if (ret < 0)
-      break;
+  // Flush video encoder (capture libx264 final statistics)
+  LOG_IO("ffmpeg", {
+    avcodec_send_frame(enc->codec_ctx, NULL);
+    while (1) {
+      int ret = avcodec_receive_packet(enc->codec_ctx, enc->pkt);
+      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+        break;
+      if (ret < 0)
+        break;
 
-    // Set packet duration in codec time base if not already set
-    if (enc->pkt->duration == 0) {
-      enc->pkt->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+      // Set packet duration in codec time base if not already set
+      if (enc->pkt->duration == 0) {
+        enc->pkt->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
+      }
+
+      av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
+      enc->pkt->stream_index = enc->stream->index;
+      av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+      av_packet_unref(enc->pkt);
     }
-
-    av_packet_rescale_ts(enc->pkt, enc->codec_ctx->time_base, enc->stream->time_base);
-    enc->pkt->stream_index = enc->stream->index;
-    av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
-    av_packet_unref(enc->pkt);
-  }
+  });
 
   // Flush audio encoder if present
   if (enc->has_audio_stream && enc->audio_codec_ctx) {
@@ -729,20 +739,22 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
       avcodec_send_frame(enc->audio_codec_ctx, enc->audio_frame);
     }
 
-    // Flush any remaining packets
-    avcodec_send_frame(enc->audio_codec_ctx, NULL);
-    while (1) {
-      int ret = avcodec_receive_packet(enc->audio_codec_ctx, enc->pkt);
-      if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
-        break;
-      if (ret < 0)
-        break;
+    // Flush any remaining packets (capture FFmpeg audio codec logs)
+    LOG_IO("ffmpeg", {
+      avcodec_send_frame(enc->audio_codec_ctx, NULL);
+      while (1) {
+        int ret = avcodec_receive_packet(enc->audio_codec_ctx, enc->pkt);
+        if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF)
+          break;
+        if (ret < 0)
+          break;
 
-      av_packet_rescale_ts(enc->pkt, enc->audio_codec_ctx->time_base, enc->audio_stream->time_base);
-      enc->pkt->stream_index = enc->audio_stream->index;
-      av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
-      av_packet_unref(enc->pkt);
-    }
+        av_packet_rescale_ts(enc->pkt, enc->audio_codec_ctx->time_base, enc->audio_stream->time_base);
+        enc->pkt->stream_index = enc->audio_stream->index;
+        av_interleaved_write_frame(enc->fmt_ctx, enc->pkt);
+        av_packet_unref(enc->pkt);
+      }
+    });
   }
 
   // Set stream duration for proper metadata (must be before trailer)
@@ -788,8 +800,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     }
   }
 
-  // Write trailer
-  av_write_trailer(enc->fmt_ctx);
+  // Write trailer (capture FFmpeg muxer logs and final frame statistics)
+  LOG_IO("ffmpeg", {
+    av_write_trailer(enc->fmt_ctx);
+  });
 
   // Close output file
   if (enc->fmt_ctx && !(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE))
@@ -800,16 +814,20 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   av_frame_free(&enc->frame);
   av_frame_free(&enc->frame_encoded);
 
-  // Cleanup audio resources
+  // Cleanup audio resources (capture any remaining FFmpeg logs from codec cleanup)
   if (enc->has_audio_stream) {
     swr_free(&enc->audio_swr_ctx);
     av_frame_free(&enc->audio_frame);
-    avcodec_free_context(&enc->audio_codec_ctx);
+    LOG_IO("ffmpeg", {
+      avcodec_free_context(&enc->audio_codec_ctx);
+    });
     SAFE_FREE(enc->audio_partial_buf);
   }
 
   av_packet_free(&enc->pkt);
-  avcodec_free_context(&enc->codec_ctx);
+  LOG_IO("ffmpeg", {
+    avcodec_free_context(&enc->codec_ctx);
+  });
   if (enc->fmt_ctx)
     avformat_free_context(enc->fmt_ctx);
 
