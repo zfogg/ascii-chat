@@ -290,6 +290,13 @@ static asciichat_error_t apply_cli_bool(void *field, const char *opt_value, cons
   unsigned char new_value_byte = new_value ? 1 : 0;
   memcpy(field, &new_value_byte, 1);
 
+  // Log the parsed value for splash-screen and status-screen for debugging
+  if (desc && (strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
+    fprintf(stderr, "[OPTION_PARSE] --%s: input='%s' → parsed_value=%d\n",
+            desc->long_name, opt_value ? opt_value : "(null)", new_value);
+    fflush(stderr);
+  }
+
   return ASCIICHAT_OK;
 }
 
