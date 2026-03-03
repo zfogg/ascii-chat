@@ -135,8 +135,8 @@ echo "Exit code: $EXIT_CODE (0=success, 124=timeout, 137=deadlock, 139=segfault,
 echo "Elapsed time: ${ELAPSED_SEC}s"
 echo ""
 
-# Count actual frames by looking for FRAME_DISPATCH messages (logged for each frame received)
-FRAME_COUNT=$(grep -i 'FRAME_DISPATCH' "$client_log" 2>/dev/null | wc -l || echo "0")
+# Count actual frames by looking for FRAME_DISPATCH: messages (logged for each frame received, not COMPLETE)
+FRAME_COUNT=$(grep -i 'FRAME_DISPATCH:' "$client_log" 2>/dev/null | wc -l || echo "0")
 echo "🎬 FRAME COUNT: $FRAME_COUNT frames"
 
 # Calculate actual FPS based on snapshot rendering time (not total elapsed time)
