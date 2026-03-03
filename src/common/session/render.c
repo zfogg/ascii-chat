@@ -273,9 +273,11 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
 
         log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
+        capture_start_ns = time_get_ns();
         image = session_capture_read_frame(capture);
-        log_info_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Frame read done, image=%p", frame_count, (void *)image);
         capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
+        double read_ms = (double)capture_elapsed_ns / NS_PER_MS;
+        log_info("[FRAME %lu] FRAME READ: %.2f ms (image=%p)", frame_count, read_ms, (void *)image);
 
         if (!image) {
           // Check if we've reached end of file for media sources
@@ -396,6 +398,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     char *ascii_frame = session_display_convert_to_ascii(display, image);
     post_convert_ns = time_get_ns();
     uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
+    double convert_ms = (double)conversion_elapsed_ns / NS_PER_MS;
+    log_info("[FRAME %lu] ASCII CONVERT: %.2f ms", frame_count, convert_ms);
 
     if (ascii_frame) {
       log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
@@ -441,18 +445,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         uint64_t render_elapsed_ns = STOP_TIMER("render_frame");
         post_render_ns = time_get_ns();
+        double render_ms = (double)render_elapsed_ns / NS_PER_MS;
+        log_info("[FRAME %lu] RENDER OUTPUT: %.2f ms", frame_count, render_ms);
 
         // Calculate total time from frame START (frame_start_ns) to render COMPLETE
         frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
         double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
-        log_dev_every(5 * US_PER_SEC_INT, "ACTUAL_TIME[%lu]: Total frame time from start to render complete: %.1f ms",
-                      frame_count, total_frame_time_ms);
-
-        char conversion_str[32], render_str[32];
-        time_pretty(conversion_elapsed_ns, -1, conversion_str, sizeof(conversion_str));
-        time_pretty(render_elapsed_ns, -1, render_str, sizeof(render_str));
-        log_dev_every(5 * US_PER_SEC_INT, "PROFILE[%lu]: CONVERT=%s, RENDER=%s", frame_count, conversion_str,
-                      render_str);
+        log_info("[FRAME %lu] TOTAL TIME: %.2f ms", frame_count, total_frame_time_ms);
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
