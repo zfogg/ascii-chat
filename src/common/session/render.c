@@ -42,6 +42,10 @@
  * Unified Render Loop Implementation
  * ============================================================================ */
 
+// Global flag for snapshot mode: set by display.c when first frame is rendered
+bool g_snapshot_first_frame_rendered = false;
+uint64_t g_snapshot_first_frame_rendered_ns = 0;  // Timestamp when first frame was rendered
+
 asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                       session_should_exit_fn should_exit, session_capture_fn capture_cb,
                                       session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
@@ -82,8 +86,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Snapshot mode state tracking
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   bool snapshot_done = false;
-  bool first_frame_rendered = false;
   uint64_t frames_rendered_since_first = 0; // Track frames rendered after first frame (for snapshot delay)
+  // NOTE: g_snapshot_first_frame_rendered is set by display.c when first frame is rendered via platform_write_all()
 
   // Help screen state tracking for clear-screen transition
   bool help_was_active = false;
@@ -452,17 +456,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           session_display_render_frame(display, ascii_frame);
         }
 
-        // Snapshot mode: START TIMER when first frame is actually displayed
-        // Timer starts from when the first frame is rendered to the screen
-        // This is AFTER session_display_render_frame() has written pixels to terminal
-        if (snapshot_mode && !first_frame_rendered) {
-          first_frame_rendered = true;
-          log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: FIRST FRAME DISPLAYED, starting timer (frames_rendered_since_first will be set to 0 below)");
-        }
-
         // Snapshot mode: increment frame counter for all displayed frames
         // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames
-        if (snapshot_mode && first_frame_rendered) {
+        // Timer is started by display.c when g_snapshot_first_frame_rendered is set
+        if (snapshot_mode && g_snapshot_first_frame_rendered) {
           frames_rendered_since_first++;
           log_info_every(1 * NS_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu", frames_rendered_since_first);
         }
@@ -507,49 +504,46 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       SAFE_FREE(ascii_frame);
     }
 
-    // Snapshot mode: check if enough frames have been captured for the desired output duration
-    // This check runs every iteration after first frame is rendered
-    if (snapshot_mode && !snapshot_done && first_frame_rendered) {
-      double snapshot_delay = GET_OPTION(snapshot_delay);
+    // Snapshot mode: check if elapsed time has reached snapshot_delay duration
+    // This check runs every iteration after first frame is rendered (when display.c sets g_snapshot_first_frame_rendered)
+    if (snapshot_mode && !snapshot_done) {
+      if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
+        double snapshot_delay = GET_OPTION(snapshot_delay);
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
+        double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
 
-      // Get the actual capture frame rate to calculate target frames
-      // snapshot_delay specifies the OUTPUT video duration (in seconds)
-      // target_frames = snapshot_delay * capture_fps
-      uint32_t capture_fps = 0;
-      if (capture) {
-        capture_fps = session_capture_get_target_fps(capture);
-      }
-      if (capture_fps == 0) {
-        capture_fps = (uint32_t)GET_OPTION(fps);
-      }
-      // Ensure minimum FPS for calculations to prevent 0-frame animations
-      if (capture_fps == 0) {
-        capture_fps = 30; // Default fallback FPS
-      }
-
-      // Calculate target frame count for the desired output duration
-      // snapshot_delay=0 means exit after first frame
-      // snapshot_delay>0 means record enough frames for that many seconds of output video
-      // Timer starts when first ASCII frame is rendered, not from program initialization
-      uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
-
-      log_info("[SNAPSHOT] frames_since_first=%lu target_frames=%lu delay=%.1f fps=%u",
-               frames_rendered_since_first, target_frames, snapshot_delay, capture_fps);
-
-      // Exit when we've captured enough frames for the desired output duration
-      if (frames_rendered_since_first >= target_frames) {
-        // We don't end frames with newlines so the next log would print on the same line as the frame's
-        // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
-        // so piped snapshots don't have a weird newline in stdout that they don't need.
-        if (snapshot_mode && terminal_is_interactive()) {
-          printf("\n");
+        if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
+          log_info("SNAPSHOT: CHECK iter=%lu elapsed=%.3f target=%.2f", frames_rendered_since_first, elapsed_sec, snapshot_delay);
         }
-        snapshot_done = true;
+
+        // snapshot_delay=0 means exit after first frame
+        // snapshot_delay>0 means wait that many seconds before exiting
+        // Exit is based on elapsed wall-clock time, not frame count
+        bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
+
+        if (should_exit) {
+          log_info("SNAPSHOT: EXITING NOW at iteration %lu - elapsed=%.3f target=%.2f", frames_rendered_since_first, elapsed_sec, snapshot_delay);
+          // We don't end frames with newlines so the next log would print on the same line as the frame's
+          // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
+          // so piped snapshots don't have a weird newline in stdout that they don't need.
+          if (snapshot_mode && terminal_is_interactive()) {
+            printf("\n");
+          }
+          snapshot_done = true;
+        }
       }
     }
 
     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
     if (snapshot_mode && (snapshot_done || output_paused_frame)) {
+      // Calculate elapsed time from first frame rendered to now
+      if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
+        uint64_t now_ns = time_get_ns();
+        uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
+        double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+        log_info("SNAPSHOT: EXIT - Elapsed time: %.3f seconds (snapshot_delay=%.2f)", elapsed_sec, GET_OPTION(snapshot_delay));
+      }
       // Signal application to exit in snapshot mode
       APP_CALLBACK_VOID(signal_exit);
       break;

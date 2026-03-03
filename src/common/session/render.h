@@ -87,6 +87,14 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
 typedef void (*session_keyboard_handler_fn)(session_capture_ctx_t *capture, int key, void *user_data);
 
 /**
+ * @brief Snapshot mode: flag set when first frame is rendered
+ * Set to true when platform_write_all() outputs the first ASCII frame
+ * Used to start the snapshot delay timer
+ */
+extern bool g_snapshot_first_frame_rendered;
+extern uint64_t g_snapshot_first_frame_rendered_ns;  // Timestamp when first frame was rendered (nanoseconds)
+
+/**
  * @brief Unified render loop for all display modes
  *
  * Flexible render loop that supports both synchronous and event-driven modes.

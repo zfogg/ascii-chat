@@ -11,6 +11,8 @@
  */
 
 #include "session/display.h"
+#include "session/render.h"
+#include <ascii-chat/util/time.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/ui/splash.h>
@@ -851,18 +853,19 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
+      // SNAPSHOT: Start timer when first ASCII frame is rendered (after splash screen ends)
+      if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
+        g_snapshot_first_frame_rendered = true;
+        g_snapshot_first_frame_rendered_ns = time_get_ns();
+        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED - Timer started NOW");
+      }
+
       // Tick FPS counter to measure actual output throughput
       if (ctx->fps_counter) {
         fps_counter_tick(ctx->fps_counter);
       }
 
       SAFE_FREE(frame_buffer);
-    } else {
-      // Fallback if allocation fails: write cursor then frame (not ideal but prevents crash)
-      log_warn("FRAME_BUFFER_ALLOC_FAILED: Falling back to separate writes (cursor + frame)");
-      (void)terminal_cursor_home(STDOUT_FILENO);
-      ssize_t written = platform_write_all(STDOUT_FILENO, display_frame, frame_len);
-      log_debug("FRAME_WRITE_FALLBACK: Wrote %zd bytes of frame data (requested %zu)", written, frame_len);
     }
 
     // Flush both C runtime and kernel buffers for immediate frame display
@@ -890,13 +893,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       // by concurrent writes. Terminal lock prevents ALL logging while held, which can
       // cause deadlock if write() blocks (e.g., on full pipe or slow reader).
       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
-
       SAFE_FREE(write_buf);
-    } else {
-      // Fallback: two writes if allocation fails (no lock needed - writes are atomic)
-      (void)platform_write_all(STDOUT_FILENO, display_frame, frame_len);
-      const char newline = '\n';
-      (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
 
     // Flush both C runtime and kernel buffers for immediate frame display
@@ -912,12 +909,15 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
+
+      // SNAPSHOT: Start timer when first ASCII frame is rendered (after splash screen ends)
+      if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
+        g_snapshot_first_frame_rendered = true;
+        g_snapshot_first_frame_rendered_ns = time_get_ns();
+        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED - Timer started NOW");
+      }
+
       SAFE_FREE(write_buf);
-    } else {
-      // Fallback: two writes if allocation fails
-      (void)platform_write_all(STDOUT_FILENO, display_frame, frame_len);
-      const char newline = '\n';
-      (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
 
     // Flush both C runtime and kernel buffers to ensure frame reaches destination immediately
