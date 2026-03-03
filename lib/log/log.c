@@ -1253,7 +1253,7 @@ void log_plain_msg(const char *fmt, ...) {
   }
 
   // Terminal output (atomic state checks)
-  if (!atomic_load_bool(&g_log.terminal_output_enabled)) {
+  if (!atomic_load_u64(&g_log.terminal_output_enabled)) {
     return;
   }
   if (atomic_load_u64(&g_log.terminal_locked)) {
@@ -1330,7 +1330,7 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
   }
 
   // Terminal output (atomic state checks)
-  if (!atomic_load_bool(&g_log.terminal_output_enabled)) {
+  if (!atomic_load_u64(&g_log.terminal_output_enabled)) {
     return;
   }
   if (atomic_load_u64(&g_log.terminal_locked)) {

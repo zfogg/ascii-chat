@@ -525,7 +525,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
   }
 
-
   // Pass stdin_reader to display if in stdin render mode
   if (stdin_render_mode && g_stdin_reader) {
     session_display_set_stdin_reader(display, g_stdin_reader);
@@ -593,15 +592,12 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   while (true) {
     attempt++;
 
-    log_debug("[CLIENT_LIKE_LOOP] About to call config->run_fn() (attempt %d)", attempt);
     result = config->run_fn(capture, display, config->run_user_data);
-    log_debug("[CLIENT_LIKE_LOOP] config->run_fn() returned with result=%d", result);
 
     // Exit immediately if run_fn succeeded
     if (result == ASCIICHAT_OK) {
       // Connection succeeded - splash screen cleanup now happens when first frame renders
       // This ensures the splash stays visible during TCP/WebSocket/datachannel connection attempts
-      log_debug("[CLIENT_LIKE_LOOP] Connection established, splash cleanup will occur on first frame");
 
       break;
     }
@@ -631,7 +627,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
 
     // Reconnection will happen - show splash screen during reconnection attempt
     // Reset first_frame flag so splash cleanup runs on next successful connection
-    log_debug("[CLIENT_LIKE_LOOP] Reconnection will be attempted, showing splash screen");
     session_display_reset_first_frame(display);
 
     // splash_intro_start() handles all the logic:
@@ -667,7 +662,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // ============================================================================
 
 cleanup:
-  log_debug("[CLIENT_LIKE_CLEANUP] Reached cleanup label");
   // Re-enable terminal output for shutdown logs
   log_set_terminal_output(true);
 

@@ -713,7 +713,12 @@ int splash_intro_done(void) {
     asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ms * NS_PER_MS_INT);
   }
 
-  atomic_store_bool(&g_splash_state.is_running, false);
+  // NOTE: DO NOT set is_running = false here! The animation thread sets it to false
+  // when it actually exits (line 633). If we set it to false here, the render loop
+  // guard will think splash is done while the animation thread is still running for
+  // up to 2 more seconds, allowing ASCII frames to render simultaneously with splash.
+  // The is_running flag MUST only be cleared by the animation thread when it finishes.
+
   return 0;
 }
 
@@ -726,16 +731,22 @@ void splash_clear_display_context(void) {
   // No-op: display context is no longer cached
 }
 
+bool splash_is_running(void) {
+  // Check if splash animation is currently rendering
+  // Used to prevent ASCII art from rendering while splash is animating
+  return atomic_load_bool(&g_splash_state.is_running);
+}
+
 void splash_wait_for_animation(void) {
   // Wait for animation thread to fully exit before rendering ASCII art
   // This prevents the splash and ASCII art from appearing simultaneously
   //
   // The animation thread will exit gracefully when:
-  // - First frame is ready AND 2 seconds have elapsed, OR
+  // - Intro done signal received AND 2 seconds have elapsed, OR
   // - 30 seconds have elapsed (safety timeout)
   // - OR a shutdown signal is received
   //
-  // We block here to ensure clean terminal state before ASCII rendering begins
+  // We block here indefinitely to ensure the splash animation completes before ASCII art starts
 
   // Only join if we successfully created the thread
   if (atomic_load_bool(&g_splash_state.thread_created)) {
@@ -746,24 +757,18 @@ void splash_wait_for_animation(void) {
     if (is_shutting_down) {
       log_dev("[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop");
       atomic_store_bool(&g_splash_state.should_stop, true);
-    }
-
-    // Use different timeout based on shutdown state:
-    // - Normal operation: 1 second (don't block ASCII art rendering in scripts)
-    // - Shutdown: 100ms (quick exit, let signal handler take over)
-    uint64_t timeout_ns = is_shutting_down ? (100LL * NS_PER_MS_INT) : (1000LL * NS_PER_MS_INT);
-
-    asciichat_error_t err = asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ns);
-
-    if (err == ASCIICHAT_OK) {
-      log_dev("[SPLASH_WAIT] Animation thread exited cleanly");
+      // During shutdown, use a short timeout (100ms)
+      uint64_t timeout_ns = 100LL * NS_PER_MS_INT;
+      (void)asciichat_thread_join_timeout(&g_splash_state.anim_thread, NULL, timeout_ns);
     } else {
-      if (is_shutting_down) {
-        log_dev("[SPLASH_WAIT] Shutdown in progress, not waiting for animation thread");
+      // Normal operation: wait indefinitely for the animation thread to finish
+      // This ensures splash animation is 100% done before ASCII art rendering starts
+      asciichat_error_t err = asciichat_thread_join(&g_splash_state.anim_thread, NULL);
+      if (err == ASCIICHAT_OK) {
+        log_dev("[SPLASH_WAIT] Animation thread exited cleanly");
       } else {
-        log_warn("[SPLASH_WAIT] Animation thread join timed out after %llu ms, forcing stop",
-                 (unsigned long long)(timeout_ns / 1000000));
-        // Force stop the animation thread if it didn't exit in time
+        log_warn("[SPLASH_WAIT] Animation thread join failed: %s", asciichat_error_string(err));
+        // Force stop the animation thread if join failed
         atomic_store_bool(&g_splash_state.should_stop, true);
         // Clear any partial splash output left on screen
         terminal_clear_screen();

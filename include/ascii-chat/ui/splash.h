@@ -202,3 +202,18 @@ void splash_clear_display_context(void);
  * @ingroup session
  */
 void splash_notify_first_frame(void);
+
+/**
+ * @brief Check if splash screen animation is currently running
+ *
+ * Returns true if the splash animation thread is actively rendering.
+ * Used to prevent ASCII art frame rendering from overlapping with the splash.
+ *
+ * @return true if splash is running, false otherwise
+ *
+ * @note Thread-safe (uses atomic operations)
+ * @note Can be called from render loop to skip frame output during splash
+ *
+ * @ingroup session
+ */
+bool splash_is_running(void);
