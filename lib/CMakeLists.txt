@@ -623,6 +623,10 @@ if(PCRE2_INCLUDE_DIRS)
 endif()
 if(TARGET websockets)
     target_link_libraries(ascii-chat-network websockets)
+    # mbedTLS is needed in debug builds when libwebsockets was built with mbedTLS backend
+    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        target_link_libraries(ascii-chat-network mbedtls mbedcrypto mbedx509)
+    endif()
     if(LIBWEBSOCKETS_BUILD_TARGET)
         add_dependencies(ascii-chat-network ${LIBWEBSOCKETS_BUILD_TARGET})
     endif()
@@ -646,6 +650,10 @@ if(NOT BUILDING_OBJECT_LIBS)
     # Link libwebsockets
     if(TARGET websockets)
         target_link_libraries(ascii-chat-network websockets)
+        # mbedTLS is needed in debug builds when libwebsockets was built with mbedTLS backend
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            target_link_libraries(ascii-chat-network mbedtls mbedcrypto mbedx509)
+        endif()
     elseif(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
     endif()
@@ -665,6 +673,10 @@ else()
     # Link libwebsockets
     if(TARGET websockets)
         target_link_libraries(ascii-chat-network websockets)
+        # mbedTLS is needed in debug builds when libwebsockets was built with mbedTLS backend
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            target_link_libraries(ascii-chat-network mbedtls mbedcrypto mbedx509)
+        endif()
     elseif(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-network ${LIBWEBSOCKETS_LIBRARIES})
     endif()
@@ -903,6 +915,10 @@ add_library(ascii-chat-shared SHARED
         target_link_libraries(ascii-chat-shared PRIVATE PkgConfig::LIBWEBSOCKETS)
     else()
         target_link_libraries(ascii-chat-shared PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
+        # mbedTLS is required when using locally-built libwebsockets with mbedtls backend (debug builds)
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+            target_link_libraries(ascii-chat-shared PRIVATE mbedtls mbedcrypto mbedx509)
+        endif()
     endif()
 
     # Suppress linker warnings about duplicate debug symbols in libdatachannel
