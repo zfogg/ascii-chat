@@ -944,6 +944,46 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     }
   }
 
+  // Initialize video frame prefetching system for stdin (same as file-based)
+  if (decoder->video_stream_idx >= 0) {
+    int width = decoder->video_codec_ctx->width;
+    int height = decoder->video_codec_ctx->height;
+
+    // For stdin sources, dimensions might be invalid initially (0x0)
+    // Use default dimensions for prefetch buffers; they'll be resized on first frame
+    if (width <= 0 || height <= 0) {
+      width = 1920;   // Default width for stdin
+      height = 1080;  // Default height for stdin
+      log_debug("stdin: Using default prefetch dimensions %dx%d (will be resized on first frame)", width, height);
+    }
+
+    // Create two prefetch image buffers for double-buffering
+    decoder->prefetch_image_a = image_new((size_t)width, (size_t)height);
+    decoder->prefetch_image_b = image_new((size_t)width, (size_t)height);
+    if (!decoder->prefetch_image_a || !decoder->prefetch_image_b) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to allocate prefetch image buffers");
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+
+    decoder->current_prefetch_image = decoder->prefetch_image_a;
+    decoder->prefetch_frame_ready = false;
+
+    // Initialize prefetch mutex
+    if (mutex_init(&decoder->prefetch_mutex, "ffmpeg_prefetch") != 0) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch mutex");
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+
+    if (cond_init(&decoder->prefetch_cond, "ffmpeg_prefetch") != 0) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to initialize prefetch condition variable");
+      mutex_destroy(&decoder->prefetch_mutex);
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+  }
+
   log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
             decoder->audio_stream_idx >= 0 ? "yes" : "no");
 
