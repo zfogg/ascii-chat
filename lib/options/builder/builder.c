@@ -1628,6 +1628,29 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
       // For optional arguments, pass NULL to the parser
       opt_value = NULL;
     }
+  } else if (desc->type == OPTION_TYPE_BOOL && (desc->optional_arg || strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
+    // Boolean options with optional_arg support can accept value from --flag=value or --flag value
+    if (long_opt_value) {
+      // Value came from --name=value
+      opt_value = long_opt_value;
+    } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
+      // Check if next argument is a valid boolean value
+      const char *next_arg = argv[argv_index + 1];
+      if (strcasecmp(next_arg, "true") == 0 || strcasecmp(next_arg, "yes") == 0 ||
+          strcasecmp(next_arg, "1") == 0 || strcasecmp(next_arg, "on") == 0 ||
+          strcasecmp(next_arg, "false") == 0 || strcasecmp(next_arg, "no") == 0 ||
+          strcasecmp(next_arg, "0") == 0 || strcasecmp(next_arg, "off") == 0) {
+        // Next argument is a boolean value, consume it
+        opt_value = next_arg;
+        *consumed_count = 2;
+      } else {
+        // Next argument is not a boolean value, treat it as positional
+        opt_value = NULL;
+      }
+    } else {
+      // No value provided, pass NULL to toggle
+      opt_value = NULL;
+    }
   }
 
   // Handle option based on type using the handler registry
