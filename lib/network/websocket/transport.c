@@ -1184,9 +1184,11 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   ws_data->wsi = NULL;
 
   // Destroy WebSocket context (only if we own it - client transports only)
+  // NOTE: Skip lws_context_destroy() to work around mbedTLS/OpenSSL 3.4.0 incompatibility
+  // when libwebsockets is cached with wrong TLS backend. This causes memory leak but prevents crash.
   if (ws_data->context && ws_data->owns_context) {
-    log_debug("Destroying WebSocket context");
-    lws_context_destroy(ws_data->context);
+    log_debug("Destroying WebSocket context (skipped due to mbedTLS/OpenSSL incompatibility)");
+    // lws_context_destroy(ws_data->context);  // DISABLED: causes crash on mbedTLS-built libwebsockets
     ws_data->context = NULL;
   }
 

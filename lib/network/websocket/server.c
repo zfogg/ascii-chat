@@ -825,8 +825,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
   info.retry_and_idle_policy = &keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
 
-  // Configure TLS/WSS support if certificates are provided
-  if (config->tls_cert_path && config->tls_key_path) {
+  // Configure TLS/WSS support if certificates are provided (check for non-empty strings)
+  if (config->tls_cert_path && config->tls_cert_path[0] != '\0' &&
+      config->tls_key_path && config->tls_key_path[0] != '\0') {
     #ifdef LWS_WITH_TLS
     info.ssl_cert_filepath = config->tls_cert_path;
     info.ssl_private_key_filepath = config->tls_key_path;
@@ -834,7 +835,8 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
     #else
     log_warn("WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable");
     #endif
-  } else if (config->tls_cert_path || config->tls_key_path) {
+  } else if ((config->tls_cert_path && config->tls_cert_path[0] != '\0') ||
+             (config->tls_key_path && config->tls_key_path[0] != '\0')) {
     log_warn("WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS");
   }
 
