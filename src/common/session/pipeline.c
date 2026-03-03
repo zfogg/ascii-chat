@@ -7,6 +7,7 @@
 #include "pipeline.h"
 #include "capture.h"
 #include "display.h"
+#include "render.h"
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
@@ -331,7 +332,10 @@ asciichat_error_t session_pipeline_run_main(
 
     log_info("[PIPELINE_MAIN] Starting main thread loop");
 
-    while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop)) {
+    bool snapshot_mode = GET_OPTION(snapshot_mode);
+    bool snapshot_done = false;
+
+    while (!should_exit(user_data) && !atomic_load_bool(&pipeline->stop) && !snapshot_done) {
         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->display_queue, 100 * NS_PER_MS_INT);
 
         if (!frame) continue;  // timeout, check should_exit again
@@ -358,6 +362,30 @@ asciichat_error_t session_pipeline_run_main(
             keyboard_key_t key = keyboard_read_nonblocking();
             if (key > 0) {
                 keyboard_handler(NULL, (int)key, user_data);  // NULL capture ctx
+            }
+        }
+
+        // Snapshot mode: check if elapsed time has reached snapshot_delay duration
+        // This check runs every iteration after first frame is rendered (when display.c sets g_snapshot_first_frame_rendered)
+        if (snapshot_mode && !snapshot_done) {
+            if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
+                double snapshot_delay = GET_OPTION(snapshot_delay);
+                uint64_t now_ns = time_get_ns();
+                uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
+                double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+
+                if ((unsigned long)(elapsed_sec * 10) % 10 == 0 || elapsed_sec < 0.2) {
+                    log_info("[SNAPSHOT_PIPELINE] CHECK: elapsed=%.3f target=%.2f", elapsed_sec, snapshot_delay);
+                }
+
+                // snapshot_delay=0 means exit after first frame
+                // snapshot_delay>0 means wait that many seconds before exiting
+                bool should_snapshot_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
+
+                if (should_snapshot_exit) {
+                    log_info("[SNAPSHOT_PIPELINE] EXITING - elapsed=%.3f target=%.2f", elapsed_sec, snapshot_delay);
+                    snapshot_done = true;
+                }
             }
         }
     }

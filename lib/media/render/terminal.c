@@ -88,14 +88,19 @@ static void blit_glyph(terminal_renderer_t *r, FT_Bitmap *bm, int px, int py, ui
       if (dx < 0 || dx >= r->width_px)
         continue;
       uint8_t a = bm->buffer[row * bm->pitch + col];
+
+      // Boost alpha for glyphs with very low opacity (FreeType anti-aliasing at small sizes)
+      // If alpha < 100, scale it up to improve visibility (minimum 100/255 = 39% opacity)
+      uint8_t boosted_a = (a < 100) ? (uint8_t)((a * 255) / 100) : a;
+
       uint8_t *dst = r->framebuffer + dy * r->pitch + dx * 3;
-      uint8_t r_val = (uint8_t)((fr * a + br * (255 - a)) / 255);
-      uint8_t g_val = (uint8_t)((fg * a + bg * (255 - a)) / 255);
-      uint8_t b_val = (uint8_t)((fb * a + bb * (255 - a)) / 255);
+      uint8_t r_val = (uint8_t)((fr * boosted_a + br * (255 - boosted_a)) / 255);
+      uint8_t g_val = (uint8_t)((fg * boosted_a + bg * (255 - boosted_a)) / 255);
+      uint8_t b_val = (uint8_t)((fb * boosted_a + bb * (255 - boosted_a)) / 255);
 
       // DEBUG: Sample first pixel to check output color
       if (blit_count <= 3 && row == 0 && col == 0) {
-        log_info("  BLIT_PIXEL[%d]: (row=%u,col=%u,alpha=%u) → RGB(%u,%u,%u)", blit_count, row, col, a, r_val, g_val, b_val);
+        log_info("  BLIT_PIXEL[%d]: (row=%u,col=%u,alpha=%u→%u) → RGB(%u,%u,%u)", blit_count, row, col, a, boosted_a, r_val, g_val, b_val);
       }
 
       dst[0] = r_val;
