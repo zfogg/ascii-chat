@@ -133,51 +133,41 @@ struct ffmpeg_decoder_t {
  * Stdin I/O Callbacks
  * ============================================================================ */
 
-/**
- * @brief Read callback for stdin AVIOContext
- */
-static int stdin_read_packet(void *opaque, uint8_t *buf, int buf_size) {
-  (void)opaque; // Unused
-
-  size_t bytes_read = fread(buf, 1, (size_t)buf_size, stdin);
-  if (bytes_read == 0) {
-    if (feof(stdin)) {
-      return AVERROR_EOF;
-    }
-    return AVERROR(EIO);
-  }
-
-  return (int)bytes_read;
-}
-
 /* ============================================================================
  * Memory-based AVIO for stdin buffering
  * ============================================================================ */
 
 /**
- * Structure to track buffered stdin data for memory-based AVIO
+ * Structure to track buffered stdin data
  */
 typedef struct {
-  uint8_t *data;     ///< Buffered data
+  uint8_t *data;     ///< Buffered data (shared between decoders)
   size_t size;       ///< Total size of buffered data
-  size_t pos;        ///< Current read position
 } stdin_buffer_t;
+
+/**
+ * Structure for per-decoder buffer reading state
+ */
+typedef struct {
+  stdin_buffer_t *buffer;  ///< Pointer to shared buffer
+  size_t pos;              ///< Current read position (per-decoder)
+} stdin_buffer_reader_t;
 
 /**
  * Read callback for memory-based AVIO (seekable)
  */
 static int memory_read_packet(void *opaque, uint8_t *buf, int buf_size) {
-  stdin_buffer_t *sb = (stdin_buffer_t *)opaque;
+  stdin_buffer_reader_t *reader = (stdin_buffer_reader_t *)opaque;
 
-  if (!sb || sb->pos >= sb->size)
+  if (!reader || !reader->buffer || reader->pos >= reader->buffer->size)
     return AVERROR_EOF;
 
   int to_read = buf_size;
-  if (sb->pos + to_read > sb->size)
-    to_read = (int)(sb->size - sb->pos);
+  if (reader->pos + to_read > reader->buffer->size)
+    to_read = (int)(reader->buffer->size - reader->pos);
 
-  memcpy(buf, sb->data + sb->pos, to_read);
-  sb->pos += to_read;
+  memcpy(buf, reader->buffer->data + reader->pos, to_read);
+  reader->pos += to_read;
 
   return to_read;
 }
@@ -186,26 +176,26 @@ static int memory_read_packet(void *opaque, uint8_t *buf, int buf_size) {
  * Seek callback for memory-based AVIO (seekable)
  */
 static int64_t memory_seek_packet(void *opaque, int64_t offset, int whence) {
-  stdin_buffer_t *sb = (stdin_buffer_t *)opaque;
+  stdin_buffer_reader_t *reader = (stdin_buffer_reader_t *)opaque;
 
-  if (!sb)
+  if (!reader || !reader->buffer)
     return -1;
 
   int64_t new_pos = 0;
   if (whence == SEEK_SET) {
     new_pos = offset;
   } else if (whence == SEEK_CUR) {
-    new_pos = (int64_t)sb->pos + offset;
+    new_pos = (int64_t)reader->pos + offset;
   } else if (whence == SEEK_END) {
-    new_pos = (int64_t)sb->size + offset;
+    new_pos = (int64_t)reader->buffer->size + offset;
   } else {
     return -1;
   }
 
-  if (new_pos < 0 || new_pos > (int64_t)sb->size)
+  if (new_pos < 0 || new_pos > (int64_t)reader->buffer->size)
     return -1;
 
-  sb->pos = (size_t)new_pos;
+  reader->pos = (size_t)new_pos;
   return new_pos;
 }
 
@@ -220,7 +210,6 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
 
   sb->data = NULL;
   sb->size = 0;
-  sb->pos = 0;
 
   // Read stdin in 64KB chunks
   const size_t chunk_size = 65536;
@@ -785,13 +774,21 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
-  // Create seekable AVIO context for buffered stdin (reset position for each decoder)
-  g_stdin_buffer->pos = 0;
+  // Create per-decoder reader (each decoder gets independent position tracking)
+  stdin_buffer_reader_t *reader = SAFE_MALLOC(sizeof(stdin_buffer_reader_t), stdin_buffer_reader_t *);
+  if (!reader) {
+    SET_ERRNO(ERROR_MEMORY, "Failed to allocate buffer reader");
+    SAFE_FREE(decoder);
+    return NULL;
+  }
+  reader->buffer = g_stdin_buffer;
+  reader->pos = 0;  // Each decoder starts from position 0
 
   // Allocate a small internal buffer for AVIO (required by avio_alloc_context)
   decoder->avio_buffer = SAFE_MALLOC(AVIO_BUFFER_SIZE, unsigned char *);
   if (!decoder->avio_buffer) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate AVIO buffer");
+    SAFE_FREE(reader);
     SAFE_FREE(decoder);
     return NULL;
   }
@@ -799,7 +796,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   decoder->avio_ctx = avio_alloc_context(decoder->avio_buffer,  // internal buffer for AVIO
                                          AVIO_BUFFER_SIZE,       // buffer size
                                          0,                      // write_flag
-                                         g_stdin_buffer,         // opaque (our data buffer)
+                                         reader,                 // opaque (per-decoder reader)
                                          memory_read_packet,
                                          NULL,                   // write_packet
                                          memory_seek_packet      // seek (memory is seekable)
@@ -812,6 +809,9 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
     return NULL;
   }
 
+  // Mark AVIO context as seekable (memory buffer supports seeking)
+  decoder->avio_ctx->seekable = AVIO_SEEKABLE_NORMAL;
+
   // Allocate format context
   decoder->format_ctx = avformat_alloc_context();
   if (!decoder->format_ctx) {
@@ -823,6 +823,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   }
 
   decoder->format_ctx->pb = decoder->avio_ctx;
+  decoder->format_ctx->flags |= AVFMT_FLAG_CUSTOM_IO; // Tell FFmpeg to use our custom AVIO context
 
   // Capture FFmpeg's probing output
   int ret = 0;
@@ -1024,6 +1025,10 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
 
   // Free AVIO context (stdin only)
   if (decoder->avio_ctx) {
+    // Free the opaque reader for stdin
+    if (decoder->is_stdin) {
+      SAFE_FREE(decoder->avio_ctx->opaque);
+    }
     av_freep(&decoder->avio_ctx->buffer);
     avio_context_free(&decoder->avio_ctx);
   }

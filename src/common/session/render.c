@@ -307,15 +307,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         image = session_capture_read_frame(capture);
 
-        if (frame_count <= 3 || !image) {
-          FILE *dbg = fopen("/tmp/capture_debug.log", "a");
-          if (dbg) {
-            fprintf(dbg, "[FRAME_%lu] read_frame returned %p, at_end=%s\n",
-                    frame_count, (void *)image, session_capture_at_end(capture) ? "YES" : "NO");
-            fclose(dbg);
-          }
-        }
-
         if (!image) {
           // Check if we've reached end of file for media sources
           if (session_capture_at_end(capture)) {
@@ -635,16 +626,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // Audio-Video Synchronization: Keep audio and video in sync by periodically adjusting audio to match video time
     // Frame rate limiting: Only sleep if we're ahead of schedule
     // If decoder is slow and we're already behind, don't add extra sleep
-    if (is_synchronous && capture) {
+    // In snapshot mode, skip all frame rate limiting to capture as many frames as possible
+    if (is_synchronous && capture && !snapshot_mode) {
       // Use user-specified FPS from options, not capture context FPS
       uint32_t target_fps = (uint32_t)GET_OPTION(fps);
-
-      // In snapshot mode, disable FPS limiting (set target_fps=0) to capture as many frames as possible
-      // This lets the decoder/encoder run at max speed during the snapshot capture window
-      if (snapshot_mode) {
-        target_fps = 0;  // Skip sleep to maximize frame capture
-      }
-
       if (target_fps > 0) {
         uint64_t frame_end_ns = time_get_ns();
         uint64_t frame_elapsed_ns = time_elapsed_ns(frame_start_ns, frame_end_ns);
