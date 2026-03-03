@@ -1636,7 +1636,7 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
 
     if (desc->type == OPTION_TYPE_BOOL) {
       // Boolean flags: pass value if provided (--flag=true/false), otherwise NULL to toggle
-      asciichat_error_t result = handler->apply_cli(field, long_opt_value, desc);
+      asciichat_error_t result = handler->apply_cli(field, opt_value, desc);
       if (result != ASCIICHAT_OK) {
         SAFE_FREE(arg_copy);
         return result;
