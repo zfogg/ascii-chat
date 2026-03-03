@@ -207,18 +207,22 @@ static void *pipeline_capture_thread(void *arg) {
             continue;
         }
 
-        // Check snapshot mode elapsed time
+        // Check snapshot mode elapsed time (measure from first capture, not first render)
         if (snapshot_mode) {
             uint64_t now_ns = time_get_ns();
-            uint64_t zero = 0;
-            atomic_cas_u64(&pipeline->first_frame_ns, &zero, now_ns);
 
-            uint64_t first_ns = atomic_load_u64(&pipeline->first_frame_ns);
-            double elapsed = (double)(now_ns - first_ns) / NS_PER_SEC_INT;
+            // Set first capture timestamp on first frame (only once)
+            if (g_snapshot_first_capture_ns == 0) {
+                g_snapshot_first_capture_ns = now_ns;
+                log_info("[SNAPSHOT_CAPTURE] First frame captured at %llu ns", (unsigned long long)now_ns);
+            }
+
+            // Calculate elapsed time from first capture
+            double elapsed = (double)(now_ns - g_snapshot_first_capture_ns) / NS_PER_SEC_INT;
             double snapshot_delay = GET_OPTION(snapshot_delay);
 
             if (elapsed >= snapshot_delay) {
-                log_info("[PIPELINE_CAPTURE] Snapshot elapsed=%.3f reached delay=%.2f", elapsed, snapshot_delay);
+                log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f", elapsed, snapshot_delay);
                 // Push EOF sentinels (zero-initialized)
                 pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
                 frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);

@@ -93,6 +93,7 @@ typedef void (*session_keyboard_handler_fn)(session_capture_ctx_t *capture, int 
  */
 extern bool g_snapshot_first_frame_rendered;
 extern uint64_t g_snapshot_first_frame_rendered_ns;  // Timestamp when first frame was rendered (nanoseconds)
+extern uint64_t g_snapshot_first_capture_ns;         // Timestamp when first frame was captured (nanoseconds)
 
 /**
  * @brief Unified render loop for all display modes

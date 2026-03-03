@@ -45,9 +45,10 @@
  * Unified Render Loop Implementation
  * ============================================================================ */
 
-// Global flag for snapshot mode: set by display.c when first frame is rendered
+// Global flags for snapshot mode timing
 bool g_snapshot_first_frame_rendered = false;
-uint64_t g_snapshot_first_frame_rendered_ns = 0;  // Timestamp when first frame was rendered
+uint64_t g_snapshot_first_frame_rendered_ns = 0;  // Timestamp when first frame was rendered (for terminal output)
+uint64_t g_snapshot_first_capture_ns = 0;         // Timestamp when first frame was captured (for video output)
 
 asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                       session_should_exit_fn should_exit, session_capture_fn capture_cb,
@@ -395,19 +396,21 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
     if (snapshot_mode && (snapshot_done || output_paused_frame)) {
-      // Calculate elapsed time from first frame rendered to now
-      double elapsed_sec = 0.0;
-      if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
+      // Calculate elapsed time from first frame captured (for video file)
+      // This is separate from render time - video should span from first capture to last capture
+      double capture_elapsed_sec = 0.0;
+      if (g_snapshot_first_capture_ns > 0) {
         uint64_t now_ns = time_get_ns();
-        uint64_t elapsed_ns = now_ns - g_snapshot_first_frame_rendered_ns;
-        elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-        log_info("SNAPSHOT: EXIT - Elapsed time: %.3f seconds (snapshot_delay=%.2f)", elapsed_sec, GET_OPTION(snapshot_delay));
+        uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+        capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+        log_info("SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds",
+                 capture_elapsed_sec,
+                 (g_snapshot_first_frame_rendered_ns > 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0);
       }
 
-      // Pass actual elapsed time to display module for render-file encoding
-      // This allows the encoder to calculate correct frame durations
+      // Pass actual capture elapsed time to encoder for correct video duration
       if (display) {
-        session_display_set_snapshot_actual_duration(display, elapsed_sec);
+        session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
       }
 
       // Signal application to exit in snapshot mode

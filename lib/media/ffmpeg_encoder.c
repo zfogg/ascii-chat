@@ -615,7 +615,7 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   uint64_t elapsed_ns = captured_ns - enc->first_frame_captured_ns;
   int64_t pts_from_timestamp = (int64_t)((elapsed_ns * (uint64_t)enc->fps) / 1000000000ULL);
 
-  // Use timestamp-based PTS, but maintain cumulative counter for fallback
+  // Use timestamp-based PTS
   enc->frame_encoded->pts = pts_from_timestamp;
   enc->video_pts += frame_duration;
 
