@@ -136,6 +136,11 @@ static void free_frame(pipeline_frame_t *f) {
     SAFE_FREE(f);
 }
 
+// Generic wrapper for frame_queue_flush that matches the expected void (*)(void *) signature
+static void free_frame_generic(void *f) {
+    free_frame((pipeline_frame_t *)f);
+}
+
 // Validate frame dimensions to detect corruption
 static bool frame_is_valid(const pipeline_frame_t *f) {
     if (!f) {
@@ -463,8 +468,8 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     }
 
     // Flush queues
-    frame_queue_flush(pipeline->display_queue, (void (*)(void *))free_frame);
-    frame_queue_flush(pipeline->encode_queue, (void (*)(void *))free_frame);
+    frame_queue_flush(pipeline->display_queue, free_frame_generic);
+    frame_queue_flush(pipeline->encode_queue, free_frame_generic);
 
     frame_queue_destroy(pipeline->display_queue);
     frame_queue_destroy(pipeline->encode_queue);
