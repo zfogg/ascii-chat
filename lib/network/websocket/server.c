@@ -60,7 +60,6 @@ static atomic_t g_writeable_callback_count = {0};
 // Forward declaration for websocket_protocols (defined later in file)
 static struct lws_protocols websocket_protocols[];
 
-
 /**
  * @brief libwebsockets callback for ACIP protocol
  *
@@ -107,7 +106,12 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     char client_name[128];
     char client_ip[64];
     lws_get_peer_simple(wsi, client_name, sizeof(client_name));
-    lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), client_name, sizeof(client_name), client_ip, sizeof(client_ip));
+    int peer_addresses_err = lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), client_name, sizeof(client_name),
+                                                    client_ip, sizeof(client_ip));
+    if (peer_addresses_err != 0) {
+      SET_ERRNO(ERROR_INVALID_STATE, "Failed to get peer addresses for %s: %s", client_name, SAFE_STRERROR(errno));
+      return -1;
+    }
 
     log_info("WebSocket client connected from %s", client_ip);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Client IP: %s", client_ip);
@@ -432,64 +436,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     log_info("🔵 [WS_RECEIVE] conn_data=%p transport_snapshot=%p handler_started=%d", (void *)conn_data,
              (void *)transport_snapshot, conn_data ? conn_data->handler_started : -1);
     if (!transport_snapshot) {
-      log_error("LWS_CALLBACK_RECEIVE: transport is NULL! ESTABLISHED never called?");
-      // Try to initialize the transport here as a fallback
-      const struct lws_protocols *protocol = lws_get_protocol(wsi);
-      if (!protocol || !protocol->user) {
-        log_error("LWS_CALLBACK_RECEIVE: Cannot get protocol or user data for fallback initialization");
-        break;
-      }
-
-      websocket_server_t *server = (websocket_server_t *)protocol->user;
-      char client_ip[64];
-      lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), NULL, 0, client_ip, sizeof(client_ip));
-
-      log_info("LWS_CALLBACK_RECEIVE: Initializing transport as fallback (client_ip=%s)", client_ip);
-      conn_data->server = server;
-      char ws_transport_name[64];
-      snprintf(ws_transport_name, sizeof(ws_transport_name), "server_%p", (void *)wsi);
-      conn_data->transport = acip_websocket_server_transport_create(ws_transport_name, wsi, NULL);
-      conn_data->handler_started = false;
-      conn_data->pending_send_data = NULL;
-      conn_data->pending_send_len = 0;
-      conn_data->pending_send_offset = 0;
-      conn_data->has_pending_send = false;
-
-      if (!conn_data->transport) {
-        log_error("LWS_CALLBACK_RECEIVE: Failed to create transport in fallback");
-        break;
-      }
-
-      log_debug("LWS_CALLBACK_RECEIVE: Spawning handler thread in fallback");
-      websocket_client_context_t *client_ctx =
-          SAFE_CALLOC(1, sizeof(websocket_client_context_t), websocket_client_context_t *);
-      if (!client_ctx) {
-        log_error("Failed to allocate client context");
-        acip_transport_destroy(conn_data->transport);
-        conn_data->transport = NULL;
-        break;
-      }
-
-      client_ctx->transport = conn_data->transport;
-      SAFE_STRNCPY(client_ctx->client_ip, client_ip, sizeof(client_ctx->client_ip));
-      client_ctx->client_port = 0;
-      client_ctx->user_data = server->user_data;
-
-      // Queue handler to thread pool (fallback if not queued in ESTABLISHED)
-      if (thread_pool_queue_work("websocket_handler_receive", server->handler_pool, server->handler, client_ctx) !=
-          ASCIICHAT_OK) {
-        log_error("LWS_CALLBACK_RECEIVE: Failed to queue handler work");
-        SAFE_FREE(client_ctx);
-        acip_transport_destroy(conn_data->transport);
-        conn_data->transport = NULL;
-        break;
-      }
-
-      conn_data->handler_started = true;
-      log_info("LWS_CALLBACK_RECEIVE: Handler work queued in fallback");
-
-      // Update snapshot after creating transport
-      transport_snapshot = conn_data->transport;
+      SET_ERRNO(ERROR_INVALID_STATE, "Transport snapshot is NULL");
+      return -1;
     }
 
     if (!in || len == 0) {
@@ -552,57 +500,20 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
                is_final);
     }
 
-    // Debug: Log raw bytes of incoming fragment
-    // OPTIMIZATION: Only log hex dumps if explicitly enabled to reduce callback overhead
-#ifdef WS_DEBUG_VERBOSE_FRAGMENTS
-    log_dev_every(4500 * US_PER_MS_INT, "WebSocket fragment: %zu bytes (first=%d, final=%d)", len, is_first, is_final);
-    if (len > 0 && len <= 256) {
-      const uint8_t *bytes = (const uint8_t *)in;
-      char hex_buf[1024];
-      size_t hex_pos = 0;
-      for (size_t i = 0; i < len && hex_pos < sizeof(hex_buf) - 4; i++) {
-        hex_pos += snprintf(hex_buf + hex_pos, sizeof(hex_buf) - hex_pos, "%02x ", bytes[i]);
-      }
-      log_dev_every(4500 * US_PER_MS_INT, "   Raw bytes: %s", hex_buf);
-    }
-
-    // If this is a single-fragment message (first and final), log the packet type for debugging
-    if (is_first && is_final && len >= 18) {
-      const uint8_t *data = (const uint8_t *)in;
-      // ACIP packet header: magic(8) + type(2) + length(4) + crc(4) + client_id(2)
-      uint16_t pkt_type = (data[8] << 8) | data[9];
-      uint32_t pkt_len = (data[10] << 24) | (data[11] << 16) | (data[12] << 8) | data[13];
-      log_dev_every(4500 * US_PER_MS_INT, "Single-fragment ACIP packet: type=%d (0x%x) len=%u total_size=%zu", pkt_type,
-                    pkt_type, pkt_len, len);
-    }
-#endif
-
-    // Queue this fragment immediately with first/final flags.
-    // Per LWS design, each fragment is processed individually by the callback.
-    // We must NOT manually reassemble fragments - that breaks LWS's internal state machine.
-    // Instead, queue each fragment with metadata, and let the receiver decide on reassembly.
-    // This follows the pattern in lws examples (minimal-ws-server-echo, etc).
-
-    uint64_t alloc_start_ns = time_get_ns();
     websocket_recv_msg_t msg;
     msg.data = buffer_pool_alloc(NULL, len);
     if (!msg.data) {
       log_error("Failed to allocate buffer for fragment (%zu bytes)", len);
       break;
     }
-    uint64_t alloc_end_ns = time_get_ns();
 
     memcpy(msg.data, in, len);
     msg.len = len;
     msg.first = is_first;
     msg.final = is_final;
 
-    uint64_t lock_start_ns = time_get_ns();
     mutex_lock(&ws_data->recv_mutex);
-    uint64_t lock_end_ns = time_get_ns();
 
-    // Re-check recv_queue is still valid after acquiring lock
-    // (LWS_CALLBACK_CLOSED may have cleared it while we were waiting for the lock)
     if (!ws_data->recv_queue) {
       log_warn("recv_queue was cleared during lock wait, dropping fragment");
       mutex_unlock(&ws_data->recv_mutex);
@@ -610,7 +521,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    // OPTIMIZATION: Only log queue status on first fragments to reduce callback overhead
     if (is_first) {
       size_t queue_current_size = ringbuffer_size(ws_data->recv_queue);
       size_t queue_capacity = ws_data->recv_queue->capacity;
@@ -633,7 +543,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     // Signal waiting recv() call that a fragment is available
     log_dev("[WS_DEBUG] RECEIVE: About to signal recv_cond (queue size=%zu)", ringbuffer_size(ws_data->recv_queue));
     cond_signal(&ws_data->recv_cond);
-    log_dev("[WS_DEBUG] RECEIVE: Signaled recv_cond");
     mutex_unlock(&ws_data->recv_mutex);
     log_dev("[WS_DEBUG] RECEIVE: Unlocked recv_mutex");
 
@@ -643,34 +552,6 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
 
     log_info("[WS_FRAG] Queued fragment: %zu bytes (first=%d final=%d, total_fragments=%llu)", len, is_first, is_final,
              (unsigned long long)atomic_load_u64(&g_receive_callback_count));
-
-    // Log callback duration with breakdown
-    {
-      uint64_t callback_exit_ns = time_get_ns();
-      uint64_t callback_dur_ns = callback_exit_ns - callback_enter_ns;
-      uint64_t alloc_dur_ns = alloc_end_ns - alloc_start_ns;
-      uint64_t lock_wait_dur_ns = lock_end_ns - lock_start_ns;
-
-      if (callback_dur_ns > 500000) { // 500 µs in nanoseconds
-        char callback_str[32], alloc_str[32], lock_str[32];
-        time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
-        time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
-        time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
-        log_warn("[WS_CALLBACK_DURATION] RECEIVE callback took %s (alloc=%s, lock_wait=%s)", callback_str, alloc_str,
-                 lock_str);
-      }
-      char callback_str[32], alloc_str[32], lock_str[32], other_str[32];
-      time_pretty(callback_dur_ns, -1, callback_str, sizeof(callback_str));
-      time_pretty(alloc_dur_ns, -1, alloc_str, sizeof(alloc_str));
-      time_pretty(lock_wait_dur_ns, -1, lock_str, sizeof(lock_str));
-      uint64_t other_dur_ns = callback_dur_ns - alloc_dur_ns - lock_wait_dur_ns;
-      time_pretty(other_dur_ns, -1, other_str, sizeof(other_str));
-      log_debug("[WS_CALLBACK_TIMING] total=%s (alloc=%s, lock_wait=%s, other=%s)", callback_str, alloc_str, lock_str,
-                other_str);
-    }
-    log_debug("[WS_RECEIVE] ===== RECEIVE CALLBACK COMPLETE, returning 0 to continue =====");
-    log_info("[WS_RECEIVE_RETURN] Returning 0 from RECEIVE callback (success). fragmented=%d (first=%d final=%d)",
-             (!is_final ? 1 : 0), is_first, is_final);
 
     // Record timing for this callback
     websocket_callback_timing_record(&g_ws_callback_timing.receive, callback_enter_ns,
@@ -826,15 +707,15 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.retry_and_idle_policy = &keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
 
   // Configure TLS/WSS support if certificates are provided (check for non-empty strings)
-  if (config->tls_cert_path && config->tls_cert_path[0] != '\0' &&
-      config->tls_key_path && config->tls_key_path[0] != '\0') {
-    #ifdef LWS_WITH_TLS
+  if (config->tls_cert_path && config->tls_cert_path[0] != '\0' && config->tls_key_path &&
+      config->tls_key_path[0] != '\0') {
+#ifdef LWS_WITH_TLS
     info.ssl_cert_filepath = config->tls_cert_path;
     info.ssl_private_key_filepath = config->tls_key_path;
     log_info("WebSocket server configured for WSS (TLS): cert=%s, key=%s", config->tls_cert_path, config->tls_key_path);
-    #else
+#else
     log_warn("WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable");
-    #endif
+#endif
   } else if ((config->tls_cert_path && config->tls_cert_path[0] != '\0') ||
              (config->tls_key_path && config->tls_key_path[0] != '\0')) {
     log_warn("WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS");
