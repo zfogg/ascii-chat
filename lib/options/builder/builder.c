@@ -1578,9 +1578,6 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
 
   // Find matching descriptor
   const option_descriptor_t *desc = find_option_descriptor(config, arg_for_lookup);
-  if (desc && (strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
-    fprintf(stderr, "[DESC_FOUND] Found --%s: type=%d optional_arg=%d\n", desc->long_name, desc->type, desc->optional_arg);
-  }
   if (!desc) {
     // Try to suggest a similar option
     const char *suggestion = find_similar_option_with_mode(arg_for_lookup, config, mode_bitmask);
@@ -1633,10 +1630,8 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
     }
   } else if (desc->type == OPTION_TYPE_BOOL && (desc->optional_arg || strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
     // Boolean options with optional_arg support can accept value from --flag=value or --flag value
-    fprintf(stderr, "[BOOL_VALUE_EXTRACT] --%s: long_opt_value='%s'\n", desc->long_name, long_opt_value ? long_opt_value : "(null)");
     if (long_opt_value) {
       // Value came from --name=value
-      fprintf(stderr, "[BOOL_VALUE_EXTRACT] Setting opt_value from long_opt_value\n");
       opt_value = long_opt_value;
     } else if (argv_index + 1 < argc && !is_flag_argument(argv[argv_index + 1])) {
       // Check if next argument is a valid boolean value

@@ -147,10 +147,6 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
 
   unsigned char value_byte = value ? 1 : 0;
   memcpy(field, &value_byte, 1);
-
-  if (desc && (strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
-    fprintf(stderr, "[APPLY_ENV] --%s: applying value=%d\n", desc->long_name, value);
-  }
 }
 
 static void apply_env_int(void *field, const char *env_value, const option_descriptor_t *desc) {

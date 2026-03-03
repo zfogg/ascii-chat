@@ -117,7 +117,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // Frame rate timing
   uint64_t frame_count = 0;
   uint64_t frame_start_ns = 0;
-  uint64_t frame_to_render_ns = 0;
 
   // Disable console logging during rendering to prevent logs from corrupting frame display
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
