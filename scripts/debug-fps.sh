@@ -124,7 +124,7 @@ case "$PROTOCOL" in
       --log-level debug --log-file "$client_log" --sync-state 3 \
       client "${PROTOCOL_PREFIX}://localhost:${PORT_WS}" \
       --test-pattern -S -D "$SNAPSHOT_DELAY" \
-      | tee "$client_stdout" || EXIT_CODE=$?
+      2>/dev/null | tee "$client_stdout" || EXIT_CODE=$?
     END_TIME=$(date +%s%N)
     ;;
 esac
