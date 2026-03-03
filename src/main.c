@@ -174,16 +174,18 @@ atomic_t g_should_exit ATOMIC_INIT_AUTO(g_should_exit);
 
 // Register with descriptive name for debug output
 #ifndef NDEBUG
-#define REGISTER_GLOBAL_ATOMICS() \
-  do { \
-    static bool _global_atomics_registered = false; \
-    if (!_global_atomics_registered) { \
-      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL); \
-      _global_atomics_registered = true; \
-    } \
-  } while(0)
+#define REGISTER_GLOBAL_ATOMICS()                                                                                      \
+  do {                                                                                                                 \
+    static bool _global_atomics_registered = false;                                                                    \
+    if (!_global_atomics_registered) {                                                                                 \
+      NAMED_REGISTER_ATOMIC(&g_should_exit, "application_exit_flag", NULL);                                            \
+      _global_atomics_registered = true;                                                                               \
+    }                                                                                                                  \
+  } while (0)
 #else
-#define REGISTER_GLOBAL_ATOMICS() do {} while(0)
+#define REGISTER_GLOBAL_ATOMICS()                                                                                      \
+  do {                                                                                                                 \
+  } while (0)
 #endif
 
 /** Mode-specific interrupt callback (called from signal handlers) */
@@ -224,10 +226,17 @@ void set_interrupt_callback(void (*cb)(void)) {
  */
 static void handle_sigterm(int sig) {
   // Write to stderr about which signal was received for debugging
-  const char *sig_name = (sig == SIGTERM) ? "SIGTERM" : (sig == SIGINT) ? "SIGINT" : (sig == SIGHUP) ? "SIGHUP" : "UNKNOWN";
-
+  const char *sig_name = (sig == SIGTERM)  ? "SIGTERM"
+                         : (sig == SIGINT) ? "SIGINT"
+                         : (sig == SIGHUP) ? "SIGHUP"
+                                           : "UNKNOWN";
+  char log_out[64];
+  safe_snprintf(log_out, sizeof(log_out), "Signal '%s' received", sig_name);
+  if (sig == SIGTERM || sig == SIGHUP || sig == SIGINT) {
+    safe_snprintf(log_out, sizeof(log_out), "%s - shutting down", log_out);
+  }
   // log_console() is async-signal-safe - uses atomic ops and platform_write_all()
-  log_console(LOG_INFO, "Signal received - shutting down");
+  log_console(LOG_INFO, log_out);
 
 #ifndef NDEBUG
   // Trigger debug sync state printing on shutdown (async-signal-safe)
@@ -248,6 +257,13 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
     return false;
   }
 
+  log_console(LOG_INFO, "Ctrl+C received - shutting down");
+
+#ifndef NDEBUG
+  // Trigger debug sync state printing on shutdown (async-signal-safe)
+  debug_sync_trigger_print();
+#endif
+
   // Double Ctrl+C forces immediate exit
   static atomic_t ctrl_c_count = {0};
   static bool ctrl_c_count_registered = false;
@@ -259,15 +275,6 @@ static bool console_ctrl_handler(console_ctrl_event_t event) {
     platform_force_exit(1);
   }
 
-#ifndef NDEBUG
-  // Trigger debug sync state printing on shutdown
-  debug_sync_trigger_print();
-#endif
-
-  // Note: Don't use log_console() here - on Unix, this is called from SIGINT context
-  // where SAFE_MALLOC may be holding its mutex, causing deadlock. Windows runs this
-  // in a separate thread so it would be safe there, but we keep both paths identical
-  // for simplicity. The shutdown message will appear from normal thread context.
   signal_exit();
   return true;
 }
