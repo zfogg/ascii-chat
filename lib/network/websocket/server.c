@@ -825,6 +825,19 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
   info.retry_and_idle_policy = &keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
 
+  // Configure TLS/WSS support if certificates are provided
+  if (config->tls_cert_path && config->tls_key_path) {
+    #ifdef LWS_WITH_TLS
+    info.ssl_cert_filepath = config->tls_cert_path;
+    info.ssl_private_key_filepath = config->tls_key_path;
+    log_info("WebSocket server configured for WSS (TLS): cert=%s, key=%s", config->tls_cert_path, config->tls_key_path);
+    #else
+    log_warn("WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable");
+    #endif
+  } else if (config->tls_cert_path || config->tls_key_path) {
+    log_warn("WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS");
+  }
+
   // Increase per-thread service buffer to prevent fragmentation of large messages
   // Default is 4KB, causing 291KB frames to fragment into 74 × 4KB chunks
   // Increase to 512KB to allow larger WebSocket frames without fragmentation

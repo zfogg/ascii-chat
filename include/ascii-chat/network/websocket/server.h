@@ -92,6 +92,8 @@ typedef struct {
   int port;                                   ///< Port to listen on
   websocket_client_handler_fn client_handler; ///< Handler for new connections
   void *user_data;                            ///< User data passed to handlers
+  const char *tls_cert_path;                  ///< TLS certificate file path (optional, for wss://)
+  const char *tls_key_path;                   ///< TLS private key file path (optional, for wss://)
 } websocket_server_config_t;
 
 /**
