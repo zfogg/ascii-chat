@@ -54,6 +54,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
                                       session_sleep_for_frame_fn sleep_cb, session_keyboard_handler_fn keyboard_handler,
                                       void *user_data) {
   // Validate required parameters
+  log_info("[SESSION_RENDER_LOOP] START: capture=%p, display=%p, mode=%s",
+           (void *)capture, (void *)display, capture ? "SYNCHRONOUS" : "EVENT-DRIVEN");
+
   if (!display) {
     SET_ERRNO(ERROR_INVALID_PARAM, "session_render_loop: display context is NULL");
     return ERROR_INVALID_PARAM;
@@ -88,11 +91,14 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // SYNCHRONOUS MODE: Use threaded pipeline for capture + render
   if (capture != NULL) {
+    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Creating pipeline...");
     session_pipeline_t *pipeline = NULL;
     asciichat_error_t pipeline_err = session_pipeline_create(capture, display, &pipeline);
     if (pipeline_err != ASCIICHAT_OK) {
+      log_error("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline creation failed: %d", pipeline_err);
       return pipeline_err;
     }
+    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...");
 
     asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
     session_pipeline_destroy(pipeline);

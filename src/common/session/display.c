@@ -293,14 +293,15 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     }
     log_info("render-file: Final encoder FPS=%u (config_render_fps=%u, option_fps=%u)", encoder_fps, config->render_fps,
              (uint32_t)GET_OPTION(fps));
+    log_info("render-file: Calling render_file_create with path='%s', %dx%d, fps=%d",
+             render_file_opt, width, height, encoder_fps);
     asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, (int)encoder_fps,
                                                   GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK) {
-      log_warn("render-file: init FAILED with error %d — file output disabled, ctx->render_file=%p",
-               rf_err, (void *)ctx->render_file);
+      log_error("render-file: FAILED to create with error %d (ctx->render_file=%p)",
+                rf_err, (void *)ctx->render_file);
     } else {
-      log_info("render-file: INITIALIZED SUCCESSFULLY for %s (ctx->render_file=%p)",
-               render_file_opt, (void *)ctx->render_file);
+      log_info("render-file: SUCCESS - encoder initialized, ctx->render_file=%p", (void *)ctx->render_file);
       // Set audio sources if render_file_set_audio_source is available
       if (ctx->render_file && config->render_file_audio_source) {
         render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, config->render_file_audio_source, NULL);

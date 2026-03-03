@@ -254,12 +254,21 @@ static void *pipeline_capture_thread(void *arg) {
         }
 
         if (pipeline->has_render_file) {
-            if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
-                // Blocking: keep trying to enqueue for file output
-                log_warn("[PIPELINE_CAPTURE] Failed to enqueue frame for encoding (timeout), dropping frame");
-                free_frame(frame);
+            // Only encode frames after the rendering system is ready (first frame has been rendered)
+            // This avoids encoding black frames during initialization
+            extern bool g_snapshot_first_frame_rendered;
+            if (g_snapshot_first_frame_rendered) {
+                if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
+                    // Blocking: keep trying to enqueue for file output
+                    log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
+                    free_frame(frame);
+                } else {
+                    log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w, frame->h);
+                }
             } else {
-                log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w, frame->h);
+                // Skip encoding until first frame is rendered - avoids black frames at start
+                log_debug("[PIPELINE_CAPTURE_SKIP] Skipping encode (rendering not ready yet)");
+                free_frame(frame);
             }
         } else {
             free_frame(frame);
