@@ -86,14 +86,8 @@ typedef void (*session_sleep_for_frame_fn)(void *user_data);
  */
 typedef void (*session_keyboard_handler_fn)(session_capture_ctx_t *capture, int key, void *user_data);
 
-/**
- * @brief Snapshot mode: flag set when first frame is rendered
- * Set to true when platform_write_all() outputs the first ASCII frame
- * Used to start the snapshot delay timer
- */
-extern bool g_snapshot_first_frame_rendered;
-extern uint64_t g_snapshot_first_frame_rendered_ns;  // Timestamp when first frame was rendered (nanoseconds)
-extern uint64_t g_snapshot_first_capture_ns;         // Timestamp when first frame was captured (nanoseconds)
+// Snapshot mode timing globals are declared in include/ascii-chat/options/options.h
+// so they can be accessed from both src and lib code
 
 /**
  * @brief Unified render loop for all display modes

@@ -187,6 +187,13 @@ static void *pipeline_capture_thread(void *arg) {
     log_info("[PIPELINE_CAPTURE] Starting capture thread");
 
     bool snapshot_mode = GET_OPTION(snapshot_mode);
+    if (snapshot_mode) {
+        // Set initial estimate to snapshot_delay so frames start getting encoded with consistent scaling
+        extern uint64_t g_snapshot_actual_duration_ms;
+        double snapshot_delay = GET_OPTION(snapshot_delay);
+        g_snapshot_actual_duration_ms = (uint64_t)(snapshot_delay * 1000.0);
+        log_info("[PIPELINE_CAPTURE] Snapshot mode: using snapshot_delay=%.2f as initial duration estimate", snapshot_delay);
+    }
 
     while (!atomic_load_bool(&pipeline->stop)) {
         image_t *img = session_capture_read_frame(pipeline->capture);
@@ -223,6 +230,11 @@ static void *pipeline_capture_thread(void *arg) {
 
             if (elapsed >= snapshot_delay) {
                 log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f", elapsed, snapshot_delay);
+                // Update with actual measured duration so encoder can scale remaining frames accurately
+                extern uint64_t g_snapshot_actual_duration_ms;
+                uint64_t actual_ms = (uint64_t)(elapsed * 1000.0);
+                g_snapshot_actual_duration_ms = actual_ms;
+                log_info("[PIPELINE_CAPTURE] Updated g_snapshot_actual_duration_ms=%llu (actual elapsed)", (unsigned long long)actual_ms);
                 // Push EOF sentinels (zero-initialized)
                 pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
                 frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);

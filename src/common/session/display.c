@@ -1123,20 +1123,23 @@ bool keyboard_help_is_active(session_display_ctx_t *ctx) {
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {
+  log_info("session_display_set_snapshot_actual_duration: CALLED with duration=%.3f, ctx=%p, render_file=%p",
+           actual_duration_sec, (void *)ctx, ctx ? (void *)ctx->render_file : NULL);
+
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
     return;
   }
 
   if (!ctx->render_file) {
+    log_warn("  -> render_file is NULL, cannot set duration");
     return; // No render_file context, nothing to do
   }
 
 #ifndef _WIN32
   // Pass the actual duration to the render_file module, which passes it to the encoder
   if (ctx->render_file) {
-    // We need a function to call the encoder through render_file
-    // For now, we'll implement this in the render_file module
+    log_info("  -> Passing duration %.3f to render_file encoder", actual_duration_sec);
     render_file_set_snapshot_actual_duration(ctx->render_file, actual_duration_sec);
   }
 #endif

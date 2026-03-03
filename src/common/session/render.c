@@ -49,6 +49,7 @@
 bool g_snapshot_first_frame_rendered = false;
 uint64_t g_snapshot_first_frame_rendered_ns = 0;  // Timestamp when first frame was rendered (for terminal output)
 uint64_t g_snapshot_first_capture_ns = 0;         // Timestamp when first frame was captured (for video output)
+uint64_t g_snapshot_actual_duration_ms = 0;       // Actual elapsed time in ms when capture thread hits snapshot timeout
 
 asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_display_ctx_t *display,
                                       session_should_exit_fn should_exit, session_capture_fn capture_cb,
@@ -102,6 +103,16 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline created successfully, running main loop...");
 
     asciichat_error_t run_err = session_pipeline_run_main(pipeline, should_exit, keyboard_handler, user_data);
+
+    // In snapshot mode, pass actual capture-based elapsed time to encoder for correct video duration
+    if (GET_OPTION(snapshot_mode) && display && g_snapshot_first_capture_ns > 0) {
+      uint64_t now_ns = time_get_ns();
+      uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+      double capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+      log_info("SNAPSHOT: Pipeline finished - passing capture_elapsed=%.3f to encoder", capture_elapsed_sec);
+      session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
+    }
+
     session_pipeline_destroy(pipeline);
     return run_err;
   }
@@ -363,8 +374,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       SAFE_FREE(ascii_frame);
     }
 
-    // Snapshot mode: check if elapsed time has reached snapshot_delay duration
-    // This check runs every iteration after first frame is rendered (when display.c sets g_snapshot_first_frame_rendered)
+    // Snapshot mode: check if elapsed time has reached snapshot_delay duration (terminal render timing)
+    // Separate from capture timing - both should measure their own snapshot_delay
     if (snapshot_mode && !snapshot_done) {
       if (g_snapshot_first_frame_rendered && g_snapshot_first_frame_rendered_ns > 0) {
         double snapshot_delay = GET_OPTION(snapshot_delay);
@@ -373,7 +384,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         double elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
 
         if (frames_rendered_since_first == 1 || frames_rendered_since_first % 20 == 0) {
-          log_info("SNAPSHOT: CHECK iter=%lu elapsed=%.3f target=%.2f", frames_rendered_since_first, elapsed_sec, snapshot_delay);
+          log_info("SNAPSHOT: RENDER_CHECK iter=%lu elapsed=%.3f target=%.2f (from first_frame_rendered)",
+                   frames_rendered_since_first, elapsed_sec, snapshot_delay);
         }
 
         // snapshot_delay=0 means exit after first frame
@@ -382,7 +394,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         bool should_exit = (snapshot_delay == 0.0) || (elapsed_sec >= snapshot_delay);
 
         if (should_exit) {
-          log_info("SNAPSHOT: EXITING NOW at iteration %lu - elapsed=%.3f target=%.2f", frames_rendered_since_first, elapsed_sec, snapshot_delay);
+          log_info("SNAPSHOT: RENDER_DONE at iteration %lu - elapsed=%.3f target=%.2f (setting snapshot_done=true)",
+                   frames_rendered_since_first, elapsed_sec, snapshot_delay);
           // We don't end frames with newlines so the next log would print on the same line as the frame's
           // last row without an \n here. We only need this \n in stdout in snapshot mode and when interactive,
           // so piped snapshots don't have a weird newline in stdout that they don't need.
@@ -391,11 +404,18 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           }
           snapshot_done = true;
         }
+      } else {
+        if (frames_rendered_since_first == 0) {
+          log_debug("SNAPSHOT: Waiting for first_frame_rendered (g_snapshot_first_frame_rendered=%d, g_snapshot_first_frame_rendered_ns=%llu)",
+                    g_snapshot_first_frame_rendered, (unsigned long long)g_snapshot_first_frame_rendered_ns);
+        }
       }
     }
 
     // Exit conditions: snapshot mode exits after capturing the final frame or initial paused frame
     if (snapshot_mode && (snapshot_done || output_paused_frame)) {
+      log_info("SNAPSHOT: EXIT CONDITION MET - snapshot_done=%d, output_paused_frame=%d", snapshot_done, output_paused_frame);
+
       // Calculate elapsed time from first frame captured (for video file)
       // This is separate from render time - video should span from first capture to last capture
       double capture_elapsed_sec = 0.0;
@@ -403,14 +423,21 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         uint64_t now_ns = time_get_ns();
         uint64_t elapsed_ns = now_ns - g_snapshot_first_capture_ns;
         capture_elapsed_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
-        log_info("SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds",
+        log_info("SNAPSHOT: EXIT - Capture elapsed: %.3f seconds, render elapsed: %.3f seconds, g_snapshot_first_capture_ns=%llu",
                  capture_elapsed_sec,
-                 (g_snapshot_first_frame_rendered_ns > 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0);
+                 (g_snapshot_first_frame_rendered_ns > 0) ? (double)(now_ns - g_snapshot_first_frame_rendered_ns) / NS_PER_SEC_INT : 0.0,
+                 (unsigned long long)g_snapshot_first_capture_ns);
+      } else {
+        log_warn("SNAPSHOT: EXIT condition met but g_snapshot_first_capture_ns is 0!");
       }
 
       // Pass actual capture elapsed time to encoder for correct video duration
+      log_info("SNAPSHOT: About to call session_display_set_snapshot_actual_duration with duration=%.3f, display=%p",
+               capture_elapsed_sec, (void *)display);
       if (display) {
         session_display_set_snapshot_actual_duration(display, capture_elapsed_sec);
+      } else {
+        log_warn("SNAPSHOT: display context is NULL!");
       }
 
       // Signal application to exit in snapshot mode
