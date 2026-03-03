@@ -1009,10 +1009,16 @@ static void *data_reception_thread_func(void *arg) {
     if (acip_result == ASCIICHAT_OK) {
       packet_count++;
       log_debug("[FRAME_RECV_LOOP] ✅ PACKET_%d_DISPATCHED: callbacks processed successfully", packet_count);
+    } else if (acip_result == ERROR_NETWORK_TIMEOUT) {
+      // Network timeouts are expected - socket may have no data available
+      // Continue looping to allow snapshot timer to expire
+      log_debug("[FRAME_RECV_LOOP] ⏱️  TIMEOUT: No data available, retrying (packets received: %d)", packet_count);
+      continue;
     } else {
       // Handle receive/dispatch errors - ALWAYS exit on network errors
-      log_error("[FRAME_RECV_LOOP] ❌ RECV_ERROR: acip_result=%d: %s", acip_result,
-                asciichat_error_string(acip_result));
+      // NOTE: Log to file even if terminal logging is disabled (important for debugging)
+      log_error("[FRAME_RECV_LOOP] ❌ RECV_ERROR: acip_result=%d: %s (after %d packets received)", acip_result,
+                asciichat_error_string(acip_result), packet_count);
 
       // Network errors (ERROR_NETWORK, ERROR_NETWORK_PROTOCOL, etc) always disconnect
       if (acip_result == ERROR_NETWORK || acip_result == ERROR_NETWORK_PROTOCOL) {
@@ -1034,7 +1040,7 @@ static void *data_reception_thread_func(void *arg) {
       }
 
       // Other errors - still disconnect to prevent infinite loop
-      log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed, disconnecting", packet_count + 1);
+      log_error("[FRAME_RECV_LOOP] ❌ RECV_FAILED: packet #%d failed after %d packets, disconnecting", packet_count + 1, packet_count);
       server_connection_lost();
       break;
     }
