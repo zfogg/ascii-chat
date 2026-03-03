@@ -29,16 +29,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
-#include <unistd.h>
 
 // Module-level static frame buffer (reused across renders to avoid malloc per frame)
 static frame_buffer_t *g_frame_buf = NULL;
 
 // Module-level static session log buffer (owned by this module)
 static session_log_buffer_t *g_session_log_buffer = NULL;
-
-// Output file descriptor for screen rendering (default: stdout, changed to stderr when piped)
-static int g_screen_output_fd = STDOUT_FILENO;
 
 // Strip ANSI escape codes from a string (matches map_plain_to_colored_pos logic)
 static void strip_ansi_codes(const char *src, char *dst, size_t dst_size) {
@@ -110,12 +106,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
   // Validate config
   if (!config || !config->render_header) {
     return;
-  }
-
-  // Detect if output is piped: when stdout is not a TTY, redirect screen output to stderr
-  // This allows stdout to remain clean for frame data while screens go to stderr
-  if (!isatty(STDOUT_FILENO)) {
-    g_screen_output_fd = STDERR_FILENO;
   }
 
   // Track startup timing (first 500ms)
@@ -199,9 +189,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       return; // Allocation failed
     }
   }
-
-  // Set output FD based on piping detection (may have changed)
-  frame_buffer_set_output_fd(g_frame_buf, g_screen_output_fd);
 
   frame_buffer_reset(g_frame_buf);
 
@@ -396,7 +383,6 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     int log_idx = 0;
     int lines_used = 0;
-    FILE *output_file = (g_screen_output_fd == STDERR_FILENO) ? stderr : stdout;
 
     for (int i = first_log_to_display; i < (int)log_count; i++) {
       const char *original_msg = log_entries[i].message;
@@ -439,13 +425,13 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
       if (same_as_before) {
         // Content unchanged - skip past it without rewriting.
         if (lines_for_this == 1) {
-          fprintf(output_file, "\n");
+          fprintf(stdout, "\n");
         } else {
-          fprintf(output_file, "\x1b[%dB", lines_for_this);
+          fprintf(stdout, "\x1b[%dB", lines_for_this);
         }
       } else {
         // Content changed - overwrite and clear tail.
-        fprintf(output_file, "%s\n", msg);
+        fprintf(stdout, "%s\n", msg);
       }
 
       if (log_idx < MAX_CACHED_LINES) {
@@ -473,7 +459,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
         // Truncate to fit: progressively test shorter substrings until one fits
         int target_width = g_cached_term_size.cols - 3; // Reserve space for ellipsis
         if (target_width <= 0) {
-          fprintf(output_file, "...\x1b[K\n");
+          fprintf(stdout, "...\x1b[K\n");
         } else {
           size_t src_len = strlen(prev_msg);
           bool found = false;
@@ -490,19 +476,19 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
             if (test_width <= target_width) {
               // Found a length that fits
-              fprintf(output_file, "%s...\x1b[K\n", test_buf);
+              fprintf(stdout, "%s...\x1b[K\n", test_buf);
               found = true;
               break;
             }
           }
 
           if (!found) {
-            fprintf(output_file, "...\x1b[K\n");
+            fprintf(stdout, "...\x1b[K\n");
           }
         }
       } else {
         // Fits without truncation
-        fprintf(output_file, "%s\x1b[K\n", prev_msg);
+        fprintf(stdout, "%s\x1b[K\n", prev_msg);
       }
 
       remaining--;
@@ -510,14 +496,14 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Fill remaining blank lines with color reset to prevent color bleed
     for (int i = 0; i < remaining; i++) {
-      fprintf(output_file, "\n");
+      fprintf(stdout, "\n");
     }
 
     g_prev_log_count = log_idx;
     g_prev_total_lines = lines_used;
 
     // Flush buffered output before rendering grep UI to ensure correct order
-    fflush(output_file);
+    fflush(stdout);
 
     // Atomic grep UI rendering: combine cursor positioning and input line into
     // a single write to prevent log output from interrupting the escape sequences.
@@ -585,7 +571,7 @@ void terminal_screen_render(const terminal_screen_config_t *config) {
 
     // Write entire grep UI (cursor positioning + input) in single operation
     if (pos > 0 && pos <= (int)sizeof(grep_ui_buffer)) {
-      platform_write_all(g_screen_output_fd, grep_ui_buffer, (size_t)pos);
+      platform_write_all(STDOUT_FILENO, grep_ui_buffer, (size_t)pos);
     }
 
     // Restore logging level after grep rendering completes
@@ -626,8 +612,4 @@ void terminal_screen_log_clear(void) {
 
 session_log_buffer_t *terminal_screen_get_log_buffer(void) {
   return g_session_log_buffer;
-}
-
-void terminal_screen_set_output_fd(int fd) {
-  g_screen_output_fd = fd;
 }

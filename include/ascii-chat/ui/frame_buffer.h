@@ -147,24 +147,3 @@ void frame_buffer_render_border(frame_buffer_t *buf, int cols, const char *color
  * Automatically centers the text accounting for ANSI escape codes.
  */
 int frame_buffer_render_centered(frame_buffer_t *buf, const char *text, int cols);
-
-/**
- * @brief Set output file descriptor for a specific frame buffer
- *
- * @param buf Frame buffer (may be NULL, in which case this is a no-op)
- * @param fd File descriptor to write to (e.g., STDOUT_FILENO or STDERR_FILENO)
- *
- * Allows redirecting frame buffer output to a different file descriptor.
- * Useful for sending splash/status screens to stderr when stdout is piped.
- */
-void frame_buffer_set_output_fd(frame_buffer_t *buf, int fd);
-
-/**
- * @brief Set global default output file descriptor for new frame buffers
- *
- * @param fd File descriptor to use for new buffers (default: STDOUT_FILENO)
- *
- * New frame buffers will use this FD by default.
- * Existing buffers are not affected (use frame_buffer_set_output_fd for those).
- */
-void frame_buffer_set_global_output_fd(int fd);

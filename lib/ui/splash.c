@@ -409,6 +409,8 @@ bool splash_should_display(bool is_intro) {
     // 1. Has media file/URL, OR
     // 2. Explicitly enabled with --splash-screen=true
     bool should_display = splash_screen_opt && (!is_snapshot || has_media || splash_explicitly_set);
+    fprintf(stderr, "[SPLASH_CHECK] splash_screen_opt=%d snapshot=%d has_media=%d => should_display=%d\n",
+            splash_screen_opt, is_snapshot, has_media, should_display);
     log_info("splash_should_display(intro): splash_screen=%d snapshot=%d has_media=%d => %d", splash_screen_opt,
              is_snapshot, has_media, should_display);
     // Show splash if:

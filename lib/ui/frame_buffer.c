@@ -23,11 +23,7 @@ struct frame_buffer {
   char *data;      ///< Allocated buffer
   size_t len;      ///< Current content length
   size_t capacity; ///< Allocated capacity
-  int output_fd;   ///< File descriptor to write to (default: STDOUT_FILENO)
 };
-
-// Global output FD configuration (used if not overridden per-buffer)
-static int g_output_fd = STDOUT_FILENO;
 
 frame_buffer_t *frame_buffer_create(int rows, int cols) {
   frame_buffer_t *buf = SAFE_MALLOC(sizeof(frame_buffer_t), frame_buffer_t *);
@@ -46,7 +42,6 @@ frame_buffer_t *frame_buffer_create(int rows, int cols) {
 
   buf->len = 0;
   buf->capacity = initial_capacity;
-  buf->output_fd = g_output_fd; // Use global default, can be overridden
 
   return buf;
 }
@@ -159,18 +154,8 @@ void frame_buffer_flush(frame_buffer_t *buf) {
     return;
   }
 
-  // Write entire buffer to configured FD in one atomic operation
-  platform_write_all(buf->output_fd, buf->data, buf->len);
-}
-
-void frame_buffer_set_output_fd(frame_buffer_t *buf, int fd) {
-  if (buf) {
-    buf->output_fd = fd;
-  }
-}
-
-void frame_buffer_set_global_output_fd(int fd) {
-  g_output_fd = fd;
+  // Write entire buffer to stdout in one atomic operation
+  platform_write_all(STDOUT_FILENO, buf->data, buf->len);
 }
 
 size_t frame_buffer_get_length(const frame_buffer_t *buf) {
