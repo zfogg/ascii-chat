@@ -273,10 +273,10 @@ void terminal_enable_ansi(void) {
  * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  // Flush on all outputs to ensure frame data appears immediately
-  // This is critical for real-time animation with cursor control codes
-  // Using fflush() instead of tcdrain() to avoid excessive latency
-  if (fflush(NULL) < 0) {
+  // Flush kernel output buffer for this file descriptor
+  // fsync() forces the kernel to write buffered data to the terminal immediately
+  // This is critical for smooth animation where each frame must appear before the next
+  if (fsync(fd) < 0 && errno != ENOTSUP) {
     return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
   }
   return ASCIICHAT_OK;

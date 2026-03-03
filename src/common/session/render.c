@@ -272,12 +272,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           break;
         }
 
-        log_debug_every(3 * US_PER_SEC_INT, "RENDER[%lu]: Starting frame read", frame_count);
-        capture_start_ns = time_get_ns();
         image = session_capture_read_frame(capture);
-        capture_elapsed_ns = time_elapsed_ns(capture_start_ns, time_get_ns());
-        double read_ms = (double)capture_elapsed_ns / NS_PER_MS;
-        log_info("[FRAME %lu] FRAME READ: %.2f ms (image=%p)", frame_count, read_ms, (void *)image);
 
         if (!image) {
           // Check if we've reached end of file for media sources
@@ -394,12 +389,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     // Convert image to ASCII using display context
     // Handles all palette, terminal caps, width, height, stretch settings
-    pre_convert_ns = time_get_ns();
     char *ascii_frame = session_display_convert_to_ascii(display, image);
-    post_convert_ns = time_get_ns();
-    uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
-    double convert_ms = (double)conversion_elapsed_ns / NS_PER_MS;
-    log_info("[FRAME %lu] ASCII CONVERT: %.2f ms", frame_count, convert_ms);
 
     if (ascii_frame) {
       log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
@@ -443,15 +433,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // Update help state for next iteration
         help_was_active = help_is_active;
 
-        uint64_t render_elapsed_ns = STOP_TIMER("render_frame");
-        post_render_ns = time_get_ns();
-        double render_ms = (double)render_elapsed_ns / NS_PER_MS;
-        log_info("[FRAME %lu] RENDER OUTPUT: %.2f ms", frame_count, render_ms);
-
-        // Calculate total time from frame START (frame_start_ns) to render COMPLETE
-        frame_to_render_ns = time_elapsed_ns(frame_start_ns, post_render_ns);
-        double total_frame_time_ms = (double)frame_to_render_ns / NS_PER_MS;
-        log_info("[FRAME %lu] TOTAL TIME: %.2f ms", frame_count, total_frame_time_ms);
+        STOP_TIMER("render_frame");
       }
 
       // Keyboard input polling (if enabled) - MUST come before snapshot exit check so help screen can be toggled
@@ -512,10 +494,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // snapshot_delay>0 means record enough frames for that many seconds of output video
         uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
 
-        log_info_every(US_PER_SEC_INT,
-                       "SNAPSHOT_FRAME_CHECK: delay=%.2f fps=%u target_frames=%lu frame_count=%lu",
-                       snapshot_delay, capture_fps, target_frames, frame_count);
-
         // Exit when we've captured enough frames for the desired output duration
         if (frame_count >= target_frames) {
           // We don't end frames with newlines so the next log would print on the same line as the frame's
@@ -524,8 +502,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           if (snapshot_mode && terminal_is_interactive()) {
             printf("\n");
           }
-          log_info_every(1 * NS_PER_SEC_INT, "Snapshot frame count %.0f seconds (%" PRIu64 " frames) reached, exiting",
-                         snapshot_delay, target_frames);
           snapshot_done = true;
         }
       }
