@@ -131,16 +131,7 @@ static void apply_env_bool(void *field, const char *env_value, const option_desc
     default_val = (default_byte != 0);
   }
 
-  // Debug logging for splash-screen and status-screen
-  if (desc && (strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
-    fprintf(stderr, "[APPLY_ENV] --%s: current=%d default=%d env='%s'\n",
-            desc->long_name, current_value, default_val, env_value ? env_value : "(null)");
-  }
-
   if (current_value != default_val) {
-    if (desc && (strcmp(desc->long_name, "splash-screen") == 0 || strcmp(desc->long_name, "status-screen") == 0)) {
-      fprintf(stderr, "[APPLY_ENV] --%s: already set, skipping\n", desc->long_name);
-    }
     return; // Already set, skip env var
   }
 
@@ -315,7 +306,8 @@ static asciichat_error_t apply_cli_int(void *field, const char *opt_value, const
   char *endptr;
   long value = strtol(opt_value, &endptr, 10);
   if (*endptr != '\0' || value < INT_MIN || value > INT_MAX) {
-    return SET_ERRNO(ERROR_USAGE, "Option --%s: '%s' is not a valid integer", desc ? desc->long_name : "unknown", opt_value);
+    return SET_ERRNO(ERROR_USAGE, "Option --%s: '%s' is not a valid integer", desc ? desc->long_name : "unknown",
+                     opt_value);
   }
   int int_value = (int)value;
 
