@@ -1968,7 +1968,15 @@ int server_main(void) {
       .port = GET_OPTION(websocket_port),
       .client_handler = websocket_client_handler,
       .user_data = &server_ctx,
+      .tls_cert_path = GET_OPTION(websocket_tls_cert),
+      .tls_key_path = GET_OPTION(websocket_tls_key),
   };
+
+  // Log WSS configuration if provided
+  if (ws_config.tls_cert_path && ws_config.tls_key_path) {
+    log_info("WebSocket server configured for WSS with cert=%s key=%s",
+             ws_config.tls_cert_path, ws_config.tls_key_path);
+  }
 
   memset(&g_websocket_server, 0, sizeof(g_websocket_server));
   asciichat_error_t ws_init_result = websocket_server_init(&g_websocket_server, &ws_config);

@@ -31,6 +31,8 @@ set(APP_SRCS
     # H.265 codec session layer
     ${CMAKE_CURRENT_SOURCE_DIR}/session/h265/server.c
     ${CMAKE_CURRENT_SOURCE_DIR}/session/h265/client.c
+    # Session unified abstraction layer
+    ${CMAKE_CURRENT_SOURCE_DIR}/common/session/server_like.c
 )
 
 set(APP_SRCS ${APP_SRCS} PARENT_SCOPE)

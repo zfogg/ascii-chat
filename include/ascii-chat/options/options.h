@@ -980,6 +980,9 @@ typedef struct options_state {
   char address6[OPTIONS_BUFF_SIZE];                ///< IPv6 bind address (server only)
   int port;                                        ///< Server port number
   int websocket_port;                              ///< WebSocket server port (server/discovery-service only)
+  char websocket_tls_cert[OPTIONS_BUFF_SIZE];      ///< WebSocket TLS certificate file path (server/discovery-service only)
+  char websocket_tls_key[OPTIONS_BUFF_SIZE];       ///< WebSocket TLS private key file path (server/discovery-service only)
+  char websocket_tls_key_password[OPTIONS_BUFF_SIZE]; ///< WebSocket TLS key password (server/discovery-service only)
   int max_clients;                                 ///< Maximum concurrent clients (server only)
   char session_string[SESSION_STRING_BUFFER_SIZE]; ///< Session string for ACDS discovery (calculated max size: 38 chars
                                                    ///< + null)
