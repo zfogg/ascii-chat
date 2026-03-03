@@ -63,13 +63,16 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Opus.cmake)
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WebRTC.cmake)
 
-# OpenSSL - SSL/TLS library (required by libdatachannel and TURN credentials)
+# OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/OpenSSL.cmake)
+
+# BearSSL - SSL/TLS library for HTTPS key fetching
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
 
-# libwebsockets - WebSocket transport for browser clients
+# libwebsockets - WebSocket transport for browser clients (uses mbedTLS for WSS)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libwebsockets.cmake)
 
 # miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
@@ -80,9 +83,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/SQLite3.cmake)
 
 # PCRE2 - Regular expression library for URL validation
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PCRE2.cmake)
-
-# BearSSL - SSL/TLS library for HTTPS key fetching
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 
 # mdns - mDNS service discovery library (requires patching to exclude main())
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)

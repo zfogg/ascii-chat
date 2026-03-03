@@ -38,11 +38,19 @@ macro(_libdatachannel_link_platform_libs)
 endmacro()
 
 # =============================================================================
-# Try system CMake config first (skip for musl builds)
+# Try system CMake config first (skip for musl and Debug builds with custom OpenSSL)
 # =============================================================================
 set(LIBDATACHANNEL_FOUND FALSE)
 
-if(NOT USE_MUSL)
+# Skip system CMake config if we're building with custom OpenSSL 3.4.0 (Debug builds)
+# In Debug mode, we build OpenSSL 3.4.0 from source and need libdatachannel to use it too
+set(_SKIP_SYSTEM_LIBDATACHANNEL FALSE)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libssl.a")
+    set(_SKIP_SYSTEM_LIBDATACHANNEL TRUE)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Skipping system CMake config (using custom OpenSSL 3.4.0)")
+endif()
+
+if(NOT USE_MUSL AND NOT _SKIP_SYSTEM_LIBDATACHANNEL)
     message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Checking system CMake config...")
     find_package(LibDataChannel QUIET)
 
@@ -400,6 +408,17 @@ if(NOT libdatachannel_POPULATED)
             endif()
 
             message(STATUS "libdatachannel Windows build: forcing Ninja generator")
+        else()
+            # For non-Windows builds, pass custom OpenSSL 3.4.0 if available
+            if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libssl.a")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/openssl/include")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libssl.a")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libcrypto.a")
+                message(STATUS "libdatachannel will use custom OpenSSL 3.4.0 from ${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+            elseif(OPENSSL_ROOT_DIR)
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+            endif()
         endif()
 
         # Build libdatachannel at configure time (not part of main build)
