@@ -125,26 +125,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   log_info("TTY Status: stdin_tty=%d stdout_tty=%d interactive=%d keyboard_enabled=%d", terminal_is_stdin_tty(),
            terminal_is_stdout_tty(), terminal_is_interactive(), keyboard_enabled);
 
-  // Determine mode: synchronous (capture provided) or event-driven (callbacks provided)
-  bool is_synchronous = (capture != NULL);
-
-  // Frame rate timing
+  // Frame rate timing (event-driven mode only)
   uint64_t frame_count = 0;
   uint64_t frame_start_ns = 0;
 
-  // Disable console logging during rendering to prevent logs from corrupting frame display
+  // Event-driven mode: disable console logging during rendering to prevent logs from corrupting frame display
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
-  log_info("[PRE_RENDER_LOOP] About to disable logging. snapshot_mode=%s capture=%p is_synchronous=%d",
-           snapshot_mode ? "YES" : "NO", (void *)capture, (capture != NULL));
-
-  // DEBUG: Write to file instead of disabling all logging
-  FILE *debug_log = fopen("/tmp/render_loop_debug.log", "a");
-  if (debug_log) {
-    fprintf(debug_log, "[RENDER_LOOP_ENTER] snapshot_mode=%s, capture=%p, is_synchronous=%d\n",
-            snapshot_mode ? "YES" : "NO", (void *)capture, is_synchronous);
-    fclose(debug_log);
-  }
-
+  log_info("[EVENT_DRIVEN_MODE] Entering render loop. snapshot_mode=%s", snapshot_mode ? "YES" : "NO");
   log_set_terminal_output(false);
 
   // Main render loop
@@ -194,7 +181,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t post_convert_ns = 0;
     uint64_t conversion_elapsed_ns = 0;
 
-    if (is_synchronous) {
+    if (false) {  // Synchronous path now handled by pipeline; this is event-driven only
       capture_start_ns = time_get_ns();
       // SYNCHRONOUS MODE: Use session_capture context
       log_info("[SYNC_MODE] Processing frame %lu, capture=%p", frame_count, (void *)capture);

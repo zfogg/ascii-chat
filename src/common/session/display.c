@@ -469,6 +469,13 @@ void session_display_reset_first_frame(session_display_ctx_t *ctx) {
   atomic_store_bool(&ctx->first_frame, true);
 }
 
+bool session_display_has_render_file(session_display_ctx_t *ctx) {
+  if (!ctx) {
+    return false;
+  }
+  return ctx->render_file != NULL;
+}
+
 /* ============================================================================
  * Session Display ASCII Conversion Functions
  * ============================================================================ */
@@ -694,19 +701,26 @@ char *session_display_convert_to_ascii(session_display_ctx_t *ctx, const image_t
 void session_display_render_fps_overlay(session_display_ctx_t *ctx);
 
 void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_data) {
-  static int call_count = 0;
-  if (call_count++ < 5) {
-    log_info("session_display_render_frame: CALLED - ctx=%p render_file=%p frame_len=%zu", (void *)ctx,
-             (void *)(ctx ? ctx->render_file : NULL), frame_data ? strlen(frame_data) : 0);
+  // Legacy function: shim that calls both new split functions for backward compatibility
+  // This maintains API compatibility with existing code while delegating to specialized functions
+
+  if (!ctx || !frame_data) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Display context or frame data is NULL");
+    return;
   }
 
+  // Write ASCII to terminal (main thread output path)
+  session_display_write_ascii(ctx, frame_data);
+}
+
+void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) {
   if (!ctx || !ctx->initialized) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
     return;
   }
 
-  if (!frame_data) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is NULL");
+  if (!ascii) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "ASCII data is NULL");
     return;
   }
 
@@ -717,20 +731,19 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Suppress frame rendering when help screen is active
-  // Network reception continues in background, frames are just not displayed
   if (atomic_load_bool(&ctx->keyboard_help_active)) {
     return;
   }
 
   // Calculate frame length
-  size_t frame_len = strnlen(frame_data, 1024 * 1024); // Max 1MB frame
+  size_t frame_len = strnlen(ascii, 1024 * 1024); // Max 1MB frame
   if (frame_len == 0) {
-    SET_ERRNO(ERROR_INVALID_PARAM, "Frame data is empty");
+    SET_ERRNO(ERROR_INVALID_PARAM, "ASCII data is empty");
     return;
   }
 
-  // Apply digital rain effect if enabled (for pre-rendered ASCII frames from client mode)
-  char *display_frame = (char *)frame_data;
+  // Apply digital rain effect if enabled
+  char *display_frame = (char *)ascii;
   char *rain_result = NULL;
   if (ctx->digital_rain) {
     uint64_t t_rain_start = time_get_ns();
@@ -738,11 +751,11 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     float delta_time = (float)(current_time_ns - ctx->last_frame_time_ns) / (float)NS_PER_SEC_INT;
     ctx->last_frame_time_ns = current_time_ns;
 
-    // Update digital rain color from current filter (allows live filter changes)
+    // Update digital rain color from current filter
     color_filter_t current_filter = GET_OPTION(color_filter);
     digital_rain_set_color_from_filter(ctx->digital_rain, current_filter);
 
-    rain_result = digital_rain_apply(ctx->digital_rain, (char *)frame_data, delta_time);
+    rain_result = digital_rain_apply(ctx->digital_rain, (char *)ascii, delta_time);
     if (rain_result) {
       display_frame = rain_result;
       frame_len = strnlen(rain_result, 1024 * 1024);
@@ -750,71 +763,22 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       uint64_t t_rain_end = time_get_ns();
       char rain_str[32];
       time_pretty(t_rain_end - t_rain_start, -1, rain_str, sizeof(rain_str));
-      log_info("DIGITAL_RAIN (render): Effect applied (%s)", rain_str);
+      log_info("DIGITAL_RAIN (write_ascii): Effect applied (%s)", rain_str);
     }
-  }
-
-  // Debug: check for lines that might shoot off to the right
-  // Find longest line in frame data (visible characters between newlines, excluding ANSI codes)
-  size_t max_line_chars = 0;
-  size_t current_line_chars = 0;
-  bool in_ansi_code = false;
-
-  for (size_t i = 0; i < frame_len; i++) {
-    char c = display_frame[i];
-
-    if (c == '\033') {
-      // Start of ANSI escape sequence
-      in_ansi_code = true;
-    } else if (in_ansi_code && c == 'm') {
-      // End of ANSI escape sequence
-      in_ansi_code = false;
-    } else if (!in_ansi_code && c == '\n') {
-      // End of line
-      if (current_line_chars > max_line_chars) {
-        max_line_chars = current_line_chars;
-      }
-      current_line_chars = 0;
-    } else if (!in_ansi_code) {
-      // Regular character (not ANSI code)
-      current_line_chars++;
-    }
-  }
-
-  if (current_line_chars > 0) {
-    if (current_line_chars > max_line_chars) {
-      max_line_chars = current_line_chars;
-    }
-  }
-
-  unsigned short int term_width = terminal_get_effective_width();
-  if (max_line_chars > term_width) {
-    log_warn("FRAME_ANALYSIS: Line %zu chars exceeds terminal width %u - this may cause wrapping!", max_line_chars,
-             term_width);
   }
 
   // Handle first frame - perform initial terminal reset and splash cleanup
-  // Use atomic_exchange to atomically check and clear the flag, avoiding TOCTOU race
   bool was_first_frame = atomic_exchange_bool(&ctx->first_frame, false);
   if (was_first_frame) {
-    // NOTE: log_set_terminal_output(false) skipped here to avoid deadlocks with audio worker threads
-    // Terminal logging will continue during rendering but won't corrupt the final frame
-
     // Stop splash screen when first frame is ready
-    // This ensures smooth transition from splash animation to ASCII art rendering
     splash_intro_done();
-    // Don't wait for splash animation - just signal it to stop
-    // Frames should start rendering immediately, splash will exit in background
-    // splash_wait_for_animation() was blocking frame rendering for frames 1-120
 
-    // Perform initial terminal reset (clear screen immediately for first frame)
-    // Skip terminal control if render_file is encoding to stdout
+    // Perform initial terminal reset
     if (ctx->has_tty && !ctx->render_file) {
       (void)terminal_reset(STDOUT_FILENO);
-      (void)terminal_clear_screen(); // Clear AFTER splash thread exits to avoid log overlap
+      (void)terminal_clear_screen();
       (void)terminal_cursor_home(STDOUT_FILENO);
       (void)terminal_clear_scrollback(STDOUT_FILENO);
-      // Ensure cursor is visible after splash before hiding it for rendering
       (void)terminal_cursor_show();
       if (!ctx->snapshot_mode) {
         (void)terminal_cursor_hide();
@@ -823,63 +787,35 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     }
   }
 
-  // Output routing logic:
-  // - Normal TTY mode: render with cursor control (overwrites previous frame for animation)
-  // - Snapshot mode on interactive TTY: render WITH cursor control (clear screen and animate)
-  // - Snapshot mode on piped output: render WITHOUT cursor control (frames stack as separate lines in output)
-  // - Piped mode: render every frame WITHOUT cursor control (allows continuous output to files)
-  // - If render_file is enabled: skip ASCII output, only encode to binary file/stdout
+  // Output routing logic
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
   START_TIMER("frame_write");
-  // Skip ASCII output to stdout if render_file encoder is active (it will write binary data instead)
-  // render_file will be NULL on Windows (guarded by #ifndef _WIN32 in create())
-  bool skip_ascii_output = (ctx->render_file != NULL);
-  if (skip_ascii_output) {
-    log_info("FRAME_WRITE: Skipping ASCII output (render_file encoder is active)");
-  }
 
-  // SNAPSHOT: Initialize snapshot timer for render-file mode (before checking skip_ascii_output paths)
-  // This ensures the timer starts on first frame regardless of output mode (TTY, piped, or render-file)
-  if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered && skip_ascii_output) {
-    g_snapshot_first_frame_rendered = true;
-    g_snapshot_first_frame_rendered_ns = time_get_ns();
-    log_info("SNAPSHOT: FIRST FRAME RENDERED (render-file mode) - Timer started");
-  }
-
-  if (!skip_ascii_output && use_tty_control) {
+  if (use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
-    // This ensures complete frames are displayed without fragmentation from partial writes
-    // Use cursor home + clear-entire-display (including scrollback) to prevent frame stacking
-    const char *cursor_home_sequence = "\033[H\033[3J"; // ESC [ H (3 bytes) + ESC [ 3 J (4 bytes) = 7 bytes total
+    const char *cursor_home_sequence = "\033[H\033[3J"; // 7 bytes total
     size_t cursor_seq_len = 7;
-
-    // Calculate total buffer size needed for cursor control + frame data
     size_t total_size = cursor_seq_len + frame_len;
 
-    // Allocate buffer to combine cursor positioning and frame into single write
     char *frame_buffer = SAFE_MALLOC(total_size, char *);
     if (frame_buffer) {
-      // Copy cursor home sequence first
       memcpy(frame_buffer, cursor_home_sequence, cursor_seq_len);
-      // Copy frame data immediately after cursor sequence
       memcpy(frame_buffer + cursor_seq_len, display_frame, frame_len);
 
-      // Write combined cursor control + frame as atomic operation
-      // This prevents partial frames from being displayed if output is interrupted
       log_debug("FRAME_WRITE_TTY: Writing %zu bytes (cursor=%zu + frame=%zu) to stdout", total_size, cursor_seq_len,
                 frame_len);
       ssize_t written = platform_write_all(STDOUT_FILENO, frame_buffer, total_size);
       log_debug("FRAME_WRITE_TTY: Wrote %zd bytes (requested %zu)", written, total_size);
 
-      // SNAPSHOT: Start timer when first ASCII frame is rendered (after splash screen ends)
+      // Start snapshot timer on first ASCII frame rendered
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
-        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED - Timer started NOW");
+        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii) - Timer started");
       }
 
-      // Tick FPS counter to measure actual output throughput
+      // Tick FPS counter
       if (ctx->fps_counter) {
         fps_counter_tick(ctx->fps_counter);
       }
@@ -887,10 +823,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       SAFE_FREE(frame_buffer);
     }
 
-    // Flush both C runtime and kernel buffers for immediate frame display
+    // Flush buffers
     log_debug("FRAME_FLUSH: Flushing stdout");
     (void)fflush(stdout);
-    // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
 
@@ -898,71 +833,43 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     if (ctx->fps_counter && GET_OPTION(fps_counter)) {
       session_display_render_fps_overlay(ctx);
     }
-  } else if (!skip_ascii_output && terminal_is_interactive()) {
-    // Piped to an interactive terminal: output ASCII frames
-    // Combine frame and newline into single write call
-    // Allocate temporary buffer for frame + newline to minimize syscalls
+  } else if (terminal_is_interactive()) {
+    // Piped to interactive terminal: output ASCII frames with newline
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
-
-      // Write frame data directly without terminal lock
-      // Lock is not needed: write() syscall is atomic and single frames aren't corrupted
-      // by concurrent writes. Terminal lock prevents ALL logging while held, which can
-      // cause deadlock if write() blocks (e.g., on full pipe or slow reader).
       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
       SAFE_FREE(write_buf);
     }
 
-    // Flush both C runtime and kernel buffers for immediate frame display
+    // Flush buffers
     (void)fflush(stdout);
-    // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
-  } else if (!skip_ascii_output) {
-    // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
-    // Write frame data with newline and flush
+  } else {
+    // Non-interactive piped output
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);
     if (write_buf) {
       memcpy(write_buf, display_frame, frame_len);
       write_buf[frame_len] = '\n';
       (void)platform_write_all(STDOUT_FILENO, write_buf, frame_len + 1);
 
-      // SNAPSHOT: Start timer when first ASCII frame is rendered (after splash screen ends)
+      // Start snapshot timer on first ASCII frame rendered
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
         g_snapshot_first_frame_rendered = true;
         g_snapshot_first_frame_rendered_ns = time_get_ns();
-        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED - Timer started NOW");
+        log_info("SNAPSHOT: FIRST ASCII FRAME RENDERED (write_ascii piped) - Timer started");
       }
 
       SAFE_FREE(write_buf);
     }
 
-    // Flush both C runtime and kernel buffers to ensure frame reaches destination immediately
+    // Flush buffers
     (void)fflush(stdout);
-    // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
   }
-
-  // Track actual frame writes to terminal (increment counter after ANY write path)
-  static int actual_frames_written = 0;
-  actual_frames_written++;
-  log_debug("[FRAME_WRITE_CHECK] frame_len=%zu, display_frame=%p, frame#%d", frame_len, (void *)display_frame,
-            actual_frames_written);
-  if (actual_frames_written % 10 == 1) {
-    log_info("✅ ACTUAL_FRAME_WRITTEN: #%d to terminal output", actual_frames_written);
-  }
-
-#ifndef _WIN32
-  // Write frame to render-file if enabled
-  if (ctx->render_file) {
-    asciichat_error_t fe = render_file_write_frame(ctx->render_file, display_frame);
-    if (fe != ASCIICHAT_OK)
-      log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
-  }
-#endif
 
   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, "frame_write",
                            "FRAME_WRITE: Write and flush complete (%.2f ms)");
@@ -971,6 +878,47 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   if (rain_result) {
     SAFE_FREE(rain_result);
   }
+}
+
+void session_display_encode_frame(session_display_ctx_t *ctx, const image_t *image) {
+  static int call_count = 0;
+  if (call_count++ < 5) {
+    log_info("session_display_encode_frame: CALLED (ctx=%p, image=%p, ctx->render_file=%p)",
+             (void *)ctx, (void *)image, ctx ? (void *)ctx->render_file : NULL);
+  }
+
+  if (!ctx || !ctx->initialized) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Display context is NULL or uninitialized");
+    return;
+  }
+
+  if (!image) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Image is NULL");
+    return;
+  }
+
+  // Only encode if render_file is active
+  if (!ctx->render_file) {
+    log_warn_every(10 * NS_PER_SEC_INT, "session_display_encode_frame: render_file is NULL, skipping encode");
+    return;
+  }
+
+  // Convert image to ASCII
+  char *ascii = session_display_convert_to_ascii(ctx, image);
+  if (!ascii) {
+    log_warn("session_display_encode_frame: Failed to convert image to ASCII");
+    return;
+  }
+
+  // Write ASCII to render-file encoder
+#ifndef _WIN32
+  asciichat_error_t fe = render_file_write_frame(ctx->render_file, ascii);
+  if (fe != ASCIICHAT_OK) {
+    log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
+  }
+#endif
+
+  SAFE_FREE(ascii);
 }
 
 void session_display_write_raw(session_display_ctx_t *ctx, const char *data, size_t len) {
