@@ -42,10 +42,14 @@ endmacro()
 # =============================================================================
 set(LIBDATACHANNEL_FOUND FALSE)
 
-# Skip system CMake config if we're building with custom OpenSSL 3.4.0 (Debug builds)
-# In Debug mode, we build OpenSSL 3.4.0 from source and need libdatachannel to use it too
+# Skip system CMake config if we're building with custom OpenSSL 3.4.0 (Debug/Dev builds)
+# In Debug/Dev mode, we build OpenSSL 3.4.0 from source and need libdatachannel to use it too
 set(_SKIP_SYSTEM_LIBDATACHANNEL FALSE)
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libssl.a")
+if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+   AND OPENSSL_ROOT_DIR
+   AND EXISTS "${OPENSSL_ROOT_DIR}/include/openssl/ssl.h"
+   AND OPENSSL_SSL_LIBRARY
+   AND EXISTS "${OPENSSL_SSL_LIBRARY}")
     set(_SKIP_SYSTEM_LIBDATACHANNEL TRUE)
     message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Skipping system CMake config (using custom OpenSSL 3.4.0)")
 endif()
@@ -410,12 +414,18 @@ if(NOT libdatachannel_POPULATED)
             message(STATUS "libdatachannel Windows build: forcing Ninja generator")
         else()
             # For non-Windows builds, pass custom OpenSSL 3.4.0 if available
-            if(CMAKE_BUILD_TYPE STREQUAL "Debug" AND EXISTS "${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libssl.a")
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/openssl/include")
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libssl.a")
-                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${ASCIICHAT_DEPS_CACHE_DIR}/openssl/lib64/libcrypto.a")
-                message(STATUS "libdatachannel will use custom OpenSSL 3.4.0 from ${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+            if((CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev")
+               AND OPENSSL_ROOT_DIR
+               AND OPENSSL_INCLUDE_DIR
+               AND OPENSSL_SSL_LIBRARY
+               AND OPENSSL_CRYPTO_LIBRARY
+               AND EXISTS "${OPENSSL_SSL_LIBRARY}"
+               AND EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}")
+                list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}")
+                message(STATUS "libdatachannel will use custom OpenSSL 3.4.0 from ${OPENSSL_ROOT_DIR}")
             elseif(OPENSSL_ROOT_DIR)
                 list(APPEND LIBDATACHANNEL_CMAKE_ARGS "-DOPENSSL_ROOT_DIR=${OPENSSL_ROOT_DIR}")
             endif()

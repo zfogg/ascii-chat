@@ -58,6 +58,14 @@ string(REPLACE
 
 # No special macOS-specific patches needed - WebRTC builds correctly with standard flags
 
+# Fix: Robust build-type check (original used unquoted variable and can fail with "if STREQUAL debug")
+string(REPLACE
+    "if(${CMAKE_BUILD_TYPE} STREQUAL debug)\n  set(BUILD_STATIC_LIB OFF)\n  add_definitions(-DDEBUG)\nendif()"
+    "string(TOLOWER \"${CMAKE_BUILD_TYPE}\" _webrtc_build_type)\nif(_webrtc_build_type STREQUAL \"debug\")\n  set(BUILD_STATIC_LIB OFF)\n  add_definitions(-DDEBUG)\nendif()"
+    CMAKE_CONTENT
+    "${CMAKE_CONTENT}"
+)
+
 # Write the patched main CMakeLists.txt back
 file(WRITE "${WEBRTC_AEC3_SOURCE_DIR}/CMakeLists.txt" "${CMAKE_CONTENT}")
 

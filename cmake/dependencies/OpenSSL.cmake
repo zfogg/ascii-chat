@@ -163,15 +163,27 @@ endif()
 # =============================================================================
 # Native Linux/macOS: Build OpenSSL 3.4.0 from source for libwebsockets
 # =============================================================================
-if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
+if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
     message(STATUS "Configuring ${BoldBlue}OpenSSL 3.4.0${ColorReset} from source for libwebsockets...")
 
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
     set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
+    set(OPENSSL_TARGET_STAMP "${OPENSSL_BUILD_DIR}/.target")
+    set(OPENSSL_NO_ASM OFF)
+    set(OPENSSL_BUILD_SHARED ON)
 
-    # Detect target architecture for OpenSSL Configure
-    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+    # Detect target architecture for OpenSSL Configure.
+    # Important: Check APPLE first so arm64 Macs don't get classified as linux-aarch64.
+    if(APPLE)
+        if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+            set(OPENSSL_TARGET "darwin64-arm64-cc")
+        else()
+            set(OPENSSL_TARGET "darwin64-x86_64-cc")
+        endif()
+        set(OPENSSL_LIBDIR "lib")
+        set(OPENSSL_NO_ASM ON)
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(OPENSSL_TARGET "linux-aarch64")
         set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
@@ -180,16 +192,44 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686")
         set(OPENSSL_TARGET "linux-x86")
         set(OPENSSL_LIBDIR "lib")    # 32-bit
-    elseif(APPLE)
-        set(OPENSSL_TARGET "darwin64-arm64-cc")
-        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     else()
         set(OPENSSL_TARGET "linux-generic64")
         set(OPENSSL_LIBDIR "lib64")  # Default to 64-bit
     endif()
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED}")
+
+    if(OPENSSL_BUILD_SHARED)
+        set(_OPENSSL_EXPECTED_SSL_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        set(_OPENSSL_EXPECTED_CRYPTO_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX}")
+        set(_OPENSSL_IMPORTED_TYPE SHARED)
+    else()
+        set(_OPENSSL_EXPECTED_SSL_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a")
+        set(_OPENSSL_EXPECTED_CRYPTO_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
+        set(_OPENSSL_IMPORTED_TYPE STATIC)
+    endif()
+
+    # If cached OpenSSL was generated for a different target, wipe and re-extract.
+    set(_OPENSSL_RECONFIGURE_REQUIRED FALSE)
+    if(EXISTS "${OPENSSL_TARGET_STAMP}")
+        file(READ "${OPENSSL_TARGET_STAMP}" _OPENSSL_CACHED_SIGNATURE)
+        string(STRIP "${_OPENSSL_CACHED_SIGNATURE}" _OPENSSL_CACHED_SIGNATURE)
+        if(NOT _OPENSSL_CACHED_SIGNATURE STREQUAL "${OPENSSL_CONFIG_SIGNATURE}")
+            set(_OPENSSL_RECONFIGURE_REQUIRED TRUE)
+            message(STATUS "  OpenSSL configuration changed: ${_OPENSSL_CACHED_SIGNATURE} -> ${OPENSSL_CONFIG_SIGNATURE}; forcing clean reconfigure")
+        endif()
+    elseif(EXISTS "${OPENSSL_SOURCE_DIR}/configdata.pm")
+        # Legacy cache from before signature stamping; force a clean rebuild.
+        set(_OPENSSL_RECONFIGURE_REQUIRED TRUE)
+        message(STATUS "  OpenSSL cache missing configuration signature; forcing clean reconfigure")
+    endif()
+
+    if(_OPENSSL_RECONFIGURE_REQUIRED)
+        file(REMOVE_RECURSE "${OPENSSL_SOURCE_DIR}")
+        file(REMOVE_RECURSE "${OPENSSL_PREFIX}")
+    endif()
 
     # Build OpenSSL 3.4.0 if not cached
-    if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
+    if(NOT EXISTS "${_OPENSSL_EXPECTED_SSL_LIB}" OR NOT EXISTS "${_OPENSSL_EXPECTED_CRYPTO_LIB}")
         message(STATUS "  OpenSSL 3.4.0 not found in cache, building from source...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
@@ -222,14 +262,24 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
         endif()
 
         # Configure OpenSSL
+        set(OPENSSL_CONFIGURE_ARGS
+            ${OPENSSL_TARGET}
+            --prefix=${OPENSSL_PREFIX}
+            no-tests
+            -fPIC
+        )
+        if(OPENSSL_NO_ASM)
+            list(APPEND OPENSSL_CONFIGURE_ARGS no-asm)
+        endif()
+        if(OPENSSL_BUILD_SHARED)
+            list(APPEND OPENSSL_CONFIGURE_ARGS shared)
+        else()
+            list(APPEND OPENSSL_CONFIGURE_ARGS no-shared)
+        endif()
         message(STATUS "  Configuring OpenSSL for ${OPENSSL_TARGET}...")
         execute_process(
             COMMAND "${OPENSSL_SOURCE_DIR}/Configure"
-                ${OPENSSL_TARGET}
-                --prefix=${OPENSSL_PREFIX}
-                no-shared
-                no-tests
-                -fPIC
+                ${OPENSSL_CONFIGURE_ARGS}
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
@@ -260,24 +310,56 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
             message(FATAL_ERROR "Failed to install OpenSSL")
         endif()
 
+        file(WRITE "${OPENSSL_TARGET_STAMP}" "${OPENSSL_CONFIG_SIGNATURE}\n")
+
         message(STATUS "  ${BoldGreen}OpenSSL 3.4.0${ColorReset} built and cached successfully")
     else()
         message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}${ColorReset}")
     endif()
 
+    # Resolve installed OpenSSL library paths (handle versioned shared-library names).
+    set(OPENSSL_SSL_LIBRARY "${_OPENSSL_EXPECTED_SSL_LIB}")
+    set(OPENSSL_CRYPTO_LIBRARY "${_OPENSSL_EXPECTED_CRYPTO_LIB}")
+    if(OPENSSL_BUILD_SHARED)
+        if(NOT EXISTS "${OPENSSL_SSL_LIBRARY}")
+            file(GLOB _OPENSSL_SSL_CANDIDATES "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            list(SORT _OPENSSL_SSL_CANDIDATES)
+            list(LENGTH _OPENSSL_SSL_CANDIDATES _OPENSSL_SSL_CANDIDATE_COUNT)
+            if(_OPENSSL_SSL_CANDIDATE_COUNT GREATER 0)
+                list(GET _OPENSSL_SSL_CANDIDATES 0 OPENSSL_SSL_LIBRARY)
+            endif()
+        endif()
+        if(NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
+            file(GLOB _OPENSSL_CRYPTO_CANDIDATES "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto*${CMAKE_SHARED_LIBRARY_SUFFIX}")
+            list(SORT _OPENSSL_CRYPTO_CANDIDATES)
+            list(LENGTH _OPENSSL_CRYPTO_CANDIDATES _OPENSSL_CRYPTO_CANDIDATE_COUNT)
+            if(_OPENSSL_CRYPTO_CANDIDATE_COUNT GREATER 0)
+                list(GET _OPENSSL_CRYPTO_CANDIDATES 0 OPENSSL_CRYPTO_LIBRARY)
+            endif()
+        endif()
+    endif()
+    if(NOT EXISTS "${OPENSSL_SSL_LIBRARY}" OR NOT EXISTS "${OPENSSL_CRYPTO_LIBRARY}")
+        message(FATAL_ERROR "OpenSSL build succeeded but libraries were not found in ${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}")
+    endif()
+
+    set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}" CACHE PATH "OpenSSL root directory" FORCE)
+    set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include" CACHE PATH "OpenSSL include directory" FORCE)
+    set(OPENSSL_SSL_LIBRARY "${OPENSSL_SSL_LIBRARY}" CACHE FILEPATH "OpenSSL SSL library" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_CRYPTO_LIBRARY}" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
+
     # Create imported targets for OpenSSL 3.4.0
     if(NOT TARGET OpenSSL::Crypto)
-        add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
+        add_library(OpenSSL::Crypto ${_OPENSSL_IMPORTED_TYPE} IMPORTED GLOBAL)
         set_target_properties(OpenSSL::Crypto PROPERTIES
-            IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a"
+            IMPORTED_LOCATION "${OPENSSL_CRYPTO_LIBRARY}"
             INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
         )
     endif()
 
     if(NOT TARGET OpenSSL::SSL)
-        add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
+        add_library(OpenSSL::SSL ${_OPENSSL_IMPORTED_TYPE} IMPORTED GLOBAL)
         set_target_properties(OpenSSL::SSL PROPERTIES
-            IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a"
+            IMPORTED_LOCATION "${OPENSSL_SSL_LIBRARY}"
             INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
             INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
         )
@@ -346,6 +428,10 @@ endif()
 # Fallback: Use find_package (dynamic linking)
 # =============================================================================
 if(NOT _OPENSSL_STATIC_FOUND)
+    if(WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+        # Force shared OpenSSL on Windows debug/dev builds.
+        set(OPENSSL_USE_STATIC_LIBS FALSE)
+    endif()
     find_package(OpenSSL)
 
     if(OpenSSL_FOUND)

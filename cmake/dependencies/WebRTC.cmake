@@ -47,23 +47,25 @@ FetchContent_GetProperties(webrtc_aec3)
 if(NOT webrtc_aec3_POPULATED)
     # Manually populate the source
     FetchContent_Populate(webrtc_aec3)
+endif()
 
-    # Apply patches
-    execute_process(
-        COMMAND ${CMAKE_COMMAND}
-            -DWEBRTC_AEC3_SOURCE_DIR=${webrtc_aec3_SOURCE_DIR}
-            -DPATCH_SCRIPT_DIR=${CMAKE_SOURCE_DIR}/cmake/dependencies/patches
-            -P ${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/patch-webrtc-aec3-cmake.cmake
-        RESULT_VARIABLE PATCH_RESULT
-        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-    )
-    if(PATCH_RESULT)
-        message(FATAL_ERROR "Failed to patch WebRTC AEC3 CMakeLists.txt")
-    endif()
+# Apply patches every configure (cached source may still need updated patch rules)
+execute_process(
+    COMMAND ${CMAKE_COMMAND}
+        -DWEBRTC_AEC3_SOURCE_DIR=${webrtc_aec3_SOURCE_DIR}
+        -DPATCH_SCRIPT_DIR=${CMAKE_SOURCE_DIR}/cmake/dependencies/patches
+        -P ${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/patch-webrtc-aec3-cmake.cmake
+    RESULT_VARIABLE PATCH_RESULT
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+)
+if(PATCH_RESULT)
+    message(FATAL_ERROR "Failed to patch WebRTC AEC3 CMakeLists.txt")
+endif()
 
-    # Set up build directory in deps cache
-    set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
-    file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
+# Continue with cache/build checks after patching the source.
+# Set up build directory in deps cache
+set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
+file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
     # Create a configuration string to detect when rebuild is needed
     # This ensures cached WebRTC libs match the current build settings
@@ -364,8 +366,6 @@ if(NOT webrtc_aec3_POPULATED)
     else()
         message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries found in cache: ${BoldCyan}${WEBRTC_BUILD_DIR}/lib${ColorReset}")
     endif()
-
-endif()
 
 # Import pre-built libraries as INTERFACE library
 # This way, WebRTC targets are NOT part of the main project's target list
