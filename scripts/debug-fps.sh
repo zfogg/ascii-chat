@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 PORT=$(((RANDOM % 6000) + 2000))
-tmpdir=$(mktemp -d "XXX-ascii-chat-debug-fps")
+tmpdir=$(mktemp -d "/tmp/XXX-ascii-chat-debug-fps")
 client_log="$tmpdir/client-logfile-$PORT.log"
 client_stdout="$tmpdir/client-stdout-$PORT.log"
 server_log="$tmpdir/server-logfile-$PORT.log"
