@@ -611,26 +611,27 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   uint64_t elapsed_ns = captured_ns - enc->first_frame_captured_ns;
   int64_t pts_from_timestamp = (int64_t)((elapsed_ns * (uint64_t)enc->fps) / 1000000000ULL);
 
-  // In snapshot mode, scale PTS to fit the actual captured duration
+  // In snapshot mode, distribute frames linearly across the actual duration
   if (snapshot_mode) {
     extern uint64_t g_snapshot_actual_duration_ms;
+    extern uint64_t g_snapshot_last_capture_elapsed_ns;
     if (g_snapshot_actual_duration_ms > 0) {
-      // Use actual duration measured by capture thread for accurate PTS scaling
-      // Scale PTS proportionally: pts_scaled = pts * (actual_duration / capture_span_seconds)
-      // This stretches the captured frames to fill the actual duration
+      // Distribute frames linearly based on their capture timestamp relative to total duration
+      // pts = (frame_elapsed_ns / total_elapsed_ns) * actual_duration_sec * fps
+      // This ensures frame 0 is at 0s and last frame is at actual_duration_sec
       double actual_duration_sec = (double)g_snapshot_actual_duration_ms / 1000.0;
-      double capture_span_sec = (double)elapsed_ns / (double)NS_PER_SEC_INT;
+      double total_elapsed_sec = (double)g_snapshot_last_capture_elapsed_ns / (double)NS_PER_SEC_INT;
 
-      // Only scale if we have reasonable values to work with
-      if (capture_span_sec > 0.001 && actual_duration_sec > 0.001) {
-        double scale_factor = actual_duration_sec / capture_span_sec;
+      if (total_elapsed_sec > 0.001) {
+        double frame_fraction = (double)elapsed_ns / (double)g_snapshot_last_capture_elapsed_ns;
+        double target_pts_sec = frame_fraction * actual_duration_sec;
         int64_t pts_before = pts_from_timestamp;
-        pts_from_timestamp = (int64_t)((double)pts_from_timestamp * scale_factor);
+        pts_from_timestamp = (int64_t)(target_pts_sec * (double)enc->fps);
 
         if (enc->frame_count < 3 || enc->frame_count % 10 == 0) {
-          log_debug("ffmpeg: snapshot frame %d: PTS scaled %.3f->%.3f (capture_span=%.3f, target=%.3f, scale=%.3f)",
+          log_debug("ffmpeg: snapshot frame %d: PTS distributed %.3f->%.3f (elapsed=%.3f, total=%.3f, fraction=%.3f)",
                     enc->frame_count, (double)pts_before / enc->fps, (double)pts_from_timestamp / enc->fps,
-                    capture_span_sec, actual_duration_sec, scale_factor);
+                    (double)elapsed_ns / 1e9, total_elapsed_sec, frame_fraction);
         }
       }
     }

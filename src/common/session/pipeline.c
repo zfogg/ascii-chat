@@ -240,9 +240,13 @@ static void *pipeline_capture_thread(void *arg) {
                 log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f", elapsed, snapshot_delay);
                 // Update with actual measured duration so encoder can scale remaining frames accurately
                 extern uint64_t g_snapshot_actual_duration_ms;
+                extern uint64_t g_snapshot_last_capture_elapsed_ns;
                 uint64_t actual_ms = (uint64_t)(elapsed * 1000.0);
                 g_snapshot_actual_duration_ms = actual_ms;
-                log_info("[PIPELINE_CAPTURE] Updated g_snapshot_actual_duration_ms=%llu (actual elapsed)", (unsigned long long)actual_ms);
+                uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
+                g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
+                log_info("[PIPELINE_CAPTURE] Updated g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
+                         (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
                 // Push EOF sentinels (zero-initialized)
                 pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
                 frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
