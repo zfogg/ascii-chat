@@ -452,6 +452,21 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
           session_display_render_frame(display, ascii_frame);
         }
 
+        // Snapshot mode: START TIMER when first frame is actually displayed
+        // Timer starts from when the first frame is rendered to the screen
+        // This is AFTER session_display_render_frame() has written pixels to terminal
+        if (snapshot_mode && !first_frame_rendered) {
+          first_frame_rendered = true;
+          log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: FIRST FRAME DISPLAYED, starting timer (frames_rendered_since_first will be set to 0 below)");
+        }
+
+        // Snapshot mode: increment frame counter for all displayed frames
+        // Counter starts at 1 for the first displayed frame, then 2, 3, 4... for subsequent frames
+        if (snapshot_mode && first_frame_rendered) {
+          frames_rendered_since_first++;
+          log_info_every(1 * NS_PER_SEC_INT, "[SNAPSHOT] Frame rendered: frames_rendered_since_first=%lu", frames_rendered_since_first);
+        }
+
         // Update help state for next iteration
         help_was_active = help_is_active;
 
@@ -487,17 +502,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
       }
 
-      // Snapshot mode timing: mark when first frame has been rendered
-      // This must be set AFTER successful rendering to ensure delay starts when first frame is displayed
-      if (snapshot_mode && !first_frame_rendered && should_write) {
-        first_frame_rendered = true;
-        log_dev_every(1 * NS_PER_SEC_INT, "Snapshot mode: first frame rendered, starting delay timer");
-      }
-
-      // Increment frames rendered counter (after first frame) for snapshot delay calculation
-      if (first_frame_rendered && should_write) {
-        frames_rendered_since_first++;
-      }
 
       // Free frame before checking exit conditions to avoid double-free
       SAFE_FREE(ascii_frame);
