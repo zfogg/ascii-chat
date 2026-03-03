@@ -1093,6 +1093,12 @@ static void *data_reception_thread_func(void *arg) {
     }
   }
 
+  // Log why the loop exited (DEBUG to avoid affecting timing)
+  bool final_exit_flag = should_exit();
+  bool final_conn_active = server_connection_is_active();
+  log_debug("[FRAME_RECV_LOOP] ⏹️  LOOP_EXIT: should_exit=%d server_connection_is_active=%d (packets_received=%d)",
+            final_exit_flag, final_conn_active, packet_count);
+
   // Before exiting due to connection loss, check if snapshot_delay timer has fired
   // If it has, take the snapshot and exit cleanly instead of abandoning the snapshot
   if (GET_OPTION(snapshot_mode)) {
