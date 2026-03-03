@@ -343,22 +343,29 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   enc->width_px = width_px;
   enc->height_px = height_px;
 
-  // For snapshot mode, use a reduced FPS to achieve the desired output duration
-  // Estimate: typical webcam at 30fps capturing for snapshot_delay seconds
-  // Expected frames = 30 * snapshot_delay
-  // output_fps = expected_frames / snapshot_delay = 30
-  // This way, packet durations (1/fps seconds) will naturally sum to the correct total
+  // For snapshot mode, calculate output FPS based on input FPS and snapshot duration
+  // If we capture for N seconds at input_fps, we'll get ~(N * input_fps) frames
+  // Output duration should be snapshot_delay seconds
+  // So output_fps = (input_fps * snapshot_delay) / snapshot_delay = input_fps
+  // EXCEPT: if the input was probed, fps parameter is the actual input fps
+  // Then output_fps should equal input_fps to make frame durations sum correctly
   bool snapshot_mode = GET_OPTION(snapshot_mode);
   double snapshot_delay = GET_OPTION(snapshot_delay);
-  log_debug("ffmpeg_encoder_create: snapshot_mode=%d, snapshot_delay=%.1f", snapshot_mode, snapshot_delay);
-  if (snapshot_mode) {
-    // Use a lower FPS so frame durations span the snapshot_delay period
-    // Assume ~30fps input, so we'll get ~30*delay frames
-    // Set output FPS so that frame_count * (1/output_fps) = snapshot_delay
-    // output_fps = frame_count / snapshot_delay ≈ 30
-    fps = 30;  // Conservative estimate for typical webcam
-    log_info("ffmpeg_encoder_create: Snapshot mode with snapshot_delay=%.1f - using reduced fps=%d for proper duration",
+  log_debug("ffmpeg_encoder_create: snapshot_mode=%d, snapshot_delay=%.1f, input_fps=%d",
+            snapshot_mode, snapshot_delay, fps);
+
+  if (snapshot_mode && snapshot_delay > 0) {
+    // For snapshot mode: if we capture at input_fps for snapshot_delay seconds,
+    // we get approximately (input_fps * snapshot_delay) frames
+    // To make output span exactly snapshot_delay seconds:
+    // output_fps = frame_count / snapshot_delay = (input_fps * snapshot_delay) / snapshot_delay = input_fps
+    // So we should use input_fps as output_fps!
+    // Example: 30fps input for 3s → ~90 frames → output at 30fps → 90/30 = 3 seconds ✓
+
+    log_info("ffmpeg_encoder_create: Snapshot mode snapshot_delay=%.1f, input_fps=%d",
              snapshot_delay, fps);
+    log_info("  → Will estimate ~%.0f frames, output FPS=%d makes durations sum to %.1f seconds",
+             fps * snapshot_delay, fps, snapshot_delay);
   }
 
   enc->fps = fps;
