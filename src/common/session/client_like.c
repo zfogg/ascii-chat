@@ -275,26 +275,22 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       capture_config.target_fps = (uint32_t)user_fps;
       log_info("Using user-specified FPS: %u", capture_config.target_fps);
     } else {
-      // SNAPSHOT: Skip FPS probing before splash to preserve video frames for snapshot delay
-      if (GET_OPTION(snapshot_mode)) {
-        log_debug("Skipping FPS probe in snapshot mode - using default 60 FPS");
-        capture_config.target_fps = 60;
-      } else {
-        // Probe FPS for HTTP URLs
-        probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
-        if (probe_source) {
-          double url_fps = media_source_get_video_fps(probe_source);
-          log_info("Detected HTTP stream video FPS: %.1f", url_fps);
-          if (url_fps > 0.0) {
-            capture_config.target_fps = (uint32_t)(url_fps + 0.5);
-          } else {
-            log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
-            capture_config.target_fps = 60;
-          }
+      // Always probe FPS for HTTP URLs, even in snapshot mode
+      // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
+      log_debug("Probing FPS for HTTP URL");
+      probe_source = media_source_create(MEDIA_SOURCE_FILE, media_url_val);
+      if (probe_source) {
+        double url_fps = media_source_get_video_fps(probe_source);
+        log_info("Detected HTTP stream video FPS: %.1f", url_fps);
+        if (url_fps > 0.0) {
+          capture_config.target_fps = (uint32_t)(url_fps + 0.5);
         } else {
-          log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
+          log_warn("FPS detection failed for HTTP stream, using default 60 FPS");
           capture_config.target_fps = 60;
         }
+      } else {
+        log_warn("Failed to create probe source for HTTP stream, using default 60 FPS");
+        capture_config.target_fps = 60;
       }
     }
   } else if (media_file_val && strlen(media_file_val) > 0) {
@@ -315,26 +311,22 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
         capture_config.target_fps = (uint32_t)user_fps;
         log_info("Using user-specified FPS: %u", capture_config.target_fps);
       } else {
-        // SNAPSHOT: Skip FPS probing before splash to preserve video frames for snapshot delay
-        if (GET_OPTION(snapshot_mode)) {
-          log_debug("Skipping FPS probe in snapshot mode - using default 60 FPS");
-          capture_config.target_fps = 60;
-        } else {
-          // Probe FPS for local files
-          probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
-          if (probe_source) {
-            double file_fps = media_source_get_video_fps(probe_source);
-            log_info("Detected file video FPS: %.1f", file_fps);
-            if (file_fps > 0.0) {
-              capture_config.target_fps = (uint32_t)(file_fps + 0.5);
-            } else {
-              log_warn("FPS detection failed, using default 60 FPS");
-              capture_config.target_fps = 60;
-            }
+        // Always probe FPS for local files, even in snapshot mode
+        // (snapshot mode needs correct FPS to capture right number of frames during snapshot_delay window)
+        log_debug("Probing FPS for local file");
+        probe_source = media_source_create(MEDIA_SOURCE_FILE, media_file_val);
+        if (probe_source) {
+          double file_fps = media_source_get_video_fps(probe_source);
+          log_info("Detected file video FPS: %.1f", file_fps);
+          if (file_fps > 0.0) {
+            capture_config.target_fps = (uint32_t)(file_fps + 0.5);
           } else {
-            log_warn("Failed to create probe source for FPS detection, using default 60 FPS");
+            log_warn("FPS detection failed, using default 60 FPS");
             capture_config.target_fps = 60;
           }
+        } else {
+          log_warn("Failed to create probe source for FPS detection, using default 60 FPS");
+          capture_config.target_fps = 60;
         }
       }
     }
@@ -612,6 +604,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       audio_available = false;
     }
   }
+
+  log_info("[MARKER] Audio setup complete at line 614");
   log_info("[SETUP_COMPLETE] All setup complete, about to start connection loop");
 
   // ============================================================================

@@ -175,9 +175,9 @@ bool platform_is_binary_in_path(const char *bin_name) {
   HASH_ADD_KEYPTR(hh, g_bin_path_cache, entry->bin_name, strlen(entry->bin_name), entry);
   rwlock_wrunlock(&g_cache_rwlock);
 
-  log_dev("Binary '%s' %s in PATH", bin_name,
-          colored_string(found ? LOG_COLOR_INFO : LOG_COLOR_ERROR, found ? "found" : "NOT found"));
+  char *found_notfound_str =
+      found ? colored_string(LOG_COLOR_INFO, "found") : colored_string(LOG_COLOR_ERROR, "NOT found");
+  log_dev("Binary '%s' %s in PATH", bin_name, found_notfound_str);
 
   return found;
 }
-
