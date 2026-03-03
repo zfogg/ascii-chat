@@ -170,10 +170,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // In piped mode, force all logs to stderr to prevent frame data corruption
   if (terminal_should_force_stderr()) {
     log_set_force_stderr(true);
-    // Set stdout to line buffering to ensure output is flushed at newlines
-    // This helps with snapshot mode where each frame ends with a newline
-    //(void)setvbuf(stdout, NULL, _IOLBF, 0);
+    // Disable buffering for stdout to ensure frames appear immediately
+    // Each frame ends with newline, so unbuffered output is critical for real-time display
+    (void)setvbuf(stdout, NULL, _IONBF, 0);
   }
+
+  // Also disable buffering for TTY mode to ensure smooth 40+ FPS animation
+  setvbuf(stdout, NULL, _IONBF, 0);
 
   // Detect terminal capabilities
   ctx->caps = detect_terminal_capabilities();
@@ -860,8 +863,9 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       log_debug("FRAME_WRITE_FALLBACK: Wrote %zd bytes of frame data (requested %zu)", written, frame_len);
     }
 
-    // Flush terminal to ensure all data reaches the display
+    // Flush both C runtime and kernel buffers for immediate frame display
     log_debug("FRAME_FLUSH: Flushing stdout");
+    (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
 
     // Render FPS counter overlay if enabled
@@ -891,7 +895,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
 
-    // Flush kernel write buffer so piped data appears immediately to readers
+    // Flush both C runtime and kernel buffers for immediate frame display
+    (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
   } else {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
@@ -909,7 +914,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
       (void)platform_write_all(STDOUT_FILENO, &newline, 1);
     }
 
-    // Flush output to ensure frame reaches destination in snapshot mode
+    // Flush both C runtime and kernel buffers to ensure frame reaches destination immediately
+    (void)fflush(stdout);
     (void)terminal_flush(STDOUT_FILENO);
   }
 
