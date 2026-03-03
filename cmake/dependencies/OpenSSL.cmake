@@ -18,15 +18,20 @@ if(USE_MUSL)
     # Detect target architecture for OpenSSL Configure
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(OPENSSL_TARGET "linux-aarch64")
+        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
         set(OPENSSL_TARGET "linux-x86_64")
+        set(OPENSSL_LIBDIR "lib64")  # 64-bit
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686")
+        set(OPENSSL_TARGET "linux-x86")
+        set(OPENSSL_LIBDIR "lib")    # 32-bit
     else()
         set(OPENSSL_TARGET "linux-generic64")
+        set(OPENSSL_LIBDIR "lib64")  # Default to 64-bit
     endif()
 
     # Build OpenSSL synchronously at configure time if not cached
-    # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
-    if(NOT EXISTS "${OPENSSL_PREFIX}/lib64/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/lib64/libcrypto.a")
+    if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
         message(STATUS "  OpenSSL library not found in cache, will build from source")
         message(STATUS "  This may take a few minutes on first build...")
 
@@ -116,21 +121,20 @@ if(USE_MUSL)
 
         message(STATUS "  ${BoldGreen}OpenSSL${ColorReset} built and cached successfully")
     else()
-        message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} library found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/lib64/libssl.a${ColorReset}")
+        message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} library found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a${ColorReset}")
     endif()
 
     # Set OpenSSL variables for CMake find_package to use
-    # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
     set(OPENSSL_ROOT_DIR "${OPENSSL_PREFIX}" CACHE PATH "OpenSSL root directory" FORCE)
     set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include" CACHE PATH "OpenSSL include directory" FORCE)
-    set(OPENSSL_SSL_LIBRARY "${OPENSSL_PREFIX}/lib64/libssl.a" CACHE FILEPATH "OpenSSL SSL library" FORCE)
-    set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_PREFIX}/lib64/libcrypto.a" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
+    set(OPENSSL_SSL_LIBRARY "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" CACHE FILEPATH "OpenSSL SSL library" FORCE)
+    set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
 
     # Create imported targets that match what find_package(OpenSSL) would create
     if(NOT TARGET OpenSSL::Crypto)
         add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
         set_target_properties(OpenSSL::Crypto PROPERTIES
-            IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libcrypto.a"
+            IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a"
             INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
         )
     endif()
@@ -138,7 +142,7 @@ if(USE_MUSL)
     if(NOT TARGET OpenSSL::SSL)
         add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
         set_target_properties(OpenSSL::SSL PROPERTIES
-            IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libssl.a"
+            IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a"
             INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
             INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
         )
@@ -169,17 +173,23 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     # Detect target architecture for OpenSSL Configure
     if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
         set(OPENSSL_TARGET "linux-aarch64")
+        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64")
         set(OPENSSL_TARGET "linux-x86_64")
+        set(OPENSSL_LIBDIR "lib64")  # 64-bit
+    elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "i386|i686")
+        set(OPENSSL_TARGET "linux-x86")
+        set(OPENSSL_LIBDIR "lib")    # 32-bit
     elseif(APPLE)
         set(OPENSSL_TARGET "darwin64-arm64-cc")
+        set(OPENSSL_LIBDIR "lib64")  # 64-bit
     else()
         set(OPENSSL_TARGET "linux-generic64")
+        set(OPENSSL_LIBDIR "lib64")  # Default to 64-bit
     endif()
 
     # Build OpenSSL 3.4.0 if not cached
-    # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
-    if(NOT EXISTS "${OPENSSL_PREFIX}/lib64/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/lib64/libcrypto.a")
+    if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
         message(STATUS "  OpenSSL 3.4.0 not found in cache, building from source...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
@@ -252,15 +262,14 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
 
         message(STATUS "  ${BoldGreen}OpenSSL 3.4.0${ColorReset} built and cached successfully")
     else()
-        message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/lib64${ColorReset}")
+        message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}${ColorReset}")
     endif()
 
     # Create imported targets for OpenSSL 3.4.0
-    # Note: OpenSSL 3.x installs to lib64/ by default on x86_64
     if(NOT TARGET OpenSSL::Crypto)
         add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
         set_target_properties(OpenSSL::Crypto PROPERTIES
-            IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libcrypto.a"
+            IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a"
             INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
         )
     endif()
@@ -268,7 +277,7 @@ if(NOT USE_MUSL AND CMAKE_BUILD_TYPE STREQUAL "Debug")
     if(NOT TARGET OpenSSL::SSL)
         add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
         set_target_properties(OpenSSL::SSL PROPERTIES
-            IMPORTED_LOCATION "${OPENSSL_PREFIX}/lib64/libssl.a"
+            IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a"
             INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
             INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
         )
