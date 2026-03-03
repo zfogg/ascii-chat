@@ -90,6 +90,135 @@ extern "C" {
 #endif
 
 // ============================================================================
+// Path Separator and Length Constants
+// ============================================================================
+
+/**
+ * @brief Platform-specific path separator character
+ *
+ * - Windows: '\\' (backslash)
+ * - Unix/POSIX: '/' (forward slash)
+ *
+ * Use this constant instead of hardcoding separators or using #ifdef _WIN32.
+ *
+ * @note For string literals, use PATH_SEPARATOR_STR instead.
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PATH_DELIM '\\'
+#define PATH_SEPARATOR_STR "\\"
+#else
+#define PATH_DELIM '/'
+#define PATH_SEPARATOR_STR "/"
+#endif
+
+/**
+ * @brief Platform-specific PATH environment variable separator
+ *
+ * - Windows: ";" (semicolon)
+ * - Unix/POSIX: ":" (colon)
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PATH_ENV_SEPARATOR ";"
+#else
+#define PATH_ENV_SEPARATOR ":"
+#endif
+
+/**
+ * @brief Maximum path length supported by the operating system
+ *
+ * Platform-specific values:
+ * - Windows: 32767 characters (extended-length path with \\?\ prefix)
+ * - Linux: 4096 bytes (PATH_MAX from limits.h)
+ * - macOS: 1024 bytes (PATH_MAX from sys/syslimits.h)
+ *
+ * @note Windows legacy MAX_PATH (260) is too restrictive for modern use.
+ *       We use the extended-length limit instead.
+ *
+ * @ingroup platform
+ */
+#ifdef _WIN32
+#define PLATFORM_MAX_PATH_LENGTH 32767
+#elif defined(__linux__)
+#ifndef PATH_MAX
+#define PLATFORM_MAX_PATH_LENGTH 4096
+#else
+#define PLATFORM_MAX_PATH_LENGTH PATH_MAX
+#endif
+#elif defined(__APPLE__)
+#ifndef PATH_MAX
+#define PLATFORM_MAX_PATH_LENGTH 1024
+#else
+#define PLATFORM_MAX_PATH_LENGTH PATH_MAX
+#endif
+#else
+#define PLATFORM_MAX_PATH_LENGTH 4096
+#endif
+
+/**
+ * @brief Maximum environment variable value length
+ *
+ * Windows theoretically supports 32767 chars per env var value.
+ * Unix systems typically have no hard limit per variable, but total
+ * environment size is limited (usually ~128KB-2MB).
+ *
+ * We use 32KB as a reasonable maximum that handles Windows PATH
+ * (which can easily exceed 4KB) while not being excessive.
+ */
+#define PLATFORM_MAX_ENV_VALUE_LENGTH 32768
+
+// ============================================================================
+// File Permission Constants
+// ============================================================================
+
+/**
+ * @brief File permission: Private (owner read/write only)
+ *
+ * Octal mode 0600: rw-------
+ * Used for sensitive files like private keys, log files, and configuration files.
+ *
+ * @note On Windows, this is a no-op (Windows uses ACLs instead of POSIX permissions)
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_PRIVATE 0600
+
+/**
+ * @brief Directory permission: Private (owner read/write/execute only)
+ *
+ * Octal mode 0700: rwx------
+ * Used for private directories like ~/.ascii-chat
+ *
+ * @note On Windows, this is a no-op (Windows uses ACLs instead of POSIX permissions)
+ *
+ * @ingroup platform
+ */
+#define DIR_PERM_PRIVATE 0700
+
+/**
+ * @brief File permission: Public read, owner write
+ *
+ * Octal mode 0644: rw-r--r--
+ * Used for files that should be readable by others but only writable by owner.
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_PUBLIC_READ 0644
+
+/**
+ * @brief Permission mask for all permissions
+ *
+ * Octal mode 0777: rwxrwxrwx
+ * Used for masking permission bits (e.g., st_mode & 0777)
+ *
+ * @ingroup platform
+ */
+#define FILE_PERM_MASK 0777
+
+// ============================================================================
 // File Statistics
 // ============================================================================
 
@@ -786,6 +915,165 @@ bool file_is_readable(const char *path);
  * @ingroup platform
  */
 bool file_is_writable(const char *path);
+
+/* ============================================================================
+ * Path Utilities
+ * ============================================================================ */
+
+/**
+ * @brief Get the path to the current executable
+ *
+ * Retrieves the full path to the currently running executable using
+ * platform-specific methods.
+ *
+ * Platform-specific implementations:
+ *   - Windows: GetModuleFileNameA()
+ *   - Linux: readlink("/proc/self/exe")
+ *   - macOS: _NSGetExecutablePath()
+ *
+ * @param exe_path Buffer to store the executable path
+ * @param path_size Size of the buffer
+ * @return true on success, false on failure
+ *
+ * @note Thread-safe
+ * @note Buffer should be PLATFORM_MAX_PATH_LENGTH bytes to support all paths
+ *
+ * @par Example:
+ * @code{.c}
+ * char exe_path[PLATFORM_MAX_PATH_LENGTH];
+ * if (platform_get_executable_path(exe_path, sizeof(exe_path))) {
+ *   // Use exe_path
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+bool platform_get_executable_path(char *exe_path, size_t path_size);
+
+/**
+ * @brief Get the system temporary directory path
+ *
+ * Retrieves the path to the system's temporary directory using
+ * platform-specific methods. Verifies the directory exists and is writable.
+ *
+ * Platform-specific implementations:
+ *   - Windows: %TEMP% or %TMP% environment variable, fallback to C:\Temp
+ *   - Linux/macOS: /tmp
+ *
+ * @param temp_dir Buffer to store the temporary directory path
+ * @param path_size Size of the buffer
+ * @return true on success (directory exists and is writable), false on failure
+ *
+ * @note Thread-safe
+ * @note Returned path does not include trailing directory separator
+ * @note Buffer should be at least 256 bytes to support typical paths
+ * @note Returns false if the directory doesn't exist or lacks write permission
+ *
+ * @par Example:
+ * @code{.c}
+ * char temp_dir[256];
+ * if (platform_get_temp_dir(temp_dir, sizeof(temp_dir))) {
+ *   // temp_dir is valid and writable
+ *   char log_path[512];
+ *   snprintf(log_path, sizeof(log_path), "%s/myapp.log", temp_dir);
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+bool platform_get_temp_dir(char *temp_dir, size_t path_size);
+
+/**
+ * @brief Get the current working directory of the process.
+ *
+ * Normalizes the result using platform-specific semantics and does not append
+ * a trailing directory separator.
+ *
+ * @param cwd Buffer to store the current working directory
+ * @param path_size Size of the buffer in bytes
+ * @return true on success, false on failure (buffer too small or API error)
+ */
+bool platform_get_cwd(char *cwd, size_t path_size);
+
+/**
+ * @brief Access modes for platform_access()
+ *
+ * @ingroup platform
+ */
+#define PLATFORM_ACCESS_EXISTS 0 ///< Check if file/directory exists
+#define PLATFORM_ACCESS_WRITE 2  ///< Check if file/directory is writable
+#define PLATFORM_ACCESS_READ 4   ///< Check if file/directory is readable
+
+/**
+ * @brief Check file/directory access permissions
+ *
+ * Platform-safe wrapper for access() / _access(). Tests whether the calling
+ * process has the requested access to the specified path.
+ *
+ * Platform-specific implementations:
+ *   - POSIX: Uses access() with F_OK, R_OK, W_OK, X_OK modes
+ *   - Windows: Uses _access() with 0, 2, 4, 6 modes
+ *
+ * @param path File or directory path to check
+ * @param mode Access mode to test (PLATFORM_ACCESS_EXISTS, PLATFORM_ACCESS_WRITE, PLATFORM_ACCESS_READ)
+ * @return 0 on success (access permitted), -1 on failure (access denied or path doesn't exist)
+ *
+ * @note Thread-safe on all platforms
+ * @note Does not follow symbolic links on POSIX (uses access() not faccessat())
+ * @note Returns -1 if path is NULL
+ *
+ * @par Example:
+ * @code{.c}
+ * if (platform_access("/tmp", PLATFORM_ACCESS_WRITE) == 0) {
+ *   // Directory is writable
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+int platform_access(const char *path, int mode);
+
+/**
+ * @brief Check if a binary is available in the system PATH
+ *
+ * This function checks if the specified binary can be found in the PATH
+ * by searching each directory in the PATH environment variable.
+ * Results are cached to avoid repeated filesystem checks.
+ *
+ * On Windows: Automatically appends .exe if needed, checks with GetFileAttributesA
+ * On Unix: Uses access() with X_OK to verify executable permission
+ *
+ * @param bin_name Base name of the binary (e.g., "ssh-keygen", "llvm-symbolizer")
+ *                 On Windows, .exe extension is added automatically if not present
+ * @return true if binary is in PATH and executable, false otherwise
+ *
+ * @note Thread-safe: Uses internal locking for cache access
+ * @note First call for a binary checks filesystem, subsequent calls use cache
+ * @note No external dependencies (doesn't spawn where/command -v)
+ *
+ * @par Example:
+ * @code{.c}
+ * if (platform_is_binary_in_path("ssh-keygen")) {
+ *   // Use ssh-keygen
+ * }
+ * @endcode
+ *
+ * @ingroup platform
+ */
+bool platform_is_binary_in_path(const char *bin_name);
+
+/**
+ * @brief Cleanup the binary PATH cache
+ *
+ * Frees all cached binary PATH lookup results and destroys the cache.
+ * Should be called during program cleanup (e.g., in platform_destroy()).
+ *
+ * @note Thread-safe: Uses internal locking
+ * @note Safe to call even if cache was never initialized
+ *
+ * @ingroup platform
+ */
+void platform_cleanup_binary_path_cache(void);
 
 #ifdef __cplusplus
 }
