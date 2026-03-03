@@ -273,18 +273,11 @@ void terminal_enable_ansi(void) {
  * which waits until all output has been transmitted.
  */
 asciichat_error_t terminal_flush(int fd) {
-  if (isatty(fd)) {
-    // For TTY output in real-time rendering, skip flushing
-    // The kernel buffer is small and will drain quickly without explicit flush
-    // Flushing on every frame (tcdrain) causes significant latency in real-time rendering
-    // POSIX write() to TTY is already line-buffered, so frames appear immediately
-    return ASCIICHAT_OK;
-  } else {
-    // For regular files (e.g., when redirecting output), use fsync()
-    // For pipes, fsync() fails with ENOTSUP which is expected and not an error
-    if (fsync(fd) < 0 && errno != ENOTSUP) {
-      return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
-    }
+  // Flush on all outputs to ensure frame data appears immediately
+  // This is critical for real-time animation with cursor control codes
+  // Using fflush() instead of tcdrain() to avoid excessive latency
+  if (fflush(NULL) < 0) {
+    return SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to flush terminal output");
   }
   return ASCIICHAT_OK;
 }
