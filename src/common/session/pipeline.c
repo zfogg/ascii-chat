@@ -18,6 +18,13 @@
 #include <string.h>
 
 /* ============================================================================
+ * External Declarations
+ * ============================================================================ */
+
+// Flag set by display thread when first frame is rendered
+extern bool g_snapshot_first_frame_rendered;
+
+/* ============================================================================
  * Frame Type & Queue
  * ============================================================================ */
 
@@ -273,7 +280,7 @@ static void *pipeline_capture_thread(void *arg) {
             // Encode all captured frames, including frames before display rendering starts
             // The encoder will use them with correct timestamps regardless of display timing
             if (!frame_queue_push(pipeline->encode_queue, frame, 500 * NS_PER_MS_INT)) {
-                // Blocking: keep trying to enqueue for file output
+                // Non-blocking: drop if queue full after 500ms
                 log_warn("[PIPELINE_CAPTURE] Encode queue blocked, dropping frame");
                 free_frame(frame);
             } else {
@@ -296,13 +303,19 @@ static void *pipeline_encode_thread(void *arg) {
     session_pipeline_t *pipeline = (session_pipeline_t *)arg;
     log_info("[PIPELINE_ENCODE] Starting encode thread");
 
+    uint64_t frames_processed = 0;
+
     while (!atomic_load_bool(&pipeline->stop)) {
         pipeline_frame_t *frame = (pipeline_frame_t *)frame_queue_pop(pipeline->encode_queue, 100 * NS_PER_MS_INT);
 
-        if (!frame) continue;  // timeout
+        if (!frame) {
+            log_debug_every(1 * NS_PER_SEC_INT, "[PIPELINE_ENCODE] Waiting for frames (processed=%llu)", (unsigned long long)frames_processed);
+            continue;  // timeout
+        }
 
         if (!frame->pixels) {
             // EOF sentinel
+            log_info("[PIPELINE_ENCODE] Received EOF sentinel, exiting (processed=%llu frames)", (unsigned long long)frames_processed);
             free_frame(frame);
             break;
         }
@@ -314,6 +327,10 @@ static void *pipeline_encode_thread(void *arg) {
             continue;
         }
 
+        if (frames_processed == 0 || frames_processed % 30 == 0) {
+            log_info("[PIPELINE_ENCODE] Processing frame %llu: %dx%d", (unsigned long long)frames_processed, frame->w, frame->h);
+        }
+
         // Convert raw frame to ASCII art (same as display thread does)
         // This ensures the video shows what the user sees on screen
         image_t raw_image = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
@@ -323,12 +340,15 @@ static void *pipeline_encode_thread(void *arg) {
             // Encode the ASCII-rendered output using the converted frame
             session_display_encode_frame(pipeline->display, &raw_image, frame->captured_ns);
             SAFE_FREE(ascii_frame);
+            frames_processed++;
+        } else {
+            log_warn("[PIPELINE_ENCODE] Failed to convert frame %llu to ASCII", (unsigned long long)frames_processed);
         }
 
         free_frame(frame);
     }
 
-    log_info("[PIPELINE_ENCODE] Encode thread exiting");
+    log_info("[PIPELINE_ENCODE] Encode thread exiting (total frames encoded=%llu)", (unsigned long long)frames_processed);
     return NULL;
 }
 
@@ -349,7 +369,7 @@ asciichat_error_t session_pipeline_create(
     p->capture = capture;
     p->display = display;
     p->display_queue = frame_queue_create(4, "display");
-    p->encode_queue = frame_queue_create(32, "encode");
+    p->encode_queue = frame_queue_create(256, "encode");  // Large buffer for slow encoding
 
     // Check if display has render_file configured (will be checked in encode thread)
     // We store a flag to know whether to enqueue frames for encoding

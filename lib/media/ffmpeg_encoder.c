@@ -409,11 +409,10 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   // Configure codec-specific options for quality
   AVDictionary *codec_opts = NULL;
   if (strcmp(codec_name, "libx264") == 0) {
-    // x264 high-quality settings: optimize for visual quality with high detail preservation
-    av_dict_set(&codec_opts, "preset", "slow", 0); // slow preset = high quality encoding
-    av_dict_set(&codec_opts, "x264-params", "aq-mode=3:aq-strength=1:me=tesa:merange=32",
-                0); // maximum detail through adaptive quantization + exhaustive ME
-    log_debug("ffmpeg_encoder: x264 preset=slow with maximum quality settings");
+    // x264 fast settings for real-time rendering (optimize for speed over quality)
+    av_dict_set(&codec_opts, "preset", "ultrafast", 0); // ultrafast preset for real-time encoding
+    av_dict_set(&codec_opts, "crf", "28", 0); // Lower quality (crf 28 = reasonable quality, much faster)
+    log_debug("ffmpeg_encoder: x264 preset=ultrafast with crf=28 for real-time encoding");
   }
 
   // Open codec (capture libx264 startup logs)
