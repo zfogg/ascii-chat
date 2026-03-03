@@ -674,4 +674,106 @@ asciichat_error_t platform_path_normalize(const char *input, char *output, size_
   return ASCIICHAT_OK;
 }
 
+// ============================================================================
+// Binary PATH Cache - Windows Implementation
+// ============================================================================
+
+#define BIN_SUFFIX ".exe"
+
+/**
+ * @brief Check if a file exists and is executable (Windows)
+ */
+static bool is_executable_file(const char *path) {
+  DWORD attrs = GetFileAttributesA(path);
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
+    return false;
+  }
+  if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+    return false;
+  }
+  HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (h == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  CloseHandle(h);
+  return true;
+}
+
+/**
+ * @brief Convert Unix-style path to Windows path (for Git Bash compatibility)
+ *
+ * Converts paths like "/c/foo" to "C:\foo" for compatibility with Git Bash on Windows.
+ */
+static bool convert_unix_path_to_windows(const char *unix_path, char *win_path, size_t win_path_size) {
+  if (!unix_path || !win_path || win_path_size < 4) {
+    return false;
+  }
+
+  if (unix_path[0] == '/' && unix_path[1] != '\0' && unix_path[2] == '/') {
+    char drive_letter = (char)toupper((unsigned char)unix_path[1]);
+    safe_snprintf(win_path, win_path_size, "%c:%s", drive_letter, unix_path + 2);
+    for (char *p = win_path; *p; p++) {
+      if (*p == '/')
+        *p = '\\';
+    }
+    return true;
+  }
+
+  SAFE_STRNCPY(win_path, unix_path, win_path_size);
+  return false;
+}
+
+/**
+ * @brief Check if binary is in PATH (no caching) - Windows implementation
+ */
+bool check_binary_in_path_uncached(const char *bin_name) {
+  char bin_with_suffix[512];
+  char full_path[PLATFORM_MAX_PATH_LENGTH];
+
+  if (strstr(bin_name, ".exe") == NULL) {
+    safe_snprintf(bin_with_suffix, sizeof(bin_with_suffix), "%s%s", bin_name, BIN_SUFFIX);
+  } else {
+    SAFE_STRNCPY(bin_with_suffix, bin_name, sizeof(bin_with_suffix));
+  }
+
+  const char *path_env = SAFE_GETENV("PATH");
+  if (!path_env) {
+    return false;
+  }
+
+  size_t path_len = strlen(path_env);
+  char *path_copy = SAFE_MALLOC(path_len + 1, char *);
+  if (!path_copy) {
+    return false;
+  }
+  SAFE_STRNCPY(path_copy, path_env, path_len + 1);
+
+  bool found = false;
+  char *saveptr = NULL;
+  const char *separator = (strchr(path_copy, ';') != NULL) ? ";" : ":";
+
+  char *dir = platform_strtok_r(path_copy, separator, &saveptr);
+
+  while (dir != NULL) {
+    if (dir[0] == '\0') {
+      dir = platform_strtok_r(NULL, separator, &saveptr);
+      continue;
+    }
+
+    char win_dir[PLATFORM_MAX_PATH_LENGTH];
+    convert_unix_path_to_windows(dir, win_dir, sizeof(win_dir));
+    safe_snprintf(full_path, sizeof(full_path), "%s\\%s", win_dir, bin_with_suffix);
+
+    if (is_executable_file(full_path)) {
+      found = true;
+      break;
+    }
+
+    dir = platform_strtok_r(NULL, separator, &saveptr);
+  }
+
+  SAFE_FREE(path_copy);
+  return found;
+}
+
 #endif // _WIN32

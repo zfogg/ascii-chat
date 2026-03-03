@@ -734,4 +734,62 @@ asciichat_error_t platform_path_normalize(const char *input, char *output, size_
   return ASCIICHAT_OK;
 }
 
+// ============================================================================
+// Binary PATH Cache - POSIX Implementation
+// ============================================================================
+
+/**
+ * @brief Check if a file exists and is executable (POSIX)
+ */
+static bool is_executable_file(const char *path) {
+  return (access(path, X_OK) == 0);
+}
+
+/**
+ * @brief Check if binary is in PATH (no caching) - POSIX implementation
+ */
+bool check_binary_in_path_uncached(const char *bin_name) {
+  char bin_with_suffix[512];
+  char full_path[PLATFORM_MAX_PATH_LENGTH];
+
+  SAFE_STRNCPY(bin_with_suffix, bin_name, sizeof(bin_with_suffix));
+
+  const char *path_env = SAFE_GETENV("PATH");
+  if (!path_env) {
+    return false;
+  }
+
+  size_t path_len = strlen(path_env);
+  char *path_copy = SAFE_MALLOC(path_len + 1, char *);
+  if (!path_copy) {
+    return false;
+  }
+  SAFE_STRNCPY(path_copy, path_env, path_len + 1);
+
+  bool found = false;
+  char *saveptr = NULL;
+  const char *separator = PATH_ENV_SEPARATOR;
+
+  char *dir = platform_strtok_r(path_copy, separator, &saveptr);
+
+  while (dir != NULL) {
+    if (dir[0] == '\0') {
+      dir = platform_strtok_r(NULL, separator, &saveptr);
+      continue;
+    }
+
+    safe_snprintf(full_path, sizeof(full_path), "%s%c%s", dir, PATH_DELIM, bin_with_suffix);
+
+    if (is_executable_file(full_path)) {
+      found = true;
+      break;
+    }
+
+    dir = platform_strtok_r(NULL, separator, &saveptr);
+  }
+
+  SAFE_FREE(path_copy);
+  return found;
+}
+
 #endif

@@ -8,7 +8,6 @@
 // All necessary headers are already included by the parent files
 
 #include <ascii-chat/atomic.h>
-#include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <ascii-chat/common.h>
