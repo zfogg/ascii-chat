@@ -225,7 +225,6 @@ void set_interrupt_callback(void (*cb)(void)) {
 static void handle_sigterm(int sig) {
   // Write to stderr about which signal was received for debugging
   const char *sig_name = (sig == SIGTERM) ? "SIGTERM" : (sig == SIGINT) ? "SIGINT" : (sig == SIGHUP) ? "SIGHUP" : "UNKNOWN";
-  fprintf(stderr, "[DEBUG] handle_sigterm received: %s (%d)\n", sig_name, sig);
 
   // log_console() is async-signal-safe - uses atomic ops and platform_write_all()
   log_console(LOG_INFO, "Signal received - shutting down");
