@@ -839,6 +839,14 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     log_info("FRAME_WRITE: Skipping ASCII output (render_file encoder is active)");
   }
 
+  // SNAPSHOT: Initialize snapshot timer for render-file mode (before checking skip_ascii_output paths)
+  // This ensures the timer starts on first frame regardless of output mode (TTY, piped, or render-file)
+  if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered && skip_ascii_output) {
+    g_snapshot_first_frame_rendered = true;
+    g_snapshot_first_frame_rendered_ns = time_get_ns();
+    log_info("SNAPSHOT: FIRST FRAME RENDERED (render-file mode) - Timer started");
+  }
+
   if (!skip_ascii_output && use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     // This ensures complete frames are displayed without fragmentation from partial writes

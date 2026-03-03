@@ -151,6 +151,120 @@ static int stdin_read_packet(void *opaque, uint8_t *buf, int buf_size) {
 }
 
 /* ============================================================================
+ * Memory-based AVIO for stdin buffering
+ * ============================================================================ */
+
+/**
+ * Structure to track buffered stdin data for memory-based AVIO
+ */
+typedef struct {
+  uint8_t *data;     ///< Buffered data
+  size_t size;       ///< Total size of buffered data
+  size_t pos;        ///< Current read position
+} stdin_buffer_t;
+
+/**
+ * Read callback for memory-based AVIO (seekable)
+ */
+static int memory_read_packet(void *opaque, uint8_t *buf, int buf_size) {
+  stdin_buffer_t *sb = (stdin_buffer_t *)opaque;
+
+  if (!sb || sb->pos >= sb->size)
+    return AVERROR_EOF;
+
+  int to_read = buf_size;
+  if (sb->pos + to_read > sb->size)
+    to_read = (int)(sb->size - sb->pos);
+
+  memcpy(buf, sb->data + sb->pos, to_read);
+  sb->pos += to_read;
+
+  return to_read;
+}
+
+/**
+ * Seek callback for memory-based AVIO (seekable)
+ */
+static int64_t memory_seek_packet(void *opaque, int64_t offset, int whence) {
+  stdin_buffer_t *sb = (stdin_buffer_t *)opaque;
+
+  if (!sb)
+    return -1;
+
+  int64_t new_pos = 0;
+  if (whence == SEEK_SET) {
+    new_pos = offset;
+  } else if (whence == SEEK_CUR) {
+    new_pos = (int64_t)sb->pos + offset;
+  } else if (whence == SEEK_END) {
+    new_pos = (int64_t)sb->size + offset;
+  } else {
+    return -1;
+  }
+
+  if (new_pos < 0 || new_pos > (int64_t)sb->size)
+    return -1;
+
+  sb->pos = (size_t)new_pos;
+  return new_pos;
+}
+
+/**
+ * Read entire stdin into memory buffer (called once for both decoders)
+ * Returns dynamically allocated buffer, caller must free it
+ */
+static stdin_buffer_t *stdin_buffer_read_all(void) {
+  stdin_buffer_t *sb = SAFE_MALLOC(sizeof(stdin_buffer_t), stdin_buffer_t *);
+  if (!sb)
+    return NULL;
+
+  sb->data = NULL;
+  sb->size = 0;
+  sb->pos = 0;
+
+  // Read stdin in 64KB chunks
+  const size_t chunk_size = 65536;
+  uint8_t chunk_buffer[chunk_size];
+  size_t total_capacity = 0;
+  int chunk_count = 0;
+
+  while (1) {
+    size_t bytes_read = fread(chunk_buffer, 1, chunk_size, stdin);
+    if (bytes_read == 0)
+      break;
+    chunk_count++;
+
+    // Grow buffer if needed
+    if (sb->size + bytes_read > total_capacity) {
+      total_capacity = (sb->size + bytes_read) * 2; // Always double capacity
+      uint8_t *new_data = SAFE_MALLOC(total_capacity, uint8_t *);
+      if (!new_data) {
+        SAFE_FREE(sb->data);
+        SAFE_FREE(sb);
+        return NULL;
+      }
+      if (sb->data) {
+        memcpy(new_data, sb->data, sb->size);
+        SAFE_FREE(sb->data);
+      }
+      sb->data = new_data;
+    }
+
+    // Copy chunk to buffer
+    memcpy(sb->data + sb->size, chunk_buffer, bytes_read);
+    sb->size += bytes_read;
+  }
+
+  log_info("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
+  return sb;
+}
+
+/**
+ * Global stdin buffer (shared between video and audio decoders)
+ */
+static stdin_buffer_t *g_stdin_buffer = NULL;
+
+/* ============================================================================
  * Helper Functions
  * ============================================================================ */
 
@@ -648,6 +762,17 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
 }
 
 ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
+  log_info("ffmpeg_decoder_create_stdin called (buffer=%p)", (void*)g_stdin_buffer);
+  // Buffer entire stdin on first call (shared between video and audio decoders)
+  if (!g_stdin_buffer) {
+    log_info("Reading stdin into buffer...");
+    g_stdin_buffer = stdin_buffer_read_all();
+    if (!g_stdin_buffer) {
+      SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to read stdin into buffer");
+      return NULL;
+    }
+  }
+
   ffmpeg_decoder_t *decoder = SAFE_MALLOC(sizeof(ffmpeg_decoder_t), ffmpeg_decoder_t *);
   if (!decoder) {
     SET_ERRNO(ERROR_MEMORY, "Failed to allocate decoder");
@@ -661,21 +786,18 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   decoder->last_video_pts = -1.0;
   decoder->last_audio_pts = -1.0;
 
-  // Allocate AVIO buffer
-  decoder->avio_buffer = SAFE_MALLOC(AVIO_BUFFER_SIZE, unsigned char *);
-  if (!decoder->avio_buffer) {
-    SET_ERRNO(ERROR_MEMORY, "Failed to allocate AVIO buffer");
-    SAFE_FREE(decoder);
-    return NULL;
-  }
+  // No AVIO buffer needed - we'll use memory-based reading from g_stdin_buffer
+  decoder->avio_buffer = NULL;
 
-  // Create AVIO context for stdin
-  decoder->avio_ctx = avio_alloc_context(decoder->avio_buffer, AVIO_BUFFER_SIZE,
-                                         0,    // write_flag
-                                         NULL, // opaque
-                                         stdin_read_packet,
-                                         NULL, // write_packet
-                                         NULL  // seek (stdin is not seekable)
+  // Create seekable AVIO context for buffered stdin (reset position for each decoder)
+  g_stdin_buffer->pos = 0;
+  decoder->avio_ctx = avio_alloc_context(NULL,        // buffer (not used)
+                                         0,           // buffer_size (not used)
+                                         0,           // write_flag
+                                         g_stdin_buffer, // opaque
+                                         memory_read_packet,
+                                         NULL,        // write_packet
+                                         memory_seek_packet  // seek (memory is seekable)
   );
 
   if (!decoder->avio_ctx) {
@@ -700,7 +822,7 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
   // Capture FFmpeg's probing output
   int ret = 0;
   LOG_IO("ffmpeg", {
-    // Open input from stdin
+    // Open input from buffered stdin
     ret = avformat_open_input(&decoder->format_ctx, NULL, NULL, NULL);
     if (ret >= 0) {
       // Find stream info
@@ -712,9 +834,9 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
 
   if (ret < 0) {
     if (ret == -1) {
-      SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info from stdin");
+      SET_ERRNO(ERROR_MEDIA_DECODE, "Failed to find stream info from stdin buffer");
     } else {
-      SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open stdin");
+      SET_ERRNO(ERROR_MEDIA_OPEN, "Failed to open stdin buffer");
     }
     av_freep(&decoder->avio_ctx->buffer);
     avio_context_free(&decoder->avio_ctx);

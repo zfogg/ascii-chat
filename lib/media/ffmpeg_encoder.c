@@ -42,11 +42,13 @@ struct ffmpeg_encoder_s {
   int width_px;
   int height_px;
   int frame_count;
+  int64_t video_pts;                 // Cumulative PTS for proper frame timestamps
   int fps;                           // Frames per second (for duration calculation)
   int is_image;                      // Single-frame format (PNG, JPG)
   enum AVPixelFormat target_pix_fmt; // RGB24 for images, YUV420P for video
   int has_audio_stream;              // Whether audio stream was created
   int is_stdout_pipe;                // Whether writing to stdout (non-seekable)
+  double snapshot_actual_duration;   // Actual wall-clock duration in snapshot mode (seconds)
 };
 
 // Determine audio codec from file extension
@@ -535,6 +537,8 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   }
 
   enc->frame_count = 0;
+  enc->video_pts = 0;
+  enc->snapshot_actual_duration = 0.0;
   *out = enc;
 
   /* Register encoder with named registry */
@@ -562,30 +566,14 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   sws_scale(enc->sws_ctx, (const uint8_t *const *)data, linesize, 0, enc->height_px, enc->frame_encoded->data,
             enc->frame_encoded->linesize);
 
-  enc->frame_encoded->pts = enc->frame_count;
+  // Set frame duration based on configured FPS
+  // In snapshot mode, the encoder destroy function will adjust stream->duration to span snapshot_delay
+  // So we don't need to guess about frame count here - just use normal FPS-based duration
+  enc->frame_encoded->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
 
-  // Set frame duration in codec time base units
-  bool snapshot_mode = GET_OPTION(snapshot_mode);
-  if (snapshot_mode && GET_OPTION(snapshot_delay) > 0) {
-    // Snapshot mode: frame durations should span the snapshot_delay duration
-    // We don't know total frame count yet, but we can estimate based on configured fps
-    // Effective fps = (snapshot_delay_seconds * configured_fps) / 1 second
-    // Each frame gets duration = 1 frame / (frame_count / snapshot_delay) = snapshot_delay / frame_count
-    // Since we don't know frame_count until destroy, use: snapshot_delay * time_base.den / estimated_frames
-    // Estimate based on: estimated_frames = snapshot_delay * fps
-    double snapshot_delay = GET_OPTION(snapshot_delay);
-    double estimated_frames = snapshot_delay * enc->fps;
-    if (estimated_frames > 1) {
-      // Frame duration = snapshot_delay / estimated_frames (in seconds) converted to time base units
-      enc->frame_encoded->duration = (int64_t)((snapshot_delay * enc->codec_ctx->time_base.den) / (enc->codec_ctx->time_base.num * estimated_frames));
-    } else {
-      // Fallback for very short snapshot_delay
-      enc->frame_encoded->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
-    }
-  } else {
-    // Normal mode: use frame duration based on configured FPS
-    enc->frame_encoded->duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
-  }
+  // Set frame PTS as cumulative time in time_base units
+  enc->frame_encoded->pts = enc->video_pts;
+  enc->video_pts += enc->frame_encoded->duration;
 
   // Send frame to encoder
   int ret = avcodec_send_frame(enc->codec_ctx, enc->frame_encoded);
@@ -697,6 +685,13 @@ asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float 
   return ASCIICHAT_OK;
 }
 
+void ffmpeg_encoder_set_snapshot_actual_duration(ffmpeg_encoder_t *enc, double actual_duration_sec) {
+  if (!enc)
+    return;
+  enc->snapshot_actual_duration = actual_duration_sec;
+  log_debug("ffmpeg_encoder: Set snapshot actual duration to %.2f seconds", actual_duration_sec);
+}
+
 asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
   if (!enc)
     return ASCIICHAT_OK;
@@ -763,22 +758,27 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     bool snapshot_mode = GET_OPTION(snapshot_mode);
     if (snapshot_mode) {
       double snapshot_delay = GET_OPTION(snapshot_delay);
-      // In snapshot mode with wall-clock timing, the video duration should equal snapshot_delay
-      // duration_seconds = snapshot_delay
-      // duration_time_base_units = snapshot_delay * time_base.den
-      duration = (int64_t)(snapshot_delay * enc->stream->time_base.den);
+      // Use actual elapsed time if provided by render loop, otherwise use snapshot_delay
+      double effective_duration = (enc->snapshot_actual_duration > 0.0) ? enc->snapshot_actual_duration : snapshot_delay;
 
-      // Calculate what the frame durations should be to sum to snapshot_delay
-      // This ensures FFmpeg plays the captured frames across the full snapshot_delay duration
-      // effective_frame_duration = snapshot_delay / frame_count (seconds per frame)
-      int64_t effective_frame_duration = (int64_t)((snapshot_delay / (double)enc->frame_count) * enc->stream->time_base.den);
+      // In snapshot mode with wall-clock timing, the video duration should equal the actual elapsed time
+      // duration_seconds = effective_duration
+      // duration_time_base_units = effective_duration * time_base.den
+      duration = (int64_t)(effective_duration * enc->stream->time_base.den);
+
+      // Calculate what the frame durations should be to sum to effective_duration
+      // This ensures FFmpeg plays the captured frames across the full effective_duration
+      // effective_frame_duration = effective_duration / frame_count (seconds per frame)
+      int64_t effective_frame_duration = (int64_t)((effective_duration / (double)enc->frame_count) * enc->stream->time_base.den);
 
       log_debug("ffmpeg_encoder_destroy: Snapshot mode with wall-clock timing");
-      log_debug("  snapshot_delay=%.2f seconds, captured %d frames", snapshot_delay, enc->frame_count);
+      log_debug("  snapshot_delay=%.2f seconds, actual_duration=%.2f seconds, captured %d frames",
+                snapshot_delay, enc->snapshot_actual_duration, enc->frame_count);
+      log_debug("  Using effective_duration=%.2f seconds for output", effective_duration);
       log_debug("  stream->time_base=%d/%d, effective frame duration=%lld time_base units",
                 enc->stream->time_base.num, enc->stream->time_base.den, (long long)effective_frame_duration);
       log_debug("  (each frame should span %.3f seconds to total %.2f seconds)",
-                snapshot_delay / (double)enc->frame_count, snapshot_delay);
+                effective_duration / (double)enc->frame_count, effective_duration);
     } else {
       // Normal mode: calculate duration from frame count and FPS
       // time_base = 1 / time_base.den seconds per unit

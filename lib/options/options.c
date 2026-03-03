@@ -1973,9 +1973,12 @@ asciichat_error_t options_init(int argc, char **argv) {
   }
 
   // Set media_from_stdin flag if media_file is "-"
+  log_info("Checking media_file: '%s' (len=%zu)", opts.media_file, strlen(opts.media_file));
   if (opts.media_file[0] != '\0' && strcmp(opts.media_file, "-") == 0) {
     opts.media_from_stdin = true;
-    log_debug("Media file set to stdin");
+    log_info("Media file set to stdin (media_from_stdin=true)");
+  } else {
+    log_info("Not stdin mode (media_from_stdin remains=%d)", opts.media_from_stdin);
   }
 
   // Validate --seek option

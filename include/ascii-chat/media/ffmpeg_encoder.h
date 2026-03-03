@@ -253,6 +253,26 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc,
 asciichat_error_t ffmpeg_encoder_write_audio(ffmpeg_encoder_t *enc, const float *samples, int num_samples);
 
 /**
+ * Set the actual wall-clock duration for snapshot mode frame timing.
+ *
+ * In snapshot mode, frames are captured over a wall-clock duration (e.g., 3 seconds of real time).
+ * This function should be called after all frames are captured to provide the actual elapsed time,
+ * allowing the encoder to calculate correct frame durations so the output video duration matches
+ * the actual capture time.
+ *
+ * @param enc              Encoder handle (created with ffmpeg_encoder_create())
+ * @param actual_duration_sec Actual wall-clock duration in seconds (e.g., 3.5 for 3.5 seconds)
+ *
+ * @note Only used in snapshot mode. In normal mode, this is ignored.
+ * @note Should be called before ffmpeg_encoder_destroy() for the adjustment to take effect.
+ * @note If not called, frame durations are calculated from FPS, which may not match actual
+ *       wall-clock capture time.
+ *
+ * @see ffmpeg_encoder_create, ffmpeg_encoder_destroy
+ */
+void ffmpeg_encoder_set_snapshot_actual_duration(ffmpeg_encoder_t *enc, double actual_duration_sec);
+
+/**
  * Close and finalize the output file, releasing all encoder resources.
  *
  * This function flushes any pending frames in the encoder, writes the file trailer,
