@@ -130,6 +130,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   int loop_iteration = 0;
   log_info("[RENDER_LOOP_START] snapshot_mode=%s, snapshot_delay=%.2f", snapshot_mode ? "YES" : "NO",
            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+
+
   while (!should_exit(user_data)) {
     loop_iteration++;
     log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s", loop_iteration, snapshot_done ? "YES" : "NO");
@@ -140,6 +142,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
     if (snapshot_mode && snapshot_done) {
       log_info("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start");
+      fprintf(stderr, "[DEBUG_SNAPSHOT_EXIT] snapshot_mode=%d, snapshot_done=%d\n", snapshot_mode, snapshot_done);
       break;
     }
 
@@ -416,6 +419,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
         log_info_every(1 * NS_PER_SEC_INT, "render_loop: calling session_display_render_frame - display=%p",
                        (void *)display);
+
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
         bool help_is_active = display && keyboard_help_is_active(display);
