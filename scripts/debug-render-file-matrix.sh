@@ -28,7 +28,7 @@ echo "[2/4] Generating PNG with matrix font + test pattern..."
   --test-pattern \
   --matrix \
   --render-file "$OUTPUT_PNG" \
-  --no-splash-screen \
+  --splash-screen=false \
   2>&1 | tee "$LOG_FILE" | grep -E "(MATRIX|Scaling|Final dims|Font resolved)" || true
 echo "✓ PNG generated: $OUTPUT_PNG"
 echo ""

@@ -90,7 +90,7 @@ static int start_test_server(websocket_test_ctx_t *ctx) {
 
     // Run server without video source (no frames will be sent in test environment)
     execlp("./build/bin/ascii-chat", "./build/bin/ascii-chat", "server", "--port", port_str, "--websocket-port",
-           ws_port_str, "--no-status-screen", NULL);
+           ws_port_str, "--status-screen=false", NULL);
 
     // Should not reach here
     exit(EXIT_FAILURE);

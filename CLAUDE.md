@@ -77,9 +77,8 @@ Get full options with: `./build/bin/ascii-chat <mode> --help`
 - **`--color-mode {auto|none|16|256|truecolor}`** (all) - Force color output mode; CLAUDECODE auto-detects unless piped to file.
 - **`--strip-ansi`** (all) - Remove ANSI escape codes (useful for piping to non-terminal or text files).
 - **`--show-capabilities`** (all) - Detect and display terminal capabilities (color level, UTF-8 support), then exit immediately.
-- **`--no-splash-screen`** (S, C, M, DS, D) - Disable intro splash screen; CLAUDECODE override to suppress automated banner.
-- **`--splash-screen`** (S, C, M, DS, D) - Force splash screen (overrides CLAUDECODE=1 suppression).
-- **`--status-screen`** (S, C, M, DS, D) - Enable live status screen with logs (disabled under CLAUDECODE=1 by default).
+- **`--splash-screen`** (C, M, D) - Enable or disable splash screen with ASCII art. Use `--splash-screen=false` to disable (overrides CLAUDECODE environment variable).
+- **`--status-screen`** (S, DS) - Enable or disable live status screen display. Use `--status-screen=false` to disable (overrides non-interactive terminal checks).
 
 ### Snapshot & Recording
 - **`--snapshot`** (C, M) - Capture exactly one frame and exit (useful for scripting). **Gotcha**: Doesn't auto-detect terminal dimensions when piped.

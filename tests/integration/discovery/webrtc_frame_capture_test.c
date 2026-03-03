@@ -325,7 +325,7 @@ Test(webrtc_discovery, frame_capture_via_webrtc, .init = setup_test, .fini = cle
     freopen(SERVER_LOG_PATH, "w", stdout);
     execlp("timeout", "timeout", "10", binary_path, "--log-level", "debug", "server", "0.0.0.0", "::", "--port",
            "27224", "--discovery", "--discovery-expose-ip", "--discovery-service", "127.0.0.1", "--discovery-port",
-           "27225", "--no-status-screen", NULL);
+           "27225", "--status-screen=false", NULL);
     exit(1); // Should not reach here
   }
 

@@ -39,7 +39,7 @@ for RUN in $(seq 1 $NUM_RUNS); do
     --log-level debug \
     server 0.0.0.0 "::" \
     --websocket-port "$WS_PORT" \
-    --no-status-screen \
+    --status-screen=false \
     --port "$PORT" \
     &
   SERVER_PID=$!

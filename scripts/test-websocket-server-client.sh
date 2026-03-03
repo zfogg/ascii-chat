@@ -26,7 +26,7 @@ echo "   Client log: $CLIENT_LOG"
   --log-level dev \
   server 0.0.0.0 "::" \
   --websocket-port "$WS_PORT" \
-  --no-status-screen \
+  --status-screen=false \
   --port "$PORT" \
   &
 SERVER_PID=$!

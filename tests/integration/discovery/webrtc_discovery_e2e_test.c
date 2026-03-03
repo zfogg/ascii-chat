@@ -344,7 +344,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
                        test_db_path,
                        "--log-level",
                        "debug",
-                       "--no-status-screen", // Disable UI for clean log parsing
+                       "--status-screen=false", // Disable UI for clean log parsing
                        NULL};
 
   pid_t acds_pid = spawn_process_with_log(binary_path, acds_argv, "acds", acds_log);
@@ -366,7 +366,7 @@ Test(webrtc_discovery_e2e, full_connection_flow) {
                        "--discovery",           // Register with discovery service
                        "--discovery-expose-ip", // Allow IP exposure for testing
                        "--discovery-service", "localhost", "--discovery-port", port_str,
-                       "--no-status-screen", // Disable UI for clean log parsing
+                       "--status-screen=false", // Disable UI for clean log parsing
                        // Server doesn't need video/audio source - clients provide media
                        // Server runs continuously until terminated
                        "--no-encrypt", // Simplify for testing

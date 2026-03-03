@@ -27,7 +27,7 @@ echo "Starting test run on WS_PORT=$WS_PORT..."
   --log-level debug \
   server 0.0.0.0 "::" \
   --websocket-port "$WS_PORT" \
-  --no-status-screen \
+  --status-screen=false \
   --port "$PORT" \
   &
 SERVER_PID=$!
