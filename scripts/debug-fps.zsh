@@ -2,15 +2,16 @@
 
 set -euo pipefail
 
-# Optional --build-dir and --protocol parameters
-# Usage: ./debug-connectivity.sh [--build-dir <dir>] [--protocol <tcp|ws|wss>]
+# Optional --build-dir and --proto parameters
+# Usage: ./debug-connectivity.sh [--build-dir <dir>] [--proto <tcp|ws|wss>]
 BUILD_DIR="build"
-PROTOCOL="tcp"  # Default protocol
+PROTO="tcp"  # Default protocol
 
 export ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK='1'
 export ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'
 
 extra_client_args=""
+server_wss_args=""
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -22,14 +23,14 @@ while [[ $# -gt 0 ]]; do
       BUILD_DIR="$2"
       shift 2
       ;;
-    --protocol)
+    --proto)
       if [[ -z "${2:-}" ]]; then
-        echo "Error: --protocol requires tcp, ws, or wss" >&2
+        echo "Error: --proto requires tcp, ws, or wss" >&2
         exit 1
       fi
       case "$2" in
         tcp|ws|wss)
-          PROTOCOL="$2"
+          PROTO="$2"
           shift 2
           ;;
         *)
@@ -60,7 +61,7 @@ cert_file="/tmp/wss-test-cert.pem"
 key_file="/tmp/wss-test-key.pem"
 
 echo "Starting connectivity test on port: $PORT"
-echo "Protocol: $PROTOCOL"
+echo "Proto: $PROTO"
 echo "Using build directory: $BUILD_DIR"
 echo ""
 
@@ -69,15 +70,15 @@ pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
 cmake --build "$BUILD_DIR"
 
 # Protocol-specific configuration
-case "$PROTOCOL" in
+case "$PROTO" in
   tcp)
-    PROTOCOL_PREFIX="tcp"
+    PROTO_PREFIX="tcp"
     echo "Testing TCP connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
     ;;
 
   ws|wss)
-    if [[ "$PROTOCOL" == "wss" ]]; then
-      PROTOCOL_PREFIX="wss"
+    if [[ "$PROTO" == "wss" ]]; then
+      PROTO_PREFIX="wss"
       echo "Testing WebSocket Secure (WSS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
       echo "Generating self-signed certificate..."
       if [ ! -f "$cert_file" ] || [ ! -f "$key_file" ]; then
@@ -86,7 +87,7 @@ case "$PROTOCOL" in
       fi
       server_wss_args="--websocket-tls-cert $cert_file --websocket-tls-key $key_file"
     else
-      PROTOCOL_PREFIX="ws"
+      PROTO_PREFIX="ws"
       echo "Testing WebSocket (WS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
       server_wss_args=""
     fi
@@ -101,17 +102,25 @@ esac
 SERVER_PID=$!
 sleep 0.25
 
-# Start TCP client using tcp:// URL scheme
-set -x
+# Start client
 START_TIME=$(date +%s%N)
-echo timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$BUILD_DIR"/bin/ascii-chat \
+EXIT_CODE=0
+# Use PORT for TCP, PORT_WS for WebSocket protocols
+case "$PROTO" in
+  tcp)
+    PROTO_PORT="$PORT"
+    ;;
+  ws|wss)
+    PROTO_PORT="$PORT_WS"
+    ;;
+esac
+timeout -k1 "$((SNAPSHOT_DELAY + 1))" "$BUILD_DIR"/bin/ascii-chat \
   --log-level debug --log-file "$client_log" --sync-state 1 \
-  client "${PROTOCOL_PREFIX}://localhost:$PORT" \
+  client "${PROTO_PREFIX}://localhost:$PROTO_PORT" \
   --test-pattern \
   --snapshot --snapshot-delay "$SNAPSHOT_DELAY" \
   2>/dev/null \
-  | tee "$client_stdout"
-EXIT_CODE=$?
+  | tee "$client_stdout" || EXIT_CODE=$?
 END_TIME=$(date +%s%N)
 
 # Calculate elapsed time in seconds
@@ -121,7 +130,7 @@ ELAPSED_SEC=$(echo "scale=2; $ELAPSED_NS / 1000000000" | bc)
 # Extract and display frame statistics
 echo ""
 echo "=== CONNECTIVITY TEST RESULTS ==="
-echo "Protocol: ${PROTOCOL^^}"
+echo "Protocol: ${(U)PROTO}"
 echo "Exit code: $EXIT_CODE (0=success, 124=timeout, 137=deadlock, 139=segfault, 1=error)"
 echo "Elapsed time: ${ELAPSED_SEC}s"
 echo ""
@@ -150,7 +159,7 @@ else
 fi
 
 # Show expected vs actual
-case "$PROTOCOL" in
+case "$PROTO" in
   tcp)
     EXPECTED_60=$(echo "scale=0; 60 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
     EXPECTED_30=$(echo "scale=0; 30 * $SNAPSHOT_DELAY" | bc | cut -d. -f1)
