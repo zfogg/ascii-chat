@@ -153,6 +153,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     uint64_t capture_end_ns = 0;
     uint64_t pre_convert_ns = 0;
     uint64_t post_convert_ns = 0;
+    uint64_t conversion_elapsed_ns = 0;
 
     if (is_synchronous) {
       capture_start_ns = time_get_ns();
@@ -392,7 +393,7 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     pre_convert_ns = time_get_ns();
     char *ascii_frame = session_display_convert_to_ascii(display, image);
     post_convert_ns = time_get_ns();
-    uint64_t conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
+    conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
     if (ascii_frame) {
       log_info_every(1 * NS_PER_SEC_INT, "render_loop: ascii_frame ready (len=%zu)", strlen(ascii_frame));
@@ -496,6 +497,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         // snapshot_delay=0 means exit after first frame
         // snapshot_delay>0 means record enough frames for that many seconds of output video
         uint64_t target_frames = (snapshot_delay == 0.0) ? 1 : (uint64_t)(snapshot_delay * capture_fps + 0.5);
+
+        log_info("[SNAPSHOT] frame_count=%lu target_frames=%lu delay=%.1f fps=%u", frame_count, target_frames, snapshot_delay, capture_fps);
 
         // Exit when we've captured enough frames for the desired output duration
         if (frame_count >= target_frames) {

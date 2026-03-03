@@ -815,10 +815,10 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   }
 
   // Output routing logic:
-  // - TTY mode: always render with cursor control (including snapshot mode for animation)
-  // - Snapshot mode on non-TTY: render only final frame WITHOUT cursor control
+  // - Normal TTY mode: render with cursor control (overwrites previous frame for animation)
+  // - Snapshot mode: render WITHOUT cursor control (frames stack as separate lines in output)
   // - Piped mode: render every frame WITHOUT cursor control (allows continuous output to files)
-  bool use_tty_control = ctx->has_tty;
+  bool use_tty_control = ctx->has_tty && !ctx->snapshot_mode;
 
   START_TIMER("frame_write");
   if (use_tty_control) {
