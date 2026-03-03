@@ -20,6 +20,7 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/terminal.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keyboard.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/system.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/windows/backtrace.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keepawake.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/socket.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/string.c
@@ -53,6 +54,7 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/question.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/mmap.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/symbols.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/posix/backtrace.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/pipe.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/memory.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/process.c
