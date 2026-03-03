@@ -1,34 +1,42 @@
 /**
- * @file session/stdin_reader.c
- * @ingroup session
- * @brief Read ANSI ASCII frames from stdin, chunked by height
+ * @file terminal/fd/reader.c
+ * @ingroup terminal_fd
+ * @brief Read ANSI ASCII frames from file descriptor, chunked by height
  */
 
-#include "session/stdin_reader.h"
+#include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/util/display.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
-typedef struct stdin_frame_reader_s {
+typedef struct terminal_fd_reader_s {
+  FILE *fp;          // File pointer created from FD
   int frame_height;
   int frame_width;   // Detected from first frame (0 = not yet detected)
   char *line_buffer; // Temporary buffer for one line
   size_t line_buffer_size;
   bool eof_reached;
   bool first_frame_processed; // Track if we've processed first frame yet
-} stdin_frame_reader_t;
+} terminal_fd_reader_t;
 
 #define LINE_BUFFER_SIZE 16384 // Max bytes per line
 
-asciichat_error_t stdin_frame_reader_create(int frame_height, stdin_frame_reader_t **out) {
-  if (frame_height <= 0) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid frame height: %d", frame_height);
+asciichat_error_t terminal_fd_reader_create(int fd, int frame_height, terminal_fd_reader_t **out) {
+  if (fd < 0 || frame_height <= 0) {
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid fd or frame height: fd=%d, height=%d", fd, frame_height);
   }
 
-  stdin_frame_reader_t *reader = SAFE_CALLOC(1, sizeof(*reader), stdin_frame_reader_t *);
+  FILE *fp = fdopen(fd, "r");
+  if (!fp) {
+    return SET_ERRNO_SYS(ERROR_INVALID_PARAM, "fdopen failed for FD %d", fd);
+  }
+
+  terminal_fd_reader_t *reader = SAFE_CALLOC(1, sizeof(*reader), terminal_fd_reader_t *);
+  reader->fp = fp;
   reader->frame_height = frame_height;
   reader->frame_width = 0; // Will be detected from first frame
   reader->line_buffer = SAFE_MALLOC(LINE_BUFFER_SIZE, char *);
@@ -36,14 +44,14 @@ asciichat_error_t stdin_frame_reader_create(int frame_height, stdin_frame_reader
   reader->eof_reached = false;
   reader->first_frame_processed = false;
 
-  log_debug("stdin_reader: created with frame height %d (width auto-detect)", frame_height);
+  log_debug("terminal_fd_reader: created with fd=%d, frame height %d (width auto-detect)", fd, frame_height);
   *out = reader;
   return ASCIICHAT_OK;
 }
 
-asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **out_frame) {
+asciichat_error_t terminal_fd_reader_next(terminal_fd_reader_t *reader, char **out_frame) {
   if (!reader || !out_frame) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to stdin_frame_reader_next");
+    return SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters to terminal_fd_reader_next");
   }
 
   if (reader->eof_reached) {
@@ -57,10 +65,10 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
   char *frame_data = SAFE_MALLOC(frame_capacity, char *);
   size_t frame_pos = 0;
 
-  // Read exactly frame_height lines from stdin
+  // Read exactly frame_height lines from FD
   for (int line_num = 0; line_num < reader->frame_height; line_num++) {
-    // Read one line from stdin
-    char *line = fgets(reader->line_buffer, (int)reader->line_buffer_size, stdin);
+    // Read one line from FD
+    char *line = fgets(reader->line_buffer, (int)reader->line_buffer_size, reader->fp);
 
     if (!line) {
       // EOF reached
@@ -68,7 +76,7 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
 
       // If we read some lines but not a complete frame, that's ok - return partial
       if (frame_pos > 0) {
-        log_debug("stdin_reader: EOF reached after %d/%d lines, returning partial frame", line_num,
+        log_debug("terminal_fd_reader: EOF reached after %d/%d lines, returning partial frame", line_num,
                   reader->frame_height);
         // Remove trailing newline from last line if present
         if (frame_pos > 0 && frame_data[frame_pos - 1] == '\n') {
@@ -86,7 +94,7 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
     // Append line to frame
     size_t line_len = strlen(line);
     if (frame_pos + line_len >= frame_capacity) {
-      log_warn("stdin_reader: frame buffer overflow, line %d too large", line_num);
+      log_warn("terminal_fd_reader: frame buffer overflow, line %d too large", line_num);
       // Realloc and continue
       frame_capacity *= 2;
       char *new_frame = SAFE_MALLOC(frame_capacity, char *);
@@ -122,18 +130,22 @@ asciichat_error_t stdin_frame_reader_next(stdin_frame_reader_t *reader, char **o
       reader->frame_width = display_width(frame_data);
     }
 
-    log_info("stdin_reader: detected frame width %d from first frame", reader->frame_width);
+    log_info("terminal_fd_reader: detected frame width %d from first frame", reader->frame_width);
   }
 
   *out_frame = frame_data;
-  log_debug_every(NS_PER_SEC_INT, "stdin_reader: read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width,
+  log_debug_every(NS_PER_SEC_INT, "terminal_fd_reader: read frame (%zu bytes, %dx%d)", frame_pos, reader->frame_width,
                   reader->frame_height);
   return ASCIICHAT_OK;
 }
 
-void stdin_frame_reader_destroy(stdin_frame_reader_t *reader) {
+void terminal_fd_reader_destroy(terminal_fd_reader_t *reader) {
   if (!reader)
     return;
+  if (reader->fp) {
+    fclose(reader->fp);
+    reader->fp = NULL;
+  }
   SAFE_FREE(reader->line_buffer);
   SAFE_FREE(reader);
 }

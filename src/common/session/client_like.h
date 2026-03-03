@@ -59,7 +59,7 @@
 /* Forward declarations - callers include full headers themselves */
 typedef struct tcp_client tcp_client_t;
 typedef struct websocket_client websocket_client_t;
-typedef struct stdin_frame_reader_s stdin_frame_reader_t;
+typedef struct terminal_fd_reader_s terminal_fd_reader_t;
 /* discovery_session is defined in src/discovery/session.h as an opaque type
    Discovery mode should include that header and cast to/from void * */
 
@@ -292,11 +292,11 @@ void session_client_like_set_websocket_client(websocket_client_t *client);
  * Only valid after session_client_like_run() is called and during run_fn execution.
  * May be NULL if not in stdin render mode.
  *
- * @return Pointer to stdin_frame_reader_t, or NULL if not in stdin render mode
+ * @return Pointer to terminal_fd_reader_t, or NULL if not in stdin render mode
  *
  * @ingroup session
  */
-stdin_frame_reader_t *session_client_like_get_stdin_reader(void);
+terminal_fd_reader_t *session_client_like_get_stdin_reader(void);
 
 /**
  * Run a client-like mode with fully shared initialization and teardown

@@ -28,7 +28,7 @@
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/video/rgba/image.h>
-#include "session/stdin_reader.h"
+#include <ascii-chat/terminal/fd/reader.h>
 #ifndef _WIN32
 #include <ascii-chat/media/render/renderer.h>
 #endif
@@ -108,7 +108,7 @@ typedef struct session_display_ctx {
   render_file_ctx_t *render_file;
 
   /** @brief Stdin frame reader for ASCII-to-video rendering (borrowed ref, not owned) */
-  stdin_frame_reader_t *stdin_reader;
+  terminal_fd_reader_t *stdin_reader;
 #endif
 } session_display_ctx_t;
 
@@ -262,11 +262,13 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   }
 
 #ifndef _WIN32
-  // Initialize render-file if enabled (skip "-" which is used for stdin render mode to stdout)
-  // Also skip if render_file is explicitly disabled for temporary displays (splash screen)
+  // Initialize render-file if enabled (FFmpeg encodes to stdout when "-" is specified)
   const char *render_file_opt = GET_OPTION(render_file);
-  log_info("render-file: opt='%s', skip=%d", render_file_opt, config->skip_render_file);
-  if (!config->skip_render_file && strlen(render_file_opt) > 0 && strcmp(render_file_opt, "-") != 0) {
+  log_info("DISPLAY_CREATE: render-file opt='%s' (len=%zu), will initialize=%s",
+           render_file_opt ? render_file_opt : "(null)",
+           render_file_opt ? strlen(render_file_opt) : 0,
+           (render_file_opt && strlen(render_file_opt) > 0) ? "YES" : "NO");
+  if (render_file_opt && strlen(render_file_opt) > 0) {
     int width = (int)GET_OPTION(width);
     int height = (int)GET_OPTION(height);
     log_info("render-file: Creating encoder with cols=%d, rows=%d", width, height);
@@ -293,10 +295,12 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
              (uint32_t)GET_OPTION(fps));
     asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, (int)encoder_fps,
                                                   GET_OPTION(render_theme), &ctx->render_file);
-    if (rf_err != ASCIICHAT_OK)
-      log_warn("render-file: init failed — file output disabled");
-    else {
-      log_info("render-file: initialized for %s (ctx=%p)", render_file_opt, (void *)ctx->render_file);
+    if (rf_err != ASCIICHAT_OK) {
+      log_warn("render-file: init FAILED with error %d — file output disabled, ctx->render_file=%p",
+               rf_err, (void *)ctx->render_file);
+    } else {
+      log_info("render-file: INITIALIZED SUCCESSFULLY for %s (ctx->render_file=%p)",
+               render_file_opt, (void *)ctx->render_file);
       // Set audio sources if render_file_set_audio_source is available
       if (ctx->render_file && config->render_file_audio_source) {
         render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, config->render_file_audio_source, NULL);
@@ -307,10 +311,8 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
         log_debug("render-file: audio capture ring buffer set");
       }
     }
-  } else if (strcmp(render_file_opt, "-") == 0) {
-    log_info("stdin render mode: stdout output enabled (skipping render_file encoder)");
   } else {
-    log_info("render-file: NOT initializing (skip=%d, len=%zu)", config->skip_render_file, strlen(render_file_opt));
+    log_info("render-file: NOT initializing (len=%zu)", strlen(render_file_opt));
   }
 #endif
 
@@ -373,7 +375,7 @@ void session_display_set_stdin_reader(session_display_ctx_t *ctx, void *reader) 
   }
 
 #ifndef _WIN32
-  ctx->stdin_reader = (stdin_frame_reader_t *)reader;
+  ctx->stdin_reader = (terminal_fd_reader_t *)reader;
   log_debug("session_display: stdin_reader set");
 #else
   (void)reader; // Unused on Windows
@@ -806,7 +808,8 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // splash_wait_for_animation() was blocking frame rendering for frames 1-120
 
     // Perform initial terminal reset (clear screen immediately for first frame)
-    if (ctx->has_tty) {
+    // Skip terminal control if render_file is encoding to stdout
+    if (ctx->has_tty && !ctx->render_file) {
       (void)terminal_reset(STDOUT_FILENO);
       (void)terminal_clear_screen(); // Clear AFTER splash thread exits to avoid log overlap
       (void)terminal_cursor_home(STDOUT_FILENO);
@@ -825,10 +828,18 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
   // - Snapshot mode on interactive TTY: render WITH cursor control (clear screen and animate)
   // - Snapshot mode on piped output: render WITHOUT cursor control (frames stack as separate lines in output)
   // - Piped mode: render every frame WITHOUT cursor control (allows continuous output to files)
+  // - If render_file is enabled: skip ASCII output, only encode to binary file/stdout
   bool use_tty_control = ctx->has_tty && (!ctx->snapshot_mode || terminal_is_interactive());
 
   START_TIMER("frame_write");
-  if (use_tty_control) {
+  // Skip ASCII output to stdout if render_file encoder is active (it will write binary data instead)
+  // render_file will be NULL on Windows (guarded by #ifndef _WIN32 in create())
+  bool skip_ascii_output = (ctx->render_file != NULL);
+  if (skip_ascii_output) {
+    log_info("FRAME_WRITE: Skipping ASCII output (render_file encoder is active)");
+  }
+
+  if (!skip_ascii_output && use_tty_control) {
     // TTY mode: Buffer cursor control + frame data together for atomic frame display
     // This ensures complete frames are displayed without fragmentation from partial writes
     // Use cursor home + clear-entire-display (including scrollback) to prevent frame stacking
@@ -879,7 +890,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     if (ctx->fps_counter && GET_OPTION(fps_counter)) {
       session_display_render_fps_overlay(ctx);
     }
-  } else if (terminal_is_interactive()) {
+  } else if (!skip_ascii_output && terminal_is_interactive()) {
     // Piped to an interactive terminal: output ASCII frames
     // Combine frame and newline into single write call
     // Allocate temporary buffer for frame + newline to minimize syscalls
@@ -901,7 +912,7 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
     // Use actual TTY fd for flushing if available, otherwise use STDOUT_FILENO
     int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
     (void)terminal_flush(flush_fd);
-  } else {
+  } else if (!skip_ascii_output) {
     // Non-interactive piped/redirected output (e.g., snapshot mode with redirected stdout)
     // Write frame data with newline and flush
     char *write_buf = SAFE_MALLOC(frame_len + 1, char *);

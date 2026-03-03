@@ -8,7 +8,7 @@
 #include "session/capture.h"
 #include "session/display.h"
 #include "session/render.h"
-#include "session/stdin_reader.h"
+#include <ascii-chat/terminal/fd/reader.h>
 #include "../../client/audio.h"
 
 #include <ascii-chat/media/source.h>
@@ -44,7 +44,7 @@ static tcp_client_t *g_tcp_client = NULL;
 static websocket_client_t *g_websocket_client = NULL;
 
 // Module-level stdin reader for ASCII-to-video rendering (stdin render mode only)
-static stdin_frame_reader_t *g_stdin_reader = NULL;
+static terminal_fd_reader_t *g_stdin_reader = NULL;
 
 /* ============================================================================
  * Public Accessors
@@ -66,7 +66,7 @@ void session_client_like_set_websocket_client(websocket_client_t *client) {
   g_websocket_client = client;
 }
 
-stdin_frame_reader_t *session_client_like_get_stdin_reader(void) {
+terminal_fd_reader_t *session_client_like_get_stdin_reader(void) {
   return g_stdin_reader;
 }
 
@@ -178,7 +178,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   display_config.color_mode = TERM_COLOR_AUTO;
   display_config.should_exit_callback = display_should_exit_adapter;
   display_config.callback_data = NULL;
-  display_config.skip_render_file = true; // Skip render-file during splash phase
 
   log_debug("[SETUP_DISPLAY_EARLY] Creating display context (before splash)");
   display = session_display_create(&display_config);
@@ -426,7 +425,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       goto cleanup;
     }
 
-    asciichat_error_t stdin_err = stdin_frame_reader_create(frame_height, &g_stdin_reader);
+    asciichat_error_t stdin_err = terminal_fd_reader_create(STDIN_FILENO, frame_height, &g_stdin_reader);
     if (stdin_err != ASCIICHAT_OK) {
       log_fatal("Failed to initialize stdin frame reader: %s", asciichat_error_string(stdin_err));
       result = ERROR_MEDIA_INIT;
@@ -438,7 +437,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     capture = session_network_capture_create((uint32_t)(fps > 0 ? fps : 60));
     if (!capture) {
       log_fatal("Failed to initialize capture context for stdin rendering");
-      stdin_frame_reader_destroy(g_stdin_reader);
+      terminal_fd_reader_destroy(g_stdin_reader);
       g_stdin_reader = NULL;
       result = ERROR_MEDIA_INIT;
       goto cleanup;
@@ -723,7 +722,7 @@ cleanup:
 
   // Destroy stdin reader if active (stdin render mode)
   if (g_stdin_reader) {
-    stdin_frame_reader_destroy(g_stdin_reader);
+    terminal_fd_reader_destroy(g_stdin_reader);
     g_stdin_reader = NULL;
   }
 

@@ -160,7 +160,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_file),
      "",
      sizeof(((options_t *)0)->render_file),
-     "Render ASCII frames to a video or image file. Extension determines format: "
+     "Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: "
      ".mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only)",
      "MEDIA",
      "PATH",

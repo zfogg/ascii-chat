@@ -13,7 +13,7 @@
 #include "session/render.h"
 #include "session/capture.h"
 #include "session/display.h"
-#include "session/stdin_reader.h"
+#include <ascii-chat/terminal/fd/reader.h>
 #include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/log/search.h>
@@ -99,6 +99,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   log_info("session_render_loop: STARTING - display=%p capture=%p capture_cb=%p snapshot_mode=%s snapshot_delay=%.2f",
            (void *)display, (void *)capture, (void *)capture_cb, snapshot_mode ? "YES" : "NO",
            snapshot_mode ? GET_OPTION(snapshot_delay) : 0.0);
+  log_info("session_render_loop: About to enter main loop, should_exit fn check...");
+  if (should_exit(user_data)) {
+    log_warn("session_render_loop: EXIT signal already set at entry, aborting render loop");
+    return ASCIICHAT_OK;
+  }
+  log_info("session_render_loop: OK to proceed with main loop");
 
   // Pause mode state tracking
   bool initial_paused_frame_rendered = false;
@@ -128,6 +134,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // This must be done BEFORE the render loop to avoid repeated lock/unlock cycles that could cause deadlocks
   log_info("[PRE_RENDER_LOOP] About to disable logging. snapshot_mode=%s capture=%p is_synchronous=%d",
            snapshot_mode ? "YES" : "NO", (void *)capture, (capture != NULL));
+
+  // DEBUG: Write to file instead of disabling all logging
+  FILE *debug_log = fopen("/tmp/render_loop_debug.log", "a");
+  if (debug_log) {
+    fprintf(debug_log, "[RENDER_LOOP_ENTER] snapshot_mode=%s, capture=%p, is_synchronous=%d\n",
+            snapshot_mode ? "YES" : "NO", (void *)capture, is_synchronous);
+    fclose(debug_log);
+  }
+
   log_set_terminal_output(false);
 
   // Main render loop
@@ -178,12 +193,12 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
       log_info("[SYNC_MODE] Processing frame %lu, capture=%p", frame_count, (void *)capture);
 
       // Check if we're in stdin render mode (reading ASCII frames from stdin)
-      stdin_frame_reader_t *stdin_reader = (stdin_frame_reader_t *)session_display_get_stdin_reader(display);
+      terminal_fd_reader_t *stdin_reader = (terminal_fd_reader_t *)session_display_get_stdin_reader(display);
       log_info("[SYNC_MODE] stdin_reader=%p (stdin mode: %s)", (void *)stdin_reader, stdin_reader ? "YES" : "NO");
       if (stdin_reader) {
         // STDIN RENDER MODE: Read ASCII frame text directly from stdin
         char *ascii_frame = NULL;
-        asciichat_error_t stdin_err = stdin_frame_reader_next(stdin_reader, &ascii_frame);
+        asciichat_error_t stdin_err = terminal_fd_reader_next(stdin_reader, &ascii_frame);
         if (stdin_err != ASCIICHAT_OK) {
           log_error_every(200 * MS_PER_SEC_INT, "Failed to read stdin frame: %s", asciichat_error_string(stdin_err));
           break; // Exit render loop on error
@@ -199,16 +214,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         log_debug_every(1 * NS_PER_SEC_INT, "RENDER[%lu]: Read ASCII frame from stdin (%zu bytes)", frame_count,
                         strlen(ascii_frame));
 
-        // In stdin render mode, check if rendering to stdout or to file
-        const char *render_file_opt = GET_OPTION(render_file);
-        if (render_file_opt && strcmp(render_file_opt, "-") == 0) {
-          // Render to stdout: write raw ASCII frame directly
-          platform_write_all(STDOUT_FILENO, ascii_frame, strlen(ascii_frame));
-          platform_write_all(STDOUT_FILENO, "\n", 1);
-        } else {
-          // Render to file: use display rendering (will use render_file if configured)
-          session_display_render_frame(display, ascii_frame);
-        }
+        // Render ASCII frame using display (will encode via render_file if configured)
+        // When --render-file="-", FFmpeg encodes binary data to stdout
+        session_display_render_frame(display, ascii_frame);
 
         SAFE_FREE(ascii_frame);
 
@@ -412,6 +420,22 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     post_convert_ns = time_get_ns();
     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
+    // DEBUG: Log frame conversion to file
+    FILE *debug_log = fopen("/tmp/render_loop_debug.log", "a");
+    if (debug_log) {
+      fprintf(debug_log, "[FRAME_CONVERT] frame %lu: image=%p, ascii_frame=%p (len=%zu), conversion_ms=%u\n",
+              frame_count, (void *)image, (void *)ascii_frame,
+              ascii_frame ? strlen(ascii_frame) : 0,
+              (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
+      fclose(debug_log);
+    }
+
+    if (frame_count <= 3) {
+      log_info("RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)",
+               frame_count, (void *)image, (void *)ascii_frame,
+               (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
+    }
+
     // Declare variables that need scope beyond the if (ascii_frame) block
     bool is_paused_frame = initial_paused_frame_rendered && is_paused;
     bool output_paused_frame = snapshot_mode && is_paused_frame;
@@ -436,8 +460,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         pre_render_ns = time_get_ns();
         START_TIMER("render_frame");
 
-        log_info_every(1 * NS_PER_SEC_INT, "render_loop: calling session_display_render_frame - display=%p",
-                       (void *)display);
+        if (frame_count <= 5 || frame_count % 10 == 0) {
+          log_info("RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p",
+                   (unsigned long)frame_count, (void *)display);
+        }
 
         // Check if help screen is active - if so, render help instead of frame
         // Help screen is disabled in snapshot mode and non-interactive terminals (keyboard disabled)
