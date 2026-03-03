@@ -878,10 +878,12 @@ void session_display_write_ascii(session_display_ctx_t *ctx, const char *ascii) 
         SAFE_FREE(write_buf);
       }
 
-      // Flush buffers
+      // Flush buffers (skip terminal_flush on pipes to avoid blocking in snapshot mode)
       (void)fflush(stdout);
-      int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
-      (void)terminal_flush(flush_fd);
+      if (!GET_OPTION(snapshot_mode) || ctx->has_tty) {
+        int flush_fd = (ctx->tty_info.fd >= 0) ? ctx->tty_info.fd : STDOUT_FILENO;
+        (void)terminal_flush(flush_fd);
+      }
     } else {
       // render_file is using stdout: skip ASCII output to avoid mixing with video
       if (GET_OPTION(snapshot_mode) && !g_snapshot_first_frame_rendered) {
