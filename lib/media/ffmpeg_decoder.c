@@ -102,6 +102,7 @@ struct ffmpeg_decoder_t {
   bool seeking_in_progress;           ///< Signal to pause prefetch thread during seek
   cond_t prefetch_cond;               ///< Condition variable for pausing during seek
   mutex_t prefetch_mutex;             ///< Protect prefetch state and FFmpeg decoder access
+  mutex_t read_frame_mutex;           ///< Protect av_read_frame() calls from video and audio threads
 
   // Track which buffer is being read by main thread
   image_t *current_read_buffer; ///< Buffer main thread is currently reading/rendering
@@ -347,11 +348,11 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
     uint64_t read_start_ns = time_get_ns();
     bool frame_decoded = false;
 
-    // Release mutex before blocking av_read_frame() call
-    // The seeking_in_progress flag prevents av_seek_frame() races
+    // Release prefetch mutex but hold read_frame_mutex to prevent concurrent av_read_frame() calls from audio thread
     mutex_unlock(&decoder->prefetch_mutex);
+    mutex_lock(&decoder->read_frame_mutex);
 
-    // Read packets until we get a video frame - MUTEX RELEASED
+    // Read packets until we get a video frame - read_frame_mutex HELD
     while (true) {
       int ret = av_read_frame(decoder->format_ctx, decoder->packet);
       if (ret < 0) {
@@ -438,6 +439,9 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       frame_decoded = true;
       break; // Exit while loop
     }
+
+    // Release read_frame_mutex now that av_read_frame() is done
+    mutex_unlock(&decoder->read_frame_mutex);
 
     // Re-acquire mutex to update prefetch state
     mutex_lock(&decoder->prefetch_mutex);
@@ -736,6 +740,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create(const char *path) {
       return NULL;
     }
 
+    if (mutex_init(&decoder->read_frame_mutex, "ffmpeg_read_frame") != 0) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to initialize read_frame mutex");
+      mutex_destroy(&decoder->prefetch_mutex);
+      cond_destroy(&decoder->prefetch_cond);
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
+
     decoder->prefetch_thread_running = false;
     decoder->prefetch_should_stop = false;
   }
@@ -982,6 +994,14 @@ ffmpeg_decoder_t *ffmpeg_decoder_create_stdin(void) {
       ffmpeg_decoder_destroy(decoder);
       return NULL;
     }
+
+    if (mutex_init(&decoder->read_frame_mutex, "ffmpeg_read_frame") != 0) {
+      SET_ERRNO(ERROR_MEMORY, "Failed to initialize read_frame mutex");
+      mutex_destroy(&decoder->prefetch_mutex);
+      cond_destroy(&decoder->prefetch_cond);
+      ffmpeg_decoder_destroy(decoder);
+      return NULL;
+    }
   }
 
   log_debug("FFmpeg decoder opened from stdin (video=%s, audio=%s)", decoder->video_stream_idx >= 0 ? "yes" : "no",
@@ -1013,6 +1033,7 @@ void ffmpeg_decoder_destroy(ffmpeg_decoder_t *decoder) {
   // Clean up prefetch state
   cond_destroy(&decoder->prefetch_cond);
   mutex_destroy(&decoder->prefetch_mutex);
+  mutex_destroy(&decoder->read_frame_mutex);
 
   // Free prefetch image buffers
   if (decoder->prefetch_image_a) {
@@ -1268,6 +1289,10 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
 
   // Read more packets to fill the request
   static uint64_t packet_count = 0;
+
+  // Lock read_frame_mutex to prevent concurrent av_read_frame() calls from video prefetch thread
+  mutex_lock(&decoder->read_frame_mutex);
+
   while (samples_written < num_samples) {
     int ret = av_read_frame(decoder->format_ctx, decoder->packet);
     if (ret < 0) {
@@ -1329,6 +1354,9 @@ size_t ffmpeg_decoder_read_audio_samples(ffmpeg_decoder_t *decoder, float *buffe
   }
 
 audio_read_done:
+  // Release read_frame_mutex now that av_read_frame() is done
+  mutex_unlock(&decoder->read_frame_mutex);
+
   // Flush resampler buffer if we haven't filled the full request
   // The resampler may have buffered samples that need to be output
   if (samples_written < num_samples) {
