@@ -179,6 +179,7 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${LWS_NATIVE_PREFIX}
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            -DCMAKE_C_FLAGS=-Wno-error=incompatible-pointer-types-discards-qualifiers
             -DLWS_WITH_SHARED=OFF
             -DLWS_WITH_STATIC=ON
             -DLWS_WITHOUT_TESTAPPS=ON

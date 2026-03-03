@@ -90,14 +90,26 @@ case "$PROTOCOL" in
     if [[ "$PROTOCOL" == "wss" ]]; then
       PROTOCOL_PREFIX="wss"
       echo "Testing WebSocket Secure (WSS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+
+      # Generate self-signed certificate and key for testing
+      cert_file="/tmp/wss-test-cert-${PORT}.pem"
+      key_file="/tmp/wss-test-key-${PORT}.pem"
+
+      echo "Generating self-signed certificate..."
+      openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
+        -days 1 -nodes -subj "/CN=localhost" >/dev/null 2>&1
+
+      server_wss_args="--websocket-tls-cert $cert_file --websocket-tls-key $key_file"
     else
       PROTOCOL_PREFIX="ws"
       echo "Testing WebSocket (WS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
+      server_wss_args=""
     fi
 
     # Start WebSocket server
+    # shellcheck disable=SC2086
     "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
-      server --port "$PORT" --websocket-port "$PORT_WS" \
+      server --port "$PORT" --websocket-port "$PORT_WS" $server_wss_args \
       >/dev/null 2>&1 &
     SERVER_PID=$!
     sleep 0.25
