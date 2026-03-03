@@ -195,11 +195,12 @@ static void *pipeline_capture_thread(void *arg) {
 
     bool snapshot_mode = GET_OPTION(snapshot_mode);
     if (snapshot_mode) {
-        // Set initial estimate to snapshot_delay so frames start getting encoded with consistent scaling
+        // Initialize duration estimate BEFORE encoding frames so PTS scaling works from frame 1
         extern uint64_t g_snapshot_actual_duration_ms;
         double snapshot_delay = GET_OPTION(snapshot_delay);
         g_snapshot_actual_duration_ms = (uint64_t)(snapshot_delay * 1000.0);
-        log_info("[PIPELINE_CAPTURE] Snapshot mode: using snapshot_delay=%.2f as initial duration estimate", snapshot_delay);
+        log_info("[PIPELINE_CAPTURE] Snapshot mode: initialized g_snapshot_actual_duration_ms=%llu ms (snapshot_delay=%.2f)",
+                 (unsigned long long)g_snapshot_actual_duration_ms, snapshot_delay);
     }
 
     while (!atomic_load_bool(&pipeline->stop)) {
