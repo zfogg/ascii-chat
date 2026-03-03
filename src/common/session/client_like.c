@@ -140,6 +140,14 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_set_force_stderr(true);
   }
 
+  // Force all logging to stderr if encoding to pipe to prevent corrupting binary video output
+  const char *render_file_early = GET_OPTION(render_file);
+  if (render_file_early && render_file_early[0] != '\0' &&
+      (strcmp(render_file_early, "-") == 0 || strcmp(render_file_early, "pipe:") == 0)) {
+    log_set_force_stderr(true);
+    log_info("Force stderr mode enabled: --render-file=- will output binary video to stdout");
+  }
+
   // ============================================================================
   // SETUP: Keepawake System
   // ============================================================================

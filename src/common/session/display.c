@@ -312,7 +312,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
       }
     }
   } else {
-    log_info("render-file: NOT initializing (len=%zu)", strlen(render_file_opt));
+    log_info("render-file: NOT initializing (render_file_opt is %s)", render_file_opt ? "empty" : "NULL");
   }
 #endif
 
@@ -950,9 +950,15 @@ void session_display_render_frame(session_display_ctx_t *ctx, const char *frame_
 #ifndef _WIN32
   // Write frame to render-file if enabled
   if (ctx->render_file) {
-    log_debug("[RENDER_FILE_WRITE] About to call render_file_write_frame with frame_len=%zu", frame_len);
+    static int render_frame_count = 0;
+    render_frame_count++;
+    if (render_frame_count <= 5 || render_frame_count % 10 == 1) {
+      log_info("RENDER_FILE_CALL #%d: frame_len=%zu, display_frame=%p", render_frame_count, frame_len, (void *)display_frame);
+    }
     asciichat_error_t fe = render_file_write_frame(ctx->render_file, display_frame);
-    log_debug("[RENDER_FILE_WRITE] render_file_write_frame returned: %s", asciichat_error_string(fe));
+    if (render_frame_count <= 5) {
+      log_info("RENDER_FILE_RESULT #%d: %s", render_frame_count, asciichat_error_string(fe));
+    }
     if (fe != ASCIICHAT_OK)
       log_warn_every(5 * NS_PER_SEC_INT, "render-file: encode failed (%s)", asciichat_error_string(fe));
   }

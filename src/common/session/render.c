@@ -18,6 +18,8 @@
 #include <ascii-chat/ui/splash.h>
 #include <ascii-chat/log/search.h>
 #include <ascii-chat/common.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/util/time.h>
@@ -162,16 +164,21 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     log_set_terminal_output(false);
   }
 
-  while (!should_exit(user_data)) {
+  // In snapshot mode, we must render at least one frame before checking should_exit
+  // to ensure the snapshot delay timer can start
+  bool force_first_iteration = snapshot_mode && frame_count == 0;
+
+  while (force_first_iteration || (!should_exit(user_data) && !(snapshot_mode && snapshot_done))) {
+    force_first_iteration = false;
     loop_iteration++;
-    log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s", loop_iteration, snapshot_done ? "YES" : "NO");
+    log_info("[LOOP_ITER] iteration=%d, snapshot_done=%s, frame_count=%lu", loop_iteration, snapshot_done ? "YES" : "NO", frame_count);
     if (loop_iteration % 60 == 0) {
       log_debug("session_render_loop: iteration %d, should_exit check returning false", loop_iteration);
     }
     // Snapshot mode: exit at start of iteration if done
     // This prevents frame 2+ from being captured when snapshot_delay has elapsed
-    if (snapshot_mode && snapshot_done) {
-      log_info("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start");
+    if (snapshot_mode && snapshot_done && frame_count > 0) {
+      log_info("[SNAPSHOT_EXIT] Snapshot mode: exiting at loop iteration start (snapshot_done=true, frames=%lu)", frame_count);
       break;
     }
 
@@ -299,6 +306,15 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         }
 
         image = session_capture_read_frame(capture);
+
+        if (frame_count <= 3 || !image) {
+          FILE *dbg = fopen("/tmp/capture_debug.log", "a");
+          if (dbg) {
+            fprintf(dbg, "[FRAME_%lu] read_frame returned %p, at_end=%s\n",
+                    frame_count, (void *)image, session_capture_at_end(capture) ? "YES" : "NO");
+            fclose(dbg);
+          }
+        }
 
         if (!image) {
           // Check if we've reached end of file for media sources
