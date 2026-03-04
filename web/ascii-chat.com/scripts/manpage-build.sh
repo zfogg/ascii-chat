@@ -30,6 +30,9 @@ if [ -d "$REPO_ROOT" ]; then
   echo "📚 Generating man(3) pages from Doxygen..."
   cmake --build "$REPO_ROOT/build_release" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
 
+  echo "📚 Generating man(3) pages from Doxygen..."
+  cmake --build "$REPO_ROOT/build_release" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
+
   # Check if man3 directory exists and has files
   if [ -d "$REPO_ROOT/build_release/share/man/man3" ]; then
     # Convert all man(3) pages to HTML and create index
@@ -42,38 +45,6 @@ if [ -d "$REPO_ROOT" ]; then
         mandoc -Thtml "$manfile" > "public/man3/${basename}.html"
       fi
     done
-
-    # Create man3 index JSON for search and listing
-    node -e "
-      const fs = require('fs');
-      const path = require('path');
-      const mandir = '$REPO_ROOT/build_release/share/man/man3';
-
-      const pages = [];
-      const files = fs.readdirSync(mandir).filter(f => f.endsWith('.3'));
-
-      for (const file of files) {
-        const filepath = path.join(mandir, file);
-        const content = fs.readFileSync(filepath, 'utf-8');
-        const name = file.replace('.3', '');
-
-        // Extract NAME section (first line with brief description)
-        const nameMatch = content.match(/^\.SH NAME\n(.+?)(?:\n\.SH|\$)/s);
-        let title = name;
-        if (nameMatch) {
-          title = nameMatch[1].trim().split('\n')[0];
-        }
-
-        pages.push({
-          name: name,
-          title: title,
-          file: name + '.html'
-        });
-      }
-
-      pages.sort((a, b) => a.name.localeCompare(b.name));
-      fs.writeFileSync('public/man3/index.json', JSON.stringify(pages, null, 2));
-    "
 
     echo "📜 man(3) pages generated ($(ls public/man3/*.html 2>/dev/null | wc -l) pages)"
   else
