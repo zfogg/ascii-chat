@@ -220,9 +220,11 @@ app.get("/api/man3/search", limiter, (req, res) => {
       return res.status(500).json({ error: "Index not loaded" });
     }
 
-    // Search in index (title/name)
+    // Search in index (title/name), excluding source pages and metadata
     const titleMatches = indexCache.filter(
-      (page) => regex.test(page.title || page.name) || regex.test(page.name),
+      (page) =>
+        !page.name.endsWith("_source") &&
+        (regex.test(page.title || page.name) || regex.test(page.name)),
     );
 
     // Search in content for title matches (get snippets)
@@ -239,10 +241,13 @@ app.get("/api/man3/search", limiter, (req, res) => {
       });
     }
 
-    // Search content for non-title matches
+    // Search content for non-title matches (excluding source pages)
     for (const page of indexCache) {
-      if (titleMatches.find((p) => p.name === page.name)) {
-        continue; // Already added
+      if (
+        page.name.endsWith("_source") ||
+        titleMatches.find((p) => p.name === page.name)
+      ) {
+        continue; // Skip source pages and already added matches
       }
 
       const content = getFileContent(page.name);
@@ -265,11 +270,17 @@ app.get("/api/man3/search", limiter, (req, res) => {
       0,
     );
 
+    const displayLimit = 30;
+    const displayedResults = results.slice(0, displayLimit);
+    const moreFilesCount = Math.max(0, results.length - displayLimit);
+
     res.json({
       query: query,
       filesMatched: results.length,
+      displayedResults: displayedResults.length,
+      moreFilesCount: moreFilesCount,
       totalMatches: totalMatches,
-      results: results.slice(0, 10), // Limit to 10 results
+      results: displayedResults,
     });
   } catch (err) {
     logger.error("Search error:", err);

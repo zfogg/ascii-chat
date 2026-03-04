@@ -11,6 +11,7 @@ export default function Man3() {
   const [searchResults, setSearchResults] = useState([]);
   const [filesMatched, setFilesMatched] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
+  const [moreFilesCount, setMoreFilesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [selectedPageContent, setSelectedPageContent] = useState(null);
@@ -135,6 +136,7 @@ export default function Man3() {
       setSearchResults(manPages);
       setFilesMatched(0);
       setTotalMatches(0);
+      setMoreFilesCount(0);
       setSearching(false);
       setRegexError(null);
       // Clear search param but preserve page param if present
@@ -160,6 +162,7 @@ export default function Man3() {
       setSearchResults([]);
       setFilesMatched(0);
       setTotalMatches(0);
+      setMoreFilesCount(0);
       return;
     }
 
@@ -173,10 +176,12 @@ export default function Man3() {
         setSearchResults([]);
         setFilesMatched(0);
         setTotalMatches(0);
+        setMoreFilesCount(0);
       } else {
         setSearchResults(data.results || []);
         setFilesMatched(data.filesMatched || 0);
         setTotalMatches(data.totalMatches || 0);
+        setMoreFilesCount(data.moreFilesCount || 0);
       }
 
       // Update URL with search query (preserve page param if present)
@@ -192,6 +197,7 @@ export default function Man3() {
       setSearchResults([]);
       setFilesMatched(0);
       setTotalMatches(0);
+      setMoreFilesCount(0);
     } finally {
       setSearching(false);
     }
@@ -1056,6 +1062,12 @@ export default function Man3() {
                         )}
                       </div>
                     ))}
+                    {moreFilesCount > 0 && (
+                      <div className="bg-fuchsia-900/50 border border-fuchsia-700/50 rounded px-3 py-2 text-sm font-semibold text-fuchsia-200 m-3">
+                        ... {moreFilesCount} more matching file
+                        {moreFilesCount !== 1 ? "s" : ""}
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
