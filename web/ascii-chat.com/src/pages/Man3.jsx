@@ -50,7 +50,7 @@ export default function Man3() {
             setTimeout(() => {
               const element = document.querySelector(hash);
               if (element) {
-                element.scrollIntoView({ behavior: 'smooth' });
+                element.scrollIntoView({ behavior: "smooth" });
               }
             }, 100);
           }
@@ -90,7 +90,9 @@ export default function Man3() {
         // Clear search param but preserve page param if present
         const params = new URLSearchParams(window.location.search);
         params.delete("q");
-        const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
+        const newUrl = params.toString()
+          ? `/man3?${params.toString()}`
+          : "/man3";
         window.history.replaceState({}, "", newUrl);
         return;
       }
@@ -99,7 +101,7 @@ export default function Man3() {
 
       try {
         const response = await fetch(
-          `/api/man3/search?q=${encodeURIComponent(searchQuery)}`
+          `/api/man3/search?q=${encodeURIComponent(searchQuery)}`,
         );
         const data = await response.json();
 
@@ -134,7 +136,11 @@ export default function Man3() {
     };
   }, [searchQuery, manPages]);
 
-  const loadPageContent = (pageName, lineNumber = null, snippetIndex = null) => {
+  const loadPageContent = (
+    pageName,
+    lineNumber = null,
+    snippetIndex = null,
+  ) => {
     if (selectedPageName === pageName && lineNumber === null) {
       // Toggle off if clicking same page
       setSelectedPageName(null);
@@ -201,18 +207,20 @@ export default function Man3() {
       // Split by HTML tags, only highlight text content (not tag content)
       const parts = html.split(/(<[^>]*>)/);
 
-      const highlighted = parts.map(part => {
-        if (part.startsWith('<')) {
-          // It's a tag, don't modify
-          return part;
-        } else {
-          // It's text content, highlight matches
-          return part.replace(
-            regex,
-            '<span class="bg-yellow-900/50 text-yellow-200">$1</span>'
-          );
-        }
-      }).join('');
+      const highlighted = parts
+        .map((part) => {
+          if (part.startsWith("<")) {
+            // It's a tag, don't modify
+            return part;
+          } else {
+            // It's text content, highlight matches
+            return part.replace(
+              regex,
+              '<span class="bg-yellow-900/50 text-yellow-200">$1</span>',
+            );
+          }
+        })
+        .join("");
 
       return highlighted;
     } catch (e) {
@@ -228,11 +236,16 @@ export default function Man3() {
         const viewer = contentViewerRef.current;
         if (viewer) {
           // Find all highlighted matches in the page
-          const highlights = viewer.querySelectorAll('.man-page-content span.bg-yellow-900\\/50');
+          const highlights = viewer.querySelectorAll(
+            ".man-page-content span.bg-yellow-900\\/50",
+          );
 
           // Use snippet index if available, otherwise find first match near target line
           let targetHighlight = null;
-          if (targetSnippetIndex !== null && highlights.length > targetSnippetIndex) {
+          if (
+            targetSnippetIndex !== null &&
+            highlights.length > targetSnippetIndex
+          ) {
             targetHighlight = highlights[targetSnippetIndex];
           } else if (highlights.length > 0) {
             targetHighlight = highlights[0];
@@ -263,33 +276,35 @@ export default function Man3() {
         setTimeout(() => {
           const element = contentViewerRef.current.querySelector(hash);
           if (element) {
-            element.scrollIntoView({ behavior: 'smooth' });
+            element.scrollIntoView({ behavior: "smooth" });
           }
         }, 50);
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
   // Convert HTML with pre blocks into JSX with CodeBlock components
   const decodeHtmlEntities = (text) => {
-    const textarea = document.createElement('textarea');
+    const textarea = document.createElement("textarea");
     textarea.innerHTML = text;
     return textarea.value;
   };
 
   const extractCodeFromFragment = (fragmentHtml) => {
     // Create a temporary DOM element to parse the HTML
-    const temp = document.createElement('div');
+    const temp = document.createElement("div");
     temp.innerHTML = fragmentHtml;
 
     // Remove all line number spans and anchors from the clone
-    temp.querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]').forEach((el) => el.remove());
+    temp
+      .querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]')
+      .forEach((el) => el.remove());
 
     // Unwrap fold open/close divs (keep their contents)
-    temp.querySelectorAll('div.foldopen, div.foldclose').forEach((el) => {
+    temp.querySelectorAll("div.foldopen, div.foldclose").forEach((el) => {
       const parent = el.parentNode;
       while (el.firstChild) {
         parent.insertBefore(el.firstChild, el);
@@ -299,14 +314,14 @@ export default function Man3() {
 
     // Get all line divs and extract their text
     const lines = [];
-    temp.querySelectorAll('div.line').forEach((lineDiv) => {
-      const lineText = lineDiv.textContent.trim();
+    temp.querySelectorAll("div.line").forEach((lineDiv) => {
+      const lineText = lineDiv.textContent.trimEnd();
       if (lineText) {
         lines.push(lineText);
       }
     });
 
-    return lines.join('\n').trim();
+    return lines.join("\n").trimEnd();
   };
 
   const renderContentWithCodeBlocks = (html) => {
@@ -321,7 +336,11 @@ export default function Man3() {
         // Add HTML before pre tag
         if (preMatch[1].trim()) {
           elements.push(
-            <div key={`html-${elements.length}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: preMatch[1] }} />
+            <div
+              key={`html-${elements.length}`}
+              className="man-page-html"
+              dangerouslySetInnerHTML={{ __html: preMatch[1] }}
+            />,
           );
         }
 
@@ -332,7 +351,7 @@ export default function Man3() {
           elements.push(
             <CodeBlock key={`code-${elements.length}`} language="c">
               {codeContent}
-            </CodeBlock>
+            </CodeBlock>,
           );
         }
 
@@ -349,7 +368,11 @@ export default function Man3() {
           const htmlBefore = remaining.substring(0, fragmentStart);
           if (htmlBefore.trim()) {
             elements.push(
-              <div key={`html-${elements.length}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: htmlBefore }} />
+              <div
+                key={`html-${elements.length}`}
+                className="man-page-html"
+                dangerouslySetInnerHTML={{ __html: htmlBefore }}
+              />,
             );
           }
         }
@@ -360,19 +383,19 @@ export default function Man3() {
         let inTag = false;
 
         for (let i = fragmentStart; i < remaining.length; i++) {
-          if (remaining[i] === '<') {
+          if (remaining[i] === "<") {
             inTag = true;
             // Check if it's opening or closing
-            if (remaining[i + 1] === '/') {
+            if (remaining[i + 1] === "/") {
               // Closing tag
-              if (remaining.substring(i, i + 6) === '</div>') {
+              if (remaining.substring(i, i + 6) === "</div>") {
                 depth--;
                 if (depth === 0) {
                   fragmentEnd = i + 6;
                   break;
                 }
               }
-            } else if (remaining.substring(i, i + 5) === '<div ') {
+            } else if (remaining.substring(i, i + 5) === "<div ") {
               // Opening div tag
               depth++;
             }
@@ -386,7 +409,7 @@ export default function Man3() {
           elements.push(
             <CodeBlock key={`code-${elements.length}`} language="c">
               {codeContent}
-            </CodeBlock>
+            </CodeBlock>,
           );
         }
 
@@ -398,13 +421,21 @@ export default function Man3() {
       // No more code blocks, add remaining HTML
       if (remaining.trim()) {
         elements.push(
-          <div key={`html-${elements.length}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: remaining }} />
+          <div
+            key={`html-${elements.length}`}
+            className="man-page-html"
+            dangerouslySetInnerHTML={{ __html: remaining }}
+          />,
         );
       }
       break;
     }
 
-    return elements.length > 0 ? elements : <div dangerouslySetInnerHTML={{ __html: html }} />;
+    return elements.length > 0 ? (
+      elements
+    ) : (
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+    );
   };
 
   return (
@@ -428,7 +459,9 @@ export default function Man3() {
             {/* Search Box */}
             <div className="w-full">
               <div className="flex items-center gap-4">
-                <label className="text-lg font-medium text-gray-300 whitespace-nowrap">Search:</label>
+                <label className="text-lg font-medium text-gray-300 whitespace-nowrap">
+                  Search:
+                </label>
                 <div className="relative flex-1">
                   <input
                     type="text"
@@ -447,16 +480,16 @@ export default function Man3() {
                   )}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">Standard regex syntax supported</p>
+              <p className="text-xs text-gray-500 mt-2">
+                Standard regex syntax supported
+              </p>
             </div>
             <p className="text-sm text-gray-400 mt-3 text-center">
-              {searching ? (
-                "Searching..."
-              ) : filesMatched > 0 ? (
-                `${filesMatched} file${filesMatched !== 1 ? "s" : ""} matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
-              ) : (
-                "No results"
-              )}
+              {searching
+                ? "Searching..."
+                : filesMatched > 0
+                  ? `${filesMatched} file${filesMatched !== 1 ? "s" : ""} matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
+                  : "No results"}
             </p>
           </header>
 
@@ -494,7 +527,7 @@ export default function Man3() {
                           <div className="text-xs text-gray-400 mt-1 line-clamp-2">
                             {highlightMatches(
                               page.title || page.name,
-                              searchQuery
+                              searchQuery,
                             )}
                           </div>
                         </button>
@@ -504,21 +537,31 @@ export default function Man3() {
                           <div className="px-4 pb-3 space-y-2">
                             {page.snippets.map((snippet, idx) => {
                               const snippetLines = snippet.text.split("\n");
-                              const [beforeLineNum, matchLineNum, afterLineNum] = snippet.lineNumbers;
+                              const [
+                                beforeLineNum,
+                                matchLineNum,
+                                afterLineNum,
+                              ] = snippet.lineNumbers;
                               return (
                                 <div
                                   key={idx}
-                                  onClick={() => loadPageContent(page.name, snippet.lineNumbers[1], idx)}
+                                  onClick={() =>
+                                    loadPageContent(
+                                      page.name,
+                                      snippet.lineNumbers[1],
+                                      idx,
+                                    )
+                                  }
                                   className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
                                 >
                                   <div className="flex gap-2">
                                     {/* Line numbers column */}
                                     <div className="text-gray-600 text-right flex-shrink-0 select-none">
-                                      {snippet.lineNumbers.map((lineNum, lineIdx) => (
-                                        <div key={lineIdx}>
-                                          {lineNum}
-                                        </div>
-                                      ))}
+                                      {snippet.lineNumbers.map(
+                                        (lineNum, lineIdx) => (
+                                          <div key={lineIdx}>{lineNum}</div>
+                                        ),
+                                      )}
                                     </div>
                                     {/* Code content */}
                                     <div className="whitespace-pre-wrap break-words flex-1">
@@ -526,7 +569,8 @@ export default function Man3() {
                                         <div
                                           key={lineIdx}
                                           className={
-                                            lineIdx === Math.floor(snippetLines.length / 2)
+                                            lineIdx ===
+                                            Math.floor(snippetLines.length / 2)
                                               ? "bg-gray-800/50 px-1 -mx-1"
                                               : ""
                                           }
@@ -541,7 +585,15 @@ export default function Man3() {
                             })}
                             {page.totalMatchesInFile > page.snippets.length && (
                               <div className="bg-yellow-900/50 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-200">
-                                ... {page.totalMatchesInFile - page.snippets.length} more matching result{page.totalMatchesInFile - page.snippets.length !== 1 ? "s" : ""} for this file
+                                ...{" "}
+                                {page.totalMatchesInFile - page.snippets.length}{" "}
+                                more matching result
+                                {page.totalMatchesInFile -
+                                  page.snippets.length !==
+                                1
+                                  ? "s"
+                                  : ""}{" "}
+                                for this file
                               </div>
                             )}
                           </div>
@@ -556,7 +608,10 @@ export default function Man3() {
             {/* Content viewer */}
             <div className="flex-1 min-w-0">
               {selectedPageContent ? (
-                <div ref={contentViewerRef} className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]">
+                <div
+                  ref={contentViewerRef}
+                  className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]"
+                >
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
                     <h2 className="text-2xl font-bold text-purple-400">
                       {selectedPageName}(3)
