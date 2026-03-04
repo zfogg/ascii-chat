@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>homedir.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">homedir.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">homedir.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">homedir.c - Temporary GPG homedir management implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>gpg_homedir</b>
+  <br/>
+  Internal structure for temporary GPG homedir.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">gpg_homedir_t * <b>gpg_homedir_create</b> (void)
+  <br/>
+  const char * <b>gpg_homedir_path</b> (const gpg_homedir_t *homedir)
+  <br/>
+  void <b>gpg_homedir_destroy</b> (gpg_homedir_t *homedir)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Temporary GPG homedir management implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>homedir.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="gpg_homedir_t_*_gpg_homedir_create_(void_)"><a class="permalink" href="#gpg_homedir_t_*_gpg_homedir_create_(void_)">gpg_homedir_t
+  * gpg_homedir_create (void )</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>homedir.c</b>.</p>
+<pre>22                                         {
+23   gpg_homedir_t *homedir = SAFE_MALLOC(sizeof(gpg_homedir_t), gpg_homedir_t *);
+24   if (!homedir) {
+25     log_error(&quot;Failed to allocate memory for GPG homedir handle&quot;);
+26     return NULL;
+27   }
+28 
+29   /* Create temporary directory using platform abstraction */
+30   if (platform_mkdtemp(homedir-&gt;path, sizeof(homedir-&gt;path), &quot;ascii-chat-gpg&quot;) != 0) {
+31     log_error(&quot;Failed to create temporary GPG homedir&quot;);
+32     SAFE_FREE(homedir);
+33     return NULL;
+34   }
+35 
+36   /* Restrict permissions to owner only (mode 0700) using platform abstraction */
+37   if (platform_chmod(homedir-&gt;path, 0700) != 0) {
+38     log_warn(&quot;Failed to set permissions on GPG homedir, attempting cleanup&quot;);
+39     platform_rmdir_recursive(homedir-&gt;path);
+40     SAFE_FREE(homedir);
+41     return NULL;
+42   }
+43 
+44   log_debug(&quot;Created temporary GPG homedir: %s&quot;, homedir-&gt;path);
+45   return homedir;
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_gpg_homedir_destroy_(gpg_homedir_t_*_homedir)"><a class="permalink" href="#void_gpg_homedir_destroy_(gpg_homedir_t_*_homedir)">void
+  gpg_homedir_destroy (gpg_homedir_t * homedir)</a></h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>homedir.c</b>.</p>
+<pre>55                                                  {
+56   if (!homedir) {
+57     return;
+58   }
+59 
+60   /* Recursively delete the entire directory and all contents using platform abstraction */
+61   if (platform_rmdir_recursive(homedir-&gt;path) != 0) {
+62     log_warn(&quot;Failed to completely clean up GPG homedir: %s&quot;, homedir-&gt;path);
+63   } else {
+64     log_debug(&quot;Cleaned up temporary GPG homedir: %s&quot;, homedir-&gt;path);
+65   }
+66 
+67   SAFE_FREE(homedir);
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_gpg_homedir_path_(const_gpg_homedir_t_*_homedir)"><a class="permalink" href="#const_char_*_gpg_homedir_path_(const_gpg_homedir_t_*_homedir)">const
+  char * gpg_homedir_path (const gpg_homedir_t * homedir)</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>homedir.c</b>.</p>
+<pre>48                                                            {
+49   if (!homedir) {
+50     return NULL;
+51   }
+52   return homedir-&gt;path;
+53 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

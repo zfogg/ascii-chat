@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>render.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">render.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">render.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">render.h - Centralized render loop abstraction for all display
+    modes.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>bool</b>(* <b>session_should_exit_fn</b>) (void
+    *user_data)
+  <br/>
+  Exit condition callback type. typedef image_t *(* <b>session_capture_fn</b>)
+    (void *user_data)
+  <br/>
+  Capture callback for event-driven frame source. typedef void(*
+    <b>session_sleep_for_frame_fn</b>) (void *user_data)
+  <br/>
+  Sleep callback for custom frame timing. typedef void(*
+    <b>session_keyboard_handler_fn</b>) (<b>session_capture_ctx_t</b> *capture,
+    int key, void *user_data)
+  <br/>
+  Keyboard input handler callback type.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>session_render_loop</b>
+    (<b>session_capture_ctx_t</b> *capture, <b>session_display_ctx_t</b>
+    *display, <b>session_should_exit_fn</b> <b>should_exit</b>,
+    <b>session_capture_fn</b> capture_cb, <b>session_sleep_for_frame_fn</b>
+    sleep_cb, <b>session_keyboard_handler_fn</b> keyboard_handler, void
+    *user_data)
+  <br/>
+  Unified render loop for all display modes.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Centralized render loop abstraction for all display modes.</p>
+<p class="Pp">Provides a single, unified render loop that handles:</p>
+<ul class="Bl-bullet">
+  <li>Frame rate limiting (adaptive sleep)</li>
+  <li>Frame capture from media source or custom callbacks</li>
+  <li>ASCII art conversion with palette and terminal capabilities</li>
+  <li>Terminal rendering with snapshot mode support</li>
+  <li>Memory cleanup</li>
+</ul>
+<p class="Pp">All display modes (mirror, client, discovery) use this single
+    loop. Modes can either:</p>
+<ul class="Bl-bullet">
+  <li>Pass capture context (NULL callbacks) for synchronous operation</li>
+  <li>Pass custom callbacks (NULL capture) for event-driven operation</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>common/session/render.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

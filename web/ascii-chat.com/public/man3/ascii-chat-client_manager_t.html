@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client_manager_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client_manager_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client_manager_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client_manager_t - Global client manager structure for server-side
+    client coordination.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/server/client.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">client_info_t <b>clients</b> [MAX_CLIENTS]
+  <br/>
+  Array of client_info_t structures (backing storage). client_info_t *
+    <b>clients_by_id</b>
+  <br/>
+  uthash head pointer for O(1) client_id -&gt; client_info_t* lookups int
+    <b>client_count</b>
+  <br/>
+  Current number of active clients. mutex_t <b>mutex</b>
+  <br/>
+  Legacy mutex (mostly replaced by rwlock).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Global client manager structure for server-side client
+    coordination.</p>
+<p class="Pp">Manages all connected clients in the ascii-chat server. Provides
+    O(1) client lookup via hashtable while maintaining array-based storage for
+    iteration. This structure serves as the central coordination point for
+    client lifecycle management.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ARCHITECTURE:"><a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE:
+  </a></h1>
+<p class="Pp">The client manager uses a dual-storage approach:</p>
+<ul class="Bl-bullet">
+  <li>Array (clients[]): Fast iteration, stable pointers, sequential access</li>
+  <li>Hashtable (client_hashtable): O(1) lookup by client_id</li>
+</ul>
+<p class="Pp">This design provides:</p>
+<ul class="Bl-bullet">
+  <li>O(1) lookups via hashtable</li>
+  <li>O(n) iteration via array (for stats, rendering, etc.)</li>
+  <li>Stable pointers (array elements don't move)</li>
+  <li>Linear memory layout (cache-friendly)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
+  SAFETY: </a></h1>
+<p class="Pp">Protected by g_client_manager_rwlock (reader-writer lock):</p>
+<ul class="Bl-bullet">
+  <li>Read operations (lookups, stats): Acquire read lock (concurrent)</li>
+  <li>Write operations (add/remove): Acquire write lock (exclusive)</li>
+</ul>
+<p class="Pp">LOCK ORDERING:</p>
+<ul class="Bl-bullet">
+  <li>Always acquire g_client_manager_rwlock BEFORE per-client mutexes</li>
+  <li>Prevents deadlocks in multi-client operations</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="STRUCTURE_FIELDS:"><a class="permalink" href="#STRUCTURE_FIELDS:">STRUCTURE
+  FIELDS: </a></h1>
+<ul class="Bl-bullet">
+  <li>clients[]: Array of client_info_t structures (backing storage)</li>
+  <li>client_hashtable: Hashtable for O(1) client_id -&gt; client_info_t*
+      lookups</li>
+  <li>client_count: Current number of active clients</li>
+  <li>mutex: Legacy mutex (mostly replaced by rwlock)</li>
+  <li>next_client_id: Monotonic counter for unique client IDs</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The hashtable uses client_id as key and points to
+  elements in clients[] array.
+<p class="Pp"></p>
+<p class="Pp">next_client_id is atomic for thread-safe ID assignment.</p>
+<p class="Pp"></p>
+<p class="Pp">All client access should go through <b>find_client_by_id()</b> or
+    <b>find_client_by_socket()</b> to ensure proper locking.</p>
+</div>
+<p class="Pp">Definition at line <b>63</b> of file <b>server/client.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_client_manager_t::client_count"><a class="permalink" href="#int_client_manager_t::client_count">int
+  client_manager_t::client_count</a></h2>
+<p class="Pp">Current number of active clients.</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>server/client.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="client_info_t_client_manager_t::clients_MAX_CLIENTS_"><a class="permalink" href="#client_info_t_client_manager_t::clients_MAX_CLIENTS_">client_info_t
+  client_manager_t::clients[MAX_CLIENTS]</a></h2>
+<p class="Pp">Array of client_info_t structures (backing storage).</p>
+<p class="Pp">Definition at line <b>65</b> of file <b>server/client.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="client_info_t*_client_manager_t::clients_by_id"><a class="permalink" href="#client_info_t*_client_manager_t::clients_by_id">client_info_t*
+  client_manager_t::clients_by_id</a></h2>
+<p class="Pp">uthash head pointer for O(1) client_id -&gt; client_info_t*
+    lookups</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>server/client.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_client_manager_t::mutex"><a class="permalink" href="#mutex_t_client_manager_t::mutex">mutex_t
+  client_manager_t::mutex</a></h2>
+<p class="Pp">Legacy mutex (mostly replaced by rwlock).</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>server/client.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

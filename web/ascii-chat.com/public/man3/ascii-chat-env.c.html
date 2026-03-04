@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>env.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">env.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">env.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">env.c - Environment variable utilities with stack-based prompt
+    responses.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>env_pop_prompt_response</b> (char *response_out,
+    size_t response_size)
+  <br/>
+  Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE stack.
+    <b>bool</b> <b>env_has_prompt_response</b> (void)
+  <br/>
+  Check if ASCII_CHAT_QUESTION_PROMPT_RESPONSE has any responses available.
+    <b>bool</b> <b>env_validate_prompt_response_format</b> (void)
+  <br/>
+  Validate ASCII_CHAT_QUESTION_PROMPT_RESPONSE format.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Environment variable utilities with stack-based prompt
+  responses.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>env.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> env_has_prompt_response (void )</h2>
+<p class="Pp">Check if ASCII_CHAT_QUESTION_PROMPT_RESPONSE has any responses
+    available.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if at least one response is available, false
+  otherwise</div>
+<p class="Pp">Definition at line <b>214</b> of file <b>env.c</b>.</p>
+<pre>214                                    {
+215   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+216   if (!env_value || env_value[0] == '\0' || env_value[0] == ';') {
+217     return false;
+218   }
+219 
+220   // Check if it's all semicolons
+221   for (const char *p = env_value; *p; p++) {
+222     if (*p != ';') {
+223       return true;
+224     }
+225   }
+226 
+227   return false;
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> env_pop_prompt_response (char * response_out, size_t
+  response_size)</h2>
+<p class="Pp">Pop the first response from ASCII_CHAT_QUESTION_PROMPT_RESPONSE
+    stack. Format: &quot;response1;response2;response3&quot; or
+    &quot;response1;response2;response3;&quot; This function extracts the first
+    response and updates the environment variable to contain the remaining
+    responses.</p>
+<p class="Pp"></p>
+<p class="Pp">Escaping: Use backslash to include literal semicolons or
+    backslashes:</p>
+<ul class="Bl-bullet">
+  <li>\; &#x2192; ; (literal semicolon)</li>
+  <li>\ &#x2192; \ (literal backslash)</li>
+</ul>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>&quot;y;n;123&quot; -&gt; returns &quot;y&quot;, sets env to
+      &quot;n;123&quot;</li>
+  <li>&quot;password&quot; -&gt; returns &quot;password&quot;, sets env to
+      &quot;&quot;</li>
+  <li>&quot;y;&quot; -&gt; returns &quot;y&quot;, sets env to &quot;&quot;</li>
+  <li>&quot;pass\;word;y&quot; -&gt; returns &quot;pass;word&quot;, sets env to
+      &quot;y&quot;</li>
+  <li>&quot;path\\to\\file;n&quot; -&gt; returns &quot;path\to\file&quot;, sets
+      env to &quot;n&quot;</li>
+  <li>&quot;&quot; -&gt; returns NULL</li>
+  <li>&quot;;;y&quot; -&gt; returns NULL (invalid format)</li>
+  <li>&quot;;y&quot; -&gt; returns NULL (invalid format)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>response_out</i> Buffer to store the popped response
+  (must be at least 256 bytes)
+<br/>
+<i>response_size</i> Size of response_out buffer</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if a response was successfully popped, false
+  otherwise</div>
+<p class="Pp">Definition at line <b>93</b> of file <b>env.c</b>.</p>
+<pre>93                                                                        {
+94   if (!response_out || response_size &lt; 2) {
+95     return false;
+96   }
+97 
+98   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+99   if (!env_value || env_value[0] == '\0') {
+100     return false;
+101   }
+102 
+103   // Validate: no leading semicolon (unless escaped)
+104   if (env_value[0] == ';') {
+105     log_warn(&quot;Invalid ASCII_CHAT_QUESTION_PROMPT_RESPONSE format: leading semicolon&quot;);
+106     return false;
+107   }
+108 
+109   // Find the first unescaped semicolon
+110   const char *semicolon = find_unescaped_semicolon(env_value);
+111 
+112   if (semicolon == NULL) {
+113     // No semicolon - this is the last (or only) response
+114     size_t len = strlen(env_value);
+115     if (len == 0) {
+116       return false;
+117     }
+118 
+119     // Validate: ensure it's not empty
+120     if (len &gt;= response_size) {
+121       log_warn(&quot;Response too long: %zu bytes (max: %zu)&quot;, len, response_size - 1);
+122       return false;
+123     }
+124 
+125     // Copy the response
+126     SAFE_STRNCPY(response_out, env_value, response_size);
+127 
+128     // Unescape the response (\; &#x2192; ; and \\ &#x2192; \)
+129     unescape_response(response_out);
+130 
+131     // Clear the environment variable
+132 #ifdef _WIN32
+133     _putenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE=&quot;);
+134 #else
+135     unsetenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+136 #endif
+137 
+138     log_dev(&quot;Popped last response from stack: '%s' (cleared env)&quot;, response_out);
+139     return true;
+140   }
+141 
+142   // Calculate response length
+143   size_t response_len = (size_t)(semicolon - env_value);
+144 
+145   // Validate: no empty segment
+146   if (response_len == 0) {
+147     log_warn(&quot;Invalid ASCII_CHAT_QUESTION_PROMPT_RESPONSE format: empty segment&quot;);
+148     return false;
+149   }
+150 
+151   if (response_len &gt;= response_size) {
+152     log_warn(&quot;Response too long: %zu bytes (max: %zu)&quot;, response_len, response_size - 1);
+153     return false;
+154   }
+155 
+156   // Copy the first response
+157   memcpy(response_out, env_value, response_len);
+158   response_out[response_len] = '\0';
+159 
+160   // Unescape the response (\; &#x2192; ; and \\ &#x2192; \)
+161   unescape_response(response_out);
+162 
+163   // Calculate remaining stack (skip the semicolon)
+164   const char *remaining = semicolon + 1;
+165 
+166   // Validate: if remaining is empty or only semicolons, clear the env
+167   bool remaining_valid = false;
+168   for (const char *p = remaining; *p; p++) {
+169     if (*p != ';') {
+170       remaining_valid = true;
+171       break;
+172     }
+173   }
+174 
+175   // Update environment variable with remaining responses
+176   if (remaining_valid &amp;&amp; remaining[0] != '\0') {
+177     char new_env[1024];
+178     int written = snprintf(new_env, sizeof(new_env), &quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE=%s&quot;, remaining);
+179     if (written &lt; 0 || (size_t)written &gt;= sizeof(new_env)) {
+180       log_warn(&quot;Failed to format new environment variable&quot;);
+181       return false;
+182     }
+183 
+184 #ifdef _WIN32
+185     _putenv(new_env);
+186 #else
+187     // For POSIX, we need to use setenv
+188     if (setenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;, remaining, 1) != 0) {
+189       log_warn(&quot;Failed to update ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+190       return false;
+191     }
+192 #endif
+193 
+194     log_debug(&quot;Popped response from stack: '%s' (remaining: '%s')&quot;, response_out, remaining);
+195   } else {
+196     // No valid remaining responses - clear the env
+197 #ifdef _WIN32
+198     _putenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE=&quot;);
+199 #else
+200     unsetenv(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+201 #endif
+202 
+203     log_debug(&quot;Popped response from stack: '%s' (cleared env)&quot;, response_out);
+204   }
+205 
+206   return true;
+207 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> env_validate_prompt_response_format (void )</h2>
+<p class="Pp">Validate ASCII_CHAT_QUESTION_PROMPT_RESPONSE format. Valid
+    formats:</p>
+<ul class="Bl-bullet">
+  <li>&quot;y&quot;</li>
+  <li>&quot;y;n&quot;</li>
+  <li>&quot;y;n;123&quot;</li>
+  <li>&quot;y;n;123;&quot;</li>
+  <li>&quot;pass\;word;y&quot; (escaped semicolon)</li>
+  <li>&quot;path\\to\\file&quot; (escaped backslash)</li>
+</ul>
+<p class="Pp">Invalid formats:</p>
+<ul class="Bl-bullet">
+  <li>&quot;&quot;</li>
+  <li>&quot;;&quot;</li>
+  <li>&quot;;y&quot;</li>
+  <li>&quot;y;;n&quot; (empty segment)</li>
+  <li>&quot;;;&quot;</li>
+</ul>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if format is valid, false otherwise</div>
+<p class="Pp">Definition at line <b>250</b> of file <b>env.c</b>.</p>
+<pre>250                                                {
+251   const char *env_value = SAFE_GETENV(&quot;ASCII_CHAT_QUESTION_PROMPT_RESPONSE&quot;);
+252   if (!env_value) {
+253     return true; // Not set is valid (no automated responses)
+254   }
+255 
+256   if (env_value[0] == '\0') {
+257     return true; // Empty is valid (no automated responses)
+258   }
+259 
+260   // Invalid: leading semicolon (unless escaped)
+261   if (env_value[0] == ';') {
+262     return false;
+263   }
+264 
+265   // Check for consecutive unescaped semicolons or empty segments
+266   const char *p = env_value;
+267   bool last_was_semicolon = false;
+268 
+269   while (*p) {
+270     if (*p == '\\' &amp;&amp; *(p + 1)) {
+271       // Skip escaped character
+272       last_was_semicolon = false;
+273       p += 2;
+274       continue;
+275     }
+276     if (*p == ';') {
+277       if (last_was_semicolon) {
+278         return false; // Consecutive unescaped semicolons (empty segment)
+279       }
+280       last_was_semicolon = true;
+281     } else {
+282       last_was_semicolon = false;
+283     }
+284     p++;
+285   }
+286 
+287   // Trailing semicolon is allowed
+288   return true;
+289 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

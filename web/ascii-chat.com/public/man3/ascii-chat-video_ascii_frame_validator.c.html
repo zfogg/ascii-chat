@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>frame_validator.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">frame_validator.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">frame_validator.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">frame_validator.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>frame_validate_integrity</b> (const char
+    *frame_data, size_t frame_size)
+  <br/>
+  size_t <b>frame_get_valid_end</b> (const char *frame_data, size_t frame_size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_frame_get_valid_end_(const_char_*_frame_data,_size_t_frame_size)"><a class="permalink" href="#size_t_frame_get_valid_end_(const_char_*_frame_data,_size_t_frame_size)">size_t
+  frame_get_valid_end (const char * frame_data, size_t frame_size)</a></h2>
+<p class="Pp">Definition at line <b>69</b> of file
+    <b>video/ascii/frame_validator.c</b>.</p>
+<pre>69                                                                       {
+70   if (!frame_data || frame_size &lt; 4) {
+71     return frame_size;
+72   }
+73 
+74   size_t reset_pos = frame_find_final_reset(frame_data, frame_size);
+75   if (reset_pos == SIZE_MAX) {
+76     return frame_size; // No reset found, assume all data is valid
+77   }
+78 
+79   return reset_pos + 4; // Return position after the reset sequence
+80 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> frame_validate_integrity (const char * frame_data,
+  size_t frame_size)</h2>
+<p class="Pp">Definition at line <b>33</b> of file
+    <b>video/ascii/frame_validator.c</b>.</p>
+<pre>33                                                                          {
+34   if (!frame_data || frame_size == 0) {
+35     return false;
+36   }
+37 
+38   size_t reset_pos = frame_find_final_reset(frame_data, frame_size);
+39   if (reset_pos == SIZE_MAX) {
+40     // No reset sequence found - this is suspicious
+41     log_warn(&quot;FRAME_VALIDATION: No ESC[0m reset sequence found in %zu byte frame&quot;, frame_size);
+42     return false;
+43   }
+44 
+45   size_t expected_end = reset_pos + 4; // 4 bytes for ESC[0m
+46 
+47   // Check if there's garbage after the reset
+48   if (expected_end &lt; frame_size) {
+49     // Calculate how much garbage we have
+50     size_t garbage_size = frame_size - expected_end;
+51 
+52     // Check what the garbage looks like
+53     const uint8_t *garbage = (const uint8_t *)&amp;frame_data[expected_end];
+54 
+55     // Log the garbage for debugging
+56     log_warn(&quot;FRAME_VALIDATION: Found %zu garbage bytes after reset at offset %zu (frame size %zu): &quot;
+57              &quot;[%02x %02x %02x %02x ...]&quot;,
+58              garbage_size, expected_end, frame_size, garbage[0], garbage_size &gt; 1 ? garbage[1] : 0,
+59              garbage_size &gt; 2 ? garbage[2] : 0, garbage_size &gt; 3 ? garbage[3] : 0);
+60 
+61     return false;
+62   }
+63 
+64   // Frame looks valid
+65   log_debug(&quot;FRAME_VALIDATION: Frame OK (%zu bytes, ends at offset %zu)&quot;, frame_size, expected_end);
+66   return true;
+67 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

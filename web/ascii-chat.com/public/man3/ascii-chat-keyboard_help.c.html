@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keyboard_help.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keyboard_help.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keyboard_help.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keyboard_help.c - Keyboard help overlay TUI rendering
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ENABLED_COLOR</b> LOG_COLOR_INFO /* Green */
+  <br/>
+  #define <b>DISABLED_COLOR</b> LOG_COLOR_ERROR /* Red */
+  <br/>
+  #define <b>APPEND</b>(fmt, ...)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>keyboard_help_render</b> (<b>session_display_ctx_t</b>
+    *ctx)
+  <br/>
+  Render keyboard help centered on terminal.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Keyboard help overlay TUI rendering implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>keyboard_help.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_APPEND(_fmt,__"><a class="permalink" href="#_define_APPEND(_fmt,__">#define
+  APPEND( fmt, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  int written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, fmt, ##__VA_ARGS__);                               \
+<br/>
+  if (written &gt; 0) {                                                                                                 \
+<br/>
+    buf_pos += written;                                                                                              \
+<br/>
+  }                                                                                                                  \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DISABLED_COLOR___LOG_COLOR_ERROR_/*_Red_*/"><a class="permalink" href="#_define_DISABLED_COLOR___LOG_COLOR_ERROR_/*_Red_*/">#define
+  DISABLED_COLOR LOG_COLOR_ERROR /* Red */</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>keyboard_help.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ENABLED_COLOR___LOG_COLOR_INFO___/*_Green_*/"><a class="permalink" href="#_define_ENABLED_COLOR___LOG_COLOR_INFO___/*_Green_*/">#define
+  ENABLED_COLOR LOG_COLOR_INFO /* Green */</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>keyboard_help.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_keyboard_help_render_("><a class="permalink" href="#void_keyboard_help_render_(">void
+  keyboard_help_render (<b>session_display_ctx_t</b> * ctx)</a></h2>
+<p class="Pp">Render keyboard help centered on terminal.</p>
+<p class="Pp">Definition at line <b>318</b> of file <b>keyboard_help.c</b>.</p>
+<pre>318                                                       {
+319   if (!ctx) {
+320     log_error(&quot;keyboard_help_render: ctx is NULL!&quot;);
+321     return;
+322   }
+323 
+324   log_info(&quot;keyboard_help_render: STARTING&quot;);
+325 
+326   // Get terminal dimensions
+327   int term_width = (int)terminal_get_effective_width();
+328   int term_height = (int)terminal_get_effective_height();
+329   log_info(&quot;keyboard_help_render: term_width=%d, term_height=%d&quot;, term_width, term_height);
+330 
+331   // Use available terminal width, capped at preferred width
+332   int box_width = term_width;
+333   if (box_width &gt; 48)
+334     box_width = 48; // Cap at preferred width
+335   if (box_width &lt; 30)
+336     box_width = 30; // Absolute minimum for readability
+337 
+338   // Calculate centering position (true mathematical centering)
+339   // Horizontal centering
+340   int start_col = (term_width - box_width) / 2;
+341   if (start_col &lt; 0) {
+342     start_col = 0;
+343   }
+344 
+345   // Calculate box height dynamically based on content
+346   // With animations separator line added, the standard help screen is 25 rows
+347   int box_height = 25;
+348 
+349   // Vertical centering with dynamic box height
+350   int start_row = (term_height - box_height) / 2 - 3; // -3 offset for proper vertical centering
+351   if (start_row &lt; 0) {
+352     start_row = 0;
+353   }
+354 
+355   // Build help screen content
+356   const size_t BUFFER_SIZE = 8192; // Increased from 4096 to ensure all content fits
+357   char *buffer = SAFE_MALLOC(BUFFER_SIZE, char *);
+358   size_t buf_pos = 0;
+359 
+360 #define APPEND(fmt, ...)                                                                                               \
+361   do {                                                                                                                 \
+362     int written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, fmt, ##__VA_ARGS__);                               \
+363     if (written &gt; 0) {                                                                                                 \
+364       buf_pos += written;                                                                                              \
+365     }                                                                                                                  \
+366   } while (0)
+367 
+368   // Clear screen and position cursor
+369   APPEND(&quot;\033[2J&quot;); // Clear screen
+370   APPEND(&quot;\033[H&quot;);  // Cursor to home
+371 
+372   // Build help screen with proper spacing using UTF-8 width-aware padding
+373   char line_buf[256];
+374   char border_buf[256];
+375 
+376   // Generate top border
+377   APPEND(&quot;\033[%d;%dH&quot;, start_row + 1, start_col + 1);
+378   border_buf[0] = '\0';
+379   strcat(border_buf, &quot;&#x2554;&quot;);
+380   for (int i = 1; i &lt; box_width - 1; i++)
+381     strcat(border_buf, &quot;&#x2550;&quot;);
+382   strcat(border_buf, &quot;&#x2557;&quot;);
+383   APPEND(&quot;%s&quot;, border_buf);
+384 
+385   // Title
+386   APPEND(&quot;\033[%d;%dH&quot;, start_row + 2, start_col + 1);
+387   build_help_line(line_buf, sizeof(line_buf), &quot;ascii-chat Keyboard Shortcuts&quot;, box_width);
+388   APPEND(&quot;%s&quot;, line_buf);
+389 
+390   // Generate separator border
+391   APPEND(&quot;\033[%d;%dH&quot;, start_row + 3, start_col + 1);
+392   border_buf[0] = '\0';
+393   strcat(border_buf, &quot;&#x2560;&quot;);
+394   for (int i = 1; i &lt; box_width - 1; i++)
+395     strcat(border_buf, &quot;&#x2550;&quot;);
+396   strcat(border_buf, &quot;&#x2563;&quot;);
+397   APPEND(&quot;%s&quot;, border_buf);
+398 
+399   // Navigation section
+400   int current_row = 4;
+401   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+402                    &quot;Navigation &amp; Control:&quot;);
+403   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+404                    &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
+405   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+406                    &quot;?       Toggle this help screen&quot;);
+407   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+408                    &quot;Esc     Close help / Quit app&quot;);
+409 
+410   // Check if media is provided (only show Space/Seek keys if media is loaded)
+411   const char *media_url = GET_OPTION(media_url);
+412   const char *media_file = GET_OPTION(media_file);
+413   bool has_media = (media_url &amp;&amp; strlen(media_url) &gt; 0) || (media_file &amp;&amp; strlen(media_file) &gt; 0);
+414 
+415   if (has_media) {
+416     append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+417                      &quot;Space   Play/Pause (files only)&quot;);
+418     append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+419                      &quot;&#x2190; / &#x2192;   Seek backward/forward 30s&quot;);
+420   }
+421 
+422   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+423                    &quot;m / M   Mute/Unmute audio&quot;);
+424   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+425                    &quot;&#x2191; / &#x2193;   Volume up/down (10%)&quot;);
+426   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+427                    &quot;c / C   Cycle color mode&quot;);
+428   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+429                    &quot;f / F   Cycle color filter&quot;);
+430   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+431                    &quot;x / X   Flip webcam horizontally&quot;);
+432   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+433                    &quot;y / Y   Flip webcam vertically&quot;);
+434   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+435                    &quot;r / R   Cycle render mode&quot;);
+436 
+437 #ifndef NDEBUG
+438   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+439                    &quot;`       Print current sync primitive state&quot;);
+440 #endif
+441 
+442   // Blank line before settings section
+443   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
+444 
+445   // Current settings section
+446   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Current Settings:&quot;);
+447   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
+448 
+449   // Get current option values
+450   double current_volume = GET_OPTION(speakers_volume);
+451   int current_color_mode = (int)GET_OPTION(color_mode);
+452   int current_render_mode = (int)GET_OPTION(render_mode);
+453   color_filter_t current_color_filter = GET_OPTION(color_filter);
+454   bool flip_x = (bool)GET_OPTION(flip_x);
+455   bool flip_y = (bool)GET_OPTION(flip_y);
+456   bool current_audio = (bool)GET_OPTION(audio_enabled);
+457 
+458   // Format volume bar as &quot;[========  ] 80%&quot;
+459   char volume_bar[32];
+460   format_volume_bar(current_volume, volume_bar, sizeof(volume_bar));
+461 
+462   // Get string values
+463   const char *color_str = color_mode_to_string(current_color_mode);
+464   const char *filter_str = color_filter_to_string(current_color_filter);
+465   const char *render_str = render_mode_to_string(current_render_mode);
+466 
+467   // Create status indicators for flip, audio, and matrix rain
+468   // Format flip status as &quot;rows=X/O cols=X/O&quot; (rows=flip_y, cols=flip_x)
+469   char flip_status[64];
+470   snprintf(flip_status, sizeof(flip_status), &quot;rows=%s cols=%s&quot;, status_indicator(flip_y), status_indicator(flip_x));
+471 
+472   const char *audio_text = status_indicator(current_audio);
+473   bool matrix_rain_enabled = GET_OPTION(matrix_rain);
+474   const char *matrix_text = status_indicator(matrix_rain_enabled);
+475 
+476   // Build settings lines with UTF-8 width-aware padding (ordered to match keybinds: m, &#x2191;/&#x2193;, c, f, x/y, r)
+477   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Audio&quot;,
+478                        audio_text, 6);
+479   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Volume&quot;,
+480                        volume_bar, 6);
+481   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Color&quot;, color_str,
+482                        6);
+483   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Filter&quot;,
+484                        filter_str, 6);
+485   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Render&quot;,
+486                        render_str, 6);
+487   append_settings_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Flip&quot;,
+488                        flip_status, 6);
+489 
+490   // Blank line before animations section
+491   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
+492 
+493   // Animations section
+494   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+495                    &quot;Animations (number key toggle):&quot;);
+496   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width,
+497                    &quot;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&quot;);
+498 
+499   // Format: &quot;(0) Matrix \&quot;Digital Rain\&quot; : X/O&quot;
+500   char animation_line[256];
+501   snprintf(animation_line, sizeof(animation_line), &quot;(0) Matrix \&quot;Digital Rain\&quot; : %s&quot;, matrix_text);
+502   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, animation_line);
+503 
+504   // FPS Counter toggle
+505   char fps_line[256];
+506   snprintf(fps_line, sizeof(fps_line), &quot;(-) FPS Counter : %s&quot;, status_indicator(GET_OPTION(fps_counter)));
+507   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, fps_line);
+508 
+509   // Blank line before footer
+510   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;&quot;);
+511 
+512   // Footer
+513   append_help_line(buffer, &amp;buf_pos, BUFFER_SIZE, start_row, &amp;current_row, start_col, box_width, &quot;Press ? to close&quot;);
+514 
+515   // Bottom border
+516   int remaining_buf = BUFFER_SIZE - buf_pos;
+517   int written = snprintf(buffer + buf_pos, remaining_buf, &quot;\033[%d;%dH&quot;, start_row + current_row, start_col + 1);
+518   if (written &gt; 0) {
+519     buf_pos += written;
+520   }
+521   border_buf[0] = '\0';
+522   strcat(border_buf, &quot;&#x255A;&quot;);
+523   for (int i = 1; i &lt; box_width - 1; i++)
+524     strcat(border_buf, &quot;&#x2550;&quot;);
+525   strcat(border_buf, &quot;&#x255D;&quot;);
+526   written = snprintf(buffer + buf_pos, BUFFER_SIZE - buf_pos, &quot;%s&quot;, border_buf);
+527   if (written &gt; 0) {
+528     buf_pos += written;
+529   }
+530 
+531 #undef APPEND
+532 
+533   log_info(&quot;keyboard_help_render: buffer prepared, buf_pos=%zu&quot;, buf_pos);
+534 
+535   // Write buffer to terminal
+536   session_display_write_raw(ctx, buffer, buf_pos);
+537   log_info(&quot;keyboard_help_render: buffer written to terminal&quot;);
+538 
+539   // Flush output
+540   if (ctx &amp;&amp; session_display_has_tty(ctx)) {
+541     int tty_fd = session_display_get_tty_fd(ctx);
+542     log_info(&quot;keyboard_help_render: tty_fd=%d&quot;, tty_fd);
+543     if (tty_fd &gt;= 0) {
+544       (void)terminal_flush(tty_fd);
+545       log_info(&quot;keyboard_help_render: terminal flushed&quot;);
+546     }
+547   }
+548 
+549   SAFE_FREE(buffer);
+550   log_info(&quot;keyboard_help_render: COMPLETE&quot;);
+551 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>APPEND</b>, <b>bool</b>,
+    <b>color_mode_to_string()</b>, <b>render_mode_to_string()</b>,
+    <b>session_display_get_tty_fd()</b>, <b>session_display_has_tty()</b>,
+    <b>session_display_write_raw()</b>, <b>terminal_flush()</b>,
+    <b>terminal_get_effective_height()</b>, and
+    <b>terminal_get_effective_width()</b>.</p>
+<p class="Pp">Referenced by <b>display_render_frame()</b>,
+    <b>session_handle_keyboard_input()</b>, and
+  <b>session_render_loop()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

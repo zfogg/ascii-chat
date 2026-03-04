@@ -1,0 +1,880 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>module_network(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">module_network(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">module_network(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">module_network - Network</p>
+<p class="Pp">
+  <br/>
+   - &#x1F310; Network I/O, packet protocol, and audio/video streaming</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Topics"><a class="permalink" href="#Topics">Topics</a></h2>
+<br/>
+<p class="Pp"><b>Compression Module</b>
+  <br/>
+  &#x1F4E6; Network compression utilities for ascii-chat <b>Packet Types</b>
+  <br/>
+  &#x1F4E8; Network protocol packet type definitions and structures
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F310; Network I/O, packet protocol, and audio/video
+  streaming</p>
+<p class="Pp">Network operations, packet types, and audio/video networking.
+    Audio/Video Networking</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The Audio/Video Networking module provides the network protocol
+    implementation for audio, video, and ASCII frame packets in ascii-chat. The
+    system handles packet serialization, compression, encryption integration,
+    and message formatting for real-time media streaming over TCP.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/network/av.h</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>ASCII frame packet transmission (text-based video frames)</li>
+  <li>Image frame packet transmission (raw pixel data)</li>
+  <li>Audio packet transmission (single and batched)</li>
+  <li>Protocol message handling (size, audio, text)</li>
+  <li>Compression integration for large packets</li>
+  <li>Cryptographic encryption support</li>
+  <li>Error handling and validation</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Packet_Types"><a class="permalink" href="#Packet_Types">Packet
+  Types</a></h1>
+<p class="Pp">The system handles multiple packet types:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Frame Packets</b>:</p>
+<ul class="Bl-bullet">
+  <li>ASCII frames: Text-based video frames for terminal display</li>
+  <li>Image frames: Raw pixel data (RGB, RGBA, BGR, etc.)</li>
+</ul>
+<p class="Pp"><b>Audio Packets</b>:</p>
+<ul class="Bl-bullet">
+  <li>Single audio packets: Legacy single-packet format (PACKET_TYPE_AUDIO)</li>
+  <li>Audio batch packets: Batched audio samples (PACKET_TYPE_AUDIO_BATCH) -
+      efficient</li>
+</ul>
+<p class="Pp"><b>Message Packets</b>:</p>
+<ul class="Bl-bullet">
+  <li>Size messages: Terminal dimension notifications
+    (PACKET_TYPE_SIZE_MESSAGE)</li>
+  <li>Audio messages: Audio metadata announcements
+    (PACKET_TYPE_AUDIO_MESSAGE)</li>
+  <li>Text messages: Text chat messages (PACKET_TYPE_TEXT_MESSAGE)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Operations"><a class="permalink" href="#Operations">Operations</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Operations"><a class="permalink" href="#Frame_Operations">Frame
+  Operations</a></h2>
+<p class="Pp"><b>ASCII Frame Transmission</b>:</p>
+<p class="Pp"></p>
+<pre>// Send ASCII frame with compression support
+int result = av_send_ascii_frame(sockfd, frame_data, frame_size);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send ASCII frame&quot;);
+}
+</pre>
+<p class="Pp"><b>Image Frame Transmission</b>:</p>
+<p class="Pp"></p>
+<pre>// Send image frame with compression support
+int result = av_send_image_frame(sockfd, image_data, width, height, format);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send image frame&quot;);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Audio_Operations"><a class="permalink" href="#Audio_Operations">Audio
+  Operations</a></h2>
+<p class="Pp"><b>Single Audio Packet (Legacy)</b>:</p>
+<p class="Pp"></p>
+<pre>// Send single audio packet (legacy - less efficient)
+int result = av_send_audio(sockfd, samples, num_samples);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send audio packet&quot;);
+}
+</pre>
+<p class="Pp"><b>Audio Batch Packet (Efficient)</b>:</p>
+<p class="Pp"></p>
+<pre>// Send batched audio with encryption support
+int result = send_audio_batch_packet(sockfd, samples, total_samples,
+<br/>
+                                      batch_count, crypto_ctx);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send audio batch&quot;);
+}
+// Or use convenience function without encryption
+result = av_send_audio_batch(sockfd, samples, total_samples, sample_rate);
+</pre>
+<p class="Pp"><b>Benefits of Batching</b>:</p>
+<ul class="Bl-bullet">
+  <li>Reduced packet overhead (75% fewer packets)</li>
+  <li>Better bandwidth efficiency (80% reduction in overhead)</li>
+  <li>At 44.1 kHz: 47 packets/second (was 188)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Message_Operations"><a class="permalink" href="#Message_Operations">Message
+  Operations</a></h2>
+<p class="Pp"><b>Terminal Size Message</b>:</p>
+<p class="Pp"></p>
+<pre>// Send terminal size notification
+int result = av_send_size_message(sockfd, width, height);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send size message&quot;);
+}
+</pre>
+<p class="Pp"><b>Audio Message</b>:</p>
+<p class="Pp"></p>
+<pre>// Send audio metadata announcement
+int result = av_send_audio_message(sockfd, num_samples);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send audio message&quot;);
+}
+</pre>
+<p class="Pp"><b>Text Message</b>:</p>
+<p class="Pp"></p>
+<pre>// Send text chat message
+int result = av_send_text_message(sockfd, &quot;Hello, world!&quot;);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to send text message&quot;);
+}
+</pre>
+<p class="Pp"><b>Message Parsing</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse size message string
+unsigned short width, height;
+int result = av_parse_size_message(&quot;SIZE:160,45\n&quot;, &amp;width, &amp;height);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to parse size message&quot;);
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Protocol_Integration"><a class="permalink" href="#Protocol_Integration">Protocol
+  Integration</a></h1>
+<p class="Pp">The Audio/Video Networking module integrates with:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Packet System</b>:</p>
+<ul class="Bl-bullet">
+  <li>network/packet.h: Packet header system for framing</li>
+  <li>network/packet_types.h: Packet type definitions</li>
+</ul>
+<p class="Pp"><b>Compression</b>:</p>
+<ul class="Bl-bullet">
+  <li>compression.h: Automatic compression for large packets</li>
+  <li>Compression threshold-based decision making</li>
+  <li>Decompression on receive path</li>
+</ul>
+<p class="Pp"><b>Cryptography</b>:</p>
+<ul class="Bl-bullet">
+  <li>crypto/crypto.h: Encryption/decryption support</li>
+  <li>Automatic encryption when crypto context provided</li>
+  <li>Encryption policy enforcement</li>
+</ul>
+<p class="Pp"><b>Network Layer</b>:</p>
+<ul class="Bl-bullet">
+  <li>network/network.h: Socket I/O operations</li>
+  <li>platform/socket.h: Platform socket abstraction</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Message_Formats"><a class="permalink" href="#Message_Formats">Message
+  Formats</a></h1>
+<p class="Pp">Protocol messages use text-based formats for compatibility:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Size Message</b>:</p>
+<ul class="Bl-bullet">
+  <li>Format: &quot;SIZE:width,height\n&quot;</li>
+  <li>Example: &quot;SIZE:160,45\n&quot;</li>
+  <li>Prefix: SIZE_MESSAGE_PREFIX (&quot;SIZE:&quot;)</li>
+  <li>Format string: SIZE_MESSAGE_FORMAT (&quot;SIZE:%u,%u\n&quot;)</li>
+</ul>
+<p class="Pp"><b>Audio Message</b>:</p>
+<ul class="Bl-bullet">
+  <li>Format: &quot;AUDIO:num_samples\n&quot;</li>
+  <li>Example: &quot;AUDIO:1024\n&quot;</li>
+  <li>Prefix: AUDIO_MESSAGE_PREFIX (&quot;AUDIO:&quot;)</li>
+  <li>Format string: AUDIO_MESSAGE_FORMAT (&quot;AUDIO:%u\n&quot;)</li>
+</ul>
+<p class="Pp"><b>Text Message</b>:</p>
+<ul class="Bl-bullet">
+  <li>Format: Plain text with packet headers</li>
+  <li>No special formatting required</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Compression"><a class="permalink" href="#Compression">Compression</a></h1>
+<p class="Pp">Large packets automatically support compression:</p>
+<ul class="Bl-bullet">
+  <li><b>ASCII frames</b>: Compressed if size exceeds threshold</li>
+  <li><b>Image frames</b>: Compressed for large images</li>
+  <li><b>Audio batches</b>: Compressed for large audio data</li>
+</ul>
+<p class="Pp"><b>Compression Decision</b>:</p>
+<ul class="Bl-bullet">
+  <li>Size threshold-based (e.g., 100KB)</li>
+  <li>Compression ratio check (only if &gt;80% size reduction)</li>
+  <li>Automatic compression/decompression</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Encryption"><a class="permalink" href="#Encryption">Encryption</a></h1>
+<p class="Pp">All packet functions handle encryption when crypto context is
+    provided:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Automatic Encryption</b>:</p>
+<p class="Pp"></p>
+<pre>// Send encrypted audio batch
+send_audio_batch_packet(sockfd, samples, total_samples,
+<br/>
+                        batch_count, crypto_ctx);
+</pre>
+<p class="Pp"><b>Encryption Policy</b>:</p>
+<ul class="Bl-bullet">
+  <li>Handshake packets: Always unencrypted (plaintext)</li>
+  <li>Session packets: Encrypted when crypto context provided</li>
+  <li>Encryption enforcement: Optional or required based on policy</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh">Error Handling</h1>
+<p class="Pp">All functions return error codes:</p>
+<ul class="Bl-bullet">
+  <li><b>0</b>: Success</li>
+  <li><b>-1</b>: Error (check errno or use <b>network_error_string()</b>)</li>
+</ul>
+<p class="Pp"><b>Error Reporting</b>:</p>
+<p class="Pp"></p>
+<pre>if (av_send_ascii_frame(sockfd, frame_data, frame_size) &lt; 0) {
+<br/>
+    log_error(&quot;Frame send failed: %s&quot;, network_error_string());
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance"><a class="permalink" href="#Performance">Performance</a></h1>
+<p class="Pp"><b>Batched Audio Packets</b>:</p>
+<ul class="Bl-bullet">
+  <li>75% reduction in packet count (4 chunks per packet)</li>
+  <li>80% reduction in packet overhead</li>
+  <li>At 44.1 kHz: 47 packets/second (was 188)</li>
+  <li>Packet overhead: 846 bytes/sec (was 3.4 KB/sec)</li>
+</ul>
+<p class="Pp"><b>Compression Benefits</b>:</p>
+<ul class="Bl-bullet">
+  <li>Reduces bandwidth for large frames</li>
+  <li>Automatic compression threshold-based decision</li>
+  <li>Only compresses if beneficial (&gt;80% size reduction)</li>
+</ul>
+<p class="Pp"><b>Message Format</b>:</p>
+<ul class="Bl-bullet">
+  <li>Text-based for compatibility</li>
+  <li>Simple parsing (no complex binary formats)</li>
+  <li>Maximum message length: 32 bytes (SIZE_MESSAGE_MAX_LEN,
+      AUDIO_MESSAGE_MAX_LEN)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh">Best Practices</h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Use batched audio for efficiency</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>// Prefer batched audio
+av_send_audio_batch(sockfd, samples, total_samples, sample_rate);
+// Avoid single-packet audio (legacy)
+// av_send_audio(sockfd, samples, num_samples);
+</pre>
+<dl class="Bl-tag">
+  <dt>2.</dt>
+  <dd><b>Handle compression automatically</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>// Compression is automatic - no manual intervention needed
+av_send_ascii_frame(sockfd, frame_data, frame_size);
+</pre>
+<dl class="Bl-tag">
+  <dt>3.</dt>
+  <dd><b>Use encryption when available</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>// Use encryption context when available
+send_audio_batch_packet(sockfd, samples, total_samples,
+<br/>
+                        batch_count, crypto_ctx);
+</pre>
+<dl class="Bl-tag">
+  <dt>4.</dt>
+  <dd><b>Validate message formats</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>// Parse messages with validation
+if (av_parse_size_message(message, &amp;width, &amp;height) &lt; 0) {
+<br/>
+    log_error(&quot;Invalid size message format&quot;);
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>5.</dt>
+  <dd><b>Handle errors gracefully</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>if (av_send_ascii_frame(sockfd, frame_data, frame_size) &lt; 0) {
+<br/>
+    // Handle error - connection may be lost
+<br/>
+    handle_network_error();
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Packet_Details"><a class="permalink" href="#Packet_Details">Packet
+  Details</a></h1>
+<p class="Pp"><b>ASCII Frame Packet</b> (PACKET_TYPE_ASCII_FRAME):</p>
+<ul class="Bl-bullet">
+  <li>Contains ASCII frame data with metadata</li>
+  <li>Metadata: width, height, compression status, checksum</li>
+  <li>Payload: ASCII frame string (may be compressed)</li>
+</ul>
+<p class="Pp"><b>Image Frame Packet</b> (PACKET_TYPE_IMAGE_FRAME):</p>
+<ul class="Bl-bullet">
+  <li>Contains raw pixel data with metadata</li>
+  <li>Metadata: dimensions, format, compression status, checksum, timestamp</li>
+  <li>Payload: Pixel data (RGB, RGBA, BGR, etc.) - may be compressed</li>
+</ul>
+<p class="Pp"><b>Audio Batch Packet</b> (PACKET_TYPE_AUDIO_BATCH):</p>
+<ul class="Bl-bullet">
+  <li>Contains multiple audio chunks aggregated</li>
+  <li>Metadata: batch count, total samples, sample rate, channels</li>
+  <li>Payload: Float samples array (interleaved if stereo)</li>
+</ul>
+<p class="Pp"><b>Message Packets</b>:</p>
+<ul class="Bl-bullet">
+  <li>Size message: Terminal dimension notification</li>
+  <li>Audio message: Audio metadata announcement</li>
+  <li>Text message: Plain text chat message</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">network/av.h
+<p class="Pp"></p>
+<p class="Pp">network/packet.h</p>
+<p class="Pp"></p>
+<p class="Pp">network/packet_types.h</p>
+</div>
+<section class="Ss">
+<h2 class="Ss" id="Network_README"><a class="permalink" href="#Network_README">Network
+  README</a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview~2"><a class="permalink" href="#Overview~2">Overview</a></h1>
+<p class="Pp">Welcome to the Network I/O module! This is where all the network
+    communication happens&#x2014;everything from basic socket operations to
+    packet transmission. The network module is designed for real-time video
+    streaming, which means it's optimized for low latency, reliability, and
+    handling large data transfers smoothly.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_does_the_network_module_do?"><a class="permalink" href="#What_does_the_network_module_do?">What
+  does the network module do? </a></h2>
+<p class="Pp">The Network I/O module provides fundamental network operations
+    that everything else builds on. Think of it as the foundation for all
+    network communication. Here's what it handles:</p>
+<ul class="Bl-bullet">
+  <li><b>Socket I/O operations</b> with timeout support (so operations don't
+      hang forever)</li>
+  <li><b>Connection management</b> (connect, accept) with timeouts (critical for
+      reliable connections)</li>
+  <li><b>Socket configuration</b> (keepalive, non-blocking mode, timeouts) to
+      keep connections healthy</li>
+  <li><b>Chunked transmission</b> for large data transfers (so big video frames
+      don't block the connection)</li>
+  <li><b>Packet protocol</b> with encryption and compression support (built on
+      top of the basic I/O)</li>
+  <li><b>Error reporting and diagnostics</b> (so you know what went wrong when
+      things break)</li>
+</ul>
+<p class="Pp">All operations support configurable timeouts, which is critical
+    for real-time video streaming&#x2014;we can't afford to wait forever when
+    something goes wrong. The timeout system ensures that operations fail fast
+    rather than hanging indefinitely.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/network/network.h,
+  lib/network/packet.h</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<p class="Pp">The network module is built around a few key concepts: timeouts to
+    prevent hanging, socket configuration to keep connections healthy, and a
+    packet protocol that handles the complexity of reliable data transmission.
+    Let's walk through how everything fits together.</p>
+<section class="Ss">
+<h2 class="Ss" id="Timeout_System"><a class="permalink" href="#Timeout_System">Timeout
+  System</a></h2>
+<p class="Pp">All I/O operations support configurable timeouts&#x2014;this is
+    probably the most important feature for real-time video streaming. Without
+    timeouts, operations can hang forever when the network is flaky, which would
+    freeze your video stream.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_timeouts_do_we_have?"><a class="permalink" href="#What_timeouts_do_we_have?">What
+  timeouts do we have? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>Connection timeout</b>: 3 seconds (CONNECT_TIMEOUT)&#x2014;when you're
+      trying to connect to a server, we'll give up after 3 seconds rather than
+      waiting forever</li>
+  <li><b>Send timeout</b>: 5 seconds (SEND_TIMEOUT)&#x2014;when sending data,
+      we'll give up after 5 seconds if it's not going through</li>
+  <li><b>Receive timeout</b>: 15 seconds (RECV_TIMEOUT)&#x2014;when receiving
+      data, we'll wait up to 15 seconds (this is longer because network delays
+      are more common on receive)</li>
+  <li><b>Accept timeout</b>: 3 seconds (ACCEPT_TIMEOUT)&#x2014;when waiting for
+      incoming connections, we'll check every 3 seconds rather than blocking
+      forever</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Why_these_values?"><a class="permalink" href="#Why_these_values?">Why
+  these values? </a></h2>
+<p class="Pp">These timeouts are tuned specifically for real-time video
+    streaming. They're short enough that you notice problems quickly, but long
+    enough that normal network hiccups don't cause false positives. Chunked
+    transmission prevents large data from blocking indefinitely&#x2014;even if a
+    single chunk times out, we can still make progress on the rest.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">Socket Configuration</h2>
+<p class="Pp">Socket configuration is about keeping your connections healthy and
+    efficient. We configure sockets with several important settings:</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_socket_options_do_we_set?"><a class="permalink" href="#What_socket_options_do_we_set?">What
+  socket options do we set? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>TCP keepalive</b>: This detects dead connections
+      automatically&#x2014;if the connection has been idle for a while,
+      keepalive probes check if it's still alive. If the other end doesn't
+      respond, we know the connection is dead and can clean it up. We use
+      KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, and KEEPALIVE_COUNT to tune this.</li>
+  <li><b>Non-blocking mode</b>: This enables asynchronous I/O
+      patterns&#x2014;instead of blocking and waiting for data, we can check if
+      data is available and do other work while waiting</li>
+  <li><b>Socket-level timeouts</b>: We set SO_SNDTIMEO and SO_RCVTIMEO at the
+      socket level, so even if the application doesn't explicitly check
+      timeouts, the socket itself will time out</li>
+  <li><b>Platform abstraction</b>: All of this works cross-platform (Linux,
+      macOS, Windows) through our platform abstraction layer</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Protocol"><a class="permalink" href="#Packet_Protocol">Packet
+  Protocol</a></h2>
+<p class="Pp">The packet protocol sits on top of the basic socket I/O and adds
+    structure, validation, encryption, and compression. It's how we reliably
+    transmit data even when the network is unreliable.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_does_the_packet_protocol_do?"><a class="permalink" href="#What_does_the_packet_protocol_do?">What
+  does the packet protocol do? </a></h2>
+<p class="Pp">The packet protocol provides:</p>
+<ul class="Bl-bullet">
+  <li><b>Packet header validation</b>: Every packet starts with a magic number
+      and CRC32 checksum, so we can detect corrupted packets immediately</li>
+  <li><b>Secure packet transmission</b>: Packets can be encrypted using the
+      crypto context (automatic encryption/decryption)</li>
+  <li><b>Secure packet reception</b>: Packets are automatically decrypted and
+      validated when received</li>
+  <li><b>Automatic compression</b>: Large packets are automatically compressed
+      to save bandwidth</li>
+  <li><b>Protocol compliance checking</b>: We verify that packets follow the
+      protocol specification, so malformed packets are rejected early</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_are_packets_structured?"><a class="permalink" href="#How_are_packets_structured?">How
+  are packets structured? </a></h2>
+<p class="Pp"><b>Packet Structure</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Header</b>: Contains a magic number (so we know it's really our
+      packet), type (what kind of packet it is), length (how much data follows),
+      CRC32 (to detect corruption), and client ID (which client this is
+    from)</li>
+  <li><b>Payload</b>: The actual data, which can be encrypted and/or
+    compressed</li>
+  <li><b>Validation</b>: The CRC32 checksum in the header lets us verify packet
+      integrity before we even try to decrypt or decompress</li>
+</ul>
+<p class="Pp">This structure makes it easy to detect problems early&#x2014;if
+    the magic number is wrong or the CRC32 doesn't match, we know the packet is
+    corrupted before we waste time trying to decrypt it.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Operations~2"><a class="permalink" href="#Operations~2">Operations</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Socket_I/O_Operations"><a class="permalink" href="#Socket_I/O_Operations">Socket
+  I/O Operations</a></h2>
+<p class="Pp"><b>Send/Receive Operations</b>:</p>
+<p class="Pp"></p>
+<pre>// Send data with timeout
+ssize_t sent = send_with_timeout(sockfd, data, len, SEND_TIMEOUT);
+if (sent &lt; 0) {
+<br/>
+    log_error(&quot;Send failed: %s&quot;, network_error_string());
+}
+// Receive data with timeout
+ssize_t received = recv_with_timeout(sockfd, buffer, len, RECV_TIMEOUT);
+if (received &lt; 0) {
+<br/>
+    log_error(&quot;Receive failed: %s&quot;, network_error_string());
+}
+</pre>
+<p class="Pp"><b>Connection Operations</b>:</p>
+<p class="Pp"></p>
+<pre>// Connect to server with timeout
+if (!connect_with_timeout(sockfd, &amp;addr, addrlen, CONNECT_TIMEOUT)) {
+<br/>
+    log_error(&quot;Connection failed: %s&quot;, network_error_string());
+}
+// Accept connection with timeout
+int client_fd = accept_with_timeout(listenfd, NULL, NULL, ACCEPT_TIMEOUT);
+if (client_fd &lt; 0) {
+<br/>
+    log_error(&quot;Accept failed: %s&quot;, network_error_string());
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Operations"><a class="permalink" href="#Packet_Operations">Packet
+  Operations</a></h2>
+<p class="Pp"><b>Basic Packet I/O</b>:</p>
+<p class="Pp"></p>
+<pre>// Send a packet
+asciichat_error_t err = packet_send(sockfd, PACKET_TYPE_PING, NULL, 0);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Packet send failed&quot;);
+}
+// Receive a packet
+packet_type_t type;
+void *data;
+size_t len;
+err = packet_receive(sockfd, &amp;type, &amp;data, &amp;len);
+if (err == ASCIICHAT_OK) {
+<br/>
+    // Process packet
+<br/>
+    process_packet(type, data, len);
+<br/>
+    free(data);  // Free allocated buffer
+}
+</pre>
+<p class="Pp"><b>Secure Packet I/O</b>:</p>
+<p class="Pp"></p>
+<pre>// Send encrypted packet
+int result = send_packet_secure(sockfd, PACKET_TYPE_ASCII_FRAME,
+<br/>
+                                 frame_data, frame_size, crypto_ctx);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Secure send failed&quot;);
+}
+// Receive and decrypt packet
+packet_envelope_t envelope;
+packet_recv_result_t result = receive_packet_secure(sockfd, crypto_ctx,
+<br/>
+                                                     true, &amp;envelope);
+if (result == PACKET_RECV_SUCCESS) {
+<br/>
+    // Process decrypted packet
+<br/>
+    process_packet(envelope.type, envelope.data, envelope.len);
+<br/>
+    free(envelope.allocated_buffer);  // Free allocated buffer
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss">Socket Configuration</h2>
+<p class="Pp"><b>Socket Setup</b>:</p>
+<p class="Pp"></p>
+<pre>// Set socket timeout
+if (set_socket_timeout(sockfd, SEND_TIMEOUT) &lt; 0) {
+<br/>
+    log_error(&quot;Failed to set socket timeout&quot;);
+}
+// Enable TCP keepalive
+if (set_socket_keepalive(sockfd) &lt; 0) {
+<br/>
+    log_error(&quot;Failed to enable keepalive&quot;);
+}
+// Set non-blocking mode
+if (set_socket_nonblocking(sockfd) &lt; 0) {
+<br/>
+    log_error(&quot;Failed to set non-blocking mode&quot;);
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Integration"><a class="permalink" href="#Integration">Integration</a></h1>
+<p class="Pp">The Network I/O module integrates with:</p>
+<ul class="Bl-bullet">
+  <li><b>platform/socket.h</b>: Uses platform socket abstraction</li>
+  <li><b>network/packet_types.h</b>: Packet type definitions</li>
+  <li><b>crypto/crypto.h</b>: Encryption/decryption operations</li>
+  <li><b>compression.h</b>: Compression/decompression support</li>
+  <li><b>network/av.h</b>: Media packet sending</li>
+  <li><b>crypto/handshake.h</b>: Crypto handshake operations</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance~2"><a class="permalink" href="#Performance~2">Performance</a></h1>
+<p class="Pp"><b>Chunked Transmission</b>:</p>
+<ul class="Bl-bullet">
+  <li>Enables progressive sending of large frames</li>
+  <li>Prevents timeout issues with large data</li>
+  <li>Allows progress tracking</li>
+</ul>
+<p class="Pp"><b>Timeout Handling</b>:</p>
+<ul class="Bl-bullet">
+  <li>Prevents indefinite blocking</li>
+  <li>Tuned for real-time video streaming</li>
+  <li>Platform-specific optimizations (select/poll/epoll)</li>
+</ul>
+<p class="Pp"><b>Keepalive Settings</b>:</p>
+<ul class="Bl-bullet">
+  <li>Efficiently detects dead connections</li>
+  <li>No application-level heartbeats required</li>
+  <li>Configurable idle time and probe count</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh">Error Handling</h1>
+<p class="Pp"><b>Error Reporting</b>:</p>
+<p class="Pp"></p>
+<pre>// Get human-readable error string
+const char *error_msg = network_error_string();
+log_error(&quot;Network error: %s&quot;, error_msg);
+</pre>
+<p class="Pp"><b>Error Codes</b>:</p>
+<ul class="Bl-bullet">
+  <li>Function return values: -1 indicates error</li>
+  <li>asciichat_error_t codes: ASCIICHAT_OK on success, error codes on
+    failure</li>
+  <li>packet_recv_result_t codes: PACKET_RECV_SUCCESS, PACKET_RECV_EOF,
+    etc.</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Timeout_Configuration"><a class="permalink" href="#Timeout_Configuration">Timeout
+  Configuration</a></h1>
+<p class="Pp">Timeout configuration is all about balance&#x2014;too short and
+    you get false positives on slow networks, too long and you delay error
+    detection unnecessarily. We've tuned these values specifically for real-time
+    video streaming.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_timeouts_do_we_use?"><a class="permalink" href="#What_timeouts_do_we_use?">What
+  timeouts do we use? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>CONNECT_TIMEOUT</b> (3 seconds): Reduced from the default for faster
+      connection attempts. If a connection doesn't work, we want to know quickly
+      so we can try again or report the error</li>
+  <li><b>SEND_TIMEOUT</b> (5 seconds): This gives enough time for timely
+      delivery of video frames. It's long enough that network hiccups don't
+      cause false positives, but short enough that stuck sends are detected
+      quickly</li>
+  <li><b>RECV_TIMEOUT</b> (15 seconds): This is longer than send timeout because
+      network delays are more common on receive. We want to give the network
+      time to deliver data, but not so much time that we hang forever</li>
+  <li><b>ACCEPT_TIMEOUT</b> (3 seconds): This is balanced between responsiveness
+      (we don't want to waste CPU checking too often) and quick detection of
+      problems</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss">&#x26A0;&#xFE0F; Important timeout notes: </h2>
+<p class="Pp">Timeout values that are too short may cause false positives on
+    slow networks&#x2014;you might think the connection is dead when it's just
+    slow. Values that are too long may delay error detection
+    unnecessarily&#x2014;you might wait too long before realizing something is
+    wrong.</p>
+<p class="Pp"></p>
+<p class="Pp">If you're running on a very slow network (like satellite
+    internet), you might want to increase these timeouts. If you're running on a
+    very fast network (like a local LAN), you could decrease them for faster
+    error detection.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Chunked_Transmission"><a class="permalink" href="#Chunked_Transmission">Chunked
+  Transmission</a></h1>
+<p class="Pp">Large data transfers are automatically chunked&#x2014;this is how
+    we send big video frames without blocking the connection. Instead of sending
+    everything at once (which could cause timeouts or block other operations),
+    we break large data into smaller chunks.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="How_does_chunked_transmission_work?"><a class="permalink" href="#How_does_chunked_transmission_work?">How
+  does chunked transmission work? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>Prevents timeout issues</b>: Large frames can be several
+      megabytes&#x2014;if we try to send it all at once, we might timeout before
+      it finishes. Chunking lets us send the frame in pieces, so each piece can
+      complete quickly</li>
+  <li><b>Enables progress tracking</b>: We can report progress as chunks are
+      sent, so you know things are working even when sending large frames</li>
+  <li><b>Handles partial sends automatically</b>: Sometimes send() doesn't send
+      everything you ask it to&#x2014;chunking handles this gracefully by
+      retrying until the chunk is sent</li>
+  <li><b>Retries until complete</b>: If a chunk fails to send, we retry until
+      all data is sent or the timeout occurs</li>
+</ul>
+<p class="Pp">This is used automatically for large data&#x2014;you don't need to
+    do anything special. The system detects when data is large enough to benefit
+    from chunking and handles it automatically.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Packet_Security"><a class="permalink" href="#Packet_Security">Packet
+  Security</a></h1>
+<p class="Pp">The packet protocol supports:</p>
+<ul class="Bl-bullet">
+  <li><b>Encryption</b>: Automatic encryption/decryption when crypto context
+      provided</li>
+  <li><b>Compression</b>: Automatic compression for large packets</li>
+  <li><b>Validation</b>: Magic number and CRC32 checksum verification</li>
+  <li><b>Policy Enforcement</b>: Encryption requirement enforcement</li>
+</ul>
+<p class="Pp"><b>Handshake Packets</b>:</p>
+<ul class="Bl-bullet">
+  <li>Always sent unencrypted (plaintext)</li>
+  <li>Use packet_is_handshake_type() to check before encryption</li>
+  <li>Required for crypto handshake establishment</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh">Best Practices</h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Always check return values</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>if (send_with_timeout(sockfd, data, len, timeout) &lt; 0) {
+<br/>
+    // Handle error
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>2.</dt>
+  <dd><b>Free allocated packet buffers</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>void *data;
+size_t len;
+packet_receive(sockfd, &amp;type, &amp;data, &amp;len);
+// ... use data ...
+free(data);  // Always free
+</pre>
+<dl class="Bl-tag">
+  <dt>3.</dt>
+  <dd><b>Use secure packet functions for encryption</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>send_packet_secure(sockfd, type, data, len, crypto_ctx);
+receive_packet_secure(sockfd, crypto_ctx, true, &amp;envelope);
+</pre>
+<dl class="Bl-tag">
+  <dt>4.</dt>
+  <dd><b>Enable keepalive for long-lived connections</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>set_socket_keepalive(sockfd);
+</pre>
+<dl class="Bl-tag">
+  <dt>5.</dt>
+  <dd><b>Configure timeouts appropriately</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>set_socket_timeout(sockfd, SEND_TIMEOUT);
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">network/network.h
+<p class="Pp"></p>
+<p class="Pp">network/packet.h</p>
+<p class="Pp"></p>
+<p class="Pp">network/packet_types.h</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

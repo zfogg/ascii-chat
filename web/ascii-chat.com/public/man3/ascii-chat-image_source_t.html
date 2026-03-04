@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>image_source_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">image_source_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">image_source_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">image_source_t - Image source structure for multi-client video
+    mixing.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">image_t * <b>image</b>
+  <br/>
+  Pointer to client's current video frame (owned by buffer system). char
+    <b>client_id</b> [MAX_CLIENT_ID_LEN]
+  <br/>
+  Unique client identifier for this source. <b>bool</b> <b>has_video</b>
+  <br/>
+  Whether this client has active video stream.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Image source structure for multi-client video mixing.</p>
+<p class="Pp">Represents a single video source (client) in the video mixing
+    pipeline. This structure is used to collect video frames from all active
+    clients</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="before_creating_composite_layouts_for_multi-user_display"><a class="permalink" href="#before_creating_composite_layouts_for_multi-user_display">before
+  creating composite layouts for multi-user display. </a></h1>
+<ul class="Bl-bullet">
+  <li>image: Pointer to the client's current video frame (image_t
+    structure)</li>
+  <li>client_id: Unique identifier for this client</li>
+  <li>has_video: Whether this client is actively sending video</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE_PATTERN:"><a class="permalink" href="#USAGE_PATTERN:">USAGE
+  PATTERN: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Collect video sources: collect_video_sources() fills array with active
+      clients</dd>
+  <dt>2.</dt>
+  <dd>Filter sources: Only sources with has_video=true are used in
+    composite</dd>
+  <dt>3.</dt>
+  <dd>Create composite: generate_composite_frame() uses sources to create
+    layout</dd>
+  <dt>4.</dt>
+  <dd>Free sources: Sources are automatically cleaned up after composite
+      generation</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="VIDEO_MIXING:"><a class="permalink" href="#VIDEO_MIXING:">VIDEO
+  MIXING: </a></h1>
+<p class="Pp">This structure is central to the multi-client video mixing
+  system:</p>
+<ul class="Bl-bullet">
+  <li>Single client: One source, full-screen display</li>
+  <li>Multiple clients: Multiple sources, grid layout (2x2, 3x3, etc.)</li>
+  <li>Grid layout: Each source occupies one cell in the grid</li>
+  <li>Aspect ratio: Each source maintains its aspect ratio within cell</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MEMORY_MANAGEMENT:"><a class="permalink" href="#MEMORY_MANAGEMENT:">MEMORY
+  MANAGEMENT: </a></h1>
+<ul class="Bl-bullet">
+  <li>image pointer points to frame data managed by video_frame_buffer_t</li>
+  <li>Frame data is owned by the double-buffer system, not this structure</li>
+  <li>No manual memory management needed (automatic via buffer system)</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">image pointer is valid only when has_video is true.
+<p class="Pp"></p>
+<p class="Pp">image pointer may be NULL if client stopped sending video.</p>
+<p class="Pp"></p>
+<p class="Pp">client_id is used to identify which client this source
+  represents.</p>
+</div>
+<p class="Pp">Definition at line <b>205</b> of file <b>stream.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_image_source_t::client_id_MAX_CLIENT_ID_LEN_"><a class="permalink" href="#char_image_source_t::client_id_MAX_CLIENT_ID_LEN_">char
+  image_source_t::client_id[MAX_CLIENT_ID_LEN]</a></h2>
+<p class="Pp">Unique client identifier for this source.</p>
+<p class="Pp">Definition at line <b>209</b> of file <b>stream.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> image_source_t::has_video</h2>
+<p class="Pp">Whether this client has active video stream.</p>
+<p class="Pp">Definition at line <b>211</b> of file <b>stream.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t*_image_source_t::image"><a class="permalink" href="#image_t*_image_source_t::image">image_t*
+  image_source_t::image</a></h2>
+<p class="Pp">Pointer to client's current video frame (owned by buffer
+  system).</p>
+<p class="Pp">Definition at line <b>207</b> of file <b>stream.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

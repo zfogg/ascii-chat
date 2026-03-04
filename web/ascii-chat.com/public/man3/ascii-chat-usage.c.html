@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>usage.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">usage.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">usage.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">usage.c - USAGE section generator for man pages.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>manpage_content_generate_usage</b> (const
+    options_config_t *config)
+  <br/>
+  void <b>manpage_content_free_usage</b> (char *content)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">USAGE section generator for man pages.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>usage.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_content_free_usage_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_usage_(char_*_content)">void
+  manpage_content_free_usage (char * content)</a></h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>usage.c</b>.</p>
+<pre>61                                                {
+62   if (content) {
+63     SAFE_FREE(content);
+64   }
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_content_generate_usage_(const_options_config_t_*_config)"><a class="permalink" href="#char_*_manpage_content_generate_usage_(const_options_config_t_*_config)">char
+  * manpage_content_generate_usage (const options_config_t * config)</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>usage.c</b>.</p>
+<pre>15                                                                      {
+16   if (!config || config-&gt;num_usage_lines == 0) {
+17     char *buffer = SAFE_MALLOC(1, char *);
+18     buffer[0] = '\0';
+19     return buffer;
+20   }
+21 
+22   // Allocate growing buffer for usage section
+23   size_t buffer_capacity = 4096;
+24   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+25   size_t offset = 0;
+26 
+27   for (size_t i = 0; i &lt; config-&gt;num_usage_lines; i++) {
+28     const usage_descriptor_t *usage = &amp;config-&gt;usage_lines[i];
+29 
+30     // Ensure buffer is large enough
+31     if (offset + 512 &gt;= buffer_capacity) {
+32       buffer_capacity *= 2;
+33       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+34     }
+35 
+36     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+37     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat&quot;);
+38     if (usage-&gt;mode) {
+39       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, usage-&gt;mode);
+40     }
+41     if (usage-&gt;positional) {
+42       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, usage-&gt;positional);
+43     }
+44     if (usage-&gt;show_options) {
+45       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; [options...]&quot;);
+46     }
+47     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+48 
+49     if (usage-&gt;description) {
+50       offset +=
+51           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(usage-&gt;description));
+52     }
+53   }
+54 
+55   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+56 
+57   log_debug(&quot;Generated USAGE section (%zu bytes)&quot;, offset);
+58   return buffer;
+59 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>escape_groff_special()</b>, <b>safe_snprintf()</b>,
+    and <b>usage()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

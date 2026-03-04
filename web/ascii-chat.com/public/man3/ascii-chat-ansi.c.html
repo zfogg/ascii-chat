@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ansi.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ansi.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ansi.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ansi.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>ansi_strip_escapes</b> (const char *input, size_t
+    input_len)
+  <br/>
+  <b>bool</b> <b>ansi_is_already_colorized</b> (const char *message, size_t pos)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ansi_is_already_colorized (const char * message,
+  size_t pos)</h2>
+<p class="Pp">Definition at line <b>64</b> of file <b>ansi.c</b>.</p>
+<pre>64                                                                 {
+65   if (!message) {
+66     return false;
+67   }
+68 
+69   bool in_reset = true; // Start in reset state
+70 
+71   // Scan from beginning to current position looking for ANSI codes
+72   for (size_t i = 0; i &lt; pos &amp;&amp; message[i] != '\0'; i++) {
+73     if (message[i] == '\x1b' &amp;&amp; message[i + 1] == '[') {
+74       // Found ANSI escape sequence start
+75       // Look for the end marker 'm'
+76       size_t j = i + 2;
+77       while (message[j] != '\0' &amp;&amp; message[j] != 'm') {
+78         j++;
+79       }
+80 
+81       if (message[j] == 'm') {
+82         // Extract the color code part (between [ and m)
+83         // Check if it's a reset code: \x1b[0m or \x1b[m
+84         if ((j == i + 3 &amp;&amp; message[i + 2] == '0') || (j == i + 2)) {
+85           // Reset code
+86           in_reset = true;
+87         } else {
+88           // Color code (anything else)
+89           in_reset = false;
+90         }
+91       }
+92     }
+93   }
+94 
+95   // Return true if NOT in reset state (already colorized)
+96   return !in_reset;
+97 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>colorize_log_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)"><a class="permalink" href="#char_*_ansi_strip_escapes_(const_char_*_input,_size_t_input_len)">char
+  * ansi_strip_escapes (const char * input, size_t input_len)</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>ansi.c</b>.</p>
+<pre>13                                                               {
+14   if (!input || input_len == 0) {
+15     return NULL;
+16   }
+17 
+18   // Allocate buffer directly for output (at most input_len bytes)
+19   char *output = SAFE_MALLOC(input_len + 1, char *);
+20   if (!output) {
+21     return NULL;
+22   }
+23 
+24   size_t out_pos = 0;
+25   size_t i = 0;
+26 
+27   while (i &lt; input_len) {
+28     // Check for ESC character (start of ANSI sequence)
+29     if (input[i] == '\x1b' &amp;&amp; i + 1 &lt; input_len &amp;&amp; input[i + 1] == '[') {
+30       // Skip ESC[
+31       i += 2;
+32 
+33       // Skip parameter bytes (digits, semicolons, and intermediate bytes)
+34       while (i &lt; input_len) {
+35         char c = input[i];
+36         // Parameter bytes: 0x30-0x3F (digits, semicolon, etc.)
+37         // Intermediate bytes: 0x20-0x2F (space, !, &quot;, etc.)
+38         if ((c &gt;= 0x30 &amp;&amp; c &lt;= 0x3F) || (c &gt;= 0x20 &amp;&amp; c &lt;= 0x2F)) {
+39           i++;
+40         } else {
+41           break;
+42         }
+43       }
+44 
+45       // Skip final byte (0x40-0x7E: @, A-Z, [, \, ], ^, _, `, a-z, {, |, }, ~)
+46       if (i &lt; input_len) {
+47         char final = input[i];
+48         if (final &gt;= 0x40 &amp;&amp; final &lt;= 0x7E) {
+49           i++;
+50         }
+51       }
+52     } else {
+53       // Regular character - copy to output
+54       output[out_pos++] = input[i];
+55       i++;
+56     }
+57   }
+58 
+59   // Null-terminate the output
+60   output[out_pos] = '\0';
+61   return output;
+62 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>display_height()</b>, <b>display_width()</b>,
+    <b>layout_print_two_column_row()</b>, and <b>log_mmap_write()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>election.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">election.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">election.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">election.c - Deterministic election algorithm.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">uint32_t <b>consensus_election_compute_score</b> (const
+    participant_metrics_t *metrics)
+  <br/>
+  asciichat_error_t <b>consensus_election_choose_hosts</b> (const
+    participant_metrics_t *metrics, int num_metrics, int *out_best_index, int
+    *out_backup_index)
+  <br/>
+  asciichat_error_t <b>consensus_election_verify</b> (const
+    participant_metrics_t *metrics, int num_metrics, const uint8_t
+    announced_host_id[16], const uint8_t announced_backup_id[16], <b>bool</b>
+    *out_valid)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Deterministic election algorithm.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>election.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_election_choose_hosts_(const_participant_metrics_t_*_metrics,_int_num_metrics,_int_*_out_best_index,_int_*_out_backup_index)"><a class="permalink" href="#asciichat_error_t_consensus_election_choose_hosts_(const_participant_metrics_t_*_metrics,_int_num_metrics,_int_*_out_best_index,_int_*_out_backup_index)">asciichat_error_t
+  consensus_election_choose_hosts (const participant_metrics_t * metrics, int
+  num_metrics, int * out_best_index, int * out_backup_index)</a></h2>
+<p class="Pp">Definition at line <b>67</b> of file <b>election.c</b>.</p>
+<pre>68                                                                                               {
+69   if (!metrics || !out_best_index || !out_backup_index || num_metrics &lt; 1) {
+70     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid election parameters&quot;);
+71   }
+72 
+73   // Compute scores for all participants
+74   uint32_t *scores = SAFE_MALLOC(sizeof(uint32_t) * num_metrics, uint32_t *);
+75 
+76   for (int i = 0; i &lt; num_metrics; i++) {
+77     scores[i] = consensus_election_compute_score(&amp;metrics[i]);
+78   }
+79 
+80   // Find best and second-best
+81   find_best_two(scores, num_metrics, out_best_index, out_backup_index);
+82 
+83   SAFE_FREE(scores);
+84   return ASCIICHAT_OK;
+85 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_election_compute_score()</b>.</p>
+<p class="Pp">Referenced by <b>consensus_election_verify()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_consensus_election_compute_score_(const_participant_metrics_t_*_metrics)"><a class="permalink" href="#uint32_t_consensus_election_compute_score_(const_participant_metrics_t_*_metrics)">uint32_t
+  consensus_election_compute_score (const participant_metrics_t *
+  metrics)</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>election.c</b>.</p>
+<pre>13                                                                                 {
+14   if (!metrics)
+15     return 0;
+16 
+17   // NAT tier: 0=LAN (best), 4=TURN (worst)
+18   // (4 - tier) * 1000 makes LAN score 4000, TURN score 0
+19   uint32_t nat_score = (4 - metrics-&gt;nat_tier) * 1000;
+20 
+21   // Bandwidth: higher is better
+22   // Divide by 10 to keep in reasonable scale (10Mbps = +1000)
+23   uint32_t bw_score = metrics-&gt;upload_kbps / 10;
+24 
+25   // Latency: lower is better
+26   // (500ms - rtt_ns) means 0ns RTT = +500, 500ms = 0, high latency = negative (but capped at 0)
+27   // 500ms = 500,000,000ns
+28   uint32_t rtt_score = (metrics-&gt;rtt_ns &lt; 500 * NS_PER_MS) ? (500 - (metrics-&gt;rtt_ns / NS_PER_MS)) : 0;
+29 
+30   // STUN probe success: 0-100%
+31   uint32_t probe_score = metrics-&gt;stun_probe_success_pct;
+32 
+33   // Total score
+34   uint32_t total = nat_score + bw_score + rtt_score + probe_score;
+35   return total;
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>consensus_election_choose_hosts()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_election_verify_(const_participant_metrics_t_*_metrics,_int_num_metrics,_const_uint8_t_announced_host_id_16_,_const_uint8_t_announced_backup_id_16_,_"><a class="permalink" href="#asciichat_error_t_consensus_election_verify_(const_participant_metrics_t_*_metrics,_int_num_metrics,_const_uint8_t_announced_host_id_16_,_const_uint8_t_announced_backup_id_16_,_">asciichat_error_t
+  consensus_election_verify (const participant_metrics_t * metrics, int
+  num_metrics, const uint8_t announced_host_id[16], const uint8_t
+  announced_backup_id[16], <b>bool</b> * out_valid)</a></h2>
+<p class="Pp">Definition at line <b>87</b> of file <b>election.c</b>.</p>
+<pre>89                                                              {
+90   if (!metrics || !announced_host_id || !announced_backup_id || !out_valid) {
+91     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid verification parameters&quot;);
+92   }
+93 
+94   // Find which indices the announced IDs correspond to
+95   int host_idx = -1, backup_idx = -1;
+96 
+97   for (int i = 0; i &lt; num_metrics; i++) {
+98     if (memcmp(metrics[i].participant_id, announced_host_id, 16) == 0) {
+99       host_idx = i;
+100     }
+101     if (memcmp(metrics[i].participant_id, announced_backup_id, 16) == 0) {
+102       backup_idx = i;
+103     }
+104   }
+105 
+106   // If we can't find announced IDs, result is invalid
+107   if (host_idx &lt; 0 || backup_idx &lt; 0) {
+108     *out_valid = false;
+109     return ASCIICHAT_OK;
+110   }
+111 
+112   // Run our own election
+113   int computed_host, computed_backup;
+114   asciichat_error_t err = consensus_election_choose_hosts(metrics, num_metrics, &amp;computed_host, &amp;computed_backup);
+115 
+116   if (err != ASCIICHAT_OK) {
+117     return err;
+118   }
+119 
+120   // Check if computed result matches announced
+121   *out_valid = (host_idx == computed_host &amp;&amp; backup_idx == computed_backup);
+122   return ASCIICHAT_OK;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_election_choose_hosts()</b>, and
+    <b>participant_id</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

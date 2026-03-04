@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>debug_state_request_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">debug_state_request_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">debug_state_request_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">debug_state_request_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>debug_request_type_t</b> <b>request_type</b>
+  <br/>
+  uint64_t <b>delay_ns</b>
+  <br/>
+  atomic_t <b>should_run</b>
+  <br/>
+  atomic_t <b>should_exit</b>
+  <br/>
+  atomic_t <b>signal_triggered</b>
+  <br/>
+  uint64_t <b>memory_report_interval_ns</b>
+  <br/>
+  uint64_t <b>last_memory_report_time_ns</b>
+  <br/>
+  mutex_t <b>mutex</b>
+  <br/>
+  cond_t <b>cond</b>
+  <br/>
+  <b>bool</b> <b>initialized</b>
+  <br/>
+  <b>bool</b> <b>handled_sync_state_time</b>
+  <br/>
+  <b>bool</b> <b>handled_backtrace_time</b>
+  <br/>
+  <b>bool</b> <b>handled_memory_report</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>432</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="cond_t_debug_state_request_t::cond"><a class="permalink" href="#cond_t_debug_state_request_t::cond">cond_t
+  debug_state_request_t::cond</a></h2>
+<p class="Pp">Definition at line <b>441</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_debug_state_request_t::delay_ns"><a class="permalink" href="#uint64_t_debug_state_request_t::delay_ns">uint64_t
+  debug_state_request_t::delay_ns</a></h2>
+<p class="Pp">Definition at line <b>434</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> debug_state_request_t::handled_backtrace_time</h2>
+<p class="Pp">Definition at line <b>444</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> debug_state_request_t::handled_memory_report</h2>
+<p class="Pp">Definition at line <b>445</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> debug_state_request_t::handled_sync_state_time</h2>
+<p class="Pp">Definition at line <b>443</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> debug_state_request_t::initialized</h2>
+<p class="Pp">Definition at line <b>442</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_debug_state_request_t::last_memory_report_time_ns"><a class="permalink" href="#uint64_t_debug_state_request_t::last_memory_report_time_ns">uint64_t
+  debug_state_request_t::last_memory_report_time_ns</a></h2>
+<p class="Pp">Definition at line <b>439</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_debug_state_request_t::memory_report_interval_ns"><a class="permalink" href="#uint64_t_debug_state_request_t::memory_report_interval_ns">uint64_t
+  debug_state_request_t::memory_report_interval_ns</a></h2>
+<p class="Pp">Definition at line <b>438</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_debug_state_request_t::mutex"><a class="permalink" href="#mutex_t_debug_state_request_t::mutex">mutex_t
+  debug_state_request_t::mutex</a></h2>
+<p class="Pp">Definition at line <b>440</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>debug_request_type_t</b>
+  debug_state_request_t::request_type</h2>
+<p class="Pp">Definition at line <b>433</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_debug_state_request_t::should_exit"><a class="permalink" href="#atomic_t_debug_state_request_t::should_exit">atomic_t
+  debug_state_request_t::should_exit</a></h2>
+<p class="Pp">Definition at line <b>436</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_debug_state_request_t::should_run"><a class="permalink" href="#atomic_t_debug_state_request_t::should_run">atomic_t
+  debug_state_request_t::should_run</a></h2>
+<p class="Pp">Definition at line <b>435</b> of file <b>sync.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_debug_state_request_t::signal_triggered"><a class="permalink" href="#atomic_t_debug_state_request_t::signal_triggered">atomic_t
+  debug_state_request_t::signal_triggered</a></h2>
+<p class="Pp">Definition at line <b>437</b> of file <b>sync.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

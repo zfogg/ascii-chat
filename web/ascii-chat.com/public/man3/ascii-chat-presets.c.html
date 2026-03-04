@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>presets.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">presets.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">presets.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">presets.c - Preset option configurations for ascii-chat modes.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>options_builder_add_logging_group</b> (options_builder_t
+    *b)
+  <br/>
+  Add binary-level logging options to a builder. options_config_t *
+    <b>options_preset_unified</b> (const char *program_name, const char
+    *description)
+  <br/>
+  Build unified options config with ALL options (binary + all modes).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Preset option configurations for ascii-chat modes.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>presets.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_options_builder_add_logging_group_(options_builder_t_*_b)"><a class="permalink" href="#void_options_builder_add_logging_group_(options_builder_t_*_b)">void
+  options_builder_add_logging_group (options_builder_t * b)</a></h2>
+<p class="Pp">Add binary-level logging options to a builder.</p>
+<p class="Pp"><b>Deprecated</b></p>
+<div class="Bd-indent">This function is deprecated. Use
+  <b>options_registry_add_all_to_builder()</b> instead. All option definitions
+  are now centralized in the registry.</div>
+<p class="Pp">Definition at line <b>31</b> of file <b>presets.c</b>.</p>
+<pre>31                                                              {
+32   (void)b;
+33   // Kept for backward compatibility but no longer used
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="options_config_t_*_options_preset_unified_(const_char_*_program_name,_const_char_*_description)"><a class="permalink" href="#options_config_t_*_options_preset_unified_(const_char_*_program_name,_const_char_*_description)">options_config_t
+  * options_preset_unified (const char * program_name, const char *
+  description)</a></h2>
+<p class="Pp">Build unified options config with ALL options (binary + all
+    modes). This is the single source of truth for all options. Each option has
+    a mode_bitmask indicating which modes it applies to. The config includes all
+    options, and validation happens after parsing based on detected mode.</p>
+<p class="Pp">Definition at line <b>51</b> of file <b>presets.c</b>.</p>
+<pre>51                                                                                             {
+52   options_builder_t *b = options_builder_create(sizeof(options_t));
+53   if (!b) {
+54     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create options builder&quot;);
+55     return NULL;
+56   }
+57 
+58   b-&gt;program_name = program_name ? program_name : &quot;ascii-chat&quot;;
+59   b-&gt;description = description ? description : &quot;Video chat in your terminal&quot;;
+60 
+61   // Add ALL options from registry (binary + all modes)
+62   asciichat_error_t err = options_registry_add_all_to_builder(b);
+63   if (err != ASCIICHAT_OK) {
+64     options_builder_destroy(b);
+65     SET_ERRNO(err, &quot;Failed to add all options to builder&quot;);
+66     return NULL;
+67   }
+68 
+69   // Add positional arguments for each mode
+70   // These allow parsing of positional arguments like &quot;192.168.1.1&quot; for client mode
+71   // and &quot;[bind-address]&quot; for server mode
+72 
+73   // Generate random session strings for examples
+74   // Use static buffers so they persist after the function returns
+75   static char session_buf1[SESSION_STRING_BUFFER_SIZE];
+76   static char session_buf2[SESSION_STRING_BUFFER_SIZE];
+77   static char session_buf3[SESSION_STRING_BUFFER_SIZE];
+78   static char session_buf4[SESSION_STRING_BUFFER_SIZE];
+79   static char session_buf5[SESSION_STRING_BUFFER_SIZE];
+80   static char session_buf6[SESSION_STRING_BUFFER_SIZE];
+81   static char session_buf7[SESSION_STRING_BUFFER_SIZE];
+82   static char session_buf8[SESSION_STRING_BUFFER_SIZE];
+83   static char session_buf9[SESSION_STRING_BUFFER_SIZE];
+84   static char session_buf10[SESSION_STRING_BUFFER_SIZE];
+85 
+86   // Fallback strings if generation fails
+87   char *example_session_string1 = &quot;adjective-noun-noun&quot;;
+88   char *example_session_string2 = &quot;adjective-noun-noun&quot;;
+89   char *example_session_string3 = &quot;adjective-noun-noun&quot;;
+90   char *example_session_string4 = &quot;adjective-noun-noun&quot;;
+91   char *example_session_string5 = &quot;adjective-noun-noun&quot;;
+92   char *example_session_string6 = &quot;adjective-noun-noun&quot;;
+93   char *example_session_string7 = &quot;adjective-noun-noun&quot;;
+94   char *example_session_string8 = &quot;adjective-noun-noun&quot;;
+95   char *example_session_string9 = &quot;adjective-noun-noun&quot;;
+96   char *example_session_string10 = &quot;adjective-noun-noun&quot;;
+97 
+98   // Generate session strings for examples (sodium_init called as needed by acds_string_generate)
+99   acds_string_generate(session_buf1, sizeof(session_buf1));
+100   if (session_buf1[0] != '\0') {
+101     example_session_string1 = session_buf1;
+102   }
+103   acds_string_generate(session_buf2, sizeof(session_buf2));
+104   if (session_buf2[0] != '\0') {
+105     example_session_string2 = session_buf2;
+106   }
+107   acds_string_generate(session_buf3, sizeof(session_buf3));
+108   if (session_buf3[0] != '\0') {
+109     example_session_string3 = session_buf3;
+110   }
+111   acds_string_generate(session_buf4, sizeof(session_buf4));
+112   if (session_buf4[0] != '\0') {
+113     example_session_string4 = session_buf4;
+114   }
+115   acds_string_generate(session_buf5, sizeof(session_buf5));
+116   if (session_buf5[0] != '\0') {
+117     example_session_string5 = session_buf5;
+118   }
+119   acds_string_generate(session_buf6, sizeof(session_buf6));
+120   if (session_buf6[0] != '\0') {
+121     example_session_string6 = session_buf6;
+122   }
+123   acds_string_generate(session_buf7, sizeof(session_buf7));
+124   if (session_buf7[0] != '\0') {
+125     example_session_string7 = session_buf7;
+126   }
+127   acds_string_generate(session_buf8, sizeof(session_buf8));
+128   if (session_buf8[0] != '\0') {
+129     example_session_string8 = session_buf8;
+130   }
+131   acds_string_generate(session_buf9, sizeof(session_buf9));
+132   if (session_buf9[0] != '\0') {
+133     example_session_string9 = session_buf9;
+134   }
+135   acds_string_generate(session_buf10, sizeof(session_buf10));
+136   if (session_buf10[0] != '\0') {
+137     example_session_string10 = session_buf10;
+138   }
+139 
+140   // Build session string examples dynamically for discovery mode
+141   // These appear at the beginning of the examples section, right after &quot;start new session&quot;
+142   static char example_buf1[SESSION_STRING_BUFFER_SIZE];
+143   static char example_buf2[SESSION_STRING_BUFFER_SIZE];
+144   static char example_buf3[SESSION_STRING_BUFFER_SIZE];
+145   static char example_buf4[SESSION_STRING_BUFFER_SIZE];
+146   static char example_buf5[SESSION_STRING_BUFFER_SIZE];
+147   static char example_buf6[SESSION_STRING_BUFFER_SIZE];
+148   static char example_buf7[SESSION_STRING_BUFFER_SIZE];
+149   static char example_buf8[SESSION_STRING_BUFFER_SIZE];
+150   static char example_buf9[SESSION_STRING_BUFFER_SIZE];
+151   static char example_buf10[SESSION_STRING_BUFFER_SIZE];
+152 
+153   safe_snprintf(example_buf1, sizeof(example_buf1), &quot;%s&quot;, example_session_string1);
+154   safe_snprintf(example_buf2, sizeof(example_buf2), &quot;%s&quot;, example_session_string2);
+155   safe_snprintf(example_buf3, sizeof(example_buf3), &quot;%s&quot;, example_session_string3);
+156   safe_snprintf(example_buf4, sizeof(example_buf4), &quot;%s&quot;, example_session_string4);
+157   safe_snprintf(example_buf5, sizeof(example_buf5), &quot;%s&quot;, example_session_string5);
+158   safe_snprintf(example_buf6, sizeof(example_buf6), &quot;%s&quot;, example_session_string6);
+159   safe_snprintf(example_buf7, sizeof(example_buf7), &quot;%s&quot;, example_session_string7);
+160   safe_snprintf(example_buf8, sizeof(example_buf8), &quot;%s&quot;, example_session_string8);
+161   safe_snprintf(example_buf9, sizeof(example_buf9), &quot;%s&quot;, example_session_string9);
+162   safe_snprintf(example_buf10, sizeof(example_buf10), &quot;%s&quot;, example_session_string10);
+163 
+164   // Client mode: [address] - can be IP, hostname, hostname:port, or WebSocket URL
+165   static const char *client_examples[] = {&quot;localhost&quot;,
+166                                           &quot;ascii-chat.com&quot;,
+167                                           &quot;0.0.0.0&quot;,
+168                                           &quot;::&quot;,
+169                                           &quot;192.168.1.1:8080&quot;,
+170                                           &quot;[2001:db8::42]:27224&quot;,
+171                                           &quot;233.27.48.203:27224&quot;,
+172                                           &quot;62fb:759e:2bce:21d7:9e5d:13f8:3c11:5084:27224&quot;,
+173                                           &quot;ws://example.com:8080&quot;,
+174                                           &quot;wss://secure.example.com:443&quot;};
+175   // Discovery mode: [session-string] - session string or empty to start new session
+176   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
+177   static const char *discovery_examples[] = {&quot;(empty) start new session&quot;, (const char *)example_buf7,
+178                                              (const char *)example_buf8, (const char *)example_buf9,
+179                                              (const char *)example_buf10};
+180   options_builder_add_positional(
+181       b, &quot;session-string&quot;, &quot;(optional) Random three words in format adjective-noun-noun that connect you to a call.&quot;,
+182       false, &quot;POSITIONAL ARGUMENTS&quot;, discovery_examples, ARRAY_SIZE(discovery_examples), OPTION_MODE_DISCOVERY,
+183       parse_client_address);
+184 
+185   // Server and Discovery Service modes: [bind-address] [bind-address] - can be IP or hostname, up to 2 for IPv4/IPv6
+186   static const char *server_examples[] = {&quot;localhost&quot;,
+187                                           &quot;ascii-chat.com&quot;,
+188                                           &quot;0.0.0.0&quot;,
+189                                           &quot;::&quot;,
+190                                           &quot;234.50.188.236&quot;,
+191                                           &quot;9631:54e7:5b5c:80dc:0f62:1f01:7ccf:5512&quot;,
+192                                           &quot;105.137.19.11 3a08:7276:ccb4:7b31:e934:5330:9b3a:9598&quot;,
+193                                           &quot;::1 192.168.1.100&quot;};
+194   options_builder_add_positional(b, &quot;bind-address&quot;,
+195                                  &quot;(optional) 0-2 addresses for a server to bind to, one IPv4 and the other IPv6.&quot;,
+196                                  false, &quot;POSITIONAL ARGUMENTS&quot;, server_examples, ARRAY_SIZE(server_examples),
+197                                  OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC, parse_server_bind_address);
+198 
+199   options_builder_add_positional(b, &quot;address&quot;, &quot;(optional) Server address for client to connect to.&quot;, false,
+200                                  &quot;POSITIONAL ARGUMENTS&quot;, client_examples, ARRAY_SIZE(client_examples),
+201                                  OPTION_MODE_CLIENT, parse_client_address);
+202 
+203   // Mirror mode: [file|url] - file path or URL to stream
+204   static const char *mirror_media_examples[] = {
+205       &quot;/path/to/video.mp4&quot;,
+206       &quot;https://www.youtube.com/watch?v=dQw4w9WgXcQ&quot;,
+207       &quot;https://example.com/stream.m3u8&quot;};
+208   options_builder_add_positional(b, &quot;file|url&quot;,
+209                                  &quot;(optional) Media file path or URL to stream. If omitted, uses webcam. &quot;
+210                                  &quot;Cannot be combined with --file or --url.&quot;,
+211                                  false, &quot;POSITIONAL ARGUMENTS&quot;, mirror_media_examples,
+212                                  ARRAY_SIZE(mirror_media_examples), OPTION_MODE_MIRROR, parse_mirror_media);
+213 
+214   // Add usage lines for all modes
+215   options_builder_add_usage(b, NULL, NULL, true, &quot;Start a new session (share the session string)&quot;);
+216   options_builder_add_usage(b, NULL, &quot;&lt;session-string&gt;&quot;, true, &quot;Join an existing session&quot;);
+217   options_builder_add_usage(b, NULL, &quot;&lt;mode&gt;&quot;, true, &quot;Run in a specific mode&quot;);
+218   options_builder_add_usage(b, &quot;server&quot;, &quot;[bind-address] [bind-address]&quot;, true,
+219                             &quot;Start server (can specify 0-2 bind addresses, one IPv4 and the other IPv6)&quot;);
+220   options_builder_add_usage(b, &quot;client&quot;, &quot;[address]&quot;, true, &quot;Connect to server (defaults to localhost:27224)&quot;);
+221   options_builder_add_usage(b, &quot;mirror&quot;, &quot;[file|url]&quot;, true, &quot;View local webcam or media file or URL as ASCII art&quot;);
+222   options_builder_add_usage(b, &quot;discovery-service&quot;, &quot;[bind-address] [bind-address]&quot;, true,
+223                             &quot;Start discovery service (can specify 0-2 bind addresses, one IPv4 and the other IPv6)&quot;);
+224   options_builder_add_usage(b, NULL, &quot;[mode] --help&quot;, false, &quot;Show help for a specific mode&quot;);
+225 
+226   // Add examples for binary-level help and discovery mode
+227   options_builder_add_example(b, OPTION_MODE_BINARY, NULL, &quot;Start new session (share the session string)&quot;, false);
+228   options_builder_add_example(b, OPTION_MODE_BINARY, example_buf1, &quot;Join a session using the session string&quot;, true);
+229 
+230   // Build combined examples with session string + flags
+231   static char combined_buf1[256];
+232   static char combined_buf2[256];
+233   static char combined_buf3[256];
+234   static char combined_buf4[256];
+235   static char combined_buf5[256];
+236   safe_snprintf(combined_buf1, sizeof(combined_buf1), &quot;%s --file video.mp4&quot;, example_buf3);
+237   safe_snprintf(combined_buf2, sizeof(combined_buf2), &quot;%s --url 'https://www.youtube.com/watch?v=dQw4w9WgXcQ'&quot;,
+238                 example_buf4);
+239   safe_snprintf(combined_buf3, sizeof(combined_buf3), &quot;%s -f -&quot;, example_buf5);
+240   safe_snprintf(combined_buf4, sizeof(combined_buf4), &quot;%s --palette-chars '@%%#*+=-:. '&quot;, example_buf6);
+241   safe_snprintf(combined_buf5, sizeof(combined_buf5), &quot;%s --discovery-service --discovery-service-port 27225&quot;,
+242                 example_buf2);
+243 
+244   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf1, &quot;Join session and stream from local video file&quot;,
+245                               false);
+246   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf2, &quot;Join session and stream from YouTube video&quot;,
+247                               false);
+248   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf3, &quot;Join session and stream media from stdin&quot;, false);
+249   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf4, &quot;Join session with custom ASCII palette characters&quot;,
+250                               false);
+251   options_builder_add_example(b, OPTION_MODE_BINARY, combined_buf5, &quot;Join session via custom discovery server&quot;, false);
+252 
+253   // Add examples for server-like modes (server + discovery-service)
+254   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, NULL, &quot;Start on localhost (127.0.0.1 and ::1)&quot;, false);
+255   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, &quot;0.0.0.0&quot;, &quot;Start on all IPv4 interfaces&quot;, false);
+256   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE,
+257                               &quot;0.0.0.0 ::&quot;, &quot;Start on all IPv4 and IPv6 interfaces (dual-stack)&quot;, false);
+258   options_builder_add_example(b, OPTION_MODE_SERVER_LIKE, &quot;--port 8080&quot;, &quot;Start on custom port&quot;, false);
+259 
+260   // Server-specific examples
+261   options_builder_add_example(b, OPTION_MODE_SERVER, &quot;--key ~/.ssh/id_ed25519 --discovery&quot;,
+262                               &quot;Start with identity key and discovery registration&quot;, false);
+263 
+264   // Add examples for client-like modes (client + mirror)
+265   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, &quot;--url 'https://youtu.be/7ynHVGCehoM'&quot;,
+266                               &quot;Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)&quot;, false);
+267   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, &quot;--url 'https://www.twitch.tv/ludwig'&quot;,
+268                               &quot;Stream Ludwig from videogames on Twitch&quot;, false);
+269   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, &quot;-f video.mp4&quot;, &quot;Stream from local video file&quot;, false);
+270   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, &quot;--palette-chars '@%#*+=-:. '&quot;,
+271                               &quot;Custom palette characters to use. UTF-8 is allowed.&quot;, false);
+272   options_builder_add_example(
+273       b, OPTION_MODE_CLIENT_LIKE, &quot;--snapshot&quot;,
+274       &quot;Print ascii art for --snapshot-delay's value of seconds then print the last frame and exit. &quot;
+275       &quot;In snapshot mode, --width, --height, and --color are NOT autodetected when piping stdin in or redirecting &quot;
+276       &quot;output.&quot;,
+277       false);
+278   options_builder_add_example(b, OPTION_MODE_CLIENT_LIKE, &quot;--color-filter cyan --palette cool&quot;,
+279                               &quot;Apply cyan color filter and cool palette&quot;, false);
+280 
+281   // Client-specific examples
+282   options_builder_add_example(b, OPTION_MODE_CLIENT, &quot;example.com&quot;, &quot;Connect to remote server&quot;, false);
+283   options_builder_add_example(b, OPTION_MODE_CLIENT, &quot;example.com:8080&quot;, &quot;Connect to remote server on custom port&quot;,
+284                               false);
+285   options_builder_add_example(b, OPTION_MODE_CLIENT, &quot;--color-mode mono --render-mode half-block --width 120&quot;,
+286                               &quot;Connect with custom display options&quot;, false);
+287 
+288   // Mirror-specific examples (unique to mirror mode)
+289   options_builder_add_example(
+290       b, OPTION_MODE_MIRROR, NULL,
+291       &quot;View the webcam or files or URLs as ASCII art. Like client mode but without network connectivity or a server.&quot;,
+292       false);
+293   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;--color-mode mono&quot;, &quot;View webcam in black and white&quot;, false);
+294   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;--color-filter green&quot;,
+295                               &quot;View webcam with green monochromatic color filter&quot;, false);
+296   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;--matrix --color-filter rainbow&quot;,
+297                               &quot;Matrix rain effect with rainbow colors cycling over 3.5s&quot;, false);
+298   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;--file '-'&quot;,
+299                               &quot;Stream media from stdin (cat file.gif | ascii-chat mirror -f '-')&quot;, false);
+300   options_builder_add_example_utility(b, OPTION_MODE_MIRROR, &quot;cat video.avi | ascii-chat mirror -f '-' -l -s 00:30&quot;,
+301                                       &quot;Stream .avi from stdin, looped, seeking to 00:30&quot;, true);
+302   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;--file video.mov --seek 22:10&quot;,
+303                               &quot;Start playback at exactly 22:10 (also works with --url)&quot;, false);
+304   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;-f 'https://youtu.be/LS9W8SO-Two' -S -D 0 -s 5:12&quot;,
+305                               &quot;Print a single frame from a YouTube video at exactly 5:12 and exit&quot;, false);
+306   options_builder_add_example(b, OPTION_MODE_MIRROR, &quot;-S -D 0 | tee frame.txt | pbcopy&quot;,
+307                               &quot;Capture single ASCII frame to clipboard (macOS) and file&quot;, false);
+308   options_builder_add_example_utility(b, OPTION_MODE_MIRROR, &quot;pbpaste | cat -&quot;,
+309                                       &quot;View ASCII frame from clipboard (macOS)&quot;, true);
+310 
+311   // Discovery-service specific examples
+312   options_builder_add_example(b, OPTION_MODE_DISCOVERY_SVC, &quot;--require-server-identity --require-client-identity&quot;,
+313                               &quot;Enforce identity verification for all parties&quot;, false);
+314 
+315   // Add mode descriptions
+316   options_builder_add_mode(b, &quot;server&quot;, &quot;Run as multi-client video chat server&quot;);
+317   options_builder_add_mode(b, &quot;client&quot;, &quot;Run as video chat client (connect to server)&quot;);
+318   options_builder_add_mode(b, &quot;mirror&quot;, &quot;View local media as ASCII art (no server)&quot;);
+319   options_builder_add_mode(b, &quot;discovery-service&quot;, &quot;Secure P2P session signalling&quot;);
+320 
+321   // Add custom help sections for interactive modes (client, mirror, and discovery)
+322   options_builder_add_custom_section(b, &quot;KEYBINDINGS&quot;,
+323                                      &quot;Available in ascii-chat client, mirror, and discovery modes. &quot;
+324                                      &quot;While rendering, press '?' to display a keyboard shortcuts help menu showing:\n&quot;
+325                                      &quot;  - Available keybindings (?, Space, arrows, m, c, f, r)\n&quot;
+326                                      &quot;  - Current settings (volume, color mode, audio status, etc.)&quot;,
+327                                      OPTION_MODE_CLIENT_LIKE);
+328 
+329   // Add environment variables section (all modes)
+330   options_builder_add_custom_section(
+331       b, &quot;ENVIRONMENT&quot;,
+332       &quot;All command-line flags that accept values have corresponding environment variables.\n&quot;
+333       &quot;  Format: ASCII_CHAT_&lt;FLAG_NAME&gt; where FLAG_NAME is uppercase with hyphens replaced by underscores\n&quot;
+334       &quot;  Example: --color-filter maps to ASCII_CHAT_COLOR_FILTER\n&quot;
+335       &quot;\n&quot;
+336       &quot;  Configuration precedence (lowest to highest):\n&quot;
+337       &quot;    1. Config file values (~/.ascii-chat/config.toml)\n&quot;
+338       &quot;    2. Environment variables (ASCII_CHAT_*)\n&quot;
+339       &quot;    3. Command-line flags (--flag-name)\n&quot;
+340       &quot;\n&quot;
+341       &quot;  Additional environment variables are documented in the ascii-chat(1) man page.&quot;,
+342       OPTION_MODE_ALL);
+343 
+344   // Add common dependencies (these will be validated after parsing)
+345   // Note: Dependencies are validated at runtime, so we add them here for documentation
+346 
+347   // ============================================================================
+348   // Media Source Conflicts
+349   // ============================================================================
+350   // URL conflicts: --url cannot be used with --file or --loop
+351   options_builder_add_dependency_conflicts(b, &quot;url&quot;, &quot;file&quot;,
+352                                            &quot;Option --url cannot be used with --file (--url takes priority)&quot;);
+353   options_builder_add_dependency_conflicts(
+354       b, &quot;url&quot;, &quot;loop&quot;, &quot;Option --url cannot be used with --loop (network streams cannot be looped)&quot;);
+355 
+356   // ============================================================================
+357   // Encryption &amp; Authentication Conflicts
+358   // ============================================================================
+359   // Cannot use both --encrypt and --no-encrypt
+360   options_builder_add_dependency_conflicts(b, &quot;no-encrypt&quot;, &quot;encrypt&quot;, &quot;Cannot use --no-encrypt with --encrypt&quot;);
+361 
+362   // Cannot use --no-auth with authentication material (--key, --password, --client-keys, --server-key)
+363   options_builder_add_dependency_conflicts(b, &quot;no-auth&quot;, &quot;key&quot;,
+364                                            &quot;Cannot use --no-auth with --key (key requires authentication)&quot;);
+365   options_builder_add_dependency_conflicts(b, &quot;no-auth&quot;, &quot;password&quot;,
+366                                            &quot;Cannot use --no-auth with --password (password requires authentication)&quot;);
+367   options_builder_add_dependency_conflicts(
+368       b, &quot;no-auth&quot;, &quot;client-keys&quot;, &quot;Cannot use --no-auth with --client-keys (key list requires authentication)&quot;);
+369   options_builder_add_dependency_conflicts(
+370       b, &quot;no-auth&quot;, &quot;server-key&quot;, &quot;Cannot use --no-auth with --server-key (verification requires authentication)&quot;);
+371 
+372   // Cannot use --key with --server-key (both server-side key options)
+373   options_builder_add_dependency_conflicts(
+374       b, &quot;key&quot;, &quot;server-key&quot;,
+375       &quot;Cannot use --key with --server-key (--key is server identity, --server-key is client-side)&quot;);
+376 
+377   // ============================================================================
+378   // Compression Conflicts
+379   // ============================================================================
+380   // Cannot use --no-compress with --compression-level
+381   options_builder_add_dependency_conflicts(b, &quot;no-compress&quot;, &quot;compression-level&quot;,
+382                                            &quot;Cannot use --no-compress with --compression-level&quot;);
+383 
+384   // ============================================================================
+385   // Audio Encoding Conflicts
+386   // ============================================================================
+387   // Cannot use both --encode-audio and --no-encode-audio
+388   options_builder_add_dependency_conflicts(b, &quot;encode-audio&quot;, &quot;no-encode-audio&quot;,
+389                                            &quot;Cannot use both --encode-audio and --no-encode-audio&quot;);
+390 
+391   // ============================================================================
+392   // Display &amp; Screen Conflicts
+393   // ============================================================================
+394 
+395   // ============================================================================
+396   // Requirements (dependencies that must be satisfied)
+397   // ============================================================================
+398   // --snapshot-delay requires --snapshot
+399   options_builder_add_dependency_requires(b, &quot;snapshot-delay&quot;, &quot;snapshot&quot;,
+400                                           &quot;Option --snapshot-delay requires --snapshot&quot;);
+401 
+402   // --loop requires --file (can't loop network streams)
+403   options_builder_add_dependency_requires(b, &quot;loop&quot;, &quot;file&quot;, &quot;Option --loop requires --file&quot;);
+404 
+405   const options_config_t *config = options_builder_build(b);
+406   options_builder_destroy(b);
+407   return config;
+408 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acds_string_generate()</b>,
+    <b>options_builder_add_custom_section()</b>,
+    <b>options_builder_add_dependency_conflicts()</b>,
+    <b>options_builder_add_dependency_requires()</b>,
+    <b>options_builder_add_example()</b>,
+    <b>options_builder_add_example_utility()</b>,
+    <b>options_builder_add_mode()</b>, <b>options_builder_add_positional()</b>,
+    <b>options_builder_add_usage()</b>, <b>options_builder_build()</b>,
+    <b>options_builder_create()</b>, <b>options_builder_destroy()</b>,
+    <b>options_registry_add_all_to_builder()</b>, <b>parse_client_address()</b>,
+    <b>parse_mirror_media()</b>, <b>parse_server_bind_address()</b>, and
+    <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>action_create_config()</b>,
+    <b>action_create_manpage()</b>, <b>options_init()</b>, and
+  <b>usage()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

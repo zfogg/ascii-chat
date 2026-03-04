@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>http_server.cpp(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">http_server.cpp(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">http_server.cpp(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">http_server.cpp - Minimal single-threaded HTTP/1.1 server
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Namespaces"><a class="permalink" href="#Namespaces">Namespaces</a></h2>
+<br/>
+<p class="Pp">namespace <b>ascii_query</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>INVALID_SOCKET_VAL</b> (-1)
+  <br/>
+  #define <b>SOCKET_ERROR_VAL</b> (-1)
+  <br/>
+  #define <b>close_socket</b> close
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">using <b>socket_t</b> = int
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Minimal single-threaded HTTP/1.1 server implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>http_server.cpp</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_close_socket___close"><a class="permalink" href="#_define_close_socket___close">#define
+  close_socket close</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>http_server.cpp</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_close()</b>,
+    <b>server_connection_establish()</b>,
+    <b>ascii_query::HttpServer::start()</b>, and
+    <b>ascii_query::HttpServer::stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_INVALID_SOCKET_VAL___("><a class="permalink" href="#_define_INVALID_SOCKET_VAL___(">#define
+  INVALID_SOCKET_VAL (-1)</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>http_server.cpp</b>.</p>
+<p class="Pp">Referenced by <b>ascii_query::HttpServer::processOneRequest()</b>,
+    and <b>ascii_query::HttpServer::start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SOCKET_ERROR_VAL___("><a class="permalink" href="#_define_SOCKET_ERROR_VAL___(">#define
+  SOCKET_ERROR_VAL (-1)</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>http_server.cpp</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="using_"><a class="permalink" href="#using_">using
+  <b>socket_t</b> = int</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>http_server.cpp</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

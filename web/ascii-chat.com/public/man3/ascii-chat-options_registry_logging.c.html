@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>logging.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">logging.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">logging.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">logging.c - Logging category options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_logging_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Logging category options.</p>
+<p class="Pp">Binary-level logging and output control options including log
+    files, verbosity levels, and grep filtering.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>options/registry/logging.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_logging_entries__"><a class="permalink" href="#const_registry_entry_t_g_logging_entries__">const
+  registry_entry_t g_logging_entries[]</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>options/registry/logging.c</b>.</p>
+<pre>21                                            {
+22     // LOGGING GROUP (binary-level)
+23     {&quot;log-file&quot;,
+24      'L',
+25      OPTION_TYPE_CALLBACK,
+26      offsetof(options_t, log_file),
+27      NULL, // Use mode_default_getter instead
+28      0,
+29 #ifndef NDEBUG
+30      &quot;Set FILE as path for log file (default: current directory; filenames: server.log, client.log, mirror.log, &quot;
+31      &quot;acds.log, discovery.log).&quot;,
+32 #else
+33      &quot;Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or %TEMP%\\ascii-chat\\; filenames: server.log, &quot;
+34      &quot;client.log, mirror.log, acds.log, discovery.log).&quot;,
+35 #endif
+36      &quot;LOGGING&quot;,
+37      &quot;FILE&quot;,
+38      false,
+39      &quot;ASCII_CHAT_LOG_FILE&quot;,
+40      NULL,
+41      parse_log_file,
+42      false,
+43      false,
+44 #ifndef NDEBUG
+45      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+46 #else
+47      OPTIONS_MODE_BINARY,
+48 #endif
+49      {0},
+50      get_default_log_file},
+51     {&quot;log-level&quot;,
+52      '\0',
+53      OPTION_TYPE_CALLBACK,
+54      offsetof(options_t, log_level),
+55      &amp;default_log_level_value,
+56      sizeof(log_level_t),
+57      &quot;Set log level: dev, debug, info, warn, error, fatal. Logs at or above this level are written.&quot;,
+58      &quot;LOGGING&quot;,
+59      NULL,
+60      false,
+61      &quot;ASCII_CHAT_LOG_LEVEL&quot;,
+62      NULL,
+63      parse_log_level,
+64      false,
+65      false,
+66      OPTION_MODE_BINARY,
+67      {.enum_values = g_log_level_values,
+68       .enum_descriptions = g_log_level_descs,
+69       .enum_integer_values = g_log_level_integers,
+70       .input_type = OPTION_INPUT_ENUM},
+71      NULL},
+72     {&quot;verbose&quot;,
+73      'V',
+74      OPTION_TYPE_CALLBACK,
+75      offsetof(options_t, verbose_level),
+76      0,
+77      sizeof(unsigned short int),
+78      &quot;Increase log verbosity (stackable: -VV, -VVV).&quot;,
+79      &quot;LOGGING&quot;,
+80      NULL,
+81      false,
+82      &quot;ASCII_CHAT_VERBOSE&quot;,
+83      NULL,
+84      parse_verbose_flag,
+85      false,
+86      true,
+87      OPTION_MODE_BINARY,
+88      {0},
+89      NULL},
+90     {&quot;quiet&quot;,
+91      'q',
+92      OPTION_TYPE_BOOL,
+93      offsetof(options_t, quiet),
+94      &amp;default_quiet_value,
+95      sizeof(bool),
+96      &quot;Disable console logging (log to file only).&quot;,
+97      &quot;LOGGING&quot;,
+98      NULL,
+99      false,
+100      &quot;ASCII_CHAT_QUIET&quot;,
+101      NULL,
+102      NULL,
+103      false,
+104      false,
+105      OPTION_MODE_BINARY,
+106      {0},
+107      NULL},
+108     {&quot;grep&quot;,
+109      '\0',
+110      OPTION_TYPE_STRING,
+111      offsetof(options_t, grep_pattern),
+112      NULL, // Default is empty string - not meaningful to display in help
+113      sizeof(char *),
+114      &quot;Filter console logs with perl compatible regular expressions or fixed strings. &quot;
+115      &quot;Format 1: /pattern/flags (with flags). Format 2: pattern (plain regex, no flags). &quot;
+116      &quot;Flags (format 1 only): i(case-insensitive), m(multiline), s(dotall), x(extended), g(global highlight), &quot;
+117      &quot;I(invert match), F(fixed string), A&lt;n&gt;(n lines after), B&lt;n&gt;(n lines before), C&lt;n&gt;(n lines of context). &quot;
+118      &quot;Examples: '/error/i', 'error', '/panic/C5', 'warn|error', '/buffer pool/Fg'. Multiple --grep allowed (OR).&quot;,
+119      &quot;LOGGING&quot;,
+120      &quot;PATTERN&quot;,
+121      false,
+122      &quot;ASCII_CHAT_GREP&quot;,
+123      NULL,
+124      NULL,
+125      false,
+126      false,
+127      OPTION_MODE_BINARY,
+128      {.examples = (const char *[]){&quot;ERROR&quot;, &quot;client\\.c&quot;, &quot;network.*failed&quot;, NULL}},
+129      NULL},
+130     {&quot;color-scheme&quot;,
+131      '\0',
+132      OPTION_TYPE_STRING,
+133      offsetof(options_t, color_scheme_name),
+134      OPT_COLOR_SCHEME_NAME_DEFAULT,
+135      sizeof(((options_t *)0)-&gt;color_scheme_name),
+136      &quot;Color scheme for logging output. Built-in schemes: pastel, nord, solarized, dracula, gruvbox, &quot;
+137      &quot;monokai, base16-default. All schemes with light variants auto-adapt to terminal background.&quot;,
+138      &quot;LOGGING&quot;,
+139      &quot;NAME&quot;,
+140      false,
+141      &quot;ASCII_CHAT_COLOR_SCHEME&quot;,
+142      NULL,
+143      NULL,
+144      false,
+145      false,
+146      OPTION_MODE_BINARY,
+147      {.input_type = OPTION_INPUT_STRING},
+148      NULL},
+149     {&quot;json&quot;,
+150      '\0',
+151      OPTION_TYPE_BOOL,
+152      offsetof(options_t, json),
+153      &amp;default_json_value,
+154      sizeof(bool),
+155      &quot;Enable JSON logging (machine-readable NDJSON format). Disabled by default (text format).&quot;,
+156      &quot;LOGGING&quot;,
+157      NULL,
+158      false,
+159      &quot;ASCII_CHAT_JSON&quot;,
+160      NULL,
+161      NULL,
+162      false,
+163      false,
+164      OPTION_MODE_BINARY,
+165      {0},
+166      NULL},
+167     {&quot;log-template&quot;,
+168      '\0',
+169      OPTION_TYPE_STRING,
+170      offsetof(options_t, log_template),
+171      NULL,
+172      sizeof(((options_t *)0)-&gt;log_template),
+173      &quot;Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see 'man 3 strftime' for &quot;
+174      &quot;codes like %Y, %m, %d, %H, %M, %S); &quot;
+175      &quot;%level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5 chars; &quot;
+176      &quot;%file - full file path; %file_relative - file path relative to project root; %line - line number; &quot;
+177      &quot;%func - function name; %tid - thread ID; %message - log message; &quot;
+178      &quot;%color(LEVEL, text) - colorize text using LEVEL's color from current scheme (e.g., %color(INFO, %tid)). &quot;
+179      &quot;Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line %message'. &quot;
+180      &quot;Escape %% for literal %, \\\\ for literal backslash. &quot;
+181      &quot;Default: release mode '[%time(%H:%M:%S)] [%level_aligned] %message' or debug mode '[%time(%H:%M:%S)] &quot;
+182      &quot;[%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message'.&quot;,
+183      &quot;LOGGING&quot;,
+184      &quot;TEMPLATE&quot;,
+185      false,
+186      &quot;ASCII_CHAT_LOG_TEMPLATE&quot;,
+187      NULL,
+188      NULL,
+189      false,
+190      false,
+191      OPTION_MODE_BINARY,
+192      {.input_type = OPTION_INPUT_STRING},
+193      NULL},
+194     {&quot;log-format-console&quot;,
+195      '\0',
+196      OPTION_TYPE_BOOL,
+197      offsetof(options_t, log_format_console_only),
+198      NULL,
+199      sizeof(bool),
+200      &quot;Apply custom log template (--log-template) only to console output (file logs use default format). See &quot;
+201      &quot;--log-template &quot;
+202      &quot;for supported format specifiers.&quot;,
+203      &quot;LOGGING&quot;,
+204      NULL,
+205      false,
+206      &quot;ASCII_CHAT_LOG_FORMAT_CONSOLE&quot;,
+207      NULL,
+208      NULL,
+209      false,
+210      false,
+211      OPTION_MODE_BINARY,
+212      {0},
+213      NULL},
+214 
+215     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

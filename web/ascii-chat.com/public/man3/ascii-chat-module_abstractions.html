@@ -1,0 +1,4362 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>module_abstractions(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">module_abstractions(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">module_abstractions(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">module_abstractions - Abstraction Layers</p>
+<p class="Pp">
+  <br/>
+   - &#x1F50C; Cross-platform abstraction for threading, sockets, and system
+    APIs</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F50C; Cross-platform abstraction for threading, sockets, and
+    system APIs</p>
+<p class="Pp">Platform-independent APIs for Windows, Linux, and macOS. Platform
+    Abstraction Layer README</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The platform abstraction layer provides a unified API for
+    cross-platform development across Windows, Linux, and macOS. It eliminates
+    platform-specific conditional compilation from application code by
+    centralizing OS-specific implementations.</p>
+<p class="Pp"></p>
+<p class="Pp">Cross-platform development without abstraction typically requires
+    conditional compilation (#ifdef blocks) scattered throughout the codebase,
+    with Windows APIs differing significantly from POSIX systems. This approach
+    reduces code readability and increases maintenance complexity.</p>
+<p class="Pp"></p>
+<p class="Pp">The platform abstraction layer solves this by providing a single,
+    consistent API that works identically across all supported platforms.
+    Application code calls platform functions with a unified interface;
+    implementation details translate these calls to the appropriate
+    platform-specific APIs at runtime.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_does_the_platform_layer_abstract?"><a class="permalink" href="#What_does_the_platform_layer_abstract?">What
+  does the platform layer abstract? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>Threading</b>: Create threads, join them, get thread IDs&#x2014;same
+      API everywhere</li>
+  <li><b>Synchronization</b>: Mutexes, read-write locks, condition
+    variables</li>
+  <li><b>Networking</b>: Sockets that work the same on Windows and POSIX</li>
+  <li><b>Terminal I/O</b>: Control the terminal, detect capabilities, raw
+    mode</li>
+  <li><b>System functions</b>: Environment variables, sleep, signals, crash
+      handling</li>
+  <li><b>File I/O</b>: Safe, portable file operations with proper error
+    handling</li>
+  <li><b>String operations</b>: Safe string handling across platforms</li>
+</ul>
+<p class="Pp"><b>The Big Achievement</b>: Zero platform-specific code (#ifdef
+    blocks) in application code!</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Supported Platforms</b>: Windows 10+, Linux (POSIX), macOS
+    (POSIX)</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Design_Philosophy"><a class="permalink" href="#Design_Philosophy">Design
+  Philosophy</a></h1>
+<p class="Pp">The platform abstraction layer follows a comprehensive philosophy
+    that guides every design decision. Understanding these principles will help
+    you use the platform layer effectively and understand why it works the way
+    it does.</p>
+<section class="Ss">
+<h2 class="Ss" id="Complete_Isolation"><a class="permalink" href="#Complete_Isolation">Complete
+  Isolation</a></h2>
+<p class="Pp"><b>Principle</b>: Platform-specific code is 100% isolated in
+    implementation files.</p>
+<p class="Pp"></p>
+<p class="Pp">This is the most important principle&#x2014;application code
+    (src/) has <b>ZERO</b> #ifdef blocks for platform detection. All platform
+    differences live in lib/platform/posix/ or lib/platform/windows/.</p>
+<p class="Pp"></p>
+<p class="Pp">Why this matters:</p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Platform checks scattered everywhere
+#ifdef _WIN32
+<br/>
+  HANDLE thread;
+<br/>
+  CreateThread(...);
+#else
+<br/>
+  pthread_t thread;
+<br/>
+  pthread_create(...);
+#endif
+// &#x2705; GOOD - Single API, works everywhere
+asciichat_thread_t thread;
+asciichat_thread_create(&amp;thread, thread_func, arg);
+</pre>
+<p class="Pp"><b>Benefits of complete isolation</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Clean separation</b>: Platform bugs are fixed in one location</li>
+  <li><b>Better readability</b>: Application code focuses on business logic</li>
+  <li><b>Easier testing</b>: Can mock platform layer for unit tests</li>
+  <li><b>Maintainability</b>: Changes to platform code don't affect
+    application</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Zero_Overhead_in_Release_Builds"><a class="permalink" href="#Zero_Overhead_in_Release_Builds">Zero
+  Overhead in Release Builds</a></h2>
+<p class="Pp"><b>Principle</b>: Abstraction should add zero runtime cost in
+    production.</p>
+<p class="Pp"></p>
+<p class="Pp">The platform layer achieves this through:</p>
+<ul class="Bl-bullet">
+  <li>Direct function calls (no function pointers or virtual dispatch)</li>
+  <li>Inline wrappers for simple operations</li>
+  <li>Compile-time selection of platform code</li>
+</ul>
+<p class="Pp">In release builds:</p>
+<p class="Pp"></p>
+<pre>// This abstraction call:
+mutex_lock(&amp;my_mutex);
+// Compiles directly to:
+// Windows: EnterCriticalSection(&amp;my_mutex.cs);
+// POSIX:   pthread_mutex_lock(&amp;my_mutex.mutex);
+</pre>
+<p class="Pp">No runtime overhead, no performance penalty! The abstraction
+    disappears at compile time.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Optional_Debug_Support"><a class="permalink" href="#Optional_Debug_Support">Optional
+  Debug Support</a></h2>
+<p class="Pp"><b>Principle</b>: Enable extensive debugging without affecting
+    production performance.</p>
+<p class="Pp"></p>
+<p class="Pp">Debug builds can enable lock tracking, memory debugging, and
+    verbose logging:</p>
+<p class="Pp"></p>
+<pre>// Enable debug features at compile time
+#define DEBUG_THREADS    // Track thread creation/destruction
+#define DEBUG_LOCKS      // Track lock acquisition/release
+#define DEBUG_MEMORY     // Track allocations
+// No runtime cost in release builds!
+</pre>
+<p class="Pp">This gives you powerful debugging when you need it, zero cost when
+    you don't.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="POSIX-First_API_Design"><a class="permalink" href="#POSIX-First_API_Design">POSIX-First
+  API Design</a></h2>
+<p class="Pp"><b>Principle</b>: Use POSIX semantics as the baseline, adapt
+    Windows to match.</p>
+<p class="Pp"></p>
+<p class="Pp">Why POSIX first?</p>
+<ul class="Bl-bullet">
+  <li>POSIX is the standard for Unix-like systems (Linux, macOS, BSD)</li>
+  <li>Well-documented, stable APIs that have been around for decades</li>
+  <li>Most developers already know POSIX threading and socket APIs</li>
+</ul>
+<p class="Pp">The abstraction:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Defines API based on POSIX semantics</dd>
+  <dt>2.</dt>
+  <dd>POSIX implementation is thin wrapper (often just delegation)</dd>
+  <dt>3.</dt>
+  <dd>Windows implementation adapts Windows APIs to POSIX semantics</dd>
+</dl>
+<p class="Pp">Example:</p>
+<p class="Pp"></p>
+<pre>// POSIX version (simple delegation)
+int mutex_lock(mutex_t *mutex) {
+<br/>
+  return pthread_mutex_lock(&amp;mutex-&gt;mutex);
+}
+// Windows version (adaptation)
+int mutex_lock(mutex_t *mutex) {
+<br/>
+  EnterCriticalSection(&amp;mutex-&gt;cs);
+<br/>
+  return 0;  // Windows doesn't return error codes like POSIX
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Strong_Type_Safety"><a class="permalink" href="#Strong_Type_Safety">Strong
+  Type Safety</a></h2>
+<p class="Pp"><b>Principle</b>: Use distinct types to prevent platform-specific
+    mistakes.</p>
+<p class="Pp"></p>
+<p class="Pp">Platform types are completely opaque to application code:</p>
+<p class="Pp"></p>
+<pre>// Platform-specific types (application never sees these)
+typedef struct {
+<br/>
+  #ifdef _WIN32
+<br/>
+    HANDLE handle;
+<br/>
+  #else
+<br/>
+    pthread_t thread;
+<br/>
+  #endif
+} asciichat_thread_t;
+// Application just uses asciichat_thread_t
+asciichat_thread_t my_thread;
+asciichat_thread_create(&amp;my_thread, worker, NULL);
+</pre>
+<p class="Pp">This prevents common mistakes like:</p>
+<ul class="Bl-bullet">
+  <li>Comparing Windows HANDLE to -1 (wrong, should be NULL)</li>
+  <li>Comparing POSIX socket to NULL (wrong, should be -1)</li>
+  <li>Using platform-specific functions on wrong types</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss">Static Initialization</h2>
+<p class="Pp"><b>Principle</b>: Support global synchronization primitives with
+    zero runtime init cost.</p>
+<p class="Pp"></p>
+<p class="Pp">You can declare global mutexes, locks, and condition variables
+    without explicit initialization functions:</p>
+<p class="Pp"></p>
+<pre>// Global mutex - works on all platforms, no init() call needed
+static_mutex_t g_mutex = STATIC_MUTEX_INIT;
+void critical_function() {
+<br/>
+  static_mutex_lock(&amp;g_mutex);
+<br/>
+  // Critical section
+<br/>
+  static_mutex_unlock(&amp;g_mutex);
+}
+</pre>
+<p class="Pp">How it works:</p>
+<ul class="Bl-bullet">
+  <li><b>POSIX</b>: Uses compile-time initializers
+    (PTHREAD_MUTEX_INITIALIZER)</li>
+  <li><b>Windows</b>: Uses lazy initialization with atomic compare-exchange</li>
+</ul>
+<p class="Pp">Both approaches are thread-safe and require zero explicit
+    initialization!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Consistent_Semantics"><a class="permalink" href="#Consistent_Semantics">Consistent
+  Semantics</a></h2>
+<p class="Pp"><b>Principle</b>: The platform layer normalizes differences that
+    don't matter to the application.</p>
+<p class="Pp"></p>
+<p class="Pp">What gets normalized:</p>
+<ul class="Bl-bullet">
+  <li><b>Type unification</b>: Socket handles are <b>socket_t</b><b>
+      everywhere</b></li>
+  <li><b>Error code normalization</b>: Error codes use <b>Error Handling</b><b>
+      convention everywhere</b></li>
+  <li><b>Function signature normalization</b>: Thread functions use void*
+      (*)(void*)</li>
+  <li><b>Flag normalization</b>: File operations use POSIX-style flags</li>
+</ul>
+<p class="Pp">Application code can assume consistent semantics without worrying
+    about platform differences in function signatures, error handling, or data
+    types.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Minimal_Abstraction_Surface"><a class="permalink" href="#Minimal_Abstraction_Surface">Minimal
+  Abstraction Surface</a></h2>
+<p class="Pp"><b>Principle</b>: Expose only what's needed.</p>
+<p class="Pp"></p>
+<p class="Pp">The platform layer doesn't try to abstract everything. Instead, it
+    provides a focused API that covers only what ascii-chat needs:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Threading (thread creation, joining, detaching)</li>
+  <li>Synchronization (mutexes, rwlocks, condition variables)</li>
+  <li>Networking (sockets with auto-optimization)</li>
+  <li>Terminal I/O (raw mode, cursor control, size detection)</li>
+  <li>System utilities (environment, strings, error handling)</li>
+  <li>Debugging support (backtraces, symbol resolution)</li>
+</ul>
+<p class="Pp">Complex platform features that ascii-chat doesn't use (e.g.,
+    Windows COM, macOS CoreFoundation, Linux-specific ioctls) are left out
+    entirely. This keeps the abstraction layer small, maintainable, and
+  focused.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Benefits of minimalism</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Faster compilation</b>: Fewer headers, smaller API surface</li>
+  <li><b>Easier maintenance</b>: Less code to maintain, fewer edge cases</li>
+  <li><b>Better focus</b>: API designed for ascii-chat's specific needs</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<p class="Pp">The platform abstraction layer uses a three-layer architecture
+    that keeps everything clean and organized.</p>
+<section class="Ss">
+<h2 class="Ss" id="Three-Layer_Design"><a class="permalink" href="#Three-Layer_Design">Three-Layer
+  Design</a></h2>
+<p class="Pp"><b>Layer 1: Header Definition</b> (lib/platform/*.h)</p>
+<ul class="Bl-bullet">
+  <li>Defines the public API that application code uses</li>
+  <li>Declares abstract types (asciichat_thread_t, mutex_t, <b>socket_t</b>,
+      etc.)</li>
+  <li>Documents all functions with Doxygen comments</li>
+  <li>Completely platform-agnostic</li>
+</ul>
+<p class="Pp"><b>Layer 2: POSIX Implementation</b> (lib/platform/posix/*.c)</p>
+<ul class="Bl-bullet">
+  <li>Implements the API using POSIX standards</li>
+  <li>Thin wrappers around pthread, BSD sockets, termios</li>
+  <li>Works on Linux, macOS, BSD, and other Unix-like systems</li>
+</ul>
+<p class="Pp"><b>Layer 3: Windows Implementation</b>
+  (lib/platform/windows/*.c)</p>
+<ul class="Bl-bullet">
+  <li>Implements the same API using Windows APIs</li>
+  <li>Adapts Windows semantics to match POSIX behavior</li>
+  <li>Uses Windows threads, Critical Sections, Winsock2, Console API</li>
+</ul>
+<p class="Pp">The build system automatically selects Layer 2 or Layer 3 based on
+    the target platform.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Directory_Structure"><a class="permalink" href="#Directory_Structure">Directory
+  Structure</a></h2>
+<pre>lib/platform/
+&#x251C;&#x2500;&#x2500; README.md              # Platform abstraction documentation
+&#x251C;&#x2500;&#x2500; abstraction.h          # Main header - includes everything
+&#x251C;&#x2500;&#x2500; abstraction.c          # Common implementation (minimal)
+&#x251C;&#x2500;&#x2500; init.h                 # Static initialization helpers
+&#x251C;&#x2500;&#x2500; util.h                 # Public utilities (ssize_t, aligned memory, errors, files)
+&#x251C;&#x2500;&#x2500; internal.h             # Private helpers (ONLY for lib/platform/* files)
+&#x2502;
+&#x251C;&#x2500;&#x2500; thread.h               # Thread API definition
+&#x251C;&#x2500;&#x2500; mutex.h                # Mutex API definition
+&#x251C;&#x2500;&#x2500; rwlock.h               # Read-write lock API definition
+&#x251C;&#x2500;&#x2500; cond.h                 # Condition variable API definition
+&#x251C;&#x2500;&#x2500; socket.h               # Socket API definition
+&#x251C;&#x2500;&#x2500; terminal.h             # Terminal I/O API definition
+&#x251C;&#x2500;&#x2500; system.h               # System functions API definition
+&#x251C;&#x2500;&#x2500; string.h               # String operations API definition
+&#x251C;&#x2500;&#x2500; file.h                 # File I/O API definition
+&#x251C;&#x2500;&#x2500; password.h             # Password input API definition
+&#x2502;
+&#x251C;&#x2500;&#x2500; posix/                 # POSIX implementations (Linux/macOS)
+&#x2502;   &#x251C;&#x2500;&#x2500; thread.c
+&#x2502;   &#x251C;&#x2500;&#x2500; mutex.c
+&#x2502;   &#x251C;&#x2500;&#x2500; rwlock.c
+&#x2502;   &#x251C;&#x2500;&#x2500; cond.c
+&#x2502;   &#x251C;&#x2500;&#x2500; socket.c
+&#x2502;   &#x251C;&#x2500;&#x2500; terminal.c
+&#x2502;   &#x251C;&#x2500;&#x2500; system.c
+&#x2502;   &#x2514;&#x2500;&#x2500; symbols.c          # Backtrace using execinfo.h
+&#x2502;
+&#x2514;&#x2500;&#x2500; windows/               # Windows implementations
+<br/>
+    &#x251C;&#x2500;&#x2500; thread.c           # Most complex (2500+ lines!)
+<br/>
+    &#x251C;&#x2500;&#x2500; mutex.c
+<br/>
+    &#x251C;&#x2500;&#x2500; rwlock.c
+<br/>
+    &#x251C;&#x2500;&#x2500; cond.c
+<br/>
+    &#x251C;&#x2500;&#x2500; socket.c
+<br/>
+    &#x251C;&#x2500;&#x2500; terminal.c
+<br/>
+    &#x251C;&#x2500;&#x2500; system.c
+<br/>
+    &#x251C;&#x2500;&#x2500; symbols.c          # Backtrace using StackWalk64
+<br/>
+    &#x251C;&#x2500;&#x2500; getopt.c           # POSIX getopt for Windows
+<br/>
+    &#x251C;&#x2500;&#x2500; windows_compat.h   # Windows.h wrapper
+<br/>
+    &#x2514;&#x2500;&#x2500; windows_errno.h    # POSIX errno on Windows</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Header_Organization"><a class="permalink" href="#Header_Organization">Header
+  Organization</a></h2>
+<p class="Pp">Most application code only needs to include one header:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;  // Includes everything you need
+</pre>
+<p class="Pp">For specific components, you can include individual headers:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/thread.h&quot;    // Just threading
+#include &quot;platform/socket.h&quot;    // Just sockets
+#include &quot;platform/terminal.h&quot;  // Just terminal I/O
+</pre>
+<p class="Pp">The abstraction.h header automatically includes all component
+    headers, so you get the complete platform abstraction API in one
+  include.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent"><b>Important</b>: platform/internal.h is a private header
+  that MUST only be included within the lib/platform/ directory. External code
+  should never include it directly. All public utilities are available through
+  platform/util.h, platform/abstraction.h, or specific component headers like
+  platform/socket.h.</div>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Core_Components"><a class="permalink" href="#Core_Components">Core
+  Components</a></h1>
+<p class="Pp">The platform abstraction is organized into focused components,
+    each handling a specific aspect of cross-platform development.</p>
+<section class="Ss">
+<h2 class="Ss" id="Threading_(thread"><a class="permalink" href="#Threading_(thread">Threading
+  (thread.h)</a></h2>
+<p class="Pp">Thread creation, joining, and management with timeout support.</p>
+<p class="Pp"></p>
+<p class="Pp">Basic thread operations:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+void* worker_thread(void* arg) {
+<br/>
+  int* value = (int*)arg;
+<br/>
+  printf(&quot;Worker processing: %d\n&quot;, *value);
+<br/>
+  return NULL;
+}
+int main() {
+<br/>
+  platform_init();
+<br/>
+  // Create thread
+<br/>
+  asciichat_thread_t thread;
+<br/>
+  int data = 42;
+<br/>
+  int result = asciichat_thread_create(&amp;thread, worker_thread, &amp;data);
+<br/>
+  if (result != 0) {
+<br/>
+    log_error(&quot;Thread creation failed&quot;);
+<br/>
+    return 1;
+<br/>
+  }
+<br/>
+  // Wait for thread to finish
+<br/>
+  asciichat_thread_join(&amp;thread, NULL);
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Thread operations with timeout:</p>
+<p class="Pp"></p>
+<pre>// Wait up to 5 seconds for thread to complete
+int result = asciichat_thread_join_timeout(&amp;thread, NULL, 5000);
+if (result == ETIMEDOUT) {
+<br/>
+  log_warn(&quot;Thread did not finish in time&quot;);
+<br/>
+  // Thread is still running!
+} else if (result == 0) {
+<br/>
+  log_info(&quot;Thread completed successfully&quot;);
+}
+</pre>
+<p class="Pp">Thread identity and comparison:</p>
+<p class="Pp"></p>
+<pre>// Get current thread ID
+thread_id_t my_id = asciichat_thread_self();
+// Compare thread IDs
+if (asciichat_thread_equal(my_id, other_id)) {
+<br/>
+  log_debug(&quot;Same thread&quot;);
+}
+// Get numeric thread ID for logging
+uint64_t tid = asciichat_thread_current_id();
+log_debug(&quot;Thread ID: %&quot; PRIu64, tid);
+</pre>
+<p class="Pp">Important platform differences:</p>
+<ul class="Bl-bullet">
+  <li><b>Windows</b>: Timeout join fully supported</li>
+  <li><b>macOS</b>: Timeout join falls back to blocking (no
+      pthread_timedjoin_np)</li>
+  <li><b>Linux</b>: Full timeout join support via pthread_timedjoin_np</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mutexes_(mutex"><a class="permalink" href="#Mutexes_(mutex">Mutexes
+  (mutex.h)</a></h2>
+<p class="Pp">Mutual exclusion locks for protecting shared data.</p>
+<p class="Pp"></p>
+<p class="Pp">Basic mutex usage:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+typedef struct {
+<br/>
+  mutex_t lock;
+<br/>
+  int counter;
+} shared_data_t;
+void increment_counter(shared_data_t* data) {
+<br/>
+  mutex_lock(&amp;data-&gt;lock);
+<br/>
+  data-&gt;counter++;
+<br/>
+  mutex_unlock(&amp;data-&gt;lock);
+}
+int main() {
+<br/>
+  shared_data_t data;
+<br/>
+  mutex_init(&amp;data.lock);
+<br/>
+  data.counter = 0;
+<br/>
+  // Use the data with multiple threads...
+<br/>
+  mutex_destroy(&amp;data.lock);
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Try-lock (non-blocking):</p>
+<p class="Pp"></p>
+<pre>int result = mutex_trylock(&amp;data-&gt;lock);
+if (result == 0) {
+<br/>
+  // Lock acquired!
+<br/>
+  data-&gt;counter++;
+<br/>
+  mutex_unlock(&amp;data-&gt;lock);
+} else {
+<br/>
+  // Lock was busy, couldn't acquire it
+<br/>
+  log_debug(&quot;Lock busy, skipping operation&quot;);
+}
+</pre>
+<p class="Pp">Static initialization for global mutexes:</p>
+<p class="Pp"></p>
+<pre>// Global mutex - no explicit init needed!
+static_mutex_t g_config_lock = STATIC_MUTEX_INIT;
+void update_config(const char* key, const char* value) {
+<br/>
+  static_mutex_lock(&amp;g_config_lock);
+<br/>
+  // Update configuration
+<br/>
+  static_mutex_unlock(&amp;g_config_lock);
+}
+</pre>
+<p class="Pp">Platform implementations:</p>
+<ul class="Bl-bullet">
+  <li><b>POSIX</b>: pthread_mutex_t with error checking enabled</li>
+  <li><b>Windows</b>: CRITICAL_SECTION with 4000 spin count for performance</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Read-Write_Locks_(rwlock"><a class="permalink" href="#Read-Write_Locks_(rwlock">Read-Write
+  Locks (rwlock.h)</a></h2>
+<p class="Pp">Read-write locks allow multiple concurrent readers but only one
+    writer.</p>
+<p class="Pp"></p>
+<p class="Pp">Why use read-write locks?</p>
+<ul class="Bl-bullet">
+  <li><b>Performance</b>: Multiple threads can read simultaneously</li>
+  <li><b>Correctness</b>: Writers get exclusive access for modifications</li>
+  <li><b>Scalability</b>: Ideal for read-heavy workloads</li>
+</ul>
+<p class="Pp">Basic usage:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+typedef struct {
+<br/>
+  rwlock_t lock;
+<br/>
+  char* data;
+} shared_resource_t;
+// Multiple readers can access simultaneously
+const char* read_data(shared_resource_t* resource) {
+<br/>
+  rwlock_rdlock(&amp;resource-&gt;lock);
+<br/>
+  const char* result = resource-&gt;data;  // Read operation
+<br/>
+  rwlock_rdunlock(&amp;resource-&gt;lock);
+<br/>
+  return result;
+}
+// Writers get exclusive access
+void write_data(shared_resource_t* resource, const char* new_data) {
+<br/>
+  rwlock_wrlock(&amp;resource-&gt;lock);
+<br/>
+  free(resource-&gt;data);
+<br/>
+  resource-&gt;data = strdup(new_data);  // Write operation
+<br/>
+  rwlock_wrunlock(&amp;resource-&gt;lock);
+}
+</pre>
+<p class="Pp">Real-world example from ascii-chat:</p>
+<p class="Pp"></p>
+<pre>// Global client list protected by read-write lock
+static_rwlock_t g_client_manager_rwlock = STATIC_RWLOCK_INIT;
+static client_t** g_clients = NULL;
+static size_t g_client_count = 0;
+// Broadcasting - many threads read concurrently
+void broadcast_frame(const frame_t* frame) {
+<br/>
+  static_rwlock_rdlock(&amp;g_client_manager_rwlock);
+<br/>
+  for (size_t i = 0; i &lt; g_client_count; i++) {
+<br/>
+    send_frame_to_client(g_clients[i], frame);
+<br/>
+  }
+<br/>
+  static_rwlock_unlock(&amp;g_client_manager_rwlock);
+}
+// Adding client - requires exclusive write access
+void add_client(client_t* client) {
+<br/>
+  static_rwlock_wrlock(&amp;g_client_manager_rwlock);
+<br/>
+  g_clients = realloc(g_clients, (g_client_count + 1) * sizeof(client_t*));
+<br/>
+  g_clients[g_client_count++] = client;
+<br/>
+  static_rwlock_unlock(&amp;g_client_manager_rwlock);
+}
+</pre>
+<p class="Pp">Platform implementations:</p>
+<ul class="Bl-bullet">
+  <li><b>POSIX</b>: pthread_rwlock_t with standard semantics</li>
+  <li><b>Windows</b>: SRWLOCK (Slim Reader-Writer Lock) - only 8 bytes!</li>
+</ul>
+<p class="Pp">Important note on Windows:</p>
+<ul class="Bl-bullet">
+  <li>Windows SRWLocks don't distinguish between read/write unlock</li>
+  <li>Both rwlock_rdunlock() and rwlock_wrunlock() call ReleaseSRWLock*()</li>
+  <li>Use the explicit unlock functions for code clarity anyway</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Condition_Variables_(cond"><a class="permalink" href="#Condition_Variables_(cond">Condition
+  Variables (cond.h)</a></h2>
+<p class="Pp">Condition variables enable threads to wait for specific conditions
+    to become true.</p>
+<p class="Pp"></p>
+<p class="Pp">Basic pattern:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+typedef struct {
+<br/>
+  mutex_t lock;
+<br/>
+  cond_t cond;
+<br/>
+  bool ready;
+} sync_t;
+// Thread 1: Wait for condition
+void wait_for_ready(sync_t* sync) {
+<br/>
+  mutex_lock(&amp;sync-&gt;lock);
+<br/>
+  while (!sync-&gt;ready) {
+<br/>
+    cond_wait(&amp;sync-&gt;cond, &amp;sync-&gt;lock);  // Atomically unlocks and waits
+<br/>
+  }
+<br/>
+  // Condition is now true, lock is held
+<br/>
+  mutex_unlock(&amp;sync-&gt;lock);
+}
+// Thread 2: Signal condition
+void set_ready(sync_t* sync) {
+<br/>
+  mutex_lock(&amp;sync-&gt;lock);
+<br/>
+  sync-&gt;ready = true;
+<br/>
+  cond_signal(&amp;sync-&gt;cond);  // Wake up one waiter
+<br/>
+  mutex_unlock(&amp;sync-&gt;lock);
+}
+</pre>
+<p class="Pp">Timeout waiting:</p>
+<p class="Pp"></p>
+<pre>mutex_lock(&amp;sync-&gt;lock);
+while (!sync-&gt;ready) {
+<br/>
+  int result = cond_timedwait(&amp;sync-&gt;cond, &amp;sync-&gt;lock, 5000);  // 5 seconds
+<br/>
+  if (result == ETIMEDOUT) {
+<br/>
+    log_warn(&quot;Timeout waiting for condition&quot;);
+<br/>
+    break;
+<br/>
+  }
+}
+mutex_unlock(&amp;sync-&gt;lock);
+</pre>
+<p class="Pp">Broadcasting to multiple waiters:</p>
+<p class="Pp"></p>
+<pre>// Wake up ALL waiting threads
+mutex_lock(&amp;sync-&gt;lock);
+sync-&gt;ready = true;
+cond_broadcast(&amp;sync-&gt;cond);  // Wake everyone
+mutex_unlock(&amp;sync-&gt;lock);
+</pre>
+<p class="Pp">Static initialization:</p>
+<p class="Pp"></p>
+<pre>// Global condition variable
+static_cond_t g_shutdown_cond = STATIC_COND_INIT;
+static_mutex_t g_shutdown_lock = STATIC_MUTEX_INIT;
+static bool g_shutdown = false;
+void wait_for_shutdown() {
+<br/>
+  static_mutex_lock(&amp;g_shutdown_lock);
+<br/>
+  while (!g_shutdown) {
+<br/>
+    static_cond_wait(&amp;g_shutdown_cond, &amp;g_shutdown_lock);
+<br/>
+  }
+<br/>
+  static_mutex_unlock(&amp;g_shutdown_lock);
+}
+void trigger_shutdown() {
+<br/>
+  static_mutex_lock(&amp;g_shutdown_lock);
+<br/>
+  g_shutdown = true;
+<br/>
+  static_cond_broadcast(&amp;g_shutdown_cond);
+<br/>
+  static_mutex_unlock(&amp;g_shutdown_lock);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Sockets_(socket"><a class="permalink" href="#Sockets_(socket">Sockets
+  (socket.h)</a></h2>
+<p class="Pp">Network socket operations with automatic optimization and error
+    handling.</p>
+<p class="Pp"></p>
+<p class="Pp">Basic server:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+int main() {
+<br/>
+  platform_init();  // Initializes Winsock on Windows
+<br/>
+  // Create socket
+<br/>
+  socket_t server_sock = socket_create(AF_INET, SOCK_STREAM, 0);
+<br/>
+  if (!socket_is_valid(server_sock)) {
+<br/>
+    log_error(&quot;Socket creation failed: %s&quot;, socket_get_error_string());
+<br/>
+    return 1;
+<br/>
+  }
+<br/>
+  // Set socket options
+<br/>
+  socket_set_reuseaddr(server_sock, true);
+<br/>
+  socket_set_nodelay(server_sock, true);
+<br/>
+  // Bind and listen
+<br/>
+  struct sockaddr_in addr = {0};
+<br/>
+  addr.sin_family = AF_INET;
+<br/>
+  addr.sin_addr.s_addr = INADDR_ANY;
+<br/>
+  addr.sin_port = htons(27224);
+<br/>
+  if (socket_bind(server_sock, (struct sockaddr*)&amp;addr, sizeof(addr)) &lt; 0) {
+<br/>
+    log_error(&quot;Bind failed: %s&quot;, socket_get_error_string());
+<br/>
+    socket_close(server_sock);
+<br/>
+    return 1;
+<br/>
+  }
+<br/>
+  socket_listen(server_sock, 10);
+<br/>
+  // Accept connections
+<br/>
+  socket_t client_sock = socket_accept(server_sock, NULL, NULL);
+<br/>
+  if (socket_is_valid(client_sock)) {
+<br/>
+    // Handle client...
+<br/>
+    socket_close(client_sock);
+<br/>
+  }
+<br/>
+  socket_close(server_sock);
+<br/>
+  platform_cleanup();  // Cleanup Winsock on Windows
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Automatic socket optimization:</p>
+<p class="Pp"></p>
+<p class="Pp">When you accept a connection, the platform layer automatically
+    optimizes it:</p>
+<p class="Pp"></p>
+<pre>socket_t client_sock = socket_accept(server_sock, NULL, NULL);
+// Automatically applied:
+// - TCP_NODELAY enabled (low latency)
+// - 2MB send/recv buffers (falls back to 512KB, then 128KB)
+// - 5s send timeout, 10s recv timeout
+// - SO_KEEPALIVE enabled
+</pre>
+<p class="Pp">You can override these settings if needed:</p>
+<p class="Pp"></p>
+<pre>socket_set_nodelay(client_sock, false);  // Re-enable Nagle
+socket_setsockopt(client_sock, SOL_SOCKET, SO_RCVTIMEO, ...);  // Custom timeout
+</pre>
+<p class="Pp">Non-blocking I/O:</p>
+<p class="Pp"></p>
+<pre>// Make socket non-blocking
+socket_set_nonblocking(client_sock, true);
+// Now send/recv return immediately with EWOULDBLOCK if not ready
+ssize_t sent = socket_send(client_sock, data, size, 0);
+if (sent &lt; 0) {
+<br/>
+  if (socket_get_last_error() == EWOULDBLOCK) {
+<br/>
+    // Would block, try again later
+<br/>
+  }
+}
+</pre>
+<p class="Pp">Polling multiple sockets:</p>
+<p class="Pp"></p>
+<pre>struct pollfd fds[2];
+fds[0].fd = socket_get_fd(server_sock);
+fds[0].events = POLLIN;
+fds[1].fd = socket_get_fd(client_sock);
+fds[1].events = POLLIN | POLLOUT;
+int ready = socket_poll(fds, 2, 1000);  // 1 second timeout
+if (ready &gt; 0) {
+<br/>
+  if (fds[0].revents &amp; POLLIN) {
+<br/>
+    // Server socket ready for accept
+<br/>
+  }
+<br/>
+  if (fds[1].revents &amp; POLLIN) {
+<br/>
+    // Client socket ready for read
+<br/>
+  }
+}
+</pre>
+<p class="Pp">Platform differences:</p>
+<ul class="Bl-bullet">
+  <li><b>Windows</b>: Requires socket_init() to initialize Winsock (done by
+      <b>platform_init()</b><b>)</b></li>
+  <li><b>POSIX</b>: No initialization needed</li>
+  <li><b>Error codes</b>: Automatically normalized to POSIX errno values</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Terminal_I/O_(terminal"><a class="permalink" href="#Terminal_I/O_(terminal">Terminal
+  I/O (terminal.h)</a></h2>
+<p class="Pp">Terminal control, cursor manipulation, and capability
+  detection.</p>
+<p class="Pp"></p>
+<p class="Pp">Basic terminal setup:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+int main() {
+<br/>
+  platform_init();
+<br/>
+  // Get terminal size
+<br/>
+  terminal_size_t size;
+<br/>
+  if (terminal_get_size(&amp;size) == 0) {
+<br/>
+    printf(&quot;Terminal: %dx%d\n&quot;, size.cols, size.rows);
+<br/>
+  }
+<br/>
+  // Check capabilities
+<br/>
+  if (terminal_supports_color()) {
+<br/>
+    printf(&quot;Terminal supports color!\n&quot;);
+<br/>
+  }
+<br/>
+  if (terminal_supports_unicode()) {
+<br/>
+    printf(&quot;Terminal supports Unicode!\n&quot;);
+<br/>
+  }
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Raw mode for interactive applications:</p>
+<p class="Pp"></p>
+<pre>// Enable raw mode (no line buffering, no echo)
+terminal_set_raw_mode(true);
+terminal_set_echo(false);
+// Now read individual keypresses
+char c;
+read(STDIN_FILENO, &amp;c, 1);
+printf(&quot;You pressed: %c\n&quot;, c);
+// Restore normal mode
+terminal_set_raw_mode(false);
+terminal_set_echo(true);
+</pre>
+<p class="Pp">Cursor control:</p>
+<p class="Pp"></p>
+<pre>// Hide cursor
+terminal_hide_cursor(true);
+// Move cursor to specific position (1-based)
+terminal_move_cursor(10, 20);  // Row 10, Column 20
+// Save/restore cursor position
+terminal_save_cursor();
+terminal_move_cursor(1, 1);
+printf(&quot;Hello from top-left!&quot;);
+terminal_restore_cursor();  // Back to original position
+// Show cursor again
+terminal_hide_cursor(false);
+</pre>
+<p class="Pp">Screen manipulation:</p>
+<p class="Pp"></p>
+<pre>// Clear entire screen
+terminal_clear_screen();
+// Set terminal title
+terminal_set_title(&quot;ascii-chat v1.0&quot;);
+// Ring the terminal bell
+terminal_ring_bell();
+// Set scroll region (for double-buffering)
+terminal_set_scroll_region(5, 20);  // Rows 5-20 can scroll
+// Reset terminal to default state
+terminal_reset();
+</pre>
+<p class="Pp">Platform-specific features:</p>
+<ul class="Bl-bullet">
+  <li><b>Windows</b>: Automatically enables ANSI escape sequences on Windows
+    10+</li>
+  <li><b>POSIX</b>: Full termios support for all terminal control</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="System_Functions_(system"><a class="permalink" href="#System_Functions_(system">System
+  Functions (system.h)</a></h2>
+<p class="Pp">System-level operations: sleep, signals, crash handlers, process
+    info.</p>
+<p class="Pp"></p>
+<p class="Pp">Sleep operations:</p>
+<p class="Pp"></p>
+<pre>// Sleep for 1 second
+platform_sleep_ms(1000);
+// Short sleep for timing loops
+platform_sleep_ms(16);  // ~60 FPS
+</pre>
+<p class="Pp">Platform sleep precision:</p>
+<ul class="Bl-bullet">
+  <li><b>Linux/macOS</b>: Microsecond precision with nanosleep()</li>
+  <li><b>Windows</b>: ~15ms minimum resolution (system timer granularity)</li>
+</ul>
+<p class="Pp">Process information:</p>
+<p class="Pp"></p>
+<pre>// Get current process ID
+int pid = platform_get_pid();
+log_info(&quot;Process ID: %d&quot;, pid);
+// Get current username
+const char* user = platform_get_username();
+log_info(&quot;Running as: %s&quot;, user);
+</pre>
+<p class="Pp">Environment variables:</p>
+<p class="Pp"></p>
+<pre>// Get environment variable
+const char* home = platform_getenv(&quot;HOME&quot;);
+if (home) {
+<br/>
+  printf(&quot;Home directory: %s\n&quot;, home);
+}
+// Set environment variable
+platform_setenv(&quot;MY_VAR&quot;, &quot;my_value&quot;);
+</pre>
+<p class="Pp">TTY detection:</p>
+<p class="Pp"></p>
+<pre>// Check if stdout is a terminal
+if (platform_isatty(STDOUT_FILENO)) {
+<br/>
+  printf(&quot;Running in a terminal\n&quot;);
+<br/>
+  const char* tty = platform_ttyname(STDOUT_FILENO);
+<br/>
+  printf(&quot;TTY device: %s\n&quot;, tty);
+} else {
+<br/>
+  printf(&quot;Output is redirected\n&quot;);
+}
+</pre>
+<p class="Pp">Signal handling:</p>
+<p class="Pp"></p>
+<pre>// Signal handler function
+void handle_sigint(int sig) {
+<br/>
+  log_info(&quot;Caught SIGINT, shutting down...&quot;);
+<br/>
+  g_shutdown = true;
+}
+// Register signal handler (thread-safe on all platforms)
+platform_signal(SIGINT, handle_sigint);
+</pre>
+<p class="Pp">Crash handlers (automatic backtrace on crash):</p>
+<p class="Pp"></p>
+<pre>// Crash handlers are automatically installed by platform_init()!
+int main() {
+<br/>
+  platform_init();  // Installs crash handlers
+<br/>
+  // If the program crashes, you get a backtrace:
+<br/>
+  // *** CRASH DETECTED ***
+<br/>
+  // Signal: SIGSEGV (Segmentation fault)
+<br/>
+  //
+<br/>
+  // === BACKTRACE ===
+<br/>
+  //  0: main
+<br/>
+  //  1: some_function
+<br/>
+  //  2: another_function
+<br/>
+  // ================
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Manual backtrace (for debugging):</p>
+<p class="Pp"></p>
+<pre>// Print backtrace right now
+platform_print_backtrace(0);  // 0 = don't skip any frames
+// Get backtrace for custom processing
+void* buffer[64];
+int count = platform_backtrace(buffer, 64);
+char** symbols = platform_backtrace_symbols(buffer, count);
+for (int i = 0; i &lt; count; i++) {
+<br/>
+  printf(&quot;%s\n&quot;, symbols[i]);
+}
+platform_backtrace_symbols_free(symbols);
+</pre>
+<p class="Pp">Platform-specific signal support:</p>
+<ul class="Bl-bullet">
+  <li><b>POSIX</b>: Full signal support (SIGINT, SIGTERM, SIGWINCH, etc.)</li>
+  <li><b>Windows</b>: Limited support (SIGINT, SIGTERM work but SIGWINCH is a
+      no-op)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="String_Operations_(string"><a class="permalink" href="#String_Operations_(string">String
+  Operations (string.h)</a></h2>
+<p class="Pp">Safe string handling that works consistently across platforms.</p>
+<p class="Pp"></p>
+<p class="Pp">Safe formatting:</p>
+<p class="Pp"></p>
+<pre>// Safe snprintf (handles Windows _snprintf quirks)
+char buffer[64];
+platform_snprintf(buffer, sizeof(buffer), &quot;Value: %d&quot;, 42);
+// Always null-terminates, even on Windows
+</pre>
+<p class="Pp">Safe string copy:</p>
+<p class="Pp"></p>
+<pre>// BSD strlcpy semantics on all platforms
+char dest[32];
+size_t copied = platform_strlcpy(dest, &quot;Hello, world!&quot;, sizeof(dest));
+// dest is guaranteed to be null-terminated
+// copied is the length of the source string
+</pre>
+<p class="Pp">Safe string concatenation:</p>
+<p class="Pp"></p>
+<pre>char buffer[64] = &quot;Hello&quot;;
+platform_strlcat(buffer, &quot;, world!&quot;, sizeof(buffer));
+// buffer is guaranteed to be null-terminated
+</pre>
+<p class="Pp">Case-insensitive comparison:</p>
+<p class="Pp"></p>
+<pre>if (platform_strcasecmp(&quot;hello&quot;, &quot;HELLO&quot;) == 0) {
+<br/>
+  printf(&quot;Strings are equal (case-insensitive)\n&quot;);
+}
+if (platform_strncasecmp(&quot;hello&quot;, &quot;HELLO&quot;, 3) == 0) {
+<br/>
+  printf(&quot;First 3 characters match\n&quot;);
+}
+</pre>
+<p class="Pp">String duplication:</p>
+<p class="Pp"></p>
+<pre>// Duplicate entire string
+char* copy = platform_strdup(&quot;Hello, world!&quot;);
+printf(&quot;%s\n&quot;, copy);
+free(copy);
+// Duplicate first N characters
+char* partial = platform_strndup(&quot;Hello, world!&quot;, 5);
+printf(&quot;%s\n&quot;, partial);  // &quot;Hello&quot;
+free(partial);
+</pre>
+<p class="Pp">Thread-safe tokenization:</p>
+<p class="Pp"></p>
+<pre>char input[] = &quot;one,two,three&quot;;
+char* saveptr;
+char* token = platform_strtok_r(input, &quot;,&quot;, &amp;saveptr);
+while (token) {
+<br/>
+  printf(&quot;Token: %s\n&quot;, token);
+<br/>
+  token = platform_strtok_r(NULL, &quot;,&quot;, &amp;saveptr);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_I/O_(file"><a class="permalink" href="#File_I/O_(file">File
+  I/O (file.h)</a></h2>
+<p class="Pp">Platform-safe file operations.</p>
+<p class="Pp"></p>
+<p class="Pp">Opening files:</p>
+<p class="Pp"></p>
+<pre>// Open with platform-specific handling
+int fd = platform_open(&quot;config.txt&quot;, O_RDWR | O_CREAT, 0600);
+if (fd &lt; 0) {
+<br/>
+  log_error(&quot;Failed to open file: %s&quot;, strerror(errno));
+<br/>
+  return -1;
+}
+</pre>
+<p class="Pp">Reading and writing:</p>
+<p class="Pp"></p>
+<pre>char buffer[1024];
+ssize_t bytes_read = platform_read(fd, buffer, sizeof(buffer));
+if (bytes_read &lt; 0) {
+<br/>
+  log_error(&quot;Read failed: %s&quot;, strerror(errno));
+}
+const char* data = &quot;Hello, file!&quot;;
+ssize_t bytes_written = platform_write(fd, data, strlen(data));
+if (bytes_written &lt; 0) {
+<br/>
+  log_error(&quot;Write failed: %s&quot;, strerror(errno));
+}
+</pre>
+<p class="Pp">Closing files:</p>
+<p class="Pp"></p>
+<pre>if (platform_close(fd) &lt; 0) {
+<br/>
+  log_error(&quot;Close failed: %s&quot;, strerror(errno));
+}
+</pre>
+<p class="Pp">Force sync to disk:</p>
+<p class="Pp"></p>
+<pre>// Ensure data is written to disk
+if (platform_fsync(fd) &lt; 0) {
+<br/>
+  log_error(&quot;Fsync failed: %s&quot;, strerror(errno));
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Filesystem_Operations_(filesystem"><a class="permalink" href="#Filesystem_Operations_(filesystem">Filesystem
+  Operations (filesystem.h)</a></h2>
+<p class="Pp">High-level cross-platform filesystem operations: directories,
+    paths, and file discovery. This header provides unified directory
+    management, path utilities, and configuration file discovery across Windows
+    and POSIX systems.</p>
+<p class="Pp"></p>
+<p class="Pp">Directory operations:</p>
+<p class="Pp"></p>
+<pre>// Create a single directory (no-op if exists)
+if (platform_mkdir(&quot;~/.ascii-chat&quot;, 0700) == ASCIICHAT_OK) {
+<br/>
+  printf(&quot;Directory created or already exists\n&quot;);
+}
+// Create directories recursively (like mkdir -p)
+if (platform_mkdir_recursive(&quot;~/.ascii-chat/config/keys&quot;, 0700) == ASCIICHAT_OK) {
+<br/>
+  printf(&quot;Directory tree created\n&quot;);
+}
+// Clean up: recursively delete directory and contents
+if (platform_rmdir_recursive(&quot;~/.ascii-chat/temp&quot;) == ASCIICHAT_OK) {
+<br/>
+  printf(&quot;Directory removed\n&quot;);
+}
+</pre>
+<p class="Pp">File type checking and statistics:</p>
+<p class="Pp"></p>
+<pre>// Check file type without following symlinks
+if (platform_is_regular_file(&quot;config.toml&quot;)) {
+<br/>
+  printf(&quot;config.toml is a regular file\n&quot;);
+}
+if (platform_is_directory(&quot;./data&quot;)) {
+<br/>
+  printf(&quot;./data is a directory\n&quot;);
+}
+// Get detailed file metadata
+platform_stat_t stat_info;
+if (platform_stat(&quot;myfile&quot;, &amp;stat_info) == ASCIICHAT_OK) {
+<br/>
+  printf(&quot;File size: %zu bytes\n&quot;, stat_info.size);
+<br/>
+  printf(&quot;Is symlink: %d\n&quot;, stat_info.is_symlink);
+}
+</pre>
+<p class="Pp">Path utilities:</p>
+<p class="Pp"></p>
+<pre>// Check if path is absolute
+if (platform_path_is_absolute(&quot;/etc/config&quot;)) {
+<br/>
+  printf(&quot;Absolute path\n&quot;);  // Unix
+}
+if (platform_path_is_absolute(&quot;C:\\Users\\data&quot;)) {
+<br/>
+  printf(&quot;Absolute path\n&quot;);  // Windows
+}
+// Get platform-specific path separator
+char sep = platform_path_get_separator();
+printf(&quot;Separator: %c\n&quot;, sep);  // '/' on Unix, '\\' on Windows
+// Normalize path (converts separators, validates)
+char normalized[PATH_MAX];
+platform_path_normalize(&quot;C:\\Users\\..\\data&quot;, normalized, sizeof(normalized));
+printf(&quot;Normalized: %s\n&quot;, normalized);
+</pre>
+<p class="Pp">Temporary files and directories:</p>
+<p class="Pp"></p>
+<pre>// Create temporary directory with unique suffix
+char tempdir[256];
+if (platform_mkdtemp(tempdir, sizeof(tempdir), &quot;ascii-chat-gpg&quot;) == ASCIICHAT_OK) {
+<br/>
+  printf(&quot;Temp dir: %s\n&quot;, tempdir);  // e.g., /tmp/ascii-chat-gpg-ABC123
+<br/>
+  // ... use tempdir for sensitive operations ...
+<br/>
+  platform_rmdir_recursive(tempdir);  // Clean up
+}
+// Create temporary file with proper permissions
+char tempfile[256];
+int fd;
+if (platform_create_temp_file(tempfile, sizeof(tempfile), &quot;asc_sig&quot;, &amp;fd) == 0) {
+<br/>
+  // On Unix: fd is open and ready for writing
+<br/>
+  // On Windows: fd == -1, must open with platform_temp_file_open()
+<br/>
+  if (fd &lt; 0) {
+<br/>
+    platform_temp_file_open(tempfile, &amp;fd);
+<br/>
+  }
+<br/>
+  write(fd, data, size);
+<br/>
+  close(fd);
+<br/>
+  platform_delete_temp_file(tempfile);
+}
+</pre>
+<p class="Pp">Configuration file discovery:</p>
+<p class="Pp"></p>
+<pre>// Find config file across standard locations
+// Returns all matches in priority order (highest priority first)
+config_file_list_t config_list = {0};
+if (platform_find_config_file(&quot;config.toml&quot;, &amp;config_list) == ASCIICHAT_OK) {
+<br/>
+  // Use first match (highest priority) - Override semantics
+<br/>
+  if (config_list.count &gt; 0) {
+<br/>
+    printf(&quot;Using config: %s\n&quot;, config_list.files[0].path);
+<br/>
+    load_config(config_list.files[0].path);
+<br/>
+  }
+<br/>
+  config_file_list_destroy(&amp;config_list);
+}
+// Cascade semantics: load all configs (system to user)
+if (platform_find_config_file(&quot;colors.toml&quot;, &amp;config_list) == ASCIICHAT_OK) {
+<br/>
+  // Load in reverse order (lowest priority first)
+<br/>
+  // Higher priority configs override lower priority
+<br/>
+  for (size_t i = config_list.count; i &gt; 0; i--) {
+<br/>
+    apply_config(config_list.files[i - 1].path, &amp;theme);
+<br/>
+  }
+<br/>
+  config_file_list_destroy(&amp;config_list);
+}
+</pre>
+<p class="Pp">Search paths by platform:</p>
+<ul class="Bl-bullet">
+  <li><b>Linux/macOS</b>: ~/.config/ascii-chat/ &#x2192;
+      ~/.local/share/ascii-chat/ &#x2192; /etc/ascii-chat/</li>
+  <li><b>Windows</b>: APPDATA%\ascii-chat\ &#x2192;
+    PROGRAMDATA%\ascii-chat\</li>
+</ul>
+<p class="Pp">Home and config directory discovery:</p>
+<p class="Pp"></p>
+<pre>// Get home directory (platform-aware)
+const char* home = platform_get_home_dir();
+printf(&quot;Home: %s\n&quot;, home);  // e.g., &quot;/home/user&quot; or &quot;C:\\Users\\user&quot;
+// Get app config directory (with trailing separator)
+char* config_dir = platform_get_config_dir();
+printf(&quot;Config dir: %s\n&quot;, config_dir);
+// Linux:   /home/user/.config/ascii-chat/
+// macOS:   /Users/user/.config/ascii-chat/
+// Windows: C:\Users\user\AppData\Roaming\ascii-chat\
+SAFE_FREE(config_dir);
+// Get app data directory
+char* data_dir = platform_get_data_dir();
+printf(&quot;Data dir: %s\n&quot;, data_dir);
+// Linux:   /home/user/.local/share/ascii-chat/
+// macOS:   /Users/user/.local/share/ascii-chat/
+// Windows: C:\Users\user\AppData\Roaming\ascii-chat\
+SAFE_FREE(data_dir);
+</pre>
+<p class="Pp">Cryptographic key file validation:</p>
+<p class="Pp"></p>
+<pre>// Validate key file permissions (critical for security!)
+// Checks that only owner can read the private key
+if (platform_validate_key_file_permissions(&quot;~/.ssh/id_ed25519&quot;) == ASCIICHAT_OK) {
+<br/>
+  printf(&quot;Key file permissions are secure\n&quot;);
+} else {
+<br/>
+  printf(&quot;Key file has insecure permissions! Use chmod 600\n&quot;);
+}
+</pre>
+<p class="Pp">Platform-specific details:</p>
+<ul class="Bl-bullet">
+  <li><b>POSIX</b>: Uses chmod, stat, mkdir, opendir for all operations</li>
+  <li><b>Windows</b>: Uses CreateDirectoryA, GetFileAttributesEx, ACLs for
+      permissions</li>
+  <li><b>Symlinks</b>: All functions skip symlinks (use lstat/no-follow
+    logic)</li>
+  <li><b>Path separators</b>: Automatically handled (/ or \ based on
+    platform)</li>
+  <li><b>Permissions</b>: Unix mode parameter ignored on Windows (uses
+    ACLs)</li>
+  <li><b>Relative paths</b>: Expanded from current directory (not home)</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh">Static Initialization</h1>
+<p class="Pp">One of the most powerful features of the platform abstraction
+    layer is static initialization. You can declare global synchronization
+    primitives without any explicit initialization code!</p>
+<section class="Ss">
+<h2 class="Ss" id="Why_Static_Initialization?"><a class="permalink" href="#Why_Static_Initialization?">Why
+  Static Initialization?</a></h2>
+<p class="Pp">Traditional approach (error-prone):</p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Requires explicit initialization
+static pthread_mutex_t g_mutex;
+static bool g_mutex_initialized = false;
+void init() {
+<br/>
+  if (!g_mutex_initialized) {
+<br/>
+    pthread_mutex_init(&amp;g_mutex, NULL);
+<br/>
+    g_mutex_initialized = true;
+<br/>
+  }
+}
+void use_mutex() {
+<br/>
+  if (!g_mutex_initialized) {
+<br/>
+    // Race condition! What if another thread is in init()?
+<br/>
+    init();
+<br/>
+  }
+<br/>
+  pthread_mutex_lock(&amp;g_mutex);
+<br/>
+  // ...
+}
+</pre>
+<p class="Pp">Platform abstraction approach (correct):</p>
+<p class="Pp"></p>
+<pre>// &#x2705; GOOD - No initialization needed!
+static_mutex_t g_mutex = STATIC_MUTEX_INIT;
+void use_mutex() {
+<br/>
+  static_mutex_lock(&amp;g_mutex);  // Just works!
+<br/>
+  // ...
+<br/>
+  static_mutex_unlock(&amp;g_mutex);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_It_Works"><a class="permalink" href="#How_It_Works">How
+  It Works</a></h2>
+<p class="Pp">Initialization timing differs between platforms based on OS
+    capabilities:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>POSIX (Linux/macOS):</b></p>
+<p class="Pp"></p>
+<pre>// Compile-time initialization
+#define STATIC_MUTEX_INIT { .mutex = PTHREAD_MUTEX_INITIALIZER, .initialized = true }
+// The mutex is fully initialized at compile time!
+static_mutex_t g_mutex = STATIC_MUTEX_INIT;
+</pre>
+<p class="Pp"><b>Windows:</b></p>
+<p class="Pp"></p>
+<pre>// Runtime lazy initialization (but thread-safe!)
+#define STATIC_MUTEX_INIT { .cs = {0}, .initialized = false }
+int static_mutex_lock(static_mutex_t* mutex) {
+<br/>
+  if (!mutex-&gt;initialized) {
+<br/>
+    // Atomic compare-exchange ensures only one thread initializes
+<br/>
+    if (InterlockedCompareExchange(&amp;mutex-&gt;initialized, 1, 0) == 0) {
+<br/>
+      InitializeCriticalSection(&amp;mutex-&gt;cs);
+<br/>
+      mutex-&gt;initialized = 1;
+<br/>
+    } else {
+<br/>
+      // Another thread is initializing, wait for it
+<br/>
+      while (!mutex-&gt;initialized) {
+<br/>
+        Sleep(0);  // Yield to other threads
+<br/>
+      }
+<br/>
+    }
+<br/>
+  }
+<br/>
+  EnterCriticalSection(&amp;mutex-&gt;cs);
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Both approaches are:</p>
+<ul class="Bl-bullet">
+  <li><b>Thread-safe</b>: No race conditions</li>
+  <li><b>Zero-overhead</b>: No runtime cost on POSIX, minimal cost on
+    Windows</li>
+  <li><b>Transparent</b>: Same API on all platforms</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Static_Initialization_Usage"><a class="permalink" href="#Static_Initialization_Usage">Static
+  Initialization Usage</a></h2>
+<p class="Pp">Global mutex:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/init.h&quot;
+static_mutex_t g_config_mutex = STATIC_MUTEX_INIT;
+static config_t* g_config = NULL;
+void set_config(const char* key, const char* value) {
+<br/>
+  static_mutex_lock(&amp;g_config_mutex);
+<br/>
+  // Update config
+<br/>
+  static_mutex_unlock(&amp;g_config_mutex);
+}
+</pre>
+<p class="Pp">Global read-write lock:</p>
+<p class="Pp"></p>
+<pre>static_rwlock_t g_cache_lock = STATIC_RWLOCK_INIT;
+static cache_t* g_cache = NULL;
+const char* cache_get(const char* key) {
+<br/>
+  static_rwlock_rdlock(&amp;g_cache_lock);
+<br/>
+  const char* value = cache_lookup(g_cache, key);
+<br/>
+  static_rwlock_unlock(&amp;g_cache_lock);
+<br/>
+  return value;
+}
+void cache_set(const char* key, const char* value) {
+<br/>
+  static_rwlock_wrlock(&amp;g_cache_lock);
+<br/>
+  cache_insert(g_cache, key, value);
+<br/>
+  static_rwlock_unlock(&amp;g_cache_lock);
+}
+</pre>
+<p class="Pp">Global condition variable:</p>
+<p class="Pp"></p>
+<pre>static_cond_t g_work_cond = STATIC_COND_INIT;
+static_mutex_t g_work_mutex = STATIC_MUTEX_INIT;
+static bool g_work_available = false;
+void worker_thread() {
+<br/>
+  while (true) {
+<br/>
+    static_mutex_lock(&amp;g_work_mutex);
+<br/>
+    while (!g_work_available) {
+<br/>
+      static_cond_wait(&amp;g_work_cond, &amp;g_work_mutex);
+<br/>
+    }
+<br/>
+    // Do work
+<br/>
+    g_work_available = false;
+<br/>
+    static_mutex_unlock(&amp;g_work_mutex);
+<br/>
+  }
+}
+void submit_work() {
+<br/>
+  static_mutex_lock(&amp;g_work_mutex);
+<br/>
+  g_work_available = true;
+<br/>
+  static_cond_signal(&amp;g_work_cond);
+<br/>
+  static_mutex_unlock(&amp;g_work_mutex);
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Threading_API_Reference"><a class="permalink" href="#Threading_API_Reference">Threading
+  API Reference</a></h1>
+<p class="Pp">Complete reference for all threading, synchronization, and
+    thread-local storage APIs.</p>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Lifecycle_Management"><a class="permalink" href="#Thread_Lifecycle_Management">Thread
+  Lifecycle Management</a></h2>
+<p class="Pp"><b>Thread Creation</b>:</p>
+<p class="Pp"></p>
+<pre>int asciichat_thread_create(asciichat_thread_t *thread,
+<br/>
+                             void *(*func)(void *), void *arg);
+</pre>
+<p class="Pp">
+  <br/>
+   Creates a new thread that executes func(arg). The thread handle is stored in
+    *thread.</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Parameters</b>:</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>thread: Output parameter for thread handle (must be initialized with
+      asciichat_thread_init or uninitialized)</dd>
+  <dt> &#x2022;</dt>
+  <dd>func: Thread function with signature void* (*)(void*)</dd>
+  <dt> &#x2022;</dt>
+  <dd>arg: Single void pointer argument passed to thread function</dd>
+</dl>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: 0 on success, non-zero on error</li>
+  <li><b>Thread safety</b>: Safe to call from any thread</li>
+  <li><b>Platform notes</b>:</li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Windows: Uses CreateThread()</dd>
+  <dt> &#x2022;</dt>
+  <dd>POSIX: Uses pthread_create()</dd>
+</dl>
+<p class="Pp"><b>Error handling example</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_thread_t thread;
+asciichat_thread_init(&amp;thread);
+int result = asciichat_thread_create(&amp;thread, worker, data);
+if (result != 0) {
+<br/>
+  log_error(&quot;Failed to create thread: %s&quot;, strerror(result));
+<br/>
+  return;
+}
+</pre>
+<p class="Pp"><b>Thread Exit</b>:</p>
+<p class="Pp"></p>
+<pre>void asciichat_thread_exit(void *retval);
+</pre>
+<p class="Pp">
+  <br/>
+   Terminates the calling thread and passes retval to any waiting joiners.</p>
+<ul class="Bl-bullet">
+  <li>This function never returns</li>
+  <li>Called implicitly when thread function returns</li>
+  <li>Only necessary if you need to exit before return statement</li>
+</ul>
+<p class="Pp"><b>Thread Joining</b> (blocking wait):</p>
+<p class="Pp"></p>
+<pre>int asciichat_thread_join(asciichat_thread_t *thread, void **retval);
+</pre>
+<p class="Pp">
+  <br/>
+   Blocks until the specified thread terminates.</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Parameters</b>:</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>thread: Thread handle from <b>asciichat_thread_create()</b></dd>
+  <dt> &#x2022;</dt>
+  <dd>retval: Optional output parameter for thread return value (NULL to
+    ignore)</dd>
+</dl>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: 0 on success, non-zero on error</li>
+  <li><b>Blocks</b>: Calling thread waits indefinitely for target thread to
+      finish</li>
+  <li><b>Usage</b>: Always used in cleanup or synchronization points</li>
+</ul>
+<p class="Pp"><b>Thread Joining with Timeout</b>:</p>
+<p class="Pp"></p>
+<pre>int asciichat_thread_join_timeout(asciichat_thread_t *thread,
+<br/>
+                                   void **retval, uint64_t timeout_ns);
+</pre>
+<p class="Pp">
+  <br/>
+   Wait for thread with maximum wait time.</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Parameters</b>:</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>timeout_ns: Timeout in nanoseconds (1,000,000 ns = 1 ms)</dd>
+</dl>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: 0 if thread finished, non-zero on timeout or error</li>
+  <li><b>Use case</b>: Graceful shutdown with timeout, watchdog patterns</li>
+  <li><b>Platform notes</b>:</li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>macOS: Falls back to blocking join (no timeout support in POSIX)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Linux: Full support via pthread_timedjoin_np()</dd>
+  <dt> &#x2022;</dt>
+  <dd>Windows: Full support</dd>
+</dl>
+<p class="Pp"><b>Timeout example</b> (graceful shutdown):</p>
+<p class="Pp"></p>
+<pre>void shutdown_worker(asciichat_thread_t *worker) {
+<br/>
+  // Signal thread to stop (set flag, send message, etc.)
+<br/>
+  tell_thread_to_stop(worker);
+<br/>
+  // Wait up to 5 seconds
+<br/>
+  uint64_t timeout = 5 * 1000000000ULL;  // 5 seconds in nanoseconds
+<br/>
+  int result = asciichat_thread_join_timeout(worker, NULL, timeout);
+<br/>
+  if (result != 0) {
+<br/>
+    log_warn(&quot;Thread did not stop gracefully&quot;);
+<br/>
+    // On real systems: force-kill, cleanup resources, etc.
+<br/>
+  }
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Identification"><a class="permalink" href="#Thread_Identification">Thread
+  Identification</a></h2>
+<p class="Pp"><b>Get Current Thread ID</b>:</p>
+<p class="Pp"></p>
+<pre>thread_id_t asciichat_thread_self(void);
+</pre>
+<p class="Pp">
+  <br/>
+   Returns the calling thread's ID.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Return type</b>: thread_id_t (platform-specific, may be int, long, or
+      struct)</li>
+  <li><b>Use case</b>: Compare with other thread IDs, logging with thread
+      context</li>
+  <li><b>Unique per thread</b>: Each thread has a distinct ID throughout its
+      lifetime</li>
+</ul>
+<p class="Pp"><b>Compare Thread IDs</b>:</p>
+<p class="Pp"></p>
+<pre>int asciichat_thread_equal(thread_id_t t1, thread_id_t t2);
+</pre>
+<p class="Pp">
+  <br/>
+   Safely compare two thread IDs for equality.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: Non-zero (true) if IDs are equal, 0 (false) otherwise</li>
+  <li><b>Why use this?</b>: Direct comparison of thread_id_t may not work on all
+      platforms</li>
+  <li><b>Logging example</b>:</li>
+</ul>
+<p class="Pp"></p>
+<pre>thread_id_t main_tid = asciichat_thread_self();
+thread_id_t current_tid = asciichat_thread_self();
+if (asciichat_thread_equal(main_tid, current_tid)) {
+<br/>
+  log_debug(&quot;Running in main thread&quot;);
+}
+</pre>
+<p class="Pp"><b>Get Numeric Thread ID</b>:</p>
+<p class="Pp"></p>
+<pre>uint64_t asciichat_thread_current_id(void);
+</pre>
+<p class="Pp">
+  <br/>
+   Returns a unique numeric identifier for the current thread.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: 64-bit unsigned integer unique per thread</li>
+  <li><b>Advantage</b>: Always comparable with ==, safe for hashing</li>
+  <li><b>Use case</b>: Hash tables, thread-local registries, concise
+    logging</li>
+</ul>
+<p class="Pp"><b>Thread Registry Example</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+  uint64_t thread_id;
+<br/>
+  char name[64];
+<br/>
+  int client_fd;
+} thread_registry_entry_t;
+void register_thread(const char *name, int client_fd) {
+<br/>
+  thread_registry_entry_t entry = {
+<br/>
+    .thread_id = asciichat_thread_current_id(),
+<br/>
+    .client_fd = client_fd,
+<br/>
+  };
+<br/>
+  platform_strlcpy(entry.name, name, sizeof(entry.name));
+<br/>
+  registry_add(&amp;g_registry, &amp;entry);
+}
+</pre>
+<p class="Pp"><b>Check Thread Initialization</b>:</p>
+<p class="Pp"></p>
+<pre>bool asciichat_thread_is_initialized(asciichat_thread_t *thread);
+int  asciichat_thread_init(asciichat_thread_t *thread);
+</pre>
+<p class="Pp">
+  <br/>
+   Check/set thread handle initialization state.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Use case</b>: Pool structures, static initialization verification</li>
+  <li>thread_init() resets handle to uninitialized state</li>
+  <li>Check before re-using handles from pools</li>
+</ul>
+<p class="Pp"><b>Thread Pool Example</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+  asciichat_thread_t thread;
+<br/>
+  bool available;
+} thread_pool_entry_t;
+thread_pool_entry_t* acquire_thread_from_pool() {
+<br/>
+  for (size_t i = 0; i &lt; POOL_SIZE; i++) {
+<br/>
+    if (!asciichat_thread_is_initialized(&amp;g_pool[i].thread)) {
+<br/>
+      // Thread handle is available, can be reused
+<br/>
+      return &amp;g_pool[i];
+<br/>
+    }
+<br/>
+  }
+<br/>
+  return NULL;  // No available threads
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mutex_Operations"><a class="permalink" href="#Mutex_Operations">Mutex
+  Operations</a></h2>
+<p class="Pp"><b>Mutex Initialization</b>:</p>
+<p class="Pp"></p>
+<pre>int mutex_init(mutex_t *mutex, const char *name);
+int mutex_destroy(mutex_t *mutex);
+</pre>
+<p class="Pp">
+  <br/>
+   Initialize and destroy mutexes.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>name: Human-readable name for debugging (e.g., &quot;recv_lock&quot;,
+      &quot;state_mutex&quot;)</li>
+  <li>Must call <b>mutex_init()</b><b> before any lock/unlock
+    operations</b></li>
+  <li>Must call <b>mutex_destroy()</b><b> when done (usually in
+    cleanup)</b></li>
+  <li>Never destroy a locked mutex</li>
+</ul>
+<p class="Pp"><b>Locking</b> (blocking):</p>
+<p class="Pp"></p>
+<pre>int mutex_lock(mutex_t *mutex);
+</pre>
+<p class="Pp">
+  <br/>
+   Acquires the mutex, blocking until available.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Blocks</b>: Thread waits if another thread holds the lock</li>
+  <li><b>Return</b>: 0 on success (lock acquired)</li>
+  <li><b>Recursive</b>: NOT recursive - deadlocks if same thread locks
+    twice</li>
+  <li><b>Must be paired</b>: Always unlock when done</li>
+</ul>
+<p class="Pp"><b>Try-Lock</b> (non-blocking):</p>
+<p class="Pp"></p>
+<pre>int mutex_trylock(mutex_t *mutex);
+</pre>
+<p class="Pp">
+  <br/>
+   Attempts to acquire the mutex without blocking.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: 0 if lock acquired, non-zero if already locked</li>
+  <li><b>Use case</b>: Non-blocking operations, avoiding deadlock patterns</li>
+  <li><b>Busy-wait pattern</b>: Don't loop on trylock; use condition variables
+      instead</li>
+</ul>
+<p class="Pp"><b>Unlocking</b>:</p>
+<p class="Pp"></p>
+<pre>int mutex_unlock(mutex_t *mutex);
+</pre>
+<p class="Pp">
+  <br/>
+   Releases the mutex, potentially waking waiting threads.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Precondition</b>: Mutex must be locked by calling thread</li>
+  <li><b>Return</b>: 0 on success</li>
+  <li><b>Error check</b>: Always check return value (indicates misuse)</li>
+</ul>
+<p class="Pp"><b>Critical Section Pattern</b>:</p>
+<p class="Pp"></p>
+<pre>struct shared_data {
+<br/>
+  mutex_t lock;
+<br/>
+  int counter;
+<br/>
+  char* buffer;
+};
+void increment_counter(struct shared_data *data) {
+<br/>
+  if (mutex_lock(&amp;data-&gt;lock) != 0) {
+<br/>
+    log_error(&quot;Lock failed&quot;);
+<br/>
+    return;
+<br/>
+  }
+<br/>
+  // Critical section - protected from concurrent access
+<br/>
+  data-&gt;counter++;
+<br/>
+  if (mutex_unlock(&amp;data-&gt;lock) != 0) {
+<br/>
+    log_error(&quot;Unlock failed&quot;);
+<br/>
+  }
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Condition_Variables"><a class="permalink" href="#Condition_Variables">Condition
+  Variables</a></h2>
+<p class="Pp"><b>Condition Variable Initialization</b>:</p>
+<p class="Pp"></p>
+<pre>int cond_init(cond_t *cond, const char *name);
+int cond_destroy(cond_t *cond);
+</pre>
+<p class="Pp">
+  <br/>
+   Initialize and destroy condition variables.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>Must initialize before use</li>
+  <li>Always pair with a mutex for synchronization</li>
+  <li>Destroy when no longer needed</li>
+</ul>
+<p class="Pp"><b>Waiting</b>:</p>
+<p class="Pp"></p>
+<pre>int cond_wait(cond_t *cond, mutex_t *mutex);
+</pre>
+<p class="Pp">
+  <br/>
+   Atomically unlocks mutex and waits for condition to be signaled.</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Mutex state</b>:</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Must be locked BEFORE calling cond_wait()</dd>
+  <dt> &#x2022;</dt>
+  <dd>Atomically unlocked while waiting</dd>
+  <dt> &#x2022;</dt>
+  <dd>Re-locked before returning</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Spurious wakeups</b>: Check condition in a loop, don't assume it's
+    true</dd>
+</dl>
+<p class="Pp"><b>Timed Waiting</b>:</p>
+<p class="Pp"></p>
+<pre>int cond_timedwait(cond_t *cond, mutex_t *mutex, uint64_t timeout_ns);
+</pre>
+<p class="Pp">
+  <br/>
+   Wait with timeout.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Return</b>: 0 if signaled, non-zero on timeout or error</li>
+  <li><b>Timeout unit</b>: Nanoseconds (1,000,000,000 ns = 1 second)</li>
+  <li><b>Use case</b>: Resource initialization with timeout, watchdog
+    patterns</li>
+</ul>
+<p class="Pp"><b>Signaling</b>:</p>
+<p class="Pp"></p>
+<pre>int cond_signal(cond_t *cond);   // Wake one waiter
+int cond_broadcast(cond_t *cond); // Wake all waiters
+</pre>
+<p class="Pp">
+  <br/>
+   Wake waiting threads.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>cond_signal(): Wakes one arbitrary waiter</li>
+  <li>cond_broadcast(): Wakes all waiters</li>
+  <li><b>Lost signals</b>: If no threads are waiting, signal is lost</li>
+  <li><b>Best practice</b>: Always check condition after waking</li>
+</ul>
+<p class="Pp"><b>Producer-Consumer with Timeout</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+  int* items;
+<br/>
+  int size;
+<br/>
+  int count;
+<br/>
+  int head, tail;
+<br/>
+  mutex_t lock;
+<br/>
+  cond_t not_empty;
+<br/>
+  cond_t not_full;
+} queue_t;
+int queue_pop_timeout(queue_t *q, int *item, uint64_t timeout_ns) {
+<br/>
+  mutex_lock(&amp;q-&gt;lock);
+<br/>
+  // Wait for item with timeout
+<br/>
+  while (q-&gt;count == 0) {
+<br/>
+    int result = cond_timedwait(&amp;q-&gt;not_empty, &amp;q-&gt;lock, timeout_ns);
+<br/>
+    if (result != 0) {
+<br/>
+      // Timeout occurred
+<br/>
+      mutex_unlock(&amp;q-&gt;lock);
+<br/>
+      return -1;
+<br/>
+    }
+<br/>
+  }
+<br/>
+  // Item available
+<br/>
+  *item = q-&gt;items[q-&gt;head];
+<br/>
+  q-&gt;head = (q-&gt;head + 1) % q-&gt;size;
+<br/>
+  q-&gt;count--;
+<br/>
+  cond_signal(&amp;q-&gt;not_full);
+<br/>
+  mutex_unlock(&amp;q-&gt;lock);
+<br/>
+  return 0;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread-Local_Storage"><a class="permalink" href="#Thread-Local_Storage">Thread-Local
+  Storage</a></h2>
+<p class="Pp"><b>TLS Key Management</b>:</p>
+<p class="Pp"></p>
+<pre>int ascii_tls_key_create(tls_key_t *key, void (*destructor)(void *));
+int ascii_tls_key_delete(tls_key_t key);
+</pre>
+<p class="Pp">
+  <br/>
+   Create and destroy thread-local storage keys.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>destructor: Optional function called with stored value when thread exits
+      (NULL if not needed)</li>
+  <li>One key is shared across all threads</li>
+  <li>Each thread stores a different value for that key</li>
+</ul>
+<p class="Pp"><b>TLS Get/Set</b>:</p>
+<p class="Pp"></p>
+<pre>void* ascii_tls_get(tls_key_t key);
+int   ascii_tls_set(tls_key_t key, void *value);
+</pre>
+<p class="Pp">
+  <br/>
+   Get and set thread-local values.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>tls_get(): Returns value for current thread, or NULL if not set</li>
+  <li>tls_set(): Sets value for current thread</li>
+  <li>Each thread has independent values</li>
+</ul>
+<p class="Pp"><b>Thread-Local Registry Pattern</b>:</p>
+<p class="Pp"></p>
+<pre>// Global TLS key for client context
+static tls_key_t g_client_context_key;
+typedef struct {
+<br/>
+  int client_id;
+<br/>
+  char* name;
+<br/>
+  // ... other client data ...
+} client_context_t;
+void cleanup_client_context(void *value) {
+<br/>
+  client_context_t *ctx = (client_context_t *)value;
+<br/>
+  if (ctx) {
+<br/>
+    free(ctx-&gt;name);
+<br/>
+    free(ctx);
+<br/>
+  }
+}
+void initialize_tls() {
+<br/>
+  ascii_tls_key_create(&amp;g_client_context_key, cleanup_client_context);
+}
+void set_client_context(int client_id, const char *name) {
+<br/>
+  client_context_t *ctx = malloc(sizeof(*ctx));
+<br/>
+  ctx-&gt;client_id = client_id;
+<br/>
+  ctx-&gt;name = strdup(name);
+<br/>
+  ascii_tls_set(g_client_context_key, ctx);
+}
+client_context_t* get_client_context(void) {
+<br/>
+  return (client_context_t *)ascii_tls_get(g_client_context_key);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Real-Time_Priority"><a class="permalink" href="#Real-Time_Priority">Real-Time
+  Priority</a></h2>
+<p class="Pp"><b>Set Realtime Priority</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t asciichat_thread_set_realtime_priority(void);
+</pre>
+<p class="Pp">
+  <br/>
+   Elevate current thread to real-time priority.</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Use case</b>: Audio processing, video rendering, time-critical
+    tasks</li>
+  <li><b>Return</b>: ASCIICHAT_OK on success, error code on failure</li>
+  <li><b>Permissions</b>:</li>
+</ul>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Linux: Requires CAP_SYS_NICE capability or rtprio ulimit increase</dd>
+  <dt> &#x2022;</dt>
+  <dd>macOS: Requires special mach thread setup</dd>
+  <dt> &#x2022;</dt>
+  <dd>Windows: Requires no special permissions</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Fallback</b>: Always check return value; graceful degradation if not
+      available</dd>
+</dl>
+<p class="Pp"><b>Audio Thread Setup</b>:</p>
+<p class="Pp"></p>
+<pre>void* audio_worker(void* arg) {
+<br/>
+  // Attempt to use real-time priority
+<br/>
+  if (asciichat_thread_set_realtime_priority() != ASCIICHAT_OK) {
+<br/>
+    log_warn(&quot;Could not enable real-time priority for audio thread&quot;);
+<br/>
+  } else {
+<br/>
+    log_debug(&quot;Audio thread running with real-time priority&quot;);
+<br/>
+  }
+<br/>
+  // Process audio in tight loop
+<br/>
+  while (!should_stop()) {
+<br/>
+    process_audio_frame();
+<br/>
+  }
+<br/>
+  return NULL;
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Crash_Handling"><a class="permalink" href="#Crash_Handling">Crash
+  Handling</a></h1>
+<p class="Pp">The platform abstraction layer automatically installs crash
+    handlers that capture backtraces when your program crashes. This is
+    invaluable for debugging!</p>
+<section class="Ss">
+<h2 class="Ss" id="Automatic_Installation"><a class="permalink" href="#Automatic_Installation">Automatic
+  Installation</a></h2>
+<p class="Pp">Crash handlers are automatically installed when you call
+    <b>platform_init()</b><b>:</b></p>
+<p class="Pp"></p>
+<pre>int main() {
+<br/>
+  platform_init();  // Installs crash handlers
+<br/>
+  // Your program runs...
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">No additional setup needed - it just works!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Supported_Crash_Types"><a class="permalink" href="#Supported_Crash_Types">Supported
+  Crash Types</a></h2>
+<p class="Pp"><b>POSIX (Linux/macOS):</b></p>
+<ul class="Bl-bullet">
+  <li>SIGSEGV - Segmentation fault (null pointer, buffer overflow)</li>
+  <li>SIGABRT - Abort signal (assertion failures, abort() calls)</li>
+  <li>SIGFPE - Floating point exception (divide by zero)</li>
+  <li>SIGILL - Illegal instruction</li>
+  <li>SIGBUS - Bus error (alignment issues)</li>
+</ul>
+<p class="Pp"><b>Windows:</b></p>
+<ul class="Bl-bullet">
+  <li>EXCEPTION_ACCESS_VIOLATION - Access violation (like SIGSEGV)</li>
+  <li>EXCEPTION_ARRAY_BOUNDS_EXCEEDED - Array bounds exceeded</li>
+  <li>EXCEPTION_DATATYPE_MISALIGNMENT - Data type misalignment</li>
+  <li>EXCEPTION_FLT_DIVIDE_BY_ZERO - Floating point divide by zero</li>
+  <li>EXCEPTION_FLT_INVALID_OPERATION - Floating point invalid operation</li>
+  <li>EXCEPTION_ILLEGAL_INSTRUCTION - Illegal instruction</li>
+  <li>EXCEPTION_INT_DIVIDE_BY_ZERO - Integer divide by zero</li>
+  <li>EXCEPTION_STACK_OVERFLOW - Stack overflow</li>
+  <li>C runtime signals: SIGABRT, SIGFPE, SIGILL</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Output_Format"><a class="permalink" href="#Output_Format">Output
+  Format</a></h2>
+<p class="Pp">When a crash occurs, you get a detailed report:</p>
+<p class="Pp"></p>
+<pre>*** CRASH DETECTED ***
+Signal: SIGSEGV (Segmentation fault)
+=== BACKTRACE ===
+<br/>
+ 0: handle_client (lib/network.c:456)
+<br/>
+ 1: client_thread (src/server.c:234)
+<br/>
+ 2: thread_wrapper (lib/platform/posix/thread.c:89)
+<br/>
+ 3: start_thread
+================
+</pre>
+<p class="Pp">The backtrace shows:</p>
+<ul class="Bl-bullet">
+  <li>Function names (when debug symbols are available)</li>
+  <li>Source file and line number (with debug symbols)</li>
+  <li>Call stack from crash point to program entry</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Symbol_Resolution"><a class="permalink" href="#Symbol_Resolution">Symbol
+  Resolution</a></h2>
+<p class="Pp">Symbol resolution (function names in backtraces) works best with
+    debug symbols:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Debug builds</b> (recommended for development):</p>
+<p class="Pp"></p>
+<pre>cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+</pre>
+<p class="Pp"><b>Release builds</b> (limited symbol info):</p>
+<p class="Pp"></p>
+<pre>cmake -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build
+</pre>
+<p class="Pp">Platform-specific symbol support:</p>
+<ul class="Bl-bullet">
+  <li><b>Linux</b>: Uses backtrace_symbols() from execinfo.h</li>
+  <li><b>macOS</b>: Uses backtrace_symbols() from execinfo.h</li>
+  <li><b>Windows</b>: Uses StackWalk64() and SymFromAddr() with dbghelp.dll</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
+  Safety</a></h2>
+<p class="Pp">Crash handlers work across <b>all threads</b> in your
+  application:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Windows</b>: SetUnhandledExceptionFilter() is process-wide</li>
+  <li><b>POSIX</b>: sigaction() with SA_SIGINFO works on all threads</li>
+  <li><b>Backtrace</b>: Captures the call stack of the crashing thread</li>
+</ul>
+<p class="Pp">Example with multiple threads:</p>
+<p class="Pp"></p>
+<pre>void* worker_thread(void* arg) {
+<br/>
+  int* ptr = NULL;
+<br/>
+  *ptr = 42;  // CRASH! Null pointer dereference
+<br/>
+  return NULL;
+}
+int main() {
+<br/>
+  platform_init();  // Installs crash handlers
+<br/>
+  asciichat_thread_t thread;
+<br/>
+  asciichat_thread_create(&amp;thread, worker_thread, NULL);
+<br/>
+  asciichat_thread_join(&amp;thread, NULL);
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+// Output:
+// *** CRASH DETECTED ***
+// Signal: SIGSEGV (Segmentation fault)
+//
+// === BACKTRACE ===
+//  0: worker_thread
+//  1: thread_wrapper
+//  2: start_thread
+// ================
+</pre>
+<p class="Pp">The crash handler correctly identifies the crashing thread and its
+    stack!</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Windows-Specific_Details"><a class="permalink" href="#Windows-Specific_Details">Windows-Specific
+  Details</a></h1>
+<p class="Pp">Windows has some unique characteristics that the platform layer
+    handles for you.</p>
+<section class="Ss">
+<h2 class="Ss" id="Winsock_Initialization"><a class="permalink" href="#Winsock_Initialization">Winsock
+  Initialization</a></h2>
+<p class="Pp">Windows requires explicit initialization of the Winsock library
+    before using sockets:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Handled automatically by platform_init()
+int main() {
+<br/>
+  platform_init();  // Calls WSAStartup() on Windows
+<br/>
+  // Now you can use sockets!
+<br/>
+  socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+<br/>
+  platform_cleanup();  // Calls WSACleanup() on Windows
+<br/>
+  return 0;
+}</pre>
+<p class="Pp">You never need to call WSAStartup() or WSACleanup() directly!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ANSI_Escape_Sequences"><a class="permalink" href="#ANSI_Escape_Sequences">ANSI
+  Escape Sequences</a></h2>
+<p class="Pp">Modern Windows (Windows 10+) supports ANSI escape sequences, but
+    they need to be explicitly enabled:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Handled automatically by platform_init()
+int main() {
+<br/>
+  platform_init();  // Calls terminal_enable_ansi() on Windows
+<br/>
+  // Now you can use ANSI colors!
+<br/>
+  printf(&quot;\033[31mRed text\033[0m\n&quot;);
+<br/>
+  printf(&quot;\033[32mGreen text\033[0m\n&quot;);
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}</pre>
+<p class="Pp">The terminal functions automatically use Console API calls on
+    older Windows versions.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Windows_Lock_Implementation"><a class="permalink" href="#Windows_Lock_Implementation">Windows
+  Lock Implementation</a></h2>
+<p class="Pp">Windows uses different synchronization primitives than POSIX:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Mutexes</b> (CRITICAL_SECTION):</p>
+<p class="Pp"></p>
+<pre>// Implemented using CRITICAL_SECTION with spin count
+typedef struct {
+<br/>
+  CRITICAL_SECTION cs;
+<br/>
+  bool initialized;
+} mutex_t;
+int mutex_init(mutex_t* mutex) {
+<br/>
+  InitializeCriticalSectionAndSpinCount(&amp;mutex-&gt;cs, 4000);
+<br/>
+  mutex-&gt;initialized = true;
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">Spin count of 4000 means the thread will spin 4000 times before
+    sleeping, which improves performance for short-held locks.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Read-Write Locks</b> (SRWLOCK):</p>
+<p class="Pp"></p>
+<pre>// Slim Reader-Writer Lock - only 8 bytes!
+typedef struct {
+<br/>
+  SRWLOCK lock;
+<br/>
+  bool initialized;
+} rwlock_t;
+int rwlock_rdlock(rwlock_t* lock) {
+<br/>
+  AcquireSRWLockShared(&amp;lock-&gt;lock);
+<br/>
+  return 0;
+}
+int rwlock_wrlock(rwlock_t* lock) {
+<br/>
+  AcquireSRWLockExclusive(&amp;lock-&gt;lock);
+<br/>
+  return 0;
+}
+</pre>
+<p class="Pp">SRW Locks are lightweight (8 bytes vs 40+ bytes for
+    CRITICAL_SECTION) and very fast.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Condition Variables</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+  CONDITION_VARIABLE cv;
+<br/>
+  bool initialized;
+} cond_t;
+int cond_wait(cond_t* cond, mutex_t* mutex) {
+<br/>
+  SleepConditionVariableCS(&amp;cond-&gt;cv, &amp;mutex-&gt;cs, INFINITE);
+<br/>
+  return 0;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Windows_Thread_Implementation"><a class="permalink" href="#Windows_Thread_Implementation">Windows
+  Thread Implementation</a></h2>
+<p class="Pp">The Windows thread implementation is the most complex part of the
+    platform layer (2500+ lines!) because it includes sophisticated crash
+    handling:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Thread Creation Flow</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Allocate thread wrapper structure</dd>
+  <dt>2.</dt>
+  <dd>Initialize symbol handler (first thread only)</dd>
+  <dt>3.</dt>
+  <dd>Create Windows thread with wrapper function</dd>
+  <dt>4.</dt>
+  <dd>Wrapper catches exceptions and generates backtraces</dd>
+  <dt>5.</dt>
+  <dd>Call user's thread function</dd>
+  <dt>6.</dt>
+  <dd>Clean up on exit</dd>
+</dl>
+<p class="Pp"><b>Exception Handling in Threads</b>:</p>
+<p class="Pp"></p>
+<pre>DWORD WINAPI thread_wrapper(LPVOID arg) {
+<br/>
+  thread_wrapper_arg_t* wrapper_arg = (thread_wrapper_arg_t*)arg;
+<br/>
+  __try {
+<br/>
+    // Initialize symbol handler
+<br/>
+    ensure_symbol_handler_initialized();
+<br/>
+    __try {
+<br/>
+      // Call user's thread function
+<br/>
+      void* result = wrapper_arg-&gt;start_routine(wrapper_arg-&gt;arg);
+<br/>
+      return (DWORD)(uintptr_t)result;
+<br/>
+    }
+<br/>
+    __except(exception_filter(GetExceptionInformation())) {
+<br/>
+      // Inner exception handler
+<br/>
+    }
+<br/>
+  }
+<br/>
+  __finally {
+<br/>
+    // Cleanup
+<br/>
+  }
+}
+</pre>
+<p class="Pp">This nested exception handling ensures crashes are caught and
+    reported even in worker threads!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Windows_Signal_Limitations"><a class="permalink" href="#Windows_Signal_Limitations">Windows
+  Signal Limitations</a></h2>
+<p class="Pp">Windows has limited signal support compared to POSIX:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Working signals</b>:</p>
+<ul class="Bl-bullet">
+  <li>SIGINT - Ctrl+C (works via SetConsoleCtrlHandler)</li>
+  <li>SIGTERM - Termination request (limited support)</li>
+  <li>SIGABRT - Abort signal (via C runtime)</li>
+  <li>SIGFPE - Floating point exception (via C runtime)</li>
+  <li>SIGILL - Illegal instruction (via C runtime)</li>
+</ul>
+<p class="Pp"><b>Non-working signals</b>:</p>
+<ul class="Bl-bullet">
+  <li>SIGWINCH - Terminal resize (defined but does nothing)</li>
+  <li>Most other POSIX signals</li>
+</ul>
+<p class="Pp">The platform layer provides these as no-ops so your code
+  compiles:</p>
+<p class="Pp"></p>
+<pre>// This compiles on Windows but does nothing
+platform_signal(SIGWINCH, resize_handler);
+</pre>
+<p class="Pp">Use Windows Console API functions like
+    GetConsoleScreenBufferInfo() to detect terminal size changes on Windows.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Windows_Backtrace_Implementation"><a class="permalink" href="#Windows_Backtrace_Implementation">Windows
+  Backtrace Implementation</a></h2>
+<p class="Pp">Windows backtraces use the DbgHelp library with multiple fallback
+    strategies:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Primary method</b> (StackWalk64):</p>
+<p class="Pp"></p>
+<pre>STACKFRAME64 frame = {0};
+frame.AddrPC.Offset = context.Rip;     // Instruction pointer
+frame.AddrStack.Offset = context.Rsp;  // Stack pointer
+frame.AddrFrame.Offset = context.Rbp;  // Frame pointer
+while (StackWalk64(IMAGE_FILE_MACHINE_AMD64, process, thread,
+<br/>
+                   &amp;frame, &amp;context, NULL, SymFunctionTableAccess64,
+<br/>
+                   SymGetModuleBase64, NULL)) {
+<br/>
+  // Resolve symbol for frame.AddrPC.Offset
+}
+</pre>
+<p class="Pp"><b>Fallback methods</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Manual stack walking using frame pointers</dd>
+  <dt>2.</dt>
+  <dd>Symbol resolution using addr2line.exe</dd>
+  <dt>3.</dt>
+  <dd>Raw addresses if symbol resolution fails</dd>
+</dl>
+<p class="Pp">This multi-strategy approach ensures you get the best possible
+    backtrace even when debug symbols are missing or DbgHelp has issues.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="POSIX-Specific_Details"><a class="permalink" href="#POSIX-Specific_Details">POSIX-Specific
+  Details</a></h1>
+<p class="Pp">POSIX implementation is generally simpler because the platform
+    abstraction API is based on POSIX semantics.</p>
+<section class="Ss">
+<h2 class="Ss" id="Thin_Delegation"><a class="permalink" href="#Thin_Delegation">Thin
+  Delegation</a></h2>
+<p class="Pp">Most POSIX functions are thin wrappers:</p>
+<p class="Pp"></p>
+<pre>// Thread creation - simple delegation
+int asciichat_thread_create(asciichat_thread_t* thread, void* (*func)(void*), void* arg) {
+<br/>
+  return pthread_create(&amp;thread-&gt;thread, NULL, func, arg);
+}
+// Mutex locking - simple delegation
+int mutex_lock(mutex_t* mutex) {
+<br/>
+  return pthread_mutex_lock(&amp;mutex-&gt;mutex);
+}
+</pre>
+<p class="Pp">This keeps the abstraction lightweight and efficient on POSIX
+    platforms.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Full_Signal_Support"><a class="permalink" href="#Full_Signal_Support">Full
+  Signal Support</a></h2>
+<p class="Pp">POSIX platforms have complete signal support:</p>
+<p class="Pp"></p>
+<pre>// All signals work as expected
+platform_signal(SIGINT, sigint_handler);    // Ctrl+C
+platform_signal(SIGTERM, sigterm_handler);  // Termination
+platform_signal(SIGWINCH, resize_handler);  // Terminal resize
+platform_signal(SIGUSR1, user_handler);     // User-defined signal
+</pre>
+<p class="Pp">The platform layer uses sigaction() for thread-safe signal
+    handling:</p>
+<p class="Pp"></p>
+<pre>signal_handler_t platform_signal(int sig, signal_handler_t handler) {
+<br/>
+  struct sigaction new_action, old_action;
+<br/>
+  new_action.sa_handler = handler;
+<br/>
+  sigemptyset(&amp;new_action.sa_mask);
+<br/>
+  new_action.sa_flags = SA_RESTART;  // Restart interrupted syscalls
+<br/>
+  sigaction(sig, &amp;new_action, &amp;old_action);
+<br/>
+  return old_action.sa_handler;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="POSIX_Backtrace"><a class="permalink" href="#POSIX_Backtrace">POSIX
+  Backtrace</a></h2>
+<p class="Pp">POSIX platforms use the standard execinfo.h backtrace API:</p>
+<p class="Pp"></p>
+<pre>int platform_backtrace(void** buffer, int size) {
+<br/>
+  return backtrace(buffer, size);
+}
+char** platform_backtrace_symbols(void* const* buffer, int size) {
+<br/>
+  return backtrace_symbols(buffer, size);
+}
+</pre>
+<p class="Pp">Symbol resolution works automatically if:</p>
+<ul class="Bl-bullet">
+  <li>Debug symbols are included in the binary</li>
+  <li>Binary is compiled with frame pointers (-fno-omit-frame-pointer)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="macOS-Specific_Notes"><a class="permalink" href="#macOS-Specific_Notes">macOS-Specific
+  Notes</a></h2>
+<p class="Pp">macOS is mostly POSIX-compliant but has a few quirks:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Thread timeout join</b>: macOS doesn't have
+    pthread_timedjoin_np(), so timeouts fall back to blocking:</p>
+<p class="Pp"></p>
+<pre>int asciichat_thread_join_timeout(asciichat_thread_t* thread, void** retval, int timeout_ms) {
+<br/>
+  #ifdef __APPLE__
+<br/>
+    // No timeout support, fall back to blocking join
+<br/>
+    return pthread_join(thread-&gt;thread, retval);
+<br/>
+  #else
+<br/>
+    // Linux has pthread_timedjoin_np
+<br/>
+    struct timespec ts;
+<br/>
+    clock_gettime(CLOCK_REALTIME, &amp;ts);
+<br/>
+    ts.tv_sec += timeout_ms / 1000;
+<br/>
+    ts.tv_nsec += (timeout_ms % 1000) * 1000000;
+<br/>
+    return pthread_timedjoin_np(thread-&gt;thread, retval, &amp;ts);
+<br/>
+  #endif
+}
+</pre>
+<p class="Pp"><b>Type name conflicts</b>: macOS system headers define thread_t,
+    so we use asciichat_thread_t to avoid conflicts:</p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Conflicts with mach/mach_types.h
+typedef struct { pthread_t thread; } thread_t;
+// &#x2705; GOOD - Unique name avoids conflicts
+typedef struct { pthread_t thread; } asciichat_thread_t;
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Complete_Examples"><a class="permalink" href="#Complete_Examples">Complete
+  Examples</a></h1>
+<p class="Pp">Here are some complete, real-world examples of using the platform
+    abstraction layer.</p>
+<section class="Ss">
+<h2 class="Ss" id="Multi-Threaded_Server"><a class="permalink" href="#Multi-Threaded_Server">Multi-Threaded
+  Server</a></h2>
+<p class="Pp">A simple echo server that handles multiple clients using
+  threads:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+#include &lt;stdio.h&gt;
+#include &lt;string.h&gt;
+typedef struct {
+<br/>
+  socket_t client_sock;
+<br/>
+  int client_id;
+} client_info_t;
+void* handle_client(void* arg) {
+<br/>
+  client_info_t* info = (client_info_t*)arg;
+<br/>
+  char buffer[1024];
+<br/>
+  printf(&quot;Client %d connected\n&quot;, info-&gt;client_id);
+<br/>
+  while (1) {
+<br/>
+    ssize_t received = socket_recv(info-&gt;client_sock, buffer, sizeof(buffer) - 1, 0);
+<br/>
+    if (received &lt;= 0) break;
+<br/>
+    buffer[received] = '\0';
+<br/>
+    printf(&quot;Client %d: %s&quot;, info-&gt;client_id, buffer);
+<br/>
+    // Echo back to client
+<br/>
+    socket_send(info-&gt;client_sock, buffer, received, 0);
+<br/>
+  }
+<br/>
+  printf(&quot;Client %d disconnected\n&quot;, info-&gt;client_id);
+<br/>
+  socket_close(info-&gt;client_sock);
+<br/>
+  free(info);
+<br/>
+  return NULL;
+}
+int main() {
+<br/>
+  platform_init();
+<br/>
+  // Create listening socket
+<br/>
+  socket_t server_sock = socket_create(AF_INET, SOCK_STREAM, 0);
+<br/>
+  socket_set_reuseaddr(server_sock, true);
+<br/>
+  struct sockaddr_in addr = {0};
+<br/>
+  addr.sin_family = AF_INET;
+<br/>
+  addr.sin_addr.s_addr = INADDR_ANY;
+<br/>
+  addr.sin_port = htons(8080);
+<br/>
+  socket_bind(server_sock, (struct sockaddr*)&amp;addr, sizeof(addr));
+<br/>
+  socket_listen(server_sock, 10);
+<br/>
+  printf(&quot;Server listening on port 8080\n&quot;);
+<br/>
+  // Accept clients and spawn threads
+<br/>
+  int client_id = 0;
+<br/>
+  while (1) {
+<br/>
+    socket_t client_sock = socket_accept(server_sock, NULL, NULL);
+<br/>
+    if (!socket_is_valid(client_sock)) continue;
+<br/>
+    client_info_t* info = malloc(sizeof(client_info_t));
+<br/>
+    info-&gt;client_sock = client_sock;
+<br/>
+    info-&gt;client_id = ++client_id;
+<br/>
+    asciichat_thread_t thread;
+<br/>
+    if (asciichat_thread_create(&amp;thread, handle_client, info) != 0) {
+<br/>
+      fprintf(stderr, &quot;Failed to create thread\n&quot;);
+<br/>
+      socket_close(client_sock);
+<br/>
+      free(info);
+<br/>
+    }
+<br/>
+  }
+<br/>
+  socket_close(server_sock);
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Producer-Consumer_Pattern"><a class="permalink" href="#Producer-Consumer_Pattern">Producer-Consumer
+  Pattern</a></h2>
+<p class="Pp">Classic producer-consumer with condition variables:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#define QUEUE_SIZE 10
+typedef struct {
+<br/>
+  int items[QUEUE_SIZE];
+<br/>
+  int count;
+<br/>
+  int head;
+<br/>
+  int tail;
+<br/>
+  mutex_t lock;
+<br/>
+  cond_t not_empty;
+<br/>
+  cond_t not_full;
+} queue_t;
+void queue_init(queue_t* q) {
+<br/>
+  q-&gt;count = 0;
+<br/>
+  q-&gt;head = 0;
+<br/>
+  q-&gt;tail = 0;
+<br/>
+  mutex_init(&amp;q-&gt;lock);
+<br/>
+  cond_init(&amp;q-&gt;not_empty);
+<br/>
+  cond_init(&amp;q-&gt;not_full);
+}
+void queue_push(queue_t* q, int item) {
+<br/>
+  mutex_lock(&amp;q-&gt;lock);
+<br/>
+  while (q-&gt;count == QUEUE_SIZE) {
+<br/>
+    cond_wait(&amp;q-&gt;not_full, &amp;q-&gt;lock);
+<br/>
+  }
+<br/>
+  q-&gt;items[q-&gt;tail] = item;
+<br/>
+  q-&gt;tail = (q-&gt;tail + 1) % QUEUE_SIZE;
+<br/>
+  q-&gt;count++;
+<br/>
+  cond_signal(&amp;q-&gt;not_empty);
+<br/>
+  mutex_unlock(&amp;q-&gt;lock);
+}
+int queue_pop(queue_t* q) {
+<br/>
+  mutex_lock(&amp;q-&gt;lock);
+<br/>
+  while (q-&gt;count == 0) {
+<br/>
+    cond_wait(&amp;q-&gt;not_empty, &amp;q-&gt;lock);
+<br/>
+  }
+<br/>
+  int item = q-&gt;items[q-&gt;head];
+<br/>
+  q-&gt;head = (q-&gt;head + 1) % QUEUE_SIZE;
+<br/>
+  q-&gt;count--;
+<br/>
+  cond_signal(&amp;q-&gt;not_full);
+<br/>
+  mutex_unlock(&amp;q-&gt;lock);
+<br/>
+  return item;
+}
+void* producer(void* arg) {
+<br/>
+  queue_t* q = (queue_t*)arg;
+<br/>
+  for (int i = 0; i &lt; 100; i++) {
+<br/>
+    queue_push(q, i);
+<br/>
+    printf(&quot;Produced: %d\n&quot;, i);
+<br/>
+    platform_sleep_ms(10);
+<br/>
+  }
+<br/>
+  return NULL;
+}
+void* consumer(void* arg) {
+<br/>
+  queue_t* q = (queue_t*)arg;
+<br/>
+  for (int i = 0; i &lt; 100; i++) {
+<br/>
+    int item = queue_pop(q);
+<br/>
+    printf(&quot;Consumed: %d\n&quot;, item);
+<br/>
+    platform_sleep_ms(20);
+<br/>
+  }
+<br/>
+  return NULL;
+}
+int main() {
+<br/>
+  platform_init();
+<br/>
+  queue_t queue;
+<br/>
+  queue_init(&amp;queue);
+<br/>
+  asciichat_thread_t prod_thread, cons_thread;
+<br/>
+  asciichat_thread_create(&amp;prod_thread, producer, &amp;queue);
+<br/>
+  asciichat_thread_create(&amp;cons_thread, consumer, &amp;queue);
+<br/>
+  asciichat_thread_join(&amp;prod_thread, NULL);
+<br/>
+  asciichat_thread_join(&amp;cons_thread, NULL);
+<br/>
+  mutex_destroy(&amp;queue.lock);
+<br/>
+  cond_destroy(&amp;queue.not_empty);
+<br/>
+  cond_destroy(&amp;queue.not_full);
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Interactive_Terminal_Application"><a class="permalink" href="#Interactive_Terminal_Application">Interactive
+  Terminal Application</a></h2>
+<p class="Pp">Simple interactive menu using terminal I/O:</p>
+<p class="Pp"></p>
+<pre>#include &quot;platform/abstraction.h&quot;
+#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+void display_menu() {
+<br/>
+  terminal_clear_screen();
+<br/>
+  terminal_move_cursor(1, 1);
+<br/>
+  printf(&quot;&#x2554;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2557;\n&quot;);
+<br/>
+  printf(&quot;&#x2551;      Main Menu             &#x2551;\n&quot;);
+<br/>
+  printf(&quot;&#x2560;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2563;\n&quot;);
+<br/>
+  printf(&quot;&#x2551;  1. Option One             &#x2551;\n&quot;);
+<br/>
+  printf(&quot;&#x2551;  2. Option Two             &#x2551;\n&quot;);
+<br/>
+  printf(&quot;&#x2551;  3. Option Three           &#x2551;\n&quot;);
+<br/>
+  printf(&quot;&#x2551;  Q. Quit                   &#x2551;\n&quot;);
+<br/>
+  printf(&quot;&#x255A;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x255D;\n&quot;);
+<br/>
+  printf(&quot;\nChoice: &quot;);
+<br/>
+  fflush(stdout);
+}
+int main() {
+<br/>
+  platform_init();
+<br/>
+  // Check if we're in a terminal
+<br/>
+  if (!platform_isatty(STDIN_FILENO)) {
+<br/>
+    fprintf(stderr, &quot;This program must be run in a terminal\n&quot;);
+<br/>
+    return 1;
+<br/>
+  }
+<br/>
+  // Set up terminal
+<br/>
+  terminal_set_raw_mode(true);
+<br/>
+  terminal_set_echo(false);
+<br/>
+  terminal_hide_cursor(true);
+<br/>
+  // Main loop
+<br/>
+  while (1) {
+<br/>
+    display_menu();
+<br/>
+    char choice;
+<br/>
+    read(STDIN_FILENO, &amp;choice, 1);
+<br/>
+    if (choice == 'q' || choice == 'Q') {
+<br/>
+      break;
+<br/>
+    }
+<br/>
+    switch (choice) {
+<br/>
+      case '1':
+<br/>
+        terminal_clear_screen();
+<br/>
+        printf(&quot;You selected option 1!\n&quot;);
+<br/>
+        printf(&quot;Press any key to continue...&quot;);
+<br/>
+        read(STDIN_FILENO, &amp;choice, 1);
+<br/>
+        break;
+<br/>
+      case '2':
+<br/>
+        terminal_clear_screen();
+<br/>
+        printf(&quot;You selected option 2!\n&quot;);
+<br/>
+        printf(&quot;Press any key to continue...&quot;);
+<br/>
+        read(STDIN_FILENO, &amp;choice, 1);
+<br/>
+        break;
+<br/>
+      case '3':
+<br/>
+        terminal_clear_screen();
+<br/>
+        printf(&quot;You selected option 3!\n&quot;);
+<br/>
+        printf(&quot;Press any key to continue...&quot;);
+<br/>
+        read(STDIN_FILENO, &amp;choice, 1);
+<br/>
+        break;
+<br/>
+    }
+<br/>
+  }
+<br/>
+  // Restore terminal
+<br/>
+  terminal_hide_cursor(false);
+<br/>
+  terminal_set_raw_mode(false);
+<br/>
+  terminal_set_echo(true);
+<br/>
+  terminal_clear_screen();
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<p class="Pp">Here are the golden rules for using the platform abstraction layer
+    effectively.</p>
+<section class="Ss">
+<h2 class="Ss" id="Always_Init_and_Cleanup"><a class="permalink" href="#Always_Init_and_Cleanup">Always
+  Init and Cleanup</a></h2>
+<p class="Pp"><b>Rule</b>: Always call <b>platform_init()</b><b> at program
+    start and </b>platform_cleanup()<b> at exit.</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x2705; GOOD
+int main() {
+<br/>
+  platform_init();
+<br/>
+  // Your program logic
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+// &#x274C; BAD - Missing init/cleanup
+int main() {
+<br/>
+  socket_t sock = socket_create(...);  // May fail on Windows!
+<br/>
+  return 0;
+}</pre>
+<p class="Pp">Why this matters:</p>
+<ul class="Bl-bullet">
+  <li>Windows requires Winsock initialization before using sockets</li>
+  <li>Crash handlers are installed by <b>platform_init()</b><b></b></li>
+  <li>ANSI terminal support is enabled by <b>platform_init()</b><b></b></li>
+  <li>Proper cleanup prevents resource leaks</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Never_Use_Platform_Ifdefs"><a class="permalink" href="#Never_Use_Platform_Ifdefs">Never
+  Use Platform Ifdefs</a></h2>
+<p class="Pp"><b>Rule</b>: Never use #ifdef _WIN32 or #ifdef __linux__ in
+    application code.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Platform-specific code in application
+#ifdef _WIN32
+<br/>
+  HANDLE thread;
+<br/>
+  CreateThread(...);
+#else
+<br/>
+  pthread_t thread;
+<br/>
+  pthread_create(...);
+#endif
+// &#x2705; GOOD - Use platform abstraction
+asciichat_thread_t thread;
+asciichat_thread_create(&amp;thread, func, arg);</pre>
+<p class="Pp">If you find yourself writing platform-specific code:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Check if the platform layer already provides what you need</dd>
+  <dt>2.</dt>
+  <dd>If not, add it to the platform layer (don't scatter ifdefs!)</dd>
+  <dt>3.</dt>
+  <dd>Keep all platform differences isolated in lib/platform/</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Use_Platform_Types"><a class="permalink" href="#Use_Platform_Types">Use
+  Platform Types</a></h2>
+<p class="Pp"><b>Rule</b>: Use platform abstraction types, not native types.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Platform-specific types
+pthread_t thread;          // Only works on POSIX!
+CRITICAL_SECTION cs;       // Only works on Windows!
+int sockfd;                // Wrong on Windows (should be SOCKET)!
+// &#x2705; GOOD - Platform abstraction types
+asciichat_thread_t thread;      // Works everywhere
+mutex_t mutex;             // Works everywhere
+socket_t sock;             // Works everywhere</pre>
+<p class="Pp">Platform types are opaque - you don't need to know (or care) what
+    they contain.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Check_Return_Values"><a class="permalink" href="#Check_Return_Values">Check
+  Return Values</a></h2>
+<p class="Pp"><b>Rule</b>: Always check return values from platform
+  functions.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - No error checking
+asciichat_thread_create(&amp;thread, func, arg);
+socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+socket_bind(sock, &amp;addr, sizeof(addr));
+// &#x2705; GOOD - Proper error checking
+if (asciichat_thread_create(&amp;thread, func, arg) != 0) {
+<br/>
+  log_error(&quot;Thread creation failed&quot;);
+<br/>
+  return ERROR_THREAD_CREATE;
+}
+socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+if (!socket_is_valid(sock)) {
+<br/>
+  log_error(&quot;Socket creation failed: %s&quot;, socket_get_error_string());
+<br/>
+  return ERROR_SOCKET_CREATE;
+}
+if (socket_bind(sock, &amp;addr, sizeof(addr)) &lt; 0) {
+<br/>
+  log_error(&quot;Bind failed: %s&quot;, socket_get_error_string());
+<br/>
+  socket_close(sock);
+<br/>
+  return ERROR_SOCKET_BIND;
+}</pre>
+<p class="Pp">Platform functions return:</p>
+<ul class="Bl-bullet">
+  <li><b>0</b> on success, <b>non-zero</b> on error (for most functions)</li>
+  <li><b>INVALID_SOCKET_VALUE</b> for invalid sockets (use
+    socket_is_valid())</li>
+  <li><b>NULL</b> for failed allocations</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Prefer_Static_Init"><a class="permalink" href="#Prefer_Static_Init">Prefer
+  Static Init</a></h2>
+<p class="Pp"><b>Rule</b>: Use static initialization for global synchronization
+    primitives.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Explicit initialization required
+static mutex_t g_mutex;
+static bool g_mutex_initialized = false;
+void init() {
+<br/>
+  if (!g_mutex_initialized) {
+<br/>
+    mutex_init(&amp;g_mutex);
+<br/>
+    g_mutex_initialized = true;
+<br/>
+  }
+}
+void use_mutex() {
+<br/>
+  if (!g_mutex_initialized) init();
+<br/>
+  mutex_lock(&amp;g_mutex);
+<br/>
+  // ...
+}
+// &#x2705; GOOD - Static initialization, no init needed
+static_mutex_t g_mutex = STATIC_MUTEX_INIT;
+void use_mutex() {
+<br/>
+  static_mutex_lock(&amp;g_mutex);  // Just works!
+<br/>
+  // ...
+<br/>
+  static_mutex_unlock(&amp;g_mutex);
+}</pre>
+<p class="Pp">Static initialization is:</p>
+<ul class="Bl-bullet">
+  <li><b>Thread-safe</b>: No race conditions</li>
+  <li><b>Automatic</b>: No explicit init calls needed</li>
+  <li><b>Clean</b>: Less boilerplate code</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Check_Thread_Creation_Before_Join"><a class="permalink" href="#Check_Thread_Creation_Before_Join">Check
+  Thread Creation Before Join</a></h2>
+<p class="Pp"><b>Rule</b>: Only join threads that were successfully created.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Joining uninitialized thread
+asciichat_thread_t thread;
+asciichat_thread_create(&amp;thread, func, arg);  // What if this fails?
+asciichat_thread_join(&amp;thread, NULL);         // Undefined behavior!
+// &#x2705; GOOD - Check creation before join
+asciichat_thread_t thread;
+bool thread_created = false;
+if (asciichat_thread_create(&amp;thread, func, arg) == 0) {
+<br/>
+  thread_created = true;
+} else {
+<br/>
+  log_error(&quot;Thread creation failed&quot;);
+}
+if (thread_created) {
+<br/>
+  asciichat_thread_join(&amp;thread, NULL);
+}</pre>
+<p class="Pp">Or use a helper function:</p>
+<p class="Pp"></p>
+<pre>// Check if thread was initialized
+if (asciichat_thread_is_initialized(&amp;thread)) {
+<br/>
+  asciichat_thread_join(&amp;thread, NULL);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Socket_Validation"><a class="permalink" href="#Socket_Validation">Socket
+  Validation</a></h2>
+<p class="Pp"><b>Rule</b>: Use socket_is_valid() to check socket validity, not
+    comparisons.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; BAD - Platform-specific checks
+if (sock &lt; 0) { ... }      // Wrong on Windows!
+if (sock == NULL) { ... }  // Wrong on POSIX!
+if (sock &gt;= 0) { ... }     // Wrong on Windows!
+// &#x2705; GOOD - Platform-independent check
+if (!socket_is_valid(sock)) {
+<br/>
+  log_error(&quot;Invalid socket&quot;);
+}
+if (socket_is_valid(sock)) {
+<br/>
+  // Socket is valid, use it
+}</pre>
+<p class="Pp">Why this matters:</p>
+<ul class="Bl-bullet">
+  <li><b>POSIX</b>: Invalid sockets are -1, valid sockets are &gt;= 0</li>
+  <li><b>Windows</b>: Invalid sockets are INVALID_SOCKET (typically ~0), valid
+      sockets can be any value</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Migration_Guide"><a class="permalink" href="#Migration_Guide">Migration
+  Guide</a></h1>
+<p class="Pp">Converting existing code to use the platform abstraction layer is
+    straightforward.</p>
+<section class="Ss">
+<h2 class="Ss" id="Migrating_Threads"><a class="permalink" href="#Migrating_Threads">Migrating
+  Threads</a></h2>
+<p class="Pp"><b>From POSIX pthreads</b>:</p>
+<p class="Pp"></p>
+<pre>// Before (POSIX-only)
+#include &lt;pthread.h&gt;
+pthread_t thread;
+pthread_create(&amp;thread, NULL, worker, arg);
+pthread_join(thread, NULL);
+// After (cross-platform)
+#include &quot;platform/abstraction.h&quot;
+asciichat_thread_t thread;
+asciichat_thread_create(&amp;thread, worker, arg);
+asciichat_thread_join(&amp;thread, NULL);
+</pre>
+<p class="Pp"><b>From Windows threads</b>:</p>
+<p class="Pp"></p>
+<pre>// Before (Windows-only)
+#include &lt;windows.h&gt;
+HANDLE thread = CreateThread(NULL, 0, worker, arg, 0, NULL);
+WaitForSingleObject(thread, INFINITE);
+CloseHandle(thread);
+// After (cross-platform)
+#include &quot;platform/abstraction.h&quot;
+asciichat_thread_t thread;
+asciichat_thread_create(&amp;thread, worker, arg);
+asciichat_thread_join(&amp;thread, NULL);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Migrating_Mutexes"><a class="permalink" href="#Migrating_Mutexes">Migrating
+  Mutexes</a></h2>
+<p class="Pp"><b>From POSIX mutexes</b>:</p>
+<p class="Pp"></p>
+<pre>// Before
+pthread_mutex_t mutex;
+pthread_mutex_init(&amp;mutex, NULL);
+pthread_mutex_lock(&amp;mutex);
+pthread_mutex_unlock(&amp;mutex);
+pthread_mutex_destroy(&amp;mutex);
+// After
+mutex_t mutex;
+mutex_init(&amp;mutex);
+mutex_lock(&amp;mutex);
+mutex_unlock(&amp;mutex);
+mutex_destroy(&amp;mutex);
+</pre>
+<p class="Pp"><b>From Windows critical sections</b>:</p>
+<p class="Pp"></p>
+<pre>// Before
+CRITICAL_SECTION cs;
+InitializeCriticalSection(&amp;cs);
+EnterCriticalSection(&amp;cs);
+LeaveCriticalSection(&amp;cs);
+DeleteCriticalSection(&amp;cs);
+// After
+mutex_t mutex;
+mutex_init(&amp;mutex);
+mutex_lock(&amp;mutex);
+mutex_unlock(&amp;mutex);
+mutex_destroy(&amp;mutex);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Migrating_Sockets"><a class="permalink" href="#Migrating_Sockets">Migrating
+  Sockets</a></h2>
+<p class="Pp"><b>From POSIX sockets</b>:</p>
+<p class="Pp"></p>
+<pre>// Before
+#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+int sockfd = socket(AF_INET, SOCK_STREAM, 0);
+bind(sockfd, &amp;addr, sizeof(addr));
+listen(sockfd, 10);
+int client = accept(sockfd, NULL, NULL);
+close(sockfd);
+// After
+#include &quot;platform/abstraction.h&quot;
+socket_t sockfd = socket_create(AF_INET, SOCK_STREAM, 0);
+socket_bind(sockfd, &amp;addr, sizeof(addr));
+socket_listen(sockfd, 10);
+socket_t client = socket_accept(sockfd, NULL, NULL);
+socket_close(sockfd);
+</pre>
+<p class="Pp"><b>From Windows Winsock</b>:</p>
+<p class="Pp"></p>
+<pre>// Before
+#include &lt;winsock2.h&gt;
+WSADATA wsa;
+WSAStartup(MAKEWORD(2,2), &amp;wsa);
+SOCKET sockfd = socket(AF_INET, SOCK_STREAM, 0);
+bind(sockfd, &amp;addr, sizeof(addr));
+listen(sockfd, 10);
+SOCKET client = accept(sockfd, NULL, NULL);
+closesocket(sockfd);
+WSACleanup();
+// After
+#include &quot;platform/abstraction.h&quot;
+platform_init();  // Handles WSAStartup
+socket_t sockfd = socket_create(AF_INET, SOCK_STREAM, 0);
+socket_bind(sockfd, &amp;addr, sizeof(addr));
+socket_listen(sockfd, 10);
+socket_t client = socket_accept(sockfd, NULL, NULL);
+socket_close(sockfd);
+platform_cleanup();  // Handles WSACleanup
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Migrating_Terminal_I/O"><a class="permalink" href="#Migrating_Terminal_I/O">Migrating
+  Terminal I/O</a></h2>
+<p class="Pp"><b>From termios (POSIX)</b>:</p>
+<p class="Pp"></p>
+<pre>// Before
+#include &lt;termios.h&gt;
+struct termios old_tio, new_tio;
+tcgetattr(STDIN_FILENO, &amp;old_tio);
+new_tio = old_tio;
+new_tio.c_lflag &amp;= ~(ICANON | ECHO);
+tcsetattr(STDIN_FILENO, TCSANOW, &amp;new_tio);
+// ...
+tcsetattr(STDIN_FILENO, TCSANOW, &amp;old_tio);
+// After
+#include &quot;platform/abstraction.h&quot;
+terminal_set_raw_mode(true);
+terminal_set_echo(false);
+// ...
+terminal_set_raw_mode(false);
+terminal_set_echo(true);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Migrating_Signal_Handling"><a class="permalink" href="#Migrating_Signal_Handling">Migrating
+  Signal Handling</a></h2>
+<p class="Pp"><b>From POSIX signals</b>:</p>
+<p class="Pp"></p>
+<pre>// Before
+#include &lt;signal.h&gt;
+void handler(int sig) { /* ... */ }
+signal(SIGINT, handler);
+// After
+#include &quot;platform/abstraction.h&quot;
+void handler(int sig) { /* ... */ }
+platform_signal(SIGINT, handler);  // Thread-safe on all platforms!
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Troubleshooting"><a class="permalink" href="#Troubleshooting">Troubleshooting</a></h1>
+<p class="Pp">Common issues and how to solve them.</p>
+<section class="Ss">
+<h2 class="Ss" id="Link_Errors"><a class="permalink" href="#Link_Errors">Link
+  Errors</a></h2>
+<p class="Pp"><b>Problem</b>: Undefined reference to platform functions.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Solution</b>: Make sure platform files are included in your
+    build:</p>
+<p class="Pp"></p>
+<pre># CMakeLists.txt
+if(WIN32)
+<br/>
+  set(PLATFORM_SOURCES
+<br/>
+    lib/platform/windows/thread.c
+<br/>
+    lib/platform/windows/mutex.c
+<br/>
+    # ... other Windows files
+<br/>
+  )
+else()
+<br/>
+  set(PLATFORM_SOURCES
+<br/>
+    lib/platform/posix/thread.c
+<br/>
+    lib/platform/posix/mutex.c
+<br/>
+    # ... other POSIX files
+<br/>
+  )
+endif()
+add_executable(my_app main.c ${PLATFORM_SOURCES})
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Socket_Creation_Fails"><a class="permalink" href="#Socket_Creation_Fails">Socket
+  Creation Fails</a></h2>
+<p class="Pp"><b>Problem</b>: socket_create() returns invalid socket on
+  Windows.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Solution</b>: Call <b>platform_init()</b><b> before using
+    sockets:</b></p>
+<p class="Pp"></p>
+<pre>int main() {
+<br/>
+  platform_init();  // Must be called first on Windows!
+<br/>
+  socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+<br/>
+  // Now it works!
+<br/>
+  platform_cleanup();
+<br/>
+  return 0;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Thread_Join_Crashes"><a class="permalink" href="#Thread_Join_Crashes">Thread
+  Join Crashes</a></h2>
+<p class="Pp"><b>Problem</b>: Crash when calling
+    <b>asciichat_thread_join()</b><b>.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Solution</b>: Check if thread was successfully created:</p>
+<p class="Pp"></p>
+<pre>asciichat_thread_t thread;
+if (asciichat_thread_create(&amp;thread, func, arg) == 0) {
+<br/>
+  // Only join if creation succeeded
+<br/>
+  asciichat_thread_join(&amp;thread, NULL);
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="No_Function_Names_in_Backtrace"><a class="permalink" href="#No_Function_Names_in_Backtrace">No
+  Function Names in Backtrace</a></h2>
+<p class="Pp"><b>Problem</b>: Backtrace shows addresses but no function
+  names.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Solution</b>: Build with debug symbols:</p>
+<p class="Pp"></p>
+<pre># Enable debug symbols
+cmake -B build -DCMAKE_BUILD_TYPE=Debug
+cmake --build build
+</pre>
+<p class="Pp">On Linux, also install debug info:</p>
+<p class="Pp"></p>
+<pre># Debian/Ubuntu
+sudo apt-get install libc6-dbg
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Timeout_Functions_Don't_Work_on_Windows"><a class="permalink" href="#Timeout_Functions_Don't_Work_on_Windows">Timeout
+  Functions Don't Work on Windows</a></h2>
+<p class="Pp"><b>Problem</b>: Timeout functions seem to block forever on
+    Windows.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Solution</b>: This is expected - some timeout functions fall
+    back to blocking on certain platforms. Use a separate watchdog thread if you
+    need guaranteed timeouts:</p>
+<p class="Pp"></p>
+<pre>// Watchdog pattern for guaranteed timeout
+typedef struct {
+<br/>
+  asciichat_thread_t thread;
+<br/>
+  bool completed;
+<br/>
+  mutex_t lock;
+} watchdog_t;
+void* watchdog_func(void* arg) {
+<br/>
+  watchdog_t* wd = (watchdog_t*)arg;
+<br/>
+  platform_sleep_ms(5000);  // 5 second timeout
+<br/>
+  mutex_lock(&amp;wd-&gt;lock);
+<br/>
+  if (!wd-&gt;completed) {
+<br/>
+    log_warn(&quot;Thread did not complete in time!&quot;);
+<br/>
+    // Handle timeout
+<br/>
+  }
+<br/>
+  mutex_unlock(&amp;wd-&gt;lock);
+<br/>
+  return NULL;
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance_Considerations"><a class="permalink" href="#Performance_Considerations">Performance
+  Considerations</a></h1>
+<p class="Pp">The platform abstraction layer is designed for minimal overhead,
+    but there are still some performance characteristics to be aware of.</p>
+<section class="Ss">
+<h2 class="Ss" id="Zero_Overhead_in_Release"><a class="permalink" href="#Zero_Overhead_in_Release">Zero
+  Overhead in Release</a></h2>
+<p class="Pp">Release builds have essentially zero abstraction overhead:</p>
+<ul class="Bl-bullet">
+  <li>Direct function calls (no virtual dispatch)</li>
+  <li>Inlined wrappers for simple operations</li>
+  <li>Compile-time platform selection</li>
+</ul>
+<p class="Pp">Example assembly comparison (mutex lock on Linux):</p>
+<p class="Pp"></p>
+<pre>; Direct pthread call
+call pthread_mutex_lock
+; Platform abstraction call (same!)
+call mutex_lock
+<br/>
+  ; mutex_lock implementation:
+<br/>
+  jmp pthread_mutex_lock  ; Direct jump, no overhead
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Debug_Mode_Overhead"><a class="permalink" href="#Debug_Mode_Overhead">Debug
+  Mode Overhead</a></h2>
+<p class="Pp">Debug builds can enable tracking that has some overhead:</p>
+<ul class="Bl-bullet">
+  <li>Lock tracking: ~5-10% overhead</li>
+  <li>Thread tracking: ~2-5% overhead</li>
+  <li>Memory tracking: ~10-20% overhead</li>
+</ul>
+<p class="Pp">This is acceptable in debug builds because:</p>
+<ul class="Bl-bullet">
+  <li>You get valuable debugging information</li>
+  <li>Debug builds aren't used in production</li>
+  <li>The overhead helps find bugs early</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Socket_Auto-Optimization"><a class="permalink" href="#Socket_Auto-Optimization">Socket
+  Auto-Optimization</a></h2>
+<p class="Pp">The platform layer automatically optimizes accepted sockets:</p>
+<ul class="Bl-bullet">
+  <li><b>TCP_NODELAY</b>: Disables Nagle algorithm for low latency</li>
+  <li><b>Large buffers</b>: 2MB send/recv buffers (falls back to 512KB,
+    128KB)</li>
+  <li><b>Timeouts</b>: 5s send, 10s recv timeouts prevent hanging</li>
+  <li><b>Keepalive</b>: Detects broken connections</li>
+</ul>
+<p class="Pp">These optimizations are specifically tuned for ascii-chat's video
+    streaming use case. If you need different settings, you can override
+  them:</p>
+<p class="Pp"></p>
+<pre>socket_t client = socket_accept(server, NULL, NULL);
+// Override auto-optimization
+socket_set_nodelay(client, false);  // Re-enable Nagle
+socket_setsockopt(client, SOL_SOCKET, SO_RCVTIMEO, ...);  // Custom timeout
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Sleep_Precision"><a class="permalink" href="#Sleep_Precision">Sleep
+  Precision</a></h2>
+<p class="Pp">Platform sleep precision varies:</p>
+<ul class="Bl-bullet">
+  <li><b>Linux</b>: Microsecond precision with nanosleep()</li>
+  <li><b>macOS</b>: Microsecond precision with nanosleep()</li>
+  <li><b>Windows</b>: ~15ms minimum resolution (system timer granularity)</li>
+</ul>
+<p class="Pp">For Windows, use multimedia timers if you need better
+  precision:</p>
+<p class="Pp"></p>
+<pre>#ifdef _WIN32
+<br/>
+  timeBeginPeriod(1);  // Request 1ms timer resolution
+<br/>
+  platform_sleep_ms(10);  // Now actually sleeps ~10ms
+<br/>
+  timeEndPeriod(1);    // Restore default resolution
+#else
+<br/>
+  platform_sleep_ms(10);  // Already precise
+#endif
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Contributing"><a class="permalink" href="#Contributing">Contributing</a></h1>
+<p class="Pp">Want to add new platform abstractions or improve existing
+  ones?</p>
+<section class="Ss">
+<h2 class="Ss" id="Adding_New_Platform_APIs"><a class="permalink" href="#Adding_New_Platform_APIs">Adding
+  New Platform APIs</a></h2>
+<p class="Pp">When adding a new platform abstraction:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Define the interface</b> in a new header (e.g.,
+    lib/platform/foo.h):</dd>
+</dl>
+<p class="Pp"></p>
+<pre>
+#ifndef PLATFORM_FOO_H
+#define PLATFORM_FOO_H
+#include &quot;platform/util.h&quot;
+typedef struct foo_s foo_t;
+int foo_init(foo_t* foo);
+#endif
+</pre>
+<dl class="Bl-tag">
+  <dt>2.</dt>
+  <dd><b>Implement for POSIX</b> (lib/platform/posix/foo.c):</dd>
+</dl>
+<p class="Pp"></p>
+<pre>#include &quot;platform/foo.h&quot;
+#include &lt;posix_foo.h&gt;  // POSIX-specific header
+struct foo_s {
+<br/>
+  posix_foo_t native_foo;
+};
+int foo_init(foo_t* foo) {
+<br/>
+  return posix_foo_init(&amp;foo-&gt;native_foo);
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>3.</dt>
+  <dd><b>Implement for Windows</b> (lib/platform/windows/foo.c):</dd>
+</dl>
+<p class="Pp"></p>
+<pre>#include &quot;platform/foo.h&quot;
+#include &lt;windows.h&gt;
+struct foo_s {
+<br/>
+  HANDLE native_foo;
+};
+int foo_init(foo_t* foo) {
+<br/>
+  foo-&gt;native_foo = CreateFoo(...);
+<br/>
+  return (foo-&gt;native_foo != NULL) ? 0 : -1;
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>4.</dt>
+  <dd><b>Add to abstraction.h</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>#include &quot;platform/foo.h&quot;
+</pre>
+<dl class="Bl-tag">
+  <dt>5.</dt>
+  <dd><b>Document thoroughly</b> with Doxygen comments</dd>
+  <dt>6.</dt>
+  <dd><b>Write tests</b> for all platforms</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Writing_Platform_Tests"><a class="permalink" href="#Writing_Platform_Tests">Writing
+  Platform Tests</a></h2>
+<p class="Pp">Platform abstraction tests should:</p>
+<ul class="Bl-bullet">
+  <li>Test on all platforms (Windows, Linux, macOS)</li>
+  <li>Test edge cases and error conditions</li>
+  <li>Verify thread safety where applicable</li>
+  <li>Use Criterion test framework</li>
+</ul>
+<p class="Pp">Example test structure:</p>
+<p class="Pp"></p>
+<pre>#include &lt;criterion/criterion.h&gt;
+#include &quot;platform/foo.h&quot;
+Test(foo, initialization) {
+<br/>
+  foo_t foo;
+<br/>
+  cr_assert_eq(foo_init(&amp;foo), 0, &quot;foo_init should succeed&quot;);
+<br/>
+  foo_destroy(&amp;foo);
+}
+Test(foo, thread_safety) {
+<br/>
+  // Test concurrent access from multiple threads
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Additional_Resources"><a class="permalink" href="#Additional_Resources">Additional
+  Resources</a></h1>
+<p class="Pp">Want to learn more?</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Platform Abstraction Documentation</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Platform README</b> - Original documentation</li>
+  <li><b>abstraction.h</b> - Main header file</li>
+</ul>
+<p class="Pp"><b>Individual Component Documentation</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>thread.h</b> - Threading API</li>
+  <li><b>mutex.h</b> - Mutex API</li>
+  <li><b>rwlock.h</b> - Read-write lock API</li>
+  <li><b>cond.h</b> - Condition variable API</li>
+  <li><b>socket.h</b> - Socket API</li>
+  <li><b>terminal.h</b> - Terminal I/O API</li>
+  <li><b>system.h</b> - System functions API</li>
+  <li><b>string.h</b> - String operations API</li>
+  <li><b>file.h</b> - File I/O API</li>
+  <li><b>init.h</b> - Static initialization API</li>
+</ul>
+<p class="Pp"><b>External Resources</b>:</p>
+<ul class="Bl-bullet">
+  <li>POSIX.1-2008 Standard:
+    https://pubs.opengroup.org/onlinepubs/9699919799/</li>
+  <li>Windows API Documentation:
+    https://docs.microsoft.com/en-us/windows/win32/</li>
+  <li>pthreads Programming: https://computing.llnl.gov/tutorials/pthreads/</li>
+</ul>
+<p class="Pp"><b>Related Topics</b>:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Testing with Criterion</b> - How to test platform code</dd>
+</dl>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">September 2025</div>
+<section class="Ss">
+<h2 class="Ss" id="Webcam_Capture"><a class="permalink" href="#Webcam_Capture">Webcam
+  Capture</a></h2>
+<p class="Pp">Cross-platform webcam capture functionality for Windows, Linux,
+    and macOS.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview~2"><a class="permalink" href="#Overview~2">Overview</a></h1>
+<p class="Pp">The webcam module (lib/video/webcam/) provides cross-platform
+    webcam capture with platform-specific implementations:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>Webcam capture</b>: Different APIs per platform (AVFoundation, V4L2,
+      Media Foundation)</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Platform_Implementations"><a class="permalink" href="#Platform_Implementations">Platform
+  Implementations</a></h1>
+<p class="Pp">Each platform has its own webcam API with different capabilities
+    and performance:</p>
+<section class="Ss">
+<h2 class="Ss" id="macOS_-_AVFoundation"><a class="permalink" href="#macOS_-_AVFoundation">macOS
+  - AVFoundation</a></h2>
+<p class="Pp"><b>Implementation</b>:
+    <b>lib/video/webcam/macos/webcam_avfoundation.m</b> (Objective-C)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>API</b>: AVFoundation framework (modern, recommended by
+  Apple)</p>
+<ul class="Bl-bullet">
+  <li>AVCaptureDevice: Represents physical camera</li>
+  <li>AVCaptureSession: Manages capture pipeline</li>
+  <li>AVCaptureVideoDataOutput: Provides frame callbacks</li>
+</ul>
+<p class="Pp"><b>Capabilities</b>:</p>
+<ul class="Bl-bullet">
+  <li>Supports all built-in and USB webcams</li>
+  <li>Hardware-accelerated video processing</li>
+  <li>Multiple simultaneous capture sessions</li>
+  <li>Automatic format negotiation</li>
+  <li>Native RGB/YUV pixel formats</li>
+</ul>
+<p class="Pp"><b>Supported Resolutions</b>:</p>
+<ul class="Bl-bullet">
+  <li>640x480 @ 30 FPS (VGA, default)</li>
+  <li>1280x720 @ 30 FPS (HD)</li>
+  <li>1920x1080 @ 30 FPS (Full HD, if supported)</li>
+  <li>3840x2160 @ 30 FPS (4K, if supported)</li>
+</ul>
+<p class="Pp"><b>Pixel Formats</b>:</p>
+<ul class="Bl-bullet">
+  <li>kCVPixelFormatType_24RGB: 24-bit RGB (preferred)</li>
+  <li>kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange: NV12 (efficient)</li>
+  <li>Automatic conversion handled by Core Video</li>
+</ul>
+<p class="Pp"><b>Performance</b>:</p>
+<ul class="Bl-bullet">
+  <li>~5% CPU for 1920x1080 @ 30 FPS capture</li>
+  <li>Zero-copy frame access via CVPixelBuffer</li>
+  <li>Hardware-accelerated color space conversion</li>
+</ul>
+<p class="Pp"><b>Implementation Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Create capture session
+AVCaptureSession *session = [[AVCaptureSession alloc] init];
+session.sessionPreset = AVCaptureSessionPreset1280x720;
+// Get default camera
+AVCaptureDevice *camera = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
+AVCaptureDeviceInput *input = [AVCaptureDeviceInput deviceInputWithDevice:camera error:nil];
+[session addInput:input];
+// Configure output
+AVCaptureVideoDataOutput *output = [[AVCaptureVideoDataOutput alloc] init];
+output.videoSettings = @{
+<br/>
+    (id)kCVPixelBufferPixelFormatTypeKey: @(kCVPixelFormatType_24RGB)
+};
+// Set frame callback
+dispatch_queue_t queue = dispatch_queue_create(&quot;webcam&quot;, NULL);
+[output setSampleBufferDelegate:self queue:queue];
+[session addOutput:output];
+// Start capture
+[session startRunning];
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Linux_-_Video4Linux2_(V4L2)"><a class="permalink" href="#Linux_-_Video4Linux2_(V4L2)">Linux
+  - Video4Linux2 (V4L2)</a></h2>
+<p class="Pp"><b>Implementation</b>: <b>lib/video/webcam/linux/webcam_v4l2.c</b>
+    (C)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>API</b>: Video4Linux2 kernel interface (standard Linux video
+    API)</p>
+<ul class="Bl-bullet">
+  <li>Device nodes: /dev/video0, /dev/video1, etc.</li>
+  <li>ioctl-based control interface</li>
+  <li>Memory-mapped I/O for zero-copy capture</li>
+  <li>Support for USB webcams and built-in cameras</li>
+</ul>
+<p class="Pp"><b>Capabilities</b>:</p>
+<ul class="Bl-bullet">
+  <li>Universal Linux webcam support</li>
+  <li>Low-level control over camera settings</li>
+  <li>Efficient memory-mapped buffers (4-8 buffers typical)</li>
+  <li>Select/poll support for async I/O</li>
+  <li>Multiple pixel format support</li>
+</ul>
+<p class="Pp"><b>Supported Pixel Formats</b>:</p>
+<ul class="Bl-bullet">
+  <li>V4L2_PIX_FMT_RGB24: 24-bit RGB (preferred)</li>
+  <li>V4L2_PIX_FMT_YUYV: YUV 4:2:2 (common, requires conversion)</li>
+  <li>V4L2_PIX_FMT_MJPEG: Motion JPEG (requires decoding)</li>
+  <li>V4L2_PIX_FMT_H264: H.264 compressed (requires decoding)</li>
+</ul>
+<p class="Pp"><b>Device Enumeration</b>:</p>
+<p class="Pp"></p>
+<pre>// Find all video devices
+for (int i = 0; i &lt; 64; i++) {
+<br/>
+    char devname[32];
+<br/>
+    snprintf(devname, sizeof(devname), &quot;/dev/video%d&quot;, i);
+<br/>
+    int fd = open(devname, O_RDWR);
+<br/>
+    if (fd &gt;= 0) {
+<br/>
+        struct v4l2_capability cap;
+<br/>
+        if (ioctl(fd, VIDIOC_QUERYCAP, &amp;cap) == 0) {
+<br/>
+            if (cap.capabilities &amp; V4L2_CAP_VIDEO_CAPTURE) {
+<br/>
+                log_info(&quot;Found camera: %s (%s)&quot;, cap.card, devname);
+<br/>
+            }
+<br/>
+        }
+<br/>
+        close(fd);
+<br/>
+    }
+}
+</pre>
+<p class="Pp"><b>Memory-Mapped Capture</b>:</p>
+<p class="Pp"></p>
+<pre>// Request buffers
+struct v4l2_requestbuffers req = {0};
+req.count = 4;  // Number of buffers
+req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+req.memory = V4L2_MEMORY_MMAP;
+ioctl(fd, VIDIOC_REQBUFS, &amp;req);
+// Map buffers
+struct buffer {
+<br/>
+    void *start;
+<br/>
+    size_t length;
+} buffers[4];
+for (int i = 0; i &lt; req.count; i++) {
+<br/>
+    struct v4l2_buffer buf = {0};
+<br/>
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+<br/>
+    buf.memory = V4L2_MEMORY_MMAP;
+<br/>
+    buf.index = i;
+<br/>
+    ioctl(fd, VIDIOC_QUERYBUF, &amp;buf);
+<br/>
+    buffers[i].length = buf.length;
+<br/>
+    buffers[i].start = mmap(NULL, buf.length,
+<br/>
+                             PROT_READ | PROT_WRITE,
+<br/>
+                             MAP_SHARED, fd, buf.m.offset);
+}
+// Start capture
+enum v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+ioctl(fd, VIDIOC_STREAMON, &amp;type);
+// Dequeue frame
+struct v4l2_buffer buf = {0};
+buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+buf.memory = V4L2_MEMORY_MMAP;
+ioctl(fd, VIDIOC_DQBUF, &amp;buf);
+// Process frame at buffers[buf.index].start
+// ...
+// Requeue buffer
+ioctl(fd, VIDIOC_QBUF, &amp;buf);
+</pre>
+<p class="Pp"><b>Performance</b>:</p>
+<ul class="Bl-bullet">
+  <li>~3% CPU for 1920x1080 @ 30 FPS capture (RGB)</li>
+  <li>Zero-copy via memory mapping</li>
+  <li>~10% CPU if YUYV&#x2192;RGB conversion needed</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Windows_-_Media_Foundation"><a class="permalink" href="#Windows_-_Media_Foundation">Windows
+  - Media Foundation</a></h2>
+<p class="Pp"><b>Implementation</b>:
+    <b>lib/video/webcam/windows/webcam_mediafoundation.c</b> (C++)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>API</b>: Media Foundation (modern Windows multimedia API,
+    Vista+)</p>
+<ul class="Bl-bullet">
+  <li>IMFMediaSource: Represents camera device</li>
+  <li>IMFSourceReader: Simplified capture interface</li>
+  <li>COM-based object model</li>
+</ul>
+<p class="Pp"><b>Capabilities</b>:</p>
+<ul class="Bl-bullet">
+  <li>Supports all UVC (USB Video Class) webcams</li>
+  <li>Built-in Windows camera app compatibility</li>
+  <li>Hardware-accelerated video processing</li>
+  <li>Automatic format negotiation</li>
+  <li>Native RGB/YUV pixel formats</li>
+</ul>
+<p class="Pp"><b>Supported Pixel Formats</b>:</p>
+<ul class="Bl-bullet">
+  <li>MFVideoFormat_RGB24: 24-bit RGB (preferred)</li>
+  <li>MFVideoFormat_NV12: NV12 YUV (efficient, requires conversion)</li>
+  <li>MFVideoFormat_YUY2: YUY2 422 (common)</li>
+  <li>MFVideoFormat_MJPG: Motion JPEG (requires decoding)</li>
+</ul>
+<p class="Pp"><b>Device Enumeration</b>:</p>
+<p class="Pp"></p>
+<pre>// Initialize COM
+CoInitializeEx(NULL, COINIT_MULTITHREADED);
+MFStartup(MF_VERSION);
+// Enumerate video capture devices
+IMFAttributes *attributes = NULL;
+MFCreateAttributes(&amp;attributes, 1);
+attributes-&gt;SetGUID(MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE,
+<br/>
+                     MF_DEVSOURCE_ATTRIBUTE_SOURCE_TYPE_VIDCAP_GUID);
+IMFActivate **devices = NULL;
+UINT32 count = 0;
+MFEnumDeviceSources(attributes, &amp;devices, &amp;count);
+for (UINT32 i = 0; i &lt; count; i++) {
+<br/>
+    WCHAR *friendly_name = NULL;
+<br/>
+    UINT32 name_len = 0;
+<br/>
+    devices[i]-&gt;GetAllocatedString(MF_DEVSOURCE_ATTRIBUTE_FRIENDLY_NAME,
+<br/>
+                                     &amp;friendly_name, &amp;name_len);
+<br/>
+    log_info(&quot;Found camera: %ls&quot;, friendly_name);
+<br/>
+    CoTaskMemFree(friendly_name);
+}
+</pre>
+<p class="Pp"><b>Capture with Source Reader</b>:</p>
+<p class="Pp"></p>
+<pre>// Activate device
+IMFMediaSource *source = NULL;
+devices[0]-&gt;ActivateObject(IID_PPV_ARGS(&amp;source));
+// Create source reader
+IMFSourceReader *reader = NULL;
+MFCreateSourceReaderFromMediaSource(source, NULL, &amp;reader);
+// Configure output format
+IMFMediaType *media_type = NULL;
+MFCreateMediaType(&amp;media_type);
+media_type-&gt;SetGUID(MF_MT_MAJOR_TYPE, MFMediaType_Video);
+media_type-&gt;SetGUID(MF_MT_SUBTYPE, MFVideoFormat_RGB24);
+MFSetAttributeSize(media_type, MF_MT_FRAME_SIZE, 1920, 1080);
+reader-&gt;SetCurrentMediaType(MF_SOURCE_READER_FIRST_VIDEO_STREAM, NULL, media_type);
+// Read frame
+IMFSample *sample = NULL;
+DWORD stream_flags = 0;
+reader-&gt;ReadSample(MF_SOURCE_READER_FIRST_VIDEO_STREAM, 0,
+<br/>
+                    NULL, &amp;stream_flags, NULL, &amp;sample);
+if (sample) {
+<br/>
+    IMFMediaBuffer *buffer = NULL;
+<br/>
+    sample-&gt;ConvertToContiguousBuffer(&amp;buffer);
+<br/>
+    BYTE *data = NULL;
+<br/>
+    DWORD length = 0;
+<br/>
+    buffer-&gt;Lock(&amp;data, NULL, &amp;length);
+<br/>
+    // Process frame data...
+<br/>
+    buffer-&gt;Unlock();
+<br/>
+    buffer-&gt;Release();
+<br/>
+    sample-&gt;Release();
+}
+</pre>
+<p class="Pp"><b>Performance</b>:</p>
+<ul class="Bl-bullet">
+  <li>~4% CPU for 1920x1080 @ 30 FPS capture (RGB)</li>
+  <li>Hardware-accelerated decoding for MJPEG/H.264</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Unified_Webcam_API"><a class="permalink" href="#Unified_Webcam_API">Unified
+  Webcam API</a></h2>
+<p class="Pp">ascii-chat provides a unified C API across all platforms:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct webcam_context webcam_context_t;
+// Initialize webcam
+webcam_context_t *webcam_init(int device_index, int width, int height, int fps);
+// Start capture
+asciichat_error_t webcam_start(webcam_context_t *ctx);
+// Capture frame (blocking)
+asciichat_error_t webcam_capture_frame(webcam_context_t *ctx,
+<br/>
+                                         uint8_t **rgb_data,
+<br/>
+                                         size_t *data_len);
+// Stop capture
+asciichat_error_t webcam_stop(webcam_context_t *ctx);
+// Cleanup
+void webcam_destroy(webcam_context_t *ctx);
+// List available devices
+char** webcam_list_devices(int *count);</pre>
+<p class="Pp">Usage example:</p>
+<p class="Pp"></p>
+<pre>// Initialize webcam (first device, 1920x1080 @ 30fps)
+webcam_context_t *webcam = webcam_init(0, 1920, 1080, 30);
+if (!webcam) {
+<br/>
+    log_error(&quot;Failed to initialize webcam&quot;);
+<br/>
+    return ERROR_WEBCAM_INIT;
+}
+// Start capture
+webcam_start(webcam);
+// Capture loop
+while (running) {
+<br/>
+    uint8_t *rgb_frame;
+<br/>
+    size_t frame_len;
+<br/>
+    asciichat_error_t err = webcam_capture_frame(webcam, &amp;rgb_frame, &amp;frame_len);
+<br/>
+    if (err == ASCIICHAT_OK) {
+<br/>
+        // Process frame...
+<br/>
+        process_frame(rgb_frame, 1920, 1080);
+<br/>
+    }
+}
+// Cleanup
+webcam_stop(webcam);
+webcam_destroy(webcam);
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Hardware_Detection"><a class="permalink" href="#Hardware_Detection">Hardware
+  Detection</a></h1>
+<p class="Pp">CPU capability detection for SIMD optimization:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>x86/x86_64</b>:</p>
+<p class="Pp"></p>
+<pre>bool cpu_has_sse2(void);    // SSE2 (baseline for x86_64)
+bool cpu_has_ssse3(void);   // SSSE3
+bool cpu_has_avx2(void);    // AVX2
+bool cpu_has_aes(void);     // AES-NI instructions
+bool cpu_has_crc32(void);   // CRC32 instruction
+</pre>
+<p class="Pp">Implementation uses CPUID instruction:</p>
+<p class="Pp"></p>
+<pre>static void cpuid(uint32_t leaf, uint32_t *eax, uint32_t *ebx,
+<br/>
+                   uint32_t *ecx, uint32_t *edx) {
+<br/>
+    __asm__ __volatile__(
+<br/>
+        &quot;cpuid&quot;
+<br/>
+        : &quot;=a&quot;(*eax), &quot;=b&quot;(*ebx), &quot;=c&quot;(*ecx), &quot;=d&quot;(*edx)
+<br/>
+        : &quot;a&quot;(leaf)
+<br/>
+    );
+}
+bool cpu_has_avx2(void) {
+<br/>
+    uint32_t eax, ebx, ecx, edx;
+<br/>
+    cpuid(7, &amp;eax, &amp;ebx, &amp;ecx, &amp;edx);
+<br/>
+    return (ebx &amp; (1 &lt;&lt; 5)) != 0;  // AVX2 bit
+}
+</pre>
+<p class="Pp"><b>ARM/ARM64</b>:</p>
+<p class="Pp"></p>
+<pre>bool cpu_has_neon(void);    // NEON SIMD
+bool cpu_has_sve(void);     // Scalable Vector Extension
+bool cpu_has_crypto(void);  // ARM Crypto Extensions
+</pre>
+<p class="Pp">Implementation reads /proc/cpuinfo on Linux, sysctlbyname on
+    macOS:</p>
+<p class="Pp"></p>
+<pre>#ifdef __APPLE__
+bool cpu_has_neon(void) {
+<br/>
+    // All Apple Silicon has NEON
+<br/>
+    return true;
+}
+#elif defined(__linux__)
+bool cpu_has_neon(void) {
+<br/>
+    FILE *f = fopen(&quot;/proc/cpuinfo&quot;, &quot;r&quot;);
+<br/>
+    char line[256];
+<br/>
+    while (fgets(line, sizeof(line), f)) {
+<br/>
+        if (strstr(line, &quot;Features&quot;) &amp;&amp; strstr(line, &quot;neon&quot;)) {
+<br/>
+            fclose(f);
+<br/>
+            return true;
+<br/>
+        }
+<br/>
+    }
+<br/>
+    fclose(f);
+<br/>
+    return false;
+}
+#endif
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Platform-Specific_Optimizations"><a class="permalink" href="#Platform-Specific_Optimizations">Platform-Specific
+  Optimizations</a></h1>
+<p class="Pp"><b>Windows</b>:</p>
+<ul class="Bl-bullet">
+  <li>SetThreadPriority for realtime video/audio threads</li>
+  <li>SetProcessPriorityBoost to disable dynamic priority boost</li>
+  <li>QueryPerformanceCounter for high-resolution timestamps</li>
+  <li>Multimedia Class Scheduler Service (MMCSS) for low-latency audio</li>
+</ul>
+<p class="Pp"><b>macOS</b>:</p>
+<ul class="Bl-bullet">
+  <li>pthread_setschedparam for realtime threads</li>
+  <li>mach_timebase_info for nanosecond timing</li>
+  <li>Metal acceleration for video processing (future)</li>
+  <li>Core Audio low-latency mode</li>
+</ul>
+<p class="Pp"><b>Linux</b>:</p>
+<ul class="Bl-bullet">
+  <li>SCHED_FIFO for realtime scheduling (requires CAP_SYS_NICE)</li>
+  <li>clock_gettime(CLOCK_MONOTONIC) for precise timing</li>
+  <li>memfd_create for anonymous shared memory</li>
+  <li>ALSA period size tuning for low-latency audio</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">video/webcam/webcam.h
+<p class="Pp"></p>
+<p class="Pp"><b>video/webcam/macos/webcam_avfoundation.m</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>video/webcam/linux/webcam_v4l2.c</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>video/webcam/windows/webcam_mediafoundation.c</b></p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

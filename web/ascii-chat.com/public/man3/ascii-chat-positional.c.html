@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>positional.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">positional.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">positional.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">positional.c - POSITIONAL ARGUMENTS section generator for man
+    pages.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>manpage_content_generate_positional</b> (const
+    options_config_t *config)
+  <br/>
+  void <b>manpage_content_free_positional</b> (char *content)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">POSITIONAL ARGUMENTS section generator for man pages.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>positional.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_content_free_positional_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_positional_(char_*_content)">void
+  manpage_content_free_positional (char * content)</a></h2>
+<p class="Pp">Definition at line <b>64</b> of file <b>positional.c</b>.</p>
+<pre>64                                                     {
+65   if (content) {
+66     SAFE_FREE(content);
+67   }
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_manpage_content_generate_positional_(const_options_config_t_*_config)"><a class="permalink" href="#char_*_manpage_content_generate_positional_(const_options_config_t_*_config)">char
+  * manpage_content_generate_positional (const options_config_t *
+  config)</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>positional.c</b>.</p>
+<pre>15                                                                           {
+16   if (!config || config-&gt;num_positional_args == 0) {
+17     char *buffer = SAFE_MALLOC(1, char *);
+18     buffer[0] = '\0';
+19     return buffer;
+20   }
+21 
+22   // Allocate growing buffer for positional section
+23   size_t buffer_capacity = 4096;
+24   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+25   size_t offset = 0;
+26 
+27   for (size_t i = 0; i &lt; config-&gt;num_positional_args; i++) {
+28     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
+29 
+30     // Ensure buffer is large enough
+31     if (offset + 512 &gt;= buffer_capacity) {
+32       buffer_capacity *= 2;
+33       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+34     }
+35 
+36     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+37     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B %s\n&quot;, pos_arg-&gt;name);
+38 
+39     if (pos_arg-&gt;help_text) {
+40       offset +=
+41           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(pos_arg-&gt;help_text));
+42     }
+43 
+44     // Add examples if present
+45     if (pos_arg-&gt;num_examples &gt; 0) {
+46       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
+47       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B Examples:\n&quot;);
+48       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
+49       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.nf\n&quot;);
+50       for (size_t j = 0; j &lt; pos_arg-&gt;num_examples; j++) {
+51         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;,
+52                                 escape_groff_special(pos_arg-&gt;examples[j]));
+53       }
+54       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.fi\n&quot;);
+55       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
+56       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
+57     }
+58   }
+59 
+60   log_debug(&quot;Generated POSITIONAL ARGUMENTS section (%zu bytes)&quot;, offset);
+61   return buffer;
+62 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>escape_groff_special()</b>, and
+    <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
+    <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

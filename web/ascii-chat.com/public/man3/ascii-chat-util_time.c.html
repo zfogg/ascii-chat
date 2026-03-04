@@ -1,0 +1,1075 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>time.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">time.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">time.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">time.c - &#x23F1;&#xFE0F; High-precision timing utilities
+    implementation</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SOKOL_TIME_IMPL</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">uint64_t <b>time_get_ns</b> (void)
+  <br/>
+  uint64_t <b>time_get_realtime_ns</b> (void)
+  <br/>
+  void <b>time_sleep_ns</b> (uint64_t ns)
+  <br/>
+  uint64_t <b>time_elapsed_ns</b> (uint64_t start_ns, uint64_t end_ns)
+  <br/>
+  uint64_t <b>time_timespec_to_ns</b> (const struct timespec *ts)
+  <br/>
+  void <b>time_ns_to_timespec</b> (uint64_t ns, struct timespec *ts)
+  <br/>
+  <b>bool</b> <b>timer_system_init</b> (void)
+  <br/>
+  void <b>timer_system_destroy</b> (void)
+  <br/>
+  <b>bool</b> <b>timer_start</b> (const char *name)
+  <br/>
+  double <b>timer_stop</b> (const char *name)
+  <br/>
+  <b>bool</b> <b>timer_is_initialized</b> (void)
+  <br/>
+  int <b>format_uptime_hms</b> (int hours, int minutes, int seconds, char
+    *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  int <b>time_pretty</b> (uint64_t nanoseconds, int decimals, char *buffer,
+    size_t <b>buffer_size</b>)
+  <br/>
+  int <b>time_pretty_now</b> (int decimals, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  int <b>time_human_readable_unsigned</b> (uint64_t nanoseconds, char *buffer,
+    size_t <b>buffer_size</b>)
+  <br/>
+  int <b>time_human_readable</b> (int64_t nanoseconds, char *buffer, size_t
+    <b>buffer_size</b>)
+  <br/>
+  int <b>time_human_readable_now</b> (char *buffer, size_t <b>buffer_size</b>)
+  <br/>
+  void <b>adaptive_sleep_init</b> (adaptive_sleep_state_t *state, const
+    adaptive_sleep_config_t *config)
+  <br/>
+  uint64_t <b>adaptive_sleep_calculate</b> (adaptive_sleep_state_t *state,
+    size_t queue_depth, size_t target_depth)
+  <br/>
+  void <b>adaptive_sleep_do</b> (adaptive_sleep_state_t *state, size_t
+    queue_depth, size_t target_depth)
+  <br/>
+  <b>bool</b> <b>time_format_is_valid_strftime</b> (const char *format_str)
+  <br/>
+  int <b>time_format_now</b> (const char *format_str, char *buf, size_t
+    buf_size)
+  <br/>
+  asciichat_error_t <b>time_format_safe</b> (const char *format_str, char *buf,
+    size_t buf_size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x23F1;&#xFE0F; High-precision timing utilities
+  implementation</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>util/time.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_SOKOL_TIME_IMPL"><a class="permalink" href="#_define_SOKOL_TIME_IMPL">#define
+  SOKOL_TIME_IMPL</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>util/time.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_adaptive_sleep_calculate_(adaptive_sleep_state_t_*_state,_size_t_queue_depth,_size_t_target_depth)"><a class="permalink" href="#uint64_t_adaptive_sleep_calculate_(adaptive_sleep_state_t_*_state,_size_t_queue_depth,_size_t_target_depth)">uint64_t
+  adaptive_sleep_calculate (adaptive_sleep_state_t * state, size_t queue_depth,
+  size_t target_depth)</a></h2>
+<p class="Pp">Definition at line <b>622</b> of file <b>util/time.c</b>.</p>
+<pre>622                                                                                                           {
+623   if (!state) {
+624     return 0;
+625   }
+626 
+627   const adaptive_sleep_config_t *cfg = &amp;state-&gt;config;
+628 
+629   // Determine if we need to speed up or slow down
+630   double desired_multiplier;
+631 
+632   if (queue_depth &gt; target_depth) {
+633     // Queue is building up - speed up processing
+634     // The more items in queue, the faster we should process
+635     size_t backlog = queue_depth - target_depth;
+636 
+637     // Calculate desired speed based on backlog
+638     // Each item above target increases speed proportionally
+639     // This ensures we drain the queue faster the more backed up we are
+640     double backlog_factor = 1.0 + ((double)backlog / (double)(target_depth + 1));
+641     desired_multiplier = cfg-&gt;min_speed_multiplier * backlog_factor;
+642 
+643     // Clamp to max speed
+644     if (desired_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+645       desired_multiplier = cfg-&gt;max_speed_multiplier;
+646     }
+647 
+648     // Ramp up gradually based on speedup_rate
+649     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+650     state-&gt;current_speed_multiplier += delta * cfg-&gt;speedup_rate;
+651 
+652   } else {
+653     // Queue is at or below target - slow down to baseline
+654     desired_multiplier = cfg-&gt;min_speed_multiplier;
+655 
+656     // Ramp down gradually based on slowdown_rate
+657     double delta = desired_multiplier - state-&gt;current_speed_multiplier;
+658     state-&gt;current_speed_multiplier += delta * cfg-&gt;slowdown_rate;
+659   }
+660 
+661   // Ensure we stay within configured bounds
+662   if (state-&gt;current_speed_multiplier &lt; cfg-&gt;min_speed_multiplier) {
+663     state-&gt;current_speed_multiplier = cfg-&gt;min_speed_multiplier;
+664   }
+665   if (state-&gt;current_speed_multiplier &gt; cfg-&gt;max_speed_multiplier) {
+666     state-&gt;current_speed_multiplier = cfg-&gt;max_speed_multiplier;
+667   }
+668 
+669   // Calculate actual sleep time: baseline / speed_multiplier
+670   // Higher multiplier = shorter sleep = faster processing
+671   uint64_t sleep_ns = (uint64_t)(cfg-&gt;baseline_sleep_ns / state-&gt;current_speed_multiplier);
+672 
+673   // Store for debugging
+674   state-&gt;last_sleep_ns = sleep_ns;
+675 
+676   return sleep_ns;
+677 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>adaptive_sleep_do()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_adaptive_sleep_do_(adaptive_sleep_state_t_*_state,_size_t_queue_depth,_size_t_target_depth)"><a class="permalink" href="#void_adaptive_sleep_do_(adaptive_sleep_state_t_*_state,_size_t_queue_depth,_size_t_target_depth)">void
+  adaptive_sleep_do (adaptive_sleep_state_t * state, size_t queue_depth, size_t
+  target_depth)</a></h2>
+<p class="Pp">Definition at line <b>679</b> of file <b>util/time.c</b>.</p>
+<pre>679                                                                                                {
+680   uint64_t sleep_ns = adaptive_sleep_calculate(state, queue_depth, target_depth);
+681 
+682   if (sleep_ns &gt; 0) {
+683     platform_sleep_ns(sleep_ns);
+684   }
+685 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>adaptive_sleep_calculate()</b>.</p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>, and
+    <b>session_capture_sleep_for_fps()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_adaptive_sleep_init_(adaptive_sleep_state_t_*_state,_const_adaptive_sleep_config_t_*_config)"><a class="permalink" href="#void_adaptive_sleep_init_(adaptive_sleep_state_t_*_state,_const_adaptive_sleep_config_t_*_config)">void
+  adaptive_sleep_init (adaptive_sleep_state_t * state, const
+  adaptive_sleep_config_t * config)</a></h2>
+<p class="Pp">Definition at line <b>607</b> of file <b>util/time.c</b>.</p>
+<pre>607                                                                                                {
+608   if (!state || !config) {
+609     return;
+610   }
+611 
+612   // Copy configuration
+613   state-&gt;config = *config;
+614 
+615   // Start at baseline speed (no speedup initially)
+616   state-&gt;current_speed_multiplier = config-&gt;min_speed_multiplier;
+617 
+618   // Initial sleep is the baseline
+619   state-&gt;last_sleep_ns = config-&gt;baseline_sleep_ns;
+620 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>client_video_render_thread()</b>, <b>session_capture_create()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_format_uptime_hms_(int_hours,_int_minutes,_int_seconds,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_format_uptime_hms_(int_hours,_int_minutes,_int_seconds,_char_*_buffer,_size_t_buffer_size)">int
+  format_uptime_hms (int hours, int minutes, int seconds, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">Definition at line <b>348</b> of file <b>util/time.c</b>.</p>
+<pre>348                                                                                              {
+349   if (!buffer || buffer_size == 0) {
+350     return -1;
+351   }
+352 
+353   // Validate components
+354   if (hours &lt; 0 || minutes &lt; 0 || minutes &gt;= 60 || seconds &lt; 0 || seconds &gt;= 60) {
+355     return -1;
+356   }
+357 
+358   // Format as HH:MM:SS with zero-padding
+359   int written = safe_snprintf(buffer, buffer_size, &quot;%02d:%02d:%02d&quot;, hours, minutes, seconds);
+360 
+361   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+362     return -1;
+363   }
+364 
+365   return written;
+366 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_time_elapsed_ns_(uint64_t_start_ns,_uint64_t_end_ns)"><a class="permalink" href="#uint64_t_time_elapsed_ns_(uint64_t_start_ns,_uint64_t_end_ns)">uint64_t
+  time_elapsed_ns (uint64_t start_ns, uint64_t end_ns)</a></h2>
+<p class="Pp">Definition at line <b>150</b> of file <b>util/time.c</b>.</p>
+<pre>150                                                              {
+151   // Handle wraparound (defensive - uint64_t won't wrap in practice at nanosecond resolution)
+152   // but this is safe and handles any theoretical edge cases
+153   if (end_ns &gt;= start_ns) {
+154     return end_ns - start_ns;
+155   }
+156   // Wraparound case (extremely unlikely)
+157   return (UINT64_MAX - start_ns) + end_ns + 1;
+158 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>,
+    <b>asciichat_instr_log_line()</b>, <b>audio_analysis_print_report()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_send_thread_func()</b>, <b>fps_frame_ns()</b>,
+    <b>media_source_read_video()</b>, <b>media_source_seek()</b>,
+    <b>mixer_process_excluding_source()</b>,
+    <b>session_capture_get_current_fps()</b>,
+    <b>session_capture_read_frame()</b>, and
+  <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> time_format_is_valid_strftime (const char *
+  format_str)</h2>
+<p class="Pp">Definition at line <b>697</b> of file <b>util/time.c</b>.</p>
+<pre>697                                                            {
+698   if (!format_str) {
+699     return false;
+700   }
+701 
+702   for (const char *p = format_str; *p; p++) {
+703     if (*p == '%') {
+704       p++;
+705       if (!*p) {
+706         /* Unterminated % at end of string */
+707         log_error(&quot;Invalid time format: unterminated %% at end&quot;);
+708         return false;
+709       }
+710 
+711       if (*p == '%') {
+712         /* Escaped %% - this is valid, just skip it */
+713         continue;
+714       }
+715 
+716       /* Optional: flag characters (-, 0, +, space) */
+717       if (*p == '-' || *p == '0' || *p == '+' || *p == ' ') {
+718         p++;
+719         if (!*p) {
+720           log_error(&quot;Invalid time format: flag character without specifier&quot;);
+721           return false;
+722         }
+723       }
+724 
+725       /* Optional: width specifier (digits or *) */
+726       if (*p == '*' || isdigit((unsigned char)*p)) {
+727         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+728           p++;
+729         }
+730         if (!*p) {
+731           log_error(&quot;Invalid time format: width specifier without specifier character&quot;);
+732           return false;
+733         }
+734       }
+735 
+736       /* Optional: precision specifier (.digits or .*) */
+737       if (*p == '.') {
+738         p++;
+739         if (!*p) {
+740           log_error(&quot;Invalid time format: precision specifier incomplete&quot;);
+741           return false;
+742         }
+743         while (*p &amp;&amp; (isdigit((unsigned char)*p) || *p == '*')) {
+744           p++;
+745         }
+746         if (!*p) {
+747           log_error(&quot;Invalid time format: precision specifier without specifier character&quot;);
+748           return false;
+749         }
+750       }
+751 
+752       /* Optional: modifier characters (E for %Ex, O for %Ox) */
+753       if (*p == 'E' || *p == 'O') {
+754         p++;
+755         if (!*p) {
+756           log_error(&quot;Invalid time format: modifier character without specifier&quot;);
+757           return false;
+758         }
+759       }
+760 
+761       /* Validate that the final character is a supported specifier */
+762       if (!strchr(SUPPORTED_SPECIFIERS, *p)) {
+763         log_error(&quot;Invalid time format: unsupported specifier %%%c (at position %ld)&quot;, *p, (p - format_str));
+764         return false;
+765       }
+766     }
+767   }
+768 
+769   return true;
+770 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>time_format_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_format_now_(const_char_*_format_str,_char_*_buf,_size_t_buf_size)"><a class="permalink" href="#int_time_format_now_(const_char_*_format_str,_char_*_buf,_size_t_buf_size)">int
+  time_format_now (const char * format_str, char * buf, size_t
+  buf_size)</a></h2>
+<p class="Pp">Definition at line <b>772</b> of file <b>util/time.c</b>.</p>
+<pre>772                                                                         {
+773   if (!format_str || !buf || buf_size &lt; 2) {
+774     SET_ERRNO(ERROR_INVALID_PARAM, &quot;time_format_now: invalid arguments - format_str=%p, buf=%p, buf_size=%zu&quot;,
+775               format_str, buf, buf_size);
+776     return 0;
+777   }
+778 
+779   /* Get current wall-clock time in nanoseconds */
+780   uint64_t ts_ns = time_get_realtime_ns();
+781 
+782   /* Extract seconds and nanoseconds */
+783   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+784 
+785   /* Convert seconds to struct tm */
+786   struct tm tm_info;
+787   platform_localtime(&amp;seconds, &amp;tm_info);
+788 
+789   /* Format using strftime */
+790   size_t len = strftime(buf, buf_size, format_str, &amp;tm_info);
+791 
+792   /* Check for strftime errors or buffer overflow */
+793   if (len == 0) {
+794     /* strftime returned 0 - either error or exact buffer fill */
+795     log_debug(&quot;strftime returned 0 for format: %s&quot;, format_str);
+796     return 0;
+797   }
+798 
+799   if (len &gt;= buf_size - 1) {
+800     /* Buffer would overflow - strftime filled entire buffer or hit exact size */
+801     log_error(&quot;time_format_now: buffer too small (need %zu, have %zu)&quot;, len + 1, buf_size);
+802     return 0;
+803   }
+804 
+805   return (int)len;
+806 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_localtime()</b>, and
+    <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>, and
+    <b>time_format_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_time_format_safe_(const_char_*_format_str,_char_*_buf,_size_t_buf_size)"><a class="permalink" href="#asciichat_error_t_time_format_safe_(const_char_*_format_str,_char_*_buf,_size_t_buf_size)">asciichat_error_t
+  time_format_safe (const char * format_str, char * buf, size_t
+  buf_size)</a></h2>
+<p class="Pp">Definition at line <b>808</b> of file <b>util/time.c</b>.</p>
+<pre>808                                                                                        {
+809   /* Check NULL pointers */
+810   if (!format_str) {
+811     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: format_str is NULL&quot;);
+812   }
+813 
+814   if (!buf) {
+815     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buf is NULL&quot;);
+816   }
+817 
+818   /* Check minimum buffer size */
+819   if (buf_size &lt; 64) {
+820     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: buffer too small (minimum 64 bytes, got %zu)&quot;, buf_size);
+821   }
+822 
+823   /* Validate format string */
+824   if (!time_format_is_valid_strftime(format_str)) {
+825     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: invalid time format: %s&quot;, format_str);
+826   }
+827 
+828   /* Format the time */
+829   int result = time_format_now(format_str, buf, buf_size);
+830   if (result &lt;= 0) {
+831     return SET_ERRNO(ERROR_INVALID_STATE, &quot;time_format_safe: strftime formatting failed&quot;);
+832   }
+833 
+834   return ASCIICHAT_OK;
+835 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>time_format_is_valid_strftime()</b>, and
+    <b>time_format_now()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_time_get_ns_(void_)"><a class="permalink" href="#uint64_t_time_get_ns_(void_)">uint64_t
+  time_get_ns (void )</a></h2>
+<p class="Pp">Definition at line <b>108</b> of file <b>util/time.c</b>.</p>
+<pre>108                            {
+109   // sokol_time provides monotonic clock that never goes backwards
+110   // stm_ns() converts ticks to nanoseconds
+111   // Ensure sokol_time is initialized before use (defensive programming)
+112   if (!g_sokol_time_initialized) {
+113     stm_setup();
+114     g_sokol_time_initialized = true;
+115   }
+116   return (uint64_t)stm_ns(stm_now());
+117 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>,
+    <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>atomic_on_cas()</b>, <b>atomic_on_fetch()</b>, <b>atomic_on_load()</b>,
+    <b>atomic_on_store()</b>, <b>atomic_ptr_on_cas()</b>,
+    <b>atomic_ptr_on_exchange()</b>, <b>atomic_ptr_on_load()</b>,
+    <b>atomic_ptr_on_store()</b>, <b>audio_analysis_init()</b>,
+    <b>audio_analysis_print_report()</b>,
+    <b>audio_analysis_track_received_packet()</b>,
+    <b>audio_analysis_track_sent_packet()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>, <b>buffer_pool_free()</b>,
+    <b>buffer_pool_shrink()</b>, <b>client_audio_render_thread()</b>,
+    <b>client_dispatch_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>client_video_render_thread()</b>, <b>cond_format_state()</b>,
+    <b>cond_on_broadcast()</b>, <b>cond_on_signal()</b>, <b>cond_on_wait()</b>,
+    <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>consensus_coordinator_process()</b>,
+    <b>consensus_coordinator_time_until_next_round()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>debug_atomic_format_timing()</b>,
+    <b>debug_atomic_ptr_format_timing()</b>, <b>discovery_mdns_query()</b>,
+    <b>fps_counter_tick()</b>, <b>get_utf8_palette_cache()</b>,
+    <b>media_source_read_video()</b>, <b>media_source_seek()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>mutex_format_state()</b>,
+    <b>mutex_on_lock()</b>, <b>mutex_on_trylock()</b>, <b>mutex_on_unlock()</b>,
+    <b>mutex_stack_mark_locked()</b>, <b>mutex_stack_push_pending()</b>,
+    <b>nat_measure_bandwidth()</b>, <b>rwlock_format_state()</b>,
+    <b>rwlock_on_rdlock()</b>, <b>rwlock_on_unlock()</b>,
+    <b>rwlock_on_wrlock()</b>, <b>session_capture_create()</b>,
+    <b>session_capture_get_current_fps()</b>,
+    <b>session_capture_read_frame()</b>, <b>session_client_like_run()</b>,
+    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
+    <b>session_display_write_ascii()</b>,
+    <b>session_network_capture_create()</b>, <b>session_pipeline_run_main()</b>,
+    <b>session_render_loop()</b>, <b>simple_frame_swap_update()</b>,
+    <b>splash_intro_done()</b>, <b>splash_intro_start()</b>,
+    <b>time_human_readable_now()</b>, <b>time_pretty_now()</b>, and
+    <b>websocket_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_time_get_realtime_ns_(void_)"><a class="permalink" href="#uint64_t_time_get_realtime_ns_(void_)">uint64_t
+  time_get_realtime_ns (void )</a></h2>
+<p class="Pp">Definition at line <b>119</b> of file <b>util/time.c</b>.</p>
+<pre>119                                     {
+120 #ifdef _WIN32
+121   // Windows: Use GetSystemTimePreciseAsFileTime (Win8+) for high-precision wall clock
+122   // FILETIME is 100-nanosecond intervals since January 1, 1601
+123   FILETIME ft;
+124   GetSystemTimePreciseAsFileTime(&amp;ft);
+125   // Convert FILETIME to nanoseconds
+126   uint64_t filetime = ((uint64_t)ft.dwHighDateTime &lt;&lt; 32) | ft.dwLowDateTime;
+127   // Convert 100-nanosecond intervals to nanoseconds
+128   return filetime * 100;
+129 #else
+130   // Get wall-clock (real-time) timestamp
+131   struct timespec ts;
+132   if (clock_gettime(CLOCK_REALTIME, &amp;ts) != 0) {
+133     // Fallback on error (unlikely)
+134     return 0;
+135   }
+136   return time_timespec_to_ns(&amp;ts);
+137 #endif
+138 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>time_timespec_to_ns()</b>.</p>
+<p class="Pp">Referenced by <b>acds_validate_timestamp()</b>,
+    <b>asciichat_error_stats_record()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>asciichat_set_errno()</b>, <b>connection_attempt_tcp()</b>,
+    <b>connection_attempt_websocket()</b>, <b>connection_check_timeout()</b>,
+    <b>connection_context_init()</b>, <b>consensus_metrics_measure()</b>,
+    <b>consensus_state_compute_election()</b>,
+    <b>database_session_is_migration_ready()</b>,
+    <b>database_session_start_migration()</b>,
+    <b>get_current_time_formatted()</b>,
+    <b>handle_image_frame_h265_packet()</b>, <b>log_json_async_safe()</b>,
+    <b>log_msg()</b>, <b>log_plain_msg()</b>, <b>log_terminal_msg()</b>, and
+    <b>time_format_now()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_human_readable_(int64_t_nanoseconds,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_human_readable_(int64_t_nanoseconds,_char_*_buffer,_size_t_buffer_size)">int
+  time_human_readable (int64_t nanoseconds, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">Definition at line <b>570</b> of file <b>util/time.c</b>.</p>
+<pre>570                                                                                {
+571   if (!buffer || buffer_size == 0) {
+572     return -1;
+573   }
+574 
+575   // Determine direction (past vs future)
+576   bool is_future = nanoseconds &lt; 0;
+577   uint64_t abs_ns = is_future ? (uint64_t)(-nanoseconds) : (uint64_t)nanoseconds;
+578 
+579   // Convert nanoseconds to seconds for threshold checking
+580   double total_seconds = (double)abs_ns / NS_PER_SEC;
+581   int minutes = (int)(total_seconds / 60);
+582   int hours = minutes / 60;
+583   int days = hours / 24;
+584   int months = days / 30; // Approximate
+585   int years = months / 12;
+586 
+587   const char *suffix = is_future ? &quot;from now&quot; : &quot;ago&quot;;
+588   int written =
+589       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, suffix, buffer, buffer_size);
+590 
+591   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+592     return -1;
+593   }
+594 
+595   return written;
+596 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>.</p>
+<p class="Pp">Referenced by <b>time_human_readable_now()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_human_readable_now_(char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_human_readable_now_(char_*_buffer,_size_t_buffer_size)">int
+  time_human_readable_now (char * buffer, size_t buffer_size)</a></h2>
+<p class="Pp">Definition at line <b>598</b> of file <b>util/time.c</b>.</p>
+<pre>598                                                               {
+599   int64_t ns = (int64_t)time_get_ns();
+600   return time_human_readable(ns, buffer, buffer_size);
+601 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
+    <b>time_human_readable()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_human_readable_unsigned_(uint64_t_nanoseconds,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_human_readable_unsigned_(uint64_t_nanoseconds,_char_*_buffer,_size_t_buffer_size)">int
+  time_human_readable_unsigned (uint64_t nanoseconds, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">Definition at line <b>547</b> of file <b>util/time.c</b>.</p>
+<pre>547                                                                                          {
+548   if (!buffer || buffer_size == 0) {
+549     return -1;
+550   }
+551 
+552   // Convert nanoseconds to seconds for threshold checking
+553   double total_seconds = (double)nanoseconds / NS_PER_SEC;
+554   int minutes = (int)(total_seconds / 60);
+555   int hours = minutes / 60;
+556   int days = hours / 24;
+557   int months = days / 30; // Approximate
+558   int years = months / 12;
+559 
+560   int written =
+561       format_human_readable_time_ago(total_seconds, minutes, hours, days, months, years, &quot;ago&quot;, buffer, buffer_size);
+562 
+563   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+564     return -1;
+565   }
+566 
+567   return written;
+568 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_time_ns_to_timespec_(uint64_t_ns,_struct_timespec_*_ts)"><a class="permalink" href="#void_time_ns_to_timespec_(uint64_t_ns,_struct_timespec_*_ts)">void
+  time_ns_to_timespec (uint64_t ns, struct timespec * ts)</a></h2>
+<p class="Pp">Definition at line <b>172</b> of file <b>util/time.c</b>.</p>
+<pre>172                                                            {
+173   if (!ts) {
+174     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
+175     return;
+176   }
+177   ts-&gt;tv_sec = (time_t)(ns / NS_PER_SEC_INT);
+178   ts-&gt;tv_nsec = (long)(ns % NS_PER_SEC_INT);
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_pretty_(uint64_t_nanoseconds,_int_decimals,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_pretty_(uint64_t_nanoseconds,_int_decimals,_char_*_buffer,_size_t_buffer_size)">int
+  time_pretty (uint64_t nanoseconds, int decimals, char * buffer, size_t
+  buffer_size)</a></h2>
+<p class="Pp">Definition at line <b>418</b> of file <b>util/time.c</b>.</p>
+<pre>418                                                                                       {
+419   if (!buffer || buffer_size == 0) {
+420     return -1;
+421   }
+422 
+423   // Handle zero
+424   if (nanoseconds == 0) {
+425     int written = safe_snprintf(buffer, buffer_size, &quot;0 ns&quot;);
+426     return (written &lt; 0 || (size_t)written &gt;= buffer_size) ? -1 : written;
+427   }
+428 
+429   // Determine decimals for this range if not explicitly set
+430   int actual_decimals = decimals;
+431   if (decimals == -1) {
+432     if (nanoseconds &lt; NS_PER_MS_INT) {
+433       actual_decimals = 3; // ns/&#x00B5;s
+434     } else if (nanoseconds &lt; NS_PER_SEC_INT) {
+435       actual_decimals = 3; // ms
+436     } else if (nanoseconds &lt; NS_PER_MIN_INT) {
+437       actual_decimals = 2; // seconds
+438     } else {
+439       actual_decimals = 3; // colon notation
+440     }
+441   }
+442 
+443   // Clamp decimals to valid range
+444   if (actual_decimals &lt; 0)
+445     actual_decimals = 0;
+446   if (actual_decimals &gt; 9)
+447     actual_decimals = 9;
+448 
+449   int written = 0;
+450 
+451   // Nanoseconds (&lt; 1&#x00B5;s)
+452   if (nanoseconds &lt; NS_PER_US_INT) {
+453     written = safe_snprintf(buffer, buffer_size, &quot;%llu ns&quot;, (unsigned long long)nanoseconds);
+454   }
+455   // Microseconds (&lt; 1ms)
+456   else if (nanoseconds &lt; NS_PER_MS_INT) {
+457     double us = (double)nanoseconds / NS_PER_US;
+458     char temp_buf[64];
+459     // Use a direct snprintf with large enough buffer first
+460     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f &#x00B5;s&quot;, actual_decimals, us);
+461     strip_trailing_zeros(temp_buf);
+462     written = (int)strlen(temp_buf);
+463     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+464       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+465     } else {
+466       written = -1;
+467     }
+468   }
+469   // Milliseconds (&lt; 1s)
+470   else if (nanoseconds &lt; NS_PER_SEC_INT) {
+471     double ms = (double)nanoseconds / NS_PER_MS;
+472     char temp_buf[64];
+473     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f ms&quot;, actual_decimals, ms);
+474     strip_trailing_zeros(temp_buf);
+475     written = (int)strlen(temp_buf);
+476     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+477       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+478     } else {
+479       written = -1;
+480     }
+481   }
+482   // Seconds (&lt; 1 minute)
+483   else if (nanoseconds &lt; NS_PER_MIN_INT) {
+484     double s = (double)nanoseconds / NS_PER_SEC;
+485     char temp_buf[64];
+486     snprintf(temp_buf, sizeof(temp_buf), &quot;%.*f s&quot;, actual_decimals, s);
+487     strip_trailing_zeros(temp_buf);
+488     written = (int)strlen(temp_buf);
+489     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+490       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+491     } else {
+492       written = -1;
+493     }
+494   }
+495   // Minutes (&lt; 1 hour) - use colon notation: M:SS.frac
+496   else if (nanoseconds &lt; NS_PER_HOUR_INT) {
+497     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+498     uint64_t minutes = total_seconds / 60;
+499     uint64_t seconds = total_seconds % 60;
+500     uint64_t remainder_ns = nanoseconds % NS_PER_SEC_INT;
+501     double fraction = (double)remainder_ns / NS_PER_SEC;
+502 
+503     char temp_buf[64];
+504     if (actual_decimals == 0) {
+505       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu&quot;, (unsigned long long)minutes, (unsigned long long)seconds);
+506     } else {
+507       snprintf(temp_buf, sizeof(temp_buf), &quot;%llu:%02llu.%.*f&quot;, (unsigned long long)minutes, (unsigned long long)seconds,
+508                actual_decimals, fraction);
+509       strip_trailing_zeros(temp_buf);
+510     }
+511 
+512     written = (int)strlen(temp_buf);
+513     if (written &gt; 0 &amp;&amp; written &lt; (int)buffer_size) {
+514       SAFE_STRNCPY(buffer, temp_buf, buffer_size);
+515     } else {
+516       written = -1;
+517     }
+518   }
+519   // Hours+ - use colon notation: H:MM:SS or HH:MM:SS
+520   else {
+521     uint64_t total_seconds = nanoseconds / NS_PER_SEC_INT;
+522     uint64_t hours = total_seconds / 3600;
+523     uint64_t remaining = total_seconds % 3600;
+524     uint64_t minutes = remaining / 60;
+525     uint64_t seconds = remaining % 60;
+526 
+527     written = safe_snprintf(buffer, buffer_size, &quot;%llu:%02llu:%02llu&quot;, (unsigned long long)hours,
+528                             (unsigned long long)minutes, (unsigned long long)seconds);
+529   }
+530 
+531   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+532     return -1;
+533   }
+534 
+535   return written;
+536 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>,
+    <b>ascii_convert_with_capabilities()</b>, <b>asciichat_instr_log_line()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>,
+    <b>client_dispatch_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>client_video_render_thread()</b>, <b>cond_format_state()</b>,
+    <b>connection_check_timeout()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>, <b>crypto_init()</b>,
+    <b>crypto_rekey_init()</b>, <b>debug_atomic_format_timing()</b>,
+    <b>debug_atomic_ptr_format_timing()</b>, <b>media_source_seek()</b>,
+    <b>mixer_process_excluding_source()</b>, <b>mutex_format_state()</b>,
+    <b>rwlock_format_state()</b>, <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_render_loop()</b>,
+    <b>time_pretty_now()</b>, and <b>timer_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_time_pretty_now_(int_decimals,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_pretty_now_(int_decimals,_char_*_buffer,_size_t_buffer_size)">int
+  time_pretty_now (int decimals, char * buffer, size_t buffer_size)</a></h2>
+<p class="Pp">Definition at line <b>538</b> of file <b>util/time.c</b>.</p>
+<pre>538                                                                     {
+539   uint64_t ns = time_get_ns();
+540   return time_pretty(ns, decimals, buffer, buffer_size);
+541 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, <b>time_get_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_time_sleep_ns_(uint64_t_ns)"><a class="permalink" href="#void_time_sleep_ns_(uint64_t_ns)">void
+  time_sleep_ns (uint64_t ns)</a></h2>
+<p class="Pp">Definition at line <b>140</b> of file <b>util/time.c</b>.</p>
+<pre>140                                 {
+141   // Use platform abstraction for cross-platform sleep
+142   // Convert nanoseconds to microseconds (1 us = 1000 ns)
+143   unsigned int usec = (unsigned int)(ns / 1000);
+144   if (usec == 0 &amp;&amp; ns &gt; 0) {
+145     usec = 1; // Minimum 1 microsecond
+146   }
+147   platform_sleep_us(usec);
+148 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_sleep_us()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_time_timespec_to_ns_(const_struct_timespec_*_ts)"><a class="permalink" href="#uint64_t_time_timespec_to_ns_(const_struct_timespec_*_ts)">uint64_t
+  time_timespec_to_ns (const struct timespec * ts)</a></h2>
+<p class="Pp">Definition at line <b>164</b> of file <b>util/time.c</b>.</p>
+<pre>164                                                         {
+165   if (!ts) {
+166     SET_ERRNO(ERROR_INVALID_PARAM, &quot;null ts&quot;);
+167     return 0;
+168   }
+169   return (uint64_t)ts-&gt;tv_sec * NS_PER_SEC_INT + (uint64_t)ts-&gt;tv_nsec;
+170 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> timer_is_initialized (void )</h2>
+<p class="Pp">Definition at line <b>340</b> of file <b>util/time.c</b>.</p>
+<pre>340                                 {
+341   return lifecycle_is_initialized(&amp;g_timer_manager.lifecycle);
+342 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> timer_start (const char * name)</h2>
+<p class="Pp">Definition at line <b>234</b> of file <b>util/time.c</b>.</p>
+<pre>234                                    {
+235   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+236     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
+237     return false;
+238   }
+239 
+240   if (!name) {
+241     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
+242     return false;
+243   }
+244 
+245   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+246 
+247   // Check if timer already exists - this is an error, timers must be unique
+248   timer_record_t *existing = NULL;
+249   HASH_FIND_STR(g_timer_manager.timers, name, existing);
+250 
+251   if (existing) {
+252     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+253     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer '%s' already exists - timers must have unique names&quot;, name);
+254     return false;
+255   }
+256 
+257   // Create new timer record
+258   timer_record_t *timer = SAFE_MALLOC(sizeof(timer_record_t), timer_record_t *);
+259   if (!timer) {
+260     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+261     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer record&quot;);
+262     return false;
+263   }
+264 
+265   // Use platform-safe string duplication
+266   size_t name_len = strlen(name) + 1;
+267   timer-&gt;name = SAFE_MALLOC(name_len, char *);
+268   if (!timer-&gt;name) {
+269     SAFE_FREE(timer);
+270     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+271     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate timer name&quot;);
+272     return false;
+273   }
+274   SAFE_STRNCPY(timer-&gt;name, name, name_len);
+275 
+276   timer-&gt;start_ticks = stm_now();
+277 
+278   // Add to hashtable
+279   HASH_ADD_KEYPTR(hh, g_timer_manager.timers, timer-&gt;name, strlen(timer-&gt;name), timer);
+280 
+281   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+282   return true;
+283 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_timer_stop_(const_char_*_name)"><a class="permalink" href="#double_timer_stop_(const_char_*_name)">double
+  timer_stop (const char * name)</a></h2>
+<p class="Pp">Definition at line <b>285</b> of file <b>util/time.c</b>.</p>
+<pre>285                                     {
+286   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+287     SET_ERRNO(ERROR_INVALID_STATE, &quot;Timer system not initialized&quot;);
+288     return -1.0;
+289   }
+290 
+291   if (!name) {
+292     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Timer name is NULL&quot;);
+293     return -1.0;
+294   }
+295 
+296   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+297 
+298   // Find timer
+299   timer_record_t *timer = NULL;
+300   HASH_FIND_STR(g_timer_manager.timers, name, timer);
+301 
+302   if (!timer) {
+303     rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+304     log_dev(&quot;Timer '%s' not found (may have already been stopped)&quot;, name);
+305     return -1.0;
+306   }
+307 
+308   // Calculate elapsed time in nanoseconds for maximum precision
+309   uint64_t end_ticks = stm_now();
+310   uint64_t elapsed_ticks = stm_diff(end_ticks, timer-&gt;start_ticks);
+311   double elapsed_ns = stm_ns(elapsed_ticks);
+312 
+313   // Format duration for human-readable logging
+314   char duration_str[32];
+315   time_pretty((uint64_t)elapsed_ns, -1, duration_str, sizeof(duration_str));
+316 
+317   // Log the result (dev level - only shown with --verbose)
+318   log_dev(&quot;Timer '%s': %s&quot;, name, duration_str);
+319 
+320   // Save pointers to free BEFORE removing from hashtable
+321   char *timer_name = timer-&gt;name;
+322 
+323   // Remove from hashtable (HASH_DEL only removes from hash, doesn't free memory)
+324   HASH_DEL(g_timer_manager.timers, timer);
+325 
+326   // Free timer-&gt;name first (this was allocated separately)
+327   SAFE_FREE(timer_name);
+328 
+329   // Nullify the timer-&gt;name field so debug_free doesn't try to access it
+330   // when freeing the timer structure itself
+331   timer-&gt;name = NULL;
+332 
+333   // Free the timer record itself
+334   SAFE_FREE(timer);
+335 
+336   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+337   return elapsed_ns; // Return nanoseconds
+338 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_timer_system_destroy_(void_)"><a class="permalink" href="#void_timer_system_destroy_(void_)">void
+  timer_system_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>207</b> of file <b>util/time.c</b>.</p>
+<pre>207                                 {
+208   if (!lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+209     return;
+210   }
+211 
+212   rwlock_wrlock(&amp;g_timer_manager.rwlock);
+213 
+214   // Free all timer records
+215   int timer_count = 0;
+216   timer_record_t *current, *tmp;
+217   HASH_ITER(hh, g_timer_manager.timers, current, tmp) {
+218     HASH_DEL(g_timer_manager.timers, current);
+219     SAFE_FREE(current-&gt;name);
+220     SAFE_FREE(current);
+221     timer_count++;
+222   }
+223 
+224   g_timer_manager.timers = NULL;
+225 
+226   rwlock_wrunlock(&amp;g_timer_manager.rwlock);
+227 
+228   /* Shutdown lifecycle and destroy rwlock together */
+229   lifecycle_shutdown(&amp;g_timer_manager.lifecycle);
+230 
+231   log_debug(&quot;Timer system cleaned up (freed %d timers)&quot;, timer_count);
+232 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>lifecycle_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> timer_system_init (void )</h2>
+<p class="Pp">Definition at line <b>185</b> of file <b>util/time.c</b>.</p>
+<pre>185                              {
+186   if (lifecycle_is_initialized(&amp;g_timer_manager.lifecycle)) {
+187     return true;
+188   }
+189 
+190   // Initialize sokol_time
+191   stm_setup();
+192 
+193   // Initialize rwlock and lifecycle together
+194   g_timer_manager.lifecycle.sync_type = LIFECYCLE_SYNC_RWLOCK;
+195   g_timer_manager.lifecycle.sync.rwlock = &amp;g_timer_manager.rwlock;
+196   if (!lifecycle_init(&amp;g_timer_manager.lifecycle, &quot;timer_manager&quot;)) {
+197     SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to initialize timer system (already initialized by another thread)&quot;);
+198     return true; // Another thread already initialized it
+199   }
+200 
+201   g_timer_manager.timers = NULL;
+202 
+203   log_dev(&quot;Timer system initialized&quot;);
+204   return true;
+205 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init()</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="lifecycle_t_lifecycle"><a class="permalink" href="#lifecycle_t_lifecycle">lifecycle_t
+  lifecycle</a></h2>
+<p class="Pp">Lifecycle state machine for init/shutdown synchronization.</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>util/time.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="rwlock_t_rwlock"><a class="permalink" href="#rwlock_t_rwlock">rwlock_t
+  rwlock</a></h2>
+<p class="Pp">Read-write lock for thread-safe access (uthash requires external
+    locking).</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>util/time.c</b>.</p>
+<p class="Pp">Referenced by <b>rwlock_format_state()</b>, <b>rwlock_init()</b>,
+    <b>rwlock_log_state()</b>, <b>rwlock_on_rdlock()</b>,
+    <b>rwlock_on_unlock()</b>, <b>rwlock_on_wrlock()</b>,
+    <b>rwlock_rdlock_impl()</b>, <b>rwlock_rdunlock_impl()</b>,
+    <b>rwlock_wrlock_impl()</b>, and <b>rwlock_wrunlock_impl()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="timer_record_t*_timers"><a class="permalink" href="#timer_record_t*_timers">timer_record_t*
+  timers</a></h2>
+<p class="Pp">Hash table of active timers (uthash head pointer).</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>util/time.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

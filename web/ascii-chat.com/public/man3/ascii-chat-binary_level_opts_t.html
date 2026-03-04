@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>binary_level_opts_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">binary_level_opts_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">binary_level_opts_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">binary_level_opts_t - Create a new options_t struct with all
+    defaults set.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>log_level_t</b> <b>log_level</b>
+  <br/>
+  unsigned short int <b>verbose_level</b>
+  <br/>
+  <b>bool</b> <b>quiet</b>
+  <br/>
+  char <b>log_file</b> [OPTIONS_BUFF_SIZE]
+  <br/>
+  <b>bool</b> <b>help</b>
+  <br/>
+  <b>bool</b> <b>version</b>
+  <br/>
+  char <b>config_file</b> [OPTIONS_BUFF_SIZE]
+  <br/>
+  asciichat_mode_t <b>detected_mode</b>
+  <br/>
+  int <b>color</b>
+  <br/>
+  <b>bool</b> <b>json</b>
+  <br/>
+  <b>bool</b> <b>log_format_console_only</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Create a new options_t struct with all defaults set.</p>
+<p class="Pp">Initializes an options_t struct with all fields set to their
+    default values from OPT_*_DEFAULT defines. This ensures consistent default
+    initialization across the codebase.</p>
+<p class="Pp"></p>
+<p class="Pp">Helper to save binary-level options before reset</p>
+<p class="Pp"></p>
+<p class="Pp">Binary-level options are parsed first (STAGE 1) and should never
+    be reset by subsequent stages. This helper extracts them so they can be
+    preserved across <b>options_t_new()</b> calls.</p>
+<p class="Pp">Definition at line <b>472</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_binary_level_opts_t::color"><a class="permalink" href="#int_binary_level_opts_t::color">int
+  binary_level_opts_t::color</a></h2>
+<p class="Pp">Definition at line <b>481</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_binary_level_opts_t::config_file_OPTIONS_BUFF_SIZE_"><a class="permalink" href="#char_binary_level_opts_t::config_file_OPTIONS_BUFF_SIZE_">char
+  binary_level_opts_t::config_file[OPTIONS_BUFF_SIZE]</a></h2>
+<p class="Pp">Definition at line <b>479</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_mode_t_binary_level_opts_t::detected_mode"><a class="permalink" href="#asciichat_mode_t_binary_level_opts_t::detected_mode">asciichat_mode_t
+  binary_level_opts_t::detected_mode</a></h2>
+<p class="Pp">Definition at line <b>480</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> binary_level_opts_t::help</h2>
+<p class="Pp">Definition at line <b>477</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> binary_level_opts_t::json</h2>
+<p class="Pp">Definition at line <b>482</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_binary_level_opts_t::log_file_OPTIONS_BUFF_SIZE_"><a class="permalink" href="#char_binary_level_opts_t::log_file_OPTIONS_BUFF_SIZE_">char
+  binary_level_opts_t::log_file[OPTIONS_BUFF_SIZE]</a></h2>
+<p class="Pp">Definition at line <b>476</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> binary_level_opts_t::log_format_console_only</h2>
+<p class="Pp">Definition at line <b>483</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>log_level_t</b> binary_level_opts_t::log_level</h2>
+<p class="Pp">Definition at line <b>473</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> binary_level_opts_t::quiet</h2>
+<p class="Pp">Definition at line <b>475</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_short_int_binary_level_opts_t::verbose_level"><a class="permalink" href="#unsigned_short_int_binary_level_opts_t::verbose_level">unsigned
+  short int binary_level_opts_t::verbose_level</a></h2>
+<p class="Pp">Definition at line <b>474</b> of file
+    <b>lib/options/options.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> binary_level_opts_t::version</h2>
+<p class="Pp">Definition at line <b>478</b> of file
+    <b>lib/options/options.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

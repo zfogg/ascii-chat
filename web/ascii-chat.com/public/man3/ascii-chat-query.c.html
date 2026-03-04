@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>query.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">query.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">query.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">query.c - Query tool runtime library implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>HEALTH_CHECK_TIMEOUT_NS</b> (10000LL * NS_PER_MS_INT)
+  <br/>
+  #define <b>HEALTH_CHECK_INTERVAL_NS</b> (100LL * NS_PER_MS_INT)
+  <br/>
+  #define <b>HEALTH_CHECK_CONNECT_TIMEOUT_NS</b> (500LL * NS_PER_MS_INT)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>query_init</b> (int preferred_port)
+  <br/>
+  void <b>query_destroy</b> (void)
+  <br/>
+  <b>bool</b> <b>query_is_active</b> (void)
+  <br/>
+  int <b>query_get_port</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Query tool runtime library implementation.</p>
+<p class="Pp">This provides the QUERY_INIT/QUERY_SHUTDOWN macros that
+    applications use to auto-spawn the query controller process.</p>
+<p class="Pp"></p>
+<p class="Pp">Platform support:</p>
+<ul class="Bl-bullet">
+  <li>Unix (macOS/Linux): Uses fork/exec to spawn controller</li>
+  <li>Windows: Uses CreateProcess to spawn controller</li>
+</ul>
+<p class="Pp">Definition in file <b>query.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_HEALTH_CHECK_CONNECT_TIMEOUT_NS___(500LL_*_NS_PER_MS_INT)"><a class="permalink" href="#_define_HEALTH_CHECK_CONNECT_TIMEOUT_NS___(500LL_*_NS_PER_MS_INT)">#define
+  HEALTH_CHECK_CONNECT_TIMEOUT_NS (500LL * NS_PER_MS_INT)</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>query.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HEALTH_CHECK_INTERVAL_NS___(100LL_*_NS_PER_MS_INT)"><a class="permalink" href="#_define_HEALTH_CHECK_INTERVAL_NS___(100LL_*_NS_PER_MS_INT)">#define
+  HEALTH_CHECK_INTERVAL_NS (100LL * NS_PER_MS_INT)</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>query.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HEALTH_CHECK_TIMEOUT_NS___(10000LL_*_NS_PER_MS_INT)"><a class="permalink" href="#_define_HEALTH_CHECK_TIMEOUT_NS___(10000LL_*_NS_PER_MS_INT)">#define
+  HEALTH_CHECK_TIMEOUT_NS (10000LL * NS_PER_MS_INT)</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>query.c</b>.</p>
+<p class="Pp">Referenced by <b>query_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_query_destroy_(void_)"><a class="permalink" href="#void_query_destroy_(void_)">void
+  query_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>315</b> of file <b>query.c</b>.</p>
+<pre>315                          {
+316   if (!g_query_active &amp;&amp; g_controller_pid &lt;= 0) {
+317     return;
+318   }
+319 
+320   fprintf(stderr, &quot;[query] Shutting down query server...\n&quot;);
+321 
+322 #ifdef _WIN32
+323   if (g_controller_handle != NULL) {
+324     // Send termination signal
+325     TerminateProcess(g_controller_handle, 0);
+326 
+327     // Wait for process to exit (with timeout)
+328     WaitForSingleObject(g_controller_handle, 3000);
+329 
+330     CloseHandle(g_controller_handle);
+331     g_controller_handle = NULL;
+332     g_controller_pid = 0;
+333   }
+334 
+335   // Clean up Winsock (matches WSAStartup in query_init)
+336   WSACleanup();
+337 #else
+338   if (g_controller_pid &gt; 0) {
+339     // Send SIGTERM for graceful shutdown
+340     kill(g_controller_pid, SIGTERM);
+341 
+342     // Wait for process to exit (with timeout)
+343     int status;
+344     int wait_count = 0;
+345     while (wait_count &lt; 30) { // 3 second timeout
+346       pid_t result = waitpid(g_controller_pid, &amp;status, WNOHANG);
+347       if (result == g_controller_pid) {
+348         break;
+349       }
+350       if (result &lt; 0) {
+351         break;
+352       }
+353       usleep(100 * US_PER_MS_INT); // 100ms
+354       wait_count++;
+355     }
+356 
+357     // If still running, force kill
+358     if (wait_count &gt;= 30) {
+359       kill(g_controller_pid, SIGKILL);
+360       waitpid(g_controller_pid, &amp;status, 0);
+361     }
+362 
+363     g_controller_pid = -1;
+364   }
+365 #endif
+366 
+367   g_query_active = false;
+368   g_query_port = -1;
+369 
+370   fprintf(stderr, &quot;[query] Query server stopped\n&quot;);
+371 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>query_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_query_get_port_(void_)"><a class="permalink" href="#int_query_get_port_(void_)">int
+  query_get_port (void )</a></h2>
+<p class="Pp">Definition at line <b>405</b> of file <b>query.c</b>.</p>
+<pre>405                          {
+406   return g_query_port;
+407 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_query_init_(int_preferred_port)"><a class="permalink" href="#int_query_init_(int_preferred_port)">int
+  query_init (int preferred_port)</a></h2>
+<p class="Pp">Definition at line <b>214</b> of file <b>query.c</b>.</p>
+<pre>214                                    {
+215   // Already initialized?
+216   if (g_query_active) {
+217     return g_query_port;
+218   }
+219 
+220   // Find the query server executable
+221   char server_path[PLATFORM_MAX_PATH_LENGTH];
+222   if (!find_query_server_path(server_path, sizeof(server_path))) {
+223     fprintf(stderr, &quot;[query] Could not find ascii-query-server executable\n&quot;);
+224     fprintf(stderr, &quot;[query] Set ASCIICHAT_QUERY_SERVER environment variable or ensure &quot;
+225                     &quot;it's in .deps-cache/query-tool/\n&quot;);
+226     return -1;
+227   }
+228 
+229 #ifdef _WIN32
+230   // Windows implementation using CreateProcess
+231   WSADATA wsa_data;
+232   if (WSAStartup(MAKEWORD(2, 2), &amp;wsa_data) != 0) {
+233     fprintf(stderr, &quot;[query] WSAStartup failed\n&quot;);
+234     return -1;
+235   }
+236 
+237   char cmdline[2048];
+238   safe_snprintf(cmdline, sizeof(cmdline), &quot;\&quot;%s\&quot; --attach %lu --port %d&quot;, server_path,
+239                 (unsigned long)GetCurrentProcessId(), preferred_port);
+240 
+241   STARTUPINFOA si;
+242   PROCESS_INFORMATION pi;
+243   memset(&amp;si, 0, sizeof(si));
+244   si.cb = sizeof(si);
+245   memset(&amp;pi, 0, sizeof(pi));
+246 
+247   // Create the controller process
+248   if (!CreateProcessA(NULL,               // Use command line
+249                       cmdline,            // Command line
+250                       NULL,               // Process security attributes
+251                       NULL,               // Thread security attributes
+252                       FALSE,              // Don't inherit handles
+253                       CREATE_NEW_CONSOLE, // Creation flags
+254                       NULL,               // Use parent's environment
+255                       NULL,               // Use parent's directory
+256                       &amp;si, &amp;pi)) {
+257     fprintf(stderr, &quot;[query] Failed to start query server: error %lu\n&quot;, GetLastError());
+258     return -1;
+259   }
+260 
+261   g_controller_handle = pi.hProcess;
+262   g_controller_pid = pi.dwProcessId;
+263   CloseHandle(pi.hThread); // Don't need the thread handle
+264 
+265   fprintf(stderr, &quot;[query] Started query server (PID %lu) on port %d\n&quot;, (unsigned long)g_controller_pid,
+266           preferred_port);
+267 
+268 #else
+269   // Unix implementation using fork/exec
+270   pid_t self_pid = getpid();
+271 
+272   char port_str[16];
+273   char pid_str[16];
+274   safe_snprintf(port_str, sizeof(port_str), &quot;%d&quot;, preferred_port);
+275   safe_snprintf(pid_str, sizeof(pid_str), &quot;%d&quot;, self_pid);
+276 
+277   pid_t child = fork();
+278   if (child &lt; 0) {
+279     fprintf(stderr, &quot;[query] fork() failed: %s\n&quot;, strerror(errno));
+280     return -1;
+281   }
+282 
+283   if (child == 0) {
+284     // Child process: exec the controller
+285     // Redirect stdout/stderr to /dev/null or a log file to avoid clutter
+286     // (The controller has its own logging)
+287 
+288     execl(server_path, &quot;ascii-query-server&quot;, &quot;--attach&quot;, pid_str, &quot;--port&quot;, port_str, (char *)NULL);
+289 
+290     // If exec fails
+291     fprintf(stderr, &quot;[query] exec(%s) failed: %s\n&quot;, server_path, strerror(errno));
+292     exit(1);
+293   }
+294 
+295   // Parent process
+296   g_controller_pid = child;
+297   fprintf(stderr, &quot;[query] Started query server (PID %d) on port %d\n&quot;, child, preferred_port);
+298 #endif
+299 
+300   // Wait for the HTTP server to become ready
+301   fprintf(stderr, &quot;[query] Waiting for HTTP server to be ready...\n&quot;);
+302   if (!wait_for_http_ready(preferred_port, HEALTH_CHECK_TIMEOUT_NS)) {
+303     fprintf(stderr, &quot;[query] Timeout waiting for query server to start\n&quot;);
+304     query_destroy();
+305     return -1;
+306   }
+307 
+308   g_query_active = true;
+309   g_query_port = preferred_port;
+310 
+311   fprintf(stderr, &quot;[query] Query server ready at http://localhost:%d\n&quot;, preferred_port);
+312   return preferred_port;
+313 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>HEALTH_CHECK_TIMEOUT_NS</b>,
+    <b>PLATFORM_MAX_PATH_LENGTH</b>, <b>query_destroy()</b>, and
+    <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> query_is_active (void )</h2>
+<p class="Pp">Definition at line <b>373</b> of file <b>query.c</b>.</p>
+<pre>373                            {
+374   if (!g_query_active) {
+375     return false;
+376   }
+377 
+378 // Verify the controller is still running
+379 #ifdef _WIN32
+380   if (g_controller_handle != NULL) {
+381     DWORD exit_code;
+382     if (GetExitCodeProcess(g_controller_handle, &amp;exit_code)) {
+383       if (exit_code != STILL_ACTIVE) {
+384         g_query_active = false;
+385         g_controller_handle = NULL;
+386         g_controller_pid = 0;
+387         return false;
+388       }
+389     }
+390   }
+391 #else
+392   if (g_controller_pid &gt; 0) {
+393     // Check if process is still alive
+394     if (kill(g_controller_pid, 0) != 0) {
+395       g_query_active = false;
+396       g_controller_pid = -1;
+397       return false;
+398     }
+399   }
+400 #endif
+401 
+402   return g_query_active;
+403 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

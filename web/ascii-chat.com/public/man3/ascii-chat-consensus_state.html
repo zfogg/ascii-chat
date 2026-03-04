@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>consensus_state(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">consensus_state(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">consensus_state(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">consensus_state - State machine instance.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">consensus_state_machine_t <b>current_state</b>
+  <br/>
+  <b>consensus_topology_t</b> * <b>topology</b>
+  <br/>
+  uint8_t <b>my_id</b> [16]
+  <br/>
+  participant_metrics_t * <b>metrics</b>
+  <br/>
+  int <b>metrics_count</b>
+  <br/>
+  int <b>metrics_capacity</b>
+  <br/>
+  <b>election_result_t</b> <b>election_result</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">State machine instance.</p>
+<p class="Pp">Definition at line <b>24</b> of file <b>state.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="consensus_state_machine_t_consensus_state::current_state"><a class="permalink" href="#consensus_state_machine_t_consensus_state::current_state">consensus_state_machine_t
+  consensus_state::current_state</a></h2>
+<p class="Pp">Current state</p>
+<p class="Pp">Definition at line <b>25</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>,
+    <b>consensus_state_collection_complete()</b>,
+    <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
+    <b>consensus_state_get_current_state()</b>,
+    <b>consensus_state_get_elected_backup()</b>,
+    <b>consensus_state_get_elected_host()</b>,
+    <b>consensus_state_get_metric_at()</b>,
+    <b>consensus_state_reset_to_idle()</b>, and
+    <b>consensus_state_start_collection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>election_result_t</b> consensus_state::election_result</h2>
+<p class="Pp">Last election result</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_compute_election()</b>,
+    <b>consensus_state_create()</b>,
+    <b>consensus_state_get_elected_backup()</b>,
+    <b>consensus_state_get_elected_host()</b>, and
+    <b>consensus_state_start_collection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="participant_metrics_t*_consensus_state::metrics"><a class="permalink" href="#participant_metrics_t*_consensus_state::metrics">participant_metrics_t*
+  consensus_state::metrics</a></h2>
+<p class="Pp">Dynamic array of collected metrics</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>,
+    <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
+    <b>consensus_state_destroy()</b>, and
+    <b>consensus_state_get_metric_at()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_consensus_state::metrics_capacity"><a class="permalink" href="#int_consensus_state::metrics_capacity">int
+  consensus_state::metrics_capacity</a></h2>
+<p class="Pp">Allocated capacity</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>, and
+    <b>consensus_state_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_consensus_state::metrics_count"><a class="permalink" href="#int_consensus_state::metrics_count">int
+  consensus_state::metrics_count</a></h2>
+<p class="Pp">Current number of metrics</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_add_metrics()</b>,
+    <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
+    <b>consensus_state_get_metric_at()</b>,
+    <b>consensus_state_get_metrics_count()</b>, and
+    <b>consensus_state_start_collection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_consensus_state::my_id_16_"><a class="permalink" href="#uint8_t_consensus_state::my_id_16_">uint8_t
+  consensus_state::my_id[16]</a></h2>
+<p class="Pp">My participant ID</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>consensus_topology_t</b>* consensus_state::topology</h2>
+<p class="Pp">Topology (not owned)</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>state.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_state_collection_complete()</b>,
+    <b>consensus_state_create()</b>, and <b>consensus_state_is_leader()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

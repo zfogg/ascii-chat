@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>frame_validator.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">frame_validator.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">frame_validator.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">frame_validator.c - Frame validation implementation for
+    IMAGE_FRAME packets.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>frame_check_size_overflow</b> (size_t
+    header_size, size_t data_size)
+  <br/>
+  asciichat_error_t <b>frame_validate_legacy</b> (size_t len, size_t
+    expected_rgb_size)
+  <br/>
+  asciichat_error_t <b>frame_validate_new</b> (void *data, size_t len,
+    <b>bool</b> *out_compressed, uint32_t *out_data_size)
+  <br/>
+  void <b>frame_extract_dimensions</b> (const void *data, uint32_t *width,
+    uint32_t *height)
+  <br/>
+  void <b>frame_extract_new_header</b> (const void *data, uint32_t *compressed,
+    uint32_t *data_size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Frame validation implementation for IMAGE_FRAME packets.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>network/frame_validator.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_frame_check_size_overflow_(size_t_header_size,_size_t_data_size)"><a class="permalink" href="#asciichat_error_t_frame_check_size_overflow_(size_t_header_size,_size_t_data_size)">asciichat_error_t
+  frame_check_size_overflow (size_t header_size, size_t data_size)</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>network/frame_validator.c</b>.</p>
+<pre>15                                                                                   {
+16   if (data_size &gt; SIZE_MAX - header_size) {
+17     char size_str[32];
+18     format_bytes_pretty(data_size, size_str, sizeof(size_str));
+19     SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Frame size overflow: %s&quot;, size_str);
+20     return ERROR_BUFFER_OVERFLOW;
+21   }
+22   return ASCIICHAT_OK;
+23 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>format_bytes_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>frame_validate_legacy()</b>,
+    <b>frame_validate_new()</b>, and <b>handle_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_extract_dimensions_(const_void_*_data,_uint32_t_*_width,_uint32_t_*_height)"><a class="permalink" href="#void_frame_extract_dimensions_(const_void_*_data,_uint32_t_*_width,_uint32_t_*_height)">void
+  frame_extract_dimensions (const void * data, uint32_t * width, uint32_t *
+  height)</a></h2>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>network/frame_validator.c</b>.</p>
+<pre>86                                                                                    {
+87   uint32_t width_net, height_net;
+88   memcpy(&amp;width_net, data, FRAME_HEADER_FIELD_SIZE);
+89   memcpy(&amp;height_net, (char *)data + FRAME_HEADER_FIELD_SIZE, FRAME_HEADER_FIELD_SIZE);
+90   *width = NET_TO_HOST_U32(width_net);
+91   *height = NET_TO_HOST_U32(height_net);
+92 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_extract_new_header_(const_void_*_data,_uint32_t_*_compressed,_uint32_t_*_data_size)"><a class="permalink" href="#void_frame_extract_new_header_(const_void_*_data,_uint32_t_*_compressed,_uint32_t_*_data_size)">void
+  frame_extract_new_header (const void * data, uint32_t * compressed, uint32_t *
+  data_size)</a></h2>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>network/frame_validator.c</b>.</p>
+<pre>94                                                                                            {
+95   uint32_t compressed_net, size_net;
+96   memcpy(&amp;compressed_net, (char *)data + FRAME_HEADER_FIELD_SIZE * 2, FRAME_HEADER_FIELD_SIZE);
+97   memcpy(&amp;size_net, (char *)data + FRAME_HEADER_FIELD_SIZE * 3, FRAME_HEADER_FIELD_SIZE);
+98   *compressed = NET_TO_HOST_U32(compressed_net);
+99   *data_size = NET_TO_HOST_U32(size_net);
+100 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>frame_validate_new()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_frame_validate_legacy_(size_t_len,_size_t_expected_rgb_size)"><a class="permalink" href="#asciichat_error_t_frame_validate_legacy_(size_t_len,_size_t_expected_rgb_size)">asciichat_error_t
+  frame_validate_legacy (size_t len, size_t expected_rgb_size)</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>network/frame_validator.c</b>.</p>
+<pre>25                                                                               {
+26   // Check minimum header size
+27   if (len &lt; FRAME_HEADER_SIZE_LEGACY) {
+28     SET_ERRNO(ERROR_INVALID_FRAME, &quot;Legacy frame header too small: %zu bytes&quot;, len);
+29     return ERROR_INVALID_FRAME;
+30   }
+31 
+32   // Check for overflow
+33   asciichat_error_t err = frame_check_size_overflow(FRAME_HEADER_SIZE_LEGACY, expected_rgb_size);
+34   if (err != ASCIICHAT_OK) {
+35     return err;
+36   }
+37 
+38   size_t expected_total = FRAME_HEADER_SIZE_LEGACY + expected_rgb_size;
+39   if (len != expected_total) {
+40     SET_ERRNO(ERROR_INVALID_FRAME, &quot;Legacy frame length mismatch: expected %zu got %zu&quot;, expected_total, len);
+41     return ERROR_INVALID_FRAME;
+42   }
+43 
+44   return ASCIICHAT_OK;
+45 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame_check_size_overflow()</b>.</p>
+<p class="Pp">Referenced by <b>handle_image_frame_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_frame_validate_new_(void_*_data,_size_t_len,_"><a class="permalink" href="#asciichat_error_t_frame_validate_new_(void_*_data,_size_t_len,_">asciichat_error_t
+  frame_validate_new (void * data, size_t len, <b>bool</b> * out_compressed,
+  uint32_t * out_data_size)</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file
+    <b>network/frame_validator.c</b>.</p>
+<pre>47                                                                                                             {
+48   // Check minimum new format header size
+49   if (len &lt; FRAME_HEADER_SIZE_NEW) {
+50     SET_ERRNO(ERROR_INVALID_FRAME, &quot;New frame header too small: %zu bytes&quot;, len);
+51     return ERROR_INVALID_FRAME;
+52   }
+53 
+54   uint32_t compressed_flag, data_size;
+55   frame_extract_new_header(data, &amp;compressed_flag, &amp;data_size);
+56 
+57   size_t data_size_sz = (size_t)data_size;
+58 
+59   // Check data size against maximum
+60   if (data_size_sz &gt; IMAGE_MAX_PIXELS_SIZE) {
+61     char size_str[32];
+62     format_bytes_pretty(data_size_sz, size_str, sizeof(size_str));
+63     SET_ERRNO(ERROR_INVALID_FRAME, &quot;Frame data too large: %s&quot;, size_str);
+64     return ERROR_INVALID_FRAME;
+65   }
+66 
+67   // Check for overflow
+68   asciichat_error_t err = frame_check_size_overflow(FRAME_HEADER_SIZE_NEW, data_size_sz);
+69   if (err != ASCIICHAT_OK) {
+70     return err;
+71   }
+72 
+73   size_t expected_total = FRAME_HEADER_SIZE_NEW + data_size_sz;
+74   if (len != expected_total) {
+75     SET_ERRNO(ERROR_INVALID_FRAME, &quot;New frame length mismatch: expected %zu got %zu&quot;, expected_total, len);
+76     return ERROR_INVALID_FRAME;
+77   }
+78 
+79   if (out_compressed)
+80     *out_compressed = (compressed_flag != 0);
+81   if (out_data_size)
+82     *out_data_size = data_size;
+83   return ASCIICHAT_OK;
+84 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>format_bytes_pretty()</b>,
+    <b>frame_check_size_overflow()</b>, and
+  <b>frame_extract_new_header()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sgr.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sgr.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sgr.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sgr.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>sgr256_seq_t</b>
+  <br/>
+  Pre-computed 256-color ANSI SGR sequence.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>BGASCII_LUMA_THRESHOLD</b> 128
+  <br/>
+  #define <b>CUBE_GRAY_THRESHOLD</b> 10
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>prewarm_sgr256_fg_cache</b> (void)
+  <br/>
+  void <b>prewarm_sgr256_cache</b> (void)
+  <br/>
+  char * <b>get_sgr256_fg_string</b> (uint8_t fg, uint8_t *len_out)
+  <br/>
+  char * <b>get_sgr256_bg_string</b> (uint8_t bg, uint8_t *len_out)
+  <br/>
+  char * <b>get_sgr256_fg_bg_string</b> (uint8_t fg, uint8_t bg, uint8_t
+    *len_out)
+  <br/>
+  char * <b>append_sgr_reset</b> (char *dst)
+  <br/>
+  char * <b>append_sgr_truecolor_fg</b> (char *dst, uint8_t r, uint8_t g,
+    uint8_t b)
+  <br/>
+  char * <b>append_sgr_truecolor_bg</b> (char *dst, uint8_t r, uint8_t g,
+    uint8_t b)
+  <br/>
+  char * <b>append_sgr_truecolor_fg_bg</b> (char *dst, uint8_t fr, uint8_t fg,
+    uint8_t fb, uint8_t br, uint8_t bg, uint8_t bb)
+  <br/>
+  char * <b>image_print_color_simd</b> (image_t *image, <b>bool</b>
+    use_background_mode, <b>bool</b> use_256color, const char *ascii_chars)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_BGASCII_LUMA_THRESHOLD___128"><a class="permalink" href="#_define_BGASCII_LUMA_THRESHOLD___128">#define
+  BGASCII_LUMA_THRESHOLD 128</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>sgr.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_CUBE_GRAY_THRESHOLD___10"><a class="permalink" href="#_define_CUBE_GRAY_THRESHOLD___10">#define
+  CUBE_GRAY_THRESHOLD 10</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>sgr.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_append_sgr_reset_(char_*_dst)"><a class="permalink" href="#char_*_append_sgr_reset_(char_*_dst)">char
+  * append_sgr_reset (char * dst) [inline]</a></h2>
+<p class="Pp">Definition at line <b>155</b> of file <b>sgr.c</b>.</p>
+<pre>155                                          {
+156   // &quot;\x1b[0m&quot;
+157   static const char RESET[] = &quot;\033[0m&quot;;
+158   memcpy(dst, RESET, sizeof(RESET) - 1);
+159   return dst + (sizeof(RESET) - 1);
+160 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_append_sgr_truecolor_bg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#char_*_append_sgr_truecolor_bg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)">char
+  * append_sgr_truecolor_bg (char * dst, uint8_t r, uint8_t g, uint8_t b)
+  [inline]</a></h2>
+<p class="Pp">Definition at line <b>224</b> of file <b>sgr.c</b>.</p>
+<pre>224                                                                                  {
+225   // Constructor ensures initialization
+226 
+227   // Direct character writes for &quot;\033[48;2;&quot;
+228   *dst++ = '\033';
+229   *dst++ = '[';
+230   *dst++ = '4';
+231   *dst++ = '8';
+232   *dst++ = ';';
+233   *dst++ = '2';
+234   *dst++ = ';';
+235 
+236   // Optimized digit copying
+237   const dec3_t *rd = &amp;g_dec3_cache.dec3_table[r];
+238   if (rd-&gt;len == 1) {
+239     *dst++ = rd-&gt;s[0];
+240   } else if (rd-&gt;len == 2) {
+241     dst[0] = rd-&gt;s[0];
+242     dst[1] = rd-&gt;s[1];
+243     dst += 2;
+244   } else {
+245     dst[0] = rd-&gt;s[0];
+246     dst[1] = rd-&gt;s[1];
+247     dst[2] = rd-&gt;s[2];
+248     dst += 3;
+249   }
+250   *dst++ = ';';
+251 
+252   const dec3_t *gd = &amp;g_dec3_cache.dec3_table[g];
+253   if (gd-&gt;len == 1) {
+254     *dst++ = gd-&gt;s[0];
+255   } else if (gd-&gt;len == 2) {
+256     dst[0] = gd-&gt;s[0];
+257     dst[1] = gd-&gt;s[1];
+258     dst += 2;
+259   } else {
+260     dst[0] = gd-&gt;s[0];
+261     dst[1] = gd-&gt;s[1];
+262     dst[2] = gd-&gt;s[2];
+263     dst += 3;
+264   }
+265   *dst++ = ';';
+266 
+267   const dec3_t *bd = &amp;g_dec3_cache.dec3_table[b];
+268   if (bd-&gt;len == 1) {
+269     *dst++ = bd-&gt;s[0];
+270   } else if (bd-&gt;len == 2) {
+271     dst[0] = bd-&gt;s[0];
+272     dst[1] = bd-&gt;s[1];
+273     dst += 2;
+274   } else {
+275     dst[0] = bd-&gt;s[0];
+276     dst[1] = bd-&gt;s[1];
+277     dst[2] = bd-&gt;s[2];
+278     dst += 3;
+279   }
+280   *dst++ = 'm';
+281   return dst;
+282 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_dec3_cache</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_(char_*_dst,_uint8_t_r,_uint8_t_g,_uint8_t_b)">char
+  * append_sgr_truecolor_fg (char * dst, uint8_t r, uint8_t g, uint8_t b)
+  [inline]</a></h2>
+<p class="Pp">Definition at line <b>163</b> of file <b>sgr.c</b>.</p>
+<pre>163                                                                                  {
+164   // Constructor ensures initialization
+165 
+166   // Direct character writes (compiler will optimize to word operations)
+167   *dst++ = '\033';
+168   *dst++ = '[';
+169   *dst++ = '3';
+170   *dst++ = '8';
+171   *dst++ = ';';
+172   *dst++ = '2';
+173   *dst++ = ';';
+174 
+175   // Fast digit copying for 1-3 digit numbers (avoid memcpy overhead)
+176   const dec3_t *rd = &amp;g_dec3_cache.dec3_table[r];
+177   if (rd-&gt;len == 1) {
+178     *dst++ = rd-&gt;s[0];
+179   } else if (rd-&gt;len == 2) {
+180     dst[0] = rd-&gt;s[0];
+181     dst[1] = rd-&gt;s[1];
+182     dst += 2;
+183   } else {
+184     dst[0] = rd-&gt;s[0];
+185     dst[1] = rd-&gt;s[1];
+186     dst[2] = rd-&gt;s[2];
+187     dst += 3;
+188   }
+189   *dst++ = ';';
+190 
+191   const dec3_t *gd = &amp;g_dec3_cache.dec3_table[g];
+192   if (gd-&gt;len == 1) {
+193     *dst++ = gd-&gt;s[0];
+194   } else if (gd-&gt;len == 2) {
+195     dst[0] = gd-&gt;s[0];
+196     dst[1] = gd-&gt;s[1];
+197     dst += 2;
+198   } else {
+199     dst[0] = gd-&gt;s[0];
+200     dst[1] = gd-&gt;s[1];
+201     dst[2] = gd-&gt;s[2];
+202     dst += 3;
+203   }
+204   *dst++ = ';';
+205 
+206   const dec3_t *bd = &amp;g_dec3_cache.dec3_table[b];
+207   if (bd-&gt;len == 1) {
+208     *dst++ = bd-&gt;s[0];
+209   } else if (bd-&gt;len == 2) {
+210     dst[0] = bd-&gt;s[0];
+211     dst[1] = bd-&gt;s[1];
+212     dst += 2;
+213   } else {
+214     dst[0] = bd-&gt;s[0];
+215     dst[1] = bd-&gt;s[1];
+216     dst[2] = bd-&gt;s[2];
+217     dst += 3;
+218   }
+219   *dst++ = 'm';
+220   return dst;
+221 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_dec3_cache</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_uint8_t_fr,_uint8_t_fg,_uint8_t_fb,_uint8_t_br,_uint8_t_bg,_uint8_t_bb)"><a class="permalink" href="#char_*_append_sgr_truecolor_fg_bg_(char_*_dst,_uint8_t_fr,_uint8_t_fg,_uint8_t_fb,_uint8_t_br,_uint8_t_bg,_uint8_t_bb)">char
+  * append_sgr_truecolor_fg_bg (char * dst, uint8_t fr, uint8_t fg, uint8_t fb,
+  uint8_t br, uint8_t bg, uint8_t bb) [inline]</a></h2>
+<p class="Pp">Definition at line <b>285</b> of file <b>sgr.c</b>.</p>
+<pre>286                                                     {
+287   // Constructor ensures initialization
+288 
+289   // Write &quot;\033[38;2;&quot; directly (7 chars)
+290   *dst++ = '\033';
+291   *dst++ = '[';
+292   *dst++ = '3';
+293   *dst++ = '8';
+294   *dst++ = ';';
+295   *dst++ = '2';
+296   *dst++ = ';';
+297 
+298   // Foreground RGB digits
+299   const dec3_t *d = &amp;g_dec3_cache.dec3_table[fr];
+300   if (d-&gt;len == 1) {
+301     *dst++ = d-&gt;s[0];
+302   } else if (d-&gt;len == 2) {
+303     dst[0] = d-&gt;s[0];
+304     dst[1] = d-&gt;s[1];
+305     dst += 2;
+306   } else {
+307     dst[0] = d-&gt;s[0];
+308     dst[1] = d-&gt;s[1];
+309     dst[2] = d-&gt;s[2];
+310     dst += 3;
+311   }
+312   *dst++ = ';';
+313 
+314   d = &amp;g_dec3_cache.dec3_table[fg];
+315   if (d-&gt;len == 1) {
+316     *dst++ = d-&gt;s[0];
+317   } else if (d-&gt;len == 2) {
+318     dst[0] = d-&gt;s[0];
+319     dst[1] = d-&gt;s[1];
+320     dst += 2;
+321   } else {
+322     dst[0] = d-&gt;s[0];
+323     dst[1] = d-&gt;s[1];
+324     dst[2] = d-&gt;s[2];
+325     dst += 3;
+326   }
+327   *dst++ = ';';
+328 
+329   d = &amp;g_dec3_cache.dec3_table[fb];
+330   if (d-&gt;len == 1) {
+331     *dst++ = d-&gt;s[0];
+332   } else if (d-&gt;len == 2) {
+333     dst[0] = d-&gt;s[0];
+334     dst[1] = d-&gt;s[1];
+335     dst += 2;
+336   } else {
+337     dst[0] = d-&gt;s[0];
+338     dst[1] = d-&gt;s[1];
+339     dst[2] = d-&gt;s[2];
+340     dst += 3;
+341   }
+342 
+343   // Write &quot;;48;2;&quot; directly (6 chars)
+344   *dst++ = ';';
+345   *dst++ = '4';
+346   *dst++ = '8';
+347   *dst++ = ';';
+348   *dst++ = '2';
+349   *dst++ = ';';
+350 
+351   // Background RGB digits
+352   d = &amp;g_dec3_cache.dec3_table[br];
+353   if (d-&gt;len == 1) {
+354     *dst++ = d-&gt;s[0];
+355   } else if (d-&gt;len == 2) {
+356     dst[0] = d-&gt;s[0];
+357     dst[1] = d-&gt;s[1];
+358     dst += 2;
+359   } else {
+360     dst[0] = d-&gt;s[0];
+361     dst[1] = d-&gt;s[1];
+362     dst[2] = d-&gt;s[2];
+363     dst += 3;
+364   }
+365   *dst++ = ';';
+366 
+367   d = &amp;g_dec3_cache.dec3_table[bg];
+368   if (d-&gt;len == 1) {
+369     *dst++ = d-&gt;s[0];
+370   } else if (d-&gt;len == 2) {
+371     dst[0] = d-&gt;s[0];
+372     dst[1] = d-&gt;s[1];
+373     dst += 2;
+374   } else {
+375     dst[0] = d-&gt;s[0];
+376     dst[1] = d-&gt;s[1];
+377     dst[2] = d-&gt;s[2];
+378     dst += 3;
+379   }
+380   *dst++ = ';';
+381 
+382   d = &amp;g_dec3_cache.dec3_table[bb];
+383   if (d-&gt;len == 1) {
+384     *dst++ = d-&gt;s[0];
+385   } else if (d-&gt;len == 2) {
+386     dst[0] = d-&gt;s[0];
+387     dst[1] = d-&gt;s[1];
+388     dst += 2;
+389   } else {
+390     dst[0] = d-&gt;s[0];
+391     dst[1] = d-&gt;s[1];
+392     dst[2] = d-&gt;s[2];
+393     dst += 3;
+394   }
+395 
+396   *dst++ = 'm';
+397   return dst;
+398 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_dec3_cache</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_get_sgr256_bg_string_(uint8_t_bg,_uint8_t_*_len_out)"><a class="permalink" href="#char_*_get_sgr256_bg_string_(uint8_t_bg,_uint8_t_*_len_out)">char
+  * get_sgr256_bg_string (uint8_t bg, uint8_t * len_out)</a></h2>
+<p class="Pp">Definition at line <b>141</b> of file <b>sgr.c</b>.</p>
+<pre>141                                                          {
+142   if (!sgr256_cache_initialized) {
+143     init_sgr256_cache();
+144   }
+145   *len_out = sgr256_bg_cache[bg].len;
+146   return sgr256_bg_cache[bg].seq;
+147 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>emit_set_256_color_bg()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_get_sgr256_fg_bg_string_(uint8_t_fg,_uint8_t_bg,_uint8_t_*_len_out)"><a class="permalink" href="#char_*_get_sgr256_fg_bg_string_(uint8_t_fg,_uint8_t_bg,_uint8_t_*_len_out)">char
+  * get_sgr256_fg_bg_string (uint8_t fg, uint8_t bg, uint8_t * len_out)</a></h2>
+<p class="Pp">Definition at line <b>149</b> of file <b>sgr.c</b>.</p>
+<pre>149                                                                         {
+150   // For FG+BG, still build on-demand since we'd need 256*256 cache
+151   static __thread char buf[32];
+152   return build_sgr256_fgbg(buf, fg, bg, len_out);
+153 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_get_sgr256_fg_string_(uint8_t_fg,_uint8_t_*_len_out)"><a class="permalink" href="#char_*_get_sgr256_fg_string_(uint8_t_fg,_uint8_t_*_len_out)">char
+  * get_sgr256_fg_string (uint8_t fg, uint8_t * len_out)</a></h2>
+<p class="Pp">Definition at line <b>133</b> of file <b>sgr.c</b>.</p>
+<pre>133                                                          {
+134   if (!sgr256_cache_initialized) {
+135     init_sgr256_cache();
+136   }
+137   *len_out = sgr256_fg_cache[fg].len;
+138   return sgr256_fg_cache[fg].seq;
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>emit_set_256_color_fg()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_color_simd_(image_t_*_image,_"><a class="permalink" href="#char_*_image_print_color_simd_(image_t_*_image,_">char
+  * image_print_color_simd (image_t * image, <b>bool</b> use_background_mode,
+  <b>bool</b> use_256color, const char * ascii_chars)</a></h2>
+<p class="Pp">Definition at line <b>412</b> of file <b>sgr.c</b>.</p>
+<pre>412                                                                                                                    {
+413   if (!image || !ascii_chars) {
+414     return NULL;
+415   }
+416 
+417   log_dev_every(4500 * US_PER_MS_INT, &quot;image_print_color_simd called: width=%d, height=%d, use_256color=%d&quot;,
+418                 image-&gt;w, image-&gt;h, use_256color);
+419 
+420 #if SIMD_SUPPORT_AVX2
+421   log_debug_every(10 * US_PER_SEC_INT, &quot;Taking AVX2 path: width=%d, height=%d&quot;, image-&gt;w, image-&gt;h);
+422   // AVX2 implementation would go here
+423   // For now, fall through to scalar implementation
+424 #endif
+425 
+426   // Fallback to scalar implementation
+427   if (use_background_mode) {
+428     return image_print_16color_dithered_with_background(image, use_background_mode, ascii_chars);
+429   } else if (use_256color) {
+430     return image_print_256color(image, ascii_chars);
+431   } else {
+432     return image_print_color(image, ascii_chars);
+433   }
+434 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>image_print_16color_dithered_with_background()</b>,
+    <b>image_print_256color()</b>, and <b>image_print_color()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>image_print_256color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_prewarm_sgr256_cache_(void_)"><a class="permalink" href="#void_prewarm_sgr256_cache_(void_)">void
+  prewarm_sgr256_cache (void )</a></h2>
+<p class="Pp">Definition at line <b>128</b> of file <b>sgr.c</b>.</p>
+<pre>128                                 {
+129   init_sgr256_cache();
+130 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_prewarm_sgr256_fg_cache_(void_)"><a class="permalink" href="#void_prewarm_sgr256_fg_cache_(void_)">void
+  prewarm_sgr256_fg_cache (void )</a></h2>
+<p class="Pp">Definition at line <b>124</b> of file <b>sgr.c</b>.</p>
+<pre>124                                    {
+125   init_sgr256_cache();
+126 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

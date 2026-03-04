@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>frame_buffer.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">frame_buffer.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">frame_buffer.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">frame_buffer.c - Buffered terminal frame rendering
+  implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>frame_buffer</b>
+  <br/>
+  Frame buffer structure.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">frame_buffer_t * <b>frame_buffer_create</b> (int rows, int cols)
+  <br/>
+  void <b>frame_buffer_destroy</b> (frame_buffer_t *buf)
+  <br/>
+  void <b>frame_buffer_reset</b> (frame_buffer_t *buf)
+  <br/>
+  void <b>frame_buffer_append</b> (frame_buffer_t *buf, const char *str, size_t
+    len)
+  <br/>
+  void <b>frame_buffer_printf</b> (frame_buffer_t *buf, const char *fmt,...)
+  <br/>
+  void <b>frame_buffer_cursor_home</b> (frame_buffer_t *buf)
+  <br/>
+  void <b>frame_buffer_clear_screen</b> (frame_buffer_t *buf)
+  <br/>
+  void <b>frame_buffer_flush</b> (frame_buffer_t *buf)
+  <br/>
+  void <b>frame_buffer_set_screen_output_fd</b> (int fd)
+  <br/>
+  int <b>frame_buffer_get_screen_output_fd</b> (void)
+  <br/>
+  size_t <b>frame_buffer_get_length</b> (const frame_buffer_t *buf)
+  <br/>
+  const char * <b>frame_buffer_get_content</b> (const frame_buffer_t *buf)
+  <br/>
+  void <b>frame_buffer_render_border</b> (frame_buffer_t *buf, int cols, const
+    char *color)
+  <br/>
+  int <b>frame_buffer_render_centered</b> (frame_buffer_t *buf, const char
+    *text, int cols)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Buffered terminal frame rendering implementation.</p>
+<p class="Pp">Accumulates terminal output into a growable buffer and flushes
+    atomically.</p>
+<p class="Pp">Definition in file <b>frame_buffer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_append_(frame_buffer_t_*_buf,_const_char_*_str,_size_t_len)"><a class="permalink" href="#void_frame_buffer_append_(frame_buffer_t_*_buf,_const_char_*_str,_size_t_len)">void
+  frame_buffer_append (frame_buffer_t * buf, const char * str, size_t
+  len)</a></h2>
+<p class="Pp">Definition at line <b>66</b> of file <b>frame_buffer.c</b>.</p>
+<pre>66                                                                            {
+67   if (!buf || !str || len == 0) {
+68     return;
+69   }
+70 
+71   // Grow buffer if needed
+72   if (buf-&gt;len + len &gt; buf-&gt;capacity) {
+73     size_t new_capacity = buf-&gt;capacity * 2;
+74     while (new_capacity &lt; buf-&gt;len + len) {
+75       new_capacity *= 2;
+76     }
+77 
+78     char *new_data = SAFE_MALLOC(new_capacity, char *);
+79     if (!new_data) {
+80       return; // Failed to grow, silently ignore
+81     }
+82 
+83     if (buf-&gt;len &gt; 0 &amp;&amp; buf-&gt;data) {
+84       memcpy(new_data, buf-&gt;data, buf-&gt;len);
+85     }
+86 
+87     SAFE_FREE(buf-&gt;data);
+88     buf-&gt;data = new_data;
+89     buf-&gt;capacity = new_capacity;
+90   }
+91 
+92   // Append the data
+93   memcpy(buf-&gt;data + buf-&gt;len, str, len);
+94   buf-&gt;len += len;
+95 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>frame_buffer_clear_screen()</b>, and
+    <b>frame_buffer_cursor_home()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_clear_screen_(frame_buffer_t_*_buf)"><a class="permalink" href="#void_frame_buffer_clear_screen_(frame_buffer_t_*_buf)">void
+  frame_buffer_clear_screen (frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>143</b> of file <b>frame_buffer.c</b>.</p>
+<pre>143                                                     {
+144   if (!buf) {
+145     return;
+146   }
+147 
+148   // Combine clear screen and home in one operation
+149   frame_buffer_append(buf, &quot;\033[2J\033[H&quot;, 8);
+150 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame_buffer_append()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="frame_buffer_t_*_frame_buffer_create_(int_rows,_int_cols)"><a class="permalink" href="#frame_buffer_t_*_frame_buffer_create_(int_rows,_int_cols)">frame_buffer_t
+  * frame_buffer_create (int rows, int cols)</a></h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>frame_buffer.c</b>.</p>
+<pre>28                                                         {
+29   frame_buffer_t *buf = SAFE_MALLOC(sizeof(frame_buffer_t), frame_buffer_t *);
+30   if (!buf) {
+31     return NULL;
+32   }
+33 
+34   // Initial capacity: rows * cols * 16 to account for ANSI codes
+35   size_t initial_capacity = (rows &gt; 0 &amp;&amp; cols &gt; 0) ? (size_t)rows * cols * 16 : 4096;
+36 
+37   buf-&gt;data = SAFE_MALLOC(initial_capacity, char *);
+38   if (!buf-&gt;data) {
+39     SAFE_FREE(buf);
+40     return NULL;
+41   }
+42 
+43   buf-&gt;len = 0;
+44   buf-&gt;capacity = initial_capacity;
+45 
+46   return buf;
+47 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_cursor_home_(frame_buffer_t_*_buf)"><a class="permalink" href="#void_frame_buffer_cursor_home_(frame_buffer_t_*_buf)">void
+  frame_buffer_cursor_home (frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>135</b> of file <b>frame_buffer.c</b>.</p>
+<pre>135                                                    {
+136   if (!buf) {
+137     return;
+138   }
+139 
+140   frame_buffer_append(buf, &quot;\033[H&quot;, 3);
+141 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame_buffer_append()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_destroy_(frame_buffer_t_*_buf)"><a class="permalink" href="#void_frame_buffer_destroy_(frame_buffer_t_*_buf)">void
+  frame_buffer_destroy (frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>frame_buffer.c</b>.</p>
+<pre>49                                                {
+50   if (!buf) {
+51     return;
+52   }
+53 
+54   SAFE_FREE(buf-&gt;data);
+55   SAFE_FREE(buf);
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_cleanup()</b>, and
+    <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_flush_(frame_buffer_t_*_buf)"><a class="permalink" href="#void_frame_buffer_flush_(frame_buffer_t_*_buf)">void
+  frame_buffer_flush (frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>155</b> of file <b>frame_buffer.c</b>.</p>
+<pre>155                                              {
+156   if (!buf || buf-&gt;len == 0 || !buf-&gt;data) {
+157     return;
+158   }
+159 
+160   // Write entire buffer to configured FD in one atomic operation
+161   // Uses the terminal screen output FD which may be stderr when piped
+162   platform_write_all(g_terminal_screen_output_fd, buf-&gt;data, buf-&gt;len);
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_write_all()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_frame_buffer_get_content_(const_frame_buffer_t_*_buf)"><a class="permalink" href="#const_char_*_frame_buffer_get_content_(const_frame_buffer_t_*_buf)">const
+  char * frame_buffer_get_content (const frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>180</b> of file <b>frame_buffer.c</b>.</p>
+<pre>180                                                                 {
+181   if (!buf || !buf-&gt;data) {
+182     return NULL;
+183   }
+184   return buf-&gt;data;
+185 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_frame_buffer_get_length_(const_frame_buffer_t_*_buf)"><a class="permalink" href="#size_t_frame_buffer_get_length_(const_frame_buffer_t_*_buf)">size_t
+  frame_buffer_get_length (const frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>173</b> of file <b>frame_buffer.c</b>.</p>
+<pre>173                                                           {
+174   if (!buf) {
+175     return 0;
+176   }
+177   return buf-&gt;len;
+178 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_frame_buffer_get_screen_output_fd_(void_)"><a class="permalink" href="#int_frame_buffer_get_screen_output_fd_(void_)">int
+  frame_buffer_get_screen_output_fd (void )</a></h2>
+<p class="Pp">Definition at line <b>169</b> of file <b>frame_buffer.c</b>.</p>
+<pre>169                                             {
+170   return g_terminal_screen_output_fd;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_printf_(frame_buffer_t_*_buf,_const_char_*_fmt,__"><a class="permalink" href="#void_frame_buffer_printf_(frame_buffer_t_*_buf,_const_char_*_fmt,__">void
+  frame_buffer_printf (frame_buffer_t * buf, const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>97</b> of file <b>frame_buffer.c</b>.</p>
+<pre>97                                                                     {
+98   if (!buf || !fmt) {
+99     return;
+100   }
+101 
+102   // Ensure we have space for a formatted string
+103   // Start with a reasonable buffer size
+104   size_t remaining = buf-&gt;capacity - buf-&gt;len;
+105   if (remaining &lt; 256) {
+106     // Grow buffer to have at least 512 bytes of space
+107     size_t new_capacity = buf-&gt;capacity + 512;
+108     char *new_data = SAFE_MALLOC(new_capacity, char *);
+109     if (!new_data) {
+110       return;
+111     }
+112 
+113     if (buf-&gt;len &gt; 0 &amp;&amp; buf-&gt;data) {
+114       memcpy(new_data, buf-&gt;data, buf-&gt;len);
+115     }
+116 
+117     SAFE_FREE(buf-&gt;data);
+118     buf-&gt;data = new_data;
+119     buf-&gt;capacity = new_capacity;
+120     remaining = buf-&gt;capacity - buf-&gt;len;
+121   }
+122 
+123   // Format the string into the buffer
+124   va_list args;
+125   va_start(args, fmt);
+126   int written = vsnprintf(buf-&gt;data + buf-&gt;len, remaining, fmt, args);
+127   va_end(args);
+128 
+129   if (written &gt; 0 &amp;&amp; written &lt; (int)remaining) {
+130     buf-&gt;len += (size_t)written;
+131   }
+132   // If vsnprintf failed or truncated, we silently ignore (buffer may be full)
+133 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">Referenced by <b>frame_buffer_render_border()</b>,
+    <b>frame_buffer_render_centered()</b>, and
+  <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_render_border_(frame_buffer_t_*_buf,_int_cols,_const_char_*_color)"><a class="permalink" href="#void_frame_buffer_render_border_(frame_buffer_t_*_buf,_int_cols,_const_char_*_color)">void
+  frame_buffer_render_border (frame_buffer_t * buf, int cols, const char *
+  color)</a></h2>
+<p class="Pp">Definition at line <b>187</b> of file <b>frame_buffer.c</b>.</p>
+<pre>187                                                                                   {
+188   if (!buf || cols &lt;= 0) {
+189     return;
+190   }
+191 
+192   if (color) {
+193     frame_buffer_printf(buf, &quot;%s&#x2501;&quot;, color);
+194   } else {
+195     frame_buffer_printf(buf, &quot;&#x2501;&quot;);
+196   }
+197   for (int i = 1; i &lt; cols - 1; i++) {
+198     frame_buffer_printf(buf, &quot;&#x2501;&quot;);
+199   }
+200   if (color) {
+201     frame_buffer_printf(buf, &quot;\033[0m&quot;);
+202   }
+203   frame_buffer_printf(buf, &quot;\n&quot;);
+204 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame_buffer_printf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_frame_buffer_render_centered_(frame_buffer_t_*_buf,_const_char_*_text,_int_cols)"><a class="permalink" href="#int_frame_buffer_render_centered_(frame_buffer_t_*_buf,_const_char_*_text,_int_cols)">int
+  frame_buffer_render_centered (frame_buffer_t * buf, const char * text, int
+  cols)</a></h2>
+<p class="Pp">Definition at line <b>206</b> of file <b>frame_buffer.c</b>.</p>
+<pre>206                                                                                   {
+207   if (!buf || !text || cols &lt;= 0) {
+208     return 0;
+209   }
+210 
+211   // Calculate visible width accounting for ANSI codes
+212   int visible_width = display_width(text);
+213   if (visible_width &lt; 0) {
+214     visible_width = (int)strlen(text);
+215   }
+216 
+217   int padding = (cols - visible_width) / 2;
+218   if (padding &lt; 0) {
+219     padding = 0;
+220   }
+221 
+222   for (int i = 0; i &lt; padding; i++) {
+223     frame_buffer_printf(buf, &quot; &quot;);
+224   }
+225   frame_buffer_printf(buf, &quot;%s\n&quot;, text);
+226 
+227   return padding;
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>display_width()</b>, and
+    <b>frame_buffer_printf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_reset_(frame_buffer_t_*_buf)"><a class="permalink" href="#void_frame_buffer_reset_(frame_buffer_t_*_buf)">void
+  frame_buffer_reset (frame_buffer_t * buf)</a></h2>
+<p class="Pp">Definition at line <b>58</b> of file <b>frame_buffer.c</b>.</p>
+<pre>58                                              {
+59   if (!buf) {
+60     return;
+61   }
+62 
+63   buf-&gt;len = 0;
+64 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_frame_buffer_set_screen_output_fd_(int_fd)"><a class="permalink" href="#void_frame_buffer_set_screen_output_fd_(int_fd)">void
+  frame_buffer_set_screen_output_fd (int fd)</a></h2>
+<p class="Pp">Definition at line <b>165</b> of file <b>frame_buffer.c</b>.</p>
+<pre>165                                                {
+166   g_terminal_screen_output_fd = fd;
+167 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>terminal_screen_set_output_fd()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

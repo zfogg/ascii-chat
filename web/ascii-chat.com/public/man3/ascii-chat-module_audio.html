@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>module_audio(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">module_audio(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">module_audio(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">module_audio - Audio Processing</p>
+<p class="Pp">
+  <br/>
+   - &#x1F50A; Audio capture, playback, and multi-client mixing</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Topics"><a class="permalink" href="#Topics">Topics</a></h2>
+<br/>
+<p class="Pp"><b>Audio</b>
+  <br/>
+  &#x1F50A; Audio system for real-time audio capture and playback
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F50A; Audio capture, playback, and multi-client mixing</p>
+<p class="Pp">Audio system with PortAudio integration and multi-client audio
+    mixing with ducking. Mixer README</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">Welcome to the audio mixer&#x2014;where all the magic happens when
+    multiple people are talking at once!</p>
+<p class="Pp"></p>
+<p class="Pp">Picture yourself in a group video call. Person A is talking,
+    Person B laughs, Person C asks a question&#x2014;all happening
+    simultaneously. Your speakers don't have three separate outputs (well, most
+    don't). So how does your computer play all three audio streams at once?
+    That's where the mixer comes in!</p>
+<p class="Pp"></p>
+<p class="Pp">The mixer takes multiple audio streams (one from each client) and
+    combines them into a single output stream that gets sent to everyone. It's
+    like a real mixing board at a concert&#x2014;each microphone is a separate
+    input, and the mixer blends them into one cohesive sound that goes to the
+    speakers.</p>
+<p class="Pp"></p>
+<p class="Pp">But here's the cool part: when lots of people are talking at once,
+    the mixer automatically applies &quot;ducking&quot; (volume reduction) so
+    the combined audio doesn't clip or distort. It's like how a good sound
+    engineer knows to turn down each microphone a bit when everyone's singing
+    together&#x2014;the mix stays clear and balanced.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/mixer.h</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_makes_the_mixer_special?"><a class="permalink" href="#What_makes_the_mixer_special?">What
+  makes the mixer special? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>Real-time mixing</b>: Combines multiple audio streams on the fly</li>
+  <li><b>Dynamic source management</b>: Sources can join or leave without
+      disrupting the mix</li>
+  <li><b>Active speaker detection</b>: Automatically identifies who's talking
+      loudest</li>
+  <li><b>Automatic ducking</b>: Attenuates background sources when someone is
+      speaking</li>
+  <li><b>Dynamic range compression</b>: Prevents clipping with professional
+      compressor</li>
+  <li><b>Noise gate</b>: Suppresses background noise below threshold with
+      hysteresis</li>
+  <li><b>High-pass filtering</b>: Removes low-frequency rumble and noise</li>
+  <li><b>Soft clipping</b>: Prevents harsh digital clipping artifacts</li>
+  <li><b>Crowd scaling</b>: Automatically adjusts volume based on participant
+      count</li>
+  <li><b>Thread-safe</b>: Reader-writer locks for concurrent access</li>
+  <li><b>Low latency</b>: Fixed 256-sample frame processing</li>
+  <li><b>O(1) source exclusion</b>: Bitset-based tracking for echo
+    cancellation</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<p class="Pp"><b>Mixer Design</b>:</p>
+<ul class="Bl-bullet">
+  <li>Single mixer instance per server</li>
+  <li>Per-client audio input buffers</li>
+  <li>Shared output buffer for mixed audio</li>
+  <li>Thread-safe operation with mutex protection</li>
+</ul>
+<p class="Pp"><b>Audio Flow</b>:</p>
+<p class="Pp"></p>
+<pre>Client 1 Audio &#x2192; Input Buffer 1 &#x2500;&#x2500;&#x2510;
+Client 2 Audio &#x2192; Input Buffer 2 &#x2500;&#x2500;&#x2524;
+Client 3 Audio &#x2192; Input Buffer 3 &#x2500;&#x2500;&#x253C;&#x2192; Mixer &#x2192; Mixed Output &#x2192; All Clients
+...                               &#x2500;&#x2518;
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Operations"><a class="permalink" href="#Operations">Operations</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Initialization"><a class="permalink" href="#Initialization">Initialization</a></h2>
+<p class="Pp"><b>Create Mixer</b>:</p>
+<p class="Pp"></p>
+<pre>// mixer_create returns a pointer to a new mixer (NULL on failure)
+mixer_t *mixer = mixer_create(MIXER_MAX_SOURCES, 48000);
+if (!mixer) {
+<br/>
+    log_error(&quot;Failed to create mixer&quot;);
+<br/>
+    return ASCIICHAT_ERROR_MEMORY;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Source_Management"><a class="permalink" href="#Source_Management">Source
+  Management</a></h2>
+<p class="Pp"><b>Add Audio Source</b> (client with audio ring buffer):</p>
+<p class="Pp"></p>
+<pre>uint32_t client_id = 12345;
+audio_ring_buffer_t *client_audio_buffer = ...; // Client's audio ring buffer
+int result = mixer_add_source(mixer, client_id, client_audio_buffer);
+if (result &lt; 0) {
+<br/>
+    log_error(&quot;Failed to add client %u to mixer&quot;, client_id);
+<br/>
+    return ASCIICHAT_ERROR_FULL;
+}
+log_info(&quot;Client %u added to mixer at index %d&quot;, client_id, result);
+</pre>
+<p class="Pp"><b>Remove Audio Source</b>:</p>
+<p class="Pp"></p>
+<pre>mixer_remove_source(mixer, client_id);
+log_info(&quot;Client %u removed from mixer&quot;, client_id);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Audio_Processing"><a class="permalink" href="#Audio_Processing">Audio
+  Processing</a></h2>
+<p class="Pp">The mixer reads audio directly from each client's audio ring
+    buffer. Clients write their audio samples to their ring buffer, and the
+    mixer reads and mixes them during processing.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Mix Audio</b> (reads from all source ring buffers):</p>
+<p class="Pp"></p>
+<pre>float mixed_output[MIXER_FRAME_SIZE];
+int samples_mixed = mixer_process(mixer, mixed_output, MIXER_FRAME_SIZE);
+if (samples_mixed &gt; 0) {
+<br/>
+    // Send mixed audio to all clients
+<br/>
+    send_audio_to_all_clients(mixed_output, samples_mixed);
+}
+</pre>
+<p class="Pp"><b>Mix Audio Excluding a Source</b> (for echo cancellation):</p>
+<p class="Pp"></p>
+<pre>// Mix all sources except the client we're sending to (prevents echo)
+float output_for_client[MIXER_FRAME_SIZE];
+int samples = mixer_process_excluding_source(mixer, output_for_client,
+<br/>
+                                              MIXER_FRAME_SIZE, client_id);
+send_audio_to_client(client_id, output_for_client, samples);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Cleanup"><a class="permalink" href="#Cleanup">Cleanup</a></h2>
+<p class="Pp"><b>Destroy Mixer</b>:</p>
+<p class="Pp"></p>
+<pre>mixer_destroy(mixer);  // Pass pointer, not address-of
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Active_Speaker_Detection_&amp;_Ducking"><a class="permalink" href="#Active_Speaker_Detection_&amp;_Ducking">Active
+  Speaker Detection &amp; Ducking</a></h1>
+<p class="Pp">The ducking system automatically identifies who's speaking and
+    attenuates background sources to improve clarity. This is more sophisticated
+    than simple volume scaling.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>How It Works</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Leader Detection</b>: The loudest source(s) above threshold_dB are
+      identified</li>
+  <li><b>Margin Tracking</b>: Sources within leader_margin_dB of the loudest are
+      also &quot;leaders&quot;</li>
+  <li><b>Attenuation</b>: Non-leader sources are attenuated by atten_dB</li>
+  <li><b>Smooth Transitions</b>: Attack/release curves prevent jarring volume
+      changes</li>
+</ul>
+<p class="Pp">The ducking uses dB-based audio analysis:</p>
+<p class="Pp"></p>
+<pre>// Ducking parameters (in dB and milliseconds)
+typedef struct {
+<br/>
+    float threshold_dB;    // Speaking threshold (-40dB typical)
+<br/>
+    float leader_margin_dB; // Margin to be considered a leader (6dB typical)
+<br/>
+    float atten_dB;        // Attenuation for non-leaders (-12dB typical)
+<br/>
+    float attack_ms;       // How fast ducking engages (10ms typical)
+<br/>
+    float release_ms;      // How fast ducking releases (100ms typical)
+} ducking_t;
+</pre>
+<p class="Pp"><b>Practical Example</b>:</p>
+<ul class="Bl-bullet">
+  <li>Person A speaks at -20dB (loud)</li>
+  <li>Person B speaks at -25dB (within 6dB margin of A)</li>
+  <li>Person C has background noise at -50dB (below threshold)</li>
+  <li>Result: A and B are heard at full volume, C is attenuated by 12dB</li>
+</ul>
+<p class="Pp">This allows multiple people to have a natural conversation while
+    suppressing background noise from inactive participants.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
+  Safety</a></h1>
+<p class="Pp"><b>Reader-Writer Lock Protection</b>:</p>
+<ul class="Bl-bullet">
+  <li>Source array protected by reader-writer locks (rwlock)</li>
+  <li>Multiple readers can process audio concurrently</li>
+  <li>Writers (add/remove source) get exclusive access</li>
+  <li>Bitset operations are atomic for source exclusion</li>
+</ul>
+<p class="Pp"><b>Thread Model</b>:</p>
+<p class="Pp"></p>
+<pre>// Network receive thread - writes to client's ring buffer
+void* client_receive_thread(void *arg) {
+<br/>
+    client_t *client = (client_t *)arg;
+<br/>
+    while (running) {
+<br/>
+        float samples[256];
+<br/>
+        receive_audio_packet(client-&gt;id, samples, 256);
+<br/>
+        // Write directly to client's audio ring buffer
+<br/>
+        audio_ring_buffer_write(client-&gt;audio_buffer, samples, 256);
+<br/>
+    }
+<br/>
+    return NULL;
+}
+// Audio processing thread - reads from all ring buffers via mixer
+void* audio_mix_thread(void *arg) {
+<br/>
+    mixer_t *mixer = (mixer_t *)arg;
+<br/>
+    while (running) {
+<br/>
+        float mixed[MIXER_FRAME_SIZE];
+<br/>
+        int samples = mixer_process(mixer, mixed, MIXER_FRAME_SIZE);
+<br/>
+        if (samples &gt; 0) {
+<br/>
+            send_to_all_clients(mixed, samples);
+<br/>
+        }
+<br/>
+    }
+<br/>
+    return NULL;
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance"><a class="permalink" href="#Performance">Performance</a></h1>
+<p class="Pp"><b>Mixing Algorithm</b>:</p>
+<ul class="Bl-bullet">
+  <li>Simple additive mixing with ducking</li>
+  <li>SIMD optimization where available</li>
+  <li>Minimal memory allocations</li>
+  <li>Cache-friendly data layout</li>
+</ul>
+<p class="Pp"><b>CPU Usage</b>:</p>
+<ul class="Bl-bullet">
+  <li>2 clients: ~1% CPU</li>
+  <li>4 clients: ~2% CPU</li>
+  <li>8 clients: ~3% CPU</li>
+  <li>16 clients: ~5% CPU</li>
+</ul>
+<p class="Pp"><b>Latency</b>:</p>
+<ul class="Bl-bullet">
+  <li>Mixing latency: &lt;1ms</li>
+  <li>Total audio latency: ~50-60ms (includes network)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Buffer_Management"><a class="permalink" href="#Buffer_Management">Buffer
+  Management</a></h1>
+<p class="Pp"><b>Per-Client Buffers</b>:</p>
+<ul class="Bl-bullet">
+  <li>Fixed-size circular buffers</li>
+  <li>Automatic overflow handling</li>
+  <li>Underrun detection and handling</li>
+</ul>
+<p class="Pp"><b>Buffer Configuration</b>:</p>
+<p class="Pp"></p>
+<pre>mixer.buffer_size = 8192;  // Samples per client buffer
+mixer.min_frames = 256;    // Minimum frames for mixing
+</pre>
+<p class="Pp"><b>Overflow Handling</b>:</p>
+<ul class="Bl-bullet">
+  <li>Drop oldest frames when buffer full</li>
+  <li>Log warning message</li>
+  <li>Continue operation without crash</li>
+</ul>
+<p class="Pp"><b>Underrun Handling</b>:</p>
+<ul class="Bl-bullet">
+  <li>Output silence when insufficient data</li>
+  <li>Log debug message</li>
+  <li>Wait for more data</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Integration_Example"><a class="permalink" href="#Integration_Example">Integration
+  Example</a></h1>
+<p class="Pp"><b>Complete Server Integration</b>:</p>
+<p class="Pp"></p>
+<pre>// Initialize mixer
+mixer_t mixer;
+mixer_init(&amp;mixer, MAX_CLIENTS);
+// When client connects
+void on_client_connect(uint32_t client_id) {
+<br/>
+    mixer_add_client(&amp;mixer, client_id);
+<br/>
+    log_info(&quot;Client %u added to audio mixer&quot;, client_id);
+}
+// When client disconnects
+void on_client_disconnect(uint32_t client_id) {
+<br/>
+    mixer_remove_client(&amp;mixer, client_id);
+<br/>
+    log_info(&quot;Client %u removed from audio mixer&quot;, client_id);
+}
+// When audio packet arrives
+void on_audio_packet(uint32_t client_id, float *samples, size_t num_frames) {
+<br/>
+    mixer_submit_audio(&amp;mixer, client_id, samples, num_frames);
+}
+// Audio mixing thread
+void* audio_thread(void *arg) {
+<br/>
+    float mixed[256];
+<br/>
+    while (running) {
+<br/>
+        size_t frames = mixer_process(&amp;mixer, mixed, 256);
+<br/>
+        if (frames &gt; 0) {
+<br/>
+            broadcast_audio_to_all_clients(mixed, frames);
+<br/>
+        }
+<br/>
+        usleep(5000);  // ~5ms sleep for 44.1kHz
+<br/>
+    }
+<br/>
+    return NULL;
+}
+// Cleanup
+mixer_destroy(&amp;mixer);
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<p class="Pp"><b>DO</b>:</p>
+<ul class="Bl-bullet">
+  <li>Enable ducking for 4+ clients</li>
+  <li>Monitor buffer overflows/underruns</li>
+  <li>Use consistent sample rates across clients</li>
+  <li>Remove clients from mixer on disconnect</li>
+  <li>Use dedicated audio mixing thread</li>
+</ul>
+<p class="Pp"><b>DON'T</b>:</p>
+<ul class="Bl-bullet">
+  <li>Don't mix audio on network thread</li>
+  <li>Don't forget to remove disconnected clients</li>
+  <li>Don't use different sample rates per client</li>
+  <li>Don't disable ducking with many clients</li>
+  <li>Don't mix audio without mutex protection</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">mixer.h
+<p class="Pp"></p>
+<p class="Pp">audio.h</p>
+<p class="Pp"></p>
+<p class="Pp">ringbuffer.h</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

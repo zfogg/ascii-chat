@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>participant.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">participant.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">participant.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">participant.h - &#x1F464; Client-side session participation
+    abstraction</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_participant_callbacks_t</b>
+  <br/>
+  Callback function prototypes for session participant events. struct
+    <b>session_participant_config_t</b>
+  <br/>
+  Configuration for session participant.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct acip_transport <b>acip_transport_t</b>
+  <br/>
+  Forward declaration of ACIP transport.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>session_participant_t</b> * <b>session_participant_create</b>
+    (const <b>session_participant_config_t</b> *config)
+  <br/>
+  Create a new session participant. void <b>session_participant_destroy</b>
+    (<b>session_participant_t</b> *p)
+  <br/>
+  Destroy session participant and free resources. asciichat_error_t
+    <b>session_participant_connect</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Connect to session server. void <b>session_participant_disconnect</b>
+    (<b>session_participant_t</b> *p)
+  <br/>
+  Disconnect from session server. <b>bool</b>
+    <b>session_participant_is_connected</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Check if participant is connected. uint32_t
+    <b>session_participant_get_client_id</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Get assigned client ID. asciichat_error_t
+    <b>session_participant_start_video</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Start video capture and streaming. void <b>session_participant_stop_video</b>
+    (<b>session_participant_t</b> *p)
+  <br/>
+  Stop video capture and streaming. <b>bool</b>
+    <b>session_participant_is_video_active</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Check if video is streaming. asciichat_error_t
+    <b>session_participant_start_audio</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Start audio capture and streaming. void <b>session_participant_stop_audio</b>
+    (<b>session_participant_t</b> *p)
+  <br/>
+  Stop audio capture and streaming. <b>bool</b>
+    <b>session_participant_is_audio_active</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Check if audio is streaming. asciichat_error_t
+    <b>session_participant_get_settings</b> (<b>session_participant_t</b> *p,
+    <b>session_settings_t</b> *settings)
+  <br/>
+  Get current session settings. asciichat_error_t
+    <b>session_participant_request_settings</b> (<b>session_participant_t</b>
+    *p, const <b>session_settings_t</b> *settings)
+  <br/>
+  Request session settings update (if permitted). asciichat_error_t
+    <b>session_participant_start_video_capture</b> (<b>session_participant_t</b>
+    *p)
+  <br/>
+  Start video capture and transmission to host. void
+    <b>session_participant_stop_video_capture</b> (<b>session_participant_t</b>
+    *p)
+  <br/>
+  Stop video capture and transmission. asciichat_error_t
+    <b>session_participant_start_audio_capture</b> (<b>session_participant_t</b>
+    *p)
+  <br/>
+  Start audio capture and transmission to host. void
+    <b>session_participant_stop_audio_capture</b> (<b>session_participant_t</b>
+    *p)
+  <br/>
+  Stop audio capture and transmission. <b>socket_t</b>
+    <b>session_participant_get_socket</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Get the socket from a participant context. asciichat_error_t
+    <b>session_participant_set_transport</b> (<b>session_participant_t</b> *p,
+    <b>acip_transport_t</b> *transport)
+  <br/>
+  Set an alternative transport for the participant. <b>acip_transport_t</b> *
+    <b>session_participant_get_transport</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Get the current transport for the participant. <b>bool</b>
+    <b>session_participant_has_transport</b> (<b>session_participant_t</b> *p)
+  <br/>
+  Check if participant has an active alternative transport.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F464; Client-side session participation abstraction</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>participant.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

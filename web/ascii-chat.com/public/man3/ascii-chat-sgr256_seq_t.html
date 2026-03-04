@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>sgr256_seq_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">sgr256_seq_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">sgr256_seq_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">sgr256_seq_t - Pre-computed 256-color ANSI SGR sequence.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>seq</b> [12]
+  <br/>
+  ANSI sequence string (max 11 bytes for <i>\[38;5;NNNm&quot;).</i> uint8_t
+    <b>len</b>
+  <br/>
+  Length of sequence string.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Pre-computed 256-color ANSI SGR sequence.</p>
+<p class="Pp">Definition at line <b>53</b> of file <b>sgr.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_sgr256_seq_t::len"><a class="permalink" href="#uint8_t_sgr256_seq_t::len">uint8_t
+  sgr256_seq_t::len</a></h2>
+<p class="Pp">Length of sequence string.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>sgr.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_sgr256_seq_t::seq_12_"><a class="permalink" href="#char_sgr256_seq_t::seq_12_">char
+  sgr256_seq_t::seq[12]</a></h2>
+<p class="Pp">ANSI sequence string (max 11 bytes for
+  &quot;\e[38;5;NNNm&quot;).</p>
+<p class="Pp">Definition at line <b>54</b> of file <b>sgr.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

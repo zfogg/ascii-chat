@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>foreground.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">foreground.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">foreground.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">foreground.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>image_print</b> (const image_t *p, const char *palette)
+  <br/>
+  void <b>quantize_color</b> (int *r, int *g, int *b, int levels)
+  <br/>
+  char * <b>image_print_color</b> (const image_t *p, const char *palette)
+  <br/>
+  char * <b>rgb_to_ansi_fg</b> (int r, int g, int b)
+  <br/>
+  char * <b>rgb_to_ansi_bg</b> (int r, int g, int b)
+  <br/>
+  void <b>rgb_to_ansi_8bit</b> (int r, int g, int b, int *fg_code, int *bg_code)
+  <br/>
+  char * <b>image_print_256color</b> (const image_t *image, const char *palette)
+  <br/>
+  char * <b>image_print_16color</b> (const image_t *image, const char *palette)
+  <br/>
+  char * <b>image_print_16color_dithered</b> (const image_t *image, const char
+    *palette)
+  <br/>
+  char * <b>image_print_16color_dithered_with_background</b> (const image_t
+    *image, <b>bool</b> use_background, const char *palette)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_(const_image_t_*_p,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_(const_image_t_*_p,_const_char_*_palette)">char
+  * image_print (const image_t * p, const char * palette)</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>27                                                          {
+28   if (!p || !palette) {
+29     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_print: p=%p or palette=%p is NULL&quot;, p, palette);
+30     return NULL;
+31   }
+32   if (!p-&gt;pixels) {
+33     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_print: p-&gt;pixels is NULL&quot;);
+34     return NULL;
+35   }
+36 
+37   const int h = p-&gt;h;
+38   const int w = p-&gt;w;
+39 
+40   if (h &lt;= 0 || w &lt;= 0) {
+41     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_print: invalid dimensions h=%d, w=%d&quot;, h, w);
+42     return NULL;
+43   }
+44 
+45   // Get UTF-8 character cache for proper multi-byte character support
+46   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+47   if (!utf8_cache) {
+48     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 palette cache for scalar rendering&quot;);
+49     return NULL;
+50   }
+51 
+52   // Character index ramp is now part of UTF-8 cache - no separate cache needed
+53 
+54   // Need space for h rows with UTF-8 characters, plus h-1 newlines, plus null terminator
+55   const size_t max_char_bytes = 4; // Max UTF-8 character size
+56 
+57   const rgb_pixel_t *pix = p-&gt;pixels;
+58 
+59   // Use outbuf_t for efficient UTF-8 RLE emission (same as SIMD renderers)
+60   outbuf_t ob = {0};
+61 
+62   // Calculate buffer size with overflow checking
+63   size_t w_times_bytes;
+64   if (checked_size_mul((size_t)w, max_char_bytes, &amp;w_times_bytes) != ASCIICHAT_OK) {
+65     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer size overflow: width too large for UTF-8 encoding&quot;);
+66     return NULL;
+67   }
+68 
+69   size_t w_times_bytes_plus_one;
+70   if (checked_size_add(w_times_bytes, 1, &amp;w_times_bytes_plus_one) != ASCIICHAT_OK) {
+71     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer size overflow: width * bytes + 1 overflow&quot;);
+72     return NULL;
+73   }
+74 
+75   if (checked_size_mul((size_t)h, w_times_bytes_plus_one, &amp;ob.cap) != ASCIICHAT_OK) {
+76     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Buffer size overflow: height * (width * bytes + 1) overflow&quot;);
+77     return NULL;
+78   }
+79 
+80   ob.buf = SAFE_MALLOC(ob.cap ? ob.cap : 1, char *);
+81   if (!ob.buf) {
+82     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate output buffer for scalar rendering&quot;);
+83     return NULL;
+84   }
+85 
+86   // Process pixels with UTF-8 RLE emission (same approach as SIMD)
+87   for (int y = 0; y &lt; h; y++) {
+88     const int row_offset = y * w;
+89 
+90     for (int x = 0; x &lt; w;) {
+91       const rgb_pixel_t pixel = pix[row_offset + x];
+92       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+93       const int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+94 
+95       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+96       uint8_t safe_luminance = clamp_rgb(luminance);
+97       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+98       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+99 
+100       // Use same 64-entry cache as SIMD for consistency
+101       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache64[luma_idx];
+102 
+103       // Find run length for same character (RLE optimization)
+104       int j = x + 1;
+105       while (j &lt; w) {
+106         const rgb_pixel_t next_pixel = pix[row_offset + j];
+107         const int next_luminance = (77 * next_pixel.r + 150 * next_pixel.g + 29 * next_pixel.b + 128) &gt;&gt; 8;
+108         uint8_t next_safe_luminance = clamp_rgb(next_luminance);
+109         uint8_t next_luma_idx = (uint8_t)(next_safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+110         uint8_t next_char_idx = utf8_cache-&gt;char_index_ramp[next_luma_idx]; // Map to character index (same as SIMD)
+111         if (next_char_idx != char_idx)
+112           break;
+113         j++;
+114       }
+115       uint32_t run = (uint32_t)(j - x);
+116 
+117       // Emit UTF-8 character with RLE (same as SIMD)
+118       ob_write(&amp;ob, (const char *)char_info-&gt;utf8_bytes, char_info-&gt;byte_len);
+119       if (rep_is_profitable(run)) {
+120         emit_rep(&amp;ob, run - 1);
+121       } else {
+122         for (uint32_t k = 1; k &lt; run; k++) {
+123           ob_write(&amp;ob, (const char *)char_info-&gt;utf8_bytes, char_info-&gt;byte_len);
+124         }
+125       }
+126       x = j;
+127     }
+128 
+129     // Add newline between rows (except last row)
+130     if (y != h - 1) {
+131       ob_putc(&amp;ob, '\n');
+132     }
+133   }
+134 
+135   ob_term(&amp;ob);
+136   return ob.buf;
+137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>emit_rep()</b>, <b>get_utf8_palette_cache()</b>,
+    <b>ob_putc()</b>, <b>ob_term()</b>, <b>ob_write()</b>, and
+    <b>rep_is_profitable()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_16color_(const_image_t_*_image,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_16color_(const_image_t_*_image,_const_char_*_palette)">char
+  * image_print_16color (const image_t * image, const char * palette)</a></h2>
+<p class="Pp">Definition at line <b>453</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>453                                                                      {
+454   if (!image || !image-&gt;pixels || !palette) {
+455     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+456     return NULL;
+457   }
+458 
+459   int h = image-&gt;h;
+460   int w = image-&gt;w;
+461 
+462   if (h &lt;= 0 || w &lt;= 0) {
+463     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color: invalid dimensions h=%d, w=%d&quot;, h, w);
+464     return NULL;
+465   }
+466 
+467   // Initialize 16-color lookup table
+468   ansi_fast_init_16color();
+469 
+470   // Calculate buffer size (smaller than 256-color due to shorter ANSI sequences)
+471   // Space for ANSI codes + newlines
+472   // Calculate with overflow checking
+473   size_t h_times_w;
+474   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w) != ASCIICHAT_OK) {
+475     return NULL;
+476   }
+477 
+478   size_t h_times_w_times_12;
+479   if (checked_size_mul(h_times_w, 12u, &amp;h_times_w_times_12) != ASCIICHAT_OK) {
+480     return NULL;
+481   }
+482 
+483   size_t buffer_size;
+484   if (checked_size_add(h_times_w_times_12, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
+485     return NULL;
+486   }
+487 
+488   char *buffer;
+489   buffer = SAFE_MALLOC(buffer_size, char *);
+490 
+491   char *ptr = buffer;
+492   const char *reset_code = &quot;\033[0m&quot;;
+493 
+494   for (int y = 0; y &lt; h; y++) {
+495     for (int x = 0; x &lt; w; x++) {
+496       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+497 
+498       // Convert RGB to 16-color index and generate ANSI sequence
+499       uint8_t color_index = rgb_to_16color(pixel.r, pixel.g, pixel.b);
+500       ptr = append_16color_fg(ptr, color_index);
+501 
+502       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+503       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+504 
+505       // Use UTF-8 cache which contains character index ramp
+506       utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+507       if (!utf8_cache) {
+508         SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache&quot;);
+509         return NULL;
+510       }
+511 
+512       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+513       uint8_t safe_luminance = clamp_rgb(luminance);
+514       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+515       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+516 
+517       // Use direct palette character lookup (same as SIMD would do)
+518       char ascii_char = palette[char_idx];
+519       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+520 
+521       if (char_info) {
+522         // Copy UTF-8 character bytes
+523         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+524           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+525         }
+526       } else {
+527         // Fallback to simple ASCII if UTF-8 cache fails
+528         size_t palette_len = strlen(palette);
+529         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+530         *ptr++ = palette[palette_index];
+531       }
+532     }
+533 
+534     // Add reset and newline at end of each row
+535     SAFE_STRNCPY(ptr, reset_code, 5);
+536     ptr += strlen(reset_code);
+537     if (y &lt; h - 1) {
+538       *ptr++ = '\n';
+539     }
+540   }
+541 
+542   *ptr = '\0';
+543   return buffer;
+544 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_fast_init_16color()</b>,
+    <b>append_16color_fg()</b>, <b>buffer_size</b>,
+    <b>get_utf8_palette_cache()</b>, and <b>rgb_to_16color()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_16color_dithered_(const_image_t_*_image,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_16color_dithered_(const_image_t_*_image,_const_char_*_palette)">char
+  * image_print_16color_dithered (const image_t * image, const char *
+  palette)</a></h2>
+<p class="Pp">Definition at line <b>570</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>570                                                                               {
+571   if (!image || !image-&gt;pixels || !palette) {
+572     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+573     return NULL;
+574   }
+575 
+576   int h = image-&gt;h;
+577   int w = image-&gt;w;
+578 
+579   if (h &lt;= 0 || w &lt;= 0) {
+580     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color_dithered: invalid dimensions h=%d, w=%d&quot;, h, w);
+581     return NULL;
+582   }
+583 
+584   // Initialize 16-color lookup table
+585   ansi_fast_init_16color();
+586 
+587   // Allocate error buffer for Floyd-Steinberg dithering
+588   size_t pixel_count = (size_t)h * (size_t)w;
+589   rgb_error_t *error_buffer;
+590   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
+591 
+592   // Calculate buffer size (same as non-dithered version)
+593   // Space for ANSI codes + newlines
+594   // Calculate with overflow checking
+595   size_t h_times_w2;
+596   if (checked_size_mul((size_t)h, (size_t)w, &amp;h_times_w2) != ASCIICHAT_OK) {
+597     SAFE_FREE(error_buffer);
+598     return NULL;
+599   }
+600 
+601   size_t h_times_w2_times_12;
+602   if (checked_size_mul(h_times_w2, 12u, &amp;h_times_w2_times_12) != ASCIICHAT_OK) {
+603     SAFE_FREE(error_buffer);
+604     return NULL;
+605   }
+606 
+607   size_t buffer_size;
+608   if (checked_size_add(h_times_w2_times_12, (size_t)h, &amp;buffer_size) != ASCIICHAT_OK) {
+609     SAFE_FREE(error_buffer);
+610     return NULL;
+611   }
+612 
+613   char *buffer;
+614   buffer = SAFE_MALLOC(buffer_size, char *);
+615 
+616   char *ptr = buffer;
+617   const char *reset_code = &quot;\033[0m&quot;;
+618 
+619   for (int y = 0; y &lt; h; y++) {
+620     for (int x = 0; x &lt; w; x++) {
+621       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+622 
+623       // Convert RGB to 16-color index using dithering
+624       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
+625       ptr = append_16color_fg(ptr, color_index);
+626 
+627       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+628       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+629 
+630       // Use UTF-8 cache which contains character index ramp
+631       utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+632       if (!utf8_cache) {
+633         SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache&quot;);
+634         return NULL;
+635       }
+636 
+637       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+638       uint8_t safe_luminance = clamp_rgb(luminance);
+639       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+640       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+641 
+642       // Use direct palette character lookup (same as SIMD would do)
+643       char ascii_char = palette[char_idx];
+644       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+645 
+646       if (char_info) {
+647         // Copy UTF-8 character bytes
+648         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+649           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+650         }
+651       } else {
+652         // Fallback to simple ASCII if UTF-8 cache fails
+653         size_t palette_len = strlen(palette);
+654         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+655         *ptr++ = palette[palette_index];
+656       }
+657     }
+658 
+659     // Add reset and newline at end of each row
+660     SAFE_STRNCPY(ptr, reset_code, 5);
+661     ptr += strlen(reset_code);
+662     if (y &lt; h - 1) {
+663       *ptr++ = '\n';
+664     }
+665   }
+666 
+667   *ptr = '\0';
+668   SAFE_FREE(error_buffer); // Clean up error buffer
+669   return buffer;
+670 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_fast_init_16color()</b>,
+    <b>append_16color_fg()</b>, <b>buffer_size</b>,
+    <b>get_utf8_palette_cache()</b>, and <b>rgb_to_16color_dithered()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_16color_dithered_with_background_(const_image_t_*_image,_"><a class="permalink" href="#char_*_image_print_16color_dithered_with_background_(const_image_t_*_image,_">char
+  * image_print_16color_dithered_with_background (const image_t * image,
+  <b>bool</b> use_background, const char * palette)</a></h2>
+<p class="Pp">Definition at line <b>673</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>673                                                                                                                    {
+674   if (!image || !image-&gt;pixels || !palette) {
+675     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+676     return NULL;
+677   }
+678 
+679   int h = image-&gt;h;
+680   int w = image-&gt;w;
+681 
+682   if (h &lt;= 0 || w &lt;= 0) {
+683     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_print_16color_dithered_with_background: invalid dimensions h=%d, w=%d&quot;, h, w);
+684     return NULL;
+685   }
+686 
+687   // Initialize 16-color lookup table
+688   ansi_fast_init_16color();
+689 
+690   // Allocate error buffer for Floyd-Steinberg dithering
+691   size_t pixel_count = (size_t)h * (size_t)w;
+692   rgb_error_t *error_buffer;
+693   error_buffer = SAFE_CALLOC(pixel_count, sizeof(rgb_error_t), rgb_error_t *);
+694 
+695   // Calculate buffer size (larger for background mode due to more ANSI sequences)
+696   size_t buffer_size =
+697       (size_t)h * (size_t)w * (use_background ? 24 : 12) + (size_t)h; // Space for ANSI codes + newlines
+698   char *buffer;
+699   buffer = SAFE_MALLOC(buffer_size, char *);
+700 
+701   char *ptr = buffer;
+702   const char *reset_code = &quot;\033[0m&quot;;
+703 
+704   for (int y = 0; y &lt; h; y++) {
+705     for (int x = 0; x &lt; w; x++) {
+706       rgb_pixel_t pixel = image-&gt;pixels[y * w + x];
+707 
+708       // Convert RGB to 16-color index using dithering
+709       uint8_t color_index = rgb_to_16color_dithered(pixel.r, pixel.g, pixel.b, x, y, w, h, error_buffer);
+710 
+711       if (use_background) {
+712         // Background mode: use contrasting foreground on background color
+713         uint8_t bg_r, bg_g, bg_b;
+714         get_16color_rgb(color_index, &amp;bg_r, &amp;bg_g, &amp;bg_b);
+715 
+716         // Calculate luminance to choose contrasting foreground
+717         int bg_luminance = (bg_r * 77 + bg_g * 150 + bg_b * 29) / 256;
+718         uint8_t fg_color = (bg_luminance &lt; 127) ? 15 : 0; // White on dark, black on bright
+719 
+720         ptr = append_16color_bg(ptr, color_index); // Set background to pixel color
+721         ptr = append_16color_fg(ptr, fg_color);    // Set contrasting foreground
+722       } else {
+723         // Foreground mode: set foreground to pixel color
+724         ptr = append_16color_fg(ptr, color_index);
+725       }
+726 
+727       // Use same luminance formula as SIMD: ITU-R BT.601 with rounding
+728       int luminance = (77 * pixel.r + 150 * pixel.g + 29 * pixel.b + 128) &gt;&gt; 8;
+729 
+730       // Use UTF-8 cache which contains character index ramp
+731       utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+732       if (!utf8_cache) {
+733         SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 cache&quot;);
+734         return NULL;
+735       }
+736 
+737       // Use same 6-bit precision as SIMD: map luminance (0-255) to bucket (0-63) then to character
+738       uint8_t safe_luminance = clamp_rgb(luminance);
+739       uint8_t luma_idx = (uint8_t)(safe_luminance &gt;&gt; 2);        // 0-63 index (same as SIMD)
+740       uint8_t char_idx = utf8_cache-&gt;char_index_ramp[luma_idx]; // Map to character index (same as SIMD)
+741 
+742       // Use direct palette character lookup (same as SIMD would do)
+743       char ascii_char = palette[char_idx];
+744       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[(unsigned char)ascii_char];
+745 
+746       if (char_info) {
+747         // Copy UTF-8 character bytes
+748         for (int byte_idx = 0; byte_idx &lt; char_info-&gt;byte_len; byte_idx++) {
+749           *ptr++ = char_info-&gt;utf8_bytes[byte_idx];
+750         }
+751       } else {
+752         // Fallback to simple ASCII if UTF-8 cache fails
+753         size_t palette_len = strlen(palette);
+754         int palette_index = (luminance * ((int)palette_len - 1) + 127) / 255;
+755         *ptr++ = palette[palette_index];
+756       }
+757     }
+758 
+759     // Add reset and newline at end of each row
+760     SAFE_STRNCPY(ptr, reset_code, 5);
+761     ptr += strlen(reset_code);
+762     if (y &lt; h - 1) {
+763       *ptr++ = '\n';
+764     }
+765   }
+766 
+767   *ptr = '\0';
+768   SAFE_FREE(error_buffer); // Clean up error buffer
+769   return buffer;
+770 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_fast_init_16color()</b>,
+    <b>append_16color_bg()</b>, <b>append_16color_fg()</b>, <b>buffer_size</b>,
+    <b>get_16color_rgb()</b>, <b>get_utf8_palette_cache()</b>, and
+    <b>rgb_to_16color_dithered()</b>.</p>
+<p class="Pp">Referenced by <b>image_print_color_simd()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_256color_(const_image_t_*_image,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_256color_(const_image_t_*_image,_const_char_*_palette)">char
+  * image_print_256color (const image_t * image, const char * palette)</a></h2>
+<p class="Pp">Definition at line <b>413</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>413                                                                       {
+414   if (!image || !image-&gt;pixels || !palette) {
+415     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image=%p or image-&gt;pixels=%p or palette=%p is NULL&quot;, image, image-&gt;pixels, palette);
+416     return NULL;
+417   }
+418 
+419   // Use the existing optimized SIMD colored printing (no background for 256-color mode)
+420 #ifdef SIMD_SUPPORT
+421   char *result = image_print_color_simd((image_t *)image, false, true, palette);
+422 #else
+423   char *result = image_print_color(image, palette);
+424 #endif
+425 
+426   return result;
+427 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>image_print_color()</b>, and
+    <b>image_print_color_simd()</b>.</p>
+<p class="Pp">Referenced by <b>image_print_color_simd()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_color_(const_image_t_*_p,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_color_(const_image_t_*_p,_const_char_*_palette)">char
+  * image_print_color (const image_t * p, const char * palette)</a></h2>
+<p class="Pp">Converts an image to colored ASCII art with ANSI escape codes.</p>
+<p class="Pp"></p>
+<p class="Pp">This function generates a string representation of an image where
+    each pixel is converted to an ASCII character with ANSI color codes. The
+    character is chosen based on luminance, and colors are applied using 24-bit
+    RGB ANSI escape sequences.</p>
+<p class="Pp"></p>
+<p class="Pp">Buffer allocation is precisely calculated to avoid waste and
+    prevent overflows:</p>
+<ul class="Bl-bullet">
+  <li>Each pixel: 1 ASCII char + foreground ANSI code (19 bytes max)</li>
+  <li>Background mode: adds background ANSI code (19 bytes max per pixel)</li>
+  <li>Each row: reset sequence (\033[0m = 4 bytes) + newline (except last
+    row)</li>
+  <li>At the end: null terminator (1 byte)</li>
+</ul>
+<p class="Pp">Color modes:</p>
+<ul class="Bl-bullet">
+  <li>Foreground only (default): ASCII characters with colored foreground</li>
+  <li>Background mode (opt_background_color): colored background with
+      contrasting foreground (black on bright backgrounds, white on dark
+      backgrounds)</li>
+</ul>
+<p class="Pp">ANSI escape code format:</p>
+<ul class="Bl-bullet">
+  <li>Foreground: \033[38;2;R;G;Bm (11-19 bytes depending on RGB values)</li>
+  <li>Background: \033[48;2;R;G;Bm (11-19 bytes depending on RGB values)</li>
+  <li>Reset: \033[0m (4 bytes)</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Pointer to image_t structure containing pixel
+  data</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Dynamically allocated string containing colored ASCII
+  art, or NULL on error. Caller is responsible for freeing the returned
+  string.</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The function performs overflow checks to prevent integer
+  overflow when calculating buffer sizes for very large images.
+<p class="Pp"></p>
+<p class="Pp">Uses global opt_background_color to determine color mode.</p>
+<p class="Pp"></p>
+<p class="Pp">Exits with ERROR_BUFFER if buffer overflow is detected during
+    string construction (should never happen with correct calculation).</p>
+</div>
+<p class="Pp">Definition at line <b>191</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>191                                                                {
+192   if (!p || !palette) {
+193     SET_ERRNO(ERROR_INVALID_PARAM, &quot;p=%p or palette=%p is NULL&quot;, p, palette);
+194     return NULL;
+195   }
+196   if (!p-&gt;pixels) {
+197     SET_ERRNO(ERROR_INVALID_PARAM, &quot;p-&gt;pixels is NULL&quot;);
+198     return NULL;
+199   }
+200 
+201   // Get UTF-8 character cache for proper multi-byte character support
+202   utf8_palette_cache_t *utf8_cache = get_utf8_palette_cache(palette);
+203   if (!utf8_cache) {
+204     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to get UTF-8 palette cache for scalar color rendering&quot;);
+205     return NULL;
+206   }
+207 
+208   const int h = p-&gt;h;
+209   const int w = p-&gt;w;
+210 
+211   // Constants for ANSI escape codes (using exact sizes from ansi_fast.c)
+212   const size_t max_fg_ansi = 19; // \033[38;2;255;255;255m
+213   const size_t max_bg_ansi = 19; // \033[48;2;255;255;255m
+214   const size_t reset_len = 4;    // \033[0m
+215 
+216   const size_t h_sz = (size_t)h;
+217   const size_t w_sz = (size_t)w;
+218 
+219   // Ensure h * w won't overflow
+220   if (h_sz &gt; 0 &amp;&amp; w_sz &gt; SIZE_MAX / h_sz) {
+221     SET_ERRNO(ERROR_INVALID_STATE, &quot;Image dimensions too large: %d x %d&quot;, h, w);
+222     return NULL;
+223   }
+224 
+225   const size_t total_pixels = h_sz * w_sz;
+226   const size_t bytes_per_pixel = 1 + max_fg_ansi + max_bg_ansi; // Conservative estimate for max possible
+227 
+228   // Ensure total_pixels * bytes_per_pixel won't overflow
+229   if (total_pixels &gt; SIZE_MAX / bytes_per_pixel) {
+230     SET_ERRNO(ERROR_INVALID_STATE, &quot;Pixel data too large for buffer: %d x %d&quot;, h, w);
+231     return NULL;
+232   }
+233 
+234   const size_t pixel_bytes = total_pixels * bytes_per_pixel;
+235 
+236   // Per row: newline (except last row)
+237   // Final reset added once by ansi_rle_finish()
+238   const size_t total_newlines = (h_sz &gt; 0) ? (h_sz - 1) : 0;
+239   const size_t final_reset = reset_len; // One reset at end (from ansi_rle_finish)
+240 
+241   // Final buffer size: pixel bytes + per-row newlines + final reset + null terminator
+242   const size_t extra_bytes = total_newlines + final_reset + 1;
+243 
+244   if (pixel_bytes &gt; SIZE_MAX - extra_bytes) {
+245     SET_ERRNO(ERROR_INVALID_STATE, &quot;Final buffer size would overflow: %d x %d&quot;, h, w);
+246     return NULL;
+247   }
+248 
+249   const size_t lines_size = pixel_bytes + extra_bytes;
+250   char *lines;
+251   lines = SAFE_MALLOC(lines_size, char *);
+252 
+253   const rgb_pixel_t *pix = p-&gt;pixels;
+254   // char *current_pos = lines;
+255   // const char *buffer_end = lines + lines_size - 1; // reserve space for '\0'
+256 
+257   // Initialize the optimized RLE context for color sequence caching
+258   // Note: This function should be called via image_print_with_capabilities() for proper per-client rendering
+259   ansi_rle_context_t rle_ctx;
+260   ansi_color_mode_t color_mode = ANSI_MODE_FOREGROUND; // Default to foreground-only for legacy usage
+261   ansi_rle_init(&amp;rle_ctx, lines, lines_size, color_mode);
+262 
+263   // Process each pixel using the optimized RLE context
+264   for (int y = 0; y &lt; h; y++) {
+265     const int row_offset = y * w;
+266 
+267     for (int x = 0; x &lt; w; x++) {
+268       const rgb_pixel_t pixel = pix[row_offset + x];
+269       int r = pixel.r, g = pixel.g, b = pixel.b;
+270       // Standard ITU-R BT.601 luminance calculation
+271       const int luminance = (77 * r + 150 * g + 29 * b + 128) &gt;&gt; 8;
+272 
+273       // Use UTF-8 character cache for proper character selection
+274       uint8_t safe_luminance = clamp_rgb(luminance);
+275       const utf8_char_t *char_info = &amp;utf8_cache-&gt;cache[safe_luminance];
+276 
+277       // For RLE, we need to pass the first byte of the UTF-8 character
+278       // Note: RLE system may need updates for full UTF-8 support
+279       const char ascii_char = char_info-&gt;utf8_bytes[0];
+280 
+281       ansi_rle_add_pixel(&amp;rle_ctx, (uint8_t)r, (uint8_t)g, (uint8_t)b, ascii_char);
+282     }
+283 
+284     // Add newline after each row (except the last row)
+285     if (y != h - 1 &amp;&amp; rle_ctx.length &lt; rle_ctx.capacity - 1) {
+286       rle_ctx.buffer[rle_ctx.length++] = '\n';
+287     }
+288   }
+289 
+290   ansi_rle_finish(&amp;rle_ctx);
+291 
+292   // DEBUG: Validate frame integrity right after rendering
+293   // Check for incomplete ANSI sequences line by line
+294   {
+295     const char *line_start = lines;
+296     int line_num = 0;
+297     while (*line_start) {
+298       const char *line_end = line_start;
+299       while (*line_end &amp;&amp; *line_end != '\n')
+300         line_end++;
+301 
+302       // Check for incomplete ANSI sequence at end of this line
+303       for (const char *p = line_start; p &lt; line_end;) {
+304         if (*p == '\033' &amp;&amp; p + 1 &lt; line_end &amp;&amp; *(p + 1) == '[') {
+305           const char *seq_start = p;
+306           p += 2;
+307           // Scan for terminator (@ through ~, i.e., 0x40-0x7E)
+308           while (p &lt; line_end &amp;&amp; !(*p &gt;= '@' &amp;&amp; *p &lt;= '~'))
+309             p++;
+310           if (p &gt;= line_end) {
+311             // Incomplete sequence found
+312             size_t incomplete_len = (size_t)(line_end - seq_start);
+313             log_error(&quot;RENDER_INCOMPLETE_ANSI: Line %d (w=%d h=%d) has incomplete ANSI sequence (%zu bytes)&quot;, line_num,
+314                       w, h, incomplete_len);
+315             // Show the incomplete sequence
+316             char debug_buf[128] = {0};
+317             size_t debug_pos = 0;
+318             for (const char *d = seq_start; d &lt; line_end &amp;&amp; debug_pos &lt; sizeof(debug_buf) - 10; d++) {
+319               unsigned char c = (unsigned char)*d;
+320               if (c == '\033') {
+321                 debug_buf[debug_pos++] = '&lt;';
+322                 debug_buf[debug_pos++] = 'E';
+323                 debug_buf[debug_pos++] = 'S';
+324                 debug_buf[debug_pos++] = 'C';
+325                 debug_buf[debug_pos++] = '&gt;';
+326               } else if (c &gt;= 0x20 &amp;&amp; c &lt; 0x7F) {
+327                 debug_buf[debug_pos++] = (char)c;
+328               } else {
+329                 debug_pos += (size_t)safe_snprintf(debug_buf + debug_pos, sizeof(debug_buf) - debug_pos, &quot;&lt;%02X&gt;&quot;, c);
+330               }
+331             }
+332             log_error(&quot;  Incomplete seq: %s&quot;, debug_buf);
+333             break;
+334           } else {
+335             p++; // Skip terminator
+336           }
+337         } else {
+338           p++;
+339         }
+340       }
+341 
+342       line_num++;
+343       line_start = *line_end ? line_end + 1 : line_end;
+344     }
+345   }
+346 
+347   return lines;
+348 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_rle_add_pixel()</b>, <b>ansi_rle_finish()</b>,
+    <b>ansi_rle_init()</b>, <b>get_utf8_palette_cache()</b>, and
+    <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>,
+    <b>image_print_256color()</b>, <b>image_print_color_background()</b>,
+    <b>image_print_color_simd()</b>, and
+  <b>image_print_with_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_quantize_color_(int_*_r,_int_*_g,_int_*_b,_int_levels)"><a class="permalink" href="#void_quantize_color_(int_*_r,_int_*_g,_int_*_b,_int_levels)">void
+  quantize_color (int * r, int * g, int * b, int levels)</a></h2>
+<p class="Pp">Definition at line <b>140</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>140                                                         {
+141   if (!r || !g || !b) {
+142     SET_ERRNO(ERROR_INVALID_PARAM, &quot;quantize_color: r, g, or b is NULL&quot;);
+143     return;
+144   }
+145 
+146   if (levels &lt;= 0) {
+147     SET_ERRNO(ERROR_INVALID_PARAM, &quot;quantize_color: levels must be positive, got %d&quot;, levels);
+148     return;
+149   }
+150 
+151   int step = 256 / levels;
+152   *r = (*r / step) * step;
+153   *g = (*g / step) * step;
+154   *b = (*b / step) * step;
+155 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rgb_to_ansi_8bit_(int_r,_int_g,_int_b,_int_*_fg_code,_int_*_bg_code)"><a class="permalink" href="#void_rgb_to_ansi_8bit_(int_r,_int_g,_int_b,_int_*_fg_code,_int_*_bg_code)">void
+  rgb_to_ansi_8bit (int r, int g, int b, int * fg_code, int * bg_code)</a></h2>
+<p class="Pp">Definition at line <b>363</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>363                                                                        {
+364   if (!fg_code || !bg_code) {
+365     SET_ERRNO(ERROR_INVALID_PARAM, &quot;rgb_to_ansi_8bit: fg_code or bg_code is NULL&quot;);
+366     return;
+367   }
+368 
+369   // Convert RGB to 8-bit color code (216 color cube + 24 grayscale)
+370   if (r == g &amp;&amp; g == b) {
+371     // Grayscale
+372     if (r &lt; 8) {
+373       *fg_code = 16;
+374     } else if (r &gt; 248) {
+375       *fg_code = 231;
+376     } else {
+377       *fg_code = 232 + (r - 8) / 10;
+378     }
+379   } else {
+380     // Color cube: 16 + 36*r + 6*g + b where r,g,b are 0-5
+381     int r_level = (r * 5) / 255;
+382     int g_level = (g * 5) / 255;
+383     int b_level = (b * 5) / 255;
+384     *fg_code = 16 + 36 * r_level + 6 * g_level + b_level;
+385   }
+386   *bg_code = *fg_code; // Same logic for background
+387 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_rgb_to_ansi_bg_(int_r,_int_g,_int_b)"><a class="permalink" href="#char_*_rgb_to_ansi_bg_(int_r,_int_g,_int_b)">char
+  * rgb_to_ansi_bg (int r, int g, int b)</a></h2>
+<p class="Pp">Definition at line <b>357</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>357                                           {
+358   _Thread_local static char color_code[20]; // \033[48;2;255;255;255m + \0 = 20 bytes max
+359   SAFE_SNPRINTF(color_code, sizeof(color_code), &quot;\033[48;2;%d;%d;%dm&quot;, r, g, b);
+360   return color_code;
+361 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_rgb_to_ansi_fg_(int_r,_int_g,_int_b)"><a class="permalink" href="#char_*_rgb_to_ansi_fg_(int_r,_int_g,_int_b)">char
+  * rgb_to_ansi_fg (int r, int g, int b)</a></h2>
+<p class="Pp">Definition at line <b>351</b> of file
+  <b>scalar/foreground.c</b>.</p>
+<pre>351                                           {
+352   _Thread_local static char color_code[20]; // \033[38;2;255;255;255m + \0 = 20 bytes max
+353   SAFE_SNPRINTF(color_code, sizeof(color_code), &quot;\033[38;2;%d;%d;%dm&quot;, r, g, b);
+354   return color_code;
+355 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

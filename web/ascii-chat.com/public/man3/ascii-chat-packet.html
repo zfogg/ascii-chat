@@ -1,0 +1,1057 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>packet(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">packet(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">packet(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">packet - Packet Types</p>
+<p class="Pp">
+  <br/>
+   - &#x1F4E8; Network protocol packet type definitions and structures</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4E8; Network protocol packet type definitions and
+  structures</p>
+<p class="Pp">Packet Types README</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The packet types system defines all network protocol messages used
+    in ascii-chat. This includes protocol negotiation, media streaming
+    (video/audio), control messages, cryptographic handshake, and multi-user
+    protocol extensions.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/network/packet_types.h</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Comprehensive packet type enumeration (33 packet types)</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Packed structures for wire format compatibility</dd>
+  <dt> &#x2022;</dt>
+  <dd>Protocol versioning and capability negotiation</dd>
+  <dt> &#x2022;</dt>
+  <dd>Handshake packet detection for crypto routing</dd>
+  <dt> &#x2022;</dt>
+  <dd>Network byte order for cross-platform compatibility</dd>
+  <dt> &#x2022;</dt>
+  <dd>Magic number validation for packet detection</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Packet_Categories"><a class="permalink" href="#Packet_Categories">Packet
+  Categories</a></h1>
+<p class="Pp">Packet types are organized into logical categories:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Protocol Negotiation</b> (Type 1):</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>PACKET_TYPE_PROTOCOL_VERSION: Initial handshake for version and
+      capabilities</dd>
+</dl>
+<p class="Pp"><b>Media Packets</b> (Types 2-4, 28):</p>
+<ul class="Bl-bullet">
+  <li>PACKET_TYPE_ASCII_FRAME (2): Complete ASCII art frame with metadata</li>
+  <li>PACKET_TYPE_IMAGE_FRAME (3): Raw RGB image from webcam</li>
+  <li>PACKET_TYPE_AUDIO (4): Single audio packet (legacy)</li>
+  <li>PACKET_TYPE_AUDIO_BATCH (28): Batched audio packets (efficient)</li>
+</ul>
+<p class="Pp"><b>Control Packets</b> (Types 5-7, 12-13):</p>
+<ul class="Bl-bullet">
+  <li>PACKET_TYPE_CLIENT_CAPABILITIES (5): Terminal capabilities report</li>
+  <li>PACKET_TYPE_PING (6): Keepalive ping</li>
+  <li>PACKET_TYPE_PONG (7): Keepalive pong response</li>
+  <li>PACKET_TYPE_CLEAR_CONSOLE (12): Server requests console clear</li>
+  <li>PACKET_TYPE_SERVER_STATE (13): Server broadcasts current state</li>
+</ul>
+<p class="Pp"><b>Multi-User Protocol</b> (Types 8-11):</p>
+<ul class="Bl-bullet">
+  <li>PACKET_TYPE_CLIENT_JOIN (8): Client announces capability to send
+    media</li>
+  <li>PACKET_TYPE_CLIENT_LEAVE (9): Clean disconnect notification</li>
+  <li>PACKET_TYPE_STREAM_START (10): Client requests to start streaming</li>
+  <li>PACKET_TYPE_STREAM_STOP (11): Client stops sending media</li>
+</ul>
+<p class="Pp"><b>Crypto Handshake</b> (Types 14-23):</p>
+<ul class="Bl-bullet">
+  <li><b>UNENCRYPTED</b> - These packets must NEVER be encrypted</li>
+  <li>PACKET_TYPE_CRYPTO_CAPABILITIES (14): Client &#x2192; Server: Supported
+      algorithms</li>
+  <li>PACKET_TYPE_CRYPTO_PARAMETERS (15): Server &#x2192; Client: Chosen
+      algorithms + sizes</li>
+  <li>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT (16): Server &#x2192; Client: Server
+      public key</li>
+  <li>PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP (17): Client &#x2192; Server: Client
+      public key</li>
+  <li>PACKET_TYPE_CRYPTO_AUTH_CHALLENGE (18): Server &#x2192; Client:
+      Authentication nonce</li>
+  <li>PACKET_TYPE_CRYPTO_AUTH_RESPONSE (19): Client &#x2192; Server: HMAC
+      response</li>
+  <li>PACKET_TYPE_CRYPTO_AUTH_FAILED (20): Server &#x2192; Client:
+      Authentication rejected</li>
+  <li>PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP (21): Server &#x2192; Client: Server
+      proves knowledge</li>
+  <li>PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE (22): Server &#x2192; Client:
+      Encryption ready</li>
+  <li>PACKET_TYPE_CRYPTO_NO_ENCRYPTION (23): Client &#x2192; Server: Proceed
+      without encryption</li>
+  <li>PACKET_TYPE_ENCRYPTED (24): Encrypted session packets (after
+    handshake)</li>
+</ul>
+<p class="Pp"><b>Crypto Rekeying</b> (Types 25-27):</p>
+<ul class="Bl-bullet">
+  <li><b>UNENCRYPTED during rekey</b> - Must bypass encryption during rekey
+      handshake</li>
+  <li>PACKET_TYPE_CRYPTO_REKEY_REQUEST (25): Initiator &#x2192; Responder: New
+      ephemeral key</li>
+  <li>PACKET_TYPE_CRYPTO_REKEY_RESPONSE (26): Responder &#x2192; Initiator: New
+      ephemeral key</li>
+  <li>PACKET_TYPE_CRYPTO_REKEY_COMPLETE (27): Encrypted with NEW key (but still
+      handshake)</li>
+</ul>
+<p class="Pp"><b>Message Packets</b> (Types 29-33):</p>
+<ul class="Bl-bullet">
+  <li>PACKET_TYPE_SIZE_MESSAGE (29): Terminal size notification</li>
+  <li>PACKET_TYPE_AUDIO_MESSAGE (30): Audio metadata message</li>
+  <li>PACKET_TYPE_TEXT_MESSAGE (31): Text chat message (future)</li>
+  <li>PACKET_TYPE_ERROR_MESSAGE (32): Protocol/handshake error reporting</li>
+  <li>PACKET_TYPE_REMOTE_LOG (33): Bidirectional remote logging payload</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="Remote_Log_Packet_(Type_33)"><a class="permalink" href="#Remote_Log_Packet_(Type_33)">Remote
+  Log Packet (Type 33)</a></h2>
+<p class="Pp">Remote logging packets allow the server and client to forward
+    diagnostic log entries to each other over the established connection. They
+    carry the log level, direction hint, optional flags, and a UTF-8 text
+    payload limited to 512 bytes.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t  log_level;      // Matches log_level_t (LOG_DEV .. LOG_FATAL)
+<br/>
+    uint8_t  direction;      // REMOTE_LOG_DIRECTION_* value
+<br/>
+    uint16_t flags;          // REMOTE_LOG_FLAG_* bitmask
+<br/>
+    uint32_t message_length; // Payload size (0-512)
+} PACKED_ATTR remote_log_packet_t;</pre>
+<p class="Pp">Direction values**:</p>
+<ul class="Bl-bullet">
+  <li>REMOTE_LOG_DIRECTION_SERVER_TO_CLIENT (1) &#x2013; Sent by the server to a
+      client</li>
+  <li>REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER (2) &#x2013; Sent by the client to
+      the server
+    <p class="Pp"></p>
+  </li>
+</ul>
+<p class="Pp">Flags**:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>REMOTE_LOG_FLAG_TRUNCATED &#x2013; Sender truncated the payload to fit the
+      limit</dd>
+</dl>
+<p class="Pp">Messages are encrypted automatically once the crypto handshake
+    completes, but fall back to plaintext during handshake so early errors can
+    still be reported. Receivers must always prefix their local log output with
+    a &#x201C;remote&#x201D; annotation to make the source of the message
+    obvious.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Packet_Structure"><a class="permalink" href="#Packet_Structure">Packet
+  Structure</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Header"><a class="permalink" href="#Packet_Header">Packet
+  Header</a></h2>
+<p class="Pp">All packets begin with a standard header:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t magic;     // PACKET_MAGIC (0xDEADBEEF) for validation
+<br/>
+    uint16_t type;      // packet_type_t enumeration
+<br/>
+    uint32_t length;    // Payload length in bytes (0 for header-only)
+<br/>
+    uint32_t crc32;     // CRC32 checksum of payload (0 if length == 0)
+<br/>
+    uint32_t client_id; // Client ID (0 = server, &gt;0 = client identifier)
+} PACKED_ATTR packet_header_t;</pre>
+<p class="Pp"><b>Header fields</b>:</p>
+<ul class="Bl-bullet">
+  <li>magic: Must be PACKET_MAGIC (0xDEADBEEF) or packet is invalid</li>
+  <li>type: Packet type enumeration value (packet_type_t, 1-33)</li>
+  <li>length: Payload data length in bytes (0 for header-only packets)</li>
+  <li>crc32: CRC32 checksum of payload data (not including header)</li>
+  <li>client_id: Identifies source (0 for server, 1-9 for clients)</li>
+</ul>
+<p class="Pp"><b>Wire format</b>:</p>
+<ul class="Bl-bullet">
+  <li>Structure is packed (no padding between fields)</li>
+  <li>Total header size: 18 bytes (4+2+4+4+4)</li>
+  <li>Network byte order (big-endian) for multi-byte fields</li>
+  <li>Magic number validation catches corrupted packets</li>
+</ul>
+<p class="Pp"><b>Example packet construction</b>:</p>
+<p class="Pp"></p>
+<pre>packet_header_t header = {
+<br/>
+    .magic = PACKET_MAGIC,
+<br/>
+    .type = PACKET_TYPE_ASCII_FRAME,
+<br/>
+    .length = (uint32_t)ascii_frame_size,
+<br/>
+    .crc32 = crc32_compute(ascii_frame_data, ascii_frame_size),
+<br/>
+    .client_id = 3  // Frame from client 3
+};
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Handshake_Packet_Detection"><a class="permalink" href="#Handshake_Packet_Detection">Handshake
+  Packet Detection</a></h2>
+<p class="Pp">Critical function for routing crypto handshake packets:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>bool packet_is_handshake_type(packet_type_t type);</pre>
+<p class="Pp">Returns <b>true</b><b> for:</b></p>
+<ul class="Bl-bullet">
+  <li>Initial crypto handshake packets (types 14-23)</li>
+  <li>Rekey packets (types 25-27)</li>
+</ul>
+<p class="Pp">Returns <b>false</b><b> for:</b></p>
+<ul class="Bl-bullet">
+  <li>All other packet types (including PACKET_TYPE_ENCRYPTED = 24)</li>
+  <li>PACKET_TYPE_ERROR_MESSAGE (32) &#x2013; sent plaintext only before
+      encryption is active</li>
+  <li>PACKET_TYPE_REMOTE_LOG (33) &#x2013; encrypted when session keys are
+      ready, plaintext otherwise
+    <p class="Pp"></p>
+  </li>
+</ul>
+<p class="Pp"><b>Usage</b>:</p>
+<p class="Pp"></p>
+<pre>// Before encrypting packet
+if (!packet_is_handshake_type(header.type)) {
+<br/>
+    // Encrypt payload
+<br/>
+    crypto_encrypt(&amp;ctx, payload, payload_len, ciphertext, &amp;ciphertext_len);
+<br/>
+    header.type = PACKET_TYPE_ENCRYPTED;  // Override type for encrypted
+<br/>
+    header.length = (uint32_t)ciphertext_len;
+} else {
+<br/>
+    // Send handshake packet in plaintext
+<br/>
+    // header.type remains unchanged
+}
+</pre>
+<p class="Pp"><b>Warning</b>: Encrypting handshake packets will break the crypto
+    handshake. Always check with packet_is_handshake_type() before encryption.
+    Error packets may be sent plaintext prior to handshake completion (or when
+    encryption is disabled), but must be encrypted once a session key is
+    established.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Protocol_Negotiation"><a class="permalink" href="#Protocol_Negotiation">Protocol
+  Negotiation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Protocol_Version_Packet"><a class="permalink" href="#Protocol_Version_Packet">Protocol
+  Version Packet</a></h2>
+<p class="Pp">First packet exchanged between client and server:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint16_t protocol_version;      // Major version (e.g., 1)
+<br/>
+    uint16_t protocol_revision;     // Minor revision (e.g., 0)
+<br/>
+    uint8_t supports_encryption;    // 1=yes, 0=no (plaintext mode)
+<br/>
+    uint8_t compression_algorithms; // Bitmap: COMPRESS_ALGO_ZSTD, etc.
+<br/>
+    uint8_t compression_threshold; // 0-100 percentage (80 = 80%)
+<br/>
+    uint16_t feature_flags;         // FEATURE_RLE_ENCODING, etc.
+<br/>
+    uint8_t reserved[7];            // Padding to 16 bytes
+} PACKED_ATTR protocol_version_packet_t;</pre>
+<p class="Pp"><b>Version negotiation flow</b>:</p>
+<p class="Pp"></p>
+<pre>// Client sends version packet
+protocol_version_packet_t client_version = {
+<br/>
+    .protocol_version = 1,
+<br/>
+    .protocol_revision = 0,
+<br/>
+    .supports_encryption = 1,
+<br/>
+    .compression_algorithms = COMPRESS_ALGO_ZSTD,
+<br/>
+    .compression_threshold = 80,
+<br/>
+    .feature_flags = FEATURE_RLE_ENCODING
+};
+send_packet(socket, PACKET_TYPE_PROTOCOL_VERSION, &amp;client_version, sizeof(client_version));
+// Server responds with its version (must match major version)
+protocol_version_packet_t server_version = {
+<br/>
+    .protocol_version = 1,  // Must match client
+<br/>
+    .protocol_revision = 1,  // Server supports newer revision
+<br/>
+    .supports_encryption = 1,
+<br/>
+    .compression_algorithms = COMPRESS_ALGO_ZSTD,
+<br/>
+    .compression_threshold = 80,
+<br/>
+    .feature_flags = FEATURE_RLE_ENCODING
+};
+send_packet(socket, PACKET_TYPE_PROTOCOL_VERSION, &amp;server_version, sizeof(server_version));
+</pre>
+<p class="Pp"><b>Version compatibility</b>:</p>
+<ul class="Bl-bullet">
+  <li>Major version mismatch: Connection rejected</li>
+  <li>Minor revision mismatch: OK (server uses newer features, client ignores
+      unknown)</li>
+  <li>Compression negotiation: Both parties choose lowest common
+    denominator</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Frame_Packets"><a class="permalink" href="#Frame_Packets">Frame
+  Packets</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="ASCII_Frame_Packet"><a class="permalink" href="#ASCII_Frame_Packet">ASCII
+  Frame Packet</a></h2>
+<p class="Pp">Complete ASCII art frame with compression support:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t width;           // Terminal width in characters
+<br/>
+    uint32_t height;          // Terminal height in characters
+<br/>
+    uint32_t original_size;   // Size of original ASCII data
+<br/>
+    uint32_t compressed_size; // Size of compressed data (0 = not compressed)
+<br/>
+    uint32_t checksum;        // CRC32 of original ASCII data
+<br/>
+    uint32_t flags;           // Bit flags: HAS_COLOR, IS_COMPRESSED, etc.
+} PACKED_ATTR ascii_frame_packet_t;</pre>
+<p class="Pp"><b>Payload structure</b>:</p>
+<ul class="Bl-bullet">
+  <li>Header: ascii_frame_packet_t (24 bytes)</li>
+  <li>Data: char data[original_size] or char
+    compressed_data[compressed_size]</li>
+</ul>
+<p class="Pp"><b>Compression handling</b>:</p>
+<p class="Pp"></p>
+<pre>// Server: Send ASCII frame
+ascii_frame_packet_t header = {
+<br/>
+    .width = 160,
+<br/>
+    .height = 45,
+<br/>
+    .original_size = 7200,  // 160 * 45
+<br/>
+    .compressed_size = 0,
+<br/>
+    .checksum = crc32_compute(ascii_data, 7200),
+<br/>
+    .flags = FLAG_HAS_COLOR
+};
+// Compress if beneficial
+if (header.original_size &gt; COMPRESS_THRESHOLD) {
+<br/>
+    compress_data(ascii_data, header.original_size,
+<br/>
+                   compressed_buf, &amp;header.compressed_size);
+<br/>
+    if (header.compressed_size &lt; header.original_size * 0.8) {
+<br/>
+        header.flags |= FLAG_IS_COMPRESSED;
+<br/>
+        // Send compressed data
+<br/>
+    } else {
+<br/>
+        header.compressed_size = 0;
+<br/>
+        // Send uncompressed data
+<br/>
+    }
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Image_Frame_Packet"><a class="permalink" href="#Image_Frame_Packet">Image
+  Frame Packet</a></h2>
+<p class="Pp">Raw RGB image from webcam:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t width;           // Image width in pixels
+<br/>
+    uint32_t height;          // Image height in pixels
+<br/>
+    uint32_t pixel_format;    // 0=RGB24, 1=RGBA32, 2=BGR24, etc.
+<br/>
+    uint32_t compressed_size; // If &gt;0, image is compressed
+<br/>
+    uint32_t checksum;        // CRC32 of pixel data
+<br/>
+    uint32_t timestamp;       // When frame was captured
+} PACKED_ATTR image_frame_packet_t;</pre>
+<p class="Pp"><b>Payload structure</b>:</p>
+<ul class="Bl-bullet">
+  <li>Header: image_frame_packet_t (24 bytes)</li>
+  <li>Data: rgb_pixel_t pixels[width * height] or compressed data</li>
+</ul>
+<p class="Pp"><b>Usage</b> (client &#x2192; server):</p>
+<p class="Pp"></p>
+<pre>// Capture frame from webcam
+uint8_t *rgb_frame = capture_webcam_frame(&amp;width, &amp;height);
+// Create image frame packet
+image_frame_packet_t header = {
+<br/>
+    .width = width,
+<br/>
+    .height = height,
+<br/>
+    .pixel_format = PIXEL_FORMAT_RGB24,
+<br/>
+    .compressed_size = 0,
+<br/>
+    .checksum = crc32_compute(rgb_frame, width * height * 3),
+<br/>
+    .timestamp = get_timestamp()
+};
+// Send to server
+send_packet(socket, PACKET_TYPE_IMAGE_FRAME, &amp;header, sizeof(header));
+send_packet_data(socket, rgb_frame, width * height * 3);
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Audio_Packets"><a class="permalink" href="#Audio_Packets">Audio
+  Packets</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Single_Audio_Packet_(Legacy)"><a class="permalink" href="#Single_Audio_Packet_(Legacy)">Single
+  Audio Packet (Legacy)</a></h2>
+<p class="Pp">PACKET_TYPE_AUDIO (type 4) is the legacy single-packet format:</p>
+<ul class="Bl-bullet">
+  <li>Fixed size: 256 samples per packet</li>
+  <li>Format: float samples[256]</li>
+  <li>Sample rate: Negotiated in protocol version packet</li>
+  <li>Channels: Usually mono (1 channel)</li>
+</ul>
+<p class="Pp"><b>Disadvantages</b>:</p>
+<ul class="Bl-bullet">
+  <li>High packet overhead (1 packet per 256 samples)</li>
+  <li>At 44.1 kHz: 188 packets/second</li>
+  <li>Each packet: 18-byte header + 1024-byte payload = 1042 bytes</li>
+  <li>Total overhead: 188 &#x00D7; 18 = 3.4 KB/sec (0.34% of bandwidth)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Batched_Audio_Packet_(Efficient)"><a class="permalink" href="#Batched_Audio_Packet_(Efficient)">Batched
+  Audio Packet (Efficient)</a></h2>
+<p class="Pp">PACKET_TYPE_AUDIO_BATCH (type 28) batches multiple audio
+  chunks:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t batch_count;   // Number of chunks (usually 4)
+<br/>
+    uint32_t total_samples; // Total samples across all chunks (1024)
+<br/>
+    uint32_t sample_rate;   // 44100, 48000, etc.
+<br/>
+    uint32_t channels;      // 1=mono, 2=stereo
+} PACKED_ATTR audio_batch_packet_t;</pre>
+<p class="Pp"><b>Payload structure</b>:</p>
+<ul class="Bl-bullet">
+  <li>Header: audio_batch_packet_t (16 bytes)</li>
+  <li>Data: float samples[total_samples] (interleaved if stereo)</li>
+</ul>
+<p class="Pp"><b>Benefits</b>:</p>
+<ul class="Bl-bullet">
+  <li>Reduced packet overhead: 4 chunks per packet = 75% fewer packets</li>
+  <li>At 44.1 kHz: 47 packets/second (was 188)</li>
+  <li>Packet overhead: 47 &#x00D7; 18 = 846 bytes/sec (0.08% of bandwidth)</li>
+  <li><b>80% reduction in packet overhead</b></li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Capture 4 audio chunks (256 samples each = 1024 total)
+float samples[1024];
+capture_audio_chunks(samples, 4);
+// Create batch packet
+audio_batch_packet_t header = {
+<br/>
+    .batch_count = 4,
+<br/>
+    .total_samples = 1024,
+<br/>
+    .sample_rate = 44100,
+<br/>
+    .channels = 1
+};
+// Send to server
+send_packet(socket, PACKET_TYPE_AUDIO_BATCH, &amp;header, sizeof(header));
+send_packet_data(socket, samples, sizeof(samples));
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Control_Packets"><a class="permalink" href="#Control_Packets">Control
+  Packets</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Client_Capabilities"><a class="permalink" href="#Client_Capabilities">Client
+  Capabilities</a></h2>
+<p class="Pp">Client reports terminal capabilities to server:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t capabilities;      // Bitmask: TERM_CAP_* flags
+<br/>
+    uint32_t color_level;       // terminal_color_mode_t enum
+<br/>
+    uint32_t color_count;       // Actual color count (16, 256, 16777216)
+<br/>
+    uint32_t render_mode;        // render_mode_t enum (foreground/background/half-block)
+<br/>
+    uint16_t width, height;      // Terminal dimensions
+<br/>
+    char term_type[32];         // $TERM value
+<br/>
+    char colorterm[32];         // $COLORTERM value
+<br/>
+    uint8_t detection_reliable; // True if detection was reliable
+<br/>
+    uint32_t utf8_support;       // 0=no, 1=yes
+<br/>
+    uint32_t palette_type;      // palette_type_t enum
+<br/>
+    char palette_custom[64];    // Custom palette chars
+<br/>
+    uint8_t desired_fps;        // Client's desired FPS (1-144)
+<br/>
+    uint8_t reserved[2];
+} PACKED_ATTR terminal_capabilities_packet_t;</pre>
+<p class="Pp"><b>Usage</b>:</p>
+<p class="Pp"></p>
+<pre>terminal_capabilities_packet_t caps = {
+<br/>
+    .capabilities = TERM_CAP_VIDEO | TERM_CAP_AUDIO | TERM_CAP_COLOR,
+<br/>
+    .color_level = TERM_COLOR_24BIT,
+<br/>
+    .color_count = 16777216,
+<br/>
+    .render_mode = RENDER_MODE_HALF_BLOCK,
+<br/>
+    .width = 160,
+<br/>
+    .height = 45,
+<br/>
+    .detection_reliable = 1,
+<br/>
+    .utf8_support = 1,
+<br/>
+    .palette_type = PALETTE_STANDARD,
+<br/>
+    .desired_fps = 30
+};
+strncpy(caps.term_type, getenv(&quot;TERM&quot;), sizeof(caps.term_type) - 1);
+strncpy(caps.colorterm, getenv(&quot;COLORTERM&quot;), sizeof(caps.colorterm) - 1);
+send_packet(socket, PACKET_TYPE_CLIENT_CAPABILITIES, &amp;caps, sizeof(caps));
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Ping/Pong_Keepalive"><a class="permalink" href="#Ping/Pong_Keepalive">Ping/Pong
+  Keepalive</a></h2>
+<p class="Pp">Maintains connection alive and detects dead connections:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Server: Send ping every 30 seconds
+void keepalive_thread(void *arg) {
+<br/>
+    while (running) {
+<br/>
+        sleep(30);
+<br/>
+        packet_header_t ping = {
+<br/>
+            .magic = PACKET_MAGIC,
+<br/>
+            .type = PACKET_TYPE_PING,
+<br/>
+            .length = 0,  // No payload
+<br/>
+            .crc32 = 0,
+<br/>
+            .client_id = 0  // From server
+<br/>
+        };
+<br/>
+        send_packet(socket, PACKET_TYPE_PING, NULL, 0);
+<br/>
+    }
+}
+// Client: Respond to ping
+void handle_packet(packet_header_t *header, void *payload) {
+<br/>
+    if (header-&gt;type == PACKET_TYPE_PING) {
+<br/>
+        packet_header_t pong = {
+<br/>
+            .magic = PACKET_MAGIC,
+<br/>
+            .type = PACKET_TYPE_PONG,
+<br/>
+            .length = 0,
+<br/>
+            .crc32 = 0,
+<br/>
+            .client_id = my_client_id
+<br/>
+        };
+<br/>
+        send_packet(socket, PACKET_TYPE_PONG, NULL, 0);
+<br/>
+    }
+}</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Crypto_Handshake_Packets"><a class="permalink" href="#Crypto_Handshake_Packets">Crypto
+  Handshake Packets</a></h1>
+<p class="Pp">All crypto handshake packets (types 14-23, 25-27) must be sent
+    UNENCRYPTED. Use packet_is_handshake_type() to check before encryption.</p>
+<section class="Ss">
+<h2 class="Ss" id="Handshake_Flow"><a class="permalink" href="#Handshake_Flow">Handshake
+  Flow</a></h2>
+<p class="Pp"><b>Phase 1: Capability Exchange</b></p>
+<p class="Pp"></p>
+<pre>// Client &#x2192; Server: Supported algorithms
+crypto_capabilities_packet_t client_caps = {
+<br/>
+    .supported_kex_algorithms = KEX_ALGO_X25519,
+<br/>
+    .supported_auth_algorithms = AUTH_ALGO_ED25519,
+<br/>
+    .supported_cipher_algorithms = CIPHER_ALGO_XSALSA20_POLY1305,
+<br/>
+    .requires_verification = 1,
+<br/>
+    .preferred_kex = KEX_ALGO_X25519,
+<br/>
+    .preferred_auth = AUTH_ALGO_ED25519,
+<br/>
+    .preferred_cipher = CIPHER_ALGO_XSALSA20_POLY1305
+};
+send_packet(socket, PACKET_TYPE_CRYPTO_CAPABILITIES, &amp;client_caps, sizeof(client_caps));
+// Server &#x2192; Client: Chosen algorithms + data sizes
+crypto_parameters_packet_t server_params = {
+<br/>
+    .selected_kex = KEX_ALGO_X25519,
+<br/>
+    .selected_auth = AUTH_ALGO_ED25519,
+<br/>
+    .selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305,
+<br/>
+    .verification_enabled = 1,
+<br/>
+    .kex_public_key_size = 32,      // X25519
+<br/>
+    .auth_public_key_size = 32,     // Ed25519
+<br/>
+    .signature_size = 64,           // Ed25519
+<br/>
+    .shared_secret_size = 32,       // X25519
+<br/>
+    .nonce_size = 24,               // XSalsa20 nonce
+<br/>
+    .mac_size = 16,                 // Poly1305 MAC
+<br/>
+    .hmac_size = 32                 // HMAC-SHA256
+};
+send_packet(socket, PACKET_TYPE_CRYPTO_PARAMETERS, &amp;server_params, sizeof(server_params));
+</pre>
+<p class="Pp"><b>Phase 2: Key Exchange</b></p>
+<p class="Pp"></p>
+<pre>// Server &#x2192; Client: Server's ephemeral public key
+uint8_t server_pubkey[32];
+crypto_generate_keypair(server_pubkey, server_secret);
+send_packet(socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_INIT,
+<br/>
+            server_pubkey, 32);
+// Client &#x2192; Server: Client's ephemeral public key
+uint8_t client_pubkey[32];
+crypto_generate_keypair(client_pubkey, client_secret);
+send_packet(socket, PACKET_TYPE_CRYPTO_KEY_EXCHANGE_RESP,
+<br/>
+            client_pubkey, 32);
+</pre>
+<p class="Pp"><b>Phase 3: Authentication</b></p>
+<p class="Pp"></p>
+<pre>// Server &#x2192; Client: Authentication challenge nonce
+uint8_t challenge[32];
+randombytes_buf(challenge, 32);
+send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_CHALLENGE, challenge, 32);
+// Client &#x2192; Server: HMAC response
+uint8_t client_hmac[32];
+compute_hmac(client_identity_key, challenge, 32, client_hmac);
+send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_RESPONSE, client_hmac, 32);
+// Server verifies HMAC...
+// If verification fails:
+auth_failure_packet_t failure = {
+<br/>
+    .reason_flags = AUTH_FAIL_SIGNATURE_INVALID
+};
+send_packet(socket, PACKET_TYPE_CRYPTO_AUTH_FAILED, &amp;failure, sizeof(failure));
+// If verification succeeds:
+// Server &#x2192; Client: Server proves knowledge
+uint8_t server_hmac[32];
+compute_hmac(server_identity_key, client_hmac, 32, server_hmac);
+send_packet(socket, PACKET_TYPE_CRYPTO_SERVER_AUTH_RESP, server_hmac, 32);
+</pre>
+<p class="Pp"><b>Phase 4: Handshake Complete</b></p>
+<p class="Pp"></p>
+<pre>// Server &#x2192; Client: Encryption ready
+send_packet(socket, PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE, NULL, 0);
+// Now all subsequent packets use PACKET_TYPE_ENCRYPTED (type 24)
+// with encrypted payloads
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Multi-User_Protocol"><a class="permalink" href="#Multi-User_Protocol">Multi-User
+  Protocol</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Client_Join"><a class="permalink" href="#Client_Join">Client
+  Join</a></h2>
+<p class="Pp">Client announces capability to send video/audio:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t client_id;                      // Unique client ID
+<br/>
+    char display_name[MAX_DISPLAY_NAME_LEN]; // User display name
+<br/>
+    uint32_t capabilities;                   // Bitmask: CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO
+} PACKED_ATTR client_info_packet_t;
+client_info_packet_t join = {
+<br/>
+    .client_id = 3,
+<br/>
+    .capabilities = CLIENT_CAP_VIDEO | CLIENT_CAP_AUDIO
+};
+strncpy(join.display_name, &quot;Alice&quot;, MAX_DISPLAY_NAME_LEN - 1);
+send_packet(socket, PACKET_TYPE_CLIENT_JOIN, &amp;join, sizeof(join));</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Server_State_Broadcast"><a class="permalink" href="#Server_State_Broadcast">Server
+  State Broadcast</a></h2>
+<p class="Pp">Server broadcasts current state to all clients:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t connected_client_count;  // Number of connected clients
+<br/>
+    uint32_t active_client_count;    // Number actively sending video
+<br/>
+    uint32_t reserved[6];
+} PACKED_ATTR server_state_packet_t;
+server_state_packet_t state = {
+<br/>
+    .connected_client_count = 5,
+<br/>
+    .active_client_count = 3
+};
+// Broadcast to all clients
+for (int i = 0; i &lt; connected_clients; i++) {
+<br/>
+    send_packet(clients[i].socket, PACKET_TYPE_SERVER_STATE,
+<br/>
+                &amp;state, sizeof(state));
+}</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Protocol_Versioning"><a class="permalink" href="#Protocol_Versioning">Protocol
+  Versioning</a></h1>
+<p class="Pp">ascii-chat uses semantic versioning for protocol
+  compatibility:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Version Format</b>:</p>
+<ul class="Bl-bullet">
+  <li>Major version: Incompatible protocol changes (client/server must
+    match)</li>
+  <li>Minor revision: Backward-compatible additions (server can be newer)</li>
+</ul>
+<p class="Pp"><b>Compatibility Rules</b>:</p>
+<ul class="Bl-bullet">
+  <li>Major version mismatch: Connection rejected</li>
+  <li>Minor revision mismatch: OK (server uses newer features, client ignores
+      unknown)</li>
+  <li>Client sends: protocol_version=1, revision=0</li>
+  <li>Server responds: protocol_version=1, revision=X (X can be &gt;= 0)</li>
+</ul>
+<p class="Pp"><b>Future Protocol Changes</b>:</p>
+<ul class="Bl-bullet">
+  <li>Major version bump: Complete protocol redesign</li>
+  <li>Minor revision bump: New packet types, new flags, extended structures</li>
+  <li>Reserved fields: Structures include reserved fields for future
+    expansion</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Wire_Format"><a class="permalink" href="#Wire_Format">Wire
+  Format</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Byte_Order"><a class="permalink" href="#Byte_Order">Byte
+  Order</a></h2>
+<p class="Pp">All multi-byte fields use network byte order (big-endian):</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Host to network (before sending)
+header.magic = htonl(PACKET_MAGIC);
+header.type = htons(PACKET_TYPE_ASCII_FRAME);
+header.length = htonl(payload_length);
+header.crc32 = htonl(crc32_value);
+header.client_id = htonl(client_id);
+// Network to host (after receiving)
+header.magic = ntohl(header.magic);
+header.type = ntohs(header.type);
+header.length = ntohl(header.length);
+header.crc32 = ntohl(header.crc32);
+header.client_id = ntohl(header.client_id);</pre>
+<p class="Pp"><b>Platform-specific functions</b>:</p>
+<ul class="Bl-bullet">
+  <li>POSIX: htonl(), htons(), ntohl(), ntohs()</li>
+  <li>Windows: htonl(), htons(), ntohl(), ntohs() (winsock.h)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Structure_Packing"><a class="permalink" href="#Structure_Packing">Structure
+  Packing</a></h2>
+<p class="Pp">Structures are packed (no padding) for wire format
+  compatibility:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#ifdef _WIN32
+#pragma pack(push, 1)
+#endif
+typedef struct {
+<br/>
+    uint32_t field1;  // Offset 0
+<br/>
+    uint16_t field2;  // Offset 4 (not 8, due to packing)
+<br/>
+    uint32_t field3;  // Offset 6 (not 12)
+} PACKED_ATTR my_packet_t;
+#ifdef _WIN32
+#pragma pack(pop)
+#endif</pre>
+<p class="Pp"><b>Warning</b>: Packed structures may not be naturally aligned.
+    Accessing fields may cause unaligned memory access (slower on some CPUs).
+    ascii-chat structures are designed to avoid this issue.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Always validate magic number</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>if (header.magic != PACKET_MAGIC) {
+<br/>
+    log_error(&quot;Invalid packet magic: 0x%08X&quot;, header.magic);
+<br/>
+    return ERROR_NETWORK_PROTOCOL;
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>2.</dt>
+  <dd><b>Check handshake types before encryption</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>if (!packet_is_handshake_type(header.type)) {
+<br/>
+    // Encrypt payload
+<br/>
+    encrypt_packet(&amp;header, payload, payload_len);
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>3.</dt>
+  <dd><b>Validate payload length</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>if (header.length &gt; MAX_PACKET_SIZE) {
+<br/>
+    log_error(&quot;Packet too large: %u bytes&quot;, header.length);
+<br/>
+    return ERROR_NETWORK_PROTOCOL;
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>4.</dt>
+  <dd><b>Verify CRC32 checksums</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>uint32_t computed_crc = crc32_compute(payload, header.length);
+if (computed_crc != header.crc32) {
+<br/>
+    log_error(&quot;CRC32 mismatch: expected 0x%08X, got 0x%08X&quot;,
+<br/>
+              header.crc32, computed_crc);
+<br/>
+    return ERROR_NETWORK_PROTOCOL;
+}
+</pre>
+<dl class="Bl-tag">
+  <dt>5.</dt>
+  <dd><b>Use network byte order</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>// Before sending
+header.magic = htonl(PACKET_MAGIC);
+header.length = htonl(payload_length);
+// After receiving
+header.magic = ntohl(header.magic);
+header.length = ntohl(header.length);
+</pre>
+<dl class="Bl-tag">
+  <dt>6.</dt>
+  <dd><b>Handle unknown packet types gracefully</b>:</dd>
+</dl>
+<p class="Pp"></p>
+<pre>switch (header.type) {
+<br/>
+    case PACKET_TYPE_ASCII_FRAME:
+<br/>
+        handle_ascii_frame(payload, header.length);
+<br/>
+        break;
+<br/>
+    // ... known types ...
+<br/>
+    default:
+<br/>
+        log_warn(&quot;Unknown packet type: %u&quot;, header.type);
+<br/>
+        // Ignore unknown types (forward compatibility)
+<br/>
+        break;
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Protocol_Constants"><a class="permalink" href="#Protocol_Constants">Protocol
+  Constants</a></h1>
+<p class="Pp"><b>Packet Size Limits</b>:</p>
+<p class="Pp"></p>
+<pre>#define LARGE_PACKET_THRESHOLD (100 * 1024)  // 100 KB - triggers extended timeout
+#define MAX_PACKET_SIZE ((size_t)5 * 1024 * 1024)  // 5 MB - absolute maximum
+</pre>
+<p class="Pp"><b>Timeout Configuration</b>:</p>
+<p class="Pp"></p>
+<pre>#define BASE_SEND_TIMEOUT 5  // Base timeout in seconds
+#define LARGE_PACKET_EXTRA_TIMEOUT_PER_MB 0.8  // Extra timeout per MB
+#define MIN_CLIENT_TIMEOUT 10  // Minimum client timeout
+#define MAX_CLIENT_TIMEOUT 60  // Maximum client timeout
+</pre>
+<p class="Pp"><b>Audio Configuration</b>:</p>
+<p class="Pp"></p>
+<pre>#define AUDIO_SAMPLES_PER_PACKET 256  // Samples per single audio packet
+#define AUDIO_BATCH_COUNT 4  // Chunks per batch packet
+#define AUDIO_BATCH_SAMPLES 1024  // Total samples in batch (256 * 4)
+#define AUDIO_BATCH_MS 23  // Duration at 44.1 kHz (~23ms)
+</pre>
+<p class="Pp"><b>Magic Numbers</b>:</p>
+<p class="Pp"></p>
+<pre>#define PACKET_MAGIC 0xDEADBEEF  // Packet header magic number
+#define FRAME_MAGIC 0xDEADBEEF   // Frame buffer magic (different context)
+#define FRAME_FREED 0xFEEDFACE   // Freed frame marker
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">network/packet_types.h
+<p class="Pp"></p>
+<p class="Pp">network/packet.h</p>
+<p class="Pp"></p>
+<p class="Pp">network/av.h</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>writer.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">writer.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">writer.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">writer.c - Write ANSI ASCII frames to file descriptor.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>terminal_fd_writer_s</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>terminal_fd_writer_s</b>
+    <b>terminal_fd_writer_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>terminal_fd_writer_create</b> (int fd,
+    <b>terminal_fd_writer_t</b> **out)
+  <br/>
+  asciichat_error_t <b>terminal_fd_writer_write</b> (<b>terminal_fd_writer_t</b>
+    *writer, const char *<b>frame</b>)
+  <br/>
+  void <b>terminal_fd_writer_destroy</b> (<b>terminal_fd_writer_t</b> *writer)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Write ANSI ASCII frames to file descriptor.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>writer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>terminal_fd_writer_s</b> <b>terminal_fd_writer_t</b></a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_terminal_fd_writer_create_(int_fd,_"><a class="permalink" href="#asciichat_error_t_terminal_fd_writer_create_(int_fd,_">asciichat_error_t
+  terminal_fd_writer_create (int fd, <b>terminal_fd_writer_t</b> **
+  out)</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>writer.c</b>.</p>
+<pre>19                                                                                 {
+20   if (fd &lt; 0) {
+21     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid fd: %d&quot;, fd);
+22   }
+23 
+24   FILE *fp = fdopen(fd, &quot;w&quot;);
+25   if (!fp) {
+26     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, &quot;fdopen failed for FD %d&quot;, fd);
+27   }
+28 
+29   terminal_fd_writer_t *writer = SAFE_CALLOC(1, sizeof(*writer), terminal_fd_writer_t *);
+30   writer-&gt;fp = fp;
+31 
+32   log_debug(&quot;terminal_fd_writer: created with fd=%d&quot;, fd);
+33   *out = writer;
+34   return ASCIICHAT_OK;
+35 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_fd_writer_s::fp</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_terminal_fd_writer_destroy_("><a class="permalink" href="#void_terminal_fd_writer_destroy_(">void
+  terminal_fd_writer_destroy (<b>terminal_fd_writer_t</b> * writer)</a></h2>
+<p class="Pp">Definition at line <b>62</b> of file <b>writer.c</b>.</p>
+<pre>62                                                               {
+63   if (!writer)
+64     return;
+65   if (writer-&gt;fp) {
+66     fclose(writer-&gt;fp);
+67     writer-&gt;fp = NULL;
+68   }
+69   SAFE_FREE(writer);
+70 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_fd_writer_s::fp</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_terminal_fd_writer_write_("><a class="permalink" href="#asciichat_error_t_terminal_fd_writer_write_(">asciichat_error_t
+  terminal_fd_writer_write (<b>terminal_fd_writer_t</b> * writer, const char *
+  frame)</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>writer.c</b>.</p>
+<pre>37                                                                                             {
+38   if (!writer) {
+39     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid writer context&quot;);
+40   }
+41 
+42   if (!frame) {
+43     return ASCIICHAT_OK; // No-op for NULL frame
+44   }
+45 
+46   // Write frame and newline
+47   int ret = fprintf(writer-&gt;fp, &quot;%s\n&quot;, frame);
+48   if (ret &lt; 0) {
+49     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, &quot;fprintf failed&quot;);
+50   }
+51 
+52   // Flush to ensure output is visible immediately
+53   int flush_ret = fflush(writer-&gt;fp);
+54   if (flush_ret != 0) {
+55     return SET_ERRNO_SYS(ERROR_INVALID_PARAM, &quot;fflush failed&quot;);
+56   }
+57 
+58   log_debug_every(NS_PER_SEC_INT, &quot;terminal_fd_writer: wrote frame (%zu bytes)&quot;, strlen(frame));
+59   return ASCIICHAT_OK;
+60 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_fd_writer_s::fp</b>, and <b>frame</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

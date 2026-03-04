@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>common.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">common.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">common.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">common.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>build_ramp64</b> (uint8_t ramp64[RAMP64_SIZE], const char
+    *ascii_chars)
+  <br/>
+  double <b>calculate_cache_eviction_score</b> (uint64_t last_access_time,
+    uint32_t access_count, uint64_t creation_time, uint64_t current_time)
+  <br/>
+  utf8_palette_cache_t * <b>get_utf8_palette_cache</b> (const char *ascii_chars)
+  <br/>
+  void <b>build_utf8_luminance_cache</b> (const char *ascii_chars, utf8_char_t
+    cache[256])
+  <br/>
+  void <b>build_utf8_ramp64_cache</b> (const char *ascii_chars, utf8_char_t
+    cache64[64], uint8_t char_index_ramp[256])
+  <br/>
+  void <b>simd_caches_destroy_all</b> (void)
+  <br/>
+  void <b>init_dec3</b> (void)
+  <br/>
+  Initialize decimal-to-ASCII cache (0-255 &#x2192;
+    <i>0&quot;</i>to<i>255</i>).<i></i> void
+    <b>init_default_luminance_palette</b> (void)
+  <br/>
+  void <b>ascii_simd_init</b> (void)
+  <br/>
+  Initialize SIMD subsystem.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">global_dec3_cache_t <b>g_dec3_cache</b> = {0}
+  <br/>
+  char <b>g_default_luminance_palette</b> [256] = {0}
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_simd_init_(void_)"><a class="permalink" href="#void_ascii_simd_init_(void_)">void
+  ascii_simd_init (void )</a></h2>
+<p class="Pp">Initialize SIMD subsystem. Initializes all SIMD subsystems and
+    caches. Must be called once at startup.</p>
+<p class="Pp">Definition at line <b>611</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>611                            {
+612   init_dec3();
+613   init_default_luminance_palette();
+614 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>init_dec3()</b>, and
+    <b>init_default_luminance_palette()</b>.</p>
+<p class="Pp">Referenced by <b>ansi_fast_init()</b>, and
+  <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_build_ramp64_(uint8_t_ramp64_RAMP64_SIZE_,_const_char_*_ascii_chars)"><a class="permalink" href="#void_build_ramp64_(uint8_t_ramp64_RAMP64_SIZE_,_const_char_*_ascii_chars)">void
+  build_ramp64 (uint8_t ramp64[RAMP64_SIZE], const char * ascii_chars)</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>41                                                                         {
+42   if (!ascii_chars) {
+43     // Fallback to space character
+44     for (int i = 0; i &lt; RAMP64_SIZE; i++) {
+45       ramp64[i] = ' ';
+46     }
+47     return;
+48   }
+49 
+50   // Use UTF-8 palette functions for proper character handling
+51   utf8_palette_t *utf8_pal = utf8_palette_create(ascii_chars);
+52   if (!utf8_pal) {
+53     // Fallback to space character
+54     for (int i = 0; i &lt; RAMP64_SIZE; i++) {
+55       ramp64[i] = ' ';
+56     }
+57     return;
+58   }
+59 
+60   size_t char_count = utf8_palette_get_char_count(utf8_pal);
+61   if (char_count == 0) {
+62     // No valid characters found, use space
+63     for (int i = 0; i &lt; RAMP64_SIZE; i++) {
+64       ramp64[i] = ' ';
+65     }
+66     utf8_palette_destroy(utf8_pal);
+67     return;
+68   }
+69 
+70   // Build the ramp64 lookup using UTF-8 character indices
+71   for (int i = 0; i &lt; RAMP64_SIZE; i++) {
+72     // Map 0-63 to 0-(char_count-1) using proper character indexing
+73     size_t char_idx = (i * (char_count - 1) + (RAMP64_SIZE - 1) / 2) / (RAMP64_SIZE - 1);
+74     if (char_idx &gt;= char_count) {
+75       char_idx = char_count - 1;
+76     }
+77 
+78     // Get the first byte of the character at this character index
+79     const utf8_char_info_t *char_info = utf8_palette_get_char(utf8_pal, char_idx);
+80     if (char_info) {
+81       ramp64[i] = (uint8_t)char_info-&gt;bytes[0];
+82     } else {
+83       ramp64[i] = ' '; // Fallback
+84     }
+85   }
+86 
+87   utf8_palette_destroy(utf8_pal);
+88 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_palette_create()</b>,
+    <b>utf8_palette_destroy()</b>, <b>utf8_palette_get_char()</b>, and
+    <b>utf8_palette_get_char_count()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_build_utf8_luminance_cache_(const_char_*_ascii_chars,_utf8_char_t_cache_256_)"><a class="permalink" href="#void_build_utf8_luminance_cache_(const_char_*_ascii_chars,_utf8_char_t_cache_256_)">void
+  build_utf8_luminance_cache (const char * ascii_chars, utf8_char_t
+  cache[256])</a></h2>
+<p class="Pp">Definition at line <b>387</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>387                                                                                  {
+388   if (!ascii_chars || !cache)
+389     return;
+390 
+391   // Parse characters
+392   typedef struct {
+393     const char *start;
+394     int byte_len;
+395   } char_info_t;
+396 
+397   char_info_t char_infos[256];
+398   int char_count = 0;
+399   const char *p = ascii_chars;
+400 
+401   while (*p &amp;&amp; char_count &lt; 255) {
+402     char_infos[char_count].start = p;
+403 
+404     if ((*p &amp; 0xE0) == 0xC0) {
+405       char_infos[char_count].byte_len = 2;
+406       p += 2;
+407     } else if ((*p &amp; 0xF0) == 0xE0) {
+408       char_infos[char_count].byte_len = 3;
+409       p += 3;
+410     } else if ((*p &amp; 0xF8) == 0xF0) {
+411       char_infos[char_count].byte_len = 4;
+412       p += 4;
+413     } else {
+414       // ASCII characters (0x00-0x7F) and invalid sequences: treat as single byte
+415       char_infos[char_count].byte_len = 1;
+416       p++;
+417     }
+418     char_count++;
+419   }
+420 
+421   // Handle empty string case
+422   if (char_count == 0)
+423     return;
+424 
+425   // Build 256-entry cache
+426   for (int i = 0; i &lt; 256; i++) {
+427     int char_idx = char_count &gt; 1 ? (i * (char_count - 1) + 127) / 255 : 0;
+428     if (char_idx &gt;= char_count)
+429       char_idx = char_count - 1;
+430 
+431     cache[i].byte_len = char_infos[char_idx].byte_len;
+432     memcpy(cache[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
+433     if (cache[i].byte_len &lt; 4) {
+434       cache[i].utf8_bytes[cache[i].byte_len] = '\0';
+435     }
+436   }
+437 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>get_utf8_palette_cache()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_build_utf8_ramp64_cache_(const_char_*_ascii_chars,_utf8_char_t_cache64_64_,_uint8_t_char_index_ramp_256_)"><a class="permalink" href="#void_build_utf8_ramp64_cache_(const_char_*_ascii_chars,_utf8_char_t_cache64_64_,_uint8_t_char_index_ramp_256_)">void
+  build_utf8_ramp64_cache (const char * ascii_chars, utf8_char_t cache64[64],
+  uint8_t char_index_ramp[256])</a></h2>
+<p class="Pp">Definition at line <b>440</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>440                                                                                                              {
+441   if (!ascii_chars || !cache64 || !char_index_ramp)
+442     return;
+443 
+444   // Reuse the luminance cache building logic but for 64 entries
+445   // (Same UTF-8 parsing as above, but map to 64 entries instead of 256)
+446 
+447   // Parse characters (same as above)
+448   typedef struct {
+449     const char *start;
+450     int byte_len;
+451   } char_info_t;
+452 
+453   char_info_t char_infos[256];
+454   int char_count = 0;
+455   const char *p = ascii_chars;
+456 
+457   while (*p &amp;&amp; char_count &lt; 255) {
+458     char_infos[char_count].start = p;
+459 
+460     if ((*p &amp; 0xE0) == 0xC0) {
+461       char_infos[char_count].byte_len = 2;
+462       p += 2;
+463     } else if ((*p &amp; 0xF0) == 0xE0) {
+464       char_infos[char_count].byte_len = 3;
+465       p += 3;
+466     } else if ((*p &amp; 0xF8) == 0xF0) {
+467       char_infos[char_count].byte_len = 4;
+468       p += 4;
+469     } else {
+470       // ASCII characters (0x00-0x7F) and invalid sequences: treat as single byte
+471       char_infos[char_count].byte_len = 1;
+472       p++;
+473     }
+474     char_count++;
+475   }
+476 
+477   // Handle empty string case
+478   if (char_count == 0)
+479     return;
+480 
+481   // Build 64-entry cache and index ramp
+482   for (int i = 0; i &lt; 64; i++) {
+483     int char_idx = char_count &gt; 1 ? (i * (char_count - 1) + 31) / 63 : 0;
+484     if (char_idx &gt;= char_count)
+485       char_idx = char_count - 1;
+486 
+487     // Store character index for SIMD lookup
+488     char_index_ramp[i] = (uint8_t)char_idx;
+489 
+490     // Cache UTF-8 character
+491     cache64[i].byte_len = char_infos[char_idx].byte_len;
+492     memcpy(cache64[i].utf8_bytes, char_infos[char_idx].start, char_infos[char_idx].byte_len);
+493     if (cache64[i].byte_len &lt; 4) {
+494       cache64[i].utf8_bytes[cache64[i].byte_len] = '\0';
+495     }
+496   }
+497 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>get_utf8_palette_cache()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_calculate_cache_eviction_score_(uint64_t_last_access_time,_uint32_t_access_count,_uint64_t_creation_time,_uint64_t_current_time)"><a class="permalink" href="#double_calculate_cache_eviction_score_(uint64_t_last_access_time,_uint32_t_access_count,_uint64_t_creation_time,_uint64_t_current_time)">double
+  calculate_cache_eviction_score (uint64_t last_access_time, uint32_t
+  access_count, uint64_t creation_time, uint64_t current_time)</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>92                                                              {
+93   // Protect against unsigned underflow if times are inconsistent (clock adjustments, etc.)
+94   uint64_t age_ns = (current_time &gt;= last_access_time) ? (current_time - last_access_time) : 0;
+95   uint64_t total_age_ns = (current_time &gt;= creation_time) ? (current_time - creation_time) : 0;
+96 
+97   uint64_t age_seconds = age_ns / NS_PER_SEC_INT;
+98   uint64_t total_age_seconds = total_age_ns / NS_PER_SEC_INT;
+99 
+100   // Frequency factor: high-use palettes get protection (logarithmic scaling)
+101   double frequency_factor = 1.0 + log10(1.0 + access_count);
+102 
+103   // Aging factor: frequency bonus decays over time (5-minute half-life)
+104   double aging_factor = exp(-(double)age_seconds / CACHE_FREQUENCY_DECAY_TIME);
+105 
+106   // Recent access bonus: strong protection for recently used (1-minute protection)
+107   double recency_bonus = exp(-(double)age_seconds / CACHE_RECENCY_SCALE);
+108 
+109   // Cache lifetime penalty: prevent immortal caches (1-hour max lifetime)
+110   double lifetime_penalty = total_age_seconds &gt; CACHE_MAX_LIFETIME ? 0.5 : 1.0;
+111 
+112   // Final score: higher = keep longer
+113   return (frequency_factor * aging_factor + recency_bonus) * lifetime_penalty;
+114 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>get_utf8_palette_cache()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="utf8_palette_cache_t_*_get_utf8_palette_cache_(const_char_*_ascii_chars)"><a class="permalink" href="#utf8_palette_cache_t_*_get_utf8_palette_cache_(const_char_*_ascii_chars)">utf8_palette_cache_t
+  * get_utf8_palette_cache (const char * ascii_chars)</a></h2>
+<p class="Pp">Definition at line <b>278</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>278                                                                       {
+279   if (!ascii_chars)
+280     return NULL;
+281 
+282   // Check for empty string
+283   if (ascii_chars[0] == '\0')
+284     return NULL;
+285 
+286   // Create hash of palette for cache key
+287   uint32_t palette_hash = hash_palette_string(ascii_chars);
+288 
+289   // Ensure the cache system is initialized
+290   init_utf8_cache_system();
+291 
+292   // First try: read lock for cache lookup (allows multiple concurrent readers)
+293   rwlock_rdlock(&amp;g_utf8_cache_rwlock);
+294 
+295   // Check if cache exists
+296   utf8_palette_cache_t *cache = NULL;
+297   HASH_FIND_INT(g_utf8_cache_table, &amp;palette_hash, cache);
+298   if (cache) {
+299     // Cache hit: Update access tracking (atomics are thread-safe under rdlock)
+300     uint64_t current_time = time_get_ns();
+301     atomic_store_u64(&amp;cache-&gt;last_access_time, current_time);
+302     uint32_t new_access_count = atomic_fetch_add_u64(&amp;cache-&gt;access_count, 1) + 1;
+303 
+304     // Every 10th access: Update heap position (requires write lock)
+305     if (new_access_count % 10 == 0) {
+306       // Save the key before releasing read lock
+307       uint32_t saved_key = cache-&gt;key;
+308 
+309       // Release read lock and upgrade to write lock
+310       rwlock_rdunlock(&amp;g_utf8_cache_rwlock);
+311       rwlock_wrlock(&amp;g_utf8_cache_rwlock);
+312 
+313       // Re-lookup cache entry after lock upgrade
+314       // Another thread could have evicted this entry while we were upgrading locks
+315       utf8_palette_cache_t *cache_relookup = NULL;
+316       HASH_FIND_INT(g_utf8_cache_table, &amp;saved_key, cache_relookup);
+317       if (cache_relookup) {
+318         // Cache entry still exists - safe to update heap position
+319         uint64_t last_access = atomic_load_u64(&amp;cache_relookup-&gt;last_access_time);
+320         uint32_t access_count = atomic_load_u64(&amp;cache_relookup-&gt;access_count);
+321         double new_score =
+322             calculate_cache_eviction_score(last_access, access_count, cache_relookup-&gt;creation_time, current_time);
+323         utf8_heap_update_score(cache_relookup, new_score);
+324       }
+325       // If cache_relookup is NULL, entry was evicted - skip update (not an error)
+326 
+327       rwlock_wrunlock(&amp;g_utf8_cache_rwlock);
+328     } else {
+329       rwlock_rdunlock(&amp;g_utf8_cache_rwlock);
+330     }
+331 
+332     return cache;
+333   }
+334 
+335   // Cache miss: Need to create new entry
+336   // Release read lock and acquire write lock
+337   rwlock_rdunlock(&amp;g_utf8_cache_rwlock);
+338   rwlock_wrlock(&amp;g_utf8_cache_rwlock);
+339 
+340   // Double-check: another thread might have created it while we upgraded locks
+341   cache = NULL;
+342   HASH_FIND_INT(g_utf8_cache_table, &amp;palette_hash, cache);
+343   if (cache) {
+344     // Found it! Just update access tracking and return
+345     uint64_t current_time = time_get_ns();
+346     atomic_store_u64(&amp;cache-&gt;last_access_time, current_time);
+347     atomic_fetch_add_u64(&amp;cache-&gt;access_count, 1);
+348     rwlock_wrunlock(&amp;g_utf8_cache_rwlock);
+349     return cache;
+350   }
+351 
+352   // Create new cache entry (holding write lock)
+353   cache = SAFE_MALLOC(sizeof(utf8_palette_cache_t), utf8_palette_cache_t *);
+354   if (!cache) {
+355     rwlock_wrunlock(&amp;g_utf8_cache_rwlock);
+356     return NULL;
+357   }
+358   memset(cache, 0, sizeof(utf8_palette_cache_t));
+359 
+360   // Set the key for uthash
+361   cache-&gt;key = palette_hash;
+362 
+363   // Build both cache types
+364   build_utf8_luminance_cache(ascii_chars, cache-&gt;cache);
+365   build_utf8_ramp64_cache(ascii_chars, cache-&gt;cache64, cache-&gt;char_index_ramp);
+366 
+367   // Store palette hash for validation
+368   SAFE_STRNCPY(cache-&gt;palette_hash, ascii_chars, sizeof(cache-&gt;palette_hash));
+369   cache-&gt;is_valid = true;
+370 
+371   // Initialize eviction tracking
+372   uint64_t current_time = time_get_ns();
+373   atomic_store_u64(&amp;cache-&gt;last_access_time, current_time);
+374   atomic_store_u64(&amp;cache-&gt;access_count, 1); // First access
+375   cache-&gt;creation_time = current_time;
+376 
+377   // Store in hash table with guaranteed eviction support
+378   try_insert_with_eviction_utf8(palette_hash, cache);
+379 
+380   log_debug(&quot;UTF8_CACHE: Created new cache for palette='%s' (hash=0x%x)&quot;, ascii_chars, palette_hash);
+381 
+382   rwlock_wrunlock(&amp;g_utf8_cache_rwlock);
+383   return cache;
+384 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
+    <b>build_utf8_luminance_cache()</b>, <b>build_utf8_ramp64_cache()</b>,
+    <b>calculate_cache_eviction_score()</b>, and <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>image_print()</b>, <b>image_print_16color()</b>,
+    <b>image_print_16color_dithered()</b>,
+    <b>image_print_16color_dithered_with_background()</b>,
+    <b>image_print_color()</b>, and <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_init_dec3_(void_)"><a class="permalink" href="#void_init_dec3_(void_)">void
+  init_dec3 (void )</a></h2>
+<p class="Pp">Initialize decimal-to-ASCII cache (0-255 &#x2192; &quot;0&quot; to
+    &quot;255&quot;). Pre-builds a cache of ASCII representations for all byte
+    values. Used by color code generation to avoid repeated int-to-string
+    conversions.</p>
+<p class="Pp">Definition at line <b>556</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>556                      {
+557   if (g_dec3_cache.dec3_initialized)
+558     return;
+559   for (int v = 0; v &lt; 256; ++v) {
+560     int d2 = v / 100;     // 0..2
+561     int r = v - d2 * 100; // 0..99
+562     int d1 = r / 10;      // 0..9
+563     int d0 = r - d1 * 10; // 0..9
+564 
+565     if (d2) {
+566       g_dec3_cache.dec3_table[v].len = 3;
+567       g_dec3_cache.dec3_table[v].s[0] = '0' + d2;
+568       g_dec3_cache.dec3_table[v].s[1] = '0' + d1;
+569       g_dec3_cache.dec3_table[v].s[2] = '0' + d0;
+570     } else if (d1) {
+571       g_dec3_cache.dec3_table[v].len = 2;
+572       g_dec3_cache.dec3_table[v].s[0] = '0' + d1;
+573       g_dec3_cache.dec3_table[v].s[1] = '0' + d0;
+574     } else {
+575       g_dec3_cache.dec3_table[v].len = 1;
+576       g_dec3_cache.dec3_table[v].s[0] = '0' + d0;
+577     }
+578   }
+579   g_dec3_cache.dec3_initialized = true;
+580 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_dec3_cache</b>.</p>
+<p class="Pp">Referenced by <b>append_truecolor_bg()</b>,
+    <b>append_truecolor_fg()</b>, <b>append_truecolor_fg_bg()</b>, and
+    <b>ascii_simd_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_init_default_luminance_palette_(void_)"><a class="permalink" href="#void_init_default_luminance_palette_(void_)">void
+  init_default_luminance_palette (void )</a></h2>
+<p class="Pp">Definition at line <b>599</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>599                                           {
+600   if (!lifecycle_init(&amp;g_default_palette_lc, &quot;default_palette&quot;)) {
+601     return; // Already initialized
+602   }
+603   do_init_default_luminance_palette();
+604 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_simd_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_simd_caches_destroy_all_(void_)"><a class="permalink" href="#void_simd_caches_destroy_all_(void_)">void
+  simd_caches_destroy_all (void )</a></h2>
+<p class="Pp">Definition at line <b>504</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>504                                    {
+505   log_dev(&quot;SIMD_CACHE: Starting cleanup of all SIMD caches&quot;);
+506 
+507   // Only destroy caches if they were ever initialized
+508   if (lifecycle_is_initialized(&amp;g_utf8_cache_lc)) {
+509     // Destroy shared UTF-8 palette cache (write lock for cleanup)
+510     rwlock_wrlock(&amp;g_utf8_cache_rwlock);
+511     if (g_utf8_cache_table) {
+512       // Free all UTF-8 cache entries using HASH_ITER
+513       utf8_palette_cache_t *cache, *tmp;
+514       HASH_ITER(hh, g_utf8_cache_table, cache, tmp) {
+515         HASH_DEL(g_utf8_cache_table, cache);
+516         SAFE_FREE(cache);
+517       }
+518       g_utf8_cache_table = NULL;
+519       log_debug(&quot;UTF8_CACHE: Destroyed shared UTF-8 palette cache&quot;);
+520     }
+521     // Clean up heap arrays
+522     if (g_utf8_heap) {
+523       SAFE_FREE(g_utf8_heap);
+524       g_utf8_heap = NULL;
+525       g_utf8_heap_size = 0;
+526     }
+527     rwlock_wrunlock(&amp;g_utf8_cache_rwlock);
+528     // Shutdown lifecycle and destroy rwlock together
+529     lifecycle_shutdown(&amp;g_utf8_cache_lc);
+530   }
+531 
+532   // Call architecture-specific cache cleanup functions
+533   // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
+534   // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
+535 #if SIMD_SUPPORT_NEON
+536   neon_caches_destroy();
+537 #elif SIMD_SUPPORT_AVX2
+538   avx2_caches_destroy();
+539 #elif SIMD_SUPPORT_SSSE3
+540   ssse3_caches_destroy();
+541 #elif SIMD_SUPPORT_SSE2
+542   sse2_caches_destroy();
+543 #elif SIMD_SUPPORT_SVE
+544   sve_caches_destroy();
+545 #endif
+546 
+547   log_dev(&quot;SIMD_CACHE: All SIMD caches destroyed&quot;);
+548 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>lifecycle_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="global_dec3_cache_t_g_dec3_cache_=__0_"><a class="permalink" href="#global_dec3_cache_t_g_dec3_cache_=__0_">global_dec3_cache_t
+  g_dec3_cache = {0}</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>37 {0};</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>append_sgr_truecolor_bg()</b>,
+    <b>append_sgr_truecolor_fg()</b>, <b>append_sgr_truecolor_fg_bg()</b>,
+    <b>append_truecolor_bg()</b>, <b>append_truecolor_fg()</b>,
+    <b>append_truecolor_fg_bg()</b>, and <b>init_dec3()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_g_default_luminance_palette_256__=__0_"><a class="permalink" href="#char_g_default_luminance_palette_256__=__0_">char
+  g_default_luminance_palette[256] = {0}</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file
+  <b>video/ascii/common.c</b>.</p>
+<pre>38 {0};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,1842 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>module_core(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">module_core(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">module_core(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">module_core - Core Infrastructure</p>
+<p class="Pp">
+  <br/>
+   - &#x2699;&#xFE0F; Core functionality including error handling, logging, and
+    configuration</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Topics"><a class="permalink" href="#Topics">Topics</a></h2>
+<br/>
+<p class="Pp"><b>main()</b>
+  <br/>
+  &#x1F680; The binary's entry point
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x2699;&#xFE0F; Core functionality including error handling,
+    logging, and configuration</p>
+<p class="Pp">Common definitions, error handling, logging system, and
+    configuration. Common Definitions</p>
+<p class="Pp">Core error handling, memory management, logging, and type
+    definitions shared throughout the ascii-chat application.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The common module (lib/common.h, <b>lib/common.c</b>) provides
+    fundamental infrastructure:</p>
+<ul class="Bl-bullet">
+  <li>Comprehensive error handling with context tracking</li>
+  <li>Memory allocation with leak detection in debug builds</li>
+  <li>Rate-limited logging for high-frequency code paths</li>
+  <li>Platform-independent type definitions</li>
+  <li>Shared constants and macros</li>
+</ul>
+<p class="Pp">All application code should use these common definitions to ensure
+    consistency, proper error handling, and debuggability.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Error_Handling_System"><a class="permalink" href="#Error_Handling_System">Error
+  Handling System</a></h1>
+<p class="Pp">ascii-chat uses a comprehensive error system
+    (lib/asciichat_errno.h) that provides:</p>
+<ul class="Bl-bullet">
+  <li>Specific error codes for different failure modes</li>
+  <li>Contextual error messages with file/line/function information</li>
+  <li>System error integration (errno on POSIX, GetLastError on Windows)</li>
+  <li>Thread-local error state (thread-safe)</li>
+  <li>Stack traces in debug builds</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="Error_Code_Enumeration"><a class="permalink" href="#Error_Code_Enumeration">Error
+  Code Enumeration</a></h2>
+<pre>typedef enum {
+<br/>
+    // Standard codes (0-2) - Unix conventions
+<br/>
+    ASCIICHAT_OK = 0,                   // Success
+<br/>
+    ERROR_GENERAL = 1,                  // Unspecified error
+<br/>
+    ERROR_USAGE = 2,                    // Invalid command line arguments
+<br/>
+    // Initialization failures (3-19)
+<br/>
+    ERROR_MEMORY = 3,                   // Memory allocation failed (OOM)
+<br/>
+    ERROR_CONFIG = 4,                   // Configuration file or settings error
+<br/>
+    ERROR_CRYPTO_INIT = 5,              // Cryptographic initialization failed
+<br/>
+    ERROR_LOGGING_INIT = 6,             // Logging system initialization failed
+<br/>
+    ERROR_PLATFORM_INIT = 7,            // Platform-specific initialization failed
+<br/>
+    // Hardware/Device errors (20-39)
+<br/>
+    ERROR_WEBCAM = 20,                  // Webcam initialization or capture failed
+<br/>
+    ERROR_WEBCAM_IN_USE = 21,           // Webcam is in use by another application
+<br/>
+    ERROR_WEBCAM_PERMISSION = 22,       // Webcam permission denied
+<br/>
+    ERROR_AUDIO = 23,                   // Audio device initialization or I/O failed
+<br/>
+    ERROR_AUDIO_IN_USE = 24,            // Audio device is in use
+<br/>
+    ERROR_TERMINAL = 25,                // Terminal initialization failed
+<br/>
+    // Network errors (40-59)
+<br/>
+    ERROR_NETWORK = 40,                 // General network error
+<br/>
+    ERROR_NETWORK_BIND = 41,            // Cannot bind to port (server)
+<br/>
+    ERROR_NETWORK_CONNECT = 42,         // Cannot connect to server (client)
+<br/>
+    ERROR_NETWORK_TIMEOUT = 43,         // Network operation timed out
+<br/>
+    ERROR_NETWORK_PROTOCOL = 44,        // Protocol violation or incompatible version
+<br/>
+    ERROR_NETWORK_SIZE = 45,            // Network packet size error
+<br/>
+    // Security/Crypto errors (60-79)
+<br/>
+    ERROR_CRYPTO = 60,                  // Cryptographic operation failed
+<br/>
+    ERROR_CRYPTO_KEY = 61,              // Key loading, parsing, or generation failed
+<br/>
+    ERROR_CRYPTO_AUTH = 62,             // Authentication failed
+<br/>
+    ERROR_CRYPTO_HANDSHAKE = 63,        // Cryptographic handshake failed
+<br/>
+    ERROR_CRYPTO_VERIFICATION = 64,     // Signature or key verification failed
+<br/>
+    // Runtime errors (80-99)
+<br/>
+    ERROR_THREAD = 80,                  // Thread creation or management failed
+<br/>
+    ERROR_BUFFER = 81,                  // Buffer allocation or overflow
+<br/>
+    ERROR_BUFFER_FULL = 82,             // Buffer full
+<br/>
+    ERROR_BUFFER_OVERFLOW = 83,         // Buffer overflow
+<br/>
+    ERROR_DISPLAY = 84,                 // Display rendering or output error
+<br/>
+    ERROR_INVALID_STATE = 85,           // Invalid program state
+<br/>
+    ERROR_INVALID_PARAM = 86,           // Invalid parameter
+<br/>
+    ERROR_INVALID_FRAME = 87,           // Invalid frame data
+<br/>
+    ERROR_RESOURCE_EXHAUSTED = 88,      // System resources exhausted
+<br/>
+    ERROR_FORMAT = 89,                  // String formatting operation failed
+<br/>
+    ERROR_STRING = 90,                  // String manipulation operation failed
+<br/>
+    // Signal/Crash handlers (100-127)
+<br/>
+    ERROR_SIGNAL_INTERRUPT = 100,       // Interrupted by signal (SIGINT, SIGTERM)
+<br/>
+    ERROR_SIGNAL_CRASH = 101,           // Fatal signal (SIGSEGV, SIGABRT, etc.)
+<br/>
+    ERROR_ASSERTION_FAILED = 102,       // Assertion or invariant violation
+<br/>
+    // Compression errors (103-104)
+<br/>
+    ERROR_COMPRESSION = 103,            // Compression operation failed
+<br/>
+    ERROR_DECOMPRESSION = 104,          // Decompression operation failed
+} asciichat_error_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Context"><a class="permalink" href="#Error_Context">Error
+  Context</a></h2>
+<p class="Pp">Each error includes rich contextual information:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    asciichat_error_t code;     // Error code (asciichat_error_t enum value)
+<br/>
+    const char *file;           // Source file where error occurred (NULL in release)
+<br/>
+    int line;                   // Line number where error occurred (0 in release)
+<br/>
+    const char *function;       // Function name where error occurred (NULL in release)
+<br/>
+    char *context_message;      // Optional custom message (dynamically allocated)
+<br/>
+    uint64_t timestamp;         // Timestamp when error occurred (microseconds)
+<br/>
+    int system_errno;           // System errno value (if applicable, 0 otherwise)
+<br/>
+    int wsa_error;              // Windows socket error code (if applicable)
+<br/>
+    void *backtrace[32];        // Stack trace addresses (debug builds only)
+<br/>
+    char **backtrace_symbols;   // Stack trace symbol strings (debug builds only)
+<br/>
+    int stack_depth;            // Number of stack frames captured
+<br/>
+    bool has_system_error;      // True if system_errno is valid
+<br/>
+    bool has_wsa_error;         // True if wsa_error is valid
+} asciichat_error_context_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Handling_Macros"><a class="permalink" href="#Error_Handling_Macros">Error
+  Handling Macros</a></h2>
+<p class="Pp"><b>SET_ERRNO</b>: Set error with custom message</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t open_file(const char *path) {
+<br/>
+    if (!path) {
+<br/>
+        return SET_ERRNO(ERROR_INVALID_PARAM, &quot;File path is NULL&quot;);
+<br/>
+    }
+<br/>
+    int fd = open(path, O_RDONLY);
+<br/>
+    if (fd &lt; 0) {
+<br/>
+        return SET_ERRNO_SYS(ERROR_NOT_FOUND, &quot;Failed to open file: %s&quot;, path);
+<br/>
+    }
+<br/>
+    return ASCIICHAT_OK;
+}
+</pre>
+<p class="Pp"><b>SET_ERRNO_SYS</b>: Set error with system errno</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t create_socket(void) {
+<br/>
+    socket_t sockfd = socket(AF_INET6, SOCK_STREAM, 0);
+<br/>
+    if (sockfd == INVALID_SOCKET_VALUE) {
+<br/>
+        return SET_ERRNO_SYS(ERROR_NETWORK_SOCKET,
+<br/>
+                              &quot;socket() failed (errno=%d)&quot;, errno);
+<br/>
+    }
+<br/>
+    return ASCIICHAT_OK;
+}
+</pre>
+<p class="Pp"><b>HAS_ERRNO</b>: Check if error occurred</p>
+<p class="Pp"></p>
+<pre>asciichat_error_context_t err_ctx;
+asciichat_error_t result = risky_operation();
+if (HAS_ERRNO(&amp;err_ctx)) {
+<br/>
+    log_error(&quot;Operation failed: %s (code=%d, file=%s:%d)&quot;,
+<br/>
+              err_ctx.context_message, err_ctx.error_code,
+<br/>
+              err_ctx.file, err_ctx.line);
+<br/>
+    return result;
+}
+</pre>
+<p class="Pp"><b>PRINT_ERRNO_CONTEXT</b>: Debug print error details</p>
+<p class="Pp"></p>
+<pre>if (HAS_ERRNO(&amp;err_ctx)) {
+<br/>
+    PRINT_ERRNO_CONTEXT(&amp;err_ctx);  // Only in debug builds
+<br/>
+    // Output:
+<br/>
+    // Error: ERROR_NETWORK_CONNECT (code=13)
+<br/>
+    // Message: Failed to connect to server (Connection refused)
+<br/>
+    // Location: src/client.c:245 in connect_to_server()
+<br/>
+    // System errno: 111 (Connection refused)
+<br/>
+    // Timestamp: 1234567890123456 &#x00B5;s
+}
+</pre>
+<p class="Pp"><b>CLEAR_ERRNO</b>: Clear error state</p>
+<p class="Pp"></p>
+<pre>CLEAR_ERRNO();  // Resets thread-local error state
+</pre>
+<p class="Pp"><b>GET_ERRNO</b>: Get current error code</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t current_error = GET_ERRNO();
+if (current_error != ASCIICHAT_OK) {
+<br/>
+    // Handle error
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Memory_Management"><a class="permalink" href="#Memory_Management">Memory
+  Management</a></h1>
+<p class="Pp">Custom memory allocation macros with automatic leak detection in
+    debug builds:</p>
+<section class="Ss">
+<h2 class="Ss" id="Memory_Allocation_Macros"><a class="permalink" href="#Memory_Allocation_Macros">Memory
+  Allocation Macros</a></h2>
+<p class="Pp"><b>SAFE_MALLOC</b>: Allocate memory with leak tracking</p>
+<p class="Pp"></p>
+<pre>// Syntax: SAFE_MALLOC(size, cast_type)
+uint8_t *buffer = SAFE_MALLOC(1024, uint8_t*);
+if (!buffer) {
+<br/>
+    return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate 1024 bytes&quot;);
+}
+// In debug builds, records:
+// - Allocation address
+// - Size (1024 bytes)
+// - File (src/client.c)
+// - Line (123)
+// - Thread ID
+</pre>
+<p class="Pp"><b>SAFE_CALLOC</b>: Allocate zeroed memory</p>
+<p class="Pp"></p>
+<pre>// Allocate array of 100 integers, initialized to 0
+int *array = SAFE_CALLOC(100, sizeof(int), int*);
+if (!array) {
+<br/>
+    return ERROR_MEMORY;
+}
+</pre>
+<p class="Pp"><b>SAFE_REALLOC</b>: Reallocate memory</p>
+<p class="Pp"></p>
+<pre>// Grow buffer from 1024 to 2048 bytes
+uint8_t *new_buffer = SAFE_REALLOC(buffer, 2048, uint8_t*);
+if (!new_buffer) {
+<br/>
+    // Original buffer still valid
+<br/>
+    SAFE_FREE(buffer);
+<br/>
+    return ERROR_MEMORY;
+}
+buffer = new_buffer;
+</pre>
+<p class="Pp"><b>SAFE_FREE</b>: Free memory and set to NULL</p>
+<p class="Pp"></p>
+<pre>SAFE_FREE(buffer);  // Frees and sets buffer = NULL
+// In debug builds, removes from leak tracker
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Debug_Memory_Tracking"><a class="permalink" href="#Debug_Memory_Tracking">Debug
+  Memory Tracking</a></h2>
+<p class="Pp">When CMAKE_BUILD_TYPE=Debug and DEBUG_MEMORY is defined:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Leak Detection</b>:</p>
+<ul class="Bl-bullet">
+  <li>All SAFE_MALLOC/CALLOC/REALLOC calls are recorded</li>
+  <li>Each allocation stores: address, size, file, line, timestamp</li>
+  <li>On program exit, reports any allocations not freed</li>
+  <li>Example output:</li>
+</ul>
+<p class="Pp"></p>
+<pre>Memory leak detected:
+<br/>
+  Address: 0x7f1234567890
+<br/>
+  Size: 1024 bytes
+<br/>
+  Allocated at: src/client.c:123 in process_frame()
+<br/>
+  Thread: 0x7f123456
+Total leaked: 1024 bytes in 1 allocation
+</pre>
+<p class="Pp"><b>Allocation Logging</b>:</p>
+<p class="Pp"></p>
+<pre>#define DEBUG_MEMORY 1
+// Every allocation is logged:
+// [MEMORY] malloc(1024) = 0x7f1234567890 at src/client.c:123
+// [MEMORY] free(0x7f1234567890) at src/client.c:456
+</pre>
+<p class="Pp"><b>Double-Free Detection</b>:</p>
+<ul class="Bl-bullet">
+  <li>Freeing already-freed memory triggers assertion</li>
+  <li>Prevents use-after-free bugs</li>
+</ul>
+<p class="Pp"><b>Memory Reports</b>:</p>
+<p class="Pp"></p>
+<pre>void asciichat_common_print_memory_stats(void);
+// Prints:
+// Current allocations: 5 (total 4096 bytes)
+// Peak allocations: 10 (total 8192 bytes)
+// Total malloc calls: 100
+// Total free calls: 95
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Logging_System"><a class="permalink" href="#Logging_System">Logging
+  System</a></h1>
+<p class="Pp">Multi-level logging with rate limiting for high-frequency
+  code:</p>
+<section class="Ss">
+<h2 class="Ss">Log Levels</h2>
+<pre>typedef enum {
+<br/>
+    LOG_DEBUG = 0,   // Verbose debug information
+<br/>
+    LOG_INFO = 1,    // Informational messages
+<br/>
+    LOG_WARN = 2,    // Warnings (non-fatal issues)
+<br/>
+    LOG_ERROR = 3,   // Errors (operation failed)
+<br/>
+    LOG_FATAL = 4,   // Fatal errors (program will exit)
+} log_level_t;</pre>
+<p class="Pp"><b>Control via environment</b>:</p>
+<p class="Pp"></p>
+<pre>export LOG_LEVEL=0  # DEBUG (all messages)
+export LOG_LEVEL=1  # INFO and above
+export LOG_LEVEL=2  # WARN and above
+export LOG_LEVEL=3  # ERROR and above
+export LOG_LEVEL=4  # FATAL only
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Standard_Logging_Macros"><a class="permalink" href="#Standard_Logging_Macros">Standard
+  Logging Macros</a></h2>
+<pre>log_debug(&quot;Frame captured: %dx%d&quot;, width, height);
+log_info(&quot;Client connected from %s:%d&quot;, ip, port);
+log_warn(&quot;Audio buffer underrun detected&quot;);
+log_error(&quot;Failed to send packet: %s&quot;, strerror(errno));
+log_fatal(&quot;Critical error, terminating&quot;);  // Exits program</pre>
+<p class="Pp">Output format:</p>
+<p class="Pp"></p>
+<pre>[2025-01-15 14:32:45.123] [DEBUG] Frame captured: 1920x1080
+[2025-01-15 14:32:45.456] [INFO] Client connected from 192.168.1.100:12345
+[2025-01-15 14:32:45.789] [WARN] Audio buffer underrun detected
+[2025-01-15 14:32:46.012] [ERROR] Failed to send packet: Broken pipe
+[2025-01-15 14:32:46.345] [FATAL] Critical error, terminating
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss">Rate-Limited Logging</h2>
+<p class="Pp">For high-frequency code paths (e.g., video/audio processing at 60+
+    FPS):</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Log at most once per second (1000000 &#x00B5;s)
+log_debug_every(1000000, &quot;Processing frame %d&quot;, frame_count);
+// Log at most once per 5 seconds
+log_info_every(5000000, &quot;Client status: %d connected&quot;, num_clients);
+// Log at most once per 10 seconds
+log_warn_every(10000000, &quot;High CPU usage: %.1f%%&quot;, cpu_usage);</pre>
+<p class="Pp"><b>Implementation</b>:</p>
+<ul class="Bl-bullet">
+  <li>Uses thread-local timestamp tracking</li>
+  <li>First call always logs</li>
+  <li>Subsequent calls within interval are suppressed</li>
+  <li>Different log sites have independent rate limiting</li>
+</ul>
+<p class="Pp"><b>Example</b> (video processing loop at 60 FPS):</p>
+<p class="Pp"></p>
+<pre>while (running) {
+<br/>
+    capture_frame();
+<br/>
+    // Without rate limiting: 60 log messages per second
+<br/>
+    // log_debug(&quot;Frame captured&quot;);
+<br/>
+    // With rate limiting: 1 log message per second
+<br/>
+    log_debug_every(1000000, &quot;Frame captured (count=%d)&quot;, frame_count);
+<br/>
+    frame_count++;
+}
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Logging_Configuration"><a class="permalink" href="#Logging_Configuration">Logging
+  Configuration</a></h2>
+<pre>// Initialize logging system
+asciichat_error_t log_init(const char *log_file, log_level_t level);
+// Change log level at runtime
+void log_set_level(log_level_t level);
+// Enable/disable color output
+void log_set_color(bool enable);
+// Cleanup logging
+void log_destroy(void);</pre>
+<p class="Pp">Usage:</p>
+<p class="Pp"></p>
+<pre>// Log to file and stderr
+log_init(&quot;/tmp/ascii-chat.log&quot;, LOG_INFO);
+// Later: increase verbosity
+log_set_level(LOG_DEBUG);
+// Cleanup
+log_destroy();
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Common_Type_Definitions"><a class="permalink" href="#Common_Type_Definitions">Common
+  Type Definitions</a></h1>
+<p class="Pp"><b>Fixed-width integers</b> (platform-independent):</p>
+<p class="Pp"></p>
+<pre>#include &lt;stdint.h&gt;
+int8_t, uint8_t      // 8-bit signed/unsigned
+int16_t, uint16_t    // 16-bit signed/unsigned
+int32_t, uint32_t    // 32-bit signed/unsigned
+int64_t, uint64_t    // 64-bit signed/unsigned
+size_t               // Unsigned size type (32 or 64-bit)
+ssize_t              // Signed size type
+</pre>
+<p class="Pp"><b>Boolean</b> (C99 style):</p>
+<p class="Pp"></p>
+<pre>#include &lt;stdbool.h&gt;
+bool, true, false
+</pre>
+<p class="Pp"><b>NULL pointer</b>:</p>
+<p class="Pp"></p>
+<pre>#define NULL ((void*)0)
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Common_Constants"><a class="permalink" href="#Common_Constants">Common
+  Constants</a></h1>
+<pre>// Buffer sizes
+#define MAX_PACKET_SIZE 65536         // Maximum network packet payload
+#define MAX_PATH_LEN 4096             // Maximum path length
+#define MAX_CLIENTS 9                 // Maximum simultaneous clients
+// Network
+#define DEFAULT_PORT 27224            // Default server port
+#define PACKET_MAGIC 0xDEADBEEF      // Packet header magic number
+// Video
+#define DEFAULT_WIDTH 80              // Default terminal width
+#define DEFAULT_HEIGHT 24             // Default terminal height
+#define DEFAULT_FPS 30                // Default framerate
+// Audio
+#define SAMPLE_RATE 48000             // Audio sample rate (Hz)
+#define AUDIO_CHANNELS 1              // Mono audio
+#define FRAMES_PER_BUFFER 512         // PortAudio buffer size</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh">Usage Examples</h1>
+<section class="Ss">
+<h2 class="Ss" id="Comprehensive_Error_Handling"><a class="permalink" href="#Comprehensive_Error_Handling">Comprehensive
+  Error Handling</a></h2>
+<pre>asciichat_error_t initialize_system(const char *config_file) {
+<br/>
+    asciichat_error_t err;
+<br/>
+    // Load configuration
+<br/>
+    options_t opts;
+<br/>
+    err = config_load(&amp;opts, config_file);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        asciichat_error_context_t ctx;
+<br/>
+        if (HAS_ERRNO(&amp;ctx)) {
+<br/>
+            log_error(&quot;Config load failed: %s&quot;, ctx.context_message);
+<br/>
+            PRINT_ERRNO_CONTEXT(&amp;ctx);
+<br/>
+        }
+<br/>
+        return err;
+<br/>
+    }
+<br/>
+    // Initialize crypto
+<br/>
+    crypto_context_t crypto_ctx;
+<br/>
+    err = crypto_init(&amp;crypto_ctx);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        options_destroy(&amp;opts);
+<br/>
+        return err;
+<br/>
+    }
+<br/>
+    // Initialize audio
+<br/>
+    audio_context_t audio_ctx;
+<br/>
+    err = audio_init(&amp;audio_ctx);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        crypto_destroy(&amp;crypto_ctx);
+<br/>
+        options_destroy(&amp;opts);
+<br/>
+        return err;
+<br/>
+    }
+<br/>
+    return ASCIICHAT_OK;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Memory_Management_with_Leak_Detection"><a class="permalink" href="#Memory_Management_with_Leak_Detection">Memory
+  Management with Leak Detection</a></h2>
+<pre>void process_data(void) {
+<br/>
+    // Allocate buffers
+<br/>
+    uint8_t *buffer1 = SAFE_MALLOC(1024, uint8_t*);
+<br/>
+    uint8_t *buffer2 = SAFE_CALLOC(512, sizeof(uint8_t), uint8_t*);
+<br/>
+    if (!buffer1 || !buffer2) {
+<br/>
+        log_error(&quot;Memory allocation failed&quot;);
+<br/>
+        SAFE_FREE(buffer1);
+<br/>
+        SAFE_FREE(buffer2);
+<br/>
+        return;
+<br/>
+    }
+<br/>
+    // Process data...
+<br/>
+    // Grow buffer if needed
+<br/>
+    if (need_more_space) {
+<br/>
+        uint8_t *new_buffer = SAFE_REALLOC(buffer1, 2048, uint8_t*);
+<br/>
+        if (!new_buffer) {
+<br/>
+            log_error(&quot;Reallocation failed&quot;);
+<br/>
+            SAFE_FREE(buffer1);
+<br/>
+            SAFE_FREE(buffer2);
+<br/>
+            return;
+<br/>
+        }
+<br/>
+        buffer1 = new_buffer;
+<br/>
+    }
+<br/>
+    // Cleanup (SAFE_FREE sets pointers to NULL)
+<br/>
+    SAFE_FREE(buffer1);
+<br/>
+    SAFE_FREE(buffer2);
+}
+// At program exit (debug builds):
+// If any SAFE_MALLOC'd memory wasn't freed, it's reported:
+// Memory leak detected:
+//   Address: 0x7f1234567890
+//   Size: 1024 bytes
+//   Allocated at: src/client.c:123</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Rate-Limited_Logging_in_Video_Loop"><a class="permalink" href="#Rate-Limited_Logging_in_Video_Loop">Rate-Limited
+  Logging in Video Loop</a></h2>
+<pre>void video_processing_loop(void) {
+<br/>
+    uint64_t frame_count = 0;
+<br/>
+    uint64_t dropped_frames = 0;
+<br/>
+    while (running) {
+<br/>
+        // Capture frame (60 FPS)
+<br/>
+        uint8_t *frame_data;
+<br/>
+        asciichat_error_t err = webcam_capture_frame(webcam, &amp;frame_data, &amp;frame_len);
+<br/>
+        if (err != ASCIICHAT_OK) {
+<br/>
+            dropped_frames++;
+<br/>
+            // Log at most once per second to avoid spam
+<br/>
+            log_warn_every(1000000, &quot;Frame capture failed (dropped %lu frames)&quot;,
+<br/>
+                            dropped_frames);
+<br/>
+            continue;
+<br/>
+        }
+<br/>
+        // Process frame...
+<br/>
+        frame_count++;
+<br/>
+        // Log progress every 5 seconds
+<br/>
+        log_info_every(5000000, &quot;Processed %lu frames (%.1f FPS)&quot;,
+<br/>
+                        frame_count, calculate_fps());
+<br/>
+    }
+}</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">common.h
+<p class="Pp"></p>
+<p class="Pp">asciichat_errno.h</p>
+<p class="Pp"></p>
+<p class="Pp">logging.h</p>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_README"><a class="permalink" href="#Configuration_README">Configuration
+  README</a></h2>
+<p class="Pp">Command-line argument parsing and TOML-based configuration file
+    management for flexible server and client setup.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview~2"><a class="permalink" href="#Overview~2">Overview</a></h1>
+<p class="Pp">ascii-chat supports two configuration methods:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Command-line arguments</b>: Quick configuration for ad-hoc usage</dd>
+  <dt>2.</dt>
+  <dd><b>TOML configuration files</b>: Persistent, structured configuration</dd>
+</dl>
+<p class="Pp">Command-line arguments override configuration file settings,
+    allowing:</p>
+<ul class="Bl-bullet">
+  <li>Default configuration in ~/.config/ascii-chat/config.toml</li>
+  <li>Per-session overrides via command-line flags</li>
+  <li>Easy scripting and automation</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="TOML_Configuration_Files"><a class="permalink" href="#TOML_Configuration_Files">TOML
+  Configuration Files</a></h1>
+<p class="Pp">ascii-chat uses TOML (Tom's Obvious, Minimal Language) for
+    configuration files, parsed by the tomlc17 library.</p>
+<section class="Ss">
+<h2 class="Ss" id="File_Format"><a class="permalink" href="#File_Format">File
+  Format</a></h2>
+<p class="Pp"><b>Complete example configuration</b>:</p>
+<p class="Pp"></p>
+<pre># ascii-chat Configuration File
+# Location: ~/.config/ascii-chat/config.toml
+[server]
+# Bind address (&quot;::&quot; for all IPv6/IPv4, &quot;0.0.0.0&quot; for IPv4 only)
+address = &quot;::&quot;
+# Server port (default: 27224)
+port = 27224
+# Maximum simultaneous clients (1-9)
+max_clients = 9
+# Server identity key (SSH Ed25519 format)
+key_file = &quot;~/.ssh/ascii-chat-server&quot;
+# Authorized client public keys (SSH format or github:username)
+# Leave empty to allow all clients (less secure)
+client_keys = [
+<br/>
+    &quot;github:alice&quot;,
+<br/>
+    &quot;github:bob&quot;,
+<br/>
+    &quot;ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... charlie@example.com&quot;
+]
+[client]
+# Server address to connect to
+address = &quot;localhost&quot;
+# Server port
+port = 27224
+# Expected server public key (for TOFU verification)
+# Leave empty to accept any server (prompts for confirmation)
+server_key = &quot;ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI...&quot;
+# Client identity key
+key_file = &quot;~/.ssh/id_ed25519&quot;
+# Connection timeout (seconds)
+timeout = 10
+[video]
+# Terminal width (auto-detected if not specified)
+width = 160
+# Terminal height (auto-detected if not specified)
+height = 45
+# Enable color output (true/false)
+color = true
+# Use half-block characters for 2x vertical resolution
+half_blocks = true
+# ASCII palette (characters from dark to bright)
+palette = &quot; .:-=+*#%@&quot;
+# Webcam device index (0 = first camera)
+webcam_device = 0
+# Capture resolution (before scaling to terminal size)
+capture_width = 1920
+capture_height = 1080
+# Target framerate
+fps = 30
+[audio]
+# Enable audio capture/playback
+enabled = true
+# Sample rate (Hz)
+sample_rate = 48000
+# Audio channels (1=mono, 2=stereo)
+channels = 1
+# PortAudio buffer size (frames)
+buffer_size = 512
+# Audio input device (-1 = default)
+input_device = -1
+# Audio output device (-1 = default)
+output_device = -1
+[logging]
+# Log file path (empty = stderr only)
+file = &quot;/tmp/ascii-chat.log&quot;
+# Log level (debug, info, warn, error, fatal)
+level = &quot;info&quot;
+# Enable color in log output
+color = true
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Configuration_Sections"><a class="permalink" href="#Configuration_Sections">Configuration
+  Sections</a></h2>
+<p class="Pp"><b>Section Names</b>: The section names in the TOML file
+    ([server], [client], [<b>Video to ASCII Conversion</b>]<b>,
+    </b>[<b>Audio</b>]<b>, </b>[logging]<b>) correspond directly to the option
+    categories displayed in </b>ascii-chat --help<b> and the man page. You can
+    find the complete list of available sections by running </b>ascii-chat
+    --help<b> and looking at the category labels for each option.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Names</b>: Configuration keys are the long-form
+    command-line option names with dashes converted to underscores. For
+  example:</p>
+<ul class="Bl-bullet">
+  <li>--color-mode flag becomes color_mode key in config</li>
+  <li>--max-clients flag becomes max_clients key in config</li>
+  <li>--server-key flag becomes server_key key in config</li>
+</ul>
+<p class="Pp">To find the correct key name for any configuration option, take
+    the long-form flag name (displayed in --help output), remove the leading
+    dashes, and replace all dashes with underscores.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Conflicting Options</b>: Some configuration options conflict
+    with each other and will cause the configuration file to fail loading if set
+    simultaneously. For example:</p>
+<ul class="Bl-bullet">
+  <li>--file and --url cannot both be set (URL takes priority)</li>
+  <li>--loop cannot be used with --url (network streams cannot be looped)</li>
+  <li>--seek requires either --file or --url</li>
+</ul>
+<p class="Pp">If your configuration file fails to load with validation errors,
+    check the error message for conflicting options and remove one of them.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Loading_Configuration"><a class="permalink" href="#Loading_Configuration">Loading
+  Configuration</a></h2>
+<p class="Pp"><b>Load Config File</b>:</p>
+<p class="Pp"></p>
+<pre>#include &quot;config.h&quot;
+#include &quot;options.h&quot;
+options_t opts;
+asciichat_error_t err = config_load(&amp;opts, &quot;~/.config/ascii-chat/config.toml&quot;);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to load config file&quot;);
+<br/>
+    return err;
+}
+// Configuration is now available in opts structure
+log_info(&quot;Server address: %s:%d&quot;, opts.address, opts.port);
+log_info(&quot;Max clients: %d&quot;, opts.max_clients);
+log_info(&quot;Video: %dx%d @ %d FPS&quot;, opts.width, opts.height, opts.fps);
+// Cleanup
+options_destroy(&amp;opts);
+</pre>
+<p class="Pp"><b>Apply Defaults</b>:</p>
+<p class="Pp"></p>
+<pre>// Initialize with default values
+options_t opts = {0};
+apply_default_options(&amp;opts);
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Command-Line_Options"><a class="permalink" href="#Command-Line_Options">Command-Line
+  Options</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Server_Options"><a class="permalink" href="#Server_Options">Server
+  Options</a></h2>
+<pre># Start server with defaults
+./ascii-chat server
+# Bind to specific address and port
+./ascii-chat server :: --port 27224
+# Bind to IPv4 only
+./ascii-chat server 0.0.0.0 --port 27224
+# Use server identity key
+./ascii-chat server --key ~/.ssh/ascii-chat-server
+# Authorize specific clients
+./ascii-chat server --client-keys github:alice,github:bob
+# Limit maximum clients
+./ascii-chat server --max-clients 4
+# Enable color and set log file
+./ascii-chat server --color --log-file /tmp/server.log
+# Use configuration file
+./ascii-chat --config ~/.config/ascii-chat/server.toml server</pre>
+<p class="Pp">Server-specific flags:</p>
+<ul class="Bl-bullet">
+  <li>[address1] [address2] (positional): Bind addresses, 0-2 IPv4/IPv6
+      addresses (default: 127.0.0.1 and ::1)</li>
+  <li>--port, -p PORT: Listen port (default: 27224)</li>
+  <li>--key KEY_FILE: Server identity key (SSH Ed25519)</li>
+  <li>--client-keys KEYS: Comma-separated authorized client keys</li>
+  <li>--max-clients N: Maximum simultaneous clients (1-9, default: 9)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client_Options"><a class="permalink" href="#Client_Options">Client
+  Options</a></h2>
+<pre># Connect to localhost (default)
+./ascii-chat client
+# Connect to specific server
+./ascii-chat client example.com:27224
+# Specify terminal dimensions
+./ascii-chat client --width 160 --height 45
+# Enable color and half-blocks
+./ascii-chat client --color --half-blocks
+# Use custom ASCII palette
+./ascii-chat client --palette &quot; .:-=+*#%@&quot;
+# Enable audio
+./ascii-chat client --audio
+# Verify server identity
+./ascii-chat client --server-key ~/.ssh/server_key.pub
+# Use client identity key
+./ascii-chat client --key ~/.ssh/id_ed25519
+# Snapshot mode (capture and exit)
+./ascii-chat client --snapshot --snapshot-delay 10
+# Use configuration file
+./ascii-chat --config ~/.config/ascii-chat/client.toml client example.com</pre>
+<p class="Pp">Client-specific flags:</p>
+<ul class="Bl-bullet">
+  <li>[address][:port] (positional): Server address with optional port (default:
+      localhost:27224)</li>
+  <li>--port, -p PORT: Server port (default: 27224) - conflicts with port in
+      positional argument</li>
+  <li>--width, -w WIDTH: Terminal width (default: auto-detect)</li>
+  <li>--height, -h HEIGHT: Terminal height (default: auto-detect)</li>
+  <li>--color, -c: Enable color output</li>
+  <li>--half-blocks: Use half-block characters (2x vertical resolution)</li>
+  <li>--palette, -P PALETTE: ASCII palette type (standard, blocks, digital,
+      minimal, cool, custom)</li>
+  <li>--palette-chars, -C CHARS: Custom palette characters string</li>
+  <li>--audio, -A: Enable audio capture/playback</li>
+  <li>--server-key KEY: Expected server public key (TOFU)</li>
+  <li>--key KEY_FILE: Client identity key</li>
+  <li>--snapshot: Snapshot mode (capture once and exit)</li>
+  <li>--snapshot-delay SECONDS: Snapshot duration before exit</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss">Common Options</h2>
+<p class="Pp">Available for both server and client:</p>
+<ul class="Bl-bullet">
+  <li>--config FILE: Configuration file path</li>
+  <li>--log-file FILE: Log file path</li>
+  <li>--help, -?: Show help message</li>
+  <li>--version, -v: Show version information</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Default_Config_Locations"><a class="permalink" href="#Default_Config_Locations">Default
+  Config Locations</a></h1>
+<p class="Pp">All ascii-chat data files (config.toml, known_hosts) are stored in
+    a single directory:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Linux/macOS</b>:</p>
+<ul class="Bl-bullet">
+  <li>$XDG_CONFIG_HOME/ascii-chat/ (if XDG_CONFIG_HOME is set)</li>
+  <li>~/.ascii-chat/ (default when XDG_CONFIG_HOME is not set)</li>
+</ul>
+<p class="Pp"><b>Windows</b>:</p>
+<ul class="Bl-bullet">
+  <li>APPDATA%\ascii-chat\\endiskip (if APPDATA is set)</li>
+  <li>~\.ascii-chat\\endiskip (default when APPDATA is not set)</li>
+</ul>
+<p class="Pp"><b>Creating a Default Config</b>:</p>
+<p class="Pp"></p>
+<pre># Create config at default location
+./ascii-chat --config-create
+# Create config at custom location
+./ascii-chat --config-create ~/.my-config.toml
+# Overwrite existing config (scripted - supports piped input)
+echo &quot;y&quot; | ./ascii-chat --config-create
+yes | ./ascii-chat --config-create /tmp/server.toml
+</pre>
+<p class="Pp"><b>Using a Config File</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat --config ~/.ascii-chat/config.toml server
+./ascii-chat --config ~/.ascii-chat/config.toml client example.com
+</pre>
+<p class="Pp"><b>Overriding Config with CLI</b>:</p>
+<p class="Pp"></p>
+<pre># Config file sets port=27224, but override it with --port
+./ascii-chat --config ~/.ascii-chat/config.toml client --port 8080
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Configuration_Precedence"><a class="permalink" href="#Configuration_Precedence">Configuration
+  Precedence</a></h1>
+<p class="Pp">Settings are applied in this order (later overrides earlier):</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Built-in defaults</b> - Hardcoded default values</dd>
+  <dt>2.</dt>
+  <dd><b>Config file</b> - Values from TOML configuration (if specified with
+      --config)</dd>
+  <dt>3.</dt>
+  <dd><b>Environment variables</b> - LOG_LEVEL, etc.</dd>
+  <dt>4.</dt>
+  <dd><b>Command-line arguments</b> - Highest priority</dd>
+</dl>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre># Config file has port=27224
+# Environment has LOG_LEVEL=1
+# Command line has --port 8080
+# Result: port=8080 (CLI wins), log_level=1 (from env)
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Configuration_Validation"><a class="permalink" href="#Configuration_Validation">Configuration
+  Validation</a></h1>
+<p class="Pp">The configuration system automatically validates all settings:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Automatic Validation</b>:</p>
+<ul class="Bl-bullet">
+  <li>Port range validation (1-65535)</li>
+  <li>Webcam index validation</li>
+  <li>File path validation (key files, config files)</li>
+  <li>Log level validation (0-4)</li>
+  <li>IP address format validation</li>
+  <li>Dimensions validation (width: 20-500, height: 10-200)</li>
+  <li>Client limits (max_clients: 1-9, grid layout constraint)</li>
+  <li>Tilde expansion for home directory (~/)</li>
+  <li>SSH keys must be Ed25519 format</li>
+  <li>Palette strings (must have at least 2 characters, ordered dark &#x2192;
+      bright)</li>
+  <li>UTF-8 validation for multi-byte characters</li>
+</ul>
+<p class="Pp"><b>Error Reporting</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t err = config_load(&amp;opts, &quot;~/.ascii-chat/config.toml&quot;);
+if (err != ASCIICHAT_OK) {
+<br/>
+    asciichat_error_context_t ctx;
+<br/>
+    if (HAS_ERRNO(&amp;ctx)) {
+<br/>
+        log_error(&quot;Invalid configuration: %s&quot;, ctx.context_message);
+<br/>
+    }
+<br/>
+    return err;
+}
+</pre>
+<p class="Pp">Example validation code:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t validate_config(const options_t *opts) {
+<br/>
+    if (opts-&gt;port &lt; 1 || opts-&gt;port &gt; 65535) {
+<br/>
+        return SET_ERRNO(ERROR_CONFIG_INVALID,
+<br/>
+                          &quot;Port must be 1-65535 (got %d)&quot;, opts-&gt;port);
+<br/>
+    }
+<br/>
+    if (opts-&gt;max_clients &lt; 1 || opts-&gt;max_clients &gt; 9) {
+<br/>
+        return SET_ERRNO(ERROR_CONFIG_INVALID,
+<br/>
+                          &quot;max_clients must be 1-9 (got %d)&quot;, opts-&gt;max_clients);
+<br/>
+    }
+<br/>
+    if (opts-&gt;palette &amp;&amp; strlen(opts-&gt;palette) &lt; 2) {
+<br/>
+        return SET_ERRNO(ERROR_CONFIG_INVALID,
+<br/>
+                          &quot;Palette must have at least 2 characters&quot;);
+<br/>
+    }
+<br/>
+    return ASCIICHAT_OK;
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh">Usage Examples</h1>
+<section class="Ss">
+<h2 class="Ss" id="Parsing_Command-Line_and_Config_File"><a class="permalink" href="#Parsing_Command-Line_and_Config_File">Parsing
+  Command-Line and Config File</a></h2>
+<pre>int main(int argc, char **argv) {
+<br/>
+    options_t opts;
+<br/>
+    asciichat_error_t err;
+<br/>
+    // Parse command-line arguments
+<br/>
+    err = options_parse(&amp;opts, argc, argv);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        fprintf(stderr, &quot;Usage: %s [server|client] [OPTIONS]\n&quot;, argv[0]);
+<br/>
+        return 1;
+<br/>
+    }
+<br/>
+    // Load configuration file if specified
+<br/>
+    if (opts.config_file) {
+<br/>
+        err = config_load(&amp;opts, opts.config_file);
+<br/>
+        if (err != ASCIICHAT_OK) {
+<br/>
+            log_error(&quot;Failed to load config: %s&quot;, opts.config_file);
+<br/>
+            options_destroy(&amp;opts);
+<br/>
+            return 1;
+<br/>
+        }
+<br/>
+    }
+<br/>
+    // Validate configuration
+<br/>
+    err = validate_config(&amp;opts);
+<br/>
+    if (err != ASCIICHAT_OK) {
+<br/>
+        asciichat_error_context_t ctx;
+<br/>
+        if (HAS_ERRNO(&amp;ctx)) {
+<br/>
+            log_error(&quot;Invalid configuration: %s&quot;, ctx.context_message);
+<br/>
+        }
+<br/>
+        options_destroy(&amp;opts);
+<br/>
+        return 1;
+<br/>
+    }
+<br/>
+    // Use configuration...
+<br/>
+    if (opts.mode == MODE_SERVER) {
+<br/>
+        run_server(&amp;opts);
+<br/>
+    } else {
+<br/>
+        run_client(&amp;opts);
+<br/>
+    }
+<br/>
+    // Cleanup
+<br/>
+    options_destroy(&amp;opts);
+<br/>
+    return 0;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Setting_Defaults"><a class="permalink" href="#Setting_Defaults">Setting
+  Defaults</a></h2>
+<pre>void options_set_defaults(options_t *opts) {
+<br/>
+    memset(opts, 0, sizeof(*opts));
+<br/>
+    // Network defaults
+<br/>
+    opts-&gt;port = DEFAULT_PORT;  // 27224
+<br/>
+    opts-&gt;address = strdup(&quot;::&quot;);  // Dual-stack IPv6/IPv4
+<br/>
+    // Video defaults
+<br/>
+    opts-&gt;width = DEFAULT_WIDTH;   // 80 (or auto-detect)
+<br/>
+    opts-&gt;height = DEFAULT_HEIGHT; // 24 (or auto-detect)
+<br/>
+    opts-&gt;fps = DEFAULT_FPS;       // 30
+<br/>
+    opts-&gt;color = true;
+<br/>
+    opts-&gt;half_blocks = false;
+<br/>
+    opts-&gt;palette = strdup(&quot; .:-=+*#%@&quot;);
+<br/>
+    // Audio defaults
+<br/>
+    opts-&gt;audio = false;  // Disabled by default for client
+<br/>
+    opts-&gt;sample_rate = SAMPLE_RATE;  // 48000
+<br/>
+    opts-&gt;audio_channels = AUDIO_CHANNELS;  // 1 (mono)
+<br/>
+    // Logging defaults
+<br/>
+    opts-&gt;log_level = LOG_INFO;
+<br/>
+    opts-&gt;log_color = true;
+}</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>Options</b> for command-line argument parsing
+<p class="Pp"></p>
+<p class="Pp"><b>options.h</b></p>
+<p class="Pp"></p>
+<p class="Pp">config.h</p>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Logging_README"><a class="permalink" href="#Logging_README">Logging
+  README</a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview~3"><a class="permalink" href="#Overview~3">Overview</a></h1>
+<p class="Pp">Welcome to the logging system! If you've ever tried to debug a
+    complex program without good logging, you know the pain. The logging system
+    is your debugging best friend&#x2014;it helps you understand what's
+    happening in your application, track down bugs, and monitor behavior in
+    production.</p>
+<p class="Pp"></p>
+<p class="Pp">Think of logging as your application's diary. It writes down
+    everything that happens: when clients connect, when errors occur, when
+    packets are processed. You can configure how chatty it should be (from super
+    verbose DEBUG mode to quiet ERROR-only mode), and you can send the output to
+    the console, to a file, or both!</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/logging.h</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_makes_this_logging_system_helpful?"><a class="permalink" href="#What_makes_this_logging_system_helpful?">What
+  makes this logging system helpful? </a></h2>
+<ul class="Bl-bullet">
+  <li><b>Six log levels</b>: DEV, DEBUG, INFO, WARN, ERROR, FATAL (choose your
+      verbosity)</li>
+  <li><b>Rate limiting</b>: Prevents log spam in tight loops (your disk will
+      thank you)</li>
+  <li><b>Flexible output</b>: Console, file, or both simultaneously</li>
+  <li><b>Thread-safe</b>: Multiple threads can log without stepping on each
+      other</li>
+  <li><b>Context tracking</b>: Automatic timestamps and source location
+      (file:line)</li>
+  <li><b>Pretty colors</b>: Colored console output so errors jump out at
+    you</li>
+  <li><b>Runtime configuration</b>: Change log level on the fly via environment
+      variable</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh">Log Levels</h1>
+<p class="Pp">The logging system has six levels, from most verbose to least:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>DEV (0)</b> - The super chatty one:</p>
+<ul class="Bl-bullet">
+  <li>Use this for development-only messages that are too verbose for normal
+      debugging</li>
+  <li>Useful for tracing code paths during active development</li>
+  <li>Usually disabled even in debug builds unless you need extreme detail</li>
+</ul>
+<p class="Pp"><b>DEBUG (1)</b> - The chatty one:</p>
+<ul class="Bl-bullet">
+  <li>Use this when you need detailed diagnostic information</li>
+  <li>Only available in debug builds (stripped out in release for
+    performance)</li>
+  <li>Perfect for understanding exactly what's happening step by step</li>
+</ul>
+<p class="Pp"><b>INFO (2)</b> - The reporter:</p>
+<ul class="Bl-bullet">
+  <li>General informational messages about normal operations</li>
+  <li>&quot;Client connected&quot;, &quot;Frame processed&quot;, that sort of
+      thing</li>
+  <li>What you'd want to see during normal operation</li>
+</ul>
+<p class="Pp"><b>WARN (3)</b> - The concerned citizen:</p>
+<ul class="Bl-bullet">
+  <li>Something's not quite right, but we can keep going</li>
+  <li>&quot;Buffer is getting full&quot;, &quot;Retrying connection&quot;</li>
+  <li>Pay attention, but don't panic</li>
+</ul>
+<p class="Pp"><b>ERROR (4)</b> - Houston, we have a problem:</p>
+<ul class="Bl-bullet">
+  <li>Operation failures that are recoverable</li>
+  <li>&quot;Failed to send packet&quot;, &quot;Client disconnected
+      unexpectedly&quot;</li>
+  <li>Things went wrong, but we're handling it</li>
+</ul>
+<p class="Pp"><b>FATAL (5)</b> - The showstopper:</p>
+<ul class="Bl-bullet">
+  <li>Unrecoverable errors that mean we can't continue</li>
+  <li>&quot;Cannot initialize crypto&quot;, &quot;Out of memory&quot;</li>
+  <li>Time to gracefully shut down</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Basic_Usage"><a class="permalink" href="#Basic_Usage">Basic
+  Usage</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Basic_Logging"><a class="permalink" href="#Basic_Logging">Basic
+  Logging</a></h2>
+<p class="Pp"><b>Log Messages</b>:</p>
+<p class="Pp"></p>
+<pre>log_debug(&quot;Processing frame %d&quot;, frame_number);
+log_info(&quot;Client connected: %s:%d&quot;, ip, port);
+log_warn(&quot;Buffer nearly full: %zu/%zu&quot;, used, capacity);
+log_error(&quot;Failed to send packet: %s&quot;, error_msg);
+log_fatal(&quot;Cannot initialize crypto: %s&quot;, reason);
+</pre>
+<p class="Pp"><b>Format Specifiers</b>:</p>
+<p class="Pp"></p>
+<pre>log_info(&quot;Integer: %d&quot;, 42);
+log_info(&quot;String: %s&quot;, &quot;hello&quot;);
+log_info(&quot;Pointer: %p&quot;, ptr);
+log_info(&quot;Size: %zu bytes&quot;, size);
+log_info(&quot;Hex: 0x%08x&quot;, value);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss">Rate-Limited Logging</h2>
+<p class="Pp"><b>Rate Limiting</b> (prevents log spam in tight loops):</p>
+<p class="Pp"></p>
+<pre>// Log at most once per second (1,000,000 microseconds)
+for (int i = 0; i &lt; 1000000; i++) {
+<br/>
+    log_debug_every(1000000, &quot;Processing item %d&quot;, i);
+}
+// Log at most once per 5 seconds
+while (video_running) {
+<br/>
+    log_info_every(5000000, &quot;Video frames processed: %d&quot;, frame_count);
+<br/>
+    process_frame();
+}
+</pre>
+<p class="Pp"><b>Available Rate-Limited Macros</b>:</p>
+<ul class="Bl-bullet">
+  <li>log_debug_every(usec, ...)</li>
+  <li>log_info_every(usec, ...)</li>
+  <li>log_warn_every(usec, ...)</li>
+  <li>log_error_every(usec, ...)</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Configuration"><a class="permalink" href="#Configuration">Configuration</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Setting_Log_Level"><a class="permalink" href="#Setting_Log_Level">Setting
+  Log Level</a></h2>
+<p class="Pp"><b>Runtime Configuration</b>:</p>
+<p class="Pp"></p>
+<pre>// Set log level to DEBUG
+set_log_level(LOG_LEVEL_DEBUG);
+// Set log level to INFO (hide debug messages)
+set_log_level(LOG_LEVEL_INFO);
+// Set log level to ERROR (only errors and fatal)
+set_log_level(LOG_LEVEL_ERROR);
+</pre>
+<p class="Pp"><b>Environment Variable</b>:</p>
+<p class="Pp"></p>
+<pre># Set log level via environment
+export LOG_LEVEL=0  # DEV
+export LOG_LEVEL=1  # DEBUG
+export LOG_LEVEL=2  # INFO
+export LOG_LEVEL=3  # WARN
+export LOG_LEVEL=4  # ERROR
+export LOG_LEVEL=5  # FATAL
+# Run with debug logging
+LOG_LEVEL=1 ./bin/ascii-chat server
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_Output"><a class="permalink" href="#File_Output">File
+  Output</a></h2>
+<p class="Pp"><b>Configure File Logging</b>:</p>
+<p class="Pp"></p>
+<pre>// Enable logging to file
+set_log_file(&quot;/tmp/ascii-chat-server.log&quot;);
+// Logs now go to both console and file
+log_info(&quot;This appears in both console and file&quot;);
+// Close log file
+close_log_file();
+</pre>
+<p class="Pp"><b>Command-line Option</b>:</p>
+<p class="Pp"></p>
+<pre># Log to file via command line
+./bin/ascii-chat server --log-file=/tmp/server.log
+./bin/ascii-chat client --log-file=/tmp/client.log
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Output_Format"><a class="permalink" href="#Output_Format">Output
+  Format</a></h1>
+<p class="Pp">Log messages have a consistent format that makes them easy to read
+    and understand. Every message includes a timestamp, level, source location,
+    and the actual message text. Let's look at the format:</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_does_a_log_message_look_like?"><a class="permalink" href="#What_does_a_log_message_look_like?">What
+  does a log message look like? </a></h2>
+<p class="Pp"><b>Log Message Format</b>:</p>
+<p class="Pp"></p>
+<pre>[TIMESTAMP] LEVEL [file:line] message
+</pre>
+<p class="Pp">The format is simple and consistent&#x2014;timestamp first (so you
+    can see when things happened), level next (so you know how important it is),
+    source location (so you know where in the code it came from), and the
+    message itself.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Example Output</b>:</p>
+<p class="Pp"></p>
+<pre>[2025-01-15 14:23:45] DEBUG [server.c:234] Starting video capture thread
+[2025-01-15 14:23:45] INFO  [network.c:456] Client connected: 192.168.1.100:54321
+[2025-01-15 14:23:46] WARN  [audio.c:123] Audio buffer 80% full
+[2025-01-15 14:23:47] ERROR [crypto.c:789] Handshake failed: invalid signature
+</pre>
+<p class="Pp">Notice how you can see exactly when things happened, what level
+    they are, where in the code they came from, and what the message is. This
+    makes debugging much easier!</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_about_colors?"><a class="permalink" href="#What_about_colors?">What
+  about colors? </a></h2>
+<p class="Pp"><b>Console Colors</b> (ANSI terminals):</p>
+<ul class="Bl-bullet">
+  <li><b>DEV</b>: Dim Gray (even more subtle, for development tracing)</li>
+  <li><b>DEBUG</b>: Gray (subtle, so it doesn't distract from important
+      messages)</li>
+  <li><b>INFO</b>: White (default color, for normal messages)</li>
+  <li><b>WARN</b>: Yellow (gets your attention, but not too alarming)</li>
+  <li><b>ERROR</b>: Red (you should pay attention to this!)</li>
+  <li><b>FATAL</b>: Bold Red (this is serious!)</li>
+</ul>
+<p class="Pp">Colors make it easy to scan logs&#x2014;errors jump out in red,
+    warnings in yellow. If you're in a terminal that supports colors, this makes
+    debugging much easier.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
+  Safety</a></h1>
+<p class="Pp"><b>Mutex Protection</b>:</p>
+<ul class="Bl-bullet">
+  <li>All logging operations are protected by a global mutex</li>
+  <li>Safe for concurrent logging from multiple threads</li>
+  <li>No output interleaving</li>
+</ul>
+<p class="Pp"><b>Thread Identification</b>:</p>
+<ul class="Bl-bullet">
+  <li>Thread ID automatically captured (debug builds)</li>
+  <li>Helps trace multi-threaded execution</li>
+</ul>
+<p class="Pp"><b>Example Multi-threaded Logging</b>:</p>
+<p class="Pp"></p>
+<pre>void* worker_thread(void *arg) {
+<br/>
+    log_info(&quot;Worker thread started&quot;);  // Thread-safe
+<br/>
+    for (int i = 0; i &lt; 1000; i++) {
+<br/>
+        // Rate-limited, thread-safe
+<br/>
+        log_debug_every(1000000, &quot;Processing item %d&quot;, i);
+<br/>
+    }
+<br/>
+    log_info(&quot;Worker thread finished&quot;);
+<br/>
+    return NULL;
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance_Considerations"><a class="permalink" href="#Performance_Considerations">Performance
+  Considerations</a></h1>
+<p class="Pp">Logging performance is important&#x2014;you don't want logging to
+    slow down your application. We've designed the system to be efficient, but
+    there are some things to keep in mind:</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="How_do_we_keep_logging_fast?"><a class="permalink" href="#How_do_we_keep_logging_fast?">How
+  do we keep logging fast? </a></h2>
+<p class="Pp"><b>Rate Limiting</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Use log_*_every() in high-frequency code paths</b>: If you're logging
+      in a tight loop, use rate limiting so you don't flood the logs</li>
+  <li><b>Prevents log spam and performance degradation</b>: Without rate
+      limiting, logging can slow down your application significantly</li>
+  <li><b>Minimal overhead when rate limit is active</b>: Once the rate limit is
+      active, logging is essentially free (we just check if enough time has
+      passed, then skip logging)</li>
+</ul>
+<p class="Pp">Rate limiting is your friend in tight loops&#x2014;you can log
+    every iteration without actually logging every iteration!</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="How_about_file_I/O?"><a class="permalink" href="#How_about_file_I/O?">How
+  about file I/O? </a></h2>
+<p class="Pp"><b>File I/O</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>File logging adds I/O overhead</b>: Writing to a file is slower than
+      writing to console, but it's still pretty fast for most use cases</li>
+  <li><b>Consider async file writing for high-throughput</b>: If you're logging
+      a lot (thousands of messages per second), you might want async file
+      writing</li>
+  <li><b>Use buffered output for better performance</b>: We use buffered I/O, so
+      multiple log messages can be written in one operation</li>
+</ul>
+<p class="Pp">File logging is pretty fast&#x2014;we use buffered I/O, so most of
+    the time you won't notice the overhead. If you're logging hundreds of
+    messages per second, you might want to consider rate limiting or async
+    logging.</p>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="What_about_string_formatting?"><a class="permalink" href="#What_about_string_formatting?">What
+  about string formatting? </a></h2>
+<p class="Pp"><b>String Formatting</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Avoid expensive formatting in hot paths</b>: String formatting (like
+      sprintf()) can be slow if you're doing it thousands of times per
+    second</li>
+  <li><b>Use rate limiting for frequent messages</b>: If you're logging
+      frequently, rate limiting reduces the number of format operations</li>
+  <li><b>Consider conditional compilation for debug logs</b>: Debug logs can be
+      compiled out entirely in release builds, so they have zero overhead</li>
+</ul>
+<p class="Pp">String formatting is usually pretty fast, but if you're doing it
+    millions of times per second, it can add up. Use rate limiting for frequent
+    messages, and remember that debug logs are compiled out in release
+  builds!</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<p class="Pp"><b>DO</b>:</p>
+<ul class="Bl-bullet">
+  <li>Use appropriate log levels</li>
+  <li>Use rate limiting in tight loops</li>
+  <li>Include relevant context (IDs, values)</li>
+  <li>Use structured messages</li>
+  <li>Log errors with error codes</li>
+</ul>
+<p class="Pp"><b>DON'T</b>:</p>
+<ul class="Bl-bullet">
+  <li>Don't use printf() directly (use log_*() instead)</li>
+  <li>Don't log in tight loops without rate limiting</li>
+  <li>Don't log sensitive data (passwords, keys)</li>
+  <li>Don't use DEBUG level for production</li>
+  <li>Don't log every iteration of a loop</li>
+</ul>
+<p class="Pp"><b>Examples</b>:</p>
+<p class="Pp"></p>
+<pre>// &#x2705; GOOD - Rate limited
+for (int i = 0; i &lt; 1000000; i++) {
+<br/>
+    log_debug_every(1000000, &quot;Processed %d items&quot;, i);
+}
+// &#x274C; BAD - Logs 1 million times!
+for (int i = 0; i &lt; 1000000; i++) {
+<br/>
+    log_debug(&quot;Processing item %d&quot;, i);
+}
+// &#x2705; GOOD - Contextual error message
+log_error(&quot;Failed to send packet to client %u: %s&quot;, client_id, error_msg);
+// &#x274C; BAD - Generic message
+log_error(&quot;Send failed&quot;);
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Integration_with_Error_System"><a class="permalink" href="#Integration_with_Error_System">Integration
+  with Error System</a></h1>
+<p class="Pp"><b>Automatic Error Logging</b>:</p>
+<ul class="Bl-bullet">
+  <li>SET_ERRNO() macros automatically log errors</li>
+  <li>Error context included in log messages</li>
+  <li>File/line/function captured automatically</li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>if (socket_fd &lt; 0) {
+<br/>
+    // Automatically logs: &quot;ERROR: Failed to create socket&quot;
+<br/>
+    return SET_ERRNO(ERROR_NETWORK_SOCKET, &quot;Failed to create socket&quot;);
+}
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">logging.h
+<p class="Pp"></p>
+<p class="Pp">asciichat_errno.h</p>
+<p class="Pp"></p>
+<p class="Pp">common.h</p>
+</div>
+<section class="Ss">
+<h2 class="Ss" id="Options_README"><a class="permalink" href="#Options_README">Options
+  README</a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview~4"><a class="permalink" href="#Overview~4">Overview</a></h1>
+<p class="Pp">The Options system provides command-line argument parsing support
+    for ascii-chat. It handles server and client options, validates settings,
+    and manages application configuration.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/options.h, lib/config.h</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>Command-line argument parsing with getopt</li>
+  <li>Server and client mode options</li>
+  <li>Automatic help generation</li>
+  <li>Configuration validation</li>
+  <li>Default value management</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Operation_Modes"><a class="permalink" href="#Operation_Modes">Operation
+  Modes</a></h1>
+<p class="Pp"><b>Server Mode</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat server [options]
+</pre>
+<p class="Pp"><b>Client Mode</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client [options]
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh">Common Options</h1>
+<p class="Pp"><b>Network Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>[address][:port] (positional for client) - Server address with optional
+      port (default: localhost:27224)</li>
+  <li>[address1] [address2] (positional for server) - Bind addresses, 0-2
+      IPv4/IPv6 addresses</li>
+  <li>--port PORT - Server port (default: 27224)</li>
+</ul>
+<p class="Pp"><b>Display Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>--width WIDTH - Terminal width (default: auto-detect)</li>
+  <li>--height HEIGHT - Terminal height (default: auto-detect)</li>
+  <li>--color - Enable color output</li>
+  <li>--stretch - Stretch video to fill terminal</li>
+  <li>--half-block - Use half-block rendering (2x vertical resolution)</li>
+</ul>
+<p class="Pp"><b>Video Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>--webcam INDEX - Webcam device index (default: 0)</li>
+  <li>--webcam-flip - Flip webcam horizontally</li>
+  <li>--test-pattern - Use test pattern instead of webcam</li>
+  <li>--snapshot - Capture single frame and exit</li>
+  <li>--snapshot-delay SEC - Delay before snapshot (default: 1.0)</li>
+</ul>
+<p class="Pp"><b>Audio Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>--<b>Audio</b><b> - Enable audio (client only, server always has
+      audio)</b></li>
+  <li>--no-audio - Disable audio</li>
+</ul>
+<p class="Pp"><b>Crypto Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>--key PATH - SSH private key for authentication</li>
+  <li>--server-key KEY - Server public key or github:username</li>
+  <li>--password PASS - Shared password for encryption</li>
+  <li>--insecure - Skip host identity verification (NOT RECOMMENDED)</li>
+  <li>--client-keys KEYS - Whitelist of allowed client keys
+    (comma-separated)</li>
+</ul>
+<p class="Pp"><b>Logging Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>--log-file PATH - Write logs to file</li>
+  <li>--log-level LEVEL - Set log level (0-4)</li>
+</ul>
+<p class="Pp"><b>Configuration Options</b>:</p>
+<ul class="Bl-bullet">
+  <li>--config PATH - Load configuration from TOML file</li>
+  <li>--config-create [PATH] - Create default config file and exit</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh">Usage Examples</h1>
+<section class="Ss">
+<h2 class="Ss" id="Server_Examples"><a class="permalink" href="#Server_Examples">Server
+  Examples</a></h2>
+<p class="Pp"><b>Basic Server</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat server
+</pre>
+<p class="Pp"><b>Server with Authentication</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat server --key ~/.ssh/id_ed25519 --client-keys github:user1,github:user2
+</pre>
+<p class="Pp"><b>Server with Custom Port</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat server --port 8080
+</pre>
+<p class="Pp"><b>Server with Logging</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat server --log-file /var/log/ascii-chat.log --log-level 1
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client_Examples"><a class="permalink" href="#Client_Examples">Client
+  Examples</a></h2>
+<p class="Pp"><b>Basic Client</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client
+</pre>
+<p class="Pp"><b>Connect to Remote Server</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client 192.168.1.100:27224
+</pre>
+<p class="Pp"><b>Client with Audio and Color</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --audio --color
+</pre>
+<p class="Pp"><b>Client with Custom Webcam</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --webcam 1 --webcam-flip
+</pre>
+<p class="Pp"><b>Snapshot Mode</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --snapshot --snapshot-delay 5
+</pre>
+<p class="Pp"><b>Client with Server Verification</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --server-key github:zfogg
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Programmatic_API"><a class="permalink" href="#Programmatic_API">Programmatic
+  API</a></h1>
+<p class="Pp"><b>Parse Options</b>:</p>
+<p class="Pp"></p>
+<pre>options_t opts;
+asciichat_error_t err = parse_options(argc, argv, &amp;opts);
+if (err != ASCIICHAT_OK) {
+<br/>
+    return err;
+}
+</pre>
+<p class="Pp"><b>Error Handling</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t err = parse_options(argc, argv, &amp;opts);
+if (err != ASCIICHAT_OK) {
+<br/>
+    asciichat_error_context_t ctx;
+<br/>
+    if (HAS_ERRNO(&amp;ctx)) {
+<br/>
+        log_error(&quot;Invalid options: %s&quot;, ctx.context_message);
+<br/>
+    }
+<br/>
+    return err;
+}
+</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Help_System"><a class="permalink" href="#Help_System">Help
+  System</a></h1>
+<p class="Pp"><b>Show Help</b>:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat --help
+./ascii-chat server --help
+./ascii-chat client --help
+</pre>
+<p class="Pp"><b>Help Output</b>:</p>
+<ul class="Bl-bullet">
+  <li>Lists all available options</li>
+  <li>Shows default values</li>
+  <li>Provides usage examples</li>
+  <li>Displays mode-specific options</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>Configuration</b> for configuration files and
+  precedence
+<p class="Pp"></p>
+<p class="Pp"><b>options.h</b></p>
+<p class="Pp"></p>
+<p class="Pp">config.h</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

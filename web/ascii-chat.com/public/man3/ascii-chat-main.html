@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>main(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">main(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">main(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">main - main()</p>
+<p class="Pp">
+  <br/>
+   - &#x1F680; The binary's entry point</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>main.c</b>
+  <br/>
+  ascii-chat Unified Binary - Mode Dispatcher and Entry Point file <b>main.h</b>
+  <br/>
+  Global application exit and signal handling API.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F680; The binary's entry point</p>
+<p class="Pp">main() README</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The <b>main()</b><b> function serves as the unified entry point
+    for the ascii-chat application, implementing a mode dispatcher that routes
+    execution to either server or client mode based on command-line arguments.
+    This design consolidates both server and client functionality into a single
+    binary, simplifying deployment and ensuring version consistency.</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: <b>src/main.c</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>Unified binary dispatcher for server and client modes</li>
+  <li>Command-line argument parsing and mode selection</li>
+  <li>Help and version information display</li>
+  <li>Extensible mode registration system</li>
+  <li>Clean separation of concerns between dispatcher and modes</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Unified_Binary_Architecture"><a class="permalink" href="#Unified_Binary_Architecture">Unified
+  Binary Architecture</a></h1>
+<p class="Pp">ascii-chat consolidates server and client into one executable:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Command Syntax</b>:</p>
+<p class="Pp"></p>
+<pre>ascii-chat &lt;mode&gt; [options...]
+ascii-chat --help
+ascii-chat --version
+</pre>
+<p class="Pp"><b>Available Modes</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>server</b> - Multi-client video chat server with ASCII frame
+    mixing</li>
+  <li><b>client</b> - Video chat client with webcam capture and terminal
+    display</li>
+</ul>
+<p class="Pp"><b>Design Benefits</b>:</p>
+<ul class="Bl-bullet">
+  <li>Single binary simplifies installation and deployment</li>
+  <li>Shared library code reduces disk space usage</li>
+  <li>Unified versioning eliminates client/server mismatch issues</li>
+  <li>Easier testing and packaging (one artifact to build)</li>
+  <li>Consistent version reporting across modes</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Dispatching_Logic"><a class="permalink" href="#Dispatching_Logic">Dispatching
+  Logic</a></h1>
+<p class="Pp">The dispatcher implements clean separation of concerns:</p>
+<section class="Ss">
+<h2 class="Ss" id="Help_and_Version"><a class="permalink" href="#Help_and_Version">Help
+  and Version</a></h2>
+<pre>// Top-level help (no mode specified)
+if (argc == 1 || (argc == 2 &amp;&amp; strcmp(argv[1], &quot;--help&quot;) == 0)) {
+<br/>
+  print_top_level_help();
+<br/>
+  exit(0);
+}
+// Version information
+if (argc == 2 &amp;&amp; strcmp(argv[1], &quot;--version&quot;) == 0) {
+<br/>
+  print_version();
+<br/>
+  exit(0);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mode_Selection"><a class="permalink" href="#Mode_Selection">Mode
+  Selection</a></h2>
+<pre>// Extract mode from first argument
+const char *mode_name = argv[1];
+// Find mode descriptor in registration table
+mode_descriptor_t *mode = find_mode_by_name(mode_name);
+if (!mode) {
+<br/>
+  fprintf(stderr, &quot;Unknown mode: %s\n&quot;, mode_name);
+<br/>
+  print_top_level_help();
+<br/>
+  exit(ERROR_USAGE);
+}
+// Forward execution to mode-specific entry point
+int result = mode-&gt;entry_point(argc - 1, &amp;argv[1]);
+exit(result);</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Mode_Interaction"><a class="permalink" href="#Mode_Interaction">Mode
+  Interaction</a></h1>
+<p class="Pp">The dispatcher forwards execution to mode-specific entry
+  points:</p>
+<section class="Ss">
+<h2 class="Ss" id="Server_Mode"><a class="permalink" href="#Server_Mode">Server
+  Mode</a></h2>
+<p class="Pp">When server mode is selected:</p>
+<p class="Pp"></p>
+<pre>// src/main.c dispatches to:
+int server_main(int argc, char *argv[]);
+// Located in src/server/main.c
+// Handles server initialization, connection management, and lifecycle
+</pre>
+<p class="Pp"><b>Server Entry Point</b> (<b>src/server/main.c</b><b>):</b></p>
+<ul class="Bl-bullet">
+  <li>Initializes server subsystems (crypto, audio mixer, buffer pools)</li>
+  <li>Binds to listening sockets (IPv4 and IPv6)</li>
+  <li>Accepts client connections in main loop</li>
+  <li>Coordinates per-client threading (receive, send, render threads)</li>
+  <li>Handles graceful shutdown and cleanup</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client_Mode"><a class="permalink" href="#Client_Mode">Client
+  Mode</a></h2>
+<p class="Pp">When client mode is selected:</p>
+<p class="Pp"></p>
+<pre>// src/main.c dispatches to:
+int client_main(int argc, char *argv[]);
+// Located in src/client/main.c
+// Handles client initialization, connection, and media capture
+</pre>
+<p class="Pp"><b>Client Entry Point</b> (<b>src/client/main.c</b><b>):</b></p>
+<ul class="Bl-bullet">
+  <li>Initializes client subsystems (display, capture, audio)</li>
+  <li>Establishes connection to server with exponential backoff</li>
+  <li>Starts worker threads (protocol, keepalive, capture, audio)</li>
+  <li>Implements reconnection logic on connection loss</li>
+  <li>Handles graceful shutdown and cleanup</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Mode_Registration_System"><a class="permalink" href="#Mode_Registration_System">Mode
+  Registration System</a></h1>
+<p class="Pp">The dispatcher uses a function pointer table pattern for
+    extensibility:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef int (*mode_entry_point_t)(int argc, char *argv[]);
+typedef struct {
+<br/>
+  const char *name;
+<br/>
+  const char *description;
+<br/>
+  mode_entry_point_t entry_point;
+} mode_descriptor_t;
+static const mode_descriptor_t modes[] = {
+<br/>
+  { &quot;server&quot;, &quot;Multi-client video chat server&quot;, server_main },
+<br/>
+  { &quot;client&quot;, &quot;Video chat client&quot;, client_main },
+<br/>
+  { NULL, NULL, NULL }  // Sentinel
+};</pre>
+<p class="Pp"><b>Adding New Modes</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Implement int new_mode_main(int argc, char *argv[])</dd>
+  <dt>2.</dt>
+  <dd>Add entry to modes[] table</dd>
+  <dt>3.</dt>
+  <dd>Mode automatically appears in help and becomes available</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Implementation_Details"><a class="permalink" href="#Implementation_Details">Implementation
+  Details</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Command-Line_Parsing"><a class="permalink" href="#Command-Line_Parsing">Command-Line
+  Parsing</a></h2>
+<p class="Pp">The dispatcher handles top-level commands before mode
+  dispatch:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li>--help (no mode): Shows mode selection help</li>
+  <li>--version: Shows unified binary version</li>
+  <li>&lt;mode&gt; --help: Forwarded to mode-specific entry point</li>
+  <li>&lt;mode&gt; [options...]: Forwarded to mode-specific entry point</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Handling"><a class="permalink" href="#Error_Handling">Error
+  Handling</a></h2>
+<p class="Pp"><b>Invalid Mode</b>:</p>
+<ul class="Bl-bullet">
+  <li>Prints error message to stderr</li>
+  <li>Shows top-level help</li>
+  <li>Exits with ERROR_USAGE</li>
+</ul>
+<p class="Pp"><b>Mode Execution Failure</b>:</p>
+<ul class="Bl-bullet">
+  <li>Returns mode's error code unchanged</li>
+  <li>Dispatcher exits with same code</li>
+  <li>Allows mode-specific exit codes to propagate</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Version_Reporting"><a class="permalink" href="#Version_Reporting">Version
+  Reporting</a></h2>
+<p class="Pp">Both modes report the same version:</p>
+<p class="Pp"></p>
+<pre>// Version comes from common version.h
+printf(&quot;ascii-chat version %s\n&quot;, VERSION_STRING);
+</pre>
+<p class="Pp">This ensures server and client always know they're compatible.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Platform_Compatibility"><a class="permalink" href="#Platform_Compatibility">Platform
+  Compatibility</a></h1>
+<p class="Pp">The unified binary works identically across all platforms:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Linux/Unix</b>: ./ascii-chat server or ./ascii-chat client</li>
+  <li><b>macOS</b>: Same as Linux/Unix</li>
+  <li><b>Windows</b>: ascii-chat.exe server or ascii-chat.exe client</li>
+</ul>
+<p class="Pp"><b>Optional Backwards Compatibility</b>:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Symlinks can provide mode-specific aliases:</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>ascii-chat-server &#x2192; ascii-chat server</dd>
+  <dt> &#x2022;</dt>
+  <dd>ascii-chat-client &#x2192; ascii-chat client</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Environment-specific wrappers can provide convenience aliases</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Design_Rationale"><a class="permalink" href="#Design_Rationale">Design
+  Rationale</a></h1>
+<p class="Pp"><b>Why Unified Binary?</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Simplified Deployment</b>: One binary instead of two</dd>
+  <dt>2.</dt>
+  <dd><b>Version Consistency</b>: No client/server version mismatches</dd>
+  <dt>3.</dt>
+  <dd><b>Shared Codebase</b>: Common library code in lib/</dd>
+  <dt>4.</dt>
+  <dd><b>Easier Testing</b>: Single artifact to build and test</dd>
+  <dt>5.</dt>
+  <dd><b>Packaging Simplicity</b>: One package instead of two</dd>
+</dl>
+<p class="Pp"><b>Why Mode Dispatcher?</b></p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Clean Separation</b>: Dispatcher logic separate from mode logic</dd>
+  <dt>2.</dt>
+  <dd><b>Extensibility</b>: Easy to add new modes (relay, proxy, etc.)</dd>
+  <dt>3.</dt>
+  <dd><b>Help System</b>: Centralized help with mode-specific details</dd>
+  <dt>4.</dt>
+  <dd><b>Maintainability</b>: Mode code can evolve independently</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Integration_Points"><a class="permalink" href="#Integration_Points">Integration
+  Points</a></h1>
+<p class="Pp"><b>Dispatcher (</b><b>src/main.c</b><b>)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Provides top-level entry point</li>
+  <li>Parses mode argument</li>
+  <li>Routes to appropriate mode entry point</li>
+</ul>
+<p class="Pp"><b>Server Mode (</b><b>src/server/main.c</b><b>)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Implements <b>server_main()</b> entry point</li>
+  <li>Coordinates server subsystems</li>
+  <li>Manages multi-client connections</li>
+</ul>
+<p class="Pp"><b>Client Mode (</b><b>src/client/main.c</b><b>)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Implements <b>client_main()</b> entry point</li>
+  <li>Coordinates client subsystems</li>
+  <li>Manages connection and media capture</li>
+</ul>
+<p class="Pp"><b>Shared Library (</b>lib/<b>)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Common functionality used by both modes</li>
+  <li>Platform abstraction, networking, crypto, video processing</li>
+  <li>No mode-specific dependencies</li>
+</ul>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>src/main.c</b>
+<p class="Pp"></p>
+<p class="Pp"><b>src/server/main.c</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>src/client/main.c</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Server Overview</b></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Client Overview</b></p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

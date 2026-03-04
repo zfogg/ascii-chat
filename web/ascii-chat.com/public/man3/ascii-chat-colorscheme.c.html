@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>colorscheme.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">colorscheme.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">colorscheme.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">colorscheme.c - Color scheme management implementation and early
+    initialization.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NUM_BUILTIN_SCHEMES</b> (sizeof(BUILTIN_SCHEMES) /
+    sizeof(BUILTIN_SCHEMES[0]))
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>colorscheme_init</b> (void)
+  <br/>
+  void <b>colorscheme_cleanup_compiled</b> (compiled_color_scheme_t *compiled)
+  <br/>
+  void <b>colorscheme_destroy</b> (void)
+  <br/>
+  const <b>color_scheme_t</b> * <b>colorscheme_get_active_scheme</b> (void)
+  <br/>
+  asciichat_error_t <b>colorscheme_set_active_scheme</b> (const char *name)
+  <br/>
+  asciichat_error_t <b>colorscheme_load_builtin</b> (const char *name,
+    <b>color_scheme_t</b> *scheme)
+  <br/>
+  asciichat_error_t <b>colorscheme_load_from_file</b> (const char *path,
+    <b>color_scheme_t</b> *scheme)
+  <br/>
+  asciichat_error_t <b>parse_hex_color</b> (const char *hex, uint8_t *r, uint8_t
+    *g, uint8_t *b)
+  <br/>
+  void <b>rgb_to_truecolor_ansi</b> (uint8_t r, uint8_t g, uint8_t b, char *buf,
+    size_t size)
+  <br/>
+  asciichat_error_t <b>colorscheme_compile_scheme</b> (const
+    <b>color_scheme_t</b> *scheme, terminal_color_mode_t mode,
+    terminal_background_t background, compiled_color_scheme_t *compiled)
+  <br/>
+  asciichat_error_t <b>colorscheme_export_scheme</b> (const char *scheme_name,
+    const char *<b>file_path</b>)
+  <br/>
+  terminal_background_t <b>detect_terminal_background</b> (void)
+  <br/>
+  Detect the user's terminal theme (dark or light background). asciichat_error_t
+    <b>options_colorscheme_init_early</b> (int argc, const char *const argv[])
+  <br/>
+  Initialize color scheme early (before logging).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">mutex_t <b>g_colorscheme_mutex</b> = {.impl =
+    PTHREAD_MUTEX_INITIALIZER, .name = NULL}
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Color scheme management implementation and early
+  initialization.</p>
+<p class="Pp">Implements color scheme selection, loading, and compilation for
+    ascii-chat. Supports built-in themes, TOML configuration files, and early
+    initialization before logging starts.</p>
+<p class="Pp">Definition in file <b>colorscheme.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_NUM_BUILTIN_SCHEMES___(sizeof(BUILTIN_SCHEMES)_/_sizeof(BUILTIN_SCHEMES_0_))"><a class="permalink" href="#_define_NUM_BUILTIN_SCHEMES___(sizeof(BUILTIN_SCHEMES)_/_sizeof(BUILTIN_SCHEMES_0_))">#define
+  NUM_BUILTIN_SCHEMES (sizeof(BUILTIN_SCHEMES) /
+  sizeof(BUILTIN_SCHEMES[0]))</a></h2>
+<p class="Pp">Definition at line <b>248</b> of file <b>colorscheme.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_colorscheme_cleanup_compiled_(compiled_color_scheme_t_*_compiled)"><a class="permalink" href="#void_colorscheme_cleanup_compiled_(compiled_color_scheme_t_*_compiled)">void
+  colorscheme_cleanup_compiled (compiled_color_scheme_t * compiled)</a></h2>
+<p class="Pp">Definition at line <b>316</b> of file <b>colorscheme.c</b>.</p>
+<pre>316                                                                      {
+317   if (!compiled) {
+318     return;
+319   }
+320 
+321   /* Free allocated color code strings */
+322   for (int i = 0; i &lt; 8; i++) {
+323     char *str_16 = (char *)compiled-&gt;codes_16[i];
+324     char *str_256 = (char *)compiled-&gt;codes_256[i];
+325     char *str_truecolor = (char *)compiled-&gt;codes_truecolor[i];
+326     /* Only free non-NULL pointers - protects against uninitialized data */
+327     if (str_16 != NULL) {
+328       SAFE_FREE(str_16);
+329     }
+330     if (str_256 != NULL) {
+331       SAFE_FREE(str_256);
+332     }
+333     if (str_truecolor != NULL) {
+334       SAFE_FREE(str_truecolor);
+335     }
+336   }
+337   memset(compiled, 0, sizeof(compiled_color_scheme_t));
+338 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>, and
+    <b>log_cleanup_colors()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_colorscheme_compile_scheme_(const_"><a class="permalink" href="#asciichat_error_t_colorscheme_compile_scheme_(const_">asciichat_error_t
+  colorscheme_compile_scheme (const <b>color_scheme_t</b> * scheme,
+  terminal_color_mode_t mode, terminal_background_t background,
+  compiled_color_scheme_t * compiled)</a></h2>
+<p class="Pp">Definition at line <b>545</b> of file <b>colorscheme.c</b>.</p>
+<pre>546                                                                                                                   {
+547   if (!scheme || !compiled) {
+548     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL scheme or compiled pointer&quot;);
+549   }
+550 
+551   /* Note: mode parameter reserved for future use */
+552   (void)mode;
+553 
+554   /* Free any previously compiled strings before recompiling */
+555   /* This prevents memory leaks when the color scheme is recompiled */
+556   /* Only cleanup if we've actually compiled before (codes_16[0] != NULL means already compiled) */
+557   if (compiled-&gt;codes_16[0] != NULL) {
+558     colorscheme_cleanup_compiled(compiled);
+559   } else {
+560   }
+561 
+562   /* Select color array based on background */
+563   const rgb_pixel_t *colors = (background == TERM_BACKGROUND_LIGHT &amp;&amp; scheme-&gt;has_light_variant)
+564                                   ? scheme-&gt;log_colors_light
+565                                   : scheme-&gt;log_colors_dark;
+566   /* Helper: allocate and format a color code string */
+567   char temp_buf[128];
+568 
+569   /* Compile for 16-color mode */
+570   for (int i = 0; i &lt; 8; i++) {
+571     if (i == 7) {
+572       /* RESET */
+573       SAFE_STRNCPY(temp_buf, &quot;\x1b[0m&quot;, sizeof(temp_buf));
+574     } else {
+575       uint8_t color_idx = rgb_to_16color(colors[i].r, colors[i].g, colors[i].b);
+576       /* ANSI color codes: 30-37 for normal, 90-97 for bright */
+577       if (color_idx &lt; 8) {
+578         safe_snprintf(temp_buf, sizeof(temp_buf), &quot;\x1b[%dm&quot;, 30 + color_idx);
+579       } else {
+580         safe_snprintf(temp_buf, sizeof(temp_buf), &quot;\x1b[%dm&quot;, 90 + (color_idx - 8));
+581       }
+582     }
+583     /* Allocate string with SAFE_MALLOC and copy */
+584     size_t len = strlen(temp_buf) + 1;
+585     char *allocated = SAFE_MALLOC(len, char *);
+586     if (!allocated) {
+587       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate color code string&quot;);
+588     }
+589     memcpy(allocated, temp_buf, len);
+590     compiled-&gt;codes_16[i] = allocated;
+591   }
+592   /* Compile for 256-color mode */
+593   for (int i = 0; i &lt; 8; i++) {
+594     if (i == 7) {
+595       SAFE_STRNCPY(temp_buf, &quot;\x1b[0m&quot;, sizeof(temp_buf));
+596     } else {
+597       uint8_t color_idx = rgb_to_256color(colors[i].r, colors[i].g, colors[i].b);
+598       safe_snprintf(temp_buf, sizeof(temp_buf), &quot;\x1b[38;5;%dm&quot;, color_idx);
+599     }
+600     /* Allocate string with SAFE_MALLOC and copy */
+601     size_t len = strlen(temp_buf) + 1;
+602     char *allocated = SAFE_MALLOC(len, char *);
+603     if (!allocated) {
+604       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate color code string&quot;);
+605     }
+606     memcpy(allocated, temp_buf, len);
+607     compiled-&gt;codes_256[i] = allocated;
+608   }
+609 
+610   /* Compile for truecolor mode */
+611   for (int i = 0; i &lt; 8; i++) {
+612     if (i == 7) {
+613       SAFE_STRNCPY(temp_buf, &quot;\x1b[0m&quot;, sizeof(temp_buf));
+614     } else {
+615       rgb_to_truecolor_ansi(colors[i].r, colors[i].g, colors[i].b, temp_buf, sizeof(temp_buf));
+616     }
+617     /* Allocate string with SAFE_MALLOC and copy */
+618     size_t len = strlen(temp_buf) + 1;
+619     char *allocated = SAFE_MALLOC(len, char *);
+620     if (!allocated) {
+621       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate color code string&quot;);
+622     }
+623     memcpy(allocated, temp_buf, len);
+624     compiled-&gt;codes_truecolor[i] = allocated;
+625   }
+626 
+627   return ASCIICHAT_OK;
+628 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_cleanup_compiled()</b>,
+    <b>rgb_to_16color()</b>, <b>rgb_to_256color()</b>,
+    <b>rgb_to_truecolor_ansi()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>log_init_colors()</b>, and
+    <b>log_set_color_scheme()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_colorscheme_destroy_(void_)"><a class="permalink" href="#void_colorscheme_destroy_(void_)">void
+  colorscheme_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>340</b> of file <b>colorscheme.c</b>.</p>
+<pre>340                                {
+341   if (!lifecycle_is_initialized(&amp;g_colorscheme_lifecycle)) {
+342     return;
+343   }
+344 
+345   mutex_lock(&amp;g_colorscheme_mutex);
+346   memset(&amp;g_active_scheme, 0, sizeof(color_scheme_t));
+347 
+348   /* Mark as uninitialized */
+349   lifecycle_shutdown(&amp;g_colorscheme_lifecycle);
+350 
+351   mutex_unlock(&amp;g_colorscheme_mutex);
+352 
+353   /* NOTE: Do NOT call mutex_destroy() on native POSIX because the mutex is statically
+354    * initialized with PTHREAD_MUTEX_INITIALIZER. Destroying a statically-initialized
+355    * mutex is undefined behavior. On Windows and Emscripten, we must destroy the mutex
+356    * because it was explicitly initialized in colorscheme_init(). */
+357 #if defined(_WIN32) || defined(__EMSCRIPTEN__)
+358   mutex_destroy(&amp;g_colorscheme_mutex);
+359 #endif
+360 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_colorscheme_mutex</b>,
+    <b>lifecycle_is_initialized()</b>, <b>lifecycle_shutdown()</b>, and
+    <b>mutex_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_colorscheme_export_scheme_(const_char_*_scheme_name,_const_char_*_file_path)"><a class="permalink" href="#asciichat_error_t_colorscheme_export_scheme_(const_char_*_scheme_name,_const_char_*_file_path)">asciichat_error_t
+  colorscheme_export_scheme (const char * scheme_name, const char *
+  file_path)</a></h2>
+<p class="Pp">Definition at line <b>634</b> of file <b>colorscheme.c</b>.</p>
+<pre>634                                                                                             {
+635   if (!scheme_name) {
+636     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Scheme name is NULL&quot;);
+637   }
+638 
+639   color_scheme_t scheme = {0};
+640   asciichat_error_t result = colorscheme_load_builtin(scheme_name, &amp;scheme);
+641   if (result != ASCIICHAT_OK) {
+642     return result;
+643   }
+644 
+645   /* Generate TOML content */
+646   char toml_content[8192] = {0};
+647   size_t offset = 0;
+648 
+649   /* Scheme header section */
+650   offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset,
+651                           &quot;[scheme]\n&quot;
+652                           &quot;name = \&quot;%s\&quot;\n&quot;
+653                           &quot;description = \&quot;%s\&quot;\n\n&quot;,
+654                           scheme.name, scheme.description);
+655 
+656   /* Dark mode colors */
+657   const char *color_names[] = {&quot;dev&quot;, &quot;debug&quot;, &quot;warn&quot;, &quot;info&quot;, &quot;error&quot;, &quot;fatal&quot;, &quot;grey&quot;, &quot;reset&quot;};
+658   offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, &quot;[colors.dark]\n&quot;);
+659 
+660   for (int i = 0; i &lt; 8; i++) {
+661     offset +=
+662         safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, &quot;%s = \&quot;#%02X%02X%02X\&quot;\n&quot;, color_names[i],
+663                       scheme.log_colors_dark[i].r, scheme.log_colors_dark[i].g, scheme.log_colors_dark[i].b);
+664   }
+665 
+666   /* Light mode colors if available */
+667   if (scheme.has_light_variant) {
+668     offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, &quot;\n[colors.light]\n&quot;);
+669     for (int i = 0; i &lt; 8; i++) {
+670       offset += safe_snprintf(toml_content + offset, sizeof(toml_content) - offset, &quot;%s = \&quot;#%02X%02X%02X\&quot;\n&quot;,
+671                               color_names[i], scheme.log_colors_light[i].r, scheme.log_colors_light[i].g,
+672                               scheme.log_colors_light[i].b);
+673     }
+674   }
+675 
+676   /* Write to file or stdout */
+677   if (file_path) {
+678     FILE *fp = platform_fopen(&quot;file_stream&quot;, file_path, &quot;w&quot;);
+679     if (!fp) {
+680       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Cannot open %s for writing&quot;, file_path);
+681     }
+682     if (fputs(toml_content, fp) &lt; 0) {
+683       fclose(fp);
+684       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Failed to write to %s&quot;, file_path);
+685     }
+686     fclose(fp);
+687   } else {
+688     /* Write to stdout */
+689     if (fputs(toml_content, stdout) &lt; 0) {
+690       return SET_ERRNO_SYS(ERROR_FILE_OPERATION, &quot;Failed to write to stdout&quot;);
+691     }
+692     /* Flush to ensure piped output is written immediately */
+693     (void)fflush(stdout);
+694   }
+695 
+696   return ASCIICHAT_OK;
+697 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_load_builtin()</b>, <b>file_path</b>,
+    <b>platform_fopen()</b>, and <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>color_scheme_t</b> * colorscheme_get_active_scheme (void )</a></h2>
+<p class="Pp">Definition at line <b>366</b> of file <b>colorscheme.c</b>.</p>
+<pre>366                                                           {
+367   if (!lifecycle_is_initialized(&amp;g_colorscheme_lifecycle)) {
+368     /* Lazy initialization of color system */
+369     colorscheme_init();
+370   }
+371 
+372   return &amp;g_active_scheme;
+373 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_init()</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>log_init_colors()</b>, and
+  <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_colorscheme_init_(void_)"><a class="permalink" href="#asciichat_error_t_colorscheme_init_(void_)">asciichat_error_t
+  colorscheme_init (void )</a></h2>
+<p class="Pp">Definition at line <b>279</b> of file <b>colorscheme.c</b>.</p>
+<pre>279                                          {
+280   if (lifecycle_is_initialized(&amp;g_colorscheme_lifecycle)) {
+281     return ASCIICHAT_OK;
+282   }
+283 
+284   /* NOTE: Mutex is already statically initialized on POSIX with PTHREAD_MUTEX_INITIALIZER.
+285    * On Windows and Emscripten/WASM, we initialize it here. Do NOT call mutex_init() on native POSIX
+286    * because double-initialization of pthread_mutex_t causes undefined behavior and deadlocks.
+287    * Emscripten with pthreads requires explicit initialization because PTHREAD_MUTEX_INITIALIZER
+288    * doesn't work correctly in threaded WASM builds. */
+289 #if defined(_WIN32) || defined(__EMSCRIPTEN__)
+290   static bool mutex_initialized = false;
+291   if (!mutex_initialized) {
+292 #ifdef __EMSCRIPTEN__
+293 #else
+294 #endif
+295     mutex_init(&amp;g_colorscheme_mutex, &quot;colorscheme&quot;);
+296     mutex_initialized = true;
+297   } else {
+298   }
+299 #else
+300 #endif
+301 
+302   /* Load default scheme */
+303   const color_scheme_t *pastel = find_builtin_scheme(&quot;pastel&quot;);
+304   if (!pastel) {
+305     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to load default pastel scheme&quot;);
+306   }
+307 
+308   memcpy(&amp;g_active_scheme, pastel, sizeof(color_scheme_t));
+309 
+310   /* Mark as initialized */
+311   lifecycle_init(&amp;g_colorscheme_lifecycle, &quot;colorscheme&quot;);
+312 
+313   return ASCIICHAT_OK;
+314 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_colorscheme_mutex</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>mutex_init()</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_get_active_scheme()</b>,
+    <b>colorscheme_set_active_scheme()</b>, and
+    <b>options_colorscheme_init_early()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_colorscheme_load_builtin_(const_char_*_name,_"><a class="permalink" href="#asciichat_error_t_colorscheme_load_builtin_(const_char_*_name,_">asciichat_error_t
+  colorscheme_load_builtin (const char * name, <b>color_scheme_t</b> *
+  scheme)</a></h2>
+<p class="Pp">Definition at line <b>410</b> of file <b>colorscheme.c</b>.</p>
+<pre>410                                                                                      {
+411   if (!name || !scheme) {
+412     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL name or scheme pointer&quot;);
+413   }
+414 
+415   const color_scheme_t *builtin = find_builtin_scheme(name);
+416   if (!builtin) {
+417     return SET_ERRNO(ERROR_CONFIG, &quot;Unknown built-in color scheme: %s&quot;, name);
+418   }
+419 
+420   memcpy(scheme, builtin, sizeof(color_scheme_t));
+421   return ASCIICHAT_OK;
+422 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>colorscheme_export_scheme()</b>, and
+    <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_colorscheme_load_from_file_(const_char_*_path,_"><a class="permalink" href="#asciichat_error_t_colorscheme_load_from_file_(const_char_*_path,_">asciichat_error_t
+  colorscheme_load_from_file (const char * path, <b>color_scheme_t</b> *
+  scheme)</a></h2>
+<p class="Pp">Definition at line <b>424</b> of file <b>colorscheme.c</b>.</p>
+<pre>424                                                                                        {
+425   if (!path || !scheme) {
+426     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL path or scheme pointer&quot;);
+427   }
+428 
+429   /* Check if file exists and is readable */
+430   struct stat sb;
+431   if (stat(path, &amp;sb) != 0 || !S_ISREG(sb.st_mode)) {
+432     return SET_ERRNO(ERROR_FILE_NOT_FOUND, &quot;Color scheme file not found or not readable: %s&quot;, path);
+433   }
+434 
+435   /* Parse TOML file */
+436   toml_result_t result = toml_parse_file_ex(path);
+437   if (!result.ok) {
+438     toml_free(result);
+439     return SET_ERRNO(ERROR_CONFIG, &quot;Failed to parse color scheme file '%s': %s&quot;, path, result.errmsg);
+440   }
+441 
+442   /* Extract scheme information */
+443   memset(scheme, 0, sizeof(color_scheme_t));
+444 
+445   /* Get scheme section */
+446   toml_datum_t scheme_section = toml_get(result.toptab, &quot;scheme&quot;);
+447   if (scheme_section.type == TOML_TABLE) {
+448     /* Get scheme name */
+449     toml_datum_t name_datum = toml_get(scheme_section, &quot;name&quot;);
+450     if (name_datum.type == TOML_STRING) {
+451       SAFE_STRNCPY(scheme-&gt;name, name_datum.u.s, sizeof(scheme-&gt;name));
+452     }
+453 
+454     /* Get scheme description */
+455     toml_datum_t desc_datum = toml_get(scheme_section, &quot;description&quot;);
+456     if (desc_datum.type == TOML_STRING) {
+457       SAFE_STRNCPY(scheme-&gt;description, desc_datum.u.s, sizeof(scheme-&gt;description));
+458     }
+459   }
+460 
+461   /* Get colors section */
+462   toml_datum_t colors_section = toml_get(result.toptab, &quot;colors&quot;);
+463   if (colors_section.type == TOML_TABLE) {
+464     /* Parse dark mode colors */
+465     toml_datum_t dark_section = toml_get(colors_section, &quot;dark&quot;);
+466     if (dark_section.type == TOML_TABLE) {
+467       const char *color_names[] = {&quot;dev&quot;, &quot;debug&quot;, &quot;warn&quot;, &quot;info&quot;, &quot;error&quot;, &quot;fatal&quot;, &quot;grey&quot;, &quot;reset&quot;};
+468       for (int i = 0; i &lt; 8; i++) {
+469         toml_datum_t color_value = toml_get(dark_section, color_names[i]);
+470         if (color_value.type == TOML_STRING) {
+471           parse_hex_color(color_value.u.s, &amp;scheme-&gt;log_colors_dark[i].r, &amp;scheme-&gt;log_colors_dark[i].g,
+472                           &amp;scheme-&gt;log_colors_dark[i].b);
+473         }
+474       }
+475     }
+476 
+477     /* Parse light mode colors (optional) */
+478     toml_datum_t light_section = toml_get(colors_section, &quot;light&quot;);
+479     if (light_section.type == TOML_TABLE) {
+480       scheme-&gt;has_light_variant = true;
+481       const char *color_names[] = {&quot;dev&quot;, &quot;debug&quot;, &quot;warn&quot;, &quot;info&quot;, &quot;error&quot;, &quot;fatal&quot;, &quot;grey&quot;, &quot;reset&quot;};
+482       for (int i = 0; i &lt; 8; i++) {
+483         toml_datum_t color_value = toml_get(light_section, color_names[i]);
+484         if (color_value.type == TOML_STRING) {
+485           parse_hex_color(color_value.u.s, &amp;scheme-&gt;log_colors_light[i].r, &amp;scheme-&gt;log_colors_light[i].g,
+486                           &amp;scheme-&gt;log_colors_light[i].b);
+487         }
+488       }
+489     }
+490   }
+491 
+492   scheme-&gt;is_builtin = false;
+493   SAFE_STRNCPY(scheme-&gt;source_file, path, sizeof(scheme-&gt;source_file));
+494 
+495   toml_free(result);
+496   return ASCIICHAT_OK;
+497 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_hex_color()</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_set_active_scheme()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_colorscheme_set_active_scheme_(const_char_*_name)"><a class="permalink" href="#asciichat_error_t_colorscheme_set_active_scheme_(const_char_*_name)">asciichat_error_t
+  colorscheme_set_active_scheme (const char * name)</a></h2>
+<p class="Pp">Definition at line <b>375</b> of file <b>colorscheme.c</b>.</p>
+<pre>375                                                                   {
+376   if (!name) {
+377     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Scheme name is NULL&quot;);
+378   }
+379 
+380   /* Ensure color system is initialized */
+381   if (!lifecycle_is_initialized(&amp;g_colorscheme_lifecycle)) {
+382     colorscheme_init();
+383   }
+384 
+385   color_scheme_t scheme = {0};
+386   asciichat_error_t result = ASCIICHAT_OK;
+387 
+388   /* Try loading as built-in scheme first */
+389   const color_scheme_t *builtin = find_builtin_scheme(name);
+390   if (builtin) {
+391     memcpy(&amp;scheme, builtin, sizeof(color_scheme_t));
+392   } else if (strchr(name, '/') || strchr(name, '.')) {
+393     /* Try loading as file path if it contains / or . */
+394     result = colorscheme_load_from_file(name, &amp;scheme);
+395     if (result != ASCIICHAT_OK) {
+396       return result;
+397     }
+398   } else {
+399     return SET_ERRNO(ERROR_CONFIG, &quot;Unknown color scheme: %s (not a built-in scheme or valid file path)&quot;, name);
+400   }
+401 
+402   mutex_lock(&amp;g_colorscheme_mutex);
+403   memcpy(&amp;g_active_scheme, &amp;scheme, sizeof(color_scheme_t));
+404   mutex_unlock(&amp;g_colorscheme_mutex);
+405 
+406   log_debug(&quot;Switched to color scheme: %s&quot;, name);
+407   return ASCIICHAT_OK;
+408 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_init()</b>,
+    <b>colorscheme_load_from_file()</b>, <b>g_colorscheme_mutex</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>options_colorscheme_init_early()</b>, and
+    <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="terminal_background_t_detect_terminal_background_(void_)"><a class="permalink" href="#terminal_background_t_detect_terminal_background_(void_)">terminal_background_t
+  detect_terminal_background (void )</a></h2>
+<p class="Pp">Detect the user's terminal theme (dark or light background).
+    Determines the terminal's color background theme to adapt color schemes
+    accordingly. The detection uses a priority-based approach:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Environment variable override (TERM_BACKGROUND=&quot;light&quot; or
+      &quot;dark&quot;)</dd>
+  <dt>2.</dt>
+  <dd>Automatic detection via <b>terminal_has_dark_background()</b>:</dd>
+  <dt> &#x2022;</dt>
+  <dd>OSC 11 escape query with luminance calculation (modern terminals)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Environment variables and terminal type hints (fallback)</dd>
+</dl>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">The detected theme: TERM_BACKGROUND_LIGHT or
+  TERM_BACKGROUND_DARK</div>
+<p class="Pp">Definition at line <b>715</b> of file <b>colorscheme.c</b>.</p>
+<pre>715                                                        {
+716   /* Method 1: Check environment variable override (highest priority) */
+717   const char *term_bg = SAFE_GETENV(&quot;TERM_BACKGROUND&quot;);
+718   if (term_bg) {
+719     if (platform_strcasecmp(term_bg, &quot;light&quot;) == 0) {
+720       return TERM_BACKGROUND_LIGHT;
+721     }
+722     if (platform_strcasecmp(term_bg, &quot;dark&quot;) == 0) {
+723       return TERM_BACKGROUND_DARK;
+724     }
+725   }
+726 
+727   /* Method 2: Use terminal_has_dark_background() for automatic theme detection
+728    * This checks OSC 11 background color, environment variables, and terminal type */
+729   bool is_dark = terminal_has_dark_background();
+730   return is_dark ? TERM_BACKGROUND_DARK : TERM_BACKGROUND_LIGHT;
+731 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_strcasecmp()</b>, and
+    <b>terminal_has_dark_background()</b>.</p>
+<p class="Pp">Referenced by <b>log_init_colors()</b>, and
+    <b>log_set_color_scheme()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_colorscheme_init_early_(int_argc,_const_char_*const_argv__)"><a class="permalink" href="#asciichat_error_t_options_colorscheme_init_early_(int_argc,_const_char_*const_argv__)">asciichat_error_t
+  options_colorscheme_init_early (int argc, const char *const argv[])</a></h2>
+<p class="Pp">Initialize color scheme early (before logging).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>argc</i> Argument count
+<br/>
+<i>argv</i> Argument array</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure
+  (non-fatal)</div>
+<p class="Pp">This function is called from <b>main()</b> BEFORE
+    <b>log_init()</b> to apply color scheme to logging before any log messages
+    are printed.</p>
+<p class="Pp"></p>
+<p class="Pp">Priority order:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>--color-scheme CLI argument (highest priority)</dd>
+  <dt>2.</dt>
+  <dd>~/.config/ascii-chat/colors.toml config file</dd>
+  <dt>3.</dt>
+  <dd>Built-in &quot;pastel&quot; default scheme (lowest priority)</dd>
+</dl>
+<p class="Pp">Definition at line <b>810</b> of file <b>colorscheme.c</b>.</p>
+<pre>810                                                                                      {
+811   /* Initialize the color system with defaults */
+812   asciichat_error_t result = colorscheme_init();
+813   if (result != ASCIICHAT_OK) {
+814     /* Non-fatal: use built-in defaults */
+815     return ASCIICHAT_OK;
+816   }
+817 
+818   /* Step 1: Try to load from config file (~/.config/ascii-chat/colors.toml) */
+819   color_scheme_t config_scheme = {0};
+820   asciichat_error_t config_result = load_config_color_scheme(&amp;config_scheme);
+821   if (config_result == ASCIICHAT_OK) {
+822     /* Config file loaded successfully, apply it */
+823     colorscheme_set_active_scheme(config_scheme.name);
+824   }
+825 
+826   /* Step 2: CLI --color-scheme overrides config file */
+827   const char *cli_scheme = find_cli_color_scheme(argc, argv);
+828   if (cli_scheme) {
+829     asciichat_error_t cli_result = colorscheme_set_active_scheme(cli_scheme);
+830     if (cli_result != ASCIICHAT_OK) {
+831       /* Invalid scheme name from CLI, continue with current scheme */
+832       return cli_result;
+833     }
+834   }
+835 
+836   return ASCIICHAT_OK;
+837 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_init()</b>, and
+    <b>colorscheme_set_active_scheme()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_hex_color_(const_char_*_hex,_uint8_t_*_r,_uint8_t_*_g,_uint8_t_*_b)"><a class="permalink" href="#asciichat_error_t_parse_hex_color_(const_char_*_hex,_uint8_t_*_r,_uint8_t_*_g,_uint8_t_*_b)">asciichat_error_t
+  parse_hex_color (const char * hex, uint8_t * r, uint8_t * g, uint8_t *
+  b)</a></h2>
+<p class="Pp">Definition at line <b>503</b> of file <b>colorscheme.c</b>.</p>
+<pre>503                                                                                        {
+504   if (!hex || !r || !g || !b) {
+505     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;NULL parameter&quot;);
+506   }
+507 
+508   /* Skip '#' prefix if present */
+509   if (hex[0] == '#') {
+510     hex++;
+511   }
+512 
+513   /* Validate hex string length */
+514   if (strlen(hex) != 6) {
+515     return SET_ERRNO(ERROR_CONFIG, &quot;Invalid hex color (must be #RRGGBB): %s&quot;, hex);
+516   }
+517 
+518   /* Parse hex digits */
+519   unsigned int rgb = 0;
+520   if (SAFE_SSCANF(hex, &quot;%6x&quot;, &amp;rgb) != 1) {
+521     return SET_ERRNO(ERROR_CONFIG, &quot;Invalid hex color format: %s&quot;, hex);
+522   }
+523 
+524   *r = (rgb &gt;&gt; 16) &amp; 0xFF;
+525   *g = (rgb &gt;&gt; 8) &amp; 0xFF;
+526   *b = rgb &amp; 0xFF;
+527 
+528   return ASCIICHAT_OK;
+529 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>colorscheme_load_from_file()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rgb_to_truecolor_ansi_(uint8_t_r,_uint8_t_g,_uint8_t_b,_char_*_buf,_size_t_size)"><a class="permalink" href="#void_rgb_to_truecolor_ansi_(uint8_t_r,_uint8_t_g,_uint8_t_b,_char_*_buf,_size_t_size)">void
+  rgb_to_truecolor_ansi (uint8_t r, uint8_t g, uint8_t b, char * buf, size_t
+  size)</a></h2>
+<p class="Pp">Definition at line <b>535</b> of file <b>colorscheme.c</b>.</p>
+<pre>535                                                                                     {
+536   if (!buf || size &lt; 20)
+537     return;
+538   safe_snprintf(buf, size, &quot;\x1b[38;2;%d;%d;%dm&quot;, r, g, b);
+539 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_g_colorscheme_mutex_=__"><a class="permalink" href="#mutex_t_g_colorscheme_mutex_=__">mutex_t
+  g_colorscheme_mutex = {.impl = PTHREAD_MUTEX_INITIALIZER, .name =
+  NULL}</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>colorscheme.c</b>.</p>
+<pre>39 {.impl = PTHREAD_MUTEX_INITIALIZER, .name = NULL}; /* POSIX pthread_mutex_t */</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>colorscheme_destroy()</b>,
+    <b>colorscheme_init()</b>, <b>colorscheme_set_active_scheme()</b>,
+    <b>log_init_colors()</b>, and <b>log_set_color_scheme()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

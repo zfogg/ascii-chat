@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>broadcast_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">broadcast_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">broadcast_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">broadcast_context_t - Context for broadcasting to session
+    participants.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const uint8_t * <b>target_session_id</b>
+  <br/>
+  Session to broadcast to. const uint8_t * <b>exclude_participant_id</b>
+  <br/>
+  Participant to exclude (NULL = no exclusion). packet_type_t <b>packet_type</b>
+  <br/>
+  Packet type to send. const void * <b>packet</b>
+  <br/>
+  Packet data. size_t <b>packet_len</b>
+  <br/>
+  Packet length. size_t <b>sent_count</b>
+  <br/>
+  Number of successful sends.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Context for broadcasting to session participants.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>signaling.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_uint8_t*_broadcast_context_t::exclude_participant_id"><a class="permalink" href="#const_uint8_t*_broadcast_context_t::exclude_participant_id">const
+  uint8_t* broadcast_context_t::exclude_participant_id</a></h2>
+<p class="Pp">Participant to exclude (NULL = no exclusion).</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>signaling.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_void*_broadcast_context_t::packet"><a class="permalink" href="#const_void*_broadcast_context_t::packet">const
+  void* broadcast_context_t::packet</a></h2>
+<p class="Pp">Packet data.</p>
+<p class="Pp">Definition at line <b>77</b> of file <b>signaling.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_broadcast_context_t::packet_len"><a class="permalink" href="#size_t_broadcast_context_t::packet_len">size_t
+  broadcast_context_t::packet_len</a></h2>
+<p class="Pp">Packet length.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>signaling.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="packet_type_t_broadcast_context_t::packet_type"><a class="permalink" href="#packet_type_t_broadcast_context_t::packet_type">packet_type_t
+  broadcast_context_t::packet_type</a></h2>
+<p class="Pp">Packet type to send.</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>signaling.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_broadcast_context_t::sent_count"><a class="permalink" href="#size_t_broadcast_context_t::sent_count">size_t
+  broadcast_context_t::sent_count</a></h2>
+<p class="Pp">Number of successful sends.</p>
+<p class="Pp">Definition at line <b>79</b> of file <b>signaling.c</b>.</p>
+<p class="Pp">Referenced by <b>signaling_broadcast()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_uint8_t*_broadcast_context_t::target_session_id"><a class="permalink" href="#const_uint8_t*_broadcast_context_t::target_session_id">const
+  uint8_t* broadcast_context_t::target_session_id</a></h2>
+<p class="Pp">Session to broadcast to.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>signaling.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

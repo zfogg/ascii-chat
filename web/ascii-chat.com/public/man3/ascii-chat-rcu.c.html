@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>rcu.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">rcu.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">rcu.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">rcu.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>int_field_ctx_t</b>
+  <br/>
+  Context for integer field updates in RCU updater callback. struct
+    <b>bool_field_ctx_t</b>
+  <br/>
+  Context for boolean field updates in RCU updater callback. struct
+    <b>string_field_ctx_t</b>
+  <br/>
+  Context for string field updates in RCU updater callback. struct
+    <b>double_field_ctx_t</b>
+  <br/>
+  Context for double field updates in RCU updater callback.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MAX_DEFERRED_FREES</b> 64
+  <br/>
+  Deferred free list for old options structs.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>__attribute__</b> ((constructor))
+  <br/>
+  Constructor to initialize fork handlers at startup. asciichat_error_t
+    <b>options_state_init</b> (void)
+  <br/>
+  asciichat_error_t <b>options_state_set</b> (const options_t *opts)
+  <br/>
+  void <b>options_state_destroy</b> (void)
+  <br/>
+  void <b>options_cleanup_schema</b> (void)
+  <br/>
+  const options_t * <b>options_get</b> (void)
+  <br/>
+  asciichat_error_t <b>options_set_int</b> (const char *field_name, int value)
+  <br/>
+  asciichat_error_t <b>options_set_bool</b> (const char *field_name, <b>bool</b>
+    value)
+  <br/>
+  asciichat_error_t <b>options_set_string</b> (const char *field_name, const
+    char *value)
+  <br/>
+  asciichat_error_t <b>options_set_double</b> (const char *field_name, double
+    value)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_DEFERRED_FREES___64"><a class="permalink" href="#_define_MAX_DEFERRED_FREES___64">#define
+  MAX_DEFERRED_FREES 64</a></h2>
+<p class="Pp">Deferred free list for old options structs. We can't immediately
+    free old structs because readers might still be using them. Simple strategy:
+    Keep old pointers in a list, free them at shutdown.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Future improvements:</b></p>
+<ul class="Bl-bullet">
+  <li>Hazard pointers: Track which structs readers are using</li>
+  <li>Epoch-based reclamation: Free after grace period</li>
+  <li>Reference counting: Free when no readers</li>
+</ul>
+<p class="Pp"><b>Current approach:</b> Never free until shutdown (acceptable for
+    rare updates)</p>
+<p class="Pp">Definition at line <b>275</b> of file <b>rcu.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="__attribute___((constructor)_)"><a class="permalink" href="#__attribute___((constructor)_)">__attribute__
+  ((constructor) )</a></h2>
+<p class="Pp">Constructor to initialize fork handlers at startup. This is called
+    before <b>main()</b> by the linker, ensuring fork handlers are registered
+    early.</p>
+<p class="Pp">Definition at line <b>352</b> of file <b>rcu.c</b>.</p>
+<pre>352                                                                                   {
+353   // Register the child handler that will be called after fork() in the child process
+354   pthread_atfork(NULL, NULL, options_rcu_atfork_child);
+355 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_options_cleanup_schema_(void_)"><a class="permalink" href="#void_options_cleanup_schema_(void_)">void
+  options_cleanup_schema (void )</a></h2>
+<p class="Pp">Definition at line <b>475</b> of file <b>rcu.c</b>.</p>
+<pre>475                                   {
+476   config_schema_destroy();
+477 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>config_schema_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_options_t_*_options_get_(void_)"><a class="permalink" href="#const_options_t_*_options_get_(void_)">const
+  options_t * options_get (void )</a></h2>
+<p class="Pp">Definition at line <b>479</b> of file <b>rcu.c</b>.</p>
+<pre>479                                    {
+480   // Lock-free read with acquire semantics
+481   // Guarantees we see all writes made before the pointer was published
+482   options_t *current = atomic_ptr_load(&amp;g_options);
+483 
+484   // If options not yet published or after destruction, return safe static default.
+485   // This is a critical fallback that:
+486   // 1. Allows early startup code (before options_state_init) to work safely
+487   // 2. Allows atexit handlers and cleanup code to call GET_OPTION() safely
+488   // 3. Never crashes due to NULL pointer access
+489   // 4. Provides sensible defaults for all option fields
+490   //
+491   // The static default options are:
+492   // - Allocated once at startup (static storage)
+493   // - Never freed (outlives all dynamically allocated options)
+494   // - Thread-safe to read (immutable const data)
+495   // - Complete with all OPT_*_DEFAULT values matching options_t_new()
+496   if (!current) {
+497     return (const options_t *)&amp;g_default_options;
+498   }
+499 
+500   return current;
+501 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_load()</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>client_crypto_init()</b>,
+    <b>client_main()</b>, <b>discovery_session_process()</b>,
+    <b>log_set_terminal_output()</b>, <b>main()</b>,
+    <b>nat_detect_quality()</b>, <b>server_crypto_handshake()</b>,
+    <b>session_settings_from_options()</b>, <b>terminal_screen_render()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_set_bool_(const_char_*_field_name,_"><a class="permalink" href="#asciichat_error_t_options_set_bool_(const_char_*_field_name,_">asciichat_error_t
+  options_set_bool (const char * field_name, <b>bool</b> value)</a></h2>
+<p class="Pp">Definition at line <b>703</b> of file <b>rcu.c</b>.</p>
+<pre>703                                                                        {
+704   if (!field_name) {
+705     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+706     return ERROR_INVALID_PARAM;
+707   }
+708 
+709   // Validate field exists
+710   if (strcmp(field_name, &quot;no_compress&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encode_audio&quot;) != 0 &amp;&amp;
+711       strcmp(field_name, &quot;flip_x&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;flip_y&quot;) != 0 &amp;&amp;
+712       strcmp(field_name, &quot;test_pattern&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;no_audio_mixer&quot;) != 0 &amp;&amp;
+713       strcmp(field_name, &quot;show_capabilities&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;force_utf8&quot;) != 0 &amp;&amp;
+714       strcmp(field_name, &quot;audio_enabled&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;audio_analysis_enabled&quot;) != 0 &amp;&amp;
+715       strcmp(field_name, &quot;audio_no_playback&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stretch&quot;) != 0 &amp;&amp;
+716       strcmp(field_name, &quot;snapshot_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;strip_ansi&quot;) != 0 &amp;&amp;
+717       strcmp(field_name, &quot;quiet&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;encrypt_enabled&quot;) != 0 &amp;&amp;
+718       strcmp(field_name, &quot;no_encrypt&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery&quot;) != 0 &amp;&amp;
+719       strcmp(field_name, &quot;discovery_expose_ip&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_insecure&quot;) != 0 &amp;&amp;
+720       strcmp(field_name, &quot;webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;lan_discovery&quot;) != 0 &amp;&amp;
+721       strcmp(field_name, &quot;no_mdns_advertise&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;prefer_webrtc&quot;) != 0 &amp;&amp;
+722       strcmp(field_name, &quot;no_webrtc&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;webrtc_skip_stun&quot;) != 0 &amp;&amp;
+723       strcmp(field_name, &quot;webrtc_disable_turn&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;enable_upnp&quot;) != 0 &amp;&amp;
+724       strcmp(field_name, &quot;require_server_identity&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_identity&quot;) != 0 &amp;&amp;
+725       strcmp(field_name, &quot;require_server_verify&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;require_client_verify&quot;) != 0 &amp;&amp;
+726       strcmp(field_name, &quot;palette_custom_set&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_loop&quot;) != 0 &amp;&amp;
+727       strcmp(field_name, &quot;media_from_stdin&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;auto_width&quot;) != 0 &amp;&amp;
+728       strcmp(field_name, &quot;auto_height&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;splash_screen&quot;) != 0 &amp;&amp;
+729       strcmp(field_name, &quot;status_screen&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;matrix_rain&quot;) != 0) {
+730     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown boolean field: %s&quot;, field_name);
+731     return ERROR_INVALID_PARAM;
+732   }
+733 
+734   bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
+735   return options_update(bool_field_updater, &amp;ctx);
+736 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_main()</b>,
+    <b>session_handle_keyboard_input()</b>, <b>set_flip_x()</b>, and
+    <b>set_matrix_rain()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_set_double_(const_char_*_field_name,_double_value)"><a class="permalink" href="#asciichat_error_t_options_set_double_(const_char_*_field_name,_double_value)">asciichat_error_t
+  options_set_double (const char * field_name, double value)</a></h2>
+<p class="Pp">Definition at line <b>836</b> of file <b>rcu.c</b>.</p>
+<pre>836                                                                            {
+837   if (!field_name) {
+838     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+839     return ERROR_INVALID_PARAM;
+840   }
+841 
+842   // Normalize option names to internal field names
+843   const char *internal_name = field_name;
+844   if (strcmp(field_name, &quot;microphone-volume&quot;) == 0 || strcmp(field_name, &quot;ivolume&quot;) == 0) {
+845     internal_name = &quot;microphone_sensitivity&quot;;
+846   } else if (strcmp(field_name, &quot;speakers-volume&quot;) == 0 || strcmp(field_name, &quot;volume&quot;) == 0) {
+847     internal_name = &quot;speakers_volume&quot;;
+848   }
+849 
+850   if (strcmp(internal_name, &quot;snapshot_delay&quot;) != 0 &amp;&amp; strcmp(internal_name, &quot;microphone_sensitivity&quot;) != 0 &amp;&amp;
+851       strcmp(internal_name, &quot;speakers_volume&quot;) != 0) {
+852     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown double field: %s&quot;, field_name);
+853     return ERROR_INVALID_PARAM;
+854   }
+855 
+856   double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
+857   return options_update(double_field_updater, &amp;ctx);
+858 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_set_int_(const_char_*_field_name,_int_value)"><a class="permalink" href="#asciichat_error_t_options_set_int_(const_char_*_field_name,_int_value)">asciichat_error_t
+  options_set_int (const char * field_name, int value)</a></h2>
+<p class="Pp">Definition at line <b>590</b> of file <b>rcu.c</b>.</p>
+<pre>590                                                                      {
+591   if (!field_name) {
+592     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+593     return ERROR_INVALID_PARAM;
+594   }
+595 
+596   if (strcmp(field_name, &quot;width&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;height&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;max_clients&quot;) != 0 &amp;&amp;
+597       strcmp(field_name, &quot;compression_level&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;reconnect_attempts&quot;) != 0 &amp;&amp;
+598       strcmp(field_name, &quot;microphone_index&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;speakers_index&quot;) != 0 &amp;&amp;
+599       strcmp(field_name, &quot;discovery_port&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;port&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;fps&quot;) != 0 &amp;&amp;
+600       strcmp(field_name, &quot;color_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;color_filter&quot;) != 0 &amp;&amp;
+601       strcmp(field_name, &quot;render_mode&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;log_level&quot;) != 0 &amp;&amp;
+602       strcmp(field_name, &quot;palette_type&quot;) != 0) {
+603     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown integer field: %s&quot;, field_name);
+604     return ERROR_INVALID_PARAM;
+605   }
+606 
+607   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
+608   return options_update(int_field_updater, &amp;ctx);
+609 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>,
+    <b>session_render_loop()</b>, <b>session_settings_apply_to_options()</b>,
+    <b>set_color_filter()</b>, <b>set_color_mode()</b>, <b>set_height()</b>,
+    <b>set_palette()</b>, <b>set_render_mode()</b>, <b>set_target_fps()</b>, and
+    <b>set_width()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_set_string_(const_char_*_field_name,_const_char_*_value)"><a class="permalink" href="#asciichat_error_t_options_set_string_(const_char_*_field_name,_const_char_*_value)">asciichat_error_t
+  options_set_string (const char * field_name, const char * value)</a></h2>
+<p class="Pp">Definition at line <b>788</b> of file <b>rcu.c</b>.</p>
+<pre>788                                                                                 {
+789   if (!field_name) {
+790     SET_ERRNO(ERROR_INVALID_PARAM, &quot;field_name is NULL&quot;);
+791     return ERROR_INVALID_PARAM;
+792   }
+793 
+794   if (!value) {
+795     SET_ERRNO(ERROR_INVALID_PARAM, &quot;value is NULL&quot;);
+796     return ERROR_INVALID_PARAM;
+797   }
+798 
+799   // Validate field exists
+800   if (strcmp(field_name, &quot;address&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;address6&quot;) != 0 &amp;&amp;
+801       strcmp(field_name, &quot;encrypt_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;password&quot;) != 0 &amp;&amp;
+802       strcmp(field_name, &quot;encrypt_keyfile&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;server_key&quot;) != 0 &amp;&amp;
+803       strcmp(field_name, &quot;client_keys&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_server&quot;) != 0 &amp;&amp;
+804       strcmp(field_name, &quot;discovery_service_key&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;discovery_database_path&quot;) != 0 &amp;&amp;
+805       strcmp(field_name, &quot;log_file&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;media_file&quot;) != 0 &amp;&amp;
+806       strcmp(field_name, &quot;palette_custom&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;stun_servers&quot;) != 0 &amp;&amp;
+807       strcmp(field_name, &quot;turn_servers&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_username&quot;) != 0 &amp;&amp;
+808       strcmp(field_name, &quot;turn_credential&quot;) != 0 &amp;&amp; strcmp(field_name, &quot;turn_secret&quot;) != 0 &amp;&amp;
+809       strcmp(field_name, &quot;session_string&quot;) != 0) {
+810     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown string field: %s&quot;, field_name);
+811     return ERROR_INVALID_PARAM;
+812   }
+813 
+814   string_field_ctx_t ctx = {.field_name = field_name, .value = value};
+815   return options_update(string_field_updater, &amp;ctx);
+816 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>set_palette_chars()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_options_state_destroy_(void_)"><a class="permalink" href="#void_options_state_destroy_(void_)">void
+  options_state_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>444</b> of file <b>rcu.c</b>.</p>
+<pre>444                                  {
+445   // Check if initialized using lifecycle
+446   if (!lifecycle_is_initialized(&amp;g_options_lifecycle)) {
+447     return;
+448   }
+449 
+450   /* Shutdown lifecycle to mark as no longer initialized */
+451   lifecycle_shutdown(&amp;g_options_lifecycle);
+452 
+453   // Get current options pointer
+454   options_t *current = atomic_ptr_load(&amp;g_options);
+455 
+456   // Clear the atomic pointer (prevent further reads)
+457   atomic_ptr_store(&amp;g_options, NULL);
+458 
+459   // Free current struct
+460   SAFE_FREE(current);
+461 
+462   // Free all deferred structs
+463   deferred_free_all();
+464 
+465   // Cleanup schema (frees all dynamically allocated config strings)
+466   config_schema_destroy();
+467 
+468   // Destroy dynamically created mutexes
+469   mutex_destroy(&amp;g_options_write_mutex);
+470   mutex_destroy(&amp;g_deferred_free_mutex);
+471 
+472   log_debug(&quot;Options state shutdown complete&quot;);
+473 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_load()</b>, <b>atomic_ptr_store()</b>,
+    <b>config_schema_destroy()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, and <b>mutex_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>,
+    <b>client_cleanup()</b>, <b>main()</b>, and <b>mirror_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_state_init_(void_)"><a class="permalink" href="#asciichat_error_t_options_state_init_(void_)">asciichat_error_t
+  options_state_init (void )</a></h2>
+<p class="Pp">Definition at line <b>362</b> of file <b>rcu.c</b>.</p>
+<pre>362                                            {
+363   // Detect fork: after fork(), child process must reinitialize
+364   pid_t current_pid = platform_get_pid();
+365   if ((lifecycle_is_initialized(&amp;g_options_lifecycle) || g_init_pid != -1) &amp;&amp; g_init_pid != current_pid) {
+366     log_debug(&quot;Detected fork in options_state_init (parent PID %d, child PID %d) - resetting lifecycle&quot;, g_init_pid,
+367               current_pid);
+368     /* Reset lifecycle to allow reinitialization after fork */
+369     lifecycle_shutdown(&amp;g_options_lifecycle);
+370     g_init_pid = current_pid;
+371   }
+372 
+373   // Check if already initialized in this process using lifecycle
+374   if (lifecycle_is_initialized(&amp;g_options_lifecycle) &amp;&amp; g_init_pid == current_pid) {
+375     log_warn(&quot;Options state already initialized&quot;);
+376     return ASCIICHAT_OK;
+377   }
+378 
+379   /* Use lifecycle to serialize initialization */
+380   if (!lifecycle_init(&amp;g_options_lifecycle, &quot;options&quot;)) {
+381     /* Another thread is initializing or already initialized */
+382     if (lifecycle_is_initialized(&amp;g_options_lifecycle)) {
+383       return ASCIICHAT_OK;
+384     }
+385     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to acquire options initialization lock&quot;);
+386   }
+387 
+388   // Initialize write mutex
+389   if (mutex_init(&amp;g_options_write_mutex, &quot;options_write&quot;) != 0) {
+390     lifecycle_shutdown(&amp;g_options_lifecycle);
+391     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize options write mutex&quot;);
+392   }
+393 
+394   // Initialize deferred free mutex
+395   if (mutex_init(&amp;g_deferred_free_mutex, &quot;deferred_free&quot;) != 0) {
+396     mutex_destroy(&amp;g_options_write_mutex);
+397     lifecycle_shutdown(&amp;g_options_lifecycle);
+398     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize deferred free mutex&quot;);
+399   }
+400 
+401   // Allocate initial options struct (will be populated later by options_state_populate_from_globals)
+402   options_t *initial_opts = SAFE_MALLOC(sizeof(options_t), options_t *);
+403   if (!initial_opts) {
+404     mutex_destroy(&amp;g_options_write_mutex);
+405     mutex_destroy(&amp;g_deferred_free_mutex);
+406     lifecycle_shutdown(&amp;g_options_lifecycle);
+407     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate initial options struct&quot;);
+408   }
+409 
+410   // Initialize all defaults using options_t_new()
+411   *initial_opts = options_t_new();
+412 
+413   // Publish initial struct (release semantics - make all fields visible to readers)
+414   atomic_ptr_store(&amp;g_options, initial_opts);
+415 
+416   g_init_pid = current_pid; // Record PID to detect fork later
+417   log_dev(&quot;Options state initialized with RCU pattern (PID %d)&quot;, current_pid);
+418 
+419   return ASCIICHAT_OK;
+420 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_store()</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>lifecycle_shutdown()</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>options_t_new()</b>, and
+    <b>platform_get_pid()</b>.</p>
+<p class="Pp">Referenced by <b>__attribute__()</b>, and
+  <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_state_set_(const_options_t_*_opts)"><a class="permalink" href="#asciichat_error_t_options_state_set_(const_options_t_*_opts)">asciichat_error_t
+  options_state_set (const options_t * opts)</a></h2>
+<p class="Pp">Definition at line <b>422</b> of file <b>rcu.c</b>.</p>
+<pre>422                                                            {
+423   if (!opts) {
+424     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;opts is NULL&quot;);
+425   }
+426 
+427   // Check initialization state using lifecycle
+428   if (!lifecycle_is_initialized(&amp;g_options_lifecycle)) {
+429     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Options state not initialized (call options_state_init first)&quot;);
+430   }
+431 
+432   // Get current struct (should be the initial zero-initialized one during startup)
+433   options_t *current = atomic_ptr_load(&amp;g_options);
+434 
+435   // Copy provided options into current struct
+436   // Note: No need for RCU update here since this is called during initialization
+437   // before any reader threads exist
+438   memcpy(current, opts, sizeof(options_t));
+439 
+440   log_debug(&quot;Options state set from parsed struct&quot;);
+441   return ASCIICHAT_OK;
+442 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_load()</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>config_load_and_apply()</b>, and
+    <b>options_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

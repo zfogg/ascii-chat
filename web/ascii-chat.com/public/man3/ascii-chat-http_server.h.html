@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>http_server.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">http_server.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">http_server.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">http_server.h - Minimal single-threaded HTTP/1.1 server.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ascii_query::HttpRequest</b>
+  <br/>
+  Parsed HTTP request. struct <b>ascii_query::HttpResponse</b>
+  <br/>
+  HTTP response builder. class <b>ascii_query::HttpServer</b>
+  <br/>
+  Simple single-threaded HTTP server.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Namespaces"><a class="permalink" href="#Namespaces">Namespaces</a></h2>
+<br/>
+<p class="Pp">namespace <b>ascii_query</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">using <b>ascii_query::RouteHandler</b> =
+    std::function&lt;<b>HttpResponse</b>(const <b>HttpRequest</b> &amp;)&gt;
+  <br/>
+  Route handler function type.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Minimal single-threaded HTTP/1.1 server.</p>
+<p class="Pp">This provides a simple HTTP server for the query tool. It's
+    designed to be:</p>
+<ul class="Bl-bullet">
+  <li>Single-threaded (request handlers block)</li>
+  <li>Synchronous (one request at a time)</li>
+  <li>Minimal (no external dependencies)</li>
+</ul>
+<p class="Pp">Usage: HttpServer server; server.addRoute(&quot;GET&quot;,
+    &quot;/&quot;, [](const HttpRequest&amp; req) { return
+    HttpResponse::ok(&quot;text/html&quot;,
+    &quot;&lt;h1&gt;Hello&lt;/h1&gt;&quot;); }); server.start(9999); // ...
+    later ... server.stop();</p>
+<p class="Pp">Definition in file <b>http_server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

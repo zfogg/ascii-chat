@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>cond.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">cond.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">cond.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">cond.c - Platform-agnostic condition variable hooks and
+  utilities.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>cond_on_wait</b> (cond_t *cond, mutex_t *<b>mutex</b>,
+    const char *file, int line, const char *func)
+  <br/>
+  Hook called when a thread waits on a condition variable. void
+    <b>cond_on_signal</b> (cond_t *cond)
+  <br/>
+  Hook called when a condition variable is signaled. void
+    <b>cond_on_broadcast</b> (cond_t *cond)
+  <br/>
+  Hook called when a condition variable is broadcast. int
+    <b>cond_format_state</b> (const cond_t *cond, char *buffer, size_t size)
+  <br/>
+  Format condition variable timing and state info into buffer. void
+    <b>cond_log_state</b> (const cond_t *cond, const char *file, int line, const
+    char *func)
+  <br/>
+  Log the state of a condition variable.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Platform-agnostic condition variable hooks and utilities.</p>
+<p class="Pp">This file provides hook functions that can be called from
+    platform-specific condition variable implementations to record events and
+    debug information. All hooks are debug-only and disabled in release
+  builds.</p>
+<p class="Pp">Definition in file <b>cond.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_cond_format_state_(const_cond_t_*_cond,_char_*_buffer,_size_t_size)"><a class="permalink" href="#int_cond_format_state_(const_cond_t_*_cond,_char_*_buffer,_size_t_size)">int
+  cond_format_state (const cond_t * cond, char * buffer, size_t size)</a></h2>
+<p class="Pp">Format condition variable timing and state info into buffer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>cond</i> Pointer to the condition variable
+<br/>
+<i>buffer</i> Output buffer
+<br/>
+<i>size</i> Buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes written</div>
+<p class="Pp">Formats timing (wait/signal/broadcast), waiting threads, and
+    operation counts. Called by <b>cond_log_state()</b> and --sync-state display
+    code.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>cond.c</b>.</p>
+<pre>92                                                                      {
+93   if (!cond || !buffer || size == 0) return 0;
+94 
+95   int offset = 0;
+96   uint64_t now_ns = time_get_ns();
+97 
+98   char wait_str[64] = &quot;&quot;;
+99   char signal_str[64] = &quot;&quot;;
+100   char broadcast_str[64] = &quot;&quot;;
+101   char waiting_str[64] = &quot;&quot;;
+102   char count_str[256] = &quot;&quot;;
+103 
+104   if (cond-&gt;last_wait_time_ns &gt; 0 &amp;&amp; cond-&gt;last_wait_time_ns &lt;= now_ns) {
+105     char elapsed_str[64];
+106     time_pretty(now_ns - cond-&gt;last_wait_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+107     snprintf(wait_str, sizeof(wait_str), &quot;wait=%s&quot;, elapsed_str);
+108   }
+109 
+110   if (cond-&gt;last_signal_time_ns &gt; 0 &amp;&amp; cond-&gt;last_signal_time_ns &lt;= now_ns) {
+111     char elapsed_str[64];
+112     time_pretty(now_ns - cond-&gt;last_signal_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+113     snprintf(signal_str, sizeof(signal_str), &quot;signal=%s&quot;, elapsed_str);
+114   }
+115 
+116   if (cond-&gt;last_broadcast_time_ns &gt; 0 &amp;&amp; cond-&gt;last_broadcast_time_ns &lt;= now_ns) {
+117     char elapsed_str[64];
+118     time_pretty(now_ns - cond-&gt;last_broadcast_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+119     snprintf(broadcast_str, sizeof(broadcast_str), &quot;broadcast=%s&quot;, elapsed_str);
+120   }
+121 
+122   uint64_t waiting_count = atomic_load_u64(&amp;cond-&gt;waiting_count);
+123   if (waiting_count &gt; 0) {
+124     snprintf(waiting_str, sizeof(waiting_str), &quot;[WAITING=%lu]&quot;, waiting_count);
+125   }
+126 
+127   if (cond-&gt;wait_count &gt; 0 || cond-&gt;signal_count &gt; 0 || cond-&gt;broadcast_count &gt; 0) {
+128     snprintf(count_str, sizeof(count_str), &quot;[ops: wait=%lu signal=%lu broadcast=%lu]&quot;,
+129              cond-&gt;wait_count, cond-&gt;signal_count, cond-&gt;broadcast_count);
+130   }
+131 
+132   offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s %s %s&quot;,
+133                      wait_str, signal_str, broadcast_str, waiting_str, count_str);
+134   return offset;
+135 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>time_get_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>cond_log_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_cond_log_state_(const_cond_t_*_cond,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#void_cond_log_state_(const_cond_t_*_cond,_const_char_*_file,_int_line,_const_char_*_func)">void
+  cond_log_state (const cond_t * cond, const char * file, int line, const char *
+  func)</a></h2>
+<p class="Pp">Log the state of a condition variable.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>cond</i> Pointer to the condition variable
+<br/>
+<i>file</i> Source file of the caller
+<br/>
+<i>line</i> Source line of the caller
+<br/>
+<i>func</i> Source function of the caller</div>
+<p class="Pp">Formats and logs detailed state information about the condition
+    variable.</p>
+<p class="Pp">Definition at line <b>148</b> of file <b>cond.c</b>.</p>
+<pre>148                                                                                       {
+149   if (!cond) return;
+150   char buf[512];
+151   cond_format_state(cond, buf, sizeof(buf));
+152   log_msg(LOG_DEBUG, file, line, func, &quot;cond/state %p: %s&quot;, (const void *)cond, buf);
+153 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>cond_format_state()</b>, and <b>log_msg()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_cond_on_broadcast_(cond_t_*_cond)"><a class="permalink" href="#void_cond_on_broadcast_(cond_t_*_cond)">void
+  cond_on_broadcast (cond_t * cond)</a></h2>
+<p class="Pp">Hook called when a condition variable is broadcast.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>cond</i> Pointer to the condition variable being
+  broadcast</div>
+<p class="Pp">Called by platform-specific cond_broadcast() after waking all
+    threads. Records timing and broadcasts count.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>cond.c</b>.</p>
+<pre>73                                      {
+74   if (!cond) return;
+75   cond-&gt;last_broadcast_time_ns = time_get_ns();
+76   cond-&gt;broadcast_count++;
+77   atomic_store_u64(&amp;cond-&gt;waiting_count, 0);
+78 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, and
+  <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_cond_on_signal_(cond_t_*_cond)"><a class="permalink" href="#void_cond_on_signal_(cond_t_*_cond)">void
+  cond_on_signal (cond_t * cond)</a></h2>
+<p class="Pp">Hook called when a condition variable is signaled.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>cond</i> Pointer to the condition variable being
+  signaled</div>
+<p class="Pp">Called by platform-specific cond_signal() after waking one thread.
+    Records timing and decrements waiting count.</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>cond.c</b>.</p>
+<pre>55                                   {
+56   if (!cond) return;
+57   cond-&gt;last_signal_time_ns = time_get_ns();
+58   cond-&gt;signal_count++;
+59   if (atomic_load_u64(&amp;cond-&gt;waiting_count) &gt; 0) {
+60     atomic_fetch_sub_u64(&amp;cond-&gt;waiting_count, 1);
+61   }
+62 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_sub_u64()</b>,
+    <b>atomic_load_u64()</b>, and <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_cond_on_wait_(cond_t_*_cond,_mutex_t_*_mutex,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#void_cond_on_wait_(cond_t_*_cond,_mutex_t_*_mutex,_const_char_*_file,_int_line,_const_char_*_func)">void
+  cond_on_wait (cond_t * cond, mutex_t * mutex, const char * file, int line,
+  const char * func)</a></h2>
+<p class="Pp">Hook called when a thread waits on a condition variable.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>cond</i> Pointer to the condition variable being
+  waited on
+<br/>
+<i></i><b>mutex</b><i></i><b> Pointer to the associated mutex</b>
+<br/>
+<i>file</i> Source file of the wait callsite (for deadlock detection)
+<br/>
+<i>line</i> Source line of the wait callsite (for deadlock detection)
+<br/>
+<i>func</i> Source function of the wait callsite (for deadlock detection)</div>
+<p class="Pp">Called by platform-specific cond_wait() or cond_timedwait() before
+    blocking. Records timing, callsite information, and increments wait
+  count.</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>cond.c</b>.</p>
+<pre>33                                                                                               {
+34   if (!cond) return;
+35   cond-&gt;last_wait_time_ns = time_get_ns();
+36   cond-&gt;last_wait_mutex = mutex;
+37   cond-&gt;last_wait_file = file;
+38   cond-&gt;last_wait_line = line;
+39   cond-&gt;last_wait_func = func;
+40   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+41   cond-&gt;last_waiting_key = asciichat_thread_to_key(current_thread);
+42   atomic_fetch_add_u64(&amp;cond-&gt;waiting_count, 1);
+43   cond-&gt;wait_count++;
+44 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>,
+    <b>atomic_fetch_add_u64()</b>, <b>mutex</b>, and <b>time_get_ns()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

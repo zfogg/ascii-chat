@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>handshake(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">handshake(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">handshake(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">handshake - Handshake Module</p>
+<p class="Pp">
+  <br/>
+   - &#x1F91D; Cryptographic handshake implementation for key exchange and
+    authentication</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>client.c</b>
+  <br/>
+  Client-side handshake protocol implementation. file <b>common.c</b>
+  <br/>
+  Common handshake functions: initialization, cleanup, encryption, rekeying.
+    file <b>server.c</b>
+  <br/>
+  Server-side handshake protocol implementation.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F91D; Cryptographic handshake implementation for key exchange
+    and authentication</p>
+<p class="Pp">Crypto Handshake README</p>
+<p class="Pp">The cryptographic handshake protocol establishes secure,
+    authenticated connections between ascii-chat clients and servers. The
+    handshake implements mutual authentication, key exchange, and session
+    establishment with perfect forward secrecy.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The handshake protocol manages the complete security setup for
+    each connection:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Capabilities negotiation</b>: Client and server agree on cryptographic
+      algorithms</dd>
+  <dt>2.</dt>
+  <dd><b>Parameters negotiation</b>: Algorithm-specific sizes and
+    configuration</dd>
+  <dt>3.</dt>
+  <dd><b>Key exchange</b>: Diffie-Hellman key exchange establishes shared
+    secret</dd>
+  <dt>4.</dt>
+  <dd><b>Authentication</b>: Password or client key authentication proves
+      identity</dd>
+  <dt>5.</dt>
+  <dd><b>Session establishment</b>: Encryption keys derived and encryption
+      enabled</dd>
+</dl>
+<p class="Pp"><b>Implementation</b>: lib/crypto/handshake.c/h</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>Perfect forward secrecy via ephemeral X25519 key exchange</li>
+  <li>Mutual authentication (client and server both prove identity)</li>
+  <li>Password-based or SSH key-based authentication</li>
+  <li>Server identity verification via known_hosts (TOFU)</li>
+  <li>Client whitelisting for access control</li>
+  <li>Session rekeying for long-lived connections</li>
+  <li>State machine with strict validation</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Handshake_Sequence"><a class="permalink" href="#Handshake_Sequence">Handshake
+  Sequence</a></h1>
+<p class="Pp">The complete handshake follows this sequence:</p>
+<section class="Ss">
+<h2 class="Ss" id="Phase_0:_Algorithm_Negotiation"><a class="permalink" href="#Phase_0:_Algorithm_Negotiation">Phase
+  0: Algorithm Negotiation</a></h2>
+<p class="Pp"><b>Client &#x2192; Server: CRYPTO_CAPABILITIES</b></p>
+<ul class="Bl-bullet">
+  <li>Client advertises supported algorithms (key exchange, authentication,
+      cipher)</li>
+  <li>Client specifies preferred algorithms</li>
+  <li>Client indicates whether server verification is required</li>
+</ul>
+<p class="Pp"><b>Server &#x2192; Client: CRYPTO_PARAMETERS</b></p>
+<ul class="Bl-bullet">
+  <li>Server selects algorithms based on client capabilities</li>
+  <li>Server provides algorithm-specific sizes (key sizes, signature sizes,
+      etc.)</li>
+  <li>Server indicates whether verification is enabled</li>
+</ul>
+<p class="Pp"><b>Packet Formats</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint16_t supported_kex_algorithms;    // Supported KEX algorithms (bitmask)
+<br/>
+    uint16_t supported_auth_algorithms;   // Supported auth algorithms (bitmask)
+<br/>
+    uint16_t supported_cipher_algorithms; // Supported cipher algorithms (bitmask)
+<br/>
+    uint8_t requires_verification;        // Whether server verification required
+<br/>
+    uint8_t preferred_kex;                // Preferred KEX algorithm
+<br/>
+    uint8_t preferred_auth;               // Preferred auth algorithm
+<br/>
+    uint8_t preferred_cipher;             // Preferred cipher algorithm
+} crypto_capabilities_packet_t;
+typedef struct {
+<br/>
+    uint8_t selected_kex;          // Which KEX algorithm (KEX_ALGO_*)
+<br/>
+    uint8_t selected_auth;         // Which auth algorithm (AUTH_ALGO_*)
+<br/>
+    uint8_t selected_cipher;       // Which cipher algorithm (CIPHER_ALGO_*)
+<br/>
+    uint8_t verification_enabled;  // Whether server verification enabled
+<br/>
+    uint16_t kex_public_key_size;  // e.g., 32 for X25519
+<br/>
+    uint16_t auth_public_key_size; // e.g., 32 for Ed25519
+<br/>
+    uint16_t signature_size;       // e.g., 64 for Ed25519
+<br/>
+    uint16_t shared_secret_size;   // e.g., 32 for X25519
+<br/>
+    uint8_t nonce_size;            // e.g., 24 for XSalsa20
+<br/>
+    uint8_t mac_size;              // e.g., 16 for Poly1305
+<br/>
+    uint8_t hmac_size;             // e.g., 32 for HMAC-SHA256
+} crypto_parameters_packet_t;
+</pre>
+<p class="Pp"><b>Current Algorithms</b>:</p>
+<ul class="Bl-bullet">
+  <li>Key Exchange: X25519 (Curve25519 Diffie-Hellman)</li>
+  <li>Authentication: Ed25519 (Edwards-curve signatures)</li>
+  <li>Cipher: XSalsa20-Poly1305 (authenticated encryption)</li>
+</ul>
+<p class="Pp"><b>Future-Proofing</b>: The negotiation protocol supports
+    post-quantum algorithms. Future versions can add Kyber (key exchange),
+    Dilithium (signatures), and hybrid modes (classical + post-quantum) without
+    breaking compatibility.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_1:_Key_Exchange_Init_(Server_"><a class="permalink" href="#Phase_1:_Key_Exchange_Init_(Server_">Phase
+  1: Key Exchange Init (Server &#x2192; Client)</a></h2>
+<p class="Pp"><b>Server sends: CRYPTO_KEY_EXCHANGE_INIT</b></p>
+<p class="Pp"></p>
+<p class="Pp">The server sends its ephemeral public key and optionally its
+    identity key:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Simple Format</b> (no server identity key):</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t ephemeral_public_key[32];  // X25519 DH public key
+} key_exchange_init_simple_t;
+</pre>
+<p class="Pp"><b>Authenticated Format</b> (server has identity key):</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t ephemeral_public_key[32];  // X25519 DH public key
+<br/>
+    uint8_t identity_public_key[32];   // Ed25519 identity key
+<br/>
+    uint8_t signature[64];              // Ed25519 signature of ephemeral key
+} key_exchange_init_authenticated_t;
+</pre>
+<p class="Pp"><b>Client Processing</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Extract ephemeral public key (always present)</dd>
+  <dt>2.</dt>
+  <dd>If identity key present:</dd>
+  <dt> &#x2022;</dt>
+  <dd>Verify signature proves server has identity private key</dd>
+  <dt> &#x2022;</dt>
+  <dd>Check against --server-key if provided (must match)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Check against known_hosts file (TOFU verification)</dd>
+  <dt> &#x2022;</dt>
+  <dd>If first connection: prompt user to save to known_hosts</dd>
+  <dt>3.</dt>
+  <dd>Generate client's ephemeral keypair</dd>
+  <dt>4.</dt>
+  <dd>Compute shared secret: shared_secret = X25519(client_private,
+      server_public)</dd>
+</dl>
+<p class="Pp"><b>Security Note</b>: The signature cryptographically binds the
+    ephemeral key to the identity key, preventing man-in-the-middle attacks. An
+    attacker cannot replace the ephemeral key without also possessing the
+    identity private key.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_2:_Key_Exchange_Response_(Client_"><a class="permalink" href="#Phase_2:_Key_Exchange_Response_(Client_">Phase
+  2: Key Exchange Response (Client &#x2192; Server)</a></h2>
+<p class="Pp"><b>Client sends: CRYPTO_KEY_EXCHANGE_RESP</b></p>
+<p class="Pp"></p>
+<p class="Pp">The client responds with its ephemeral public key and optionally
+    its identity key:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Simple Format</b> (no client identity key):</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t ephemeral_public_key[32];  // X25519 DH public key
+} key_exchange_response_simple_t;
+</pre>
+<p class="Pp"><b>Authenticated Format</b> (client has identity key):</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t ephemeral_public_key[32];  // X25519 DH public key
+<br/>
+    uint8_t identity_public_key[32];   // Ed25519 identity key
+<br/>
+    uint8_t signature[64];              // Ed25519 signature of ephemeral key
+} key_exchange_response_authenticated_t;
+</pre>
+<p class="Pp"><b>Server Processing</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Extract client's ephemeral public key (always present)</dd>
+  <dt>2.</dt>
+  <dd>If identity key present:</dd>
+  <dt> &#x2022;</dt>
+  <dd>Verify signature proves client has identity private key</dd>
+  <dt> &#x2022;</dt>
+  <dd>Check against --client-keys whitelist if provided</dd>
+  <dt> &#x2022;</dt>
+  <dd>Reject if whitelist enabled and client not found</dd>
+  <dt>3.</dt>
+  <dd>Compute shared secret: shared_secret = X25519(server_private,
+      client_public)</dd>
+</dl>
+<p class="Pp"><b>At this point both sides have</b>:</p>
+<ul class="Bl-bullet">
+  <li>&#x2705; Ephemeral Diffie-Hellman shared secret (32 bytes)</li>
+  <li>&#x2705; Peer's identity public key (if authenticated mode)</li>
+  <li>&#x2705; Verified peer's identity (signature verification)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_3:_Authentication_Challenge_(Server_"><a class="permalink" href="#Phase_3:_Authentication_Challenge_(Server_">Phase
+  3: Authentication Challenge (Server &#x2192; Client)</a></h2>
+<p class="Pp"><b>Server sends: CRYPTO_AUTH_CHALLENGE</b></p>
+<p class="Pp"></p>
+<p class="Pp">The server sends an authentication challenge with flags indicating
+    requirements:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t nonce[32];  // Random challenge nonce
+<br/>
+    uint8_t flags;      // Authentication requirement flags
+} auth_challenge_packet_t;</pre>
+<p class="Pp"><b>Flags</b>:</p>
+<ul class="Bl-bullet">
+  <li>AUTH_REQUIRE_PASSWORD (0x01): Server requires password authentication</li>
+  <li>AUTH_REQUIRE_CLIENT_KEY (0x02): Server requires client key authentication
+      (whitelist)</li>
+</ul>
+<p class="Pp"><b>Client Processing</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Extract challenge nonce (32 random bytes)</dd>
+  <dt>2.</dt>
+  <dd>Determine authentication method based on flags and client
+    configuration</dd>
+  <dt>3.</dt>
+  <dd>Prepare authentication response:</dd>
+  <dt> &#x2022;</dt>
+  <dd><b>Password mode</b>: HMAC(password_key, nonce || shared_secret) where
+      password_key = Argon2id(password, salt) (derived from password)</dd>
+  <dt> &#x2022;</dt>
+  <dd><b>Client key mode</b>: HMAC(shared_secret, nonce) if no password,
+      otherwise still use password_key for HMAC</dd>
+  <dt>4.</dt>
+  <dd>Bind authentication to shared secret to prevent replay attacks</dd>
+</dl>
+<p class="Pp"><b>Security Note</b>: Authentication is bound to the DH shared
+    secret. This prevents an attacker from replaying authentication responses
+    without knowing the shared secret, even if they intercepted the initial key
+    exchange packets.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_4:_Authentication_Response_(Client_"><a class="permalink" href="#Phase_4:_Authentication_Response_(Client_">Phase
+  4: Authentication Response (Client &#x2192; Server)</a></h2>
+<p class="Pp"><b>Client sends: CRYPTO_AUTH_RESPONSE</b></p>
+<p class="Pp"></p>
+<p class="Pp">The client sends an HMAC proving knowledge of the password or
+    shared secret:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t hmac[32];  // HMAC-SHA256 of challenge nonce
+} auth_response_packet_t;</pre>
+<p class="Pp"><b>Server Processing</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Extract HMAC from response</dd>
+  <dt>2.</dt>
+  <dd>Recompute expected HMAC using same method as client:</dd>
+  <dt> &#x2022;</dt>
+  <dd><b>Password mode</b>: HMAC(password_key, nonce || shared_secret)</dd>
+  <dt> &#x2022;</dt>
+  <dd><b>No password</b>: HMAC(shared_secret, nonce)</dd>
+  <dt>3.</dt>
+  <dd>Constant-time compare with received HMAC</dd>
+  <dt>4.</dt>
+  <dd>If HMAC matches:</dd>
+  <dt> &#x2022;</dt>
+  <dd>If client sent identity key: Verify client is in whitelist</dd>
+  <dt> &#x2022;</dt>
+  <dd>Proceed to handshake completion</dd>
+  <dt>5.</dt>
+  <dd>If HMAC mismatch: Send CRYPTO_AUTH_FAILED and terminate handshake</dd>
+</dl>
+<p class="Pp"><b>HMAC Binding</b>: The HMAC includes both the challenge nonce
+    AND the shared secret. This ensures that:</p>
+<ul class="Bl-bullet">
+  <li>Authentication cannot be replayed by an attacker who doesn't know the
+      shared secret</li>
+  <li>Even if an attacker intercepts the challenge, they cannot forge a
+    response</li>
+  <li>The authentication is cryptographically bound to this specific
+    session</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_5:_Server_Authentication_(Optional_-_Server_"><a class="permalink" href="#Phase_5:_Server_Authentication_(Optional_-_Server_">Phase
+  5: Server Authentication (Optional - Server &#x2192; Client)</a></h2>
+<p class="Pp"><b>Server sends: CRYPTO_SERVER_AUTH_RESP</b></p>
+<p class="Pp"></p>
+<p class="Pp">If client requested server verification, server proves knowledge
+    of shared secret:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint8_t hmac[32];  // HMAC-SHA256 of client's challenge nonce || shared_secret
+} server_auth_response_packet_t;</pre>
+<p class="Pp"><b>Client Processing</b>:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Extract server's HMAC</dd>
+  <dt>2.</dt>
+  <dd>Recompute expected HMAC: HMAC(shared_secret, client_challenge_nonce ||
+      shared_secret)</dd>
+  <dt>3.</dt>
+  <dd>Constant-time compare with received HMAC</dd>
+  <dt>4.</dt>
+  <dd>If HMAC matches: Server has proven knowledge of shared secret (mutual
+      authentication)</dd>
+  <dt>5.</dt>
+  <dd>If HMAC mismatch: Reject connection (possible MITM attack)</dd>
+</dl>
+<p class="Pp"><b>Mutual Authentication</b>: This phase ensures both parties have
+    proven knowledge of the shared secret. Combined with the identity key
+    signatures in phase 1/2, this provides strong mutual authentication: server
+    identity (Ed25519 signature) + shared secret (HMAC).</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Phase_6:_Handshake_Complete_(Server_"><a class="permalink" href="#Phase_6:_Handshake_Complete_(Server_">Phase
+  6: Handshake Complete (Server &#x2192; Client)</a></h2>
+<p class="Pp"><b>Server sends: CRYPTO_HANDSHAKE_COMPLETE</b></p>
+<p class="Pp"></p>
+<p class="Pp">Empty packet (0 bytes payload) indicating handshake is
+  complete:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Packet type: PACKET_TYPE_CRYPTO_HANDSHAKE_COMPLETE
+// Payload: Empty (0 bytes)</pre>
+<p class="Pp"><b>Both Sides</b>:</p>
+<ul class="Bl-bullet">
+  <li>&#x2705; Handshake state transitions to CRYPTO_HANDSHAKE_READY</li>
+  <li>&#x2705; Session encryption keys derived from shared secret</li>
+  <li>&#x2705; All subsequent packets encrypted with XSalsa20-Poly1305</li>
+  <li>&#x2705; Nonce counters initialized for send/receive directions</li>
+</ul>
+<p class="Pp"><b>After Completion</b>:</p>
+<ul class="Bl-bullet">
+  <li>All application packets (video, audio, control) are wrapped in
+      PACKET_TYPE_ENCRYPTED</li>
+  <li>Handshake packets are NEVER encrypted (they use packet_is_handshake_type()
+      check)</li>
+  <li>Encryption is automatic via <b>send_packet_secure()</b><b> /
+      </b><b>receive_packet_secure()</b><b></b></li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="State_Machine"><a class="permalink" href="#State_Machine">State
+  Machine</a></h1>
+<p class="Pp">The handshake follows a strict state machine with validation at
+    each transition:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Handshake States</b>:</p>
+<p class="Pp"></p>
+<pre>typedef enum {
+<br/>
+    CRYPTO_HANDSHAKE_DISABLED = 0,   // No encryption (handshake disabled)
+<br/>
+    CRYPTO_HANDSHAKE_INIT,           // Initial state (ready to start handshake)
+<br/>
+    CRYPTO_HANDSHAKE_KEY_EXCHANGE,   // DH key exchange in progress
+<br/>
+    CRYPTO_HANDSHAKE_AUTHENTICATING, // Authentication challenge/response
+<br/>
+    CRYPTO_HANDSHAKE_READY,          // Handshake complete, encryption ready
+<br/>
+    CRYPTO_HANDSHAKE_FAILED          // Handshake failed (cannot recover)
+} crypto_handshake_state_t;
+</pre>
+<p class="Pp"><b>State Transitions</b>:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>DISABLED &#x2192; INIT (crypto_handshake_init)
+INIT &#x2192; KEY_EXCHANGE (crypto_handshake_server_start / crypto_handshake_client_key_exchange)
+KEY_EXCHANGE &#x2192; AUTHENTICATING (crypto_handshake_server_auth_challenge / crypto_handshake_client_auth_response)
+AUTHENTICATING &#x2192; READY (crypto_handshake_server_complete / crypto_handshake_client_complete)
+ANY &#x2192; FAILED (on error)</pre>
+<p class="Pp"><b>State Validation</b>: All handshake functions validate current
+    state before proceeding. Invalid state transitions return
+    ERROR_INVALID_STATE. This prevents:</p>
+<ul class="Bl-bullet">
+  <li>Out-of-order packet processing</li>
+  <li>Race conditions in concurrent handshakes</li>
+  <li>Protocol violations</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Authentication_Methods"><a class="permalink" href="#Authentication_Methods">Authentication
+  Methods</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Password_Authentication"><a class="permalink" href="#Password_Authentication">Password
+  Authentication</a></h2>
+<p class="Pp">Password-based authentication uses Argon2id key derivation:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Derivation</b>:</p>
+<p class="Pp"></p>
+<pre>// Server/client both derive password_key from password using libsodium
+uint8_t password_key[32];
+uint8_t salt[ARGON2ID_SALT_SIZE];  // 32-byte salt
+// Salt is deterministic: &quot;ascii-chat-password-salt-v1&quot; zero-padded to 32 bytes
+memset(salt, 0, sizeof(salt));
+memcpy(salt, &quot;ascii-chat-password-salt-v1&quot;, 27);
+crypto_pwhash(
+<br/>
+    password_key, 32,
+<br/>
+    password, strlen(password),
+<br/>
+    salt,
+<br/>
+    crypto_pwhash_OPSLIMIT_INTERACTIVE,  // ~0.1 seconds on modern CPU
+<br/>
+    crypto_pwhash_MEMLIMIT_INTERACTIVE,  // ~64 MB memory
+<br/>
+    crypto_pwhash_ALG_DEFAULT            // Argon2id
+);
+</pre>
+<p class="Pp"><b>Authentication</b>:</p>
+<p class="Pp"></p>
+<pre>// Client computes HMAC
+uint8_t input[64];
+memcpy(input, nonce, 32);              // Challenge nonce
+memcpy(input + 32, shared_secret, 32); // DH shared secret
+uint8_t hmac[32];
+crypto_generichash_state state;
+crypto_generichash_init(&amp;state, password_key, 32, 32);
+crypto_generichash_update(&amp;state, input, 64);
+crypto_generichash_final(&amp;state, hmac, 32);
+</pre>
+<p class="Pp"><b>Security Properties</b>:</p>
+<ul class="Bl-bullet">
+  <li>Password is never transmitted over the network</li>
+  <li>Argon2id provides strong key derivation (resistant to GPU/ASIC
+    attacks)</li>
+  <li>HMAC binding to shared secret prevents offline password guessing</li>
+  <li>Salt prevents rainbow table attacks</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client_Key_Authentication"><a class="permalink" href="#Client_Key_Authentication">Client
+  Key Authentication</a></h2>
+<p class="Pp">SSH Ed25519 key-based authentication for client identity:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Exchange</b>:</p>
+<ul class="Bl-bullet">
+  <li>Client sends Ed25519 identity public key in CRYPTO_KEY_EXCHANGE_RESP</li>
+  <li>Client signs ephemeral X25519 public key with Ed25519 private key</li>
+  <li>Server verifies signature and checks client key against whitelist</li>
+</ul>
+<p class="Pp"><b>Whitelist Checking</b>:</p>
+<p class="Pp"></p>
+<pre>// Server checks client key against whitelist
+bool client_authorized = false;
+for (size_t i = 0; i &lt; num_whitelisted_clients; i++) {
+<br/>
+    if (memcmp(client_identity_key, whitelist[i].public_key, 32) == 0) {
+<br/>
+        client_authorized = true;
+<br/>
+        break;
+<br/>
+    }
+}
+if (!client_authorized &amp;&amp; require_client_auth) {
+<br/>
+    return SET_ERRNO(ERROR_CRYPTO_HANDSHAKE,
+<br/>
+                     &quot;Client not in whitelist&quot;);
+}
+</pre>
+<p class="Pp"><b>Security Properties</b>:</p>
+<ul class="Bl-bullet">
+  <li>Client identity proven via Ed25519 signature</li>
+  <li>Server maintains whitelist for access control</li>
+  <li>Forward secrecy maintained (ephemeral keys still used for encryption)</li>
+  <li>Identity key never used for encryption (separation of identity and
+      encryption)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Server_Identity_Verification"><a class="permalink" href="#Server_Identity_Verification">Server
+  Identity Verification</a></h2>
+<p class="Pp">Server identity verification via known_hosts (TOFU - Trust On
+    First Use):</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Known Hosts File</b>: ~/.config/ascii-chat/known_hosts Format:
+    IP_address public_key timestamp</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Verification Flow</b>:</p>
+<p class="Pp"></p>
+<pre>// Client receives server identity key in CRYPTO_KEY_EXCHANGE_INIT
+if (server_has_identity_key) {
+<br/>
+    // Check against --server-key if provided
+<br/>
+    if (expected_server_key &amp;&amp; 
+<br/>
+        memcmp(server_identity_key, expected_server_key, 32) != 0) {
+<br/>
+        return ERROR_CRYPTO_HANDSHAKE;  // Key mismatch
+<br/>
+    }
+<br/>
+    
+<br/>
+    // Check known_hosts
+<br/>
+    char known_hosts_path[256];
+<br/>
+    snprintf(known_hosts_path, sizeof(known_hosts_path),
+<br/>
+             &quot;%s/.config/ascii-chat/known_hosts&quot;, getenv(&quot;HOME&quot;));
+<br/>
+    
+<br/>
+    if (known_hosts_has_entry(known_hosts_path, server_ip, server_port)) {
+<br/>
+        // Known server - verify key matches
+<br/>
+        uint8_t saved_key[32];
+<br/>
+        known_hosts_get_key(known_hosts_path, server_ip, server_port, saved_key);
+<br/>
+        if (memcmp(server_identity_key, saved_key, 32) != 0) {
+<br/>
+            return ERROR_CRYPTO_KNOWN_HOSTS;  // Key changed - possible MITM!
+<br/>
+        }
+<br/>
+    } else {
+<br/>
+        // First connection - prompt user
+<br/>
+        printf(&quot;The authenticity of server %s:%d can't be established.\n&quot;
+<br/>
+               &quot;Server's Ed25519 key fingerprint is:\n&quot;
+<br/>
+               &quot;%s\n&quot;
+<br/>
+               &quot;Are you sure you want to continue connecting? (yes/no) &quot;,
+<br/>
+               server_ip, server_port, key_fingerprint);
+<br/>
+        // Save to known_hosts if user confirms
+<br/>
+        known_hosts_add_entry(known_hosts_path, server_ip, server_port,
+<br/>
+                             server_identity_key);
+<br/>
+    }
+}
+</pre>
+<p class="Pp"><b>Security Properties</b>:</p>
+<ul class="Bl-bullet">
+  <li>TOFU model: Trust server on first connection, verify on subsequent</li>
+  <li>Detects MITM attacks if server key changes between connections</li>
+  <li>User confirmation required for first connection</li>
+  <li>Manual server key verification via --server-key overrides TOFU</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Session_Rekeying"><a class="permalink" href="#Session_Rekeying">Session
+  Rekeying</a></h1>
+<p class="Pp">ascii-chat implements periodic session rekeying to provide forward
+    secrecy within long-lived connections. After the initial handshake, the
+    system performs new Diffie-Hellman key exchanges to rotate encryption
+  keys.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Rekeying Triggers</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>Time threshold</b>: Rekey after 1 hour of active connection</li>
+  <li><b>Packet count threshold</b>: Rekey after 1 million encrypted
+    packets</li>
+  <li>Whichever comes first triggers rekeying</li>
+</ul>
+<p class="Pp"><b>Rekeying Protocol</b>:</p>
+<p class="Pp"></p>
+<p class="Pp">The rekeying flow uses a 3-packet handshake similar to the initial
+    key exchange:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>Initiator                         Responder
+<br/>
+   |                                  |
+<br/>
+   |--- CRYPTO_REKEY_REQUEST --------&gt;|
+<br/>
+   |    [new_ephemeral_pk[32]]        |
+<br/>
+   |                                  | Generate new ephemeral keypair
+<br/>
+   |                                  | Compute temp_shared_secret
+<br/>
+   |                                  |
+<br/>
+   |&lt;-- CRYPTO_REKEY_RESPONSE --------|
+<br/>
+   |    [new_ephemeral_pk[32]]        |
+<br/>
+   |                                  |
+<br/>
+   | Compute temp_shared_secret       |
+<br/>
+   |                                  |
+<br/>
+   |--- CRYPTO_REKEY_COMPLETE -------&gt;|
+<br/>
+   |    [empty, encrypted with NEW key]|
+<br/>
+   |                                  | Decrypt with temp_shared_secret
+<br/>
+   |                                  | If successful, commit to new key
+<br/>
+   |                                  |
+<br/>
+   | &#x2705; Commit to new key             | &#x2705; Commit to new key</pre>
+<p class="Pp"><b>Key Commitment</b>:</p>
+<ul class="Bl-bullet">
+  <li>Old keys remain active until CRYPTO_REKEY_COMPLETE is verified</li>
+  <li>This ensures no service interruption during rekeying</li>
+  <li>REKEY_COMPLETE packet is encrypted with NEW shared secret to prove both
+      sides computed the same secret</li>
+  <li>Once verified, both sides replace shared_key with temp_shared_key</li>
+  <li>Old keys are securely zeroed from memory</li>
+</ul>
+<p class="Pp"><b>Security Benefits</b>:</p>
+<ul class="Bl-bullet">
+  <li>Limits exposure if encryption key is compromised</li>
+  <li>Periodic key rotation maintains forward secrecy</li>
+  <li>Old session data cannot be decrypted with new keys</li>
+  <li>Automatic rekeying requires no user intervention</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Security_Considerations"><a class="permalink" href="#Security_Considerations">Security
+  Considerations</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Forward_Secrecy"><a class="permalink" href="#Forward_Secrecy">Forward
+  Secrecy</a></h2>
+<p class="Pp"><b>Perfect Forward Secrecy</b>:</p>
+<ul class="Bl-bullet">
+  <li>Each connection uses unique ephemeral X25519 keypairs</li>
+  <li>Shared secret is computed fresh for each session</li>
+  <li>Ephemeral keys are destroyed after handshake completion</li>
+  <li>Compromising identity keys does NOT reveal past session keys</li>
+  <li>Recorded traffic cannot be decrypted even if identity keys are later
+      compromised</li>
+</ul>
+<p class="Pp"><b>Why This Matters</b>:</p>
+<ul class="Bl-bullet">
+  <li>Long-term identity keys may be compromised months or years later</li>
+  <li>Forward secrecy ensures past conversations remain confidential</li>
+  <li>Each session is cryptographically isolated</li>
+  <li>Regular rekeying limits exposure for long-lived connections</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="MITM_Protection"><a class="permalink" href="#MITM_Protection">MITM
+  Protection</a></h2>
+<p class="Pp"><b>Identity Key Signatures</b>:</p>
+<ul class="Bl-bullet">
+  <li>Server signs ephemeral key with identity key (if --key provided)</li>
+  <li>Client signs ephemeral key with identity key (if --key provided)</li>
+  <li>Signatures prove ownership of identity keys</li>
+  <li>Attacker cannot forge signatures without identity private keys</li>
+</ul>
+<p class="Pp"><b>Known Hosts Verification</b>:</p>
+<ul class="Bl-bullet">
+  <li>First connection: User confirms server identity (TOFU)</li>
+  <li>Subsequent connections: Automatic verification against known_hosts</li>
+  <li>Key changes detected (possible MITM attack)</li>
+  <li>Manual verification via --server-key provides stronger guarantee</li>
+</ul>
+<p class="Pp"><b>HMAC Binding</b>:</p>
+<ul class="Bl-bullet">
+  <li>Authentication responses are bound to DH shared secret</li>
+  <li>Attacker cannot replay authentication without knowing shared secret</li>
+  <li>Prevents authentication bypass even if challenge is intercepted</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Replay_Protection"><a class="permalink" href="#Replay_Protection">Replay
+  Protection</a></h2>
+<p class="Pp"><b>Challenge Nonces</b>:</p>
+<ul class="Bl-bullet">
+  <li>Server generates random 32-byte nonce for each handshake</li>
+  <li>Nonce is unique per handshake attempt</li>
+  <li>Authentication responses cannot be replayed to different challenges</li>
+</ul>
+<p class="Pp"><b>Shared Secret Binding</b>:</p>
+<ul class="Bl-bullet">
+  <li>HMAC includes both nonce AND shared secret</li>
+  <li>Even if nonce is reused (shouldn't happen), attacker needs shared
+    secret</li>
+  <li>Prevents replay attacks across different sessions</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Timing_Attack_Resistance"><a class="permalink" href="#Timing_Attack_Resistance">Timing
+  Attack Resistance</a></h2>
+<p class="Pp"><b>Constant-Time Operations</b>:</p>
+<ul class="Bl-bullet">
+  <li>HMAC comparison uses constant-time memcmp</li>
+  <li>Key comparisons use constant-time sodium_memcmp</li>
+  <li>No data-dependent branches in crypto operations</li>
+  <li>Resistant to timing side-channel attacks</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
+  Examples</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Server-Side_Handshake"><a class="permalink" href="#Server-Side_Handshake">Server-Side
+  Handshake</a></h2>
+<pre>// Initialize server handshake context
+crypto_handshake_context_t ctx;
+asciichat_error_t err = crypto_handshake_init(&amp;ctx, true);  // is_server = true
+if (err != ASCIICHAT_OK) {
+<br/>
+    return err;
+}
+// Load server identity key (optional)
+if (server_key_file) {
+<br/>
+    ed25519_key_t server_key;
+<br/>
+    err = load_ssh_key(server_key_file, &amp;server_key, NULL);
+<br/>
+    if (err == ASCIICHAT_OK) {
+<br/>
+        memcpy(ctx.server_public_key, server_key.public_key, 32);
+<br/>
+        memcpy(ctx.server_private_key, server_key.private_key, 32);
+<br/>
+        sodium_memzero(&amp;server_key, sizeof(server_key));
+<br/>
+    }
+}
+// Load client whitelist (optional)
+if (client_keys_file) {
+<br/>
+    err = load_client_keys(client_keys_file, &amp;ctx.client_whitelist,
+<br/>
+                           &amp;ctx.num_whitelisted_clients);
+<br/>
+    if (err == ASCIICHAT_OK) {
+<br/>
+        ctx.require_client_auth = true;
+<br/>
+    }
+}
+// Set password (optional)
+if (password) {
+<br/>
+    strncpy(ctx.password, password, sizeof(ctx.password) - 1);
+<br/>
+    ctx.has_password = true;
+}
+// Wait for client capabilities
+packet_envelope_t envelope;
+packet_recv_result_t result = receive_packet_secure(client_socket, NULL, false,
+<br/>
+                                                      &amp;envelope);
+if (result != PACKET_RECV_SUCCESS || 
+<br/>
+    envelope.type != PACKET_TYPE_CRYPTO_CAPABILITIES) {
+<br/>
+    return ERROR_CRYPTO_HANDSHAKE;
+}
+// Process capabilities and set parameters
+crypto_parameters_packet_t params = {
+<br/>
+    .selected_kex = KEX_ALGO_X25519,
+<br/>
+    .selected_auth = AUTH_ALGO_ED25519,
+<br/>
+    .selected_cipher = CIPHER_ALGO_XSALSA20_POLY1305,
+<br/>
+    .kex_public_key_size = 32,
+<br/>
+    .auth_public_key_size = 32,
+<br/>
+    .signature_size = 64,
+<br/>
+    .shared_secret_size = 32,
+<br/>
+    .nonce_size = 24,
+<br/>
+    .mac_size = 16,
+<br/>
+    .hmac_size = 32
+};
+err = crypto_handshake_set_parameters(&amp;ctx, &amp;params);</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

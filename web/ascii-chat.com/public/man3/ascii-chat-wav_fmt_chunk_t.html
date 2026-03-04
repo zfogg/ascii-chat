@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>wav_fmt_chunk_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">wav_fmt_chunk_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">wav_fmt_chunk_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">wav_fmt_chunk_t - WAV format chunk describing audio format
+    parameters.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>fmt</b> [4]
+  <br/>
+  <i>fmt</i> chunk identifier uint32_t <b>chunk_size</b>
+  <br/>
+  Chunk size (16 for PCM). uint16_t <b>audio_format</b>
+  <br/>
+  Audio format (3 = IEEE float). uint16_t <b>num_channels</b>
+  <br/>
+  Number of channels (1 = mono, 2 = stereo). uint32_t <b>sample_rate</b>
+  <br/>
+  Sample rate in Hz (e.g., 44100). uint32_t <b>byte_rate</b>
+  <br/>
+  Bytes per second (sample_rate * num_channels * bytes_per_sample). uint16_t
+    <b>block_align</b>
+  <br/>
+  Block alignment (num_channels * bytes_per_sample). uint16_t
+    <b>bits_per_sample</b>
+  <br/>
+  Bits per sample (32 for float).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WAV format chunk describing audio format parameters.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::audio_format"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::audio_format">uint16_t
+  wav_fmt_chunk_t::audio_format</a></h2>
+<p class="Pp">Audio format (3 = IEEE float).</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::bits_per_sample"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::bits_per_sample">uint16_t
+  wav_fmt_chunk_t::bits_per_sample</a></h2>
+<p class="Pp">Bits per sample (32 for float).</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::block_align"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::block_align">uint16_t
+  wav_fmt_chunk_t::block_align</a></h2>
+<p class="Pp">Block alignment (num_channels * bytes_per_sample).</p>
+<p class="Pp">Definition at line <b>35</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_wav_fmt_chunk_t::byte_rate"><a class="permalink" href="#uint32_t_wav_fmt_chunk_t::byte_rate">uint32_t
+  wav_fmt_chunk_t::byte_rate</a></h2>
+<p class="Pp">Bytes per second (sample_rate * num_channels *
+  bytes_per_sample).</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_wav_fmt_chunk_t::chunk_size"><a class="permalink" href="#uint32_t_wav_fmt_chunk_t::chunk_size">uint32_t
+  wav_fmt_chunk_t::chunk_size</a></h2>
+<p class="Pp">Chunk size (16 for PCM).</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_wav_fmt_chunk_t::fmt_4_"><a class="permalink" href="#char_wav_fmt_chunk_t::fmt_4_">char
+  wav_fmt_chunk_t::fmt[4]</a></h2>
+<p class="Pp">&quot;fmt &quot; chunk identifier</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_wav_fmt_chunk_t::num_channels"><a class="permalink" href="#uint16_t_wav_fmt_chunk_t::num_channels">uint16_t
+  wav_fmt_chunk_t::num_channels</a></h2>
+<p class="Pp">Number of channels (1 = mono, 2 = stereo).</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_wav_fmt_chunk_t::sample_rate"><a class="permalink" href="#uint32_t_wav_fmt_chunk_t::sample_rate">uint32_t
+  wav_fmt_chunk_t::sample_rate</a></h2>
+<p class="Pp">Sample rate in Hz (e.g., 44100).</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>wav_writer.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>socket.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">socket.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">socket.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">socket.c - &#x1F310; Common socket utility functions
+    (cross-platform implementations)</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>socket_optimize_for_streaming</b> (<b>socket_t</b> sock)
+  <br/>
+  Optimize socket for high-throughput video streaming. int
+    <b>socket_set_timeout</b> (<b>socket_t</b> sock, uint64_t timeout_ns)
+  <br/>
+  Set socket receive and send timeouts.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F310; Common socket utility functions (cross-platform
+    implementations)</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>socket.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_socket_optimize_for_streaming_("><a class="permalink" href="#void_socket_optimize_for_streaming_(">void
+  socket_optimize_for_streaming (<b>socket_t</b> sock)</a></h2>
+<p class="Pp">Optimize socket for high-throughput video streaming. Consolidates
+    socket configuration for real-time video streaming:</p>
+<ul class="Bl-bullet">
+  <li>Disables Nagle's algorithm (TCP_NODELAY)</li>
+  <li>Sets large send/receive buffers with automatic fallbacks</li>
+  <li>Enables TCP keepalive</li>
+  <li>Sets send/receive timeouts</li>
+</ul>
+<p class="Pp">This common implementation applies to both POSIX and Windows
+    platforms.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sock</i> Socket to configure</div>
+<p class="Pp">Definition at line <b>37</b> of file <b>socket.c</b>.</p>
+<pre>37                                                   {
+38   // 1. Disable Nagle's algorithm - CRITICAL for real-time video
+39   // TCP_NODELAY ensures data is sent immediately without waiting for ACKs
+40   int nodelay = 1;
+41   if (socket_setsockopt(sock, IPPROTO_TCP, TCP_NODELAY, &amp;nodelay, sizeof(nodelay)) != 0) {
+42     log_warn(&quot;Failed to disable Nagle's algorithm (TCP_NODELAY) on socket&quot;);
+43   }
+44 
+45   // 2. Increase send buffer for video streaming (2MB with fallbacks)
+46   // Large buffers reduce packet drops during bursty frame transmission
+47   int send_buffer = MAX_FRAME_BUFFER_SIZE; // 2MB
+48   if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &amp;send_buffer, sizeof(send_buffer)) != 0) {
+49     send_buffer = 512 * 1024; // 512KB fallback
+50     if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &amp;send_buffer, sizeof(send_buffer)) != 0) {
+51       send_buffer = 128 * 1024; // 128KB fallback
+52       socket_setsockopt(sock, SOL_SOCKET, SO_SNDBUF, &amp;send_buffer, sizeof(send_buffer));
+53     }
+54   }
+55 
+56   // 3. Increase receive buffer (2MB with fallbacks)
+57   // Allows buffering of multiple incoming frames before processing
+58   int recv_buffer = MAX_FRAME_BUFFER_SIZE; // 2MB
+59   if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &amp;recv_buffer, sizeof(recv_buffer)) != 0) {
+60     recv_buffer = 512 * 1024; // 512KB fallback
+61     if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &amp;recv_buffer, sizeof(recv_buffer)) != 0) {
+62       recv_buffer = 128 * 1024; // 128KB fallback
+63       socket_setsockopt(sock, SOL_SOCKET, SO_RCVBUF, &amp;recv_buffer, sizeof(recv_buffer));
+64     }
+65   }
+66 
+67   // 4. Enable keepalive to detect dead connections
+68   int keepalive = 1;
+69   socket_setsockopt(sock, SOL_SOCKET, SO_KEEPALIVE, &amp;keepalive, sizeof(keepalive));
+70 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_socket_set_timeout_("><a class="permalink" href="#int_socket_set_timeout_(">int
+  socket_set_timeout (<b>socket_t</b> sock, uint64_t timeout_ns)</a></h2>
+<p class="Pp">Set socket receive and send timeouts.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sock</i> Socket to configure
+<br/>
+<i>timeout_ms</i> Timeout in milliseconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero on error</div>
+<p class="Pp">Cross-platform implementation that sets both SO_RCVTIMEO and
+    SO_SNDTIMEO. Platform-specific socket_setsockopt() handles the differences
+    between Windows (DWORD milliseconds) and POSIX (struct timeval).</p>
+<p class="Pp">Definition at line <b>82</b> of file <b>socket.c</b>.</p>
+<pre>82                                                            {
+83 #ifdef _WIN32
+84   // Windows: SO_RCVTIMEO and SO_SNDTIMEO use DWORD (milliseconds)
+85   DWORD timeout_val = (DWORD)time_ns_to_ms(timeout_ns);
+86   if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &amp;timeout_val, sizeof(timeout_val)) != 0) {
+87     return -1;
+88   }
+89   if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &amp;timeout_val, sizeof(timeout_val)) != 0) {
+90     return -1;
+91   }
+92 #else
+93   // POSIX: SO_RCVTIMEO and SO_SNDTIMEO use struct timeval (seconds + microseconds)
+94   struct timeval tv;
+95   uint64_t us = time_ns_to_us(timeout_ns);
+96   tv.tv_sec = (time_t)(us / US_PER_SEC_INT);
+97   tv.tv_usec = (suseconds_t)(us % US_PER_SEC_INT);
+98   if (socket_setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &amp;tv, sizeof(tv)) != 0) {
+99     return -1;
+100   }
+101   if (socket_setsockopt(sock, SOL_SOCKET, SO_SNDTIMEO, &amp;tv, sizeof(tv)) != 0) {
+102     return -1;
+103   }
+104 #endif
+105   return 0;
+106 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
+    <b>nat_measure_bandwidth()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

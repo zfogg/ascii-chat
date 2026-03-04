@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connection_attempt.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connection_attempt.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connection_attempt.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connection_attempt.c - Connection state machine and attempt logic
+    for TCP/WebSocket clients.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>session_client_like_set_websocket_client</b> (struct
+    websocket_client *ws_client)
+  <br/>
+  const char * <b>connection_state_name</b> (<b>connection_state_t</b> state)
+  <br/>
+  Get human-readable state name for logging. asciichat_error_t
+    <b>connection_context_init</b> (connection_attempt_context_t *ctx)
+  <br/>
+  Initialize connection attempt context. void <b>connection_context_cleanup</b>
+    (connection_attempt_context_t *ctx)
+  <br/>
+  Cleanup connection attempt context. asciichat_error_t
+    <b>connection_state_transition</b> (connection_attempt_context_t *ctx,
+    <b>connection_state_t</b> new_state)
+  <br/>
+  Transition to next connection state with validation. <b>bool</b>
+    <b>connection_check_timeout</b> (const connection_attempt_context_t *ctx)
+  <br/>
+  Check if connection attempt has exceeded timeout. asciichat_error_t
+    <b>connection_attempt_tcp</b> (connection_attempt_context_t *ctx, const char
+    *server_address, uint16_t server_port, struct tcp_client
+    *pre_created_tcp_client)
+  <br/>
+  Attempt direct TCP connection. asciichat_error_t
+    <b>connection_attempt_websocket</b> (connection_attempt_context_t *ctx,
+    const char *ws_url)
+  <br/>
+  Attempt WebSocket connection (ws:// or wss://).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Connection state machine and attempt logic for TCP/WebSocket
+    clients.</p>
+<p class="Pp">Implements direct TCP and WebSocket connections for client mode.
+    Manages connection state transitions, timeouts, and transport lifecycle.</p>
+<p class="Pp"></p>
+<p class="Pp">Features:</p>
+<ul class="Bl-bullet">
+  <li>Direct TCP connection to server</li>
+  <li>WebSocket connection support</li>
+  <li>Timeout management</li>
+  <li>Crypto handshake integration</li>
+  <li>ACIP transport creation</li>
+  <li>Proper resource cleanup</li>
+</ul>
+<p class="Pp">Integration Points:</p>
+<ul class="Bl-bullet">
+  <li>Called from <b>src/client/main.c</b> connection loop</li>
+  <li>Returns active transport when connection succeeds</li>
+</ul>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">2.0</div>
+<p class="Pp">Definition in file <b>connection_attempt.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_connection_attempt_tcp_(connection_attempt_context_t_*_ctx,_const_char_*_server_address,_uint16_t_server_port,_struct_tcp_client_*_pre_created_tcp_client)"><a class="permalink" href="#asciichat_error_t_connection_attempt_tcp_(connection_attempt_context_t_*_ctx,_const_char_*_server_address,_uint16_t_server_port,_struct_tcp_client_*_pre_created_tcp_client)">asciichat_error_t
+  connection_attempt_tcp (connection_attempt_context_t * ctx, const char *
+  server_address, uint16_t server_port, struct tcp_client *
+  pre_created_tcp_client)</a></h2>
+<p class="Pp">Attempt direct TCP connection. Connects to server via TCP,
+    performs crypto handshake if enabled, and creates ACIP transport for
+    protocol communication.</p>
+<p class="Pp">Definition at line <b>182</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>183                                                                                                           {
+184   log_info(&quot;=== connection_attempt_tcp CALLED: address='%s', port=%u, pre_created=%p ===&quot;, server_address, server_port,
+185            (void *)pre_created_tcp_client);
+186 
+187   if (!ctx || !server_address) {
+188     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+189   }
+190 
+191   // Check if shutdown was requested before attempting connection (via callback if available)
+192   if (APP_CALLBACK_BOOL(should_exit)) {
+193     return SET_ERRNO(ERROR_NETWORK, &quot;Connection attempt aborted due to shutdown request&quot;);
+194   }
+195 
+196   // Check for WebSocket URL or TCP URL - handle separately from bare TCP addresses
+197   log_debug(&quot;connection_attempt_tcp: server_address='%s', port=%u&quot;, server_address, server_port);
+198 
+199   // Check for TCP URL scheme (tcp://) and parse it to extract host and port
+200   char tcp_address_buf[512] = {0};
+201   const char *effective_address = server_address;
+202   uint16_t effective_port = server_port;
+203 
+204   if (url_is_tcp(server_address)) {
+205     url_parts_t url_parts = {0};
+206     if (url_parse(server_address, &amp;url_parts) == ASCIICHAT_OK) {
+207       log_debug(&quot;TCP URL parsed: host=%s, port=%d, scheme=%s&quot;, url_parts.host, url_parts.port, url_parts.scheme);
+208       // Copy host to local buffer since url_parts will be destroyed
+209       SAFE_STRNCPY(tcp_address_buf, url_parts.host, sizeof(tcp_address_buf) - 1);
+210       effective_address = tcp_address_buf;
+211       effective_port = (url_parts.port &gt; 0) ? (uint16_t)url_parts.port : server_port;
+212       log_debug(&quot;TCP URL converted to address='%s', port=%u&quot;, effective_address, effective_port);
+213       url_parts_destroy(&amp;url_parts);
+214     } else {
+215       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to parse TCP URL: %s&quot;, server_address);
+216     }
+217   }
+218 
+219   if (url_is_websocket(server_address)) {
+220     // WebSocket connection path
+221     const char *ws_url = server_address;
+222 
+223     // Parse for debug logging and server IP extraction
+224     url_parts_t url_parts = {0};
+225     if (url_parse(server_address, &amp;url_parts) == ASCIICHAT_OK) {
+226       log_debug(&quot;WebSocket URL parsed: host=%s, port=%d, scheme=%s&quot;, url_parts.host, url_parts.port, url_parts.scheme);
+227 
+228       // Set server IP for crypto handshake
+229       // This ensures the crypto context has proper server address info for known_hosts verification
+230       APP_CALLBACK_VOID_STR(server_connection_set_ip, url_parts.host);
+231       log_debug(&quot;Set server IP to %s from WebSocket URL&quot;, url_parts.host);
+232     }
+233 
+234     log_info(&quot;Attempting WebSocket connection to %s&quot;, ws_url);
+235 
+236     // Transition to attempting state
+237     asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
+238     if (result != ASCIICHAT_OK) {
+239       url_parts_destroy(&amp;url_parts);
+240       return result;
+241     }
+242 
+243     // Set timeout for this attempt
+244     ctx-&gt;attempt_start_time_ns = time_get_realtime_ns();
+245     ctx-&gt;timeout_ns = CONN_TIMEOUT_TCP; // Use same timeout as TCP
+246 
+247     // Compute crypto mode from CLI options
+248     // Determine if client has authentication material (keys or password)
+249     bool has_auth_material =
+250         (GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) &gt; 0 || GET_OPTION(password)[0] != '\0');
+251     bool no_encrypt = GET_OPTION(no_encrypt);
+252     bool no_auth = GET_OPTION(no_auth);
+253 
+254     uint8_t crypto_mode;
+255     if (!no_encrypt &amp;&amp; !no_auth &amp;&amp; !has_auth_material)
+256       crypto_mode = ACIP_CRYPTO_ENCRYPT; // default: encrypt only
+257     else if (!no_encrypt &amp;&amp; !no_auth &amp;&amp; has_auth_material)
+258       crypto_mode = ACIP_CRYPTO_FULL; // full: encrypt + auth
+259     else if (no_encrypt &amp;&amp; !no_auth &amp;&amp; has_auth_material)
+260       crypto_mode = ACIP_CRYPTO_AUTH; // auth-only mode
+261     else
+262       crypto_mode = ACIP_CRYPTO_NONE; // no crypto
+263 
+264     log_debug(&quot;WebSocket crypto mode computed: 0x%02x (encrypt=%d, auth=%d)&quot;, crypto_mode,
+265               ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode), ACIP_CRYPTO_HAS_AUTH(crypto_mode));
+266 
+267     // Set server IP and port for crypto handshake known_hosts verification
+268     // This is required for the crypto layer to properly validate server identity
+269     APP_CALLBACK_VOID_STR(server_connection_set_ip, url_parts.host);
+270     APP_CALLBACK_VOID_INT(server_connection_set_port, url_parts.port);
+271     log_debug(&quot;Set server IP=%s, port=%d for WebSocket crypto handshake&quot;, url_parts.host, url_parts.port);
+272 
+273     // Set crypto mode before initialization via callback
+274     const crypto_context_t *crypto_ctx = NULL;
+275 
+276     if (crypto_mode != ACIP_CRYPTO_NONE) {
+277       log_debug(&quot;Initializing crypto context for WebSocket...&quot;);
+278 
+279       APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+280 
+281       if (APP_CALLBACK_INT(client_crypto_init) != 0) {
+282         log_error(&quot;Failed to initialize crypto context&quot;);
+283         url_parts_destroy(&amp;url_parts);
+284         return SET_ERRNO(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
+285       }
+286       log_debug(&quot;Crypto context initialized successfully&quot;);
+287 
+288       // Get crypto context if ready
+289       if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+290         crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+291       }
+292     }
+293 
+294     // Create WebSocket client instance
+295     websocket_client_t *ws_client = websocket_client_create(&quot;discovery_connection&quot;);
+296     if (!ws_client) {
+297       log_error(&quot;Failed to create WebSocket client&quot;);
+298       connection_state_transition(ctx, CONN_STATE_FAILED);
+299       url_parts_destroy(&amp;url_parts);
+300       return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket client creation failed&quot;);
+301     }
+302 
+303     // Connect via WebSocket
+304     acip_transport_t *transport = websocket_client_connect(ws_client, ws_url, (crypto_context_t *)crypto_ctx);
+305     if (!transport) {
+306       log_error(&quot;Failed to create WebSocket ACIP transport&quot;);
+307       websocket_client_destroy(&amp;ws_client);
+308       connection_state_transition(ctx, CONN_STATE_FAILED);
+309       url_parts_destroy(&amp;url_parts);
+310       return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket connection failed&quot;);
+311     }
+312 
+313     log_info(&quot;WebSocket connection established to %s&quot;, ws_url);
+314     connection_state_transition(ctx, CONN_STATE_CONNECTED);
+315     ctx-&gt;active_transport = transport;
+316     ctx-&gt;ws_client_instance = ws_client;
+317 
+318     // Update global websocket client so session_client_like_run() detects network mode
+319     session_client_like_set_websocket_client(ws_client);
+320 
+321     url_parts_destroy(&amp;url_parts);
+322     return ASCIICHAT_OK;
+323   }
+324 
+325   // TCP connection path (original logic)
+326   log_info(&quot;Attempting TCP connection to %s:%u (3s timeout)&quot;, server_address, server_port);
+327 
+328   // Transition to attempting state
+329   asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
+330   if (result != ASCIICHAT_OK) {
+331     return result;
+332   }
+333 
+334   // Use pre-created TCP client if provided, otherwise create one
+335   tcp_client_t *tcp_client = pre_created_tcp_client;
+336   bool created_tcp_client = false;
+337   if (!tcp_client) {
+338     tcp_client = tcp_client_create();
+339     created_tcp_client = true;
+340     if (!tcp_client) {
+341       log_error(&quot;Failed to create TCP client&quot;);
+342       connection_state_transition(ctx, CONN_STATE_FAILED);
+343       return SET_ERRNO(ERROR_NETWORK, &quot;TCP client creation failed&quot;);
+344     }
+345     log_debug(&quot;Created TCP client locally (not pre-created by framework)&quot;);
+346   } else {
+347     log_debug(&quot;Using pre-created TCP client from framework&quot;);
+348   }
+349 
+350   // Set timeout for this attempt
+351   ctx-&gt;attempt_start_time_ns = time_get_realtime_ns();
+352   ctx-&gt;timeout_ns = CONN_TIMEOUT_TCP;
+353 
+354   // Attempt TCP connection (reconnect_attempt is 0-based, convert for tcp_client_connect)
+355   // Use effective_address/port which may be parsed from tcp:// URL scheme
+356   int tcp_result = tcp_client_connect(tcp_client, effective_address, effective_port, (int)ctx-&gt;reconnect_attempt,
+357                                       ctx-&gt;reconnect_attempt == 0, ctx-&gt;reconnect_attempt &gt; 0);
+358 
+359   if (tcp_result != 0) {
+360     log_debug(&quot;TCP connection failed (tcp_client_connect returned %d)&quot;, tcp_result);
+361     if (created_tcp_client) {
+362       tcp_client_destroy(&amp;tcp_client);
+363     }
+364     connection_state_transition(ctx, CONN_STATE_FAILED);
+365     return SET_ERRNO(ERROR_NETWORK, &quot;TCP connection failed after %u attempts&quot;, ctx-&gt;reconnect_attempt);
+366   }
+367 
+368   // Extract socket from TCP client for crypto handshake
+369   socket_t sockfd = tcp_client_get_socket(tcp_client);
+370   if (sockfd == INVALID_SOCKET_VALUE) {
+371     log_error(&quot;Failed to get socket from TCP client&quot;);
+372     if (created_tcp_client) {
+373       tcp_client_destroy(&amp;tcp_client);
+374     }
+375     return SET_ERRNO(ERROR_NETWORK, &quot;Invalid socket after TCP connection&quot;);
+376   }
+377 
+378   // Note: TCP client stores server IP in tcp_client-&gt;server_ip for potential crypto context use
+379   if (tcp_client-&gt;server_ip[0] != '\0') {
+380     log_debug(&quot;Server IP available from TCP client: %s&quot;, tcp_client-&gt;server_ip);
+381     APP_CALLBACK_VOID_STR(server_connection_set_ip, tcp_client-&gt;server_ip);
+382   } else {
+383     log_warn(&quot;TCP client did not populate server_ip field&quot;);
+384   }
+385 
+386   // Compute crypto mode from CLI options
+387   // Determine if client has authentication material (keys or password)
+388   bool has_auth_material =
+389       (GET_OPTION(encrypt_key)[0] != '\0' || GET_OPTION(num_identity_keys) &gt; 0 || GET_OPTION(password)[0] != '\0');
+390   bool no_encrypt = GET_OPTION(no_encrypt);
+391   bool no_auth = GET_OPTION(no_auth);
+392 
+393   uint8_t crypto_mode;
+394   if (!no_encrypt &amp;&amp; !no_auth &amp;&amp; !has_auth_material)
+395     crypto_mode = ACIP_CRYPTO_ENCRYPT; // default: encrypt only
+396   else if (!no_encrypt &amp;&amp; !no_auth &amp;&amp; has_auth_material)
+397     crypto_mode = ACIP_CRYPTO_FULL; // full: encrypt + auth
+398   else if (no_encrypt &amp;&amp; !no_auth &amp;&amp; has_auth_material)
+399     crypto_mode = ACIP_CRYPTO_AUTH; // auth-only mode
+400   else
+401     crypto_mode = ACIP_CRYPTO_NONE; // no crypto
+402 
+403   log_debug(&quot;TCP crypto mode computed: 0x%02x (encrypt=%d, auth=%d)&quot;, crypto_mode, ACIP_CRYPTO_HAS_ENCRYPT(crypto_mode),
+404             ACIP_CRYPTO_HAS_AUTH(crypto_mode));
+405 
+406   // Setup crypto operations via callbacks
+407   const crypto_context_t *crypto_ctx = NULL;
+408 
+409   if (crypto_mode != ACIP_CRYPTO_NONE) {
+410     APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+411 
+412     // Initialize crypto context if mode requires handshake (not ACIP_CRYPTO_NONE)
+413     // This must happen AFTER setting server IP, as crypto init reads server IP/port
+414     log_debug(&quot;Initializing crypto context...&quot;);
+415     if (APP_CALLBACK_INT(client_crypto_init) != 0) {
+416       log_error(&quot;Failed to initialize crypto context&quot;);
+417       if (created_tcp_client) {
+418         tcp_client_destroy(&amp;tcp_client);
+419       }
+420       return SET_ERRNO(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
+421     }
+422     log_debug(&quot;Crypto context initialized successfully&quot;);
+423 
+424     // Perform crypto handshake with server
+425     log_debug(&quot;Performing crypto handshake with server...&quot;);
+426     if (APP_CALLBACK_INT_SOCKET(client_crypto_handshake, sockfd) != 0) {
+427       log_error(&quot;Crypto handshake failed&quot;);
+428       if (created_tcp_client) {
+429         tcp_client_destroy(&amp;tcp_client);
+430       }
+431       return SET_ERRNO(ERROR_NETWORK, &quot;Crypto handshake failed&quot;);
+432     }
+433     log_debug(&quot;Crypto handshake completed successfully&quot;);
+434 
+435     // Get crypto context after handshake
+436     if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+437       crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+438     }
+439   }
+440 
+441   // Create ACIP transport for protocol-agnostic packet sending/receiving
+442   acip_transport_t *transport = acip_tcp_transport_create(&quot;connection&quot;, sockfd, (crypto_context_t *)crypto_ctx);
+443   if (!transport) {
+444     log_error(&quot;Failed to create ACIP transport for TCP&quot;);
+445     if (created_tcp_client) {
+446       tcp_client_destroy(&amp;tcp_client);
+447     }
+448     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to create ACIP transport&quot;);
+449   }
+450 
+451   log_info(&quot;TCP connection established to %s:%u&quot;, effective_address, effective_port);
+452   connection_state_transition(ctx, CONN_STATE_CONNECTED);
+453   ctx-&gt;active_transport = transport;
+454 
+455   // Store tcp_client in context for proper lifecycle management only if we created it locally
+456   // If it's pre-created by the framework, the framework will manage its lifecycle
+457   if (created_tcp_client) {
+458     ctx-&gt;tcp_client_instance = tcp_client;
+459     log_debug(&quot;TCP client instance stored in connection context for cleanup&quot;);
+460   } else {
+461     log_debug(&quot;Using framework-managed TCP client, not storing in context&quot;);
+462   }
+463 
+464   return ASCIICHAT_OK;
+465 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_tcp_transport_create()</b>,
+    <b>client_crypto_handshake()</b>, <b>client_crypto_init()</b>,
+    <b>client_crypto_set_mode()</b>, <b>connection_state_transition()</b>,
+    <b>crypto_client_get_context()</b>, <b>crypto_client_is_ready()</b>,
+    <b>server_connection_set_ip()</b>, <b>server_connection_set_port()</b>,
+    <b>session_client_like_set_websocket_client()</b>, <b>should_exit()</b>,
+    <b>tcp_client_connect()</b>, <b>tcp_client_create()</b>,
+    <b>tcp_client_destroy()</b>, <b>tcp_client_get_socket()</b>,
+    <b>time_get_realtime_ns()</b>, <b>url_is_tcp()</b>,
+    <b>url_is_websocket()</b>, <b>url_parse()</b>, <b>url_parts_destroy()</b>,
+    <b>websocket_client_connect()</b>, <b>websocket_client_create()</b>, and
+    <b>websocket_client_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_connection_attempt_websocket_(connection_attempt_context_t_*_ctx,_const_char_*_ws_url)"><a class="permalink" href="#asciichat_error_t_connection_attempt_websocket_(connection_attempt_context_t_*_ctx,_const_char_*_ws_url)">asciichat_error_t
+  connection_attempt_websocket (connection_attempt_context_t * ctx, const char *
+  ws_url)</a></h2>
+<p class="Pp">Attempt WebSocket connection (ws:// or wss://). Connects to server
+    via WebSocket, performs crypto handshake if enabled, and creates ACIP
+    transport for protocol communication.</p>
+<p class="Pp">Definition at line <b>473</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>473                                                                                                       {
+474   log_info(&quot;=== connection_attempt_websocket CALLED: url='%s' ===&quot;, ws_url);
+475 
+476   if (!ctx || !ws_url) {
+477     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+478   }
+479 
+480   // Check if shutdown was requested (via callback if available)
+481   if (APP_CALLBACK_BOOL(should_exit)) {
+482     return SET_ERRNO(ERROR_NETWORK, &quot;Connection attempt aborted due to shutdown request&quot;);
+483   }
+484 
+485   log_info(&quot;Attempting WebSocket connection to %s&quot;, ws_url);
+486 
+487   // Transition to attempting state
+488   asciichat_error_t result = connection_state_transition(ctx, CONN_STATE_ATTEMPTING);
+489   if (result != ASCIICHAT_OK) {
+490     return result;
+491   }
+492 
+493   // Set timeout for this attempt
+494   ctx-&gt;attempt_start_time_ns = time_get_realtime_ns();
+495   ctx-&gt;timeout_ns = CONN_TIMEOUT_TCP;
+496 
+497   // Initialize crypto context if encryption is enabled
+498   const crypto_context_t *crypto_ctx = NULL;
+499   if (!GET_OPTION(no_encrypt)) {
+500     log_debug(&quot;Initializing crypto context for WebSocket...&quot;);
+501 
+502     if (APP_CALLBACK_INT(client_crypto_init) != 0) {
+503       log_error(&quot;Failed to initialize crypto context&quot;);
+504       return SET_ERRNO(ERROR_CRYPTO, &quot;Crypto initialization failed&quot;);
+505     }
+506     log_debug(&quot;Crypto context initialized successfully&quot;);
+507 
+508     // Get crypto context if ready
+509     if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+510       crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
+511     }
+512   }
+513 
+514   // Create WebSocket client instance
+515   websocket_client_t *ws_client = websocket_client_create(&quot;connection&quot;);
+516   if (!ws_client) {
+517     log_error(&quot;Failed to create WebSocket client&quot;);
+518     connection_state_transition(ctx, CONN_STATE_FAILED);
+519     return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket client creation failed&quot;);
+520   }
+521 
+522   // Connect via WebSocket
+523   acip_transport_t *transport = websocket_client_connect(ws_client, ws_url, (crypto_context_t *)crypto_ctx);
+524   if (!transport) {
+525     log_error(&quot;Failed to create WebSocket ACIP transport&quot;);
+526     websocket_client_destroy(&amp;ws_client);
+527     connection_state_transition(ctx, CONN_STATE_FAILED);
+528     return SET_ERRNO(ERROR_NETWORK, &quot;WebSocket connection failed&quot;);
+529   }
+530 
+531   log_info(&quot;WebSocket connection established to %s&quot;, ws_url);
+532   connection_state_transition(ctx, CONN_STATE_CONNECTED);
+533   ctx-&gt;active_transport = transport;
+534   ctx-&gt;ws_client_instance = ws_client;
+535   log_debug(&quot;WebSocket client instance stored in connection context&quot;);
+536 
+537   return ASCIICHAT_OK;
+538 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>client_crypto_init()</b>,
+    <b>connection_state_transition()</b>, <b>crypto_client_get_context()</b>,
+    <b>crypto_client_is_ready()</b>, <b>should_exit()</b>,
+    <b>time_get_realtime_ns()</b>, <b>websocket_client_connect()</b>,
+    <b>websocket_client_create()</b>, and <b>websocket_client_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> connection_check_timeout (const
+  connection_attempt_context_t * ctx)</h2>
+<p class="Pp">Check if connection attempt has exceeded timeout.</p>
+<p class="Pp">Definition at line <b>155</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>155                                                                        {
+156   if (!ctx)
+157     return false;
+158 
+159   uint64_t elapsed_ns = time_get_realtime_ns() - ctx-&gt;attempt_start_time_ns;
+160   bool timeout_exceeded = elapsed_ns &gt; ctx-&gt;timeout_ns;
+161 
+162   if (timeout_exceeded) {
+163     char elapsed_str[32], timeout_str[32];
+164     time_pretty(elapsed_ns, -1, elapsed_str, sizeof(elapsed_str));
+165     time_pretty(ctx-&gt;timeout_ns, -1, timeout_str, sizeof(timeout_str));
+166     log_warn(&quot;Connection timeout exceeded: elapsed %s &gt; %s limit&quot;, elapsed_str, timeout_str);
+167   }
+168 
+169   return timeout_exceeded;
+170 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>time_get_realtime_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_connection_context_cleanup_(connection_attempt_context_t_*_ctx)"><a class="permalink" href="#void_connection_context_cleanup_(connection_attempt_context_t_*_ctx)">void
+  connection_context_cleanup (connection_attempt_context_t * ctx)</a></h2>
+<p class="Pp">Cleanup connection attempt context.</p>
+<p class="Pp">Definition at line <b>102</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>102                                                                    {
+103   if (!ctx)
+104     return;
+105 
+106   // Destroy TCP client instance if created
+107   if (ctx-&gt;tcp_client_instance) {
+108     tcp_client_destroy(&amp;ctx-&gt;tcp_client_instance);
+109     ctx-&gt;tcp_client_instance = NULL;
+110     log_debug(&quot;TCP client instance destroyed&quot;);
+111   }
+112 
+113   // Note: Do NOT destroy the WebSocket client instance here. The WebSocket client
+114   // is owned by the session layer (passed via config-&gt;websocket_client and also
+115   // stored in g_websocket_client). The session cleanup will destroy it.
+116   // We just clear the reference to prevent double-free.
+117   if (ctx-&gt;ws_client_instance) {
+118     ctx-&gt;ws_client_instance = NULL;
+119     ctx-&gt;active_transport = NULL;
+120     log_debug(&quot;WebSocket client reference cleared (ownership remains with session)&quot;);
+121   }
+122 
+123   // Close active transport if still open (only if not already destroyed by WebSocket client)
+124   if (ctx-&gt;active_transport) {
+125     acip_transport_close(ctx-&gt;active_transport);
+126     acip_transport_destroy(ctx-&gt;active_transport);
+127     ctx-&gt;active_transport = NULL;
+128     log_debug(&quot;Transport connection closed&quot;);
+129   }
+130 
+131   log_debug(&quot;Connection context cleaned up&quot;);
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_transport_destroy()</b>, and
+    <b>tcp_client_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_connection_context_init_(connection_attempt_context_t_*_ctx)"><a class="permalink" href="#asciichat_error_t_connection_context_init_(connection_attempt_context_t_*_ctx)">asciichat_error_t
+  connection_context_init (connection_attempt_context_t * ctx)</a></h2>
+<p class="Pp">Initialize connection attempt context.</p>
+<p class="Pp">Definition at line <b>74</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>74                                                                              {
+75   if (!ctx) {
+76     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Context pointer is NULL&quot;);
+77   }
+78 
+79   // Reset context
+80   memset(ctx, 0, sizeof(connection_attempt_context_t));
+81 
+82   // Initialize state
+83   ctx-&gt;current_state = CONN_STATE_IDLE;
+84   ctx-&gt;previous_state = CONN_STATE_IDLE;
+85 
+86   // Initialize timeout
+87   ctx-&gt;attempt_start_time_ns = time_get_realtime_ns();
+88   ctx-&gt;timeout_ns = CONN_TIMEOUT_TCP;
+89 
+90   // Initialize counters
+91   ctx-&gt;reconnect_attempt = 1;
+92   ctx-&gt;total_transitions = 0;
+93 
+94   log_debug(&quot;Connection context initialized&quot;);
+95 
+96   return ASCIICHAT_OK;
+97 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_connection_state_name_("><a class="permalink" href="#const_char_*_connection_state_name_(">const
+  char * connection_state_name (<b>connection_state_t</b> state)</a></h2>
+<p class="Pp">Get human-readable state name for logging.</p>
+<p class="Pp">Definition at line <b>50</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>50                                                             {
+51   switch (state) {
+52   case CONN_STATE_IDLE:
+53     return &quot;IDLE&quot;;
+54   case CONN_STATE_ATTEMPTING:
+55     return &quot;ATTEMPTING&quot;;
+56   case CONN_STATE_CONNECTED:
+57     return &quot;CONNECTED&quot;;
+58   case CONN_STATE_DISCONNECTED:
+59     return &quot;DISCONNECTED&quot;;
+60   case CONN_STATE_FAILED:
+61     return &quot;FAILED&quot;;
+62   default:
+63     return &quot;UNKNOWN&quot;;
+64   }
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>connection_state_transition()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_connection_state_transition_(connection_attempt_context_t_*_ctx,_"><a class="permalink" href="#asciichat_error_t_connection_state_transition_(connection_attempt_context_t_*_ctx,_">asciichat_error_t
+  connection_state_transition (connection_attempt_context_t * ctx,
+  <b>connection_state_t</b> new_state)</a></h2>
+<p class="Pp">Transition to next connection state with validation.</p>
+<p class="Pp">Definition at line <b>137</b> of file
+  <b>connection_attempt.c</b>.</p>
+<pre>137                                                                                                                {
+138   if (!ctx) {
+139     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Context pointer is NULL&quot;);
+140   }
+141 
+142   // Store previous state
+143   ctx-&gt;previous_state = ctx-&gt;current_state;
+144   ctx-&gt;current_state = new_state;
+145   ctx-&gt;total_transitions++;
+146 
+147   log_debug(&quot;State transition: %s &#x2192; %s&quot;, connection_state_name(ctx-&gt;previous_state), connection_state_name(new_state));
+148 
+149   return ASCIICHAT_OK;
+150 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>connection_state_name()</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
+    <b>connection_attempt_websocket()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_client_like_set_websocket_client_(struct_websocket_client_*_ws_client)"><a class="permalink" href="#void_session_client_like_set_websocket_client_(struct_websocket_client_*_ws_client)">void
+  session_client_like_set_websocket_client (struct websocket_client *
+  ws_client)</a></h2>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

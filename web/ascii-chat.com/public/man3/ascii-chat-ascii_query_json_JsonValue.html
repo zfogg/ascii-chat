@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query::json::JsonValue(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query::json::JsonValue(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query::json::JsonValue(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query::json::JsonValue - JSON value wrapper (can hold any
+    JSON type).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/tooling/query/json.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Types"><a class="permalink" href="#Public_Types">Public
+  Types</a></h2>
+<br/>
+<p class="Pp">enum class <b>Type</b> { <b>Null</b>, <b>Bool</b>, <b>Int</b>,
+    <b>UInt</b>, <b>Double</b>, <b>String</b>, <b>Array</b>, <b>Object</b> }
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
+  Member Functions</a></h2>
+<br/>
+<p class="Pp"><b>JsonValue</b> ()
+  <br/>
+  <b>JsonValue</b> (std::nullptr_t)
+  <br/>
+  <b>JsonValue</b> (<b>bool</b> b)
+  <br/>
+  <b>JsonValue</b> (int i)
+  <br/>
+  <b>JsonValue</b> (int64_t i)
+  <br/>
+  <b>JsonValue</b> (uint64_t u)
+  <br/>
+  <b>JsonValue</b> (double d)
+  <br/>
+  <b>JsonValue</b> (const char *s)
+  <br/>
+  <b>JsonValue</b> (const std::string &amp;s)
+  <br/>
+  <b>JsonValue</b> (std::string &amp;&amp;s)
+  <br/>
+  std::string <b>toString</b> () const
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Static_Public_Member_Functions"><a class="permalink" href="#Static_Public_Member_Functions">Static
+  Public Member Functions</a></h2>
+<br/>
+<p class="Pp">static <b>JsonValue</b> <b>fromArray</b> (const std::string
+    &amp;serialized)
+  <br/>
+  static <b>JsonValue</b> <b>fromObject</b> (const std::string &amp;serialized)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">JSON value wrapper (can hold any JSON type).</p>
+<p class="Pp">Definition at line <b>80</b> of file <b>json.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Enumeration_Documentation"><a class="permalink" href="#Member_Enumeration_Documentation">Member
+  Enumeration Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_class_"><a class="permalink" href="#enum_class_">enum
+  class <b>ascii_query::json::JsonValue::Type</b> [strong]</a></h2>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="Null"><a class="permalink" href="#Null"><b><i>Null </i></b></a></dt>
+  <dd></dd>
+  <dt id="Bool"><a class="permalink" href="#Bool"><b><i>Bool </i></b></a></dt>
+  <dd></dd>
+  <dt id="Int"><a class="permalink" href="#Int"><b><i>Int </i></b></a></dt>
+  <dd></dd>
+  <dt id="UInt"><a class="permalink" href="#UInt"><b><i>UInt </i></b></a></dt>
+  <dd></dd>
+  <dt id="Double"><a class="permalink" href="#Double"><b><i>Double
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="String"><a class="permalink" href="#String"><b><i>String
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="Array"><a class="permalink" href="#Array"><b><i>Array
+    </i></b></a></dt>
+  <dd></dd>
+  <dt id="Object"><a class="permalink" href="#Object"><b><i>Object
+    </i></b></a></dt>
+  <dd></dd>
+</dl>
+<p class="Pp">Definition at line <b>82</b> of file <b>json.h</b>.</p>
+<pre>82 { Null, Bool, Int, UInt, Double, String, Array, Object };</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Constructor_&amp;_Destructor_Documentation"><a class="permalink" href="#Constructor_&amp;_Destructor_Documentation">Constructor
+  &amp; Destructor Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_()"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_()">ascii_query::json::JsonValue::JsonValue
+  () [inline]</a></h2>
+<p class="Pp">Definition at line <b>84</b> of file <b>json.h</b>.</p>
+<pre>84 : type_(Type::Null) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>fromArray()</b>, and <b>fromObject()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(std::nullptr_t_)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(std::nullptr_t_)">ascii_query::json::JsonValue::JsonValue
+  (std::nullptr_t ) [inline]</a></h2>
+<p class="Pp">Definition at line <b>85</b> of file <b>json.h</b>.</p>
+<pre>85 : type_(Type::Null) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_("><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(">ascii_query::json::JsonValue::JsonValue
+  (<b>bool</b> b) [inline]</a></h2>
+<p class="Pp">Definition at line <b>86</b> of file <b>json.h</b>.</p>
+<pre>86 : type_(Type::Bool), bool_val_(b) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(int_i)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(int_i)">ascii_query::json::JsonValue::JsonValue
+  (int i) [inline]</a></h2>
+<p class="Pp">Definition at line <b>87</b> of file <b>json.h</b>.</p>
+<pre>87 : type_(Type::Int), int_val_(i) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(int64_t_i)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(int64_t_i)">ascii_query::json::JsonValue::JsonValue
+  (int64_t i) [inline]</a></h2>
+<p class="Pp">Definition at line <b>88</b> of file <b>json.h</b>.</p>
+<pre>88 : type_(Type::Int), int_val_(i) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(uint64_t_u)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(uint64_t_u)">ascii_query::json::JsonValue::JsonValue
+  (uint64_t u) [inline]</a></h2>
+<p class="Pp">Definition at line <b>89</b> of file <b>json.h</b>.</p>
+<pre>89 : type_(Type::UInt), uint_val_(u) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(double_d)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(double_d)">ascii_query::json::JsonValue::JsonValue
+  (double d) [inline]</a></h2>
+<p class="Pp">Definition at line <b>90</b> of file <b>json.h</b>.</p>
+<pre>90 : type_(Type::Double), double_val_(d) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(const_char_*_s)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(const_char_*_s)">ascii_query::json::JsonValue::JsonValue
+  (const char * s) [inline]</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file <b>json.h</b>.</p>
+<pre>91 : type_(Type::String), str_val_(s) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(const_std::string_&amp;_s)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(const_std::string_&amp;_s)">ascii_query::json::JsonValue::JsonValue
+  (const std::string &amp; s) [inline]</a></h2>
+<p class="Pp">Definition at line <b>92</b> of file <b>json.h</b>.</p>
+<pre>92 : type_(Type::String), str_val_(s) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonValue::JsonValue_(std::string_&amp;&amp;_s)"><a class="permalink" href="#ascii_query::json::JsonValue::JsonValue_(std::string_&amp;&amp;_s)">ascii_query::json::JsonValue::JsonValue
+  (std::string &amp;&amp; s) [inline]</a></h2>
+<p class="Pp">Definition at line <b>93</b> of file <b>json.h</b>.</p>
+<pre>93 : type_(Type::String), str_val_(std::move(s)) {}</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
+  Function Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>JsonValue</b> ascii_query::json::JsonValue::fromArray (const
+  std::string &amp; serialized) [inline], [static]</h2>
+<p class="Pp">Definition at line <b>96</b> of file <b>json.h</b>.</p>
+<pre>96                                                           {
+97     JsonValue v;
+98     v.type_ = Type::Array;
+99     v.str_val_ = serialized;
+100     return v;
+101   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>Array</b>, and <b>JsonValue()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_query::json::JsonArray::add()</b>, and
+    <b>ascii_query::json::JsonObject::set()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>JsonValue</b> ascii_query::json::JsonValue::fromObject (const
+  std::string &amp; serialized) [inline], [static]</h2>
+<p class="Pp">Definition at line <b>103</b> of file <b>json.h</b>.</p>
+<pre>103                                                            {
+104     JsonValue v;
+105     v.type_ = Type::Object;
+106     v.str_val_ = serialized;
+107     return v;
+108   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>JsonValue()</b>, and <b>Object</b>.</p>
+<p class="Pp">Referenced by <b>ascii_query::json::JsonArray::add()</b>, and
+    <b>ascii_query::json::JsonObject::set()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::json::JsonValue::toString_()_const"><a class="permalink" href="#std::string_ascii_query::json::JsonValue::toString_()_const">std::string
+  ascii_query::json::JsonValue::toString () const [inline], [nodiscard]</a></h2>
+<p class="Pp">Definition at line <b>110</b> of file <b>json.h</b>.</p>
+<pre>110                                            {
+111     switch (type_) {
+112     case Type::Null:
+113       return &quot;null&quot;;
+114     case Type::Bool:
+115       return bool_val_ ? &quot;true&quot; : &quot;false&quot;;
+116     case Type::Int:
+117       return std::to_string(int_val_);
+118     case Type::UInt:
+119       return std::to_string(uint_val_);
+120     case Type::Double: {
+121       std::ostringstream oss;
+122       oss &lt;&lt; double_val_;
+123       return oss.str();
+124     }
+125     case Type::String:
+126       return &quot;\&quot;&quot; + escape(str_val_) + &quot;\&quot;&quot;;
+127     case Type::Array:
+128     case Type::Object:
+129       return str_val_; // Already serialized
+130     }
+131     return &quot;null&quot;;
+132   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>Array</b>, <b>Bool</b>, <b>Double</b>,
+    <b>ascii_query::json::escape()</b>, <b>Int</b>, <b>Null</b>, <b>Object</b>,
+    <b>String</b>, and <b>UInt</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

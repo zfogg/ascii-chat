@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query::json::JsonObject(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query::json::JsonObject(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query::json::JsonObject(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query::json::JsonObject - JSON object builder.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/tooling/query/json.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
+  Member Functions</a></h2>
+<br/>
+<p class="Pp"><b>JsonObject</b> ()=default
+  <br/>
+  <b>JsonObject</b> &amp; <b>set</b> (const std::string &amp;key, const
+    <b>JsonValue</b> &amp;value)
+  <br/>
+  <b>JsonObject</b> &amp; <b>set</b> (const std::string &amp;key, const
+    <b>JsonArray</b> &amp;arr)
+  <br/>
+  <b>JsonObject</b> &amp; <b>set</b> (const std::string &amp;key, const
+    <b>JsonObject</b> &amp;obj)
+  <br/>
+  std::string <b>toString</b> () const
+  <br/>
+  <b>bool</b> <b>empty</b> () const
+  <br/>
+  size_t <b>size</b> () const
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">JSON object builder.</p>
+<p class="Pp">Definition at line <b>189</b> of file <b>json.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Constructor_&amp;_Destructor_Documentation"><a class="permalink" href="#Constructor_&amp;_Destructor_Documentation">Constructor
+  &amp; Destructor Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::json::JsonObject::JsonObject_()"><a class="permalink" href="#ascii_query::json::JsonObject::JsonObject_()">ascii_query::json::JsonObject::JsonObject
+  () [default]</a></h2>
+<p class="Pp">Referenced by <b>set()</b>, <b>set()</b>, and <b>set()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
+  Function Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::json::JsonObject::empty () const
+  [inline], [nodiscard]</h2>
+<p class="Pp">Definition at line <b>222</b> of file <b>json.h</b>.</p>
+<pre>222                                    {
+223     return keys_.empty();
+224   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>JsonObject</b> &amp; ascii_query::json::JsonObject::set (const
+  std::string &amp; key, const <b>JsonArray</b> &amp; arr) [inline]</h2>
+<p class="Pp">Definition at line <b>199</b> of file <b>json.h</b>.</p>
+<pre>199                                                               {
+200     keys_.push_back(key);
+201     values_.push_back(JsonValue::fromArray(arr.toString()));
+202     return *this;
+203   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_query::json::JsonValue::fromArray()</b>,
+    <b>JsonObject()</b>, and
+  <b>ascii_query::json::JsonArray::toString()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>JsonObject</b> &amp; ascii_query::json::JsonObject::set (const
+  std::string &amp; key, const <b>JsonObject</b> &amp; obj) [inline]</h2>
+<p class="Pp">Definition at line <b>205</b> of file <b>json.h</b>.</p>
+<pre>205                                                                {
+206     keys_.push_back(key);
+207     values_.push_back(JsonValue::fromObject(obj.toString()));
+208     return *this;
+209   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_query::json::JsonValue::fromObject()</b>,
+    <b>JsonObject()</b>, and <b>toString()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>JsonObject</b> &amp; ascii_query::json::JsonObject::set (const
+  std::string &amp; key, const <b>JsonValue</b> &amp; value) [inline]</h2>
+<p class="Pp">Definition at line <b>193</b> of file <b>json.h</b>.</p>
+<pre>193                                                                 {
+194     keys_.push_back(key);
+195     values_.push_back(value);
+196     return *this;
+197   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>JsonObject()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ascii_query::json::JsonObject::size_()_const"><a class="permalink" href="#size_t_ascii_query::json::JsonObject::size_()_const">size_t
+  ascii_query::json::JsonObject::size () const [inline], [nodiscard]</a></h2>
+<p class="Pp">Definition at line <b>225</b> of file <b>json.h</b>.</p>
+<pre>225                                     {
+226     return keys_.size();
+227   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::json::JsonObject::toString_()_const"><a class="permalink" href="#std::string_ascii_query::json::JsonObject::toString_()_const">std::string
+  ascii_query::json::JsonObject::toString () const [inline],
+  [nodiscard]</a></h2>
+<p class="Pp">Definition at line <b>211</b> of file <b>json.h</b>.</p>
+<pre>211                                            {
+212     std::string result = &quot;{&quot;;
+213     for (size_t i = 0; i &lt; keys_.size(); i++) {
+214       if (i &gt; 0)
+215         result += &quot;,&quot;;
+216       result += &quot;\&quot;&quot; + escape(keys_[i]) + &quot;\&quot;:&quot; + values_[i].toString();
+217     }
+218     result += &quot;}&quot;;
+219     return result;
+220   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_query::json::escape()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_query::json::JsonArray::add()</b>, and
+    <b>set()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,1424 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>grep.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">grep.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">grep.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">grep.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>grep_pattern_t</b>
+  <br/>
+  Single filter pattern with all its settings.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>HIGHLIGHT_DARK_BG</b> 70
+  <br/>
+  Highlight colors that adapt to terminal theme. #define
+    <b>HIGHLIGHT_LIGHT_BG</b> 200
+  <br/>
+  #define <b>MIN_HIGHLIGHT_DISTANCE</b> 40
+  <br/>
+  Minimum color difference threshold (0-255 scale).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef grep_parse_result_t <b>parse_result_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">grep_parse_result_t <b>grep_parse_pattern</b> (const char *input)
+  <br/>
+  Parse pattern in /pattern/flags or pattern/flags format. asciichat_error_t
+    <b>grep_init</b> (const char *pattern)
+  <br/>
+  <b>bool</b> <b>grep_should_output</b> (const char *log_line, size_t
+    *match_start, size_t *match_len)
+  <br/>
+  char * <b>grep_highlight_colored_copy</b> (const char *colored_text, const
+    char *plain_text, size_t match_start, size_t match_len)
+  <br/>
+  const char * <b>grep_highlight_colored</b> (const char *colored_text, const
+    char *plain_text, size_t match_start, size_t match_len)
+  <br/>
+  const char * <b>grep_highlight</b> (const char *log_line, size_t match_start,
+    size_t match_len)
+  <br/>
+  void <b>grep_destroy</b> (void)
+  <br/>
+  asciichat_error_t <b>grep_save_patterns</b> (void)
+  <br/>
+  asciichat_error_t <b>grep_restore_patterns</b> (void)
+  <br/>
+  void <b>grep_clear_patterns</b> (void)
+  <br/>
+  int <b>grep_get_pattern_count</b> (void)
+  <br/>
+  const char * <b>grep_get_last_pattern</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_HIGHLIGHT_DARK_BG___70"><a class="permalink" href="#_define_HIGHLIGHT_DARK_BG___70">#define
+  HIGHLIGHT_DARK_BG 70</a></h2>
+<p class="Pp">Highlight colors that adapt to terminal theme. Highlight colors
+    are chosen based on the detected terminal theme:</p>
+<ul class="Bl-bullet">
+  <li>Dark theme: Dark grey (70) provides subtle highlighting on dark
+      backgrounds</li>
+  <li>Light theme: Light grey (200) provides subtle highlighting on light
+      backgrounds</li>
+</ul>
+<p class="Pp">Definition at line <b>43</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_HIGHLIGHT_LIGHT_BG___200"><a class="permalink" href="#_define_HIGHLIGHT_LIGHT_BG___200">#define
+  HIGHLIGHT_LIGHT_BG 200</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MIN_HIGHLIGHT_DISTANCE___40"><a class="permalink" href="#_define_MIN_HIGHLIGHT_DISTANCE___40">#define
+  MIN_HIGHLIGHT_DISTANCE 40</a></h2>
+<p class="Pp">Minimum color difference threshold (0-255 scale). If the
+    background color is too close to the highlight color (within this distance),
+    use high-contrast black or white instead for readability.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>grep.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_grep_parse_result_t_"><a class="permalink" href="#typedef_grep_parse_result_t_">typedef
+  grep_parse_result_t <b>parse_result_t</b></a></h2>
+<p class="Pp">Definition at line <b>308</b> of file <b>grep.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_grep_clear_patterns_(void_)"><a class="permalink" href="#void_grep_clear_patterns_(void_)">void
+  grep_clear_patterns (void )</a></h2>
+<p class="Pp">Definition at line <b>1303</b> of file <b>grep.c</b>.</p>
+<pre>1303                                {
+1304   // Don't free patterns, just set count to 0
+1305   // This allows quick restore without reallocation
+1306   g_filter_state.pattern_count = 0;
+1307   g_filter_state.enabled = false;
+1308 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_grep_destroy_(void_)"><a class="permalink" href="#void_grep_destroy_(void_)">void
+  grep_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>1165</b> of file <b>grep.c</b>.</p>
+<pre>1165                         {
+1166   // Free all patterns
+1167   for (int i = 0; i &lt; g_filter_state.pattern_count; i++) {
+1168     grep_pattern_t *pat = &amp;g_filter_state.patterns[i];
+1169     // Free the copied original string (need temp variable due to const qualifier)
+1170     char *original_to_free = (char *)pat-&gt;original;
+1171     SAFE_FREE(original_to_free);
+1172     SAFE_FREE(pat-&gt;parsed_pattern);
+1173     // Singletons are auto-cleaned by asciichat_pcre2_cleanup_all()
+1174     pat-&gt;singleton = NULL;
+1175   }
+1176   SAFE_FREE(g_filter_state.patterns);
+1177   g_filter_state.patterns = NULL; // Make idempotent
+1178 
+1179   // Free context buffer
+1180   if (g_filter_state.line_buffer) {
+1181     for (int i = 0; i &lt; g_filter_state.buffer_size; i++) {
+1182       SAFE_FREE(g_filter_state.line_buffer[i]);
+1183     }
+1184     SAFE_FREE(g_filter_state.line_buffer);
+1185     g_filter_state.line_buffer = NULL; // Make idempotent
+1186   }
+1187 
+1188   g_filter_state.pattern_count = 0;
+1189   g_filter_state.pattern_capacity = 0;
+1190   g_filter_state.buffer_size = 0;
+1191   g_filter_state.buffer_pos = 0;
+1192   g_filter_state.lines_after_match = 0;
+1193   g_filter_state.max_context_after = 0;
+1194   g_filter_state.enabled = false;
+1195 
+1196   // Note: Thread-local match_data is cleaned up via pthread_key destructor
+1197 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>grep_pattern_t::original</b>,
+    <b>grep_pattern_t::parsed_pattern</b>, and
+  <b>grep_pattern_t::singleton</b>.</p>
+<p class="Pp">Referenced by <b>log_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_grep_get_last_pattern_(void_)"><a class="permalink" href="#const_char_*_grep_get_last_pattern_(void_)">const
+  char * grep_get_last_pattern (void )</a></h2>
+<p class="Pp">Definition at line <b>1314</b> of file <b>grep.c</b>.</p>
+<pre>1314                                         {
+1315   if (g_filter_state.pattern_count == 0) {
+1316     return NULL;
+1317   }
+1318 
+1319   // Return the original pattern string of the last pattern
+1320   return g_filter_state.patterns[g_filter_state.pattern_count - 1].original;
+1321 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>log_search_enter_mode()</b>,
+    <b>log_search_init()</b>, <b>ui_status_display()</b>, and
+    <b>ui_status_display_interactive()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_grep_get_pattern_count_(void_)"><a class="permalink" href="#int_grep_get_pattern_count_(void_)">int
+  grep_get_pattern_count (void )</a></h2>
+<p class="Pp">Definition at line <b>1310</b> of file <b>grep.c</b>.</p>
+<pre>1310                                  {
+1311   return g_filter_state.pattern_count;
+1312 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_grep_highlight_(const_char_*_log_line,_size_t_match_start,_size_t_match_len)"><a class="permalink" href="#const_char_*_grep_highlight_(const_char_*_log_line,_size_t_match_start,_size_t_match_len)">const
+  char * grep_highlight (const char * log_line, size_t match_start, size_t
+  match_len)</a></h2>
+<p class="Pp">Definition at line <b>1062</b> of file <b>grep.c</b>.</p>
+<pre>1062                                                                                        {
+1063   static __thread char highlight_buffer[16384];
+1064 
+1065   if (!log_line || match_len == 0) {
+1066     return log_line; // No highlighting needed
+1067   }
+1068 
+1069   size_t line_len = strlen(log_line);
+1070   if (match_start + match_len &gt; line_len) {
+1071     return log_line; // Invalid range
+1072   }
+1073 
+1074   char *dst = highlight_buffer;
+1075   const char *src = log_line;
+1076   size_t pos = 0;
+1077 
+1078   // If any pattern has global flag, highlight ALL matches
+1079   grep_pattern_t *global_pat = NULL;
+1080   for (int i = 0; i &lt; g_filter_state.pattern_count; i++) {
+1081     if (g_filter_state.patterns[i].global_flag &amp;&amp; !g_filter_state.patterns[i].is_fixed_string) {
+1082       global_pat = &amp;g_filter_state.patterns[i];
+1083       break;
+1084     }
+1085   }
+1086 
+1087   if (global_pat &amp;&amp; global_pat-&gt;singleton) {
+1088     pcre2_code *code = asciichat_pcre2_singleton_get_code(global_pat-&gt;singleton);
+1089     pcre2_match_data *match_data = get_thread_match_data();
+1090 
+1091     if (!code || !match_data) {
+1092       return log_line; // Fall back to no highlighting
+1093     }
+1094 
+1095     // Find all matches in the line
+1096     size_t offset = 0;
+1097     while (offset &lt; line_len) {
+1098       int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, offset, 0, match_data, NULL);
+1099       if (rc &lt; 0) {
+1100         break; // No more matches
+1101       }
+1102 
+1103       PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+1104       size_t match_pos = (size_t)ovector[0];
+1105       size_t match_end = (size_t)ovector[1];
+1106       size_t len = match_end - match_pos;
+1107 
+1108       // Copy text before match
+1109       if (match_pos &gt; pos) {
+1110         memcpy(dst, src + pos, match_pos - pos);
+1111         dst += (match_pos - pos);
+1112       }
+1113 
+1114       // Highlight the match (background only, preserve foreground color)
+1115       uint8_t r, g, b;
+1116       get_highlight_color(&amp;r, &amp;g, &amp;b);
+1117       dst = append_truecolor_bg(dst, r, g, b);
+1118       memcpy(dst, src + match_pos, len);
+1119       dst += len;
+1120 
+1121       pos = match_end;
+1122       offset = match_end;
+1123 
+1124       // Prevent infinite loop on zero-length matches
+1125       if (len == 0) {
+1126         offset++;
+1127       }
+1128     }
+1129 
+1130     // Copy remaining text after last match
+1131     if (pos &lt; line_len) {
+1132       memcpy(dst, src + pos, line_len - pos);
+1133       dst += (line_len - pos);
+1134     }
+1135 
+1136   } else {
+1137     // Single match highlighting (original behavior)
+1138     // Copy text before match
+1139     if (match_start &gt; 0) {
+1140       memcpy(dst, log_line, match_start);
+1141       dst += match_start;
+1142     }
+1143 
+1144     // Add background color for match (preserve foreground color)
+1145     uint8_t r, g, b;
+1146     get_highlight_color(&amp;r, &amp;g, &amp;b);
+1147     dst = append_truecolor_bg(dst, r, g, b);
+1148 
+1149     // Copy matched text
+1150     memcpy(dst, log_line + match_start, match_len);
+1151     dst += match_len;
+1152 
+1153     // Copy text after match
+1154     size_t remaining = line_len - (match_start + match_len);
+1155     if (remaining &gt; 0) {
+1156       memcpy(dst, log_line + match_start + match_len, remaining);
+1157       dst += remaining;
+1158     }
+1159   }
+1160 
+1161   *dst = '\0';
+1162   return highlight_buffer;
+1163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>append_truecolor_bg()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>, and
+    <b>grep_pattern_t::singleton</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_grep_highlight_colored_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)"><a class="permalink" href="#const_char_*_grep_highlight_colored_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)">const
+  char * grep_highlight_colored (const char * colored_text, const char *
+  plain_text, size_t match_start, size_t match_len)</a></h2>
+<p class="Pp">Definition at line <b>743</b> of file <b>grep.c</b>.</p>
+<pre>744                                                      {
+745   static __thread char highlight_buffer[16384];
+746 
+747   if (!colored_text || !plain_text || match_len == 0) {
+748     return colored_text;
+749   }
+750 
+751   // When interactive grep is active, check if it has global flag
+752   bool is_log_search = log_search_is_active();
+753   bool should_use_global_pattern = false;
+754   grep_pattern_t *global_pat = NULL;
+755 
+756   if (!is_log_search) {
+757     // If any pattern has global flag, highlight ALL matches for that pattern
+758     // Find first pattern with global flag
+759     for (int i = 0; i &lt; g_filter_state.pattern_count; i++) {
+760       if (g_filter_state.patterns[i].global_flag &amp;&amp; !g_filter_state.patterns[i].is_fixed_string) {
+761         global_pat = &amp;g_filter_state.patterns[i];
+762         should_use_global_pattern = true;
+763         break;
+764       }
+765     }
+766   } else if (log_search_get_global_highlight()) {
+767     // Interactive grep is active and has /g flag - do global matching on the provided pattern
+768     // We'll do all-match highlighting using the match position to extract the pattern
+769     // and re-match for all occurrences
+770     should_use_global_pattern = true;
+771     // global_pat stays NULL, but we set the flag to enable global matching below
+772   }
+773 
+774   if (should_use_global_pattern) {
+775     pcre2_code *code = NULL;
+776     pcre2_match_data *match_data = NULL;
+777     char fixed_string_pattern[256] = {0};
+778     bool is_fixed_string_pattern = false;
+779     bool case_insensitive_fixed = false;
+780 
+781     // Get code from CLI pattern or interactive grep pattern
+782     if (global_pat &amp;&amp; global_pat-&gt;singleton) {
+783       code = asciichat_pcre2_singleton_get_code(global_pat-&gt;singleton);
+784       match_data = get_thread_match_data();
+785     } else if (is_log_search) {
+786       // Interactive grep global highlighting - get pattern from grep state
+787       void *grep_singleton_void = log_search_get_pattern_singleton();
+788       if (grep_singleton_void) {
+789         pcre2_singleton_t *grep_singleton = (pcre2_singleton_t *)grep_singleton_void;
+790         code = asciichat_pcre2_singleton_get_code(grep_singleton);
+791         // Create match data for this pattern
+792         if (code) {
+793           match_data = pcre2_match_data_create_from_pattern(code, NULL);
+794         }
+795       } else {
+796         // No regex pattern - check if it's a fixed string pattern in interactive grep
+797         int pattern_len = log_search_get_input_len();
+798         const char *pattern = log_search_get_input_buffer();
+799         if (pattern_len &gt; 0 &amp;&amp; pattern &amp;&amp; pattern_len &lt; (int)sizeof(fixed_string_pattern)) {
+800           SAFE_STRNCPY(fixed_string_pattern, pattern, sizeof(fixed_string_pattern) - 1);
+801           is_fixed_string_pattern = true;
+802           case_insensitive_fixed = log_search_get_case_insensitive();
+803         }
+804       }
+805     }
+806 
+807     if (!code &amp;&amp; !is_fixed_string_pattern) {
+808       if (match_data &amp;&amp; is_log_search) {
+809         pcre2_match_data_free(match_data); // Free if we created it
+810       }
+811       return colored_text; // Fall back to no highlighting
+812     }
+813 
+814     size_t plain_len = strlen(plain_text);
+815     size_t colored_len = strlen(colored_text);
+816     char *dst = highlight_buffer;
+817     size_t plain_offset = 0;
+818     size_t colored_pos = 0;
+819 
+820     // Handle fixed string global matching
+821     if (is_fixed_string_pattern) {
+822       while (plain_offset &lt; plain_len) {
+823         // Find next occurrence of fixed string
+824         const char *found = NULL;
+825         if (case_insensitive_fixed) {
+826           found = utf8_strcasestr(plain_text + plain_offset, fixed_string_pattern);
+827         } else {
+828           found = strstr(plain_text + plain_offset, fixed_string_pattern);
+829         }
+830 
+831         if (!found) {
+832           break; // No more matches
+833         }
+834 
+835         size_t plain_match_start = (size_t)(found - plain_text);
+836         size_t plain_match_end = plain_match_start + strlen(fixed_string_pattern);
+837 
+838         // Map to colored text positions (same as single-match path)
+839         size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
+840         size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
+841 
+842         // Copy text before match
+843         if (colored_match_start &gt; colored_pos) {
+844           memcpy(dst, colored_text + colored_pos, colored_match_start - colored_pos);
+845           dst += (colored_match_start - colored_pos);
+846         }
+847 
+848         // Add highlight background
+849         uint8_t r, g, b;
+850         get_highlight_color(&amp;r, &amp;g, &amp;b);
+851         dst = append_truecolor_bg(dst, r, g, b);
+852 
+853         // Copy matched text with background
+854         size_t match_byte_len = colored_match_end - colored_match_start;
+855         memcpy(dst, colored_text + colored_match_start, match_byte_len);
+856         dst += match_byte_len;
+857 
+858         // Reset background
+859         memcpy(dst, &quot;\x1b[49m&quot;, 5);
+860         dst += 5;
+861 
+862         colored_pos = colored_match_end;
+863         plain_offset = plain_match_end;
+864       }
+865 
+866       // Copy remaining text
+867       if (colored_pos &lt; colored_len) {
+868         memcpy(dst, colored_text + colored_pos, colored_len - colored_pos);
+869         dst += (colored_len - colored_pos);
+870       }
+871 
+872       // Reset both background and foreground at end
+873       *dst = '\0';
+874       return highlight_buffer;
+875     }
+876 
+877     // Find all matches in plain text and highlight in colored text (regex matching)
+878     while (plain_offset &lt; plain_len) {
+879       int rc = pcre2_jit_match(code, (PCRE2_SPTR)plain_text, plain_len, plain_offset, 0, match_data, NULL);
+880       if (rc &lt; 0) {
+881         break; // No more matches
+882       }
+883 
+884       PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+885       size_t plain_match_start = (size_t)ovector[0];
+886       size_t plain_match_end = (size_t)ovector[1];
+887 
+888       // Map to colored text positions
+889       size_t colored_match_start = map_plain_to_colored_pos(colored_text, plain_match_start);
+890       size_t colored_match_end = map_plain_to_colored_pos(colored_text, plain_match_end);
+891 
+892       // Copy text before match
+893       if (colored_match_start &gt; colored_pos) {
+894         memcpy(dst, colored_text + colored_pos, colored_match_start - colored_pos);
+895         dst += (colored_match_start - colored_pos);
+896       }
+897 
+898       // Add highlight background
+899       uint8_t r, g, b;
+900       get_highlight_color(&amp;r, &amp;g, &amp;b);
+901       dst = append_truecolor_bg(dst, r, g, b);
+902 
+903       // Copy matched text, re-applying background after any [0m or [00m reset codes
+904       size_t match_byte_len = colored_match_end - colored_match_start;
+905       const char *match_src = colored_text + colored_match_start;
+906       char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
+907       size_t i = 0;
+908       while (i &lt; match_byte_len) {
+909         // Check for [0m or [00m reset codes
+910         if (i + 4 &lt;= match_byte_len &amp;&amp; match_src[i] == '\x1b' &amp;&amp; match_src[i + 1] == '[' &amp;&amp; match_src[i + 2] == '0' &amp;&amp;
+911             match_src[i + 3] == 'm') {
+912           // Found [0m - copy it and re-apply background (if room)
+913           if (dst + 4 &gt;= dst_end)
+914             break;                 // Not enough space for the reset code itself
+915           *dst++ = match_src[i++]; // ESC
+916           *dst++ = match_src[i++]; // '['
+917           *dst++ = match_src[i++]; // '0'
+918           *dst++ = match_src[i++]; // 'm'
+919           // Re-apply highlight background after reset (only if room)
+920           if (dst + 20 &lt; dst_end) {
+921             uint8_t r2, g2, b2;
+922             get_highlight_color(&amp;r2, &amp;g2, &amp;b2);
+923             dst = append_truecolor_bg(dst, r2, g2, b2);
+924           }
+925         } else if (i + 5 &lt;= match_byte_len &amp;&amp; match_src[i] == '\x1b' &amp;&amp; match_src[i + 1] == '[' &amp;&amp;
+926                    match_src[i + 2] == '0' &amp;&amp; match_src[i + 3] == '0' &amp;&amp; match_src[i + 4] == 'm') {
+927           // Found [00m - copy it and re-apply background (if room)
+928           if (dst + 5 &gt;= dst_end)
+929             break;                 // Not enough space for the reset code itself
+930           *dst++ = match_src[i++]; // ESC
+931           *dst++ = match_src[i++]; // '['
+932           *dst++ = match_src[i++]; // '0'
+933           *dst++ = match_src[i++]; // '0'
+934           *dst++ = match_src[i++]; // 'm'
+935           // Re-apply highlight background after reset (only if room)
+936           if (dst + 20 &lt; dst_end) {
+937             uint8_t r2, g2, b2;
+938             get_highlight_color(&amp;r2, &amp;g2, &amp;b2);
+939             dst = append_truecolor_bg(dst, r2, g2, b2);
+940           }
+941         } else {
+942           // Regular character - just copy
+943           if (dst + 1 &gt;= dst_end)
+944             break;
+945           *dst++ = match_src[i++];
+946         }
+947       }
+948 
+949       // Reset background only
+950       memcpy(dst, &quot;\x1b[49m&quot;, 5);
+951       dst += 5;
+952 
+953       colored_pos = colored_match_end;
+954       plain_offset = plain_match_end;
+955 
+956       // Prevent infinite loop on zero-length matches
+957       if (plain_match_end == plain_match_start) {
+958         plain_offset++;
+959       }
+960     }
+961 
+962     // Copy remaining text
+963     if (colored_pos &lt; colored_len) {
+964       memcpy(dst, colored_text + colored_pos, colored_len - colored_pos);
+965       dst += (colored_len - colored_pos);
+966     }
+967 
+968     // Reset both background and foreground at end to prevent color bleeding
+969     *dst = '\0';
+970 
+971     // Clean up match data if we created it for interactive grep
+972     if (is_log_search &amp;&amp; match_data &amp;&amp; !global_pat) {
+973       pcre2_match_data_free(match_data);
+974     }
+975 
+976     return highlight_buffer;
+977   }
+978 
+979   // Single match highlighting (same logic as global path)
+980   // map_plain_to_colored_pos(N) returns byte position after counting N characters
+981   size_t colored_start = map_plain_to_colored_pos(colored_text, match_start);
+982   size_t colored_end = map_plain_to_colored_pos(colored_text, match_start + match_len);
+983 
+984   size_t colored_len = strlen(colored_text);
+985   char *dst = highlight_buffer;
+986 
+987   // Copy everything before the match
+988   if (colored_start &gt; 0) {
+989     memcpy(dst, colored_text, colored_start);
+990     dst += colored_start;
+991   }
+992 
+993   // Add highlight background
+994   uint8_t r, g, b;
+995   get_highlight_color(&amp;r, &amp;g, &amp;b);
+996   dst = append_truecolor_bg(dst, r, g, b);
+997 
+998   // Copy matched text, re-applying background after any [0m or [00m reset codes
+999   size_t match_byte_len = colored_end - colored_start;
+1000   const char *match_src = colored_text + colored_start;
+1001   char *dst_end = highlight_buffer + sizeof(highlight_buffer) - 1; // Absolute buffer end
+1002   size_t i = 0;
+1003 
+1004   while (i &lt; match_byte_len) {
+1005     // Check for [0m or [00m reset codes
+1006     if (i + 4 &lt;= match_byte_len &amp;&amp; match_src[i] == '\x1b' &amp;&amp; match_src[i + 1] == '[' &amp;&amp; match_src[i + 2] == '0' &amp;&amp;
+1007         match_src[i + 3] == 'm') {
+1008       // Found [0m - copy it and re-apply background (if room)
+1009       if (dst + 4 &gt;= dst_end)
+1010         break;                 // Not enough space for even the reset code
+1011       *dst++ = match_src[i++]; // ESC
+1012       *dst++ = match_src[i++]; // '['
+1013       *dst++ = match_src[i++]; // '0'
+1014       *dst++ = match_src[i++]; // 'm'
+1015       // Re-apply highlight background after reset (only if room)
+1016       if (dst + 20 &lt; dst_end) {
+1017         uint8_t r2, g2, b2;
+1018         get_highlight_color(&amp;r2, &amp;g2, &amp;b2);
+1019         dst = append_truecolor_bg(dst, r2, g2, b2);
+1020       }
+1021     } else if (i + 5 &lt;= match_byte_len &amp;&amp; match_src[i] == '\x1b' &amp;&amp; match_src[i + 1] == '[' &amp;&amp;
+1022                match_src[i + 2] == '0' &amp;&amp; match_src[i + 3] == '0' &amp;&amp; match_src[i + 4] == 'm') {
+1023       // Found [00m - copy it and re-apply background (if room)
+1024       if (dst + 5 &gt;= dst_end)
+1025         break;                 // Not enough space for even the reset code
+1026       *dst++ = match_src[i++]; // ESC
+1027       *dst++ = match_src[i++]; // '['
+1028       *dst++ = match_src[i++]; // '0'
+1029       *dst++ = match_src[i++]; // '0'
+1030       *dst++ = match_src[i++]; // 'm'
+1031       // Re-apply highlight background after reset (only if room)
+1032       if (dst + 20 &lt; dst_end) {
+1033         uint8_t r3, g3, b3;
+1034         get_highlight_color(&amp;r3, &amp;g3, &amp;b3);
+1035         dst = append_truecolor_bg(dst, r3, g3, b3);
+1036       }
+1037     } else {
+1038       // Regular character - just copy
+1039       if (dst + 1 &gt;= dst_end) {
+1040         break;
+1041       }
+1042       *dst++ = match_src[i++];
+1043     }
+1044   }
+1045 
+1046   // Reset only the background color to preserve foreground colors from headers
+1047   // Using \x1b[49m (reset background only) instead of \x1b[0m (reset all)
+1048   memcpy(dst, &quot;\x1b[49m&quot;, 5);
+1049   dst += 5;
+1050 
+1051   // Copy remaining text
+1052   size_t remaining = colored_len - colored_end;
+1053   if (remaining &gt; 0) {
+1054     memcpy(dst, colored_text + colored_end, remaining);
+1055     dst += remaining;
+1056   }
+1057 
+1058   *dst = '\0';
+1059   return highlight_buffer;
+1060 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>append_truecolor_bg()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>,
+    <b>log_search_get_case_insensitive()</b>,
+    <b>log_search_get_global_highlight()</b>,
+    <b>log_search_get_input_buffer()</b>, <b>log_search_get_input_len()</b>,
+    <b>log_search_get_pattern_singleton()</b>, <b>log_search_is_active()</b>,
+    <b>grep_pattern_t::singleton</b>, and <b>utf8_strcasestr()</b>.</p>
+<p class="Pp">Referenced by <b>grep_highlight_colored_copy()</b>, and
+    <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_grep_highlight_colored_copy_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)"><a class="permalink" href="#char_*_grep_highlight_colored_copy_(const_char_*_colored_text,_const_char_*_plain_text,_size_t_match_start,_size_t_match_len)">char
+  * grep_highlight_colored_copy (const char * colored_text, const char *
+  plain_text, size_t match_start, size_t match_len)</a></h2>
+<p class="Pp">Definition at line <b>729</b> of file <b>grep.c</b>.</p>
+<pre>730                                                     {
+731   const char *result = grep_highlight_colored(colored_text, plain_text, match_start, match_len);
+732   if (result) {
+733     size_t result_len = strlen(result) + 1;
+734     char *copy = SAFE_MALLOC(result_len, char *);
+735     if (copy) {
+736       memcpy(copy, result, result_len);
+737       return copy;
+738     }
+739   }
+740   return NULL;
+741 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>grep_highlight_colored()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_grep_init_(const_char_*_pattern)"><a class="permalink" href="#asciichat_error_t_grep_init_(const_char_*_pattern)">asciichat_error_t
+  grep_init (const char * pattern)</a></h2>
+<p class="Pp">Definition at line <b>486</b> of file <b>grep.c</b>.</p>
+<pre>486                                                  {
+487   // Reject NULL or empty patterns
+488   if (!pattern) {
+489     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pattern cannot be NULL&quot;);
+490   }
+491   if (strlen(pattern) == 0) {
+492     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pattern cannot be empty&quot;);
+493   }
+494 
+495   // Parse pattern
+496   parse_result_t parsed = grep_parse_pattern(pattern);
+497   if (!parsed.valid) {
+498     log_error(&quot;Invalid --grep pattern format: \&quot;%s\&quot;&quot;, pattern);
+499     log_error(&quot;Use /pattern/flags format (e.g., \&quot;/query/ig\&quot;) or plain regex (e.g., \&quot;query\&quot;)&quot;);
+500     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid --grep pattern format&quot;);
+501   }
+502 
+503   // Allocate or expand pattern array
+504   if (g_filter_state.pattern_count &gt;= g_filter_state.pattern_capacity) {
+505     int new_capacity = (g_filter_state.pattern_capacity == 0) ? 4 : g_filter_state.pattern_capacity * 2;
+506     grep_pattern_t *new_patterns =
+507         SAFE_REALLOC(g_filter_state.patterns, new_capacity * sizeof(grep_pattern_t), grep_pattern_t *);
+508     if (!new_patterns) {
+509       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate pattern array&quot;);
+510     }
+511     g_filter_state.patterns = new_patterns;
+512     g_filter_state.pattern_capacity = new_capacity;
+513   }
+514 
+515   // Add new pattern
+516   grep_pattern_t *new_pat = &amp;g_filter_state.patterns[g_filter_state.pattern_count];
+517   memset(new_pat, 0, sizeof(*new_pat));
+518 
+519   // Make a copy of the original pattern string (argv pointers may be deallocated)
+520   char *original_copy = SAFE_MALLOC(strlen(pattern) + 1, char *);
+521   if (!original_copy) {
+522     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate original pattern string&quot;);
+523   }
+524   memcpy(original_copy, pattern, strlen(pattern) + 1);
+525   new_pat-&gt;original = original_copy;
+526 
+527   new_pat-&gt;parsed_pattern = SAFE_MALLOC(strlen(parsed.pattern) + 1, char *);
+528   if (!new_pat-&gt;parsed_pattern) {
+529     SAFE_FREE(original_copy);
+530     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate pattern string&quot;);
+531   }
+532   memcpy(new_pat-&gt;parsed_pattern, parsed.pattern, strlen(parsed.pattern) + 1);
+533 
+534   new_pat-&gt;is_fixed_string = parsed.is_fixed_string;
+535   new_pat-&gt;case_insensitive = parsed.case_insensitive;
+536   new_pat-&gt;invert = parsed.invert;
+537   new_pat-&gt;global_flag = parsed.global_flag;
+538   new_pat-&gt;context_before = parsed.context_before;
+539   new_pat-&gt;context_after = parsed.context_after;
+540 
+541   // Compile regex (skip for fixed strings)
+542   if (!parsed.is_fixed_string) {
+543     new_pat-&gt;singleton = asciichat_pcre2_singleton_compile(parsed.pattern, parsed.pcre2_options);
+544     if (!new_pat-&gt;singleton) {
+545       SAFE_FREE(new_pat-&gt;parsed_pattern);
+546       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to compile regex pattern&quot;);
+547     }
+548 
+549     // Validate compilation
+550     pcre2_code *code = asciichat_pcre2_singleton_get_code(new_pat-&gt;singleton);
+551     if (!code) {
+552       SAFE_FREE(new_pat-&gt;parsed_pattern);
+553       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Regex compilation failed&quot;);
+554     }
+555   }
+556 
+557   g_filter_state.pattern_count++;
+558 
+559   // Update context buffer size if needed
+560   if (parsed.context_before &gt; g_filter_state.buffer_size) {
+561     // Reallocate line buffer
+562     char **new_buffer = SAFE_REALLOC(g_filter_state.line_buffer, parsed.context_before * sizeof(char *), char **);
+563     if (!new_buffer) {
+564       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate context line buffer&quot;);
+565     }
+566     // Initialize new slots
+567     for (int i = g_filter_state.buffer_size; i &lt; parsed.context_before; i++) {
+568       new_buffer[i] = NULL;
+569     }
+570     g_filter_state.line_buffer = new_buffer;
+571     g_filter_state.buffer_size = parsed.context_before;
+572   }
+573 
+574   // Update max context_after
+575   if (parsed.context_after &gt; g_filter_state.max_context_after) {
+576     g_filter_state.max_context_after = parsed.context_after;
+577   }
+578 
+579   g_filter_state.enabled = true;
+580   log_info(&quot;Added --grep pattern #%d: %s&quot;, g_filter_state.pattern_count, pattern);
+581 
+582   return ASCIICHAT_OK;
+583 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_singleton_compile()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>,
+    <b>grep_pattern_t::case_insensitive</b>,
+    <b>grep_pattern_t::context_after</b>, <b>grep_pattern_t::context_before</b>,
+    <b>grep_pattern_t::global_flag</b>, <b>grep_parse_pattern()</b>,
+    <b>grep_pattern_t::invert</b>, <b>grep_pattern_t::is_fixed_string</b>,
+    <b>grep_pattern_t::original</b>, <b>grep_pattern_t::parsed_pattern</b>, and
+    <b>grep_pattern_t::singleton</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="grep_parse_result_t_grep_parse_pattern_(const_char_*_input)"><a class="permalink" href="#grep_parse_result_t_grep_parse_pattern_(const_char_*_input)">grep_parse_result_t
+  grep_parse_pattern (const char * input)</a></h2>
+<p class="Pp">Parse pattern in /pattern/flags or pattern/flags format.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>input</i> Input pattern string (either /pattern/flags,
+  pattern/flags, or plain pattern)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parse result with all extracted settings</div>
+<p class="Pp">Format 1 (with flags, explicit): /pattern/flags</p>
+<ul class="Bl-bullet">
+  <li>Pattern enclosed in forward slashes with optional flags</li>
+  <li>Use F flag for fixed string (literal) matching</li>
+</ul>
+<p class="Pp">Format 2 (with flags, implicit): pattern/flags</p>
+<ul class="Bl-bullet">
+  <li>Interactive grep format (no leading slash, since / starts the grep
+      command)</li>
+  <li>Treats last slash as delimiter</li>
+</ul>
+<p class="Pp">Format 3 (plain regex): pattern</p>
+<ul class="Bl-bullet">
+  <li>Plain regex pattern without slashes or flags</li>
+  <li>Treated as regex with default options (no flags)</li>
+</ul>
+<p class="Pp">Flags (formats 1 &amp; 2):</p>
+<ul class="Bl-bullet">
+  <li>i: case-insensitive</li>
+  <li>m: multiline mode (regex only)</li>
+  <li>s: dotall mode (regex only)</li>
+  <li>x: extended mode (regex only)</li>
+  <li>g: global (highlight all matches)</li>
+  <li>I: invert match (show non-matching lines)</li>
+  <li>F: fixed string (literal match, no regex)</li>
+  <li>A&lt;n&gt;: show n lines after match (e.g., A3)</li>
+  <li>B&lt;n&gt;: show n lines before match (e.g., B2)</li>
+  <li>C&lt;n&gt;: show n lines before and after match (e.g., C5)</li>
+</ul>
+<p class="Pp">Examples:</p>
+<ul class="Bl-bullet">
+  <li>&quot;/test/&quot; - Simple regex with slashes</li>
+  <li>&quot;test&quot; - Plain regex without slashes</li>
+  <li>&quot;/query/i&quot; - Case-insensitive regex</li>
+  <li>&quot;/test/F&quot; - Fixed string match for &quot;test&quot;</li>
+  <li>&quot;/api/v1/users/F&quot; - Fixed string match for
+      &quot;api/v1/users&quot;</li>
+  <li>&quot;/ERROR/IA3&quot; - Invert match + 3 lines after</li>
+  <li>&quot;/FATAL/B2A5F&quot; - Fixed string, 2 before, 5 after</li>
+  <li>&quot;error|warn&quot; - Plain regex with alternation</li>
+  <li>&quot;search/i&quot; - Interactive grep: case-insensitive
+      &quot;search&quot;</li>
+  <li>&quot;api/v1/users/F&quot; - Interactive grep: fixed string match</li>
+</ul>
+<p class="Pp">Definition at line <b>351</b> of file <b>grep.c</b>.</p>
+<pre>351                                                           {
+352   parse_result_t result = {0};
+353   result.pcre2_options = PCRE2_UTF | PCRE2_UCP; // Default: UTF-8 mode
+354 
+355   if (!input || strlen(input) == 0) {
+356     return result; // Invalid: empty pattern
+357   }
+358 
+359   size_t len = strlen(input);
+360   const char *closing_slash = NULL;
+361   const char *pattern_start = input;
+362 
+363   // Check if pattern uses /pattern/flags format (explicit)
+364   if (input[0] == '/') {
+365     // Format 1: /pattern/flags
+366     if (len &lt; 3) {
+367       return result; // Invalid: too short for /pattern/ format
+368     }
+369 
+370     // Find closing slash - don't treat backslash as an escape character
+371     // (backslashes are regex escapes, not delimiter escapes)
+372     closing_slash = strchr(input + 1, '/');
+373     if (!closing_slash) {
+374       return result; // Invalid: missing closing /
+375     }
+376 
+377     pattern_start = input + 1;
+378   } else {
+379     // Check for pattern/flags format (implicit, no leading slash)
+380     // Find the last forward slash to use as delimiter
+381     closing_slash = strrchr(input, '/');
+382 
+383     if (closing_slash &amp;&amp; closing_slash &gt; input) {
+384       // There's at least one slash (not at the beginning)
+385       // Try to parse as pattern/flags format
+386       pattern_start = input;
+387     } else {
+388       // No slash or slash at beginning - treat as plain pattern
+389       closing_slash = NULL;
+390     }
+391   }
+392 
+393   if (closing_slash) {
+394     // Extract pattern between start and closing slash
+395     size_t pattern_len = (size_t)(closing_slash - pattern_start);
+396     if (pattern_len == 0) {
+397       return result; // Invalid: empty pattern
+398     }
+399     if (pattern_len &gt;= sizeof(result.pattern)) {
+400       pattern_len = sizeof(result.pattern) - 1;
+401     }
+402     memcpy(result.pattern, pattern_start, pattern_len);
+403     result.pattern[pattern_len] = '\0';
+404 
+405     // Parse flags after closing slash
+406     // First pass: check for F flag
+407     const char *flags = closing_slash + 1;
+408     bool has_F_flag = (strchr(flags, 'F') != NULL);
+409 
+410     // Parse all flags
+411     for (const char *p = flags; *p; p++) {
+412       char c = *p;
+413 
+414       // Single-character flags
+415       if (c == 'i') {
+416         result.pcre2_options |= PCRE2_CASELESS;
+417         result.case_insensitive = true;
+418       } else if (c == 'm') {
+419         result.pcre2_options |= PCRE2_MULTILINE;
+420       } else if (c == 's') {
+421         result.pcre2_options |= PCRE2_DOTALL;
+422       } else if (c == 'x') {
+423         result.pcre2_options |= PCRE2_EXTENDED;
+424       } else if (c == 'g') {
+425         result.global_flag = true;
+426       } else if (c == 'I') {
+427         result.invert = true;
+428       } else if (c == 'F') {
+429         result.is_fixed_string = true;
+430       }
+431       // Multi-character flags with integers
+432       else if (c == 'A') {
+433         p++; // Move to digits
+434         int num = 0;
+435         while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {
+436           num = num * 10 + (*p - '0');
+437           p++;
+438         }
+439         p--;                                        // Back up one (for loop will increment)
+440         result.context_after = (num &gt; 0) ? num : 1; // Default to 1 if no number
+441       } else if (c == 'B') {
+442         p++;
+443         int num = 0;
+444         while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {
+445           num = num * 10 + (*p - '0');
+446           p++;
+447         }
+448         p--;
+449         result.context_before = (num &gt; 0) ? num : 1;
+450       } else if (c == 'C') {
+451         p++;
+452         int num = 0;
+453         while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {
+454           num = num * 10 + (*p - '0');
+455           p++;
+456         }
+457         p--;
+458         int ctx = (num &gt; 0) ? num : 1;
+459         result.context_before = ctx;
+460         result.context_after = ctx;
+461       } else {
+462         // Invalid flag character - only error if not using F flag
+463         if (!has_F_flag) {
+464           return result; // Invalid
+465         }
+466         // Otherwise ignore invalid flags (they're part of the fixed string context)
+467       }
+468     }
+469   } else {
+470     // Format 3: Plain pattern without slashes (treat as regex, no flags)
+471     size_t pattern_len = len;
+472     if (pattern_len &gt;= sizeof(result.pattern)) {
+473       pattern_len = sizeof(result.pattern) - 1;
+474     }
+475     memcpy(result.pattern, input, pattern_len);
+476     result.pattern[pattern_len] = '\0';
+477 
+478     // No flags for plain format - just use default options
+479     // (PCRE2_UTF | PCRE2_UCP already set at the top)
+480   }
+481 
+482   result.valid = true;
+483   return result;
+484 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>grep_init()</b>, <b>log_search_enter_mode()</b>,
+    <b>log_search_exit_mode()</b>, <b>log_search_gather_and_filter_logs()</b>,
+    <b>log_search_get_match_info()</b>, <b>log_search_handle_key()</b>, and
+    <b>log_search_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_grep_restore_patterns_(void_)"><a class="permalink" href="#asciichat_error_t_grep_restore_patterns_(void_)">asciichat_error_t
+  grep_restore_patterns (void )</a></h2>
+<p class="Pp">Definition at line <b>1253</b> of file <b>grep.c</b>.</p>
+<pre>1253                                               {
+1254   // Clear current patterns (but don't free the array)
+1255   for (int i = 0; i &lt; g_filter_state.pattern_count; i++) {
+1256     SAFE_FREE(g_filter_state.patterns[i].parsed_pattern);
+1257     g_filter_state.patterns[i].singleton = NULL;
+1258   }
+1259 
+1260   // Ensure we have capacity for saved patterns
+1261   if (g_filter_state.saved_pattern_count &gt; g_filter_state.pattern_capacity) {
+1262     grep_pattern_t *new_patterns = SAFE_REALLOC(
+1263         g_filter_state.patterns, g_filter_state.saved_pattern_count * sizeof(grep_pattern_t), grep_pattern_t *);
+1264     if (!new_patterns) {
+1265       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate pattern array for restore&quot;);
+1266     }
+1267     g_filter_state.patterns = new_patterns;
+1268     g_filter_state.pattern_capacity = g_filter_state.saved_pattern_count;
+1269   }
+1270 
+1271   // Restore patterns
+1272   if (g_filter_state.saved_patterns) {
+1273     for (int i = 0; i &lt; g_filter_state.saved_pattern_count; i++) {
+1274       grep_pattern_t *src = &amp;g_filter_state.saved_patterns[i];
+1275       grep_pattern_t *dst = &amp;g_filter_state.patterns[i];
+1276 
+1277       // Copy pattern structure
+1278       *dst = *src;
+1279 
+1280       // Deep copy parsed_pattern string
+1281       dst-&gt;parsed_pattern = SAFE_MALLOC(strlen(src-&gt;parsed_pattern) + 1, char *);
+1282       if (!dst-&gt;parsed_pattern) {
+1283         // Clean up partial restore
+1284         for (int j = 0; j &lt; i; j++) {
+1285           SAFE_FREE(g_filter_state.patterns[j].parsed_pattern);
+1286         }
+1287         g_filter_state.pattern_count = 0;
+1288         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to restore pattern string&quot;);
+1289       }
+1290       memcpy(dst-&gt;parsed_pattern, src-&gt;parsed_pattern, strlen(src-&gt;parsed_pattern) + 1);
+1291 
+1292       // Singleton pointers are shared (reference counted)
+1293       dst-&gt;singleton = src-&gt;singleton;
+1294     }
+1295   }
+1296 
+1297   g_filter_state.pattern_count = g_filter_state.saved_pattern_count;
+1298   g_filter_state.enabled = g_filter_state.saved_enabled;
+1299 
+1300   return ASCIICHAT_OK;
+1301 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>grep_pattern_t::parsed_pattern</b>, and
+    <b>grep_pattern_t::singleton</b>.</p>
+<p class="Pp">Referenced by <b>log_search_exit_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_grep_save_patterns_(void_)"><a class="permalink" href="#asciichat_error_t_grep_save_patterns_(void_)">asciichat_error_t
+  grep_save_patterns (void )</a></h2>
+<p class="Pp">Definition at line <b>1203</b> of file <b>grep.c</b>.</p>
+<pre>1203                                            {
+1204   // Free previous saved patterns if any
+1205   if (g_filter_state.saved_patterns) {
+1206     for (int i = 0; i &lt; g_filter_state.saved_pattern_count; i++) {
+1207       SAFE_FREE(g_filter_state.saved_patterns[i].parsed_pattern);
+1208     }
+1209     SAFE_FREE(g_filter_state.saved_patterns);
+1210   }
+1211 
+1212   // Allocate saved pattern array
+1213   if (g_filter_state.pattern_count &gt; 0) {
+1214     g_filter_state.saved_patterns =
+1215         SAFE_MALLOC(g_filter_state.pattern_count * sizeof(grep_pattern_t), grep_pattern_t *);
+1216     if (!g_filter_state.saved_patterns) {
+1217       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate saved pattern array&quot;);
+1218     }
+1219 
+1220     // Deep copy all patterns
+1221     for (int i = 0; i &lt; g_filter_state.pattern_count; i++) {
+1222       grep_pattern_t *src = &amp;g_filter_state.patterns[i];
+1223       grep_pattern_t *dst = &amp;g_filter_state.saved_patterns[i];
+1224 
+1225       // Copy pattern structure
+1226       *dst = *src;
+1227 
+1228       // Deep copy parsed_pattern string
+1229       dst-&gt;parsed_pattern = SAFE_MALLOC(strlen(src-&gt;parsed_pattern) + 1, char *);
+1230       if (!dst-&gt;parsed_pattern) {
+1231         // Clean up partial save
+1232         for (int j = 0; j &lt; i; j++) {
+1233           SAFE_FREE(g_filter_state.saved_patterns[j].parsed_pattern);
+1234         }
+1235         SAFE_FREE(g_filter_state.saved_patterns);
+1236         g_filter_state.saved_patterns = NULL;
+1237         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to save pattern string&quot;);
+1238       }
+1239       memcpy(dst-&gt;parsed_pattern, src-&gt;parsed_pattern, strlen(src-&gt;parsed_pattern) + 1);
+1240 
+1241       // Singleton pointers are shared (reference counted)
+1242       dst-&gt;singleton = src-&gt;singleton;
+1243     }
+1244   }
+1245 
+1246   g_filter_state.saved_pattern_count = g_filter_state.pattern_count;
+1247   g_filter_state.saved_pattern_capacity = g_filter_state.pattern_count;
+1248   g_filter_state.saved_enabled = g_filter_state.enabled;
+1249 
+1250   return ASCIICHAT_OK;
+1251 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>grep_pattern_t::parsed_pattern</b>, and
+    <b>grep_pattern_t::singleton</b>.</p>
+<p class="Pp">Referenced by <b>log_search_enter_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_should_output (const char * log_line, size_t *
+  match_start, size_t * match_len)</h2>
+<p class="Pp">Definition at line <b>585</b> of file <b>grep.c</b>.</p>
+<pre>585                                                                                       {
+586   // Reject NULL lines
+587   if (!log_line) {
+588     if (match_start)
+589       *match_start = 0;
+590     if (match_len)
+591       *match_len = 0;
+592     return false;
+593   }
+594 
+595   // If filtering disabled, output everything
+596   if (!g_filter_state.enabled) {
+597     return true;
+598   }
+599 
+600   // Check if we're in &quot;context after&quot; mode (outputting lines after a match)
+601   if (g_filter_state.lines_after_match &gt; 0) {
+602     g_filter_state.lines_after_match--;
+603     *match_start = 0;
+604     *match_len = 0;
+605 
+606     // Store in buffer even during context-after mode
+607     if (g_filter_state.buffer_size &gt; 0) {
+608       SAFE_FREE(g_filter_state.line_buffer[g_filter_state.buffer_pos]);
+609       size_t line_len = strlen(log_line) + 1;
+610       g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(line_len, char *);
+611       if (g_filter_state.line_buffer[g_filter_state.buffer_pos]) {
+612         memcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line, line_len);
+613       }
+614       g_filter_state.buffer_pos = (g_filter_state.buffer_pos + 1) % g_filter_state.buffer_size;
+615     }
+616 
+617     return true; // Output context line
+618   }
+619 
+620   pcre2_match_data *match_data = get_thread_match_data();
+621   size_t line_len = strlen(log_line);
+622 
+623   // Try each pattern (OR logic)
+624   bool any_match = false;
+625   grep_pattern_t *matched_pattern = NULL;
+626 
+627   for (int i = 0; i &lt; g_filter_state.pattern_count; i++) {
+628     grep_pattern_t *pat = &amp;g_filter_state.patterns[i];
+629     bool this_match = false;
+630 
+631     if (pat-&gt;is_fixed_string) {
+632       // Fixed string matching (with optional case-insensitive support)
+633       const char *found;
+634       if (pat-&gt;case_insensitive) {
+635         // Unicode-aware case-insensitive search
+636         found = utf8_strcasestr(log_line, pat-&gt;parsed_pattern);
+637       } else {
+638         // Case-sensitive search
+639         found = strstr(log_line, pat-&gt;parsed_pattern);
+640       }
+641 
+642       if (found) {
+643         this_match = true;
+644         if (!matched_pattern) {
+645           *match_start = (size_t)(found - log_line);
+646           *match_len = strlen(pat-&gt;parsed_pattern);
+647           matched_pattern = pat;
+648         }
+649       }
+650     } else {
+651       // Regex matching
+652       if (!match_data || !pat-&gt;singleton) {
+653         continue;
+654       }
+655 
+656       pcre2_code *code = asciichat_pcre2_singleton_get_code(pat-&gt;singleton);
+657       if (!code) {
+658         continue;
+659       }
+660 
+661       int rc = pcre2_jit_match(code, (PCRE2_SPTR)log_line, line_len, 0, 0, match_data, NULL);
+662       if (rc &gt;= 0) {
+663         this_match = true;
+664         if (!matched_pattern) {
+665           PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+666           *match_start = (size_t)ovector[0];
+667           *match_len = (size_t)(ovector[1] - ovector[0]);
+668           matched_pattern = pat;
+669         }
+670       }
+671     }
+672 
+673     // Apply invert flag
+674     if (pat-&gt;invert) {
+675       this_match = !this_match;
+676     }
+677 
+678     if (this_match) {
+679       any_match = true;
+680       // Update matched_pattern if this one has more context
+681       if (!matched_pattern || (pat-&gt;context_before + pat-&gt;context_after) &gt;
+682                                   (matched_pattern-&gt;context_before + matched_pattern-&gt;context_after)) {
+683         matched_pattern = pat;
+684       }
+685     }
+686   }
+687 
+688   // If any pattern matched
+689   if (any_match &amp;&amp; matched_pattern) {
+690     // Output context_before lines from circular buffer
+691     if (matched_pattern-&gt;context_before &gt; 0 &amp;&amp; g_filter_state.buffer_size &gt; 0) {
+692       int num_lines = (matched_pattern-&gt;context_before &lt; g_filter_state.buffer_size) ? matched_pattern-&gt;context_before
+693                                                                                      : g_filter_state.buffer_size;
+694 
+695       // Calculate starting position in circular buffer
+696       int start_pos = (g_filter_state.buffer_pos - num_lines + g_filter_state.buffer_size) % g_filter_state.buffer_size;
+697 
+698       // Output buffered lines
+699       for (int i = 0; i &lt; num_lines; i++) {
+700         int pos = (start_pos + i) % g_filter_state.buffer_size;
+701         if (g_filter_state.line_buffer[pos]) {
+702           fprintf(stderr, &quot;%s\n&quot;, g_filter_state.line_buffer[pos]);
+703         }
+704       }
+705     }
+706 
+707     // Set up context_after counter
+708     if (matched_pattern-&gt;context_after &gt; 0) {
+709       g_filter_state.lines_after_match = matched_pattern-&gt;context_after;
+710     }
+711 
+712     return true; // Match found, output line
+713   }
+714 
+715   // No match - store in context buffer for potential future use
+716   if (g_filter_state.buffer_size &gt; 0) {
+717     SAFE_FREE(g_filter_state.line_buffer[g_filter_state.buffer_pos]);
+718     size_t line_len_copy = strlen(log_line) + 1;
+719     g_filter_state.line_buffer[g_filter_state.buffer_pos] = SAFE_MALLOC(line_len_copy, char *);
+720     if (g_filter_state.line_buffer[g_filter_state.buffer_pos]) {
+721       memcpy(g_filter_state.line_buffer[g_filter_state.buffer_pos], log_line, line_len_copy);
+722     }
+723     g_filter_state.buffer_pos = (g_filter_state.buffer_pos + 1) % g_filter_state.buffer_size;
+724   }
+725 
+726   return false; // No match, suppress line
+727 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_singleton_get_code()</b>,
+    <b>grep_pattern_t::case_insensitive</b>,
+    <b>grep_pattern_t::context_after</b>, <b>grep_pattern_t::context_before</b>,
+    <b>grep_pattern_t::invert</b>, <b>grep_pattern_t::is_fixed_string</b>,
+    <b>grep_pattern_t::parsed_pattern</b>, <b>grep_pattern_t::singleton</b>, and
+    <b>utf8_strcasestr()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_buffer_pos"><a class="permalink" href="#int_buffer_pos">int
+  buffer_pos</a></h2>
+<p class="Pp">Current position in buffer.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_buffer_size"><a class="permalink" href="#int_buffer_size">int
+  buffer_size</a></h2>
+<p class="Pp">Size of circular buffer.</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>crypto_get_rekey_status()</b>,
+    <b>crypto_get_status()</b>, <b>format_uptime_hms()</b>,
+    <b>framebuffer_clear()</b>, <b>generate_client_id()</b>,
+    <b>generate_client_name()</b>, <b>get_required_argument()</b>,
+    <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
+    <b>image_print_16color_dithered_with_background()</b>,
+    <b>manpage_merger_generate_synopsis()</b>, <b>safe_snprintf()</b>,
+    <b>safe_vsnprintf()</b>, <b>strip_equals_prefix()</b>,
+    <b>time_human_readable()</b>, <b>time_human_readable_now()</b>,
+    <b>time_human_readable_unsigned()</b>, <b>time_pretty()</b>,
+    <b>time_pretty_now()</b>, <b>update_check_format_notification()</b>, and
+    <b>update_check_get_upgrade_suggestion()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_cached_highlight_b"><a class="permalink" href="#uint8_t_cached_highlight_b">uint8_t
+  cached_highlight_b</a></h2>
+<p class="Pp">Definition at line <b>102</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_cached_highlight_g"><a class="permalink" href="#uint8_t_cached_highlight_g">uint8_t
+  cached_highlight_g</a></h2>
+<p class="Pp">Definition at line <b>102</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_cached_highlight_r"><a class="permalink" href="#uint8_t_cached_highlight_r">uint8_t
+  cached_highlight_r</a></h2>
+<p class="Pp">Definition at line <b>102</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> enabled</h2>
+<p class="Pp">Is filtering active?</p>
+<p class="Pp">Definition at line <b>84</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>log_set_force_stderr()</b>,
+    <b>log_set_terminal_output()</b>, <b>set_flip_x()</b>, and
+    <b>set_matrix_rain()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_last_color_query_us"><a class="permalink" href="#uint64_t_last_color_query_us">uint64_t
+  last_color_query_us</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char**_line_buffer"><a class="permalink" href="#char**_line_buffer">char**
+  line_buffer</a></h2>
+<p class="Pp">Circular buffer for context_before.</p>
+<p class="Pp">Definition at line <b>89</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>sdp_parse()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_lines_after_match"><a class="permalink" href="#int_lines_after_match">int
+  lines_after_match</a></h2>
+<p class="Pp">Counter for context_after lines.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="tls_key_t_match_data_key"><a class="permalink" href="#tls_key_t_match_data_key">tls_key_t
+  match_data_key</a></h2>
+<p class="Pp">Thread-local match_data key.</p>
+<p class="Pp">Definition at line <b>85</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="lifecycle_t_match_data_lifecycle"><a class="permalink" href="#lifecycle_t_match_data_lifecycle">lifecycle_t
+  match_data_lifecycle</a></h2>
+<p class="Pp">Lifecycle for TLS key initialization.</p>
+<p class="Pp">Definition at line <b>86</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_max_context_after"><a class="permalink" href="#int_max_context_after">int
+  max_context_after</a></h2>
+<p class="Pp">Maximum context_after across all patterns.</p>
+<p class="Pp">Definition at line <b>93</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_pattern_capacity"><a class="permalink" href="#int_pattern_capacity">int
+  pattern_capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>83</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_pattern_count"><a class="permalink" href="#int_pattern_count">int
+  pattern_count</a></h2>
+<p class="Pp">Number of active patterns.</p>
+<p class="Pp">Definition at line <b>82</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>log_search_get_match_info()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>grep_pattern_t</b>* patterns</h2>
+<p class="Pp">Array of patterns.</p>
+<p class="Pp">Definition at line <b>81</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> saved_enabled</h2>
+<p class="Pp">Saved enabled state.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_saved_pattern_capacity"><a class="permalink" href="#int_saved_pattern_capacity">int
+  saved_pattern_capacity</a></h2>
+<p class="Pp">Allocated capacity for saved.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_saved_pattern_count"><a class="permalink" href="#int_saved_pattern_count">int
+  saved_pattern_count</a></h2>
+<p class="Pp">Number of saved patterns.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>grep_pattern_t</b>* saved_patterns</h2>
+<p class="Pp">Backup of patterns for restore.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>grep.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>init.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">init.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">init.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">init.c - WASM initialization helpers implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>wasm_parse_args</b> (const char *args_str, char **argv, int
+    max_args, char **out_args_copy)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WASM initialization helpers implementation.</p>
+<p class="Pp">Shared initialization utilities compiled into both WASM
+  modules.</p>
+<p class="Pp">Definition in file <b>src/web/common/init.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_wasm_parse_args_(const_char_*_args_str,_char_**_argv,_int_max_args,_char_**_out_args_copy)"><a class="permalink" href="#int_wasm_parse_args_(const_char_*_args_str,_char_**_argv,_int_max_args,_char_**_out_args_copy)">int
+  wasm_parse_args (const char * args_str, char ** argv, int max_args, char **
+  out_args_copy)</a></h2>
+<p class="Pp">Parse space-separated args_str into argv[] Sets *out_args_copy to
+    the strdup'd buffer that must be freed by the caller AFTER argv is no longer
+    needed (since argv points into args_copy).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>args_str</i> Space-separated argument string
+<br/>
+<i>argv</i> Output array to store argument pointers (at least max_args elements)
+<br/>
+<i>max_args</i> Maximum number of arguments to parse
+<br/>
+<i>out_args_copy</i> Output buffer for the strdup'd args_str</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">argc (number of arguments parsed), or -1 on allocation
+  failure</div>
+<p class="Pp">Definition at line <b>24</b> of file
+  <b>src/web/common/init.c</b>.</p>
+<pre>24                                                                                            {
+25   if (!args_str || !argv || !out_args_copy || max_args &lt; 1) {
+26     return -1;
+27   }
+28 
+29   // Duplicate the input string (strtok modifies the string)
+30   char *args_copy = strdup(args_str);
+31   if (!args_copy) {
+32     return -1;
+33   }
+34 
+35   *out_args_copy = args_copy;
+36 
+37   // Parse space-separated arguments
+38   int argc = 0;
+39   char *token = strtok(args_copy, &quot; &quot;);
+40   while (token != NULL &amp;&amp; argc &lt; (max_args - 1)) {
+41     argv[argc++] = token;
+42     token = strtok(NULL, &quot; &quot;);
+43   }
+44   argv[argc] = NULL;
+45 
+46   return argc;
+47 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_init_with_args()</b>, and
+    <b>mirror_init_with_args()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

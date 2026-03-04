@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>main.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">main.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">main.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">main.h - ascii-chat Discovery Mode Entry Point Header</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>discovery_main</b> (void)
+  <br/>
+  Discovery mode entry point for unified binary.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ascii-chat Discovery Mode Entry Point Header</p>
+<p class="Pp">This header exposes the discovery mode entry point for the unified
+    binary architecture. The unified binary dispatches to
+    <b>discovery_main()</b> when invoked as ascii-chat discovery.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Discovery_Mode_Philosophy"><a class="permalink" href="#Discovery_Mode_Philosophy">Discovery
+  Mode Philosophy</a></h2>
+<p class="Pp">&quot;ascii-chat should be as simple as making a phone
+  call.&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">Discovery mode enables zero-configuration video chat:</p>
+<ul class="Bl-bullet">
+  <li><b>One command to start</b>: ascii-chat swift-river-mountain</li>
+  <li><b>Automatic host negotiation</b>: Best NAT quality participant becomes
+      host</li>
+  <li><b>Dynamic role switching</b>: Participants can become hosts
+    mid-session</li>
+  <li><b>Seamless failover</b>: If host disconnects, another participant takes
+      over</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mode_Entry_Point_Contract"><a class="permalink" href="#Mode_Entry_Point_Contract">Mode
+  Entry Point Contract</a></h2>
+<p class="Pp">Each mode entry point (server_main, client_main, discovery_main)
+    must:</p>
+<ul class="Bl-bullet">
+  <li>Accept no arguments: int mode_main(void)</li>
+  <li>Options are already parsed by main dispatcher (available via
+    GET_OPTION())</li>
+  <li>Return 0 on success, non-zero error code on failure</li>
+  <li>Perform mode-specific initialization and main loop</li>
+  <li>Perform complete cleanup before returning</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Implementation_Notes"><a class="permalink" href="#Implementation_Notes">Implementation
+  Notes</a></h2>
+<p class="Pp">Discovery mode combines client and server capabilities:</p>
+<ul class="Bl-bullet">
+  <li>Uses session library (lib/session/) for capture, display, hosting</li>
+  <li>Connects to ACDS for session discovery and NAT quality assessment</li>
+  <li>Can transition between participant and host roles dynamically</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">1.0</div>
+<p class="Pp">Definition in file <b>discovery/main.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_discovery_main_(void_)"><a class="permalink" href="#int_discovery_main_(void_)">int
+  discovery_main (void )</a></h2>
+<p class="Pp">Discovery mode entry point for unified binary. This function
+    implements the complete discovery mode lifecycle:</p>
+<ul class="Bl-bullet">
+  <li>Session discovery via ACDS or LAN mDNS</li>
+  <li>NAT quality assessment for host selection</li>
+  <li>Dynamic role switching (participant &lt;-&gt; host)</li>
+  <li>Media streaming (video/audio capture and display)</li>
+  <li>Graceful shutdown and cleanup</li>
+</ul>
+<p class="Pp">Options are already parsed by the main dispatcher before this
+    function is called, so they are available via GET_OPTION().</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero error code on failure</div>
+<p class="Pp"><b>Example</b></p>
+<div class="Bd-indent">
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre># Join a session (session string as positional argument):
+ascii-chat discovery swift-river-mountain
+# Or more concisely (session strings are auto-detected):
+ascii-chat swift-river-mountain
+</pre>
+</div>
+<p class="Pp">Discovery mode entry point for unified binary.</p>
+<p class="Pp"></p>
+<p class="Pp">Handles session discovery, host negotiation, and media flow.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero error code on failure</div>
+<p class="Pp">Definition at line <b>323</b> of file <b>discovery/main.c</b>.</p>
+<pre>323                          {
+324   log_debug(&quot;discovery_main() starting&quot;);
+325 
+326   // Discovery-specific setup: initialize ACDS connection and session negotiation
+327   // Note: Shared setup (keepawake, splash, terminal, capture, display, audio)
+328   // is handled by session_client_like_run()
+329 
+330   // Get session string from options (command-line argument)
+331   const char *session_string = GET_OPTION(session_string);
+332   bool is_initiator = (session_string == NULL || session_string[0] == '\0');
+333 
+334   int port_int = GET_OPTION(port);
+335 
+336   log_debug(&quot;Discovery: is_initiator=%d, port=%d&quot;, is_initiator, port_int);
+337 
+338   // Create discovery session configuration
+339   discovery_config_t discovery_config = {
+340       .acds_address = GET_OPTION(discovery_server),
+341       .acds_port = (uint16_t)GET_OPTION(discovery_port),
+342       .session_string = is_initiator ? NULL : session_string,
+343       .local_port = (uint16_t)port_int,
+344       .on_state_change = on_discovery_state_change,
+345       .on_session_ready = on_session_ready,
+346       .on_error = on_discovery_error,
+347       .callback_user_data = NULL,
+348       .should_exit_callback = discovery_capture_should_exit_adapter,
+349       .exit_callback_data = NULL,
+350   };
+351 
+352   // Create discovery session (stored in global for discovery_run() to access)
+353   g_discovery = discovery_session_create(&amp;discovery_config);
+354   if (!g_discovery) {
+355     log_fatal(&quot;Failed to create discovery session&quot;);
+356     return ERROR_MEMORY;
+357   }
+358 
+359   // Start discovery session (connects to ACDS, creates/joins, initiates NAT negotiation)
+360   log_debug(&quot;Discovery: starting discovery session&quot;);
+361   asciichat_error_t result = discovery_session_start(g_discovery);
+362   if (result != ASCIICHAT_OK) {
+363     log_fatal(&quot;Failed to start discovery session: %d&quot;, result);
+364     discovery_session_destroy(g_discovery);
+365     g_discovery = NULL;
+366     return result;
+367   }
+368 
+369   // No network interrupt callback needed - discovery session handles its own shutdown
+370   set_interrupt_callback(NULL);
+371 
+372   /* ========================================================================
+373    * Configure and Run Shared Client-Like Session Framework
+374    * ========================================================================
+375    * session_client_like_run() handles all shared initialization:
+376    * - Terminal output management
+377    * - Keepawake system
+378    * - Splash screen lifecycle
+379    * - Media source selection
+380    * - FPS probing
+381    * - Audio initialization
+382    * - Display context creation
+383    * - Proper cleanup ordering
+384    *
+385    * Discovery mode provides:
+386    * - discovery_run() callback: NAT negotiation, role determination, media handling
+387    * - discovery_keyboard_handler: interactive controls for participant role
+388    */
+389 
+390   session_client_like_config_t config = {
+391       .run_fn = discovery_run,
+392       .run_user_data = NULL,
+393       .tcp_client = NULL,
+394       .websocket_client = NULL,
+395       .discovery = (void *)g_discovery, // Opaque pointer to discovery session
+396       .custom_should_exit = NULL,
+397       .exit_user_data = NULL,
+398       .keyboard_handler = discovery_keyboard_handler,
+399       .max_reconnect_attempts = 0, // Discovery doesn't retry - role is determined once
+400       .should_reconnect_callback = NULL,
+401       .reconnect_user_data = NULL,
+402       .reconnect_delay_ms = 0,
+403       .print_newline_on_tty_exit = false, // Server/participant manages cursor
+404   };
+405 
+406   log_debug(&quot;Discovery: calling session_client_like_run()&quot;);
+407   asciichat_error_t session_result = session_client_like_run(&amp;config);
+408   log_debug(&quot;Discovery: session_client_like_run() returned %d&quot;, session_result);
+409 
+410   // Cleanup discovery session
+411   log_debug(&quot;Discovery: cleaning up&quot;);
+412 
+413   if (g_discovery) {
+414     discovery_session_stop(g_discovery);
+415     discovery_session_destroy(g_discovery);
+416     g_discovery = NULL;
+417   }
+418 
+419   return (session_result == ASCIICHAT_OK) ? 0 : (int)session_result;
+420 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>discovery_session_create()</b>,
+    <b>discovery_session_destroy()</b>, <b>discovery_session_start()</b>,
+    <b>discovery_session_stop()</b>, <b>session_client_like_run()</b>, and
+    <b>set_interrupt_callback()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

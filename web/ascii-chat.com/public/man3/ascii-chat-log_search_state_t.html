@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>log_search_state_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">log_search_state_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">log_search_state_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">log_search_state_t</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">log_search_mode_t <b>mode</b>
+  <br/>
+  char <b>input_buffer</b> [256]
+  <br/>
+  size_t <b>len</b>
+  <br/>
+  size_t <b>cursor</b>
+  <br/>
+  char <b>previous_patterns</b> [32][256]
+  <br/>
+  int <b>previous_pattern_count</b>
+  <br/>
+  <b>pcre2_singleton_t</b> * <b>active_patterns</b> [32]
+  <br/>
+  int <b>active_pattern_count</b>
+  <br/>
+  <b>bool</b> <b>case_insensitive</b>
+  <br/>
+  <b>bool</b> <b>fixed_string</b>
+  <br/>
+  <b>bool</b> <b>global_highlight</b>
+  <br/>
+  <b>bool</b> <b>invert_match</b>
+  <br/>
+  int <b>context_before</b>
+  <br/>
+  int <b>context_after</b>
+  <br/>
+  mutex_t <b>mutex</b>
+  <br/>
+  lifecycle_t <b>lifecycle</b>
+  <br/>
+  atomic_t <b>needs_rerender</b>
+  <br/>
+  atomic_t <b>signal_cancelled</b>
+  <br/>
+  Set by signal handler, checked by render loop. atomic_t <b>mode_atomic</b>
+  <br/>
+  Shadow of mode for signal-safe reads. <b>bool</b>
+    <b>cli_pattern_auto_populated</b>
+  <br/>
+  Track if CLI pattern was already populated.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>39</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_log_search_state_t::active_pattern_count"><a class="permalink" href="#int_log_search_state_t::active_pattern_count">int
+  log_search_state_t::active_pattern_count</a></h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>pcre2_singleton_t</b>*
+  log_search_state_t::active_patterns[32]</h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_search_state_t::case_insensitive</h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_search_state_t::cli_pattern_auto_populated</h2>
+<p class="Pp">Track if CLI pattern was already populated.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_log_search_state_t::context_after"><a class="permalink" href="#int_log_search_state_t::context_after">int
+  log_search_state_t::context_after</a></h2>
+<p class="Pp">Definition at line <b>59</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_log_search_state_t::context_before"><a class="permalink" href="#int_log_search_state_t::context_before">int
+  log_search_state_t::context_before</a></h2>
+<p class="Pp">Definition at line <b>58</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_log_search_state_t::cursor"><a class="permalink" href="#size_t_log_search_state_t::cursor">size_t
+  log_search_state_t::cursor</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_search_state_t::fixed_string</h2>
+<p class="Pp">Definition at line <b>55</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_search_state_t::global_highlight</h2>
+<p class="Pp">Definition at line <b>56</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_log_search_state_t::input_buffer_256_"><a class="permalink" href="#char_log_search_state_t::input_buffer_256_">char
+  log_search_state_t::input_buffer[256]</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_search_state_t::invert_match</h2>
+<p class="Pp">Definition at line <b>57</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_log_search_state_t::len"><a class="permalink" href="#size_t_log_search_state_t::len">size_t
+  log_search_state_t::len</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="lifecycle_t_log_search_state_t::lifecycle"><a class="permalink" href="#lifecycle_t_log_search_state_t::lifecycle">lifecycle_t
+  log_search_state_t::lifecycle</a></h2>
+<p class="Pp">Definition at line <b>62</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="log_search_mode_t_log_search_state_t::mode"><a class="permalink" href="#log_search_mode_t_log_search_state_t::mode">log_search_mode_t
+  log_search_state_t::mode</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_log_search_state_t::mode_atomic"><a class="permalink" href="#atomic_t_log_search_state_t::mode_atomic">atomic_t
+  log_search_state_t::mode_atomic</a></h2>
+<p class="Pp">Shadow of mode for signal-safe reads.</p>
+<p class="Pp">Definition at line <b>65</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_log_search_state_t::mutex"><a class="permalink" href="#mutex_t_log_search_state_t::mutex">mutex_t
+  log_search_state_t::mutex</a></h2>
+<p class="Pp">Definition at line <b>61</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_log_search_state_t::needs_rerender"><a class="permalink" href="#atomic_t_log_search_state_t::needs_rerender">atomic_t
+  log_search_state_t::needs_rerender</a></h2>
+<p class="Pp">Definition at line <b>63</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_log_search_state_t::previous_pattern_count"><a class="permalink" href="#int_log_search_state_t::previous_pattern_count">int
+  log_search_state_t::previous_pattern_count</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_log_search_state_t::previous_patterns_32__256_"><a class="permalink" href="#char_log_search_state_t::previous_patterns_32__256_">char
+  log_search_state_t::previous_patterns[32][256]</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>search.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_log_search_state_t::signal_cancelled"><a class="permalink" href="#atomic_t_log_search_state_t::signal_cancelled">atomic_t
+  log_search_state_t::signal_cancelled</a></h2>
+<p class="Pp">Set by signal handler, checked by render loop.</p>
+<p class="Pp">Definition at line <b>64</b> of file <b>search.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

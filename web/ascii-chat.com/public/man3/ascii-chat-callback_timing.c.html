@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>callback_timing.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">callback_timing.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">callback_timing.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">callback_timing.c - WebSocket callback timing instrumentation
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>websocket_callback_timing_record</b>
+    (websocket_callback_stats_t *<b>stats</b>, uint64_t start_ns, uint64_t
+    end_ns)
+  <br/>
+  void <b>websocket_callback_timing_log_stats</b> (void)
+  <br/>
+  void <b>websocket_callback_timing_reset</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">websocket_callback_timing_t <b>g_ws_callback_timing</b> = {0}
+  <br/>
+  Global timing tracker - shared across all WebSocket connections.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebSocket callback timing instrumentation implementation.</p>
+<p class="Pp">Implements callback timing tracking for diagnosing WebSocket
+    performance issues.</p>
+<p class="Pp">Definition in file <b>callback_timing.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_callback_timing_log_stats_(void_)"><a class="permalink" href="#void_websocket_callback_timing_log_stats_(void_)">void
+  websocket_callback_timing_log_stats (void )</a></h2>
+<p class="Pp">Definition at line <b>66</b> of file <b>callback_timing.c</b>.</p>
+<pre>66                                                {
+67   uint64_t protocol_init_count = atomic_load_u64(&amp;g_ws_callback_timing.protocol_init.count);
+68   uint64_t protocol_destroy_count = atomic_load_u64(&amp;g_ws_callback_timing.protocol_destroy.count);
+69   uint64_t writeable_count = atomic_load_u64(&amp;g_ws_callback_timing.server_writeable.count);
+70   uint64_t receive_count = atomic_load_u64(&amp;g_ws_callback_timing.receive.count);
+71 
+72   log_info(&quot;\n===== WEBSOCKET CALLBACK TIMING STATISTICS =====&quot;);
+73   log_info(&quot;Timestamp: %lu ns&quot;, websocket_callback_timing_start());
+74 
+75   // PROTOCOL_INIT stats
+76   log_info(&quot;LWS_CALLBACK_PROTOCOL_INIT:&quot;);
+77   log_info(&quot;  Total invocations: %lu&quot;, protocol_init_count);
+78   if (protocol_init_count &gt; 0) {
+79     uint64_t total_duration = atomic_load_u64(&amp;g_ws_callback_timing.protocol_init.total_duration_ns);
+80     uint64_t avg_duration = total_duration / protocol_init_count;
+81     log_info(&quot;  Avg duration: %lu ns&quot;, avg_duration);
+82   }
+83 
+84   // PROTOCOL_DESTROY stats
+85   log_info(&quot;LWS_CALLBACK_PROTOCOL_DESTROY:&quot;);
+86   log_info(&quot;  Total invocations: %lu&quot;, protocol_destroy_count);
+87   if (protocol_destroy_count &gt; 0) {
+88     uint64_t total_duration = atomic_load_u64(&amp;g_ws_callback_timing.protocol_destroy.total_duration_ns);
+89     uint64_t avg_duration = total_duration / protocol_destroy_count;
+90     log_info(&quot;  Avg duration: %lu ns&quot;, avg_duration);
+91   }
+92 
+93   // SERVER_WRITEABLE stats
+94   log_info(&quot;LWS_CALLBACK_SERVER_WRITEABLE:&quot;);
+95   log_info(&quot;  Total invocations: %lu&quot;, writeable_count);
+96   if (writeable_count &gt; 0) {
+97     uint64_t total_duration = atomic_load_u64(&amp;g_ws_callback_timing.server_writeable.total_duration_ns);
+98     uint64_t avg_duration = total_duration / writeable_count;
+99     uint64_t min_interval = atomic_load_u64(&amp;g_ws_callback_timing.server_writeable.min_interval_ns);
+100     uint64_t max_interval = atomic_load_u64(&amp;g_ws_callback_timing.server_writeable.max_interval_ns);
+101     log_info(&quot;  Avg duration: %lu ns&quot;, avg_duration);
+102     if (min_interval != UINT64_MAX) {
+103       log_info(&quot;  Min interval between callbacks: %lu ns (%.2f Hz)&quot;, min_interval, 1e9 / (double)min_interval);
+104     }
+105     if (max_interval &gt; 0) {
+106       log_info(&quot;  Max interval between callbacks: %lu ns (%.2f Hz)&quot;, max_interval, 1e9 / (double)max_interval);
+107     }
+108   }
+109 
+110   // RECEIVE stats
+111   log_info(&quot;LWS_CALLBACK_RECEIVE:&quot;);
+112   log_info(&quot;  Total invocations: %lu&quot;, receive_count);
+113   if (receive_count &gt; 0) {
+114     uint64_t total_duration = atomic_load_u64(&amp;g_ws_callback_timing.receive.total_duration_ns);
+115     uint64_t avg_duration = total_duration / receive_count;
+116     uint64_t min_interval = atomic_load_u64(&amp;g_ws_callback_timing.receive.min_interval_ns);
+117     uint64_t max_interval = atomic_load_u64(&amp;g_ws_callback_timing.receive.max_interval_ns);
+118     log_info(&quot;  Avg duration: %lu ns&quot;, avg_duration);
+119     if (min_interval != UINT64_MAX) {
+120       log_info(&quot;  Min interval between callbacks: %lu ns (%.2f Hz)&quot;, min_interval, 1e9 / (double)min_interval);
+121     }
+122     if (max_interval &gt; 0) {
+123       log_info(&quot;  Max interval between callbacks: %lu ns (%.2f Hz)&quot;, max_interval, 1e9 / (double)max_interval);
+124     }
+125   }
+126 
+127   log_info(&quot;===== END TIMING STATISTICS =====\n&quot;);
+128 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+    <b>g_ws_callback_timing</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_callback_timing_record_(websocket_callback_stats_t_*_stats,_uint64_t_start_ns,_uint64_t_end_ns)"><a class="permalink" href="#void_websocket_callback_timing_record_(websocket_callback_stats_t_*_stats,_uint64_t_start_ns,_uint64_t_end_ns)">void
+  websocket_callback_timing_record (websocket_callback_stats_t * stats, uint64_t
+  start_ns, uint64_t end_ns)</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>callback_timing.c</b>.</p>
+<pre>21                                                                                                              {
+22   if (!stats) {
+23     return;
+24   }
+25 
+26   uint64_t duration_ns = (end_ns &gt; start_ns) ? (end_ns - start_ns) : 0;
+27   uint64_t count = atomic_fetch_add_u64(&amp;stats-&gt;count, 1);
+28 
+29   // Track cumulative duration
+30   atomic_fetch_add_u64(&amp;stats-&gt;total_duration_ns, duration_ns);
+31 
+32   // Update last timestamp (atomically swap)
+33   uint64_t prev_last_ns = atomic_load_u64(&amp;stats-&gt;last_ns);
+34   while (!atomic_cas_u64(&amp;stats-&gt;last_ns, &amp;prev_last_ns, end_ns)) {
+35     // Retry if CAS failed due to concurrent update
+36   }
+37 
+38   // Calculate interval from previous callback (if not the first one)
+39   if (count &gt; 0 &amp;&amp; prev_last_ns &gt; 0) {
+40     uint64_t interval_ns = (end_ns &gt; prev_last_ns) ? (end_ns - prev_last_ns) : 0;
+41 
+42     // Track min intervals (atomic compare-and-swap loop to avoid TOCTOU race)
+43     if (interval_ns &gt; 0) {
+44       uint64_t current_min = atomic_load_u64(&amp;stats-&gt;min_interval_ns);
+45       while (interval_ns &lt; current_min) {
+46         if (atomic_cas_u64(&amp;stats-&gt;min_interval_ns, &amp;current_min, interval_ns)) {
+47           break;
+48         }
+49         // CAS failed - reload current value and retry if still applicable
+50         current_min = atomic_load_u64(&amp;stats-&gt;min_interval_ns);
+51       }
+52     }
+53 
+54     // Track max intervals (atomic compare-and-swap loop to avoid TOCTOU race)
+55     uint64_t current_max = atomic_load_u64(&amp;stats-&gt;max_interval_ns);
+56     while (interval_ns &gt; current_max) {
+57       if (atomic_cas_u64(&amp;stats-&gt;max_interval_ns, &amp;current_max, interval_ns)) {
+58         break;
+59       }
+60       // CAS failed - reload current value and retry if still applicable
+61       current_max = atomic_load_u64(&amp;stats-&gt;max_interval_ns);
+62     }
+63   }
+64 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_load_u64()</b>, and <b>stats</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_callback_timing_reset_(void_)"><a class="permalink" href="#void_websocket_callback_timing_reset_(void_)">void
+  websocket_callback_timing_reset (void )</a></h2>
+<p class="Pp">Definition at line <b>130</b> of file
+  <b>callback_timing.c</b>.</p>
+<pre>130                                            {
+131   memset(&amp;g_ws_callback_timing, 0, sizeof(g_ws_callback_timing));
+132   atomic_store_u64(&amp;g_ws_callback_timing.protocol_init.min_interval_ns, UINT64_MAX);
+133   atomic_store_u64(&amp;g_ws_callback_timing.protocol_destroy.min_interval_ns, UINT64_MAX);
+134   atomic_store_u64(&amp;g_ws_callback_timing.server_writeable.min_interval_ns, UINT64_MAX);
+135   atomic_store_u64(&amp;g_ws_callback_timing.receive.min_interval_ns, UINT64_MAX);
+136 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, and
+    <b>g_ws_callback_timing</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="websocket_callback_timing_t_g_ws_callback_timing_=__0_"><a class="permalink" href="#websocket_callback_timing_t_g_ws_callback_timing_=__0_">websocket_callback_timing_t
+  g_ws_callback_timing = {0}</a></h2>
+<p class="Pp">Global timing tracker - shared across all WebSocket
+  connections.</p>
+<p class="Pp">Definition at line <b>19</b> of file <b>callback_timing.c</b>.</p>
+<pre>19 {0};</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>websocket_callback_timing_log_stats()</b>, and
+    <b>websocket_callback_timing_reset()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

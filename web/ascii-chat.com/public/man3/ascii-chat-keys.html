@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keys(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keys(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keys(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keys - Keys Module</p>
+<p class="Pp">
+  <br/>
+   - &#x1F511; SSH key, GPG key, and key validation APIs</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F511; SSH key, GPG key, and key validation APIs</p>
+<p class="Pp">Key Management README</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">The Keys Module module provides comprehensive support for parsing,
+    validating, and managing cryptographic keys from multiple sources and
+    formats. It serves as the foundation for secure authentication and key
+    exchange in ascii-chat.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Implementation</b>: lib/crypto/keys/</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>Unified key parsing from multiple sources (SSH, GPG, raw formats)</li>
+  <li>Support for multiple key sources (files, GitHub, GitLab, raw
+    hex/base64)</li>
+  <li>Automatic key format detection and conversion</li>
+  <li>Key validation and security checks</li>
+  <li>SSH agent integration for secure signing</li>
+  <li>Ed25519 to X25519 conversion for key exchange</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Supported_Key_Formats"><a class="permalink" href="#Supported_Key_Formats">Supported
+  Key Formats</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="SSH_Ed25519_Keys"><a class="permalink" href="#SSH_Ed25519_Keys">SSH
+  Ed25519 Keys</a></h2>
+<p class="Pp"><b>Format</b>: OpenSSH Ed25519 public and private keys</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Public Key Format</b>:</p>
+<p class="Pp"></p>
+<pre>ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... comment
+</pre>
+<p class="Pp"><b>Private Key Format</b>:</p>
+<p class="Pp"></p>
+<pre>-----BEGIN OPENSSH PRIVATE KEY-----
+...
+-----END OPENSSH PRIVATE KEY-----
+</pre>
+<p class="Pp"><b>Supported Operations</b>:</p>
+<ul class="Bl-bullet">
+  <li>Parse SSH public key from string</li>
+  <li>Parse SSH private key from file</li>
+  <li>Validate key file permissions</li>
+  <li>Support for encrypted private keys (with password prompt)</li>
+  <li>Convert Ed25519 to X25519 for key exchange</li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse SSH public key from string
+public_key_t pubkey;
+asciichat_error_t err = parse_public_key(
+<br/>
+    &quot;ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAI... alice@example.com&quot;,
+<br/>
+    &amp;pubkey
+);
+// Parse SSH private key from file
+private_key_t privkey;
+err = parse_private_key(&quot;~/.ssh/id_ed25519&quot;, &amp;privkey);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GPG_Keys"><a class="permalink" href="#GPG_Keys">GPG
+  Keys</a></h2>
+<p class="Pp"><b>Format</b>: OpenPGP armored format (PEM-style)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Key Format</b>:</p>
+<p class="Pp"></p>
+<pre>-----BEGIN PGP PUBLIC KEY BLOCK-----
+...
+-----END PGP PUBLIC KEY BLOCK-----
+</pre>
+<p class="Pp"><b>Supported Operations</b>:</p>
+<ul class="Bl-bullet">
+  <li>Parse GPG public key from keyring via gpg --list-keys and keygrip</li>
+  <li>Extract Ed25519 public key via gpg-agent READKEY command</li>
+  <li>Sign challenges using gpg-agent PKSIGN command (Assuan protocol)</li>
+  <li>Verify signatures using gpg --verify for deterministic Ed25519</li>
+  <li>Convert GPG Ed25519 keys to X25519 for key exchange</li>
+  <li>Accept 8, 16, or 40 character key IDs (short, long, full fingerprint)</li>
+</ul>
+<p class="Pp"><b>Requirements</b>:</p>
+<ul class="Bl-bullet">
+  <li>Only Ed25519 GPG keys are supported (not RSA/DSA)</li>
+  <li>gpg binary must be in PATH</li>
+  <li>gpg-agent must be running for signing operations</li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse GPG key by key ID
+private_key_t privkey;
+asciichat_error_t err = parse_private_key(
+<br/>
+    &quot;gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3&quot;,
+<br/>
+    &amp;privkey
+);
+// Parse GPG key for server verification
+public_key_t pubkey;
+err = parse_public_key(
+<br/>
+    &quot;gpg:897607FA43DC66F612710AF97FE90A79F2E80ED3&quot;,
+<br/>
+    &amp;pubkey
+);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Raw_X25519_Keys"><a class="permalink" href="#Raw_X25519_Keys">Raw
+  X25519 Keys</a></h2>
+<p class="Pp"><b>Format</b>: 64 hex characters or base64-encoded 32-byte key</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Supported Formats</b>:</p>
+<ul class="Bl-bullet">
+  <li>Hex: 1234567890abcdef... (64 hex chars for 32 bytes)</li>
+  <li>Base64: Base64-encoded 32-byte key</li>
+</ul>
+<p class="Pp"><b>Example</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse raw X25519 key from hex
+public_key_t pubkey;
+asciichat_error_t err = parse_public_key(
+<br/>
+    &quot;1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef&quot;,
+<br/>
+    &amp;pubkey
+);
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Key_Sources"><a class="permalink" href="#Key_Sources">Key
+  Sources</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Local_Files"><a class="permalink" href="#Local_Files">Local
+  Files</a></h2>
+<p class="Pp">Keys can be loaded from local files:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Public Keys</b>:</p>
+<p class="Pp"></p>
+<pre>// Load from .pub file (reads first line)
+public_key_t pubkey;
+asciichat_error_t err = parse_public_key(&quot;~/.ssh/id_ed25519.pub&quot;, &amp;pubkey);
+// Or read first line and parse manually
+FILE *f = fopen(&quot;~/.ssh/id_ed25519.pub&quot;, &quot;r&quot;);
+char line[1024];
+fgets(line, sizeof(line), f);
+err = parse_public_key(line, &amp;pubkey);
+fclose(f);
+// Load multiple keys from file (one per line)
+public_key_t keys[10];
+size_t num_keys;
+err = parse_keys_from_file(&quot;~/.ssh/authorized_keys&quot;, keys, &amp;num_keys, 10);
+// File can contain multiple keys, one per line:
+// ssh-ed25519 AAAAC3... alice@example.com
+// ssh-ed25519 AAAAC3... bob@example.com
+</pre>
+<p class="Pp"><b>Private Keys</b>:</p>
+<p class="Pp"></p>
+<pre>// Load private key from file
+private_key_t privkey;
+asciichat_error_t err = parse_private_key(&quot;~/.ssh/id_ed25519&quot;, &amp;privkey);
+// File permissions are validated (warns if overly permissive)
+// Encrypted keys prompt for password automatically
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GitHub_and_GitLab_Integration"><a class="permalink" href="#GitHub_and_GitLab_Integration">GitHub
+  and GitLab Integration</a></h2>
+<p class="Pp">Keys can be fetched directly from GitHub or GitLab using
+  HTTPS:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>SSH Keys</b>:</p>
+<p class="Pp"></p>
+<pre>// Fetch SSH keys from GitHub
+char **keys;
+size_t num_keys;
+asciichat_error_t err = fetch_github_ssh_keys(&quot;username&quot;, &amp;keys, &amp;num_keys);
+if (err == ASCIICHAT_OK &amp;&amp; num_keys &gt; 0) {
+<br/>
+    // Parse first Ed25519 key
+<br/>
+    public_key_t pubkey;
+<br/>
+    parse_public_key(keys[0], &amp;pubkey);
+<br/>
+    // Free keys array
+<br/>
+    for (size_t i = 0; i &lt; num_keys; i++) {
+<br/>
+        free(keys[i]);
+<br/>
+    }
+<br/>
+    free(keys);
+}
+</pre>
+<p class="Pp"><b>GPG Keys</b>:</p>
+<p class="Pp"></p>
+<pre>// Fetch GPG keys from GitHub
+char **keys;
+size_t num_keys;
+asciichat_error_t err = fetch_github_gpg_keys(&quot;username&quot;, &amp;keys, &amp;num_keys);
+</pre>
+<p class="Pp"><b>GitLab Support</b>:</p>
+<p class="Pp"></p>
+<pre>// Fetch SSH keys from GitLab
+err = fetch_gitlab_ssh_keys(&quot;username&quot;, &amp;keys, &amp;num_keys);
+// Fetch GPG keys from GitLab
+err = fetch_gitlab_gpg_keys(&quot;username&quot;, &amp;keys, &amp;num_keys);
+</pre>
+<p class="Pp"><b>Unified Parsing</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse key from GitHub using unified interface
+public_key_t pubkey;
+asciichat_error_t err = parse_public_key(&quot;github:username&quot;, &amp;pubkey);
+// Automatically fetches from https://github.com/username.keys
+// Uses first Ed25519 key found
+// Parse GPG key from GitHub
+err = parse_public_key(&quot;github:username.gpg&quot;, &amp;pubkey);
+// Parse from GitLab
+err = parse_public_key(&quot;gitlab:username&quot;, &amp;pubkey);
+err = parse_public_key(&quot;gitlab:username.gpg&quot;, &amp;pubkey);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Unified_Key_Parsing"><a class="permalink" href="#Unified_Key_Parsing">Unified
+  Key Parsing</a></h2>
+<p class="Pp">The <b>parse_public_key()</b><b> function supports multiple input
+    formats automatically:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>public_key_t pubkey;
+asciichat_error_t err;
+// SSH Ed25519 format
+err = parse_public_key(&quot;ssh-ed25519 AAAAC3... comment&quot;, &amp;pubkey);
+// GitHub SSH keys
+err = parse_public_key(&quot;github:username&quot;, &amp;pubkey);
+// GitLab SSH keys
+err = parse_public_key(&quot;gitlab:username&quot;, &amp;pubkey);
+// GitHub GPG keys
+err = parse_public_key(&quot;github:username.gpg&quot;, &amp;pubkey);
+// File path
+err = parse_public_key(&quot;~/.ssh/id_ed25519.pub&quot;, &amp;pubkey);
+// Raw hex
+err = parse_public_key(&quot;1234567890abcdef...&quot;, &amp;pubkey);</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Key_Validation"><a class="permalink" href="#Key_Validation">Key
+  Validation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Public_Key_Validation"><a class="permalink" href="#Public_Key_Validation">Public
+  Key Validation</a></h2>
+<p class="Pp">All public keys are validated before use:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>public_key_t pubkey;
+asciichat_error_t err = parse_public_key(input, &amp;pubkey);
+// Validate key structure
+err = validate_public_key(&amp;pubkey);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Invalid public key&quot;);
+<br/>
+    return err;
+}</pre>
+<p class="Pp"><b>Validation Checks</b>:</p>
+<ul class="Bl-bullet">
+  <li>Key type is valid (Ed25519, X25519, or GPG)</li>
+  <li>Key data is not all zeros</li>
+  <li>Comment length is within limits (&lt; 256 chars)</li>
+  <li>Key size matches type (32 bytes for Ed25519/X25519)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Private_Key_Validation"><a class="permalink" href="#Private_Key_Validation">Private
+  Key Validation</a></h2>
+<p class="Pp">Private keys are validated similarly:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>private_key_t privkey;
+asciichat_error_t err = parse_private_key(&quot;~/.ssh/id_ed25519&quot;, &amp;privkey);
+// Validate key structure
+err = validate_private_key(&amp;privkey);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Invalid private key&quot;);
+<br/>
+    return err;
+}</pre>
+<p class="Pp"><b>Validation Checks</b>:</p>
+<ul class="Bl-bullet">
+  <li>Key type is valid (Ed25519 or X25519)</li>
+  <li>Key data is not all zeros</li>
+  <li>Key size matches type (32 bytes for X25519, 64 bytes for Ed25519)</li>
+  <li>Comment length is within limits</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="File_Permission_Validation"><a class="permalink" href="#File_Permission_Validation">File
+  Permission Validation</a></h2>
+<p class="Pp">Private key files are checked for appropriate permissions:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Validate SSH key file before parsing
+asciichat_error_t err = validate_ssh_key_file(&quot;~/.ssh/id_ed25519&quot;);
+// Checks:
+// - File exists and is readable
+// - File has valid SSH private key header
+// - File permissions are appropriate (warns if overly permissive)</pre>
+<p class="Pp"><b>Permission Recommendations</b>:</p>
+<ul class="Bl-bullet">
+  <li>Private keys should have restrictive permissions (0600 on Unix)</li>
+  <li>Function warns if file has world-readable permissions</li>
+  <li>Permission checking is Unix-specific (Windows doesn't have Unix-style
+      permissions)</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Key_Conversion"><a class="permalink" href="#Key_Conversion">Key
+  Conversion</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Ed25519_to_X25519_Conversion"><a class="permalink" href="#Ed25519_to_X25519_Conversion">Ed25519
+  to X25519 Conversion</a></h2>
+<p class="Pp">Ed25519 keys are converted to X25519 format for Diffie-Hellman key
+    exchange:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Public Key Conversion</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse Ed25519 public key
+public_key_t ed25519_pubkey;
+parse_public_key(&quot;ssh-ed25519 AAAAC3...&quot;, &amp;ed25519_pubkey);
+// Convert to X25519 for key exchange
+uint8_t x25519_pk[32];
+asciichat_error_t err = public_key_to_x25519(&amp;ed25519_pubkey, x25519_pk);
+// Use x25519_pk for Diffie-Hellman key exchange
+</pre>
+<p class="Pp"><b>Private Key Conversion</b>:</p>
+<p class="Pp"></p>
+<pre>// Parse Ed25519 private key
+private_key_t ed25519_privkey;
+parse_private_key(&quot;~/.ssh/id_ed25519&quot;, &amp;ed25519_privkey);
+// Convert to X25519 for key exchange
+uint8_t x25519_sk[32];
+asciichat_error_t err = private_key_to_x25519(&amp;ed25519_privkey, x25519_sk);
+// Use x25519_sk for Diffie-Hellman key exchange
+</pre>
+<p class="Pp"><b>Conversion Details</b>:</p>
+<ul class="Bl-bullet">
+  <li>Uses libsodium's conversion functions
+      (crypto_sign_ed25519_pk_to_curve25519)</li>
+  <li>Mathematically safe (same curve, different representation)</li>
+  <li>Both Ed25519 and X25519 keys are 32 bytes</li>
+  <li>Ed25519 private keys are 64 bytes (seed + public), extracts 32-byte seed
+      for conversion</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Direct_Conversion_Functions"><a class="permalink" href="#Direct_Conversion_Functions">Direct
+  Conversion Functions</a></h2>
+<p class="Pp">Lower-level conversion functions are also available:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Direct Ed25519 public key conversion
+uint8_t ed25519_pk[32] = {...};
+uint8_t x25519_pk[32];
+asciichat_error_t err = ed25519_to_x25519_public(ed25519_pk, x25519_pk);
+// Direct Ed25519 private key conversion
+uint8_t ed25519_sk[64] = {...};  // seed + public
+uint8_t x25519_sk[32];
+asciichat_error_t err = ed25519_to_x25519_private(ed25519_sk, x25519_sk);</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Signing_and_Verification"><a class="permalink" href="#Signing_and_Verification">Signing
+  and Verification</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Signing_Messages"><a class="permalink" href="#Signing_Messages">Signing
+  Messages</a></h2>
+<p class="Pp">Messages can be signed with Ed25519 private keys:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Load private key
+private_key_t privkey;
+parse_private_key(&quot;~/.ssh/id_ed25519&quot;, &amp;privkey);
+// Sign message
+const uint8_t message[] = &quot;Hello, secure world!&quot;;
+uint8_t signature[64];
+asciichat_error_t err = ed25519_sign_message(
+<br/>
+    &amp;privkey,
+<br/>
+    message,
+<br/>
+    sizeof(message) - 1,  // Length without null terminator
+<br/>
+    signature
+);
+// Use signature...</pre>
+<p class="Pp"><b>SSH Agent Support</b>:</p>
+<p class="Pp"></p>
+<pre>// If SSH agent is available, signing uses agent
+// Key stays in agent (not loaded into memory)
+// More secure - private key never touches application memory
+// Configure key to use SSH agent
+privkey.use_ssh_agent = true;
+// Signing now uses SSH agent protocol
+ed25519_sign_message(&amp;privkey, message, message_len, signature);
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Verifying_Signatures"><a class="permalink" href="#Verifying_Signatures">Verifying
+  Signatures</a></h2>
+<p class="Pp">Signatures can be verified with Ed25519 public keys:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Load public key
+public_key_t pubkey;
+parse_public_key(&quot;ssh-ed25519 AAAAC3...&quot;, &amp;pubkey);
+// Convert to raw Ed25519 public key
+uint8_t ed25519_pk[32];
+// ... extract from pubkey ...
+// Verify signature
+const uint8_t message[] = &quot;Hello, secure world!&quot;;
+uint8_t signature[64] = {...};  // From signing
+asciichat_error_t err = ed25519_verify_signature(
+<br/>
+    ed25519_pk,
+<br/>
+    message,
+<br/>
+    sizeof(message) - 1,
+<br/>
+    signature
+);
+if (err == ASCIICHAT_OK) {
+<br/>
+    log_info(&quot;Signature is valid!&quot;);
+} else {
+<br/>
+    log_error(&quot;Signature verification failed&quot;);
+}</pre>
+<p class="Pp"><b>Security Features</b>:</p>
+<ul class="Bl-bullet">
+  <li>Constant-time signature verification (prevents timing attacks)</li>
+  <li>Automatic validation of signature format (must be 64 bytes)</li>
+  <li>Returns error immediately if signature is invalid</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Module_Structure"><a class="permalink" href="#Module_Structure">Module
+  Structure</a></h2>
+<p class="Pp">The key management module is organized into specialized
+    submodules:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Core Modules</b>:</p>
+<ul class="Bl-bullet">
+  <li>keys.h: Unified key parsing interface</li>
+  <li>types.h: Key type definitions and structures</li>
+  <li>validation.h: Key validation and security functions</li>
+</ul>
+<p class="Pp"><b>Format-Specific Modules</b>:</p>
+<ul class="Bl-bullet">
+  <li>ssh_keys.h: SSH Ed25519 key parsing</li>
+  <li>gpg_keys.h: GPG key parsing (may be disabled)</li>
+  <li>https_keys.h: HTTPS key fetching from GitHub/GitLab</li>
+</ul>
+<p class="Pp"><b>Support Modules</b>:</p>
+<ul class="Bl-bullet">
+  <li>pem_utils.h: PEM encoding/decoding utilities</li>
+  <li>http_client.h: BearSSL HTTPS client for key fetching</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<p class="Pp"><b>Public Key Structure</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    key_type_t type;        // KEY_TYPE_ED25519, KEY_TYPE_X25519, or KEY_TYPE_GPG
+<br/>
+    uint8_t data[32];       // 32-byte public key
+<br/>
+    char comment[256];     // Optional comment/label
+} public_key_t;
+</pre>
+<p class="Pp"><b>Private Key Structure</b>:</p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    key_type_t type;        // KEY_TYPE_ED25519 or KEY_TYPE_X25519
+<br/>
+    union {
+<br/>
+        uint8_t x25519[32]; // X25519 private key (32 bytes)
+<br/>
+        uint8_t ed25519[64]; // Ed25519 private key (seed + public, 64 bytes)
+<br/>
+    } key;
+<br/>
+    char comment[256];      // Optional comment/label
+<br/>
+    bool use_ssh_agent;     // Use SSH agent for signing
+<br/>
+    bool use_gpg_agent;     // Use GPG agent for signing (may be disabled)
+} private_key_t;
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Usage_Examples"><a class="permalink" href="#Usage_Examples">Usage
+  Examples</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Basic_Key_Loading"><a class="permalink" href="#Basic_Key_Loading">Basic
+  Key Loading</a></h2>
+<pre>#include &quot;crypto/keys/keys.h&quot;
+// Load server public key
+public_key_t server_pubkey;
+asciichat_error_t err = parse_public_key(
+<br/>
+    &quot;github:server-username&quot;,
+<br/>
+    &amp;server_pubkey
+);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to load server public key&quot;);
+<br/>
+    return err;
+}
+// Validate key
+err = validate_public_key(&amp;server_pubkey);
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Invalid server public key&quot;);
+<br/>
+    return err;
+}
+// Convert to X25519 for key exchange
+uint8_t x25519_pk[32];
+err = public_key_to_x25519(&amp;server_pubkey, x25519_pk);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Client_Authentication"><a class="permalink" href="#Client_Authentication">Client
+  Authentication</a></h2>
+<pre>// Load client private key
+private_key_t client_privkey;
+asciichat_error_t err = parse_private_key(&quot;~/.ssh/id_ed25519&quot;, &amp;client_privkey);
+// Try to use SSH agent if available
+client_privkey.use_ssh_agent = true;
+// Sign handshake challenge
+uint8_t challenge[] = {...};  // From server
+uint8_t signature[64];
+err = ed25519_sign_message(
+<br/>
+    &amp;client_privkey,
+<br/>
+    challenge,
+<br/>
+    sizeof(challenge),
+<br/>
+    signature
+);
+// Send signature to server
+send_signature_to_server(signature);</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Server_Key_Whitelist"><a class="permalink" href="#Server_Key_Whitelist">Server
+  Key Whitelist</a></h2>
+<p class="Pp"><b>Loading from file (recommended)</b>:</p>
+<p class="Pp"></p>
+<pre>// Server: Load authorized client keys from file
+// File can be authorized_keys format or .pub file with multiple entries (one per line)
+public_key_t client_keys[MAX_CLIENTS];
+size_t num_authorized = 0;
+asciichat_error_t err = parse_client_keys(
+<br/>
+    &quot;~/.ssh/authorized_keys&quot;,  // File with multiple keys, one per line
+<br/>
+    client_keys,
+<br/>
+    &amp;num_authorized,
+<br/>
+    MAX_CLIENTS
+);
+// File format (one key per line):
+// ssh-ed25519 AAAAC3... alice@example.com
+// ssh-ed25519 AAAAC3... bob@example.com
+</pre>
+<p class="Pp"><b>Loading from array</b>:</p>
+<p class="Pp"></p>
+<pre>// Server: Load authorized client keys from array
+const char *authorized_clients[] = {
+<br/>
+    &quot;github:alice&quot;,
+<br/>
+    &quot;github:bob&quot;,
+<br/>
+    &quot;ssh-ed25519 AAAAC3... charlie@example.com&quot;
+};
+public_key_t client_keys[MAX_CLIENTS];
+size_t num_authorized = 0;
+for (size_t i = 0; i &lt; sizeof(authorized_clients) / sizeof(authorized_clients[0]); i++) {
+<br/>
+    if (parse_public_key(authorized_clients[i], &amp;client_keys[num_authorized]) == ASCIICHAT_OK) {
+<br/>
+        if (validate_public_key(&amp;client_keys[num_authorized]) == ASCIICHAT_OK) {
+<br/>
+            num_authorized++;
+<br/>
+        }
+<br/>
+    }
+}
+</pre>
+<p class="Pp">// Verify incoming client signatures against whitelist bool
+    is_authorized = false; for (size_t i = 0; i &lt; num_authorized; i++) { if
+    (ed25519_verify_signature( client_keys[i].key, // .key field (32 bytes), not
+    .data challenge, sizeof(challenge), signature ) == ASCIICHAT_OK) {
+    is_authorized = true; break; } }</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Security_Considerations"><a class="permalink" href="#Security_Considerations">Security
+  Considerations</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="File_Permissions"><a class="permalink" href="#File_Permissions">File
+  Permissions</a></h2>
+<p class="Pp"><b>Private Keys</b>:</p>
+<ul class="Bl-bullet">
+  <li>Should have restrictive permissions (0600 on Unix)</li>
+  <li>Function validates and warns if permissions are too permissive</li>
+  <li>Never share private keys</li>
+</ul>
+<p class="Pp"><b>Public Keys</b>:</p>
+<ul class="Bl-bullet">
+  <li>Can be world-readable (no sensitive data)</li>
+  <li>Still validate format before use</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Key_Storage"><a class="permalink" href="#Key_Storage">Key
+  Storage</a></h2>
+<p class="Pp"><b>In-Memory Keys</b>:</p>
+<ul class="Bl-bullet">
+  <li>Private keys in memory should be zeroed after use</li>
+  <li>Use sodium_memzero() for secure memory clearing</li>
+  <li>Avoid leaving keys in memory longer than necessary</li>
+</ul>
+<p class="Pp"><b>SSH Agent</b>:</p>
+<ul class="Bl-bullet">
+  <li>More secure: keys stay in agent process (isolated)</li>
+  <li>Private keys never loaded into application memory</li>
+  <li>Recommended for production use</li>
+</ul>
+<p class="Pp"><b>GPG Agent</b>:</p>
+<ul class="Bl-bullet">
+  <li>Similar security benefits to SSH agent</li>
+  <li>Currently may be disabled (check build configuration)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Validation"><a class="permalink" href="#Validation">Validation</a></h2>
+<p class="Pp"><b>Always Validate Keys</b>:</p>
+<ul class="Bl-bullet">
+  <li>Check return values from parsing functions</li>
+  <li>Explicitly validate keys before use</li>
+  <li>Reject keys with all-zero data</li>
+  <li>Verify key sizes match expected values</li>
+</ul>
+<p class="Pp"><b>Zero Key Detection</b>:</p>
+<ul class="Bl-bullet">
+  <li>Validation functions reject all-zero keys</li>
+  <li>Zero keys are mathematically invalid</li>
+  <li>Protects against accidentally using uninitialized keys</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Limitations_and_Restrictions"><a class="permalink" href="#Limitations_and_Restrictions">Limitations
+  and Restrictions</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Supported_Key_Types"><a class="permalink" href="#Supported_Key_Types">Supported
+  Key Types</a></h2>
+<p class="Pp"><b>Currently Supported</b>:</p>
+<ul class="Bl-bullet">
+  <li>Ed25519 public and private keys (SSH format)</li>
+  <li>X25519 keys (raw hex or base64)</li>
+  <li>GPG Ed25519 keys (may be disabled)</li>
+</ul>
+<p class="Pp"><b>Not Supported</b>:</p>
+<ul class="Bl-bullet">
+  <li>RSA keys (any size)</li>
+  <li>ECDSA keys (any curve)</li>
+  <li>GPG RSA/ECDSA keys</li>
+  <li>Other key formats</li>
+</ul>
+<p class="Pp"><b>Rationale</b>:</p>
+<ul class="Bl-bullet">
+  <li>libsodium only supports Ed25519/X25519</li>
+  <li>Protocol assumes fixed-size keys (32 bytes public, 32/64 bytes
+    private)</li>
+  <li>RSA/ECDSA would require OpenSSL and protocol changes</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="GPG_Support_Status"><a class="permalink" href="#GPG_Support_Status">GPG
+  Support Status</a></h2>
+<p class="Pp"><b>Current Status</b>:</p>
+<ul class="Bl-bullet">
+  <li>GPG key parsing code exists</li>
+  <li>GPG support may be disabled in build configuration</li>
+  <li>GPG agent support exists but may not be enabled</li>
+</ul>
+<p class="Pp"><b>Workaround</b>:</p>
+<ul class="Bl-bullet">
+  <li>Use SSH keys instead of GPG keys</li>
+  <li>SSH keys provide equivalent functionality</li>
+  <li>SSH agent support is fully functional</li>
+</ul>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="API_Reference"><a class="permalink" href="#API_Reference">API
+  Reference</a></h1>
+<p class="Pp"><b>Unified Key Parsing</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t parse_public_key(const char *input, public_key_t *key_out);
+asciichat_error_t parse_private_key(const char *path, private_key_t *key_out);
+</pre>
+<p class="Pp"><b>Key Validation</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t validate_public_key(const public_key_t *key);
+asciichat_error_t validate_private_key(const private_key_t *key);
+asciichat_error_t validate_ssh_key_file(const char *key_path);
+</pre>
+<p class="Pp"><b>Key Conversion</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t public_key_to_x25519(const public_key_t *key, uint8_t x25519_pk[32]);
+asciichat_error_t private_key_to_x25519(const private_key_t *key, uint8_t x25519_sk[32]);
+asciichat_error_t ed25519_to_x25519_public(const uint8_t ed25519_pk[32], uint8_t x25519_pk[32]);
+asciichat_error_t ed25519_to_x25519_private(const uint8_t ed25519_sk[64], uint8_t x25519_sk[32]);
+</pre>
+<p class="Pp"><b>Signing and Verification</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t ed25519_sign_message(const private_key_t *key, const uint8_t *message,
+<br/>
+                                       size_t message_len, uint8_t signature[64]);
+asciichat_error_t ed25519_verify_signature(const uint8_t public_key[32], const uint8_t *message,
+<br/>
+                                           size_t message_len, const uint8_t signature[64]);
+</pre>
+<p class="Pp"><b>HTTPS Key Fetching</b>:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t fetch_github_ssh_keys(const char *username, char ***keys_out, size_t *num_keys);
+asciichat_error_t fetch_gitlab_ssh_keys(const char *username, char ***keys_out, size_t *num_keys);
+asciichat_error_t fetch_github_gpg_keys(const char *username, char ***keys_out, size_t *num_keys);
+asciichat_error_t fetch_gitlab_gpg_keys(const char *username, char ***keys_out, size_t *num_keys);
+</pre>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">crypto/keys/keys.h
+<p class="Pp"></p>
+<p class="Pp">crypto/keys/types.h</p>
+<p class="Pp"></p>
+<p class="Pp">crypto/keys/validation.h</p>
+<p class="Pp"></p>
+<p class="Pp">crypto/keys/ssh_keys.h</p>
+<p class="Pp"></p>
+<p class="Pp">crypto/keys/gpg_keys.h</p>
+<p class="Pp"></p>
+<p class="Pp">crypto/keys/https_keys.h</p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

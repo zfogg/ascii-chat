@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>ascii_read_init</b> (unsigned short int
+    webcam_index)
+  <br/>
+  asciichat_error_t <b>ascii_write_init</b> (int fd, <b>bool</b> reset_terminal)
+  <br/>
+  char * <b>ascii_convert</b> (image_t *original, const ssize_t width, const
+    ssize_t height, const <b>bool</b> color, const <b>bool</b> _aspect_ratio,
+    const <b>bool</b> stretch, const char *palette_chars, const char
+    luminance_palette[256])
+  <br/>
+  char * <b>ascii_convert_with_capabilities</b> (image_t *original, const
+    ssize_t width, const ssize_t height, const terminal_capabilities_t *caps,
+    const <b>bool</b> use_aspect_ratio, const <b>bool</b> stretch, const char
+    *palette_chars)
+  <br/>
+  asciichat_error_t <b>ascii_write</b> (const char *<b>frame</b>)
+  <br/>
+  void <b>ascii_write_destroy</b> (int fd, <b>bool</b> reset_terminal)
+  <br/>
+  void <b>ascii_read_destroy</b> (void)
+  <br/>
+  char * <b>ascii_pad_frame_width</b> (const char *<b>frame</b>, size_t
+    pad_left)
+  <br/>
+  char * <b>ascii_create_grid</b> (ascii_frame_source_t *sources, int
+    source_count, int width, int height, size_t *out_size)
+  <br/>
+  char * <b>ascii_pad_frame_height</b> (const char *<b>frame</b>, size_t
+    pad_top)
+  <br/>
+  char * <b>image_print_with_capabilities</b> (const image_t *image, const
+    terminal_capabilities_t *caps, const char *palette)
+  <br/>
+  Convert image to ASCII art with terminal capabilities.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_convert_(image_t_*_original,_const_ssize_t_width,_const_ssize_t_height,_const_"><a class="permalink" href="#char_*_ascii_convert_(image_t_*_original,_const_ssize_t_width,_const_ssize_t_height,_const_">char
+  * ascii_convert (image_t * original, const ssize_t width, const ssize_t
+  height, const <b>bool</b> color, const <b>bool</b> _aspect_ratio, const
+  <b>bool</b> stretch, const char * palette_chars, const char
+  luminance_palette[256])</a></h2>
+<p class="Pp">Definition at line <b>70</b> of file <b>ascii.c</b>.</p>
+<pre>72                                                        {
+73   if (original == NULL || !palette_chars || !luminance_palette) {
+74     log_error(&quot;ascii_convert: invalid parameters&quot;);
+75     return NULL;
+76   }
+77 
+78   // Check for empty strings
+79   if (palette_chars[0] == '\0' || luminance_palette[0] == '\0') {
+80     log_error(&quot;ascii_convert: empty palette strings&quot;);
+81     return NULL;
+82   }
+83 
+84   // Start with the target dimensions requested by the user (or detected from
+85   // the terminal). These can be modified by aspect_ratio() if stretching is
+86   // disabled and one of the dimensions was left to be calculated
+87   // automatically.
+88   ssize_t resized_width = width;
+89   ssize_t resized_height = height;
+90 
+91   // If stretch is enabled, use full dimensions, otherwise calculate aspect ratio
+92   if (_aspect_ratio) {
+93     // The server now provides images at width*2 x height pixels
+94     // The aspect_ratio function will handle terminal character aspect ratio
+95     aspect_ratio(original-&gt;w, original-&gt;h, resized_width, resized_height, stretch, &amp;resized_width, &amp;resized_height);
+96   }
+97 
+98   // Calculate padding for centering
+99   size_t pad_width = 0;
+100   size_t pad_height = 0;
+101 
+102   if (_aspect_ratio) {
+103     // Only calculate padding when not stretching
+104     ssize_t pad_width_ss = width &gt; resized_width ? (width - resized_width) / 2 : 0;
+105     pad_width = (size_t)pad_width_ss;
+106 
+107     ssize_t pad_height_ss = height &gt; resized_height ? (height - resized_height) / 2 : 0;
+108     pad_height = (size_t)pad_height_ss;
+109   }
+110 
+111   // Resize the captured frame to the aspect-correct dimensions.
+112   if (resized_width &lt;= 0 || resized_height &lt;= 0) {
+113     log_error(&quot;Invalid dimensions for resize: width=%zd, height=%zd&quot;, resized_width, resized_height);
+114     return NULL;
+115   }
+116 
+117   // Validate dimensions fit in image_t's int fields before casting
+118   if (resized_width &gt; INT_MAX || resized_height &gt; INT_MAX) {
+119     log_error(&quot;Dimensions exceed INT_MAX: width=%zd, height=%zd&quot;, resized_width, resized_height);
+120     return NULL;
+121   }
+122 
+123   // Always resize to target dimensions
+124   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
+125   if (!resized) {
+126     log_error(&quot;Failed to allocate resized image&quot;);
+127     return NULL;
+128   }
+129 
+130   image_clear(resized);
+131   image_resize(original, resized);
+132 
+133   char *ascii;
+134   if (color) {
+135     // Check for half-block mode first
+136     if (GET_OPTION(render_mode) == RENDER_MODE_HALF_BLOCK) {
+137       const uint8_t *rgb_data = (const uint8_t *)resized-&gt;pixels;
+138 #if SIMD_SUPPORT_NEON
+139       // Use NEON half-block renderer (optimized SIMD path)
+140       log_dev(&quot;Using NEON halfblock renderer&quot;);
+141       ascii = rgb_to_truecolor_halfblocks_neon(rgb_data, resized-&gt;w, resized-&gt;h, 0);
+142 #else
+143       // Fallback to scalar halfblock renderer (works on all platforms)
+144       log_dev(&quot;Using scalar halfblock renderer (NEON not available)&quot;);
+145       ascii = rgb_to_truecolor_halfblocks_scalar(rgb_data, resized-&gt;w, resized-&gt;h, 0);
+146 #endif
+147     } else {
+148 #ifdef SIMD_SUPPORT
+149       // Standard color modes (foreground/background)
+150       bool use_background = (GET_OPTION(render_mode) == RENDER_MODE_BACKGROUND);
+151       ascii = image_print_color_simd(resized, use_background, false, palette_chars);
+152 #else
+153       ascii = image_print_color(resized, palette_chars);
+154 #endif
+155     }
+156   } else {
+157     // Use grayscale/monochrome conversion with client's palette
+158 #ifdef SIMD_SUPPORT
+159     ascii = image_print_simd(resized, luminance_palette);
+160 #else
+161     ascii = image_print(resized, palette_chars);
+162 #endif
+163   }
+164 
+165   if (!ascii) {
+166     log_error(&quot;Failed to convert image to ASCII&quot;);
+167     image_destroy(resized);
+168     return NULL;
+169   }
+170 
+171   size_t ascii_len = strlen(ascii);
+172   if (ascii_len == 0) {
+173     log_error(&quot;ASCII conversion returned empty string (resized dimensions: %dx%d)&quot;, resized-&gt;w, resized-&gt;h);
+174     SAFE_FREE(ascii);
+175     image_destroy(resized);
+176     return NULL;
+177   }
+178 
+179   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
+180   SAFE_FREE(ascii);
+181 
+182   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
+183   SAFE_FREE(ascii_width_padded);
+184 
+185   // Only destroy resized if we allocated it (not when using original directly)
+186   image_destroy(resized);
+187 
+188   return ascii_padded;
+189 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_pad_frame_height()</b>,
+    <b>ascii_pad_frame_width()</b>, <b>aspect_ratio()</b>, <b>image_clear()</b>,
+    <b>image_destroy()</b>, <b>image_new()</b>, <b>image_print()</b>,
+    <b>image_print_color()</b>, <b>image_print_color_simd()</b>,
+    <b>image_resize()</b>, and <b>rgb_to_truecolor_halfblocks_scalar()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_convert_with_capabilities_(image_t_*_original,_const_ssize_t_width,_const_ssize_t_height,_const_terminal_capabilities_t_*_caps,_const_"><a class="permalink" href="#char_*_ascii_convert_with_capabilities_(image_t_*_original,_const_ssize_t_width,_const_ssize_t_height,_const_terminal_capabilities_t_*_caps,_const_">char
+  * ascii_convert_with_capabilities (image_t * original, const ssize_t width,
+  const ssize_t height, const terminal_capabilities_t * caps, const <b>bool</b>
+  use_aspect_ratio, const <b>bool</b> stretch, const char *
+  palette_chars)</a></h2>
+<p class="Pp">Definition at line <b>192</b> of file <b>ascii.c</b>.</p>
+<pre>194                                                                                      {
+195 
+196   if (original == NULL || caps == NULL) {
+197     log_error(&quot;Invalid parameters for ascii_convert_with_capabilities&quot;);
+198     return NULL;
+199   }
+200 
+201   // Validate original image dimensions to detect corruption
+202   if (original-&gt;w &lt;= 0 || original-&gt;w &gt; 10000 || original-&gt;h &lt;= 0 || original-&gt;h &gt; 10000) {
+203     log_error(&quot;Invalid original image dimensions detected: w=%d, h=%d (likely corrupted)&quot;, original-&gt;w, original-&gt;h);
+204     return NULL;
+205   }
+206 
+207   if (original-&gt;pixels == NULL) {
+208     log_error(&quot;Original image pixels pointer is NULL&quot;);
+209     return NULL;
+210   }
+211 
+212   // Start with the target dimensions requested by the user
+213   ssize_t resized_width = width;
+214   ssize_t resized_height = height;
+215 
+216   // Apply aspect ratio BEFORE doubling height for half-block mode
+217   // This ensures the width is correct relative to the original aspect ratio
+218   if (use_aspect_ratio) {
+219     aspect_ratio(original-&gt;w, original-&gt;h, resized_width, resized_height, stretch, &amp;resized_width, &amp;resized_height);
+220   }
+221 
+222   // Half-block mode doubles height for 2x vertical resolution (AFTER aspect ratio)
+223   if (caps-&gt;render_mode == RENDER_MODE_HALF_BLOCK) {
+224     resized_height = resized_height * 2;
+225   }
+226 
+227   // Calculate padding for centering (only if client wants padding)
+228   size_t pad_width = 0;
+229   size_t pad_height = 0;
+230 
+231   log_dev(&quot;PADDING_CALC: use_aspect_ratio=%d wants_padding=%d width=%zd height=%zd resized_w=%zd resized_h=%zd&quot;,
+232           use_aspect_ratio, caps-&gt;wants_padding, width, height, resized_width, resized_height);
+233 
+234   if (use_aspect_ratio &amp;&amp; caps-&gt;wants_padding) {
+235     ssize_t pad_width_ss = width &gt; resized_width ? (width - resized_width) / 2 : 0;
+236     pad_width = (size_t)pad_width_ss;
+237 
+238     ssize_t pad_height_ss = height &gt; resized_height ? (height - resized_height) / 2 : 0;
+239     // Halfblock mode uses 2 source rows per output row, so padding is halved
+240     if (caps-&gt;render_mode == RENDER_MODE_HALF_BLOCK) {
+241       log_dev(&quot;HALFBLOCK PADDING: before=%zd, render_mode=%d&quot;, pad_height_ss, caps-&gt;render_mode);
+242       pad_height_ss /= 2;
+243       log_dev(&quot;HALFBLOCK PADDING: after=%zd&quot;, pad_height_ss);
+244     }
+245     pad_height = (size_t)pad_height_ss;
+246 
+247     log_debug_every(10 * US_PER_SEC_INT,
+248                     &quot;ascii_convert_with_capabilities: width=%zd, height=%zd, resized_width=%zd, resized_height=%zd, &quot;
+249                     &quot;pad_width=%zu, pad_height=%zu, stretch=%d, wants_padding=%d&quot;,
+250                     width, height, resized_width, resized_height, pad_width, pad_height, stretch, caps-&gt;wants_padding);
+251   } else if (!caps-&gt;wants_padding) {
+252     log_debug_every(10 * US_PER_SEC_INT,
+253                     &quot;ascii_convert_with_capabilities: padding disabled (wants_padding=false), width=%zd, height=%zd&quot;,
+254                     width, height);
+255   }
+256 
+257   // Resize the captured frame to the aspect-correct dimensions
+258   if (resized_width &lt;= 0 || resized_height &lt;= 0) {
+259     log_error(&quot;Invalid dimensions for resize: width=%zd, height=%zd&quot;, resized_width, resized_height);
+260     return NULL;
+261   }
+262 
+263   // Validate dimensions fit in image_t's int fields before casting
+264   if (resized_width &gt; INT_MAX || resized_height &gt; INT_MAX) {
+265     log_error(&quot;Dimensions exceed INT_MAX: width=%zd, height=%zd&quot;, resized_width, resized_height);
+266     return NULL;
+267   }
+268 
+269   // PROFILING: Time image allocation and resize
+270   START_TIMER(&quot;image_alloc&quot;);
+271   uint64_t prof_alloc_start_ns = time_get_ns();
+272 
+273   image_t *resized = image_new((size_t)resized_width, (size_t)resized_height);
+274   if (!resized) {
+275     log_error(&quot;Failed to allocate resized image&quot;);
+276     return NULL;
+277   }
+278 
+279   image_clear(resized);
+280 
+281   uint64_t prof_alloc_end_ns = time_get_ns();
+282   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_alloc&quot;,
+283                            &quot;IMAGE_ALLOC: Alloc+clear complete (%.2f ms)&quot;);
+284 
+285   START_TIMER(&quot;image_resize&quot;);
+286   uint64_t prof_resize_start_ns = prof_alloc_end_ns;
+287 
+288   image_resize(original, resized);
+289 
+290   uint64_t prof_resize_end_ns = time_get_ns();
+291   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_resize&quot;,
+292                            &quot;IMAGE_RESIZE: Resize complete (%.2f ms)&quot;);
+293 
+294   // Check original image before resize (validate dimensions to prevent integer overflow)
+295   int orig_black = 0, orig_total = 0;
+296   if (original-&gt;w &gt; 0 &amp;&amp; original-&gt;w &lt;= 10000 &amp;&amp; original-&gt;h &gt; 0 &amp;&amp; original-&gt;h &lt;= 10000) {
+297     int64_t total_pixels = (int64_t)original-&gt;w * original-&gt;h;
+298     int sample_size = (total_pixels &lt; 1000) ? (int)total_pixels : 1000;
+299     for (int i = 0; i &lt; sample_size; i++) {
+300       rgb_pixel_t p = original-&gt;pixels[i];
+301       orig_total++;
+302       if (p.r == 0 &amp;&amp; p.g == 0 &amp;&amp; p.b == 0)
+303         orig_black++;
+304     }
+305     log_debug_every(5 * NS_PER_SEC_INT,
+306                     &quot;&gt;&gt;&gt; ORIGINAL image: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n&quot;, orig_black,
+307                     orig_total, orig_total &gt; 0 ? 100.0 * orig_black / orig_total : 0, original-&gt;pixels[0].r,
+308                     original-&gt;pixels[0].g, original-&gt;pixels[0].b);
+309   } else {
+310     log_warn(&quot;Skipping debug check: corrupted image dimensions (w=%d, h=%d)&quot;, original-&gt;w, original-&gt;h);
+311   }
+312 
+313   // PROFILING: Time ASCII print
+314   uint64_t prof_print_start_ns = prof_resize_end_ns;
+315 
+316   // DEBUG: Log dimensions going to renderer
+317   log_debug_every(10 * US_PER_SEC_INT,
+318                   &quot;ascii_convert: original=%dx%d, requested=%zdx%zd, resized=%dx%d, pad=%zux%zu (mode=%d)&quot;, original-&gt;w,
+319                   original-&gt;h, width, height, resized-&gt;w, resized-&gt;h, pad_width, pad_height, caps-&gt;render_mode);
+320 
+321   // Check if image is all black
+322   int black_pixels = 0, total_pixels = 0;
+323   for (int i = 0; i &lt; resized-&gt;w * resized-&gt;h &amp;&amp; i &lt; 1000; i++) {
+324     rgb_pixel_t p = resized-&gt;pixels[i];
+325     total_pixels++;
+326     if (p.r == 0 &amp;&amp; p.g == 0 &amp;&amp; p.b == 0)
+327       black_pixels++;
+328   }
+329   log_debug_every(5 * NS_PER_SEC_INT,
+330                   &quot;&gt;&gt;&gt; Resized image check: %d/%d pixels are black (%.1f%%), first pixel=RGB(%d,%d,%d)\n&quot;, black_pixels,
+331                   total_pixels, total_pixels &gt; 0 ? 100.0 * black_pixels / total_pixels : 0, resized-&gt;pixels[0].r,
+332                   resized-&gt;pixels[0].g, resized-&gt;pixels[0].b);
+333 
+334   // Use the capability-aware image printing function with client's palette
+335   START_TIMER(&quot;image_print_with_capabilities&quot;);
+336   char *ascii = image_print_with_capabilities(resized, caps, palette_chars);
+337 
+338   uint64_t prof_print_end_ns = time_get_ns();
+339   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 5 * NS_PER_MS_INT, &quot;image_print_with_capabilities&quot;,
+340                            &quot;IMAGE_PRINT: Print complete (%.2f ms)&quot;);
+341 
+342   uint64_t alloc_time_us = time_ns_to_us(time_elapsed_ns(prof_alloc_start_ns, prof_alloc_end_ns));
+343   uint64_t resize_time_us = time_ns_to_us(time_elapsed_ns(prof_resize_start_ns, prof_resize_end_ns));
+344   uint64_t print_time_us = time_ns_to_us(time_elapsed_ns(prof_print_start_ns, prof_print_end_ns));
+345 
+346   // PROFILING: Time padding
+347   START_TIMER(&quot;ascii_padding&quot;);
+348   uint64_t prof_pad_start_ns = time_get_ns();
+349 
+350   if (!ascii) {
+351     log_error(&quot;Failed to convert image to ASCII using terminal capabilities&quot;);
+352     image_destroy(resized);
+353     return NULL;
+354   }
+355 
+356   size_t ascii_len = strlen(ascii);
+357   if (ascii_len == 0) {
+358     log_error(&quot;Capability-aware ASCII conversion returned empty string (resized dimensions: %dx%d)&quot;, resized-&gt;w,
+359               resized-&gt;h);
+360     SAFE_FREE(ascii);
+361     image_destroy(resized);
+362     return NULL;
+363   }
+364 
+365   char *ascii_width_padded = ascii_pad_frame_width(ascii, pad_width);
+366   SAFE_FREE(ascii);
+367 
+368   char *ascii_padded = ascii_pad_frame_height(ascii_width_padded, pad_height);
+369   SAFE_FREE(ascii_width_padded);
+370 
+371   uint64_t prof_pad_end_ns = time_get_ns();
+372   STOP_TIMER_AND_LOG_EVERY(dev, 3 * NS_PER_SEC_INT, 2 * NS_PER_MS_INT, &quot;ascii_padding&quot;,
+373                            &quot;ASCII_PADDING: Padding complete (%.2f ms)&quot;);
+374 
+375   uint64_t pad_time_ns = time_elapsed_ns(prof_pad_start_ns, prof_pad_end_ns);
+376   char alloc_str[32], resize_str[32], print_str[32], pad_str[32], total_str[32];
+377   time_pretty(alloc_time_us * 1000, -1, alloc_str, sizeof(alloc_str));
+378   time_pretty(resize_time_us * 1000, -1, resize_str, sizeof(resize_str));
+379   time_pretty(print_time_us * 1000, -1, print_str, sizeof(print_str));
+380   time_pretty(pad_time_ns, -1, pad_str, sizeof(pad_str));
+381   uint64_t total_time_ns = (alloc_time_us + resize_time_us + print_time_us) * 1000 + pad_time_ns;
+382   time_pretty(total_time_ns, -1, total_str, sizeof(total_str));
+383   log_dev(&quot;ASCII_BREAKDOWN: alloc=%s, resize=%s, print=%s, pad=%s (total=%s)&quot;, alloc_str, resize_str, print_str,
+384           pad_str, total_str);
+385 
+386   image_destroy(resized);
+387 
+388   return ascii_padded;
+389 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_pad_frame_height()</b>,
+    <b>ascii_pad_frame_width()</b>, <b>aspect_ratio()</b>, <b>image_clear()</b>,
+    <b>image_destroy()</b>, <b>image_new()</b>,
+    <b>image_print_with_capabilities()</b>, <b>image_resize()</b>,
+    <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>, and
+  <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>mirror_convert_frame()</b>, and
+    <b>session_display_convert_to_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_create_grid_(ascii_frame_source_t_*_sources,_int_source_count,_int_width,_int_height,_size_t_*_out_size)"><a class="permalink" href="#char_*_ascii_create_grid_(ascii_frame_source_t_*_sources,_int_source_count,_int_width,_int_height,_size_t_*_out_size)">char
+  * ascii_create_grid (ascii_frame_source_t * sources, int source_count, int
+  width, int height, size_t * out_size)</a></h2>
+<p class="Pp">Creates a grid layout from multiple ASCII frame sources with | and
+    _ separators.</p>
+<p class="Pp"></p>
+<p class="Pp">Parameters: sources Array of ASCII frame sources to combine
+    source_count Number of sources in the array width Target width of the output
+    grid height Target height of the output grid out_size Output parameter for
+    the size of the returned buffer</p>
+<p class="Pp"></p>
+<p class="Pp">Returns: A newly allocated, null-terminated string containing the
+    grid layout, or NULL on error. Caller must free the returned buffer.</p>
+<p class="Pp">Definition at line <b>604</b> of file <b>ascii.c</b>.</p>
+<pre>604                                                                                                                   {
+605   if (!sources || source_count &lt;= 0 || width &lt;= 0 || height &lt;= 0 || !out_size) {
+606     return NULL;
+607   }
+608 
+609   // If no sources, return empty frame
+610 
+611   // If only one source, center it properly to maintain aspect ratio and look good
+612   if (source_count == 1) {
+613     // Create a frame of the target size filled with spaces
+614     // Check for integer overflow before multiplication
+615     size_t w = (size_t)width;
+616     size_t h = (size_t)height;
+617     size_t w_times_h;
+618     if (checked_size_mul(w, h, &amp;w_times_h) != ASCIICHAT_OK) {
+619       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: dimensions would overflow: %dx%d&quot;, width, height);
+620       return NULL;
+621     }
+622 
+623     size_t w_times_h_plus_h;
+624     if (checked_size_add(w_times_h, h, &amp;w_times_h_plus_h) != ASCIICHAT_OK) {
+625       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: buffer size would overflow: %dx%d&quot;, width, height);
+626       return NULL;
+627     }
+628 
+629     size_t target_size;
+630     if (checked_size_add(w_times_h_plus_h, 1, &amp;target_size) != ASCIICHAT_OK) {
+631       SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: buffer size would overflow: %dx%d&quot;, width, height);
+632       return NULL;
+633     }
+634     char *result;
+635     result = SAFE_MALLOC(target_size, char *);
+636     SAFE_MEMSET(result, target_size, ' ', target_size - 1);
+637     result[target_size - 1] = '\0';
+638 
+639     // Add newlines at the end of each row
+640     for (int row = 0; row &lt; height; row++) {
+641       result[row * (width + 1) + width] = '\n';
+642     }
+643 
+644     // Copy the source frame into the result, line by line, centering it
+645     // Handle NULL frame_data gracefully
+646     const char *src_data = sources[0].frame_data;
+647     int src_pos = 0;
+648     int src_size = (int)sources[0].frame_size;
+649 
+650     // If source data is NULL or empty, just return the empty frame
+651     if (!src_data || src_size &lt;= 0) {
+652       *out_size = target_size - 1; // Don't count null terminator
+653       return result;
+654     }
+655 
+656     // Count lines in source to calculate vertical padding
+657     int src_lines = 0;
+658     for (int i = 0; i &lt; src_size; i++) {
+659       if (src_data[i] == '\n')
+660         src_lines++;
+661     }
+662 
+663     int v_padding = (height - src_lines) / 2;
+664     if (v_padding &lt; 0)
+665       v_padding = 0;
+666 
+667     int dst_row = v_padding;
+668     src_pos = 0;
+669 
+670     while (src_pos &lt; src_size &amp;&amp; dst_row &lt; height) {
+671       // Find end of current line in source
+672       int line_start = src_pos;
+673       int line_len = 0;
+674       while (src_pos &lt; src_size &amp;&amp; src_data[src_pos] != '\n') {
+675         line_len++;
+676         src_pos++;
+677       }
+678 
+679       // Calculate visual width of the line (excluding ANSI escape sequences)
+680       int visual_line_width = ansi_visual_width(&amp;src_data[line_start], line_len);
+681 
+682       // Calculate horizontal padding to center the line based on visual width
+683       int h_padding = (width - visual_line_width) / 2;
+684       if (h_padding &lt; 0)
+685         h_padding = 0;
+686 
+687       // Copy line to result with padding
+688       // Use size_t for position calculation to prevent integer underflow
+689       size_t row_offset = (size_t)dst_row * (size_t)(width + 1);
+690       size_t dst_pos = row_offset + (size_t)h_padding;
+691       int max_visual_width = width - h_padding;
+692       // Truncate to visual width while preserving complete ANSI sequences
+693       int copy_len = ansi_truncate_to_visual_width(&amp;src_data[line_start], line_len, max_visual_width);
+694 
+695       if (copy_len &gt; 0 &amp;&amp; dst_pos + (size_t)copy_len &lt; target_size) {
+696         SAFE_MEMCPY(&amp;result[dst_pos], target_size - dst_pos, &amp;src_data[line_start], (size_t)copy_len);
+697       }
+698 
+699       // Skip newline in source
+700       if (src_pos &lt; src_size &amp;&amp; src_data[src_pos] == '\n') {
+701         src_pos++;
+702       }
+703 
+704       dst_row++;
+705     }
+706 
+707     *out_size = target_size - 1; // Don't count null terminator
+708     return result;
+709   }
+710 
+711   // Multiple sources: create grid layout
+712   // Calculate grid dimensions that maximize the use of terminal space
+713   // Character aspect ratio: terminal chars are typically ~2x taller than wide
+714   float char_aspect = 2.0f;
+715 
+716   int grid_cols, grid_rows;
+717   float best_score = -1.0f;
+718   int best_cols = 1;
+719   int best_rows = source_count;
+720 
+721   // Try all possible grid configurations
+722   for (int test_cols = 1; test_cols &lt;= source_count; test_cols++) {
+723     int test_rows = (int)ceil((double)source_count / test_cols);
+724 
+725     // Skip configurations with too many empty cells
+726     int empty_cells = (test_cols * test_rows) - source_count;
+727     if (empty_cells &gt; source_count / 2)
+728       continue; // Don't waste more than 50% space
+729 
+730     // Calculate the size each cell would have
+731     int cell_width = (width - (test_cols - 1)) / test_cols;   // -1 per separator
+732     int cell_height = (height - (test_rows - 1)) / test_rows; // -1 per separator
+733 
+734     // Skip if cells would be too small
+735     if (cell_width &lt; 10 || cell_height &lt; 3)
+736       continue;
+737 
+738     // Calculate the aspect ratio of each cell (accounting for char aspect)
+739     float cell_aspect = ((float)cell_width / (float)cell_height) / char_aspect;
+740 
+741     // Score based on how close to square (1:1) each video cell would be
+742     // This naturally adapts to any terminal size
+743     float aspect_score = 1.0f - fabsf(logf(cell_aspect)); // log makes it symmetric around 1
+744     if (aspect_score &lt; 0)
+745       aspect_score = 0;
+746 
+747     // Bonus for better space utilization
+748     float utilization = (float)source_count / (float)(test_cols * test_rows);
+749 
+750     // For 2 clients specifically, heavily weight the aspect score
+751     // This makes 2 clients naturally go horizontal on wide terminals and vertical on tall ones
+752     float total_score;
+753     if (source_count == 2) {
+754       // For 2 clients, we want the layout that gives the most square-ish cells
+755       total_score = aspect_score * 0.9f + utilization * 0.1f;
+756     } else {
+757       // For 3+ clients, balance aspect ratio with space utilization
+758       total_score = aspect_score * 0.7f + utilization * 0.3f;
+759     }
+760 
+761     // Small bonus for simpler grids (prefer 2x2 over 3x1, etc.)
+762     if (test_cols == test_rows) {
+763       total_score += 0.05f; // Slight preference for square grids
+764     }
+765 
+766     if (total_score &gt; best_score) {
+767       best_score = total_score;
+768       best_cols = test_cols;
+769       best_rows = test_rows;
+770     }
+771   }
+772 
+773   grid_cols = best_cols;
+774   grid_rows = best_rows;
+775 
+776   // Calculate dimensions for each cell (leave 1 char for separators)
+777   int cell_width = (width - (grid_cols - 1)) / grid_cols;
+778   int cell_height = (height - (grid_rows - 1)) / grid_rows;
+779 
+780   if (cell_width &lt; 10 || cell_height &lt; 3) {
+781     // Too small for grid layout, just use first source
+782     char *result;
+783     result = SAFE_MALLOC(sources[0].frame_size + 1, char *);
+784     if (sources[0].frame_data &amp;&amp; sources[0].frame_size &gt; 0) {
+785       SAFE_MEMCPY(result, sources[0].frame_size + 1, sources[0].frame_data, sources[0].frame_size);
+786       result[sources[0].frame_size] = '\0';
+787       *out_size = sources[0].frame_size;
+788     } else {
+789       // Handle NULL or empty frame data
+790       result[0] = '\0';
+791       *out_size = 0;
+792     }
+793     return result;
+794   }
+795 
+796   // Allocate mixed frame buffer
+797   // Check for integer overflow before multiplication
+798   size_t w_sz = (size_t)width;
+799   size_t h_sz = (size_t)height;
+800   if (w_sz &gt; SIZE_MAX / h_sz) {
+801     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_create_grid: dimensions would overflow: %dx%d&quot;, width, height);
+802     return NULL;
+803   }
+804   size_t mixed_size = w_sz * h_sz + h_sz + 1; // +1 for null terminator, +height for newlines
+805   char *mixed_frame;
+806   mixed_frame = SAFE_MALLOC(mixed_size, char *);
+807 
+808   // Initialize mixed frame with spaces
+809   SAFE_MEMSET(mixed_frame, mixed_size, ' ', mixed_size - 1);
+810   mixed_frame[mixed_size - 1] = '\0';
+811 
+812   // Add newlines at the end of each row
+813   for (int row = 0; row &lt; height; row++) {
+814     mixed_frame[row * (width + 1) + width] = '\n';
+815   }
+816 
+817   // Place each video source in the grid
+818   for (int src = 0; src &lt; source_count; src++) {
+819     int grid_row = src / grid_cols;
+820     int grid_col = src % grid_cols;
+821 
+822     // Calculate position in mixed frame
+823     int start_row = grid_row * (cell_height + 1); // +1 for separator
+824     int start_col = grid_col * (cell_width + 1);  // +1 for separator
+825 
+826     // Parse source frame line by line and place in grid
+827     const char *src_data = sources[src].frame_data;
+828     int src_row = 0;
+829     int src_pos = 0;
+830 
+831     while (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_row &lt; cell_height &amp;&amp; start_row + src_row &lt; height) {
+832       // Find end of current line in source
+833       int line_start = src_pos;
+834       while (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_data[src_pos] != '\n') {
+835         src_pos++;
+836       }
+837       int line_len = src_pos - line_start;
+838 
+839       // Copy line to mixed frame (truncate if too long)
+840       // Truncate to visual cell width while preserving complete ANSI sequences
+841       int copy_len = ansi_truncate_to_visual_width(src_data + line_start, line_len, cell_width);
+842       // Check that visual width of truncated line fits
+843       int truncated_visual_width = ansi_visual_width(src_data + line_start, copy_len);
+844       if (copy_len &gt; 0 &amp;&amp; start_col + truncated_visual_width &lt;= width) {
+845         int mixed_pos = (start_row + src_row) * (width + 1) + start_col;
+846         SAFE_MEMCPY(mixed_frame + mixed_pos, mixed_size - (size_t)mixed_pos, src_data + line_start, (size_t)copy_len);
+847       }
+848 
+849       // Move to next line
+850       if (src_pos &lt; (int)sources[src].frame_size &amp;&amp; src_data[src_pos] == '\n') {
+851         src_pos++;
+852       }
+853       src_row++;
+854     }
+855 
+856     // Draw separators with bounds checking to prevent buffer overflow
+857     if (grid_col &lt; grid_cols - 1 &amp;&amp; start_col + cell_width &lt; width) {
+858       // Vertical separator
+859       for (int row = start_row; row &lt; start_row + cell_height &amp;&amp; row &lt; height; row++) {
+860         size_t idx = (size_t)row * (size_t)(width + 1) + (size_t)(start_col + cell_width);
+861         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
+862           mixed_frame[idx] = '|';
+863         }
+864       }
+865     }
+866 
+867     if (grid_row &lt; grid_rows - 1 &amp;&amp; start_row + cell_height &lt; height) {
+868       // Horizontal separator
+869       for (int col = start_col; col &lt; start_col + cell_width &amp;&amp; col &lt; width; col++) {
+870         size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)col;
+871         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
+872           mixed_frame[idx] = '_';
+873         }
+874       }
+875       // Corner character where separators meet
+876       if (grid_col &lt; grid_cols - 1 &amp;&amp; start_col + cell_width &lt; width) {
+877         size_t idx = (size_t)(start_row + cell_height) * (size_t)(width + 1) + (size_t)(start_col + cell_width);
+878         if (idx &lt; mixed_size - 1) { // -1 to preserve null terminator
+879           mixed_frame[idx] = '+';
+880         }
+881       }
+882     }
+883   }
+884 
+885   *out_size = strlen(mixed_frame);
+886   return mixed_frame;
+887 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_pad_frame_height_(const_char_*_frame,_size_t_pad_top)"><a class="permalink" href="#char_*_ascii_pad_frame_height_(const_char_*_frame,_size_t_pad_top)">char
+  * ascii_pad_frame_height (const char * frame, size_t pad_top)</a></h2>
+<p class="Pp">Adds vertical padding (blank lines) to center a frame
+  vertically.</p>
+<p class="Pp"></p>
+<p class="Pp">Parameters: frame The input ASCII frame to pad vertically. pad_top
+    Number of blank lines to add at the top.</p>
+<p class="Pp"></p>
+<p class="Pp">Returns: A newly allocated, null-terminated string with vertical
+    padding, or NULL if frame is NULL.</p>
+<p class="Pp"></p>
+<p class="Pp">NOTE: Uses plain newlines instead of ANSI escape sequences to
+    support both TTY and piped/redirected output. TTY flicker prevention is
+    handled by the display layer (e.g., display.c) when appropriate.</p>
+<p class="Pp">Definition at line <b>904</b> of file <b>ascii.c</b>.</p>
+<pre>904                                                                 {
+905   if (!frame) {
+906     return NULL;
+907   }
+908 
+909   if (pad_top == 0) {
+910     // Nothing to do; return a copy because the caller knows to free() the value.
+911     size_t orig_len = strlen(frame);
+912     char *copy;
+913     copy = SAFE_MALLOC(orig_len + 1, char *);
+914     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
+915     return copy;
+916   }
+917 
+918   // Calculate buffer size needed
+919   // Each padding row needs: 1 newline character per padding row
+920   size_t frame_len = strlen(frame);
+921   size_t top_padding_len = pad_top; // 1 newline per padding row
+922   size_t total_len = top_padding_len + frame_len;
+923 
+924   char *buffer;
+925   buffer = SAFE_MALLOC(total_len + 1, char *);
+926 
+927   char *position = buffer;
+928 
+929   // Add top padding with plain newlines
+930   // Use plain newlines instead of ANSI escape sequences so the output works
+931   // when redirected to pipes or files, not just TTY
+932   for (size_t i = 0; i &lt; pad_top; i++) {
+933     *position++ = '\n';
+934   }
+935 
+936   // Copy the original frame
+937   size_t remaining = frame_len + 1;
+938   SAFE_MEMCPY(position, remaining, frame, frame_len);
+939   position += frame_len;
+940   *position = '\0';
+941 
+942   return buffer;
+943 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>ascii_convert_with_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_ascii_pad_frame_width_(const_char_*_frame,_size_t_pad_left)"><a class="permalink" href="#char_*_ascii_pad_frame_width_(const_char_*_frame,_size_t_pad_left)">char
+  * ascii_pad_frame_width (const char * frame, size_t pad_left)</a></h2>
+<p class="Pp">Definition at line <b>459</b> of file <b>ascii.c</b>.</p>
+<pre>459                                                                 {
+460   if (!frame) {
+461     SET_ERRNO(ERROR_INVALID_PARAM, &quot;ascii_pad_frame_width: frame is NULL&quot;);
+462     return NULL;
+463   }
+464 
+465   if (pad_left == 0) {
+466     // Nothing to do; return a copy so the caller can free it safely without
+467     // worrying about the original allocation strategy.
+468     size_t orig_len = strlen(frame);
+469     char *copy;
+470     copy = SAFE_MALLOC(orig_len + 1, char *);
+471     SAFE_MEMCPY(copy, orig_len + 1, frame, orig_len + 1);
+472     return copy;
+473   }
+474 
+475   // Count how many visual rows we have (lines terminated by '\n') to determine
+476   // the final buffer size.
+477   size_t line_count = 1; // There is always at least the first line
+478   const char *char_in_frame = frame;
+479   while (*char_in_frame) {
+480     if (*char_in_frame == '\n') {
+481       line_count++;
+482     }
+483     char_in_frame++;
+484   }
+485 
+486   // Total length of the source plus padding.
+487   const size_t frame_len = strlen(frame);
+488   const size_t left_padding_len = line_count * pad_left;
+489   const size_t total_len = frame_len + left_padding_len;
+490 
+491   char *buffer;
+492   buffer = SAFE_MALLOC(total_len + 1, char *);
+493 
+494   // Build the padded frame.
+495   bool at_line_start = true;
+496   const char *src = frame;
+497   char *position = buffer;
+498 
+499   while (*src) {
+500     if (at_line_start) {
+501       // Insert the requested amount of spaces in front of every visual row.
+502       size_t remaining = (size_t)((ptrdiff_t)(buffer + total_len + 1) - (ptrdiff_t)position);
+503       SAFE_MEMSET(position, remaining, ' ', (size_t)pad_left);
+504       position += pad_left;
+505       at_line_start = false;
+506     }
+507 
+508     *position++ = *src;
+509 
+510     if (*src == '\n') {
+511       at_line_start = true;
+512     }
+513 
+514     src++;
+515   }
+516 
+517   *position = '\0';
+518   return buffer;
+519 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>ascii_convert_with_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_read_destroy_(void_)"><a class="permalink" href="#void_ascii_read_destroy_(void_)">void
+  ascii_read_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>439</b> of file <b>ascii.c</b>.</p>
+<pre>439                               {
+440   webcam_destroy();
+441   log_debug(&quot;ASCII reader destroyed&quot;);
+442 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>webcam_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_ascii_read_init_(unsigned_short_int_webcam_index)"><a class="permalink" href="#asciichat_error_t_ascii_read_init_(unsigned_short_int_webcam_index)">asciichat_error_t
+  ascii_read_init (unsigned short int webcam_index)</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>ascii.c</b>.</p>
+<pre>36                                                                    {
+37   log_info(&quot;Initializing ASCII reader with webcam index %u&quot;, webcam_index);
+38   webcam_init(webcam_index);
+39   return ASCIICHAT_OK;
+40 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>webcam_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_ascii_write_(const_char_*_frame)"><a class="permalink" href="#asciichat_error_t_ascii_write_(const_char_*_frame)">asciichat_error_t
+  ascii_write (const char * frame)</a></h2>
+<p class="Pp">Definition at line <b>394</b> of file <b>ascii.c</b>.</p>
+<pre>394                                                  {
+395   if (frame == NULL) {
+396     log_warn(&quot;Attempted to write NULL frame&quot;);
+397     return ERROR_INVALID_PARAM;
+398   }
+399 
+400   // Only reset cursor if output is connected to a TTY (not piped/redirected)
+401   if (terminal_should_use_control_sequences(STDOUT_FILENO)) {
+402     cursor_reset(STDOUT_FILENO);
+403   }
+404 
+405   size_t frame_len = strlen(frame);
+406   // Write all frame data with automatic retry on transient errors
+407   platform_write_all(STDOUT_FILENO, frame, frame_len);
+408 
+409   // Flush C stdio buffer and terminal to ensure piped output is written immediately
+410   (void)fflush(stdout);
+411   terminal_flush(STDOUT_FILENO);
+412 
+413   return ASCIICHAT_OK;
+414 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>, <b>platform_write_all()</b>,
+    <b>terminal_flush()</b>, and
+  <b>terminal_should_use_control_sequences()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_write_destroy_(int_fd,_"><a class="permalink" href="#void_ascii_write_destroy_(int_fd,_">void
+  ascii_write_destroy (int fd, <b>bool</b> reset_terminal)</a></h2>
+<p class="Pp">Definition at line <b>416</b> of file <b>ascii.c</b>.</p>
+<pre>416                                                       {
+417 #if PLATFORM_WINDOWS
+418   (void)fd; // Unused on Windows - terminal operations use stdout directly
+419 #endif
+420   // console_clear(fd);
+421   // cursor_reset(fd);
+422   // Only restore terminal state if:
+423   // 1. reset_terminal is true (caller wants terminal restore)
+424   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+425   if (reset_terminal &amp;&amp; terminal_should_use_control_sequences(fd)) {
+426     // Show cursor using platform abstraction
+427     if (terminal_cursor_show() != 0) {
+428       log_warn(&quot;Failed to show cursor&quot;);
+429     }
+430 
+431     // Re-enable echo using platform abstraction
+432     if (terminal_set_echo(true) != 0) {
+433       log_warn(&quot;Failed to re-enable echo&quot;);
+434     }
+435   }
+436   log_debug(&quot;ASCII writer destroyed&quot;);
+437 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_cursor_show()</b>, and
+    <b>terminal_should_use_control_sequences()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_ascii_write_init_(int_fd,_"><a class="permalink" href="#asciichat_error_t_ascii_write_init_(int_fd,_">asciichat_error_t
+  ascii_write_init (int fd, <b>bool</b> reset_terminal)</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>ascii.c</b>.</p>
+<pre>42                                                                 {
+43   // Validate file descriptor
+44   if (fd &lt; 0) {
+45     log_error(&quot;Invalid file descriptor %d&quot;, fd);
+46     return ERROR_INVALID_PARAM;
+47   }
+48 
+49   // Only apply terminal control sequences if:
+50   // 1. reset_terminal is true (caller wants terminal reset)
+51   // 2. terminal_should_use_control_sequences() confirms it's safe (TTY, not snapshot, not testing)
+52   if (reset_terminal &amp;&amp; terminal_should_use_control_sequences(fd)) {
+53     console_clear(fd);
+54     cursor_reset(fd);
+55 
+56     // Disable echo using platform abstraction
+57     if (terminal_set_echo(false) != 0) {
+58       log_error(&quot;Failed to disable echo for fd %d&quot;, fd);
+59       return ERROR_TERMINAL;
+60     }
+61     // Hide cursor using platform abstraction
+62     if (terminal_cursor_hide() != 0) {
+63       log_warn(&quot;Failed to hide cursor&quot;);
+64     }
+65   }
+66   log_dev(&quot;ASCII writer initialized&quot;);
+67   return ASCIICHAT_OK;
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_cursor_hide()</b>, and
+    <b>terminal_should_use_control_sequences()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_image_print_with_capabilities_(const_image_t_*_image,_const_terminal_capabilities_t_*_caps,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_with_capabilities_(const_image_t_*_image,_const_terminal_capabilities_t_*_caps,_const_char_*_palette)">char
+  * image_print_with_capabilities (const image_t * image, const
+  terminal_capabilities_t * caps, const char * palette)</a></h2>
+<p class="Pp">Convert image to ASCII art with terminal capabilities.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>image</i> Image to convert (must not be NULL)
+<br/>
+<i>caps</i> Terminal capabilities structure
+<br/>
+<i></i><b>Character Palettes</b><i></i><b> Palette characters to use for
+  conversion</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCII art string, or NULL on error</div>
+<p class="Pp">Converts an image to ASCII art using the provided terminal
+    capabilities. Automatically selects the best rendering method based on
+    terminal capabilities.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Returns dynamically allocated string that must be freed
+  by caller.</div>
+<p class="Pp">Definition at line <b>957</b> of file <b>ascii.c</b>.</p>
+<pre>957                                                                                                                     {
+958   if (!image || !caps || !palette) {
+959     return NULL;
+960   }
+961 
+962   // Dispatch based on terminal capabilities
+963   // For now, use a simple heuristic: if color_level would indicate truecolor, use color
+964   // This can be enhanced with proper terminal capability detection
+965 
+966   // Try color rendering first
+967   return image_print_color(image, palette);
+968 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>image_print_color()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert_with_capabilities()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

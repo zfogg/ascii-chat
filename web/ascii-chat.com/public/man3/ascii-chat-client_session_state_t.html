@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client_session_state_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client_session_state_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client_session_state_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client_session_state_t - Client connection session state for
+    session_client_like integration.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">connection_attempt_context_t <b>connection_ctx</b>
+  <br/>
+  const char * <b>discovered_address</b>
+  <br/>
+  int <b>discovered_port</b>
+  <br/>
+  int <b>reconnect_attempt</b>
+  <br/>
+  <b>bool</b> <b>has_ever_connected</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Client connection session state for session_client_like
+    integration.</p>
+<p class="Pp">Holds per-session state needed across reconnections:</p>
+<ul class="Bl-bullet">
+  <li>Connection fallback context for multi-stage attempts</li>
+  <li>Discovered server address (from LAN discovery or session string)</li>
+  <li>Reconnection attempt counter</li>
+  <li>Flag tracking if any successful connection has occurred</li>
+</ul>
+<p class="Pp">Used by client_run() callback to manage the
+    connection/reconnection loop.</p>
+<p class="Pp">Definition at line <b>173</b> of file <b>client/main.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="connection_attempt_context_t_client_session_state_t::connection_ctx"><a class="permalink" href="#connection_attempt_context_t_client_session_state_t::connection_ctx">connection_attempt_context_t
+  client_session_state_t::connection_ctx</a></h2>
+<p class="Pp">Definition at line <b>174</b> of file <b>client/main.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_client_session_state_t::discovered_address"><a class="permalink" href="#const_char*_client_session_state_t::discovered_address">const
+  char* client_session_state_t::discovered_address</a></h2>
+<p class="Pp">Definition at line <b>175</b> of file <b>client/main.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_session_state_t::discovered_port"><a class="permalink" href="#int_client_session_state_t::discovered_port">int
+  client_session_state_t::discovered_port</a></h2>
+<p class="Pp">Definition at line <b>176</b> of file <b>client/main.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> client_session_state_t::has_ever_connected</h2>
+<p class="Pp">Definition at line <b>178</b> of file <b>client/main.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_session_state_t::reconnect_attempt"><a class="permalink" href="#int_client_session_state_t::reconnect_attempt">int
+  client_session_state_t::reconnect_attempt</a></h2>
+<p class="Pp">Definition at line <b>177</b> of file <b>client/main.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

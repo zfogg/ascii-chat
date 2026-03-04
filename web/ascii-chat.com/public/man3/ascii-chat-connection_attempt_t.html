@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>connection_attempt_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">connection_attempt_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">connection_attempt_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">connection_attempt_t - Per-thread connection attempt state for
+    parallel IPv4/IPv6 racing.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>socket_t</b> <b>socket</b>
+  <br/>
+  Socket for this attempt. struct sockaddr_storage <b>addr</b>
+  <br/>
+  Socket address to connect to. socklen_t <b>addr_len</b>
+  <br/>
+  Length of address structure. int <b>family</b>
+  <br/>
+  Address family (AF_INET or AF_INET6). const char * <b>family_name</b>
+  <br/>
+  Human-readable family name (<i>IPv4&quot;/&quot;IPv6&quot;).</i> uint32_t
+    <b>timeout_ms</b>
+  <br/>
+  Connection timeout in milliseconds. volatile <b>bool</b> <b>connected</b>
+  <br/>
+  True if this attempt succeeded. volatile <b>bool</b> <b>done</b>
+  <br/>
+  True if this attempt finished. volatile <b>socket_t</b> * <b>winner_socket</b>
+  <br/>
+  Shared pointer to winning socket. volatile <b>bool</b> * <b>winner_found</b>
+  <br/>
+  Shared flag indicating a winner exists. mutex_t * <b>lock</b>
+  <br/>
+  Shared mutex for coordination. cond_t * <b>signal</b>
+  <br/>
+  Shared condition variable for signaling. parallel_connect_should_exit_fn
+    <b>should_exit_callback</b>
+  <br/>
+  Optional exit callback for graceful shutdown. void * <b>callback_data</b>
+  <br/>
+  User data for callback.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Per-thread connection attempt state for parallel IPv4/IPv6
+  racing.</p>
+<p class="Pp">Definition at line <b>27</b> of file
+  <b>parallel_connect.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="struct_sockaddr_storage_connection_attempt_t::addr"><a class="permalink" href="#struct_sockaddr_storage_connection_attempt_t::addr">struct
+  sockaddr_storage connection_attempt_t::addr</a></h2>
+<p class="Pp">Socket address to connect to.</p>
+<p class="Pp">Definition at line <b>29</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="socklen_t_connection_attempt_t::addr_len"><a class="permalink" href="#socklen_t_connection_attempt_t::addr_len">socklen_t
+  connection_attempt_t::addr_len</a></h2>
+<p class="Pp">Length of address structure.</p>
+<p class="Pp">Definition at line <b>30</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_connection_attempt_t::callback_data"><a class="permalink" href="#void*_connection_attempt_t::callback_data">void*
+  connection_attempt_t::callback_data</a></h2>
+<p class="Pp">User data for callback.</p>
+<p class="Pp">Definition at line <b>41</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">volatile <b>bool</b> connection_attempt_t::connected</h2>
+<p class="Pp">True if this attempt succeeded.</p>
+<p class="Pp">Definition at line <b>34</b> of file
+  <b>parallel_connect.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">volatile <b>bool</b> connection_attempt_t::done</h2>
+<p class="Pp">True if this attempt finished.</p>
+<p class="Pp">Definition at line <b>35</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_connection_attempt_t::family"><a class="permalink" href="#int_connection_attempt_t::family">int
+  connection_attempt_t::family</a></h2>
+<p class="Pp">Address family (AF_INET or AF_INET6).</p>
+<p class="Pp">Definition at line <b>31</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_connection_attempt_t::family_name"><a class="permalink" href="#const_char*_connection_attempt_t::family_name">const
+  char* connection_attempt_t::family_name</a></h2>
+<p class="Pp">Human-readable family name
+  (&quot;IPv4&quot;/&quot;IPv6&quot;).</p>
+<p class="Pp">Definition at line <b>32</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t*_connection_attempt_t::lock"><a class="permalink" href="#mutex_t*_connection_attempt_t::lock">mutex_t*
+  connection_attempt_t::lock</a></h2>
+<p class="Pp">Shared mutex for coordination.</p>
+<p class="Pp">Definition at line <b>38</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="parallel_connect_should_exit_fn_connection_attempt_t::should_exit_callback"><a class="permalink" href="#parallel_connect_should_exit_fn_connection_attempt_t::should_exit_callback">parallel_connect_should_exit_fn
+  connection_attempt_t::should_exit_callback</a></h2>
+<p class="Pp">Optional exit callback for graceful shutdown.</p>
+<p class="Pp">Definition at line <b>40</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="cond_t*_connection_attempt_t::signal"><a class="permalink" href="#cond_t*_connection_attempt_t::signal">cond_t*
+  connection_attempt_t::signal</a></h2>
+<p class="Pp">Shared condition variable for signaling.</p>
+<p class="Pp">Definition at line <b>39</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>socket_t</b> connection_attempt_t::socket</h2>
+<p class="Pp">Socket for this attempt.</p>
+<p class="Pp">Definition at line <b>28</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_connection_attempt_t::timeout_ms"><a class="permalink" href="#uint32_t_connection_attempt_t::timeout_ms">uint32_t
+  connection_attempt_t::timeout_ms</a></h2>
+<p class="Pp">Connection timeout in milliseconds.</p>
+<p class="Pp">Definition at line <b>33</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">volatile <b>bool</b>* connection_attempt_t::winner_found</h2>
+<p class="Pp">Shared flag indicating a winner exists.</p>
+<p class="Pp">Definition at line <b>37</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">volatile <b>socket_t</b>*
+  connection_attempt_t::winner_socket</h2>
+<p class="Pp">Shared pointer to winning socket.</p>
+<p class="Pp">Definition at line <b>36</b> of file
+  <b>parallel_connect.c</b>.</p>
+<p class="Pp">Referenced by <b>parallel_connect()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

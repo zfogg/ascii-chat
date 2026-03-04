@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>regex.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">regex.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">regex.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">regex.c - PCRE2-based regex patterns for cryptographic
+  parsing.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>crypto_regex_match_known_hosts</b> (const char
+    *line, char **ip_port_out, char **key_type_out, char **hex_key_out, char
+    **comment_out)
+  <br/>
+  <b>bool</b> <b>crypto_regex_match_public_key</b> (const char *line, char
+    **base64_key_out, char **comment_out)
+  <br/>
+  <b>bool</b> <b>crypto_regex_extract_pem_base64</b> (const char *file_content,
+    char **base64_data_out)
+  <br/>
+  <b>bool</b> <b>crypto_regex_extract_gpg_keygrip</b> (const char *line, char
+    **keygrip_out)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">PCRE2-based regex patterns for cryptographic parsing.</p>
+<p class="Pp">Implements regex-based parsing for SSH formats using PCRE2 with
+    JIT compilation. Uses centralized PCRE2 singleton module for thread-safe
+    lazy initialization.</p>
+<p class="Pp">Definition in file <b>regex.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_regex_extract_gpg_keygrip (const char * line,
+  char ** keygrip_out)</h2>
+<p class="Pp">Definition at line <b>267</b> of file <b>regex.c</b>.</p>
+<pre>267                                                                             {
+268   if (!line || !keygrip_out) {
+269     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+270     return false;
+271   }
+272 
+273   pcre2_code *regex = crypto_regex_get_gpg_keygrip();
+274   if (!regex) {
+275     /* Regex not available - caller should use fallback manual parsing */
+276     return false;
+277   }
+278 
+279   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+280   if (!match_data) {
+281     return false;
+282   }
+283 
+284   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+285   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+286                            0,                                        /* options */
+287                            match_data, NULL);                        /* mcontext */
+288 
+289   if (rc &lt; 0) {
+290     pcre2_match_data_free(match_data);
+291     return false;
+292   }
+293 
+294   /* Extract keygrip from named group */
+295   *keygrip_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;keygrip&quot;, line);
+296 
+297   pcre2_match_data_free(match_data);
+298 
+299   /* Verify we got the keygrip */
+300   if (!*keygrip_out) {
+301     return false;
+302   }
+303 
+304   return true;
+305 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">Referenced by <b>gpg_get_public_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_regex_extract_pem_base64 (const char *
+  file_content, char ** base64_data_out)</h2>
+<p class="Pp">Definition at line <b>227</b> of file <b>regex.c</b>.</p>
+<pre>227                                                                                        {
+228   if (!file_content || !base64_data_out) {
+229     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+230     return false;
+231   }
+232 
+233   pcre2_code *regex = crypto_regex_get_openssh_pem();
+234   if (!regex) {
+235     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid validator state&quot;);
+236     return false;
+237   }
+238 
+239   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+240   if (!match_data) {
+241     return false;
+242   }
+243 
+244   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+245   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)file_content, strlen(file_content), 0, /* startoffset */
+246                            0,                                                        /* options */
+247                            match_data, NULL);                                        /* mcontext */
+248 
+249   if (rc &lt; 0) {
+250     pcre2_match_data_free(match_data);
+251     return false;
+252   }
+253 
+254   /* Extract base64 data */
+255   *base64_data_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;base64_data&quot;, file_content);
+256 
+257   pcre2_match_data_free(match_data);
+258 
+259   /* Verify we got the base64 data */
+260   if (!*base64_data_out) {
+261     return false;
+262   }
+263 
+264   return true;
+265 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">Referenced by <b>parse_ssh_private_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_regex_match_known_hosts (const char * line,
+  char ** ip_port_out, char ** key_type_out, char ** hex_key_out, char **
+  comment_out)</h2>
+<p class="Pp">Definition at line <b>136</b> of file <b>regex.c</b>.</p>
+<pre>137                                                         {
+138   if (!line || !ip_port_out || !key_type_out || !hex_key_out || !comment_out) {
+139     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+140     return false;
+141   }
+142 
+143   pcre2_code *regex = crypto_regex_get_known_hosts();
+144   if (!regex) {
+145     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid validator state&quot;);
+146     return false;
+147   }
+148 
+149   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+150   if (!match_data) {
+151     return false;
+152   }
+153 
+154   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+155   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+156                            0,                                        /* options */
+157                            match_data, NULL);                        /* mcontext */
+158 
+159   if (rc &lt; 0) {
+160     pcre2_match_data_free(match_data);
+161     return false;
+162   }
+163 
+164   /* Extract named groups */
+165   *ip_port_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;ip_port&quot;, line);
+166   *key_type_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;key_type&quot;, line);
+167   *hex_key_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;hex_key&quot;, line);
+168   *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;comment&quot;, line);
+169 
+170   pcre2_match_data_free(match_data);
+171 
+172   /* Verify we got required fields */
+173   if (!*ip_port_out || !*key_type_out) {
+174     SAFE_FREE(*ip_port_out);
+175     SAFE_FREE(*key_type_out);
+176     SAFE_FREE(*hex_key_out);
+177     SAFE_FREE(*comment_out);
+178     return false;
+179   }
+180 
+181   return true;
+182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">Referenced by <b>check_known_host()</b>, and
+    <b>check_known_host_no_identity()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> crypto_regex_match_public_key (const char * line,
+  char ** base64_key_out, char ** comment_out)</h2>
+<p class="Pp">Definition at line <b>184</b> of file <b>regex.c</b>.</p>
+<pre>184                                                                                                 {
+185   if (!line || !base64_key_out || !comment_out) {
+186     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+187     return false;
+188   }
+189 
+190   pcre2_code *regex = crypto_regex_get_ssh_public_key();
+191   if (!regex) {
+192     SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid validator state&quot;);
+193     return false;
+194   }
+195 
+196   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+197   if (!match_data) {
+198     return false;
+199   }
+200 
+201   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+202   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)line, strlen(line), 0, /* startoffset */
+203                            0,                                        /* options */
+204                            match_data, NULL);                        /* mcontext */
+205 
+206   if (rc &lt; 0) {
+207     pcre2_match_data_free(match_data);
+208     return false;
+209   }
+210 
+211   /* Extract named groups */
+212   *base64_key_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;base64_key&quot;, line);
+213   *comment_out = asciichat_pcre2_extract_named_group(regex, match_data, &quot;comment&quot;, line);
+214 
+215   pcre2_match_data_free(match_data);
+216 
+217   /* Verify we got required field */
+218   if (!*base64_key_out) {
+219     SAFE_FREE(*base64_key_out);
+220     SAFE_FREE(*comment_out);
+221     return false;
+222   }
+223 
+224   return true;
+225 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>.</p>
+<p class="Pp">Referenced by <b>parse_ssh_ed25519_line()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

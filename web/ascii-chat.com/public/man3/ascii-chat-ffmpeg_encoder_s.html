@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ffmpeg_encoder_s(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ffmpeg_encoder_s(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ffmpeg_encoder_s(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ffmpeg_encoder_s</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">AVCodecContext * <b>codec_ctx</b>
+  <br/>
+  AVStream * <b>stream</b>
+  <br/>
+  AVFrame * <b>frame</b>
+  <br/>
+  AVFrame * <b>frame_encoded</b>
+  <br/>
+  struct SwsContext * <b>sws_ctx</b>
+  <br/>
+  AVStream * <b>audio_stream</b>
+  <br/>
+  AVCodecContext * <b>audio_codec_ctx</b>
+  <br/>
+  struct SwrContext * <b>audio_swr_ctx</b>
+  <br/>
+  AVFrame * <b>audio_frame</b>
+  <br/>
+  int64_t <b>audio_pts</b>
+  <br/>
+  int <b>audio_frame_size</b>
+  <br/>
+  float * <b>audio_partial_buf</b>
+  <br/>
+  int <b>audio_partial_len</b>
+  <br/>
+  AVFormatContext * <b>fmt_ctx</b>
+  <br/>
+  AVPacket * <b>pkt</b>
+  <br/>
+  int <b>width_px</b>
+  <br/>
+  int <b>height_px</b>
+  <br/>
+  int <b>frame_count</b>
+  <br/>
+  int64_t <b>video_pts</b>
+  <br/>
+  int <b>fps</b>
+  <br/>
+  int <b>is_image</b>
+  <br/>
+  enum AVPixelFormat <b>target_pix_fmt</b>
+  <br/>
+  int <b>has_audio_stream</b>
+  <br/>
+  int <b>is_stdout_pipe</b>
+  <br/>
+  uint64_t <b>previous_captured_ns</b>
+  <br/>
+  double <b>snapshot_actual_duration</b>
+  <br/>
+  uint64_t <b>snapshot_elapsed_ns</b>
+  <br/>
+  uint64_t <b>first_frame_captured_ns</b>
+  <br/>
+  int <b>estimated_frame_count</b>
+  <br/>
+  int64_t <b>estimated_frame_duration</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>21</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="AVCodecContext*_ffmpeg_encoder_s::audio_codec_ctx"><a class="permalink" href="#AVCodecContext*_ffmpeg_encoder_s::audio_codec_ctx">AVCodecContext*
+  ffmpeg_encoder_s::audio_codec_ctx</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVFrame*_ffmpeg_encoder_s::audio_frame"><a class="permalink" href="#AVFrame*_ffmpeg_encoder_s::audio_frame">AVFrame*
+  ffmpeg_encoder_s::audio_frame</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::audio_frame_size"><a class="permalink" href="#int_ffmpeg_encoder_s::audio_frame_size">int
+  ffmpeg_encoder_s::audio_frame_size</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float*_ffmpeg_encoder_s::audio_partial_buf"><a class="permalink" href="#float*_ffmpeg_encoder_s::audio_partial_buf">float*
+  ffmpeg_encoder_s::audio_partial_buf</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::audio_partial_len"><a class="permalink" href="#int_ffmpeg_encoder_s::audio_partial_len">int
+  ffmpeg_encoder_s::audio_partial_len</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int64_t_ffmpeg_encoder_s::audio_pts"><a class="permalink" href="#int64_t_ffmpeg_encoder_s::audio_pts">int64_t
+  ffmpeg_encoder_s::audio_pts</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVStream*_ffmpeg_encoder_s::audio_stream"><a class="permalink" href="#AVStream*_ffmpeg_encoder_s::audio_stream">AVStream*
+  ffmpeg_encoder_s::audio_stream</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_SwrContext*_ffmpeg_encoder_s::audio_swr_ctx"><a class="permalink" href="#struct_SwrContext*_ffmpeg_encoder_s::audio_swr_ctx">struct
+  SwrContext* ffmpeg_encoder_s::audio_swr_ctx</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVCodecContext*_ffmpeg_encoder_s::codec_ctx"><a class="permalink" href="#AVCodecContext*_ffmpeg_encoder_s::codec_ctx">AVCodecContext*
+  ffmpeg_encoder_s::codec_ctx</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::estimated_frame_count"><a class="permalink" href="#int_ffmpeg_encoder_s::estimated_frame_count">int
+  ffmpeg_encoder_s::estimated_frame_count</a></h2>
+<p class="Pp">Definition at line <b>59</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int64_t_ffmpeg_encoder_s::estimated_frame_duration"><a class="permalink" href="#int64_t_ffmpeg_encoder_s::estimated_frame_duration">int64_t
+  ffmpeg_encoder_s::estimated_frame_duration</a></h2>
+<p class="Pp">Definition at line <b>60</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ffmpeg_encoder_s::first_frame_captured_ns"><a class="permalink" href="#uint64_t_ffmpeg_encoder_s::first_frame_captured_ns">uint64_t
+  ffmpeg_encoder_s::first_frame_captured_ns</a></h2>
+<p class="Pp">Definition at line <b>56</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVFormatContext*_ffmpeg_encoder_s::fmt_ctx"><a class="permalink" href="#AVFormatContext*_ffmpeg_encoder_s::fmt_ctx">AVFormatContext*
+  ffmpeg_encoder_s::fmt_ctx</a></h2>
+<p class="Pp">Definition at line <b>40</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::fps"><a class="permalink" href="#int_ffmpeg_encoder_s::fps">int
+  ffmpeg_encoder_s::fps</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVFrame*_ffmpeg_encoder_s::frame"><a class="permalink" href="#AVFrame*_ffmpeg_encoder_s::frame">AVFrame*
+  ffmpeg_encoder_s::frame</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::frame_count"><a class="permalink" href="#int_ffmpeg_encoder_s::frame_count">int
+  ffmpeg_encoder_s::frame_count</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVFrame*_ffmpeg_encoder_s::frame_encoded"><a class="permalink" href="#AVFrame*_ffmpeg_encoder_s::frame_encoded">AVFrame*
+  ffmpeg_encoder_s::frame_encoded</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::has_audio_stream"><a class="permalink" href="#int_ffmpeg_encoder_s::has_audio_stream">int
+  ffmpeg_encoder_s::has_audio_stream</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::height_px"><a class="permalink" href="#int_ffmpeg_encoder_s::height_px">int
+  ffmpeg_encoder_s::height_px</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::is_image"><a class="permalink" href="#int_ffmpeg_encoder_s::is_image">int
+  ffmpeg_encoder_s::is_image</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::is_stdout_pipe"><a class="permalink" href="#int_ffmpeg_encoder_s::is_stdout_pipe">int
+  ffmpeg_encoder_s::is_stdout_pipe</a></h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVPacket*_ffmpeg_encoder_s::pkt"><a class="permalink" href="#AVPacket*_ffmpeg_encoder_s::pkt">AVPacket*
+  ffmpeg_encoder_s::pkt</a></h2>
+<p class="Pp">Definition at line <b>41</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ffmpeg_encoder_s::previous_captured_ns"><a class="permalink" href="#uint64_t_ffmpeg_encoder_s::previous_captured_ns">uint64_t
+  ffmpeg_encoder_s::previous_captured_ns</a></h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_ffmpeg_encoder_s::snapshot_actual_duration"><a class="permalink" href="#double_ffmpeg_encoder_s::snapshot_actual_duration">double
+  ffmpeg_encoder_s::snapshot_actual_duration</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ffmpeg_encoder_s::snapshot_elapsed_ns"><a class="permalink" href="#uint64_t_ffmpeg_encoder_s::snapshot_elapsed_ns">uint64_t
+  ffmpeg_encoder_s::snapshot_elapsed_ns</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVStream*_ffmpeg_encoder_s::stream"><a class="permalink" href="#AVStream*_ffmpeg_encoder_s::stream">AVStream*
+  ffmpeg_encoder_s::stream</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_SwsContext*_ffmpeg_encoder_s::sws_ctx"><a class="permalink" href="#struct_SwsContext*_ffmpeg_encoder_s::sws_ctx">struct
+  SwsContext* ffmpeg_encoder_s::sws_ctx</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="enum_AVPixelFormat_ffmpeg_encoder_s::target_pix_fmt"><a class="permalink" href="#enum_AVPixelFormat_ffmpeg_encoder_s::target_pix_fmt">enum
+  AVPixelFormat ffmpeg_encoder_s::target_pix_fmt</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int64_t_ffmpeg_encoder_s::video_pts"><a class="permalink" href="#int64_t_ffmpeg_encoder_s::video_pts">int64_t
+  ffmpeg_encoder_s::video_pts</a></h2>
+<p class="Pp">Definition at line <b>45</b> of file <b>ffmpeg_encoder.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_encoder_s::width_px"><a class="permalink" href="#int_ffmpeg_encoder_s::width_px">int
+  ffmpeg_encoder_s::width_px</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>ffmpeg_encoder.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

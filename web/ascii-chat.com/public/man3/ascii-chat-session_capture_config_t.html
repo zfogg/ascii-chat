@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_capture_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_capture_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_capture_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_capture_config_t - Configuration for session capture
+    context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/capture.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">media_source_type_t <b>type</b>
+  <br/>
+  Media source type (WEBCAM, FILE, STDIN, TEST). const char * <b>path</b>
+  <br/>
+  Device index (for webcam) or file path (for file sources). uint32_t
+    <b>target_fps</b>
+  <br/>
+  Target frame rate in FPS (e.g., 60 for display, 144 for network). <b>bool</b>
+    <b>loop</b>
+  <br/>
+  Enable loop playback for file sources. <b>bool</b> <b>resize_for_network</b>
+  <br/>
+  Resize frames to network-optimal dimensions (MAX_FRAME_WIDTH x
+    MAX_FRAME_HEIGHT). <b>bool</b> <b>enable_audio</b>
+  <br/>
+  Enable audio capture from media source. <b>bool</b>
+    <b>audio_fallback_to_mic</b>
+  <br/>
+  Fall back to microphone if file audio is not available. void *
+    <b>mic_audio_ctx</b>
+  <br/>
+  Microphone audio context for fallback (borrowed, not owned). double
+    <b>initial_seek_timestamp</b>
+  <br/>
+  Seek to this timestamp after opening media (0.0 = no seek).
+    <b>session_capture_should_exit_fn</b> <b>should_exit_callback</b>
+  <br/>
+  Optional: callback to check if initialization should be cancelled (e.g.,
+    shutdown signal). void * <b>callback_data</b>
+  <br/>
+  Opaque data passed to should_exit_callback.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration for session capture context.</p>
+<p class="Pp">Specifies the media source type, path, and capture parameters.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>common/session/capture.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_config_t::audio_fallback_to_mic</h2>
+<p class="Pp">Fall back to microphone if file audio is not available.</p>
+<p class="Pp">Definition at line <b>100</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, and
+    <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_capture_config_t::callback_data"><a class="permalink" href="#void*_session_capture_config_t::callback_data">void*
+  session_capture_config_t::callback_data</a></h2>
+<p class="Pp">Opaque data passed to should_exit_callback.</p>
+<p class="Pp">Definition at line <b>112</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_config_t::enable_audio</h2>
+<p class="Pp">Enable audio capture from media source.</p>
+<p class="Pp">Definition at line <b>97</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, and
+    <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_session_capture_config_t::initial_seek_timestamp"><a class="permalink" href="#double_session_capture_config_t::initial_seek_timestamp">double
+  session_capture_config_t::initial_seek_timestamp</a></h2>
+<p class="Pp">Seek to this timestamp after opening media (0.0 = no seek).</p>
+<p class="Pp">Definition at line <b>106</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_config_t::loop</h2>
+<p class="Pp">Enable loop playback for file sources.</p>
+<p class="Pp">Definition at line <b>91</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_capture_config_t::mic_audio_ctx"><a class="permalink" href="#void*_session_capture_config_t::mic_audio_ctx">void*
+  session_capture_config_t::mic_audio_ctx</a></h2>
+<p class="Pp">Microphone audio context for fallback (borrowed, not owned).</p>
+<p class="Pp">Definition at line <b>103</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, and
+    <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_capture_config_t::path"><a class="permalink" href="#const_char*_session_capture_config_t::path">const
+  char* session_capture_config_t::path</a></h2>
+<p class="Pp">Device index (for webcam) or file path (for file sources).</p>
+<p class="Pp">Definition at line <b>85</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_config_t::resize_for_network</h2>
+<p class="Pp">Resize frames to network-optimal dimensions (MAX_FRAME_WIDTH x
+    MAX_FRAME_HEIGHT).</p>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_capture_should_exit_fn</b>
+  session_capture_config_t::should_exit_callback</h2>
+<p class="Pp">Optional: callback to check if initialization should be cancelled
+    (e.g., shutdown signal).</p>
+<p class="Pp">Definition at line <b>109</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_session_capture_config_t::target_fps"><a class="permalink" href="#uint32_t_session_capture_config_t::target_fps">uint32_t
+  session_capture_config_t::target_fps</a></h2>
+<p class="Pp">Target frame rate in FPS (e.g., 60 for display, 144 for
+  network).</p>
+<p class="Pp">Definition at line <b>88</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="media_source_type_t_session_capture_config_t::type"><a class="permalink" href="#media_source_type_t_session_capture_config_t::type">media_source_type_t
+  session_capture_config_t::type</a></h2>
+<p class="Pp">Media source type (WEBCAM, FILE, STDIN, TEST).</p>
+<p class="Pp">Definition at line <b>82</b> of file
+    <b>common/session/capture.h</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>, <b>display_init()</b>,
+    <b>session_capture_create()</b>, and <b>session_client_like_run()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

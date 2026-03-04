@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>consensus_coordinator(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">consensus_coordinator(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">consensus_coordinator(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">consensus_coordinator - Internal coordinator structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint8_t <b>my_id</b> [16]
+  <br/>
+  const <b>consensus_topology_t</b> * <b>topology</b>
+  <br/>
+  <b>consensus_state_t</b> * <b>state</b>
+  <br/>
+  consensus_election_func_t <b>election_func</b>
+  <br/>
+  void * <b>election_context</b>
+  <br/>
+  uint64_t <b>last_round_start_ns</b>
+  <br/>
+  uint32_t <b>next_round_id</b>
+  <br/>
+  uint64_t <b>collection_deadline_ns</b>
+  <br/>
+  uint8_t <b>stored_host_id</b> [16]
+  <br/>
+  uint8_t <b>stored_backup_id</b> [16]
+  <br/>
+  <b>bool</b> <b>has_stored_result</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal coordinator structure.</p>
+<p class="Pp">Definition at line <b>22</b> of file <b>coordinator.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_consensus_coordinator::collection_deadline_ns"><a class="permalink" href="#uint64_t_consensus_coordinator::collection_deadline_ns">uint64_t
+  consensus_coordinator::collection_deadline_ns</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_on_collection_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_consensus_coordinator::election_context"><a class="permalink" href="#void*_consensus_coordinator::election_context">void*
+  consensus_coordinator::election_context</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="consensus_election_func_t_consensus_coordinator::election_func"><a class="permalink" href="#consensus_election_func_t_consensus_coordinator::election_func">consensus_election_func_t
+  consensus_coordinator::election_func</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_coordinator::has_stored_result</h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_get_current_host()</b>, and
+    <b>consensus_coordinator_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_consensus_coordinator::last_round_start_ns"><a class="permalink" href="#uint64_t_consensus_coordinator::last_round_start_ns">uint64_t
+  consensus_coordinator::last_round_start_ns</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>, and
+    <b>consensus_coordinator_time_until_next_round()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_consensus_coordinator::my_id_16_"><a class="permalink" href="#uint8_t_consensus_coordinator::my_id_16_">uint8_t
+  consensus_coordinator::my_id[16]</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>, and
+    <b>consensus_coordinator_on_ring_members()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_consensus_coordinator::next_round_id"><a class="permalink" href="#uint32_t_consensus_coordinator::next_round_id">uint32_t
+  consensus_coordinator::next_round_id</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>, and
+    <b>consensus_coordinator_on_collection_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>consensus_state_t</b>* consensus_coordinator::state</h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_destroy()</b>,
+    <b>consensus_coordinator_get_current_host()</b>,
+    <b>consensus_coordinator_get_metrics_count()</b>,
+    <b>consensus_coordinator_get_state()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>consensus_coordinator_on_election_result()</b>,
+    <b>consensus_coordinator_on_ring_members()</b>,
+    <b>consensus_coordinator_on_stats_update()</b>, and
+    <b>consensus_coordinator_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_consensus_coordinator::stored_backup_id_16_"><a class="permalink" href="#uint8_t_consensus_coordinator::stored_backup_id_16_">uint8_t
+  consensus_coordinator::stored_backup_id[16]</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>, and
+    <b>consensus_coordinator_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_consensus_coordinator::stored_host_id_16_"><a class="permalink" href="#uint8_t_consensus_coordinator::stored_host_id_16_">uint8_t
+  consensus_coordinator::stored_host_id[16]</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>, and
+    <b>consensus_coordinator_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>consensus_topology_t</b>* consensus_coordinator::topology</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>coordinator.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>,
+    <b>consensus_coordinator_on_ring_members()</b>, and
+    <b>consensus_coordinator_process()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

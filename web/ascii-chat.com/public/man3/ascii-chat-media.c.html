@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>media.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">media.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">media.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">media.c - Media file and stream options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>RENDER_FILE_MODES</b> (OPTION_MODE_CLIENT |
+    OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_media_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Media file and stream options.</p>
+<p class="Pp">Options for streaming from media files, URLs, seeking, looping,
+    and cookie handling for streaming services.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>media.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_RENDER_FILE_MODES___(OPTION_MODE_CLIENT___OPTION_MODE_MIRROR___OPTION_MODE_DISCOVERY)"><a class="permalink" href="#_define_RENDER_FILE_MODES___(OPTION_MODE_CLIENT___OPTION_MODE_MIRROR___OPTION_MODE_DISCOVERY)">#define
+  RENDER_FILE_MODES (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR |
+  OPTION_MODE_DISCOVERY)</a></h2>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_media_entries__"><a class="permalink" href="#const_registry_entry_t_g_media_entries__">const
+  registry_entry_t g_media_entries[]</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>media.c</b>.</p>
+<pre>39                                          {
+40     // Media File Streaming Options
+41     {&quot;file&quot;,
+42      'f',
+43      OPTION_TYPE_STRING,
+44      offsetof(options_t, media_file),
+45      &quot;&quot;,
+46      0,
+47      &quot;Stream from media file or stdin (use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man &quot;
+48      &quot;ffmpeg-codecs&quot;,
+49      &quot;MEDIA&quot;,
+50      NULL,
+51      false,
+52      &quot;ASCII_CHAT_FILE&quot;,
+53      NULL,
+54      NULL,
+55      false,
+56      false,
+57      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+58      {0},
+59      NULL},
+60     {&quot;url&quot;,
+61      'u',
+62      OPTION_TYPE_STRING,
+63      offsetof(options_t, media_url),
+64      &quot;&quot;,
+65      0,
+66      &quot;Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg; complex sites (YouTube, TikTok, etc.) use &quot;
+67      &quot;yt-dlp. Supported formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp &quot;
+68      &quot;https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites&quot;,
+69      &quot;MEDIA&quot;,
+70      NULL,
+71      false,
+72      &quot;ASCII_CHAT_URL&quot;,
+73      NULL,
+74      NULL,
+75      false,
+76      false,
+77      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+78      {0},
+79      NULL},
+80     {&quot;loop&quot;,
+81      'l',
+82      OPTION_TYPE_BOOL,
+83      offsetof(options_t, media_loop),
+84      &amp;default_media_loop_value,
+85      sizeof(bool),
+86      &quot;Loop media file playback (not supported for --url).&quot;,
+87      &quot;MEDIA&quot;,
+88      NULL,
+89      false,
+90      &quot;ASCII_CHAT_LOOP&quot;,
+91      NULL,
+92      NULL,
+93      false,
+94      false,
+95      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+96      {0},
+97      NULL},
+98     {&quot;pause&quot;,
+99      '\0',
+100      OPTION_TYPE_BOOL,
+101      offsetof(options_t, pause),
+102      &amp;default_pause_value,
+103      sizeof(bool),
+104      &quot;Start playback paused (toggle with spacebar, requires --file or --url).&quot;,
+105      &quot;MEDIA&quot;,
+106      NULL,
+107      false,
+108      &quot;ASCII_CHAT_PAUSE&quot;,
+109      NULL,
+110      NULL,
+111      false,
+112      false,
+113      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+114      {0},
+115      NULL},
+116     {&quot;seek&quot;,
+117      's',
+118      OPTION_TYPE_CALLBACK,
+119      offsetof(options_t, media_seek_timestamp),
+120      &amp;default_media_seek_value,
+121      sizeof(double),
+122      &quot;Seek to timestamp before playback (format: seconds, MM:SS, or HH:MM:SS.ms).&quot;,
+123      &quot;MEDIA&quot;,
+124      NULL,
+125      false,
+126      &quot;ASCII_CHAT_SEEK&quot;,
+127      NULL,
+128      parse_timestamp,
+129      false,
+130      false,
+131      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+132      {.examples = g_seek_examples, .input_type = OPTION_INPUT_STRING},
+133      NULL},
+134     {&quot;yt-dlp-options&quot;,
+135      '\0',
+136      OPTION_TYPE_STRING,
+137      offsetof(options_t, yt_dlp_options),
+138      NULL,
+139      sizeof(((options_t *)0)-&gt;yt_dlp_options),
+140      &quot;Arbitrary yt-dlp options passed to the extraction subprocess for URL resolution. &quot;
+141      &quot;Examples: \&quot;--no-warnings\&quot; or \&quot;--proxy socks5://127.0.0.1:1080\&quot; or \&quot;--cookies-from-browser=firefox\&quot;&quot;,
+142      &quot;MEDIA&quot;,
+143      NULL,
+144      false,
+145      &quot;ASCII_CHAT_YT_DLP_OPTIONS&quot;,
+146      NULL,
+147      NULL,
+148      false,
+149      false,
+150      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+151      {0},
+152      NULL},
+153     {&quot;video-codec&quot;,
+154      '\0',
+155      OPTION_TYPE_STRING,
+156      offsetof(options_t, video_codec),
+157      &quot;hevc&quot;,
+158      sizeof(((options_t *)0)-&gt;video_codec),
+159      &quot;Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265 compression. Default: hevc&quot;,
+160      &quot;MEDIA&quot;,
+161      &quot;CODEC&quot;,
+162      false,
+163      &quot;ASCII_CHAT_VIDEO_CODEC&quot;,
+164      NULL,
+165      NULL,
+166      false,
+167      false,
+168      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR,
+169      {0},
+170      NULL},
+171 
+172 #ifndef _WIN32
+173 #define RENDER_FILE_MODES (OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY)
+174 
+175     {&quot;render-file&quot;,
+176      '\0',
+177      OPTION_TYPE_STRING,
+178      offsetof(options_t, render_file),
+179      &quot;&quot;,
+180      sizeof(((options_t *)0)-&gt;render_file),
+181      &quot;Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: &quot;
+182      &quot;.mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only)&quot;,
+183      &quot;MEDIA&quot;,
+184      &quot;PATH&quot;,
+185      false,
+186      &quot;ASCII_CHAT_RENDER_FILE&quot;,
+187      NULL,
+188      NULL,
+189      false,
+190      false,
+191      RENDER_FILE_MODES,
+192      {0},
+193      NULL},
+194 
+195     {&quot;render-theme&quot;,
+196      '\0',
+197      OPTION_TYPE_CALLBACK,
+198      offsetof(options_t, render_theme),
+199      &amp;default_render_theme_value,
+200      sizeof(int),
+201      &quot;Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only)&quot;,
+202      &quot;MEDIA&quot;,
+203      &quot;THEME&quot;,
+204      false,
+205      &quot;ASCII_CHAT_RENDER_THEME&quot;,
+206      NULL,
+207      parse_render_theme,
+208      false,
+209      false,
+210      RENDER_FILE_MODES,
+211      {.enum_values = g_render_theme_values,
+212       .enum_descriptions = g_render_theme_descs,
+213       .input_type = OPTION_INPUT_ENUM},
+214      NULL},
+215 
+216     {&quot;render-font&quot;,
+217      '\0',
+218      OPTION_TYPE_STRING,
+219      offsetof(options_t, render_font),
+220      &quot;&quot;,
+221      sizeof(((options_t *)0)-&gt;render_font),
+222      &quot;Font for render-file output: bundled names (\&quot;matrix\&quot; or \&quot;default\&quot;), system font names, or absolute .ttf/.otf path. &quot;
+223      &quot;Default: \&quot;matrix\&quot; (Matrix Resurrected font). Falls back to \&quot;default\&quot; (DejaVu Sans Mono) if unavailable. &quot;
+224      &quot;Examples: \&quot;matrix\&quot;, \&quot;default\&quot;, \&quot;JetBrains Mono\&quot;, \&quot;Nerd Font Mono\&quot;, \&quot;/path/to/font.ttf\&quot;  &quot;
+225      &quot;(macOS and Linux only)&quot;,
+226      &quot;MEDIA&quot;,
+227      &quot;FONT&quot;,
+228      false,
+229      &quot;ASCII_CHAT_RENDER_FONT&quot;,
+230      NULL,
+231      NULL,
+232      false,
+233      false,
+234      RENDER_FILE_MODES,
+235      {0},
+236      NULL},
+237 
+238     {&quot;render-font-size&quot;,
+239      '\0',
+240      OPTION_TYPE_DOUBLE,
+241      offsetof(options_t, render_font_size),
+242      &amp;default_render_font_size_value,
+243      sizeof(double),
+244      &quot;Font size in points for render-file output (default: 12.0, must be &gt; 0, fractional sizes supported e.g. 10.5).  &quot;
+245      &quot;(macOS and Linux only)&quot;,
+246      &quot;MEDIA&quot;,
+247      &quot;SIZE&quot;,
+248      false,
+249      &quot;ASCII_CHAT_RENDER_FONT_SIZE&quot;,
+250      validate_render_font_size,
+251      NULL,
+252      false,
+253      false,
+254      RENDER_FILE_MODES,
+255      {.input_type = OPTION_INPUT_NUMERIC},
+256      NULL},
+257 
+258 #endif  // !_WIN32
+259 
+260     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

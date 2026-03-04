@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>peer_entry_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">peer_entry_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">peer_entry_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">peer_entry_t - Per-peer connection state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint8_t <b>participant_id</b> [16]
+  <br/>
+  Remote participant UUID (hash key). uint8_t <b>session_id</b> [16]
+  <br/>
+  Session UUID. webrtc_peer_connection_t * <b>pc</b>
+  <br/>
+  WebRTC peer connection. webrtc_data_channel_t * <b>dc</b>
+  <br/>
+  WebRTC data channel. <b>bool</b> <b>is_connected</b>
+  <br/>
+  DataChannel opened. struct <b>webrtc_peer_manager</b> * <b>manager</b>
+  <br/>
+  Back-reference to manager. UT_hash_handle <b>hh</b>
+  <br/>
+  uthash handle
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Per-peer connection state.</p>
+<p class="Pp">Definition at line <b>26</b> of file <b>peer_manager.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_data_channel_t*_peer_entry_t::dc"><a class="permalink" href="#webrtc_data_channel_t*_peer_entry_t::dc">webrtc_data_channel_t*
+  peer_entry_t::dc</a></h2>
+<p class="Pp">WebRTC data channel.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>peer_manager.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UT_hash_handle_peer_entry_t::hh"><a class="permalink" href="#UT_hash_handle_peer_entry_t::hh">UT_hash_handle
+  peer_entry_t::hh</a></h2>
+<p class="Pp">uthash handle</p>
+<p class="Pp">Definition at line <b>33</b> of file <b>peer_manager.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> peer_entry_t::is_connected</h2>
+<p class="Pp">DataChannel opened.</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>peer_manager.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_"><a class="permalink" href="#struct_">struct
+  <b>webrtc_peer_manager</b>* peer_entry_t::manager</a></h2>
+<p class="Pp">Back-reference to manager.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>peer_manager.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_peer_entry_t::participant_id_16_"><a class="permalink" href="#uint8_t_peer_entry_t::participant_id_16_">uint8_t
+  peer_entry_t::participant_id[16]</a></h2>
+<p class="Pp">Remote participant UUID (hash key).</p>
+<p class="Pp">Definition at line <b>27</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>, and
+    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_peer_connection_t*_peer_entry_t::pc"><a class="permalink" href="#webrtc_peer_connection_t*_peer_entry_t::pc">webrtc_peer_connection_t*
+  peer_entry_t::pc</a></h2>
+<p class="Pp">WebRTC peer connection.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>, and
+    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_peer_entry_t::session_id_16_"><a class="permalink" href="#uint8_t_peer_entry_t::session_id_16_">uint8_t
+  peer_entry_t::session_id[16]</a></h2>
+<p class="Pp">Session UUID.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

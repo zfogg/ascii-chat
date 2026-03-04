@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_log_buffer(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_log_buffer(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_log_buffer(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_log_buffer - Internal circular buffer structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">session_log_entry_t <b>entries</b> [SESSION_LOG_BUFFER_SIZE]
+  <br/>
+  atomic_t <b>write_pos</b>
+  <br/>
+  atomic_t <b>sequence</b>
+  <br/>
+  mutex_t <b>mutex</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal circular buffer structure.</p>
+<p class="Pp">Definition at line <b>16</b> of file
+  <b>session_log_buffer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="session_log_entry_t_session_log_buffer::entries_SESSION_LOG_BUFFER_SIZE_"><a class="permalink" href="#session_log_entry_t_session_log_buffer::entries_SESSION_LOG_BUFFER_SIZE_">session_log_entry_t
+  session_log_buffer::entries[SESSION_LOG_BUFFER_SIZE]</a></h2>
+<p class="Pp">Definition at line <b>17</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
+    <b>session_log_buffer_clear()</b>, and
+    <b>session_log_buffer_get_recent()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_session_log_buffer::mutex"><a class="permalink" href="#mutex_t_session_log_buffer::mutex">mutex_t
+  session_log_buffer::mutex</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
+    <b>session_log_buffer_clear()</b>, <b>session_log_buffer_create()</b>,
+    <b>session_log_buffer_destroy()</b>, and
+    <b>session_log_buffer_get_recent()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_session_log_buffer::sequence"><a class="permalink" href="#atomic_t_session_log_buffer::sequence">atomic_t
+  session_log_buffer::sequence</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
+    <b>session_log_buffer_clear()</b>, <b>session_log_buffer_create()</b>, and
+    <b>session_log_buffer_get_recent()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_session_log_buffer::write_pos"><a class="permalink" href="#atomic_t_session_log_buffer::write_pos">atomic_t
+  session_log_buffer::write_pos</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file
+  <b>session_log_buffer.c</b>.</p>
+<p class="Pp">Referenced by <b>session_log_buffer_append()</b>,
+    <b>session_log_buffer_clear()</b>, <b>session_log_buffer_create()</b>, and
+    <b>session_log_buffer_get_recent()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

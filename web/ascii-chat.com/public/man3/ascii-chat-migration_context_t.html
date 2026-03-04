@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>migration_context_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">migration_context_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">migration_context_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">migration_context_t - In-memory host migration context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/discovery-service/server.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint8_t <b>session_id</b> [16]
+  <br/>
+  Session UUID. uint64_t <b>migration_start_ns</b>
+  <br/>
+  When migration started (nanoseconds since sokol_time setup).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">In-memory host migration context.</p>
+<p class="Pp">Tracks migration timeout for sessions undergoing host failover.
+    Used by monitor_host_migrations() to detect stalled migrations and
+  timeout.</p>
+<p class="Pp"></p>
+<p class="Pp">NOTE: Election happens proactively (host picks future host every 5
+    minutes). No candidate collection or election needed here - just timeout
+    tracking.</p>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>discovery-service/server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_migration_context_t::migration_start_ns"><a class="permalink" href="#uint64_t_migration_context_t::migration_start_ns">uint64_t
+  migration_context_t::migration_start_ns</a></h2>
+<p class="Pp">When migration started (nanoseconds since sokol_time setup).</p>
+<p class="Pp">Definition at line <b>85</b> of file
+    <b>discovery-service/server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_migration_context_t::session_id_16_"><a class="permalink" href="#uint8_t_migration_context_t::session_id_16_">uint8_t
+  migration_context_t::session_id[16]</a></h2>
+<p class="Pp">Session UUID.</p>
+<p class="Pp">Definition at line <b>84</b> of file
+    <b>discovery-service/server.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

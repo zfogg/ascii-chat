@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>colorize.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">colorize.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">colorize.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">colorize.c - Log message colorization for terminal output.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>colorize_log_message</b> (const char *message)
+  <br/>
+  Colorize a log message for terminal output.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Log message colorization for terminal output.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>colorize.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_colorize_log_message_(const_char_*_message)"><a class="permalink" href="#const_char_*_colorize_log_message_(const_char_*_message)">const
+  char * colorize_log_message (const char * message)</a></h2>
+<p class="Pp">Colorize a log message for terminal output. Uses 4 rotating static
+    buffers like <b>colored_string()</b> to handle multiple colorizations in a
+    single expression.</p>
+<p class="Pp"></p>
+<p class="Pp">Only applies colors if output is going to a TTY (not
+    piped/redirected). Only colorizes text that is not already colored (in reset
+    state).</p>
+<p class="Pp">Definition at line <b>512</b> of file <b>colorize.c</b>.</p>
+<pre>512                                                       {
+513   if (!message) {
+514     return message;
+515   }
+516 
+517   // Check if colors should be used based on TTY status (same as ASCII art)
+518   // Colors are only applied when output is actually a TTY
+519   bool should_colorize = terminal_should_color_output(STDOUT_FILENO);
+520 
+521   if (!should_colorize) {
+522     return message;
+523   }
+524 
+525   // Use 4 static buffers for rotation (handles nested calls)
+526   static char buffers[4][4096];
+527   static int buffer_index = 0;
+528 
+529   char *output = buffers[buffer_index];
+530   buffer_index = (buffer_index + 1) % 4;
+531 
+532   size_t out_pos = 0;
+533   const size_t max_size = sizeof(buffers[0]);
+534 
+535   // Process the input string
+536   for (size_t i = 0; message[i] != '\0' &amp;&amp; out_pos &lt; max_size - 100; i++) {
+537     size_t end_pos = 0;
+538 
+539     // Check if already colorized - only colorize if NOT already colored
+540     bool can_colorize = !ansi_is_already_colorized(message, i);
+541 
+542     // Try key=value pair first (highest priority pattern)
+543     size_t key_end = 0, value_start = 0, value_end = 0;
+544     if (can_colorize &amp;&amp; is_key_value_pair(message, i, &amp;key_end, &amp;value_start, &amp;value_end)) {
+545       size_t key_len = key_end - i;
+546       size_t value_len = value_end - value_start;
+547 
+548       // Extract key
+549       char key_buf[256];
+550       safe_snprintf(key_buf, sizeof(key_buf), &quot;%.*s&quot;, (int)key_len, message + i);
+551 
+552       // Extract value
+553       char value_buf[512];
+554       safe_snprintf(value_buf, sizeof(value_buf), &quot;%.*s&quot;, (int)value_len, message + value_start);
+555 
+556       // Color the key (magenta)
+557       const char *colored_key = colored_string(LOG_COLOR_FATAL, key_buf);
+558       size_t colored_key_len = strlen(colored_key);
+559 
+560       // Check if we have enough space for key + equals + value
+561       // (accounting for ANSI codes which will be added by colored_string)
+562       if (out_pos + colored_key_len + 1 + value_len + 100 &lt; max_size) {
+563         memcpy(output + out_pos, colored_key, colored_key_len);
+564         out_pos += colored_key_len;
+565 
+566         // Add uncolored equals sign
+567         output[out_pos++] = '=';
+568 
+569         // Determine value color and add colored value
+570         log_color_t value_color = get_value_color(value_buf);
+571         const char *colored_value = colored_string(value_color, value_buf);
+572         size_t colored_value_len = strlen(colored_value);
+573         if (out_pos + colored_value_len &lt; max_size) {
+574           memcpy(output + out_pos, colored_value, colored_value_len);
+575           out_pos += colored_value_len;
+576         }
+577       }
+578       i = value_end - 1;
+579       continue;
+580     }
+581 
+582     // Try numeric pattern
+583     if (can_colorize &amp;&amp; is_numeric_pattern(message, i, &amp;end_pos)) {
+584       size_t pattern_len = end_pos - i;
+585       char pattern_buf[256];
+586       safe_snprintf(pattern_buf, sizeof(pattern_buf), &quot;%.*s&quot;, (int)pattern_len, message + i);
+587 
+588       const char *colored = colored_string(LOG_COLOR_GREY, pattern_buf);
+589       size_t colored_len = strlen(colored);
+590       if (out_pos + colored_len &lt; max_size) {
+591         memcpy(output + out_pos, colored, colored_len);
+592         out_pos += colored_len;
+593       }
+594       i = end_pos - 1;
+595       continue;
+596     }
+597 
+598     // Try file path
+599     if (can_colorize &amp;&amp; is_file_path(message, i, &amp;end_pos)) {
+600       size_t path_len = end_pos - i;
+601       char path_buf[512];
+602       safe_snprintf(path_buf, sizeof(path_buf), &quot;%.*s&quot;, (int)path_len, message + i);
+603 
+604       const char *colored = colored_string(LOG_COLOR_DEBUG, path_buf);
+605       size_t colored_len = strlen(colored);
+606       if (out_pos + colored_len &lt; max_size) {
+607         memcpy(output + out_pos, colored, colored_len);
+608         out_pos += colored_len;
+609       }
+610       i = end_pos - 1;
+611       continue;
+612     }
+613 
+614     // Try environment variable
+615     if (can_colorize &amp;&amp; is_env_var(message, i, &amp;end_pos)) {
+616       size_t var_len = end_pos - i;
+617       char var_buf[256];
+618       safe_snprintf(var_buf, sizeof(var_buf), &quot;%.*s&quot;, (int)var_len, message + i);
+619 
+620       const char *colored = colored_string(LOG_COLOR_GREY, var_buf);
+621       size_t colored_len = strlen(colored);
+622       if (out_pos + colored_len &lt; max_size) {
+623         memcpy(output + out_pos, colored, colored_len);
+624         out_pos += colored_len;
+625       }
+626       i = end_pos - 1;
+627       continue;
+628     }
+629 
+630     // Try URL
+631     if (can_colorize &amp;&amp; is_url(message, i, &amp;end_pos)) {
+632       size_t url_len = end_pos - i;
+633       char url_buf[2048];
+634       safe_snprintf(url_buf, sizeof(url_buf), &quot;%.*s&quot;, (int)url_len, message + i);
+635 
+636       const char *colored = colored_string(LOG_COLOR_INFO, url_buf);
+637       size_t colored_len = strlen(colored);
+638       if (out_pos + colored_len &lt; max_size) {
+639         memcpy(output + out_pos, colored, colored_len);
+640         out_pos += colored_len;
+641       }
+642       i = end_pos - 1;
+643       continue;
+644     }
+645 
+646     // Regular character - just copy
+647     if (out_pos &lt; max_size - 1) {
+648       output[out_pos++] = message[i];
+649     }
+650   }
+651 
+652   output[out_pos] = '\0';
+653   return output;
+654 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_is_already_colorized()</b>,
+    <b>colored_string()</b>, <b>safe_snprintf()</b>, and
+    <b>terminal_should_color_output()</b>.</p>
+<p class="Pp">Referenced by <b>log_msg()</b>, <b>log_plain_msg()</b>,
+    <b>log_recolor_plain_entry()</b>, and <b>log_template_apply()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keepawake.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keepawake.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keepawake.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keepawake.c - Linux system sleep prevention using
+  systemd-inhibit.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>platform_enable_keepawake</b> (void)
+  <br/>
+  void <b>platform_disable_keepawake</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Linux system sleep prevention using systemd-inhibit.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>linux/keepawake.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_disable_keepawake_(void_)"><a class="permalink" href="#void_platform_disable_keepawake_(void_)">void
+  platform_disable_keepawake (void )</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file <b>linux/keepawake.c</b>.</p>
+<pre>91                                       {
+92 #ifdef HAVE_LIBSYSTEMD
+93   if (g_inhibit_fd &gt;= 0) {
+94     close(g_inhibit_fd);
+95     log_debug(&quot;Keepawake disabled (closed inhibit fd: %d)&quot;, g_inhibit_fd);
+96     // Unregister from named registry after logging
+97     NAMED_UNREGISTER_FD(g_inhibit_fd);
+98     g_inhibit_fd = -1;
+99   }
+100 #endif
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>server_main()</b>,
+    <b>session_client_like_run()</b>, and <b>session_server_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_platform_enable_keepawake_(void_)"><a class="permalink" href="#asciichat_error_t_platform_enable_keepawake_(void_)">asciichat_error_t
+  platform_enable_keepawake (void )</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>linux/keepawake.c</b>.</p>
+<pre>21                                                   {
+22 #ifdef HAVE_LIBSYSTEMD
+23   // Linux: Use systemd-inhibit if available
+24   if (g_inhibit_fd &gt;= 0) {
+25     log_debug(&quot;Keepawake already enabled&quot;);
+26     return ASCIICHAT_OK;
+27   }
+28 
+29   // Check if systemd is available at runtime (weak symbol)
+30   if (sd_bus_default_system == NULL) {
+31     log_dev(&quot;systemd not available, keepawake not supported&quot;);
+32     return ASCIICHAT_OK; // Not an error, just unsupported
+33   }
+34 
+35   sd_bus *bus = NULL;
+36   sd_bus_message *reply = NULL;
+37   sd_bus_error error = SD_BUS_ERROR_NULL;
+38 
+39   if (sd_bus_default_system(&amp;bus) &lt; 0) {
+40     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to connect to system bus&quot;);
+41   }
+42 
+43   if (!bus) {
+44     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;System bus is NULL&quot;);
+45   }
+46 
+47   int r = sd_bus_call_method(bus, &quot;org.freedesktop.login1&quot;, &quot;/org/freedesktop/login1&quot;, &quot;org.freedesktop.login1.Manager&quot;,
+48                              &quot;Inhibit&quot;, &amp;error, &amp;reply, &quot;ssss&quot;,
+49                              &quot;sleep:idle&quot;,            // What to inhibit
+50                              &quot;ascii-chat&quot;,            // Who
+51                              &quot;Video/audio streaming&quot;, // Why
+52                              &quot;block&quot;                  // Mode
+53   );
+54 
+55   if (r &lt; 0) {
+56     sd_bus_error_free(&amp;error);
+57     sd_bus_unref(bus);
+58     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to inhibit sleep via systemd&quot;);
+59   }
+60 
+61   if (!reply) {
+62     sd_bus_error_free(&amp;error);
+63     sd_bus_unref(bus);
+64     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;systemd inhibit reply is NULL&quot;);
+65   }
+66 
+67   if (sd_bus_message_read(reply, &quot;h&quot;, &amp;g_inhibit_fd) &lt; 0) {
+68     sd_bus_message_unref(reply);
+69     sd_bus_error_free(&amp;error);
+70     sd_bus_unref(bus);
+71     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to read inhibit fd from systemd reply&quot;);
+72   }
+73 
+74   sd_bus_message_unref(reply);
+75   sd_bus_error_free(&amp;error);
+76   sd_bus_unref(bus);
+77 
+78   // Register the inhibit fd with the named registry for debug logging
+79   NAMED_REGISTER_FD(g_inhibit_fd, &quot;inhibit&quot;);
+80 
+81   log_debug(&quot;Keepawake enabled via systemd-inhibit (fd: %d)&quot;, g_inhibit_fd);
+82   return ASCIICHAT_OK;
+83 
+84 #else
+85   // Other POSIX systems: not implemented
+86   log_debug(&quot;Keepawake not implemented on this platform&quot;);
+87   return ASCIICHAT_OK;
+88 #endif
+89 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_main()</b>, <b>server_main()</b>,
+    <b>session_client_like_run()</b>, and <b>session_server_like_run()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

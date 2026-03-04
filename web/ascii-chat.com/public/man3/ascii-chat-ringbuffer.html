@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ringbuffer(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ringbuffer(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ringbuffer(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ringbuffer - Ring Buffer</p>
+<p class="Pp">
+  <br/>
+   - &#x1F501; Lock-free circular buffers for audio/video</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>ringbuffer.c</b>
+  <br/>
+  &#x1F3AF; Lock-free circular buffer for audio streaming with atomic operations
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F501; Lock-free circular buffers for audio/video</p>
+<p class="Pp">Ring Buffer</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Overview"><a class="permalink" href="#Overview">Overview</a></h1>
+<p class="Pp">Welcome! Let's talk about the ring buffer&#x2014;one of the
+    coolest data structures in ascii-chat. If you've ever wondered how to pass
+    data between threads really fast without all the overhead of mutexes and
+    locks, you're in the right place.</p>
+<p class="Pp"></p>
+<p class="Pp">Picture this: you have one thread capturing video frames (the
+    producer) and another thread encoding them (the consumer). How do you hand
+    frames from one to the other? You could use a mutex-protected queue, but
+    that means locking and unlocking for every single frame. Not ideal when
+    you're doing this 30 times per second!</p>
+<p class="Pp"></p>
+<p class="Pp">That's where the ring buffer shines. It's a circular buffer that
+    uses atomic operations instead of locks, making it blazingly fast for the
+    single-producer, single-consumer pattern. Think of it like a race track
+    where the producer and consumer chase each other around&#x2014;one writing,
+    one reading, never quite catching up to each other.</p>
+<p class="Pp"></p>
+<p class="Pp">You can find the implementation in <b>lib/ringbuffer.c</b><b> and
+    </b>lib/ringbuffer.h<b>.</b></p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="What_makes_ring_buffers_special?"><a class="permalink" href="#What_makes_ring_buffers_special?">What
+  makes ring buffers special? </a></h2>
+<p class="Pp">Ring buffers are designed from the ground up for speed. They use
+    C11 atomics instead of mutexes, which means way less overhead when passing
+    data between threads. The design is intentionally simple&#x2014;no complex
+    algorithms here, just a circular buffer done right.</p>
+<p class="Pp"></p>
+<p class="Pp">The implementation takes advantage of a clever trick: power-of-2
+    capacities allow us to use bitwise masking instead of slow modulo
+    operations. This might sound like a small detail, but it makes index
+    calculations 15-30 times faster!</p>
+<p class="Pp"></p>
+<p class="Pp">We also have specialized versions for different use cases. Frame
+    buffers handle ASCII art frames with metadata like magic numbers for
+    corruption detection. Audio ring buffers include jitter buffering to smooth
+    out network hiccups. Each one is tailored to its specific job.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<p class="Pp">Let's dive into how ring buffers actually work under the hood. The
+    design is elegant in its simplicity&#x2014;just a few atomic variables and a
+    chunk of memory, but combined in a way that achieves lock-free thread
+    safety.</p>
+<section class="Ss">
+<h2 class="Ss" id="Ring_Buffer_Structure"><a class="permalink" href="#Ring_Buffer_Structure">Ring
+  Buffer Structure</a></h2>
+<p class="Pp">The core structure is pretty straightforward:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    char *buffer;          // Actual memory
+<br/>
+    size_t element_size;   // Size per element
+<br/>
+    size_t capacity;       // Max elements (power of 2)
+<br/>
+    _Atomic size_t head;   // Write position (producer)
+<br/>
+    _Atomic size_t tail;   // Read position (consumer)
+<br/>
+    _Atomic size_t size;   // Current element count
+<br/>
+    bool is_power_of_two;  // Optimization flag
+<br/>
+    size_t capacity_mask;  // Fast modulo mask
+} ringbuffer_t;</pre>
+<p class="Pp">The key insight here is that head and tail are atomic variables.
+    The producer writes at head and advances it, while the consumer reads from
+    tail and advances it. Since each position is only accessed by one thread, we
+    don't need locks&#x2014;just atomic operations to make sure reads and writes
+    are visible across threads.</p>
+<p class="Pp"></p>
+<p class="Pp">The capacity_mask is the secret sauce for performance. When
+    capacity is a power of 2, we can use head &amp; capacity_mask instead of
+    head % capacity. Bitwise AND is a single CPU instruction, while modulo takes
+    15-30 cycles. That adds up fast when you're doing it thousands of times per
+    second!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Lock-Free_Algorithm"><a class="permalink" href="#Lock-Free_Algorithm">Lock-Free
+  Algorithm</a></h2>
+<p class="Pp">The ring buffer uses atomic operations for thread-safe access
+    without locks. Here's how the producer and consumer interact:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Write operation</b> (producer):</p>
+<p class="Pp"></p>
+<p class="Pp">When the producer wants to write data, it first checks if there's
+    room in the buffer. If the buffer is full, we return false&#x2014;simple as
+    that. Otherwise, we calculate the write index using our fast bitwise mask
+    trick, copy the data into place, and atomically advance the head.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>bool ringbuffer_write(ringbuffer_t *rb, const void *data) {
+<br/>
+    size_t current_size = atomic_load(&amp;rb-&gt;size);
+<br/>
+    if (current_size &gt;= rb-&gt;capacity) {
+<br/>
+        return false;  // Buffer full
+<br/>
+    }
+<br/>
+    size_t head = atomic_load(&amp;rb-&gt;head);
+<br/>
+    size_t index = head &amp; rb-&gt;capacity_mask;  // Fast modulo
+<br/>
+    // Write data
+<br/>
+    memcpy(rb-&gt;buffer + (index * rb-&gt;element_size), data, rb-&gt;element_size);
+<br/>
+    // Advance head atomically
+<br/>
+    atomic_store(&amp;rb-&gt;head, head + 1);
+<br/>
+    atomic_fetch_add(&amp;rb-&gt;size, 1);
+<br/>
+    return true;
+}</pre>
+<p class="Pp"><b>Read operation</b> (consumer):</p>
+<p class="Pp"></p>
+<p class="Pp">The consumer side is the mirror image. We check if there's data
+    available, calculate the read index the same way, copy data out, and
+    atomically advance the tail.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>bool ringbuffer_read(ringbuffer_t *rb, void *data) {
+<br/>
+    size_t current_size = atomic_load(&amp;rb-&gt;size);
+<br/>
+    if (current_size == 0) {
+<br/>
+        return false;  // Buffer empty
+<br/>
+    }
+<br/>
+    size_t tail = atomic_load(&amp;rb-&gt;tail);
+<br/>
+    size_t index = tail &amp; rb-&gt;capacity_mask;  // Fast modulo
+<br/>
+    // Read data
+<br/>
+    memcpy(data, rb-&gt;buffer + (index * rb-&gt;element_size), rb-&gt;element_size);
+<br/>
+    // Advance tail atomically
+<br/>
+    atomic_store(&amp;rb-&gt;tail, tail + 1);
+<br/>
+    atomic_fetch_sub(&amp;rb-&gt;size, 1);
+<br/>
+    return true;
+}</pre>
+<p class="Pp">The beauty of this design is that the producer and consumer can
+    run completely independently. They never block each other&#x2014;the worst
+    case is one returns false if the buffer is full or empty, but that's a check
+    we'd need anyway.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Buffer_Types"><a class="permalink" href="#Buffer_Types">Buffer
+  Types</a></h1>
+<p class="Pp">We have several flavors of ring buffer, each optimized for a
+    specific use case. The generic ring buffer handles arbitrary element types,
+    while frame and audio buffers are specialized for their domains.</p>
+<section class="Ss">
+<h2 class="Ss" id="Generic_Ring_Buffer"><a class="permalink" href="#Generic_Ring_Buffer">Generic
+  Ring Buffer</a></h2>
+<p class="Pp">The generic ring buffer is your go-to choice when you need to pass
+    arbitrary data types between threads. It's simple, fast, and gets the job
+    done.</p>
+<p class="Pp"></p>
+<p class="Pp">Here's a quick example of using it:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Create ring buffer for 256 integers
+ringbuffer_t *rb = ringbuffer_create(sizeof(int), 256);
+// Producer thread
+int value = 42;
+if (!ringbuffer_write(rb, &amp;value)) {
+<br/>
+    log_warn(&quot;Ring buffer full, dropping data&quot;);
+}
+// Consumer thread
+int received;
+if (ringbuffer_read(rb, &amp;received)) {
+<br/>
+    printf(&quot;Received: %d\n&quot;, received);
+}
+// Cleanup
+ringbuffer_destroy(rb);</pre>
+<p class="Pp">Notice how the capacity gets rounded up to the next power of 2
+    automatically (256 is already a power of 2, so it stays as-is). If you ask
+    for 100 elements, you'll get 128 instead&#x2014;a small price to pay for the
+    performance benefits.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Buffer"><a class="permalink" href="#Frame_Buffer">Frame
+  Buffer</a></h2>
+<p class="Pp">Frame buffers are specialized for ASCII art frames. They handle
+    variable-sized frames and include metadata like magic numbers for corruption
+    detection. This is crucial when frames are being passed between
+    threads&#x2014;we need to make sure we're not reading garbage if something
+    goes wrong.</p>
+<p class="Pp"></p>
+<p class="Pp">The frame structure looks like this:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t magic;  // FRAME_MAGIC (0xDEADBEEF) for corruption detection
+<br/>
+    size_t size;     // Actual frame size
+<br/>
+    char *data;      // Frame data (allocated from buffer pool, NOT owned by consumer)
+} frame_t;
+typedef struct {
+<br/>
+    ringbuffer_t *rb;
+<br/>
+    mutex_t mutex;   // Protects frame data allocation/free
+} framebuffer_t;</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Frame data is allocated from the buffer pool for
+  efficiency. The buffer pool owns the memory - consumers should NOT free
+  frame.data manually.</div>
+<p class="Pp">The magic number serves as a sanity check. When you read a frame,
+    you can verify that frame.magic == FRAME_MAGIC to make sure you got a valid
+    frame and not corrupted memory. It's a simple check, but it can catch a lot
+    of subtle bugs!</p>
+<p class="Pp"></p>
+<p class="Pp">Here's how you'd use it in practice:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Create frame buffer (capacity = 60 frames)
+framebuffer_t *fb = framebuffer_create(60);
+// Producer: Write ASCII frame
+char *ascii_frame = generate_ascii_art(...);
+if (!framebuffer_write_frame(fb, ascii_frame, strlen(ascii_frame))) {
+<br/>
+    log_warn(&quot;Frame buffer full, dropping frame&quot;);
+}
+// Consumer: Read ASCII frame
+frame_t frame;
+if (framebuffer_read_frame(fb, &amp;frame)) {
+<br/>
+    if (frame.magic == FRAME_MAGIC) {
+<br/>
+        render_frame(frame.data, frame.size);
+<br/>
+        // DO NOT free frame.data - buffer pool owns it!
+<br/>
+        // Data is automatically freed when framebuffer_clear() or
+<br/>
+        // framebuffer_destroy() is called.
+<br/>
+    }
+}
+// Cleanup (automatically frees all frame data via buffer pool)
+framebuffer_destroy(fb);</pre>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Frame data is managed by the buffer pool, NOT owned by
+  the consumer. Do NOT call SAFE_FREE() on frame.data - it will be automatically
+  freed when the buffer is cleared or destroyed.</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Multi-Source_Frame_Buffer"><a class="permalink" href="#Multi-Source_Frame_Buffer">Multi-Source
+  Frame Buffer</a></h2>
+<p class="Pp">When you have multiple clients sending frames, you need to track
+    which client sent what. That's where the multi-source frame buffer comes in.
+    It's essentially the same as a regular frame buffer, but each frame includes
+    metadata about its source.</p>
+<p class="Pp"></p>
+<p class="Pp">The multi-source frame structure tracks the client ID, frame
+    sequence number, and timestamp:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>typedef struct {
+<br/>
+    uint32_t magic;
+<br/>
+    uint32_t source_client_id;  // Which client sent this
+<br/>
+    uint32_t frame_sequence;    // Frame number
+<br/>
+    uint32_t timestamp;         // Capture time
+<br/>
+    size_t size;
+<br/>
+    char *data;
+} multi_source_frame_t;</pre>
+<p class="Pp">Using it is straightforward:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Create multi-source frame buffer
+framebuffer_t *fb = framebuffer_create_multi(60);
+// Producer: Write frame from client 3
+framebuffer_write_multi_frame(fb, frame_data, frame_size,
+<br/>
+                              3,           // client_id
+<br/>
+                              frame_seq,
+<br/>
+                              timestamp);
+// Consumer: Read frame
+multi_source_frame_t frame;
+if (framebuffer_read_multi_frame(fb, &amp;frame)) {
+<br/>
+    log_debug(&quot;Frame from client %u: seq=%u size=%zu&quot;,
+<br/>
+              frame.source_client_id, frame.frame_sequence, frame.size);
+<br/>
+    render_client_frame(frame.source_client_id, frame.data, frame.size);
+<br/>
+    SAFE_FREE(frame.data);
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Audio_Ring_Buffer"><a class="permalink" href="#Audio_Ring_Buffer">Audio
+  Ring Buffer</a></h2>
+<p class="Pp">Audio ring buffers are a bit different from the others. They're
+    designed for real-time audio playback, which means they need to handle
+    network jitter gracefully. The buffer accumulates samples before starting
+    playback, creating a &quot;jitter buffer&quot; that smooths out
+    irregularities in network timing.</p>
+<p class="Pp"></p>
+<p class="Pp">The audio buffer uses a fixed size tuned for audio needs:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>#define AUDIO_RING_BUFFER_SIZE (256 * 32)  // 8192 samples = ~186ms @ 44.1kHz
+#define AUDIO_JITTER_BUFFER_THRESHOLD (256 * 8)  // Wait 46ms before playback
+typedef struct audio_ring_buffer {
+<br/>
+    float data[AUDIO_RING_BUFFER_SIZE];
+<br/>
+    volatile int write_index;
+<br/>
+    volatile int read_index;
+<br/>
+    volatile bool jitter_buffer_filled;  // True after initial fill
+<br/>
+    mutex_t mutex;
+} audio_ring_buffer_t;</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Why_the_jitter_buffer?"><a class="permalink" href="#Why_the_jitter_buffer?">Why
+  the jitter buffer? </a></h2>
+<p class="Pp">Network audio packets don't arrive at perfectly regular intervals.
+    Sometimes packets come early, sometimes they're delayed. Without buffering,
+    you'd get audio crackling whenever a packet was late. The jitter buffer
+    waits until it has enough samples to smooth out these timing variations
+    before starting playback.</p>
+<p class="Pp"></p>
+<p class="Pp">The threshold is set to about 46 milliseconds of audio. This is
+    usually enough to handle typical network jitter without introducing
+    noticeable latency. Once the buffer has reached this threshold, playback
+    begins and the buffer continues to absorb timing variations.</p>
+<p class="Pp"></p>
+<p class="Pp">Here's how it works in practice:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>audio_ring_buffer_t *arb = audio_ringbuffer_create();
+// Network receive thread: Write samples
+void receive_audio(audio_ring_buffer_t *arb, float *samples, int count) {
+<br/>
+    mutex_lock(&amp;arb-&gt;mutex);
+<br/>
+    for (int i = 0; i &lt; count; i++) {
+<br/>
+        arb-&gt;data[arb-&gt;write_index] = samples[i];
+<br/>
+        arb-&gt;write_index = (arb-&gt;write_index + 1) % AUDIO_RING_BUFFER_SIZE;
+<br/>
+    }
+<br/>
+    // Check if jitter buffer filled
+<br/>
+    int available = (arb-&gt;write_index - arb-&gt;read_index + AUDIO_RING_BUFFER_SIZE)
+<br/>
+                    % AUDIO_RING_BUFFER_SIZE;
+<br/>
+    if (!arb-&gt;jitter_buffer_filled &amp;&amp; available &gt;= AUDIO_JITTER_BUFFER_THRESHOLD) {
+<br/>
+        arb-&gt;jitter_buffer_filled = true;
+<br/>
+        log_info(&quot;Jitter buffer filled, starting playback&quot;);
+<br/>
+    }
+<br/>
+    mutex_unlock(&amp;arb-&gt;mutex);
+}
+// Audio callback: Read samples for playback
+void audio_callback(audio_ring_buffer_t *arb, float *output, int count) {
+<br/>
+    mutex_lock(&amp;arb-&gt;mutex);
+<br/>
+    if (!arb-&gt;jitter_buffer_filled) {
+<br/>
+        // Not ready yet, output silence
+<br/>
+        memset(output, 0, count * sizeof(float));
+<br/>
+        mutex_unlock(&amp;arb-&gt;mutex);
+<br/>
+        return;
+<br/>
+    }
+<br/>
+    for (int i = 0; i &lt; count; i++) {
+<br/>
+        output[i] = arb-&gt;data[arb-&gt;read_index];
+<br/>
+        arb-&gt;read_index = (arb-&gt;read_index + 1) % AUDIO_RING_BUFFER_SIZE;
+<br/>
+    }
+<br/>
+    mutex_unlock(&amp;arb-&gt;mutex);
+}</pre>
+<p class="Pp">Note that the audio buffer uses a mutex. Unlike the generic ring
+    buffer, this one can benefit from mutual exclusion since audio callbacks
+    have strict timing requirements and we need to coordinate the jitter buffer
+    logic.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="API_Reference"><a class="permalink" href="#API_Reference">API
+  Reference</a></h1>
+<p class="Pp">Now let's look at the actual API you'll be working with. The
+    functions are straightforward and follow a consistent pattern.</p>
+<section class="Ss">
+<h2 class="Ss" id="Creation/Destruction"><a class="permalink" href="#Creation/Destruction">Creation/Destruction</a></h2>
+<p class="Pp">Creating a ring buffer is simple&#x2014;just specify the element
+    size and desired capacity:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Create generic ring buffer (capacity rounded up to power of 2)
+ringbuffer_t *ringbuffer_create(size_t element_size, size_t capacity);
+// Create frame buffer
+framebuffer_t *framebuffer_create(size_t capacity);
+// Create multi-source frame buffer
+framebuffer_t *framebuffer_create_multi(size_t capacity);
+// Destroy buffers (frees all memory)
+void ringbuffer_destroy(ringbuffer_t *rb);
+void framebuffer_destroy(framebuffer_t *fb);</pre>
+<p class="Pp">Remember that the capacity gets rounded up to the next power of 2
+    for performance reasons. If you request 100 elements, you'll get 128. This
+    usually isn't a problem, but it's good to be aware of.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Operations"><a class="permalink" href="#Operations">Operations</a></h2>
+<p class="Pp">The core operations are write, read, and peek. The query functions
+    let you check the buffer state without modifying it.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Generic ring buffer
+bool ringbuffer_write(ringbuffer_t *rb, const void *data);
+bool ringbuffer_read(ringbuffer_t *rb, void *data);
+bool ringbuffer_peek(ringbuffer_t *rb, void *data);  // Read without removing
+// Query state
+size_t ringbuffer_size(const ringbuffer_t *rb);
+bool ringbuffer_is_empty(const ringbuffer_t *rb);
+bool ringbuffer_is_full(const ringbuffer_t *rb);
+void ringbuffer_clear(ringbuffer_t *rb);
+// Frame buffer
+bool framebuffer_write_frame(framebuffer_t *fb, const char *data, size_t size);
+bool framebuffer_read_frame(framebuffer_t *fb, frame_t *frame);
+// Multi-source frame buffer
+bool framebuffer_write_multi_frame(framebuffer_t *fb, const char *data, size_t size,
+<br/>
+                                   uint32_t client_id, uint32_t seq, uint32_t ts);
+bool framebuffer_read_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);
+bool framebuffer_peek_latest_multi_frame(framebuffer_t *fb, multi_source_frame_t *frame);</pre>
+<p class="Pp">All the write and read functions return <b>false</b><b> if the
+    operation couldn't complete (buffer full or empty). This lets you decide
+    what to do&#x2014;maybe drop the data, maybe wait and retry, maybe signal an
+    error. It's up to you!</b></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance"><a class="permalink" href="#Performance">Performance</a></h1>
+<p class="Pp">Let's talk numbers. The ring buffer isn't just fast&#x2014;it's
+    dramatically faster than traditional mutex-protected queues. Here's what the
+    benchmarks show.</p>
+<section class="Ss">
+<h2 class="Ss" id="Benchmarks"><a class="permalink" href="#Benchmarks">Benchmarks</a></h2>
+<p class="Pp">We compared the lock-free ring buffer against a mutex-protected
+    queue in a contention-free scenario (producer and consumer on the same CPU
+    core):</p>
+<p class="Pp"></p>
+<p class="Pp">Operation Ring Buffer Mutex Queue Speedup Write 18 ns 95 ns
+    <b>5.3x faster</b> Read 20 ns 102 ns <b>5.1x faster</b> Write+Read pair 38
+    ns 197 ns <b>5.2x faster</b></p>
+<p class="Pp"></p>
+<p class="Pp">These numbers are from an AMD Ryzen 9 5950X in a contention-free
+    scenario. The ring buffer operations are so fast they're barely more
+    expensive than a simple memory copy!</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Contention_Behavior"><a class="permalink" href="#Contention_Behavior">Contention
+  Behavior</a></h2>
+<p class="Pp">What happens when things get more intense? We also tested with
+    high contention, where the producer and consumer are running on different
+    CPU cores. This stresses the cache coherency protocol, but the ring buffer
+    still comes out way ahead:</p>
+<p class="Pp"></p>
+<p class="Pp">Under high contention:</p>
+<ul class="Bl-bullet">
+  <li>Ring buffer: ~45 ns per operation (2.4x slowdown from cache
+    coherency)</li>
+  <li>Mutex queue: ~280 ns per operation (2.8x slowdown from lock
+    contention)</li>
+  <li><b>Ring buffer still 6.2x faster under contention</b></li>
+</ul>
+<p class="Pp">Even when the CPU cores are fighting over cache lines, the ring
+    buffer's lock-free design means it doesn't have to wait for mutexes to be
+    released. The atomic operations are still much faster than lock
+  acquisition.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Capacity_Management"><a class="permalink" href="#Capacity_Management">Capacity
+  Management</a></h1>
+<p class="Pp">Getting the capacity right is important for performance. Too small
+    and you'll drop data. Too large and you're wasting memory. The ring buffer
+    helps by optimizing capacity calculations automatically.</p>
+<section class="Ss">
+<h2 class="Ss" id="Power-of-2_Optimization"><a class="permalink" href="#Power-of-2_Optimization">Power-of-2
+  Optimization</a></h2>
+<p class="Pp">The ring buffer always rounds capacity up to the next power of 2.
+    This lets us use bitwise AND instead of modulo for index calculations, which
+    is dramatically faster.</p>
+<p class="Pp"></p>
+<p class="Pp">Here's how it works:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Request 100 elements &#x2192; gets rounded to 128 (next power of 2)
+ringbuffer_t *rb = ringbuffer_create(sizeof(int), 100);
+assert(rb-&gt;capacity == 128);
+// Fast modulo using bitwise AND
+size_t index = head &amp; rb-&gt;capacity_mask;  // Instead of head % capacity
+// Where capacity_mask = capacity - 1 (e.g., 128 - 1 = 127 = 0b01111111)</pre>
+<p class="Pp">The performance impact is significant:</p>
+<ul class="Bl-bullet">
+  <li>Bitwise AND: 1 CPU cycle</li>
+  <li>Integer modulo: 15-30 CPU cycles</li>
+  <li><b>Speedup: 15-30x for index calculation</b></li>
+</ul>
+<p class="Pp">Since we're calculating the index on every read and write, this
+    optimization really adds up. It's one of those small details that makes a
+    big difference when you're doing thousands of operations per second.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Sizing_Guidelines"><a class="permalink" href="#Sizing_Guidelines">Sizing
+  Guidelines</a></h2>
+<p class="Pp">Choosing the right buffer size depends on what you're buffering.
+    Let's look at some common scenarios:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Video frames</b> (30 FPS):</p>
+<p class="Pp"></p>
+<p class="Pp">For video, you want enough frames to survive brief CPU spikes and
+    scheduling delays. We recommend at least 2 seconds worth (60 frames) as a
+    minimum. That gives you enough cushion that a momentary slowdown won't cause
+    frame drops. For more robust operation, 4 seconds (120 frames) is better.
+    Going beyond 10 seconds (300 frames) doesn't usually help much&#x2014;by
+    then you're just increasing latency.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Audio samples</b> (48 kHz):</p>
+<p class="Pp"></p>
+<p class="Pp">Audio buffering is a balancing act. You need enough buffer to
+    absorb network jitter, but not so much that latency becomes noticeable. Our
+    audio ring buffer uses:</p>
+<ul class="Bl-bullet">
+  <li>Jitter buffer threshold: 46ms (2208 samples) - waits this long before
+      starting playback</li>
+  <li>Total buffer: 186ms (8928 samples) - prevents underruns during
+    playback</li>
+</ul>
+<p class="Pp">These numbers are tuned for typical network conditions. If you're
+    on a very jittery network, you might want to increase the jitter buffer
+    threshold. If latency is more important than smoothness, you can decrease
+    it.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Thread_Safety"><a class="permalink" href="#Thread_Safety">Thread
+  Safety</a></h1>
+<p class="Pp">This is important: ring buffers are <b>only</b> safe for the
+    Single Producer, Single Consumer (SPSC) pattern. That means exactly one
+    thread writing and exactly one thread reading. If you need multiple
+    producers or consumers, you'll want to use <b>Packet Queue</b><b> instead,
+    which is mutex-protected.</b></p>
+<section class="Ss">
+<h2 class="Ss" id="SPSC_Guarantee"><a class="permalink" href="#SPSC_Guarantee">SPSC
+  Guarantee</a></h2>
+<p class="Pp">The lock-free design relies on the fact that each position in the
+    buffer is only accessed by one thread. The producer writes at head, the
+    consumer reads from tail, and they never touch each other's positions. This
+    is what makes the atomic operations sufficient&#x2014;we don't need locks
+    because there's no contention.</p>
+<p class="Pp"></p>
+<p class="Pp">Here's the correct pattern:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x2705; CORRECT: One producer, one consumer
+void* producer_thread(void *arg) {
+<br/>
+    ringbuffer_t *rb = (ringbuffer_t*)arg;
+<br/>
+    while (running) {
+<br/>
+        int data = generate_data();
+<br/>
+        ringbuffer_write(rb, &amp;data);
+<br/>
+    }
+}
+void* consumer_thread(void *arg) {
+<br/>
+    ringbuffer_t *rb = (ringbuffer_t*)arg;
+<br/>
+    while (running) {
+<br/>
+        int data;
+<br/>
+        if (ringbuffer_read(rb, &amp;data)) {
+<br/>
+            process_data(data);
+<br/>
+        }
+<br/>
+    }
+}</pre>
+<p class="Pp">And here's what <b>not</b> to do:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// &#x274C; WRONG: Multiple producers (not thread-safe!)
+void* producer_thread_1(void *arg) {
+<br/>
+    ringbuffer_write(rb, &amp;data);  // Race condition!
+}
+void* producer_thread_2(void *arg) {
+<br/>
+    ringbuffer_write(rb, &amp;data);  // Race condition!
+}</pre>
+<p class="Pp">If you try to have multiple producers writing at the same time,
+    you'll get race conditions on the head pointer. Same problem with multiple
+    consumers. The lock-free design only works when there's exactly one of
+  each.</p>
+<p class="Pp"></p>
+<p class="Pp">For multiple producers or consumers, use <b>Packet Queue</b><b>
+    instead&#x2014;it uses mutexes and can handle multiple writers and readers
+    safely, though it won't be as fast.</b></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<p class="Pp">Here are some tips we've learned from using ring buffers in
+    ascii-chat:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Use power-of-2 capacities when possible</b></p>
+<p class="Pp"></p>
+<p class="Pp">While the ring buffer will round up for you, if you know your
+    requirements in advance, it's cleaner to request a power of 2 directly. That
+    way there's no surprise about the actual capacity you get.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>ringbuffer_create(sizeof(int), 128);  // Good (power of 2)
+ringbuffer_create(sizeof(int), 100);  // Still works, but rounded to 128</pre>
+<p class="Pp"><b>Handle full/empty cases gracefully</b></p>
+<p class="Pp"></p>
+<p class="Pp">When <b>ringbuffer_write()</b><b> returns false, the buffer is
+    full. When </b><b>ringbuffer_read()</b><b> returns false, it's empty. You
+    need to decide what to do in each case:</b></p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>if (!ringbuffer_write(rb, &amp;data)) {
+<br/>
+    // Buffer full - decide policy:
+<br/>
+    // - Drop data (real-time video - newest frame is most important)
+<br/>
+    // - Wait and retry (critical data - can't afford to lose)
+<br/>
+    // - Overwrite oldest (circular log - keep latest N items)
+}</pre>
+<p class="Pp">For real-time video, dropping frames is usually fine&#x2014;better
+    to show the latest frame than to delay everything. For critical data, you
+    might want to block until there's room. It depends on your use case.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Frame data is managed by buffer pool</b></p>
+<p class="Pp"></p>
+<p class="Pp">Frame data is allocated from the buffer pool and automatically
+    managed. Do NOT free frame data manually - the buffer pool handles cleanup
+    when <b>framebuffer_clear()</b> or <b>framebuffer_destroy()</b> is
+  called.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>frame_t frame;
+if (framebuffer_read_frame(fb, &amp;frame)) {
+<br/>
+    process_frame(frame.data, frame.size);
+<br/>
+    // DO NOT call SAFE_FREE(frame.data) - buffer pool owns it!
+}</pre>
+<p class="Pp">The buffer pool automatically reclaims frame memory when the
+    buffer is cleared or destroyed. Calling SAFE_FREE() on frame data will cause
+    double-free errors or corruption.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Validate magic numbers</b></p>
+<p class="Pp"></p>
+<p class="Pp">Frame buffers include magic numbers for a reason&#x2014;they help
+    catch corruption. Always check that you got a valid frame:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>if (frame.magic != FRAME_MAGIC) {
+<br/>
+    log_error(&quot;Corrupted frame detected (magic=0x%08X)&quot;, frame.magic);
+<br/>
+    return;
+}</pre>
+<p class="Pp">This is a cheap sanity check that can save you from chasing weird
+    bugs later. If you read garbage memory (maybe from a use-after-free or
+    buffer overflow), the magic number won't match and you'll know immediately
+    that something's wrong.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Size jitter buffers appropriately</b></p>
+<p class="Pp"></p>
+<p class="Pp">For audio buffers, the jitter buffer size is a trade-off. Too
+    small and you'll get audio crackling from underruns. Too large and you'll
+    have noticeable latency. The sweet spot is usually about 2-3 times your
+    typical network jitter.</p>
+<p class="Pp"></p>
+<p class="Pp">Our default is 46 milliseconds, which works well for most network
+    conditions. If you're on a very stable network (like a local connection),
+    you could go smaller. If network jitter is severe, you might need to
+    increase it, though you'll pay for it with latency.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">ringbuffer.h
+<p class="Pp"></p>
+<p class="Pp"><b>ringbuffer.c</b></p>
+</div>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

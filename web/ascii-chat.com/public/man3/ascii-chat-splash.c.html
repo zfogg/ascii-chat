@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>splash.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">splash.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">splash.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">splash.c - Intro and status screen display implementation with
+    animated rainbow effects.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>splash_header_ctx_t</b>
+  <br/>
+  Context data for splash header rendering.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ASCII_LOGO_LINES</b> 7
+  <br/>
+  #define <b>ASCII_LOGO_WIDTH</b> 36
+  <br/>
+  #define <b>RAINBOW_COLOR_COUNT</b> 7
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>splash_log_init</b> (void)
+  <br/>
+  void <b>splash_log_destroy</b> (void)
+  <br/>
+  void <b>splash_log_clear</b> (void)
+  <br/>
+  <b>bool</b> <b>splash_should_display</b> (<b>bool</b> is_intro)
+  <br/>
+  int <b>splash_intro_start</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  int <b>splash_intro_done</b> (void)
+  <br/>
+  void <b>splash_restore_stderr</b> (void)
+  <br/>
+  void <b>splash_clear_display_context</b> (void)
+  <br/>
+  <b>bool</b> <b>splash_is_running</b> (void)
+  <br/>
+  void <b>splash_wait_for_animation</b> (void)
+  <br/>
+  void <b>splash_set_update_notification</b> (const char *notification)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Intro and status screen display implementation with animated
+    rainbow effects.</p>
+<p class="Pp">Implements splash screen functionality including:</p>
+<ul class="Bl-bullet">
+  <li>TTY detection with stdin/stdout checks</li>
+  <li>Animated rainbow color generation and cycling</li>
+  <li>UTF-8 box drawing character support with ASCII fallback</li>
+  <li>Non-blocking animation that runs while app initializes</li>
+  <li>Clean integration with main frame rendering</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>splash.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_LOGO_LINES___7"><a class="permalink" href="#_define_ASCII_LOGO_LINES___7">#define
+  ASCII_LOGO_LINES 7</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ASCII_LOGO_WIDTH___36"><a class="permalink" href="#_define_ASCII_LOGO_WIDTH___36">#define
+  ASCII_LOGO_WIDTH 36</a></h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_RAINBOW_COLOR_COUNT___7"><a class="permalink" href="#_define_RAINBOW_COLOR_COUNT___7">#define
+  RAINBOW_COLOR_COUNT 7</a></h2>
+<p class="Pp">Definition at line <b>70</b> of file <b>splash.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_clear_display_context_(void_)"><a class="permalink" href="#void_splash_clear_display_context_(void_)">void
+  splash_clear_display_context (void )</a></h2>
+<p class="Pp">Definition at line <b>719</b> of file <b>splash.c</b>.</p>
+<pre>719                                         {
+720   // No-op: display context is no longer cached
+721 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_splash_intro_done_(void_)"><a class="permalink" href="#int_splash_intro_done_(void_)">int
+  splash_intro_done (void )</a></h2>
+<p class="Pp">Definition at line <b>691</b> of file <b>splash.c</b>.</p>
+<pre>691                             {
+692   // Record when intro_done was called - animation thread will use this to decide when to stop
+693   // Animation thread needs time to check the flag and perform cleanup, so this must happen
+694   // BEFORE we try to access the terminal for frame rendering
+695   atomic_store_u64(&amp;g_splash_state.intro_done_time_ns, time_get_ns());
+696 
+697   // NOTE: Do NOT modify thread_created flag here!
+698   // splash_wait_for_animation() needs to see thread_created==true to know whether to join the thread.
+699   // If we set thread_created=false here, splash_wait_for_animation() won't join, and the render loop
+700   // will start while the animation thread is still running, causing frame output to conflict with splash.
+701   //
+702   // Instead, just signal the animation thread to stop via intro_done_time_ns, and let
+703   // splash_wait_for_animation() handle the actual thread join.
+704 
+705   // NOTE: DO NOT set is_running = false here! The animation thread sets it to false
+706   // when it actually exits (line 633). If we set it to false here, the render loop
+707   // guard will think splash is done while the animation thread is still running for
+708   // up to 2 more seconds, allowing ASCII frames to render simultaneously with splash.
+709   // The is_running flag MUST only be cleared by the animation thread when it finishes.
+710 
+711   return 0;
+712 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, and
+  <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>display_disable_logging_for_first_frame()</b>,
+    <b>session_client_like_run()</b>, and
+  <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_splash_intro_start_("><a class="permalink" href="#int_splash_intro_start_(">int
+  splash_intro_start (<b>session_display_ctx_t</b> * ctx)</a></h2>
+<p class="Pp">Definition at line <b>638</b> of file <b>splash.c</b>.</p>
+<pre>638                                                    {
+639   (void)ctx; // Not needed - display context is not actively used
+640 
+641   // Check if splash should display
+642   if (!splash_should_display(true)) {
+643     return 0;
+644   }
+645 
+646   // Check terminal size
+647   int width = (int)terminal_get_effective_width();
+648   int height = (int)terminal_get_effective_height();
+649   if (width &lt; 50 || height &lt; 20) {
+650     return 0;
+651   }
+652 
+653   // Redirect splash screen to stderr when stdout is piped (not a TTY)
+654   // This keeps stdout clean for frame data while splash goes to stderr
+655   if (!isatty(STDOUT_FILENO)) {
+656     terminal_screen_set_output_fd(STDERR_FILENO);
+657   }
+658 
+659   // Initialize log buffer (same pattern as server_status)
+660   splash_log_init();
+661 
+662   // Clear screen and show cursor
+663   terminal_clear_screen();
+664   (void)terminal_cursor_show();
+665 
+666   // Clear log buffer for clean slate
+667   splash_log_clear();
+668 
+669   // Set running flag
+670   atomic_store_bool(&amp;g_splash_state.is_running, true);
+671   atomic_store_bool(&amp;g_splash_state.should_stop, false);
+672   g_splash_state.frame = 0;
+673   g_splash_state.start_time_ns = time_get_ns();
+674 
+675   // Start animation thread (only create once)
+676   bool expected_false = false;
+677   if (!atomic_cas_bool(&amp;g_splash_state.thread_created, &amp;expected_false, true)) {
+678     return 0;
+679   }
+680 
+681   int err = asciichat_thread_create(&amp;g_splash_state.anim_thread, &quot;splash_anim&quot;, splash_animation_thread, NULL);
+682   if (err != ASCIICHAT_OK) {
+683     log_warn(&quot;Failed to create splash animation thread: error=%d&quot;, err);
+684     atomic_store_bool(&amp;g_splash_state.thread_created, false);
+685     return 0;
+686   }
+687 
+688   return 0; // ASCIICHAT_OK
+689 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>,
+    <b>atomic_cas_bool()</b>, <b>atomic_store_bool()</b>,
+    <b>splash_log_clear()</b>, <b>splash_log_init()</b>,
+    <b>splash_should_display()</b>, <b>terminal_cursor_show()</b>,
+    <b>terminal_get_effective_height()</b>,
+    <b>terminal_get_effective_width()</b>,
+    <b>terminal_screen_set_output_fd()</b>, and <b>time_get_ns()</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> splash_is_running (void )</h2>
+<p class="Pp">Definition at line <b>723</b> of file <b>splash.c</b>.</p>
+<pre>723                              {
+724   // Check if splash animation is currently rendering
+725   // Used to prevent ASCII art from rendering while splash is animating
+726   return atomic_load_bool(&amp;g_splash_state.is_running);
+727 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+<p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_log_clear_(void_)"><a class="permalink" href="#void_splash_log_clear_(void_)">void
+  splash_log_clear (void )</a></h2>
+<p class="Pp">Definition at line <b>88</b> of file <b>splash.c</b>.</p>
+<pre>88                             {
+89   terminal_screen_log_clear();
+90 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_screen_log_clear()</b>.</p>
+<p class="Pp">Referenced by <b>splash_intro_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_log_destroy_(void_)"><a class="permalink" href="#void_splash_log_destroy_(void_)">void
+  splash_log_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>83</b> of file <b>splash.c</b>.</p>
+<pre>83                               {
+84   log_clear_session_log_buffer();
+85   terminal_screen_log_destroy();
+86 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_clear_session_log_buffer()</b>, and
+    <b>terminal_screen_log_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_log_init_(void_)"><a class="permalink" href="#void_splash_log_init_(void_)">void
+  splash_log_init (void )</a></h2>
+<p class="Pp">Definition at line <b>76</b> of file <b>splash.c</b>.</p>
+<pre>76                            {
+77   session_log_buffer_t *buf = terminal_screen_log_init();
+78   if (buf) {
+79     log_set_session_log_buffer(buf);
+80   }
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_set_session_log_buffer()</b>, and
+    <b>terminal_screen_log_init()</b>.</p>
+<p class="Pp">Referenced by <b>splash_intro_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_restore_stderr_(void_)"><a class="permalink" href="#void_splash_restore_stderr_(void_)">void
+  splash_restore_stderr (void )</a></h2>
+<p class="Pp">Definition at line <b>714</b> of file <b>splash.c</b>.</p>
+<pre>714                                  {
+715   // No-op: stderr suppression is no longer used
+716   // Logging works naturally through session_log_buffer
+717 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_set_update_notification_(const_char_*_notification)"><a class="permalink" href="#void_splash_set_update_notification_(const_char_*_notification)">void
+  splash_set_update_notification (const char * notification)</a></h2>
+<p class="Pp">Definition at line <b>774</b> of file <b>splash.c</b>.</p>
+<pre>774                                                               {
+775   if (lifecycle_init_once(&amp;g_update_notification_lifecycle)) {
+776     mutex_init(&amp;g_update_notification_mutex, &quot;update_notification&quot;);
+777     lifecycle_init_commit(&amp;g_update_notification_lifecycle);
+778   }
+779   mutex_lock(&amp;g_update_notification_mutex);
+780 
+781   if (!notification || notification[0] == '\0') {
+782     g_update_notification[0] = '\0';
+783     log_debug(&quot;Cleared update notification for splash/status screens&quot;);
+784   } else {
+785     SAFE_STRNCPY(g_update_notification, notification, sizeof(g_update_notification));
+786     log_debug(&quot;Set update notification for splash/status screens: %s&quot;, notification);
+787   }
+788 
+789   mutex_unlock(&amp;g_update_notification_mutex);
+790 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_init_once()</b>, and <b>mutex_init()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> splash_should_display (<b>bool</b> is_intro)</h2>
+<p class="Pp">Definition at line <b>397</b> of file <b>splash.c</b>.</p>
+<pre>397                                           {
+398   // Check option flags (display splash if enabled, regardless of TTY for testing)
+399   if (is_intro) {
+400     // Allow splash in snapshot mode if loading from URL/file (has loading time)
+401     // Skip splash only for quick webcam snapshots (unless explicitly enabled)
+402     bool splash_screen_opt = GET_OPTION(splash_screen);
+403     bool splash_explicitly_set = GET_OPTION(splash_screen_explicitly_set);
+404     bool is_snapshot = GET_OPTION(snapshot_mode);
+405     bool has_media = (GET_OPTION(media_url) &amp;&amp; strlen(GET_OPTION(media_url)) &gt; 0) ||
+406                      (GET_OPTION(media_file) &amp;&amp; strlen(GET_OPTION(media_file)) &gt; 0);
+407 
+408     // Show splash if enabled, but in snapshot mode only if:
+409     // 1. Has media file/URL, OR
+410     // 2. Explicitly enabled with --splash-screen=true
+411     bool should_display = splash_screen_opt &amp;&amp; (!is_snapshot || has_media || splash_explicitly_set);
+412     // Show splash if:
+413     // 1. Not in snapshot mode, OR
+414     // 2. In snapshot mode but loading from URL/file (needs splash during load)
+415     return should_display;
+416   } else {
+417     return GET_OPTION(status_screen);
+418   }
+419 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>splash_intro_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_splash_wait_for_animation_(void_)"><a class="permalink" href="#void_splash_wait_for_animation_(void_)">void
+  splash_wait_for_animation (void )</a></h2>
+<p class="Pp">Definition at line <b>729</b> of file <b>splash.c</b>.</p>
+<pre>729                                      {
+730   // Wait for animation thread to fully exit before rendering ASCII art
+731   // This prevents the splash and ASCII art from appearing simultaneously
+732   //
+733   // The animation thread will exit gracefully when:
+734   // - Intro done signal received AND 2 seconds have elapsed, OR
+735   // - 30 seconds have elapsed (safety timeout)
+736   // - OR a shutdown signal is received
+737   //
+738   // We block here indefinitely to ensure the splash animation completes before ASCII art starts
+739 
+740   // Only join if we successfully created the thread
+741   if (atomic_load_bool(&amp;g_splash_state.thread_created)) {
+742     log_dev(&quot;[SPLASH_WAIT] Waiting for animation thread to exit...&quot;);
+743 
+744     // Check if shutdown was requested - handle it specially
+745     bool is_shutting_down = shutdown_is_requested();
+746     if (is_shutting_down) {
+747       log_dev(&quot;[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop&quot;);
+748       atomic_store_bool(&amp;g_splash_state.should_stop, true);
+749       // During shutdown, use a short timeout (100ms)
+750       uint64_t timeout_ns = 100LL * NS_PER_MS_INT;
+751       (void)asciichat_thread_join_timeout(&amp;g_splash_state.anim_thread, NULL, timeout_ns);
+752     } else {
+753       // Normal operation: wait indefinitely for the animation thread to finish
+754       // This ensures splash animation is 100% done before ASCII art rendering starts
+755       asciichat_error_t err = asciichat_thread_join(&amp;g_splash_state.anim_thread, NULL);
+756       if (err == ASCIICHAT_OK) {
+757         log_dev(&quot;[SPLASH_WAIT] Animation thread exited cleanly&quot;);
+758       } else {
+759         log_warn(&quot;[SPLASH_WAIT] Animation thread join failed: %s&quot;, asciichat_error_string(err));
+760         // Force stop the animation thread if join failed
+761         atomic_store_bool(&amp;g_splash_state.should_stop, true);
+762         // Clear any partial splash output left on screen
+763         terminal_clear_screen();
+764         terminal_cursor_home(STDOUT_FILENO);
+765         terminal_flush(STDOUT_FILENO);
+766       }
+767     }
+768 
+769     // Mark that we've joined (safe to call multiple times - only joins once)
+770     atomic_store_bool(&amp;g_splash_state.thread_created, false);
+771   }
+772 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_join()</b>,
+    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
+    <b>shutdown_is_requested()</b>, and <b>terminal_flush()</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_render_loop()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_thread_t_anim_thread"><a class="permalink" href="#asciichat_thread_t_anim_thread">asciichat_thread_t
+  anim_thread</a></h2>
+<p class="Pp">Definition at line <b>100</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_frame"><a class="permalink" href="#int_frame">int
+  frame</a></h2>
+<p class="Pp">Definition at line <b>99</b> of file <b>splash.c</b>.</p>
+<p class="Pp">Referenced by <b>ascii_pad_frame_height()</b>,
+    <b>ascii_pad_frame_width()</b>, <b>ascii_write()</b>,
+    <b>client_send_thread_func()</b>, <b>digital_rain_apply()</b>,
+    <b>ascii_query::LLDBController::evaluateExpression()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, <b>framebuffer_clear()</b>,
+    <b>framebuffer_peek_latest_multi_frame()</b>,
+    <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>,
+    <b>framebuffer_write_frame()</b>,
+    <b>ascii_query::LLDBController::getFrame()</b>,
+    <b>ascii_query::LLDBController::getFrames()</b>,
+    <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
+    <b>ascii_query::LLDBController::listVariables()</b>,
+    <b>media_source_read_video()</b>,
+    <b>ascii_query::LLDBController::operator=()</b>,
+    <b>ascii_query::LLDBController::readVariable()</b>,
+    <b>session_capture_process_for_transmission()</b>,
+    <b>session_capture_read_frame()</b>, <b>session_host_broadcast_frame()</b>,
+    <b>session_host_inject_frame()</b>, <b>session_host_send_frame()</b>,
+    <b>session_pipeline_run_main()</b>, <b>terminal_fd_writer_write()</b>, and
+    <b>webcam_read()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_intro_done_time_ns"><a class="permalink" href="#atomic_t_intro_done_time_ns">atomic_t
+  intro_done_time_ns</a></h2>
+<p class="Pp">Definition at line <b>102</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_is_running"><a class="permalink" href="#atomic_t_is_running">atomic_t
+  is_running</a></h2>
+<p class="Pp">Definition at line <b>96</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_should_stop"><a class="permalink" href="#atomic_t_should_stop">atomic_t
+  should_stop</a></h2>
+<p class="Pp">Definition at line <b>97</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_start_time_ns"><a class="permalink" href="#uint64_t_start_time_ns">uint64_t
+  start_time_ns</a></h2>
+<p class="Pp">Definition at line <b>101</b> of file <b>splash.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_thread_created"><a class="permalink" href="#atomic_t_thread_created">atomic_t
+  thread_created</a></h2>
+<p class="Pp">Definition at line <b>98</b> of file <b>splash.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

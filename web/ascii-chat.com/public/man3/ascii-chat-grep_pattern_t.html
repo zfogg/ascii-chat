@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>grep_pattern_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">grep_pattern_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">grep_pattern_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">grep_pattern_t - Single filter pattern with all its settings.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>original</b>
+  <br/>
+  Original pattern string (for display). char * <b>parsed_pattern</b>
+  <br/>
+  Parsed pattern (without delimiters/flags). <b>pcre2_singleton_t</b> *
+    <b>singleton</b>
+  <br/>
+  PCRE2 singleton (NULL if fixed string). <b>bool</b> <b>is_fixed_string</b>
+  <br/>
+  True for fixed string matching (no regex). <b>bool</b> <b>case_insensitive</b>
+  <br/>
+  Case-insensitive matching (i flag). <b>bool</b> <b>invert</b>
+  <br/>
+  Invert match (I flag). <b>bool</b> <b>global_flag</b>
+  <br/>
+  Highlight all matches (g flag). int <b>context_before</b>
+  <br/>
+  Lines before match (B flag). int <b>context_after</b>
+  <br/>
+  Lines after match (A flag).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Single filter pattern with all its settings.</p>
+<p class="Pp">Definition at line <b>65</b> of file <b>grep.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_pattern_t::case_insensitive</h2>
+<p class="Pp">Case-insensitive matching (i flag).</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, and
+  <b>grep_should_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_grep_pattern_t::context_after"><a class="permalink" href="#int_grep_pattern_t::context_after">int
+  grep_pattern_t::context_after</a></h2>
+<p class="Pp">Lines after match (A flag).</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, and
+  <b>grep_should_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_grep_pattern_t::context_before"><a class="permalink" href="#int_grep_pattern_t::context_before">int
+  grep_pattern_t::context_before</a></h2>
+<p class="Pp">Lines before match (B flag).</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, and
+  <b>grep_should_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_pattern_t::global_flag</h2>
+<p class="Pp">Highlight all matches (g flag).</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_pattern_t::invert</h2>
+<p class="Pp">Invert match (I flag).</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, and
+  <b>grep_should_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> grep_pattern_t::is_fixed_string</h2>
+<p class="Pp">True for fixed string matching (no regex).</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_init()</b>, and
+  <b>grep_should_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_grep_pattern_t::original"><a class="permalink" href="#const_char*_grep_pattern_t::original">const
+  char* grep_pattern_t::original</a></h2>
+<p class="Pp">Original pattern string (for display).</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_destroy()</b>, and <b>grep_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_grep_pattern_t::parsed_pattern"><a class="permalink" href="#char*_grep_pattern_t::parsed_pattern">char*
+  grep_pattern_t::parsed_pattern</a></h2>
+<p class="Pp">Parsed pattern (without delimiters/flags).</p>
+<p class="Pp">Definition at line <b>67</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_destroy()</b>, <b>grep_init()</b>,
+    <b>grep_restore_patterns()</b>, <b>grep_save_patterns()</b>, and
+    <b>grep_should_output()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>pcre2_singleton_t</b>* grep_pattern_t::singleton</h2>
+<p class="Pp">PCRE2 singleton (NULL if fixed string).</p>
+<p class="Pp">Definition at line <b>68</b> of file <b>grep.c</b>.</p>
+<p class="Pp">Referenced by <b>grep_destroy()</b>, <b>grep_highlight()</b>,
+    <b>grep_highlight_colored()</b>, <b>grep_init()</b>,
+    <b>grep_restore_patterns()</b>, <b>grep_save_patterns()</b>, and
+    <b>grep_should_output()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

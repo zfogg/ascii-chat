@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>discovery_thread_state_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">discovery_thread_state_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">discovery_thread_state_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">discovery_thread_state_t - Thread-safe result sharing between
+    discovery threads.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">mutex_t <b>lock</b>
+  <br/>
+  Mutex for thread-safe access. cond_t <b>signal</b>
+  <br/>
+  Condition variable for signaling. discovery_result_t * <b>result</b>
+  <br/>
+  Shared discovery result. <b>bool</b> <b>mdns_done</b>
+  <br/>
+  Whether mDNS discovery completed. <b>bool</b> <b>acds_done</b>
+  <br/>
+  Whether ACDS discovery completed. <b>bool</b> <b>found</b>
+  <br/>
+  Whether a session was found.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Thread-safe result sharing between discovery threads.</p>
+<p class="Pp">Definition at line <b>36</b> of file <b>discovery.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> discovery_thread_state_t::acds_done</h2>
+<p class="Pp">Whether ACDS discovery completed.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> discovery_thread_state_t::found</h2>
+<p class="Pp">Whether a session was found.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_discovery_thread_state_t::lock"><a class="permalink" href="#mutex_t_discovery_thread_state_t::lock">mutex_t
+  discovery_thread_state_t::lock</a></h2>
+<p class="Pp">Mutex for thread-safe access.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> discovery_thread_state_t::mdns_done</h2>
+<p class="Pp">Whether mDNS discovery completed.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="discovery_result_t*_discovery_thread_state_t::result"><a class="permalink" href="#discovery_result_t*_discovery_thread_state_t::result">discovery_result_t*
+  discovery_thread_state_t::result</a></h2>
+<p class="Pp">Shared discovery result.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="cond_t_discovery_thread_state_t::signal"><a class="permalink" href="#cond_t_discovery_thread_state_t::signal">cond_t
+  discovery_thread_state_t::signal</a></h2>
+<p class="Pp">Condition variable for signaling.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discover_session_parallel()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

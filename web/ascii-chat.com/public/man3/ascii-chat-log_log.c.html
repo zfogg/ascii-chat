@@ -1,0 +1,1953 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>log.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">log.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">log.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">log.c - &#x1F4DD; Multi-level logging with terminal color support,
+    file rotation, and async output</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>log_system_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_COLOR_COUNT</b> 8 /* DEV, DEBUG, WARN, INFO, ERROR,
+    FATAL, GREY, RESET */
+  <br/>
+  #define <b>LOGGING_INTERNAL_ERROR</b>(error, message, ...)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>__attribute__</b> ((weak))
+  <br/>
+  const char * <b>get_level_string_padded</b> (<b>log_level_t</b> level)
+  <br/>
+  Get padded level string for consistent alignment. size_t
+    <b>get_current_time_formatted</b> (char *time_buf)
+  <br/>
+  char * <b>format_message</b> (const char *format, va_list <b>args</b>)
+  <br/>
+  void <b>log_init</b> (const char *filename, <b>log_level_t</b> level,
+    <b>bool</b> force_stderr, <b>bool</b> use_mmap)
+  <br/>
+  void <b>log_destroy</b> (void)
+  <br/>
+  void <b>log_system_init</b> (void)
+  <br/>
+  Initialize the logging system internal state (system-level init). void
+    <b>log_system_destroy</b> (void)
+  <br/>
+  Shutdown the logging system internal state (system-level cleanup). void
+    <b>log_set_level</b> (<b>log_level_t</b> level)
+  <br/>
+  <b>log_level_t</b> <b>log_get_level</b> (void)
+  <br/>
+  void <b>log_set_terminal_output</b> (<b>bool</b> <b>enabled</b>)
+  <br/>
+  <b>bool</b> <b>log_get_terminal_output</b> (void)
+  <br/>
+  void <b>log_set_force_stderr</b> (<b>bool</b> <b>enabled</b>)
+  <br/>
+  <b>bool</b> <b>log_get_force_stderr</b> (void)
+  <br/>
+  void <b>log_set_json_output</b> (int fd)
+  <br/>
+  void <b>log_disable_file_output</b> (void)
+  <br/>
+  asciichat_error_t <b>log_set_format</b> (const char *format_str, <b>bool</b>
+    console_only)
+  <br/>
+  <b>bool</b> <b>log_lock_terminal</b> (void)
+  <br/>
+  void <b>log_unlock_terminal</b> (<b>bool</b> previous_state)
+  <br/>
+  void <b>log_set_flush_delay</b> (unsigned int delay_ms)
+  <br/>
+  void <b>log_truncate_if_large</b> (void)
+  <br/>
+  void <b>log_msg</b> (<b>log_level_t</b> level, const char *file, int line,
+    const char *func, const char *fmt,...)
+  <br/>
+  void <b>log_terminal_msg</b> (<b>log_level_t</b> level, const char *file, int
+    line, const char *func, const char *fmt,...)
+  <br/>
+  void <b>log_plain_msg</b> (const char *fmt,...)
+  <br/>
+  void <b>log_plain_stderr_msg</b> (const char *fmt,...)
+  <br/>
+  void <b>log_plain_stderr_nonewline_msg</b> (const char *fmt,...)
+  <br/>
+  void <b>log_file_msg</b> (const char *fmt,...)
+  <br/>
+  asciichat_error_t <b>log_network_message</b> (<b>socket_t</b> sockfd, const
+    struct crypto_context_t *crypto_ctx, <b>log_level_t</b> level,
+    remote_log_direction_t direction, const char *fmt,...)
+  <br/>
+  asciichat_error_t <b>log_net_message</b> (<b>socket_t</b> sockfd, const struct
+    crypto_context_t *crypto_ctx, <b>log_level_t</b> level,
+    remote_log_direction_t direction, const char *file, int line, const char
+    *func, const char *fmt,...)
+  <br/>
+  void <b>log_redetect_terminal_capabilities</b> (void)
+  <br/>
+  const char ** <b>log_get_color_array</b> (void)
+  <br/>
+  const char * <b>log_level_color</b> (<b>log_color_t</b> color)
+  <br/>
+  void <b>log_init_colors</b> (void)
+  <br/>
+  void <b>log_set_color_scheme</b> (const <b>color_scheme_t</b> *scheme)
+  <br/>
+  asciichat_error_t <b>log_enable_mmap</b> (const char *log_path)
+  <br/>
+  asciichat_error_t <b>log_enable_mmap_sized</b> (const char *log_path, size_t
+    max_size)
+  <br/>
+  void <b>log_disable_mmap</b> (void)
+  <br/>
+  void <b>log_shutdown_begin</b> (void)
+  <br/>
+  void <b>log_shutdown_end</b> (void)
+  <br/>
+  void <b>log_cleanup_colors</b> (void)
+  <br/>
+  Clean up compiled color scheme. void <b>log_set_session_log_buffer</b>
+    (<b>session_log_buffer_t</b> *buf)
+  <br/>
+  Register a session log buffer with the logger. void
+    <b>log_clear_session_log_buffer</b> (void)
+  <br/>
+  Unregister the session log buffer. <b>session_log_buffer_t</b> *
+    <b>log_get_session_log_buffer</b> (void)
+  <br/>
+  Get the currently registered session log buffer. size_t
+    <b>log_recolor_plain_entry</b> (const char *plain_line, char *colored_buf,
+    size_t buf_size)
+  <br/>
+  Recolor a plain (non-colored) log line with proper ANSI codes. void
+    <b>log_console_impl</b> (<b>log_level_t</b> level, const char *file, int
+    line, const char *func, const char *message)
+  <br/>
+  void * <b>log_get_template</b> (void)
+  <br/>
+  Get the current log format template.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4DD; Multi-level logging with terminal color support, file
+    rotation, and async output</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>log/log.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_COLOR_COUNT___8_/*_DEV,_DEBUG,_WARN,_INFO,_ERROR,_FATAL,_GREY,_RESET_*/"><a class="permalink" href="#_define_LOG_COLOR_COUNT___8_/*_DEV,_DEBUG,_WARN,_INFO,_ERROR,_FATAL,_GREY,_RESET_*/">#define
+  LOG_COLOR_COUNT 8 /* DEV, DEBUG, WARN, INFO, ERROR, FATAL, GREY, RESET
+  */</a></h2>
+<p class="Pp">Definition at line <b>181</b> of file <b>log/log.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOGGING_INTERNAL_ERROR(_error,__message,__"><a class="permalink" href="#_define_LOGGING_INTERNAL_ERROR(_error,__message,__">#define
+  LOGGING_INTERNAL_ERROR( error, message, ...)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+<br/>
+  static const char *msg_header = &quot;CRITICAL LOGGING SYSTEM ERROR: &quot;;                                                 \
+<br/>
+  safe_fprintf(stderr, &quot;%s %s\n&quot;, colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
+<br/>
+  int _log_fd = atomic_load_int(&amp;g_log.file);                                                                        \
+<br/>
+  platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
+<br/>
+  platform_write(_log_fd, message, strlen(message));                                                                 \
+<br/>
+  platform_write(_log_fd, &quot;\n&quot;, 1);                                                                                  \
+<br/>
+  backtrace_print_simple(0);                                                                                       \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>201</b> of file <b>log/log.c</b>.</p>
+<pre>201 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
+202   do {                                                                                                                 \
+203     asciichat_set_errno_with_message(error, __FILE__, __LINE__, __func__, message, ##__VA_ARGS__);                     \
+204     static const char *msg_header = &quot;CRITICAL LOGGING SYSTEM ERROR: &quot;;                                                 \
+205     safe_fprintf(stderr, &quot;%s %s\n&quot;, colored_string(LOG_COLOR_ERROR, msg_header), message);                             \
+206     int _log_fd = atomic_load_int(&amp;g_log.file);                                                                        \
+207     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
+208     platform_write(_log_fd, message, strlen(message));                                                                 \
+209     platform_write(_log_fd, &quot;\n&quot;, 1);                                                                                  \
+210     backtrace_print_simple(0);                                                                                       \
+211   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>format_message()</b>,
+    <b>get_current_time_formatted()</b>, and <b>log_msg()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="__attribute___((weak)_)"><a class="permalink" href="#__attribute___((weak)_)">__attribute__
+  ((weak) )</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>log/log.c</b>.</p>
+<pre>42                                                                                      {
+43   (void)level;
+44   (void)message;
+45   // Default: no-op
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_*_format_message_(const_char_*_format,_va_list_args)"><a class="permalink" href="#char_*_format_message_(const_char_*_format,_va_list_args)">char
+  * format_message (const char * format, va_list args)</a></h2>
+<p class="Pp">Definition at line <b>248</b> of file <b>log/log.c</b>.</p>
+<pre>248                                                        {
+249   if (!format) {
+250     return NULL;
+251   }
+252 
+253   // First, determine the size needed
+254   va_list args_copy;
+255   va_copy(args_copy, args);
+256   int size = safe_vsnprintf(NULL, 0, format, args_copy);
+257   va_end(args_copy);
+258 
+259   if (size &lt; 0) {
+260     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format context message&quot;);
+261     return NULL;
+262   }
+263 
+264   // Allocate and format the message
+265   char *message = SAFE_MALLOC(size + 1, char *);
+266   int result = safe_vsnprintf(message, (size_t)size + 1, format, args);
+267   if (result &lt; 0) {
+268     SAFE_FREE(message);
+269     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format context message&quot;);
+270     return NULL;
+271   }
+272 
+273   return message;
+274 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>LOGGING_INTERNAL_ERROR</b>, and
+    <b>safe_vsnprintf()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
+    <b>asciichat_set_errno_with_message()</b>,
+    <b>asciichat_set_errno_with_system_error_and_message()</b>, and
+    <b>log_labeled()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_get_current_time_formatted_(char_*_time_buf)"><a class="permalink" href="#size_t_get_current_time_formatted_(char_*_time_buf)">size_t
+  get_current_time_formatted (char * time_buf)</a></h2>
+<p class="Pp">Definition at line <b>216</b> of file <b>log/log.c</b>.</p>
+<pre>216                                                   {
+217   /* Get wall-clock time in nanoseconds */
+218   uint64_t ts_ns = time_get_realtime_ns();
+219   // Extract seconds and nanoseconds from total nanoseconds
+220   time_t seconds = (time_t)(ts_ns / NS_PER_SEC_INT);
+221   long nanoseconds = (long)(ts_ns % NS_PER_SEC_INT);
+222   struct tm tm_info;
+223   platform_localtime(&amp;seconds, &amp;tm_info);
+224   // Format the time part first
+225   // strftime returns 0 on error, not negative (and len is size_t/unsigned)
+226   size_t len = strftime(time_buf, 32, &quot;%H:%M:%S&quot;, &amp;tm_info);
+227   if (len == 0 || len &gt;= 32) {
+228     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format time&quot;);
+229     return 0;
+230   }
+231 
+232   // Add microseconds manually (convert nanoseconds to microseconds for display)
+233   long microseconds = nanoseconds / 1000;
+234   if (microseconds &lt; 0)
+235     microseconds = 0;
+236   if (microseconds &gt; 999999)
+237     microseconds = 999999;
+238 
+239   int result = safe_snprintf(time_buf + len, 32 - len, &quot;.%06ld&quot;, microseconds);
+240   if (result &lt; 0 || result &gt;= (int)(32 - len)) {
+241     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format microseconds&quot;);
+242     return 0;
+243   }
+244 
+245   return len + (size_t)result;
+246 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOGGING_INTERNAL_ERROR</b>,
+    <b>platform_localtime()</b>, <b>safe_snprintf()</b>, and
+    <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>log_msg()</b>, <b>log_plain_msg()</b>, and
+    <b>log_terminal_msg()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_get_level_string_padded_("><a class="permalink" href="#const_char_*_get_level_string_padded_(">const
+  char * get_level_string_padded (<b>log_level_t</b> level)</a></h2>
+<p class="Pp">Get padded level string for consistent alignment. Returns level
+    names padded to 5 characters for visual alignment. Used consistently in both
+    colored and plain text formatters to ensure grep pattern matching works
+    correctly.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>level</i> Log level</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Padded level string (e.g., &quot;INFO &quot;, &quot;WARN
+  &quot;, &quot;DEBUG&quot;)</div>
+<p class="Pp">Definition at line <b>149</b> of file <b>log/log.c</b>.</p>
+<pre>149                                                        {
+150   const char *result;
+151   switch (level) {
+152   case LOG_INFO:
+153     result = &quot;INFO &quot;; // 5 chars: INFO + 1 space
+154     break;
+155   case LOG_WARN:
+156     result = &quot;WARN &quot;; // 5 chars: WARN + 1 space
+157     break;
+158   case LOG_DEV:
+159     result = &quot;DEV  &quot;; // 5 chars: DEV + 2 spaces
+160     break;
+161   case LOG_DEBUG:
+162     result = &quot;DEBUG&quot;; // 5 chars: DEBUG (no padding needed)
+163     break;
+164   case LOG_ERROR:
+165     result = &quot;ERROR&quot;; // 5 chars: ERROR (no padding needed)
+166     break;
+167   case LOG_FATAL:
+168     result = &quot;FATAL&quot;; // 5 chars: FATAL (no padding needed)
+169     break;
+170   default:
+171     result = &quot;?????&quot;; // Invalid level - return 5 question marks
+172   }
+173   // Verify length
+174   if (strlen(result) != 5) {
+175     fprintf(stderr, &quot;ERROR: get_level_string_padded() returned non-5-char string: '%s' (len=%zu)\n&quot;, result,
+176             strlen(result));
+177   }
+178   return result;
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_cleanup_colors_(void_)"><a class="permalink" href="#void_log_cleanup_colors_(void_)">void
+  log_cleanup_colors (void )</a></h2>
+<p class="Pp">Clean up compiled color scheme. Should be called AFTER memory
+    reporting to ensure colored output. Safe to call multiple times
+    (idempotent).</p>
+<p class="Pp">Definition at line <b>1741</b> of file <b>log/log.c</b>.</p>
+<pre>1741                               {
+1742   colorscheme_cleanup_compiled(&amp;g_log.compiled_colors);
+1743 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_cleanup_compiled()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_clear_session_log_buffer_(void_)"><a class="permalink" href="#void_log_clear_session_log_buffer_(void_)">void
+  log_clear_session_log_buffer (void )</a></h2>
+<p class="Pp">Unregister the session log buffer. No-op if no buffer is currently
+    registered.</p>
+<p class="Pp">Definition at line <b>1766</b> of file <b>log/log.c</b>.</p>
+<pre>1766                                         {
+1767   atomic_ptr_store(&amp;g_log.session_log_buffer, NULL);
+1768 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_store()</b>.</p>
+<p class="Pp">Referenced by <b>log_system_destroy()</b>,
+    <b>splash_log_destroy()</b>, <b>ui_mdns_log_destroy()</b>, and
+    <b>ui_status_log_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_console_impl_("><a class="permalink" href="#void_log_console_impl_(">void
+  log_console_impl (<b>log_level_t</b> level, const char * file, int line, const
+  char * func, const char * message)</a></h2>
+<p class="Pp">Definition at line <b>2042</b> of file <b>log/log.c</b>.</p>
+<pre>2042                                                                                                             {
+2043   if (!message) {
+2044     return;
+2045   }
+2046 
+2047   int fd = terminal_choose_log_fd(level);
+2048   if (fd &lt; 0) {
+2049     return;
+2050   }
+2051 
+2052   // Check if JSON output is enabled (json_file &gt;= 0 means enabled)
+2053   int json_fd = atomic_load_int(&amp;g_log.json_file);
+2054   bool use_json = (json_fd &gt;= 0);
+2055 
+2056   if (use_json) {
+2057     // Use async-safe JSON formatter (safe for signal handlers)
+2058     log_json_async_safe(fd, level, file, line, func, message);
+2059   } else {
+2060     // Text output to console using platform_write_all to handle partial writes
+2061     size_t msg_len = strlen(message);
+2062     platform_write_all(fd, (const uint8_t *)message, msg_len);
+2063     if (msg_len == 0 || message[msg_len - 1] != '\n') {
+2064       platform_write_all(fd, (const uint8_t *)&quot;\n&quot;, 1);
+2065     }
+2066   }
+2067 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>log_json_async_safe()</b>,
+    <b>platform_write_all()</b>, and <b>terminal_choose_log_fd()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_destroy_(void_)"><a class="permalink" href="#void_log_destroy_(void_)">void
+  log_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>622</b> of file <b>log/log.c</b>.</p>
+<pre>622                        {
+623   // Destroy mmap logging first (if active)
+624   if (log_mmap_is_active()) {
+625     log_mmap_destroy();
+626   }
+627 
+628   // Cleanup grep filter
+629   grep_destroy();
+630 
+631   /* Mark logging system as shutdown FIRST (state machine transition)
+632    * This signals worker threads to stop logging immediately before we free memory.
+633    * This prevents TOCTOU race where a worker thread could see non-NULL format pointer
+634    * after we've freed it but before lifecycle_shutdown() is called. */
+635   lifecycle_shutdown(&amp;g_log.lifecycle);
+636 
+637   // Cleanup custom format structures: All worker threads have been signaled to stop by this point.
+638   // Safe to free templates now without use-after-free concerns.
+639   if (g_log.format) {
+640     log_template_free(g_log.format);
+641     g_log.format = NULL;
+642   }
+643   if (g_log.format_console_only) {
+644     log_template_free(g_log.format_console_only);
+645     g_log.format_console_only = NULL;
+646   }
+647   atomic_store_bool(&amp;g_log.has_custom_format, false);
+648 
+649   // Lock-free cleanup using atomic operations
+650   int old_file = atomic_load_int(&amp;g_log.file);
+651   if (old_file &gt;= 0 &amp;&amp; old_file != STDERR_FILENO) {
+652     platform_close(old_file);
+653   }
+654   atomic_store_int(&amp;g_log.file, -1);
+655 
+656   // Destroy rotation mutex
+657   lifecycle_shutdown(&amp;g_log.rotation_mutex_lifecycle);
+658 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>atomic_store_bool()</b>,
+    <b>atomic_store_int()</b>, <b>grep_destroy()</b>,
+    <b>lifecycle_shutdown()</b>, <b>log_mmap_destroy()</b>,
+    <b>log_mmap_is_active()</b>, <b>log_template_free()</b>, and
+    <b>platform_close()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
+    <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_disable_file_output_(void_)"><a class="permalink" href="#void_log_disable_file_output_(void_)">void
+  log_disable_file_output (void )</a></h2>
+<p class="Pp">Definition at line <b>730</b> of file <b>log/log.c</b>.</p>
+<pre>730                                    {
+731   /* Close the current file if it's not stderr */
+732   int old_file = atomic_load_int(&amp;g_log.file);
+733   if (old_file &gt;= 0 &amp;&amp; old_file != STDERR_FILENO) {
+734     platform_close(old_file);
+735   }
+736   /* Redirect file output to stderr */
+737   atomic_store_int(&amp;g_log.file, STDERR_FILENO);
+738   g_log.filename[0] = '\0';
+739 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>atomic_store_int()</b>,
+    and <b>platform_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_disable_mmap_(void_)"><a class="permalink" href="#void_log_disable_mmap_(void_)">void
+  log_disable_mmap (void )</a></h2>
+<p class="Pp">Definition at line <b>1703</b> of file <b>log/log.c</b>.</p>
+<pre>1703                             {
+1704   if (log_mmap_is_active()) {
+1705     log_mmap_destroy();
+1706     log_info(&quot;Lock-free mmap logging disabled&quot;);
+1707   }
+1708 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_mmap_destroy()</b>, and
+    <b>log_mmap_is_active()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_enable_mmap_(const_char_*_log_path)"><a class="permalink" href="#asciichat_error_t_log_enable_mmap_(const_char_*_log_path)">asciichat_error_t
+  log_enable_mmap (const char * log_path)</a></h2>
+<p class="Pp">Definition at line <b>1684</b> of file <b>log/log.c</b>.</p>
+<pre>1684                                                         {
+1685   return log_enable_mmap_sized(log_path, 0); /* Use default size */
+1686 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_enable_mmap_sized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_enable_mmap_sized_(const_char_*_log_path,_size_t_max_size)"><a class="permalink" href="#asciichat_error_t_log_enable_mmap_sized_(const_char_*_log_path,_size_t_max_size)">asciichat_error_t
+  log_enable_mmap_sized (const char * log_path, size_t max_size)</a></h2>
+<p class="Pp">Definition at line <b>1688</b> of file <b>log/log.c</b>.</p>
+<pre>1688                                                                                {
+1689   if (!log_path) {
+1690     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;log_path is required&quot;);
+1691   }
+1692 
+1693   // Initialize mmap logging - text is written directly to the mmap'd file
+1694   asciichat_error_t result = log_mmap_init_simple(log_path, max_size);
+1695   if (result != ASCIICHAT_OK) {
+1696     return result;
+1697   }
+1698 
+1699   log_info(&quot;Lock-free mmap logging enabled: %s&quot;, log_path);
+1700   return ASCIICHAT_OK;
+1701 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_mmap_init_simple()</b>.</p>
+<p class="Pp">Referenced by <b>log_enable_mmap()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_file_msg_(const_char_*_fmt,__"><a class="permalink" href="#void_log_file_msg_(const_char_*_fmt,__">void
+  log_file_msg (const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1390</b> of file <b>log/log.c</b>.</p>
+<pre>1390                                         {
+1391   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1392     return;
+1393   }
+1394 
+1395   char log_buffer[LOG_MSG_BUFFER_SIZE];
+1396   va_list args;
+1397   va_start(args, fmt);
+1398   int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+1399   va_end(args);
+1400 
+1401   if (msg_len &lt;= 0) {
+1402     return;
+1403   }
+1404 
+1405   // Truncate at whole line boundaries to avoid UTF-8 issues
+1406   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+1407 
+1408   // Validate UTF-8 in formatted message
+1409   validate_log_message_utf8(log_buffer, &quot;file-only log&quot;);
+1410 
+1411   // Write to mmap if active, else to file
+1412   if (log_mmap_is_active()) {
+1413     log_mmap_write(LOG_INFO, NULL, 0, NULL, &quot;%s&quot;, log_buffer);
+1414   } else {
+1415     int file_fd = atomic_load_u64(&amp;g_log.file);
+1416     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
+1417       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+1418       write_to_log_file_atomic(&quot;\n&quot;, 1, NULL);
+1419     }
+1420   }
+1421 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>atomic_load_u64()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_mmap_is_active()</b>,
+    <b>log_mmap_write()</b>, and <b>safe_vsnprintf()</b>.</p>
+<p class="Pp">Referenced by <b>backtrace_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_**_log_get_color_array_(void_)"><a class="permalink" href="#const_char_**_log_get_color_array_(void_)">const
+  char ** log_get_color_array (void )</a></h2>
+<p class="Pp">Definition at line <b>1551</b> of file <b>log/log.c</b>.</p>
+<pre>1551                                        {
+1552   init_terminal_capabilities();
+1553 
+1554   /* Colors should be initialized via log_system_init(); this is just a safety check */
+1555   if (!g_log.log_colorscheme_initialized) {
+1556     /* Fallback: initialize colors if not already done (should not happen after log_system_init) */
+1557     log_init_colors();
+1558   }
+1559 
+1560   /* Safety check: if colors are still not initialized, return NULL to prevent crashes from null pointers */
+1561   if (!g_log.log_colorscheme_initialized) {
+1562     return NULL;
+1563   }
+1564 
+1565   /* Return the compiled color scheme based on terminal capabilities
+1566    * codes_16, codes_256, codes_truecolor are now proper arrays of pointers (const char *[8]),
+1567    * so we can safely cast them to const char **. */
+1568   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
+1569     return (const char **)g_log.compiled_colors.codes_truecolor;
+1570   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
+1571     return (const char **)g_log.compiled_colors.codes_256;
+1572   } else {
+1573     return (const char **)g_log.compiled_colors.codes_16;
+1574   }
+1575 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_init_colors()</b>.</p>
+<p class="Pp">Referenced by <b>log_level_color()</b>, <b>log_msg()</b>, and
+    <b>log_recolor_plain_entry()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_get_force_stderr (void )</h2>
+<p class="Pp">Definition at line <b>722</b> of file <b>log/log.c</b>.</p>
+<pre>722                                 {
+723   return atomic_load_u64(&amp;g_log.force_stderr);
+724 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">Referenced by <b>terminal_choose_log_fd()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>log_level_t</b> log_get_level (void )</h2>
+<p class="Pp">Definition at line <b>693</b> of file <b>log/log.c</b>.</p>
+<pre>693                                 {
+694   return (log_level_t)atomic_load_u64(&amp;g_log.level);
+695 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>, and
+    <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_log_buffer_t</b> * log_get_session_log_buffer (void
+  )</h2>
+<p class="Pp">Get the currently registered session log buffer. Returns the
+    buffer that was previously registered with
+    <b>log_set_session_log_buffer()</b>. Returns NULL if no buffer is currently
+    registered.</p>
+<p class="Pp">Definition at line <b>1776</b> of file <b>log/log.c</b>.</p>
+<pre>1776                                                        {
+1777   return (session_log_buffer_t *)atomic_ptr_load(&amp;g_log.session_log_buffer);
+1778 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_load()</b>.</p>
+<p class="Pp">Referenced by <b>log_search_gather_and_filter_logs()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_*_log_get_template_(void_)"><a class="permalink" href="#void_*_log_get_template_(void_)">void
+  * log_get_template (void )</a></h2>
+<p class="Pp">Get the current log format template.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Opaque pointer to the current log format template (may be
+  NULL if not set)</div>
+<p class="Pp">Returns the compiled log format template used by the logging
+    system. This is used by platform code (e.g., backtrace formatting) to format
+    log entries using the same template as the rest of the logging system.
+    Returns void* (opaque) to avoid circular dependency with format.h.</p>
+<p class="Pp">Definition at line <b>2078</b> of file <b>log/log.c</b>.</p>
+<pre>2078                              {
+2079   return (void *)g_log.format;
+2080 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>backtrace_print()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_get_terminal_output (void )</h2>
+<p class="Pp">Definition at line <b>714</b> of file <b>log/log.c</b>.</p>
+<pre>714                                    {
+715   return atomic_load_u64(&amp;g_log.terminal_output_enabled);
+716 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">Referenced by <b>config_load_and_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_init_(const_char_*_filename,_"><a class="permalink" href="#void_log_init_(const_char_*_filename,_">void
+  log_init (const char * filename, <b>log_level_t</b> level, <b>bool</b>
+  force_stderr, <b>bool</b> use_mmap)</a></h2>
+<p class="Pp">Definition at line <b>532</b> of file <b>log/log.c</b>.</p>
+<pre>532                                                                                          {
+533   // Initialize rotation mutex (only operation that uses a mutex)
+534   g_log.rotation_mutex_lifecycle.sync_type = LIFECYCLE_SYNC_MUTEX;
+535   g_log.rotation_mutex_lifecycle.sync.mutex = &amp;g_log.rotation_mutex;
+536   lifecycle_init(&amp;g_log.rotation_mutex_lifecycle, &quot;log_rotation&quot;);
+537 
+538   // Set basic config using atomic stores
+539   atomic_store_u64(&amp;g_log.force_stderr, force_stderr);
+540   bool preserve_terminal_output = atomic_load_u64(&amp;g_log.terminal_output_enabled);
+541 
+542   // Force logs to stderr if stdout is piped/redirected
+543   // This prevents logs from contaminating piped/redirected output in snapshot/batch modes
+544   // Per terminal.h: &quot;force stderr when piped to prevent data corruption&quot;
+545   if (terminal_is_piped_output()) {
+546     atomic_store_bool(&amp;g_log.force_stderr, true);
+547   }
+548 
+549   // Close any existing file (atomic load/store)
+550   int old_file = atomic_load_int(&amp;g_log.file);
+551   if (lifecycle_is_initialized(&amp;g_log.lifecycle) &amp;&amp; old_file &gt;= 0 &amp;&amp; old_file != STDERR_FILENO) {
+552     platform_close(old_file);
+553     atomic_store_int(&amp;g_log.file, -1);
+554   }
+555 
+556   // Check LOG_LEVEL environment variable
+557   const char *env_level_str = SAFE_GETENV(&quot;LOG_LEVEL&quot;);
+558   if (env_level_str) {
+559     atomic_store_u64(&amp;g_log.level, (int)parse_log_level_from_env());
+560   } else {
+561     atomic_store_u64(&amp;g_log.level, (int)level);
+562   }
+563 
+564   atomic_store_bool(&amp;g_log.level_manually_set, false);
+565   atomic_store_u64(&amp;g_log.current_size, 0);
+566 
+567   if (filename) {
+568     SAFE_STRNCPY(g_log.filename, filename, sizeof(g_log.filename) - 1);
+569 
+570     if (use_mmap) {
+571       // Lock-free mmap path - writes go to mmap'd file
+572       asciichat_error_t mmap_result = log_mmap_init_simple(filename, 0);
+573       if (mmap_result == ASCIICHAT_OK) {
+574         atomic_store_int(&amp;g_log.file, -1); // No regular fd - using mmap for file output
+575       } else {
+576         // Mmap failed - use stderr only (atomic writes, lock-free)
+577         if (preserve_terminal_output) {
+578           safe_fprintf(stderr, &quot;Mmap logging failed for %s, using stderr only (lock-free)\n&quot;, filename);
+579         }
+580         atomic_store_int(&amp;g_log.file, STDERR_FILENO);
+581         g_log.filename[0] = '\0';
+582       }
+583     } else {
+584       // Lock-free file I/O path - uses atomic write() syscalls
+585       int fd = platform_open(&quot;log_file&quot;, filename, O_CREAT | O_RDWR | O_TRUNC, FILE_PERM_PRIVATE);
+586       atomic_store_int(&amp;g_log.file, (fd &gt;= 0) ? fd : STDERR_FILENO);
+587       if (fd &lt; 0) {
+588         if (preserve_terminal_output) {
+589           safe_fprintf(stderr, &quot;Failed to open log file: %s\n&quot;, filename);
+590         }
+591         g_log.filename[0] = '\0';
+592       }
+593     }
+594   } else {
+595     atomic_store_int(&amp;g_log.file, STDERR_FILENO);
+596     g_log.filename[0] = '\0';
+597   }
+598 
+599   /* Initialize default log format (NULL means use mode-specific default) */
+600   log_set_format(NULL, false);
+601 
+602   /* Mark logging system as initialized (state machine transition) */
+603   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+604     lifecycle_init(&amp;g_log.lifecycle, &quot;logging&quot;);
+605   }
+606 
+607   atomic_store_u64(&amp;g_log.terminal_output_enabled, preserve_terminal_output);
+608 
+609   // Reset terminal detection if needed
+610   if (g_log.terminal_caps_initialized &amp;&amp; !g_log.terminal_caps.detection_reliable) {
+611     g_log.terminal_caps_initialized = false;
+612   }
+613 
+614   // Detect terminal capabilities
+615   log_redetect_terminal_capabilities();
+616 
+617   // NOTE: Color initialization happens separately via log_set_color_scheme()
+618   // after options are parsed. Logging works without colors until then.
+619   // NOTE: Grep filter initialization happens in main.c after options_init() completes.
+620 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, <b>atomic_load_u64()</b>,
+    <b>atomic_store_bool()</b>, <b>atomic_store_int()</b>,
+    <b>atomic_store_u64()</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_mmap_init_simple()</b>,
+    <b>log_redetect_terminal_capabilities()</b>, <b>log_set_format()</b>,
+    <b>platform_close()</b>, <b>platform_open()</b>, <b>safe_fprintf()</b>, and
+    <b>terminal_is_piped_output()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>,
+    <b>client_init_with_args()</b>, <b>main()</b>, and
+    <b>mirror_init_with_args()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_init_colors_(void_)"><a class="permalink" href="#void_log_init_colors_(void_)">void
+  log_init_colors (void )</a></h2>
+<p class="Pp">Definition at line <b>1592</b> of file <b>log/log.c</b>.</p>
+<pre>1592                            {
+1593   /* Skip color initialization during terminal detection to avoid mutex deadlock */
+1594   if (g_log.terminal_caps_detecting) {
+1595     return;
+1596   }
+1597 
+1598   /* Skip color initialization before logging is fully initialized */
+1599   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1600     return;
+1601   }
+1602 
+1603   if (g_log.log_colorscheme_initialized) {
+1604     return;
+1605   }
+1606 
+1607   /* Get active color scheme - this ensures color system is initialized */
+1608   const color_scheme_t *scheme = colorscheme_get_active_scheme();
+1609   if (!scheme) {
+1610     /* Don't mark as initialized if we can't get a color scheme - return NULL instead */
+1611     return;
+1612   }
+1613 
+1614   /* Acquire mutex for compilation (mutex is now initialized by colorscheme_init) */
+1615   mutex_lock(&amp;g_colorscheme_mutex);
+1616   /* Debug: Check if g_log.compiled_colors is actually zero-initialized */
+1617   /* Zero the structure on first use to avoid freeing garbage pointers */
+1618   /* (static = {0} produces garbage in this build for unknown reasons) */
+1619   static bool first_compile = true;
+1620   if (first_compile) {
+1621     memset(&amp;g_log.compiled_colors, 0, sizeof(g_log.compiled_colors));
+1622     first_compile = false;
+1623   }
+1624 
+1625   /* Detect terminal background */
+1626   terminal_background_t background = detect_terminal_background();
+1627   /* Determine color mode for compilation */
+1628   terminal_color_mode_t mode;
+1629   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
+1630     mode = TERM_COLOR_TRUECOLOR;
+1631   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
+1632     mode = TERM_COLOR_256;
+1633   } else {
+1634     mode = TERM_COLOR_16;
+1635   }
+1636   /* Compile the color scheme to ANSI codes */
+1637   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &amp;g_log.compiled_colors);
+1638   g_log.log_colorscheme_initialized = true;
+1639   mutex_unlock(&amp;g_colorscheme_mutex);
+1640 
+1641   /* Log outside of mutex lock to avoid recursive lock deadlock */
+1642   if (result != ASCIICHAT_OK) {
+1643     log_debug(&quot;Failed to compile color scheme: %d&quot;, result);
+1644   }
+1645 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_compile_scheme()</b>,
+    <b>colorscheme_get_active_scheme()</b>, <b>detect_terminal_background()</b>,
+    <b>g_colorscheme_mutex</b>, and <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">Referenced by <b>log_get_color_array()</b>,
+    <b>log_system_init()</b>, and <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_log_level_color_("><a class="permalink" href="#const_char_*_log_level_color_(">const
+  char * log_level_color (<b>log_color_t</b> color)</a></h2>
+<p class="Pp">Definition at line <b>1577</b> of file <b>log/log.c</b>.</p>
+<pre>1577                                                {
+1578   const char **colors = log_get_color_array();
+1579   if (colors == NULL) {
+1580     return &quot;&quot;; /* Return empty string if colors not available */
+1581   }
+1582   if (color &gt;= 0 &amp;&amp; color &lt;= LOG_COLOR_RESET) {
+1583     return colors[color];
+1584   }
+1585   return colors[LOG_COLOR_RESET]; /* Return reset color if invalid */
+1586 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_get_color_array()</b>.</p>
+<p class="Pp">Referenced by <b>colored_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_lock_terminal (void )</h2>
+<p class="Pp">Definition at line <b>784</b> of file <b>log/log.c</b>.</p>
+<pre>784                              {
+785   bool expected = atomic_load_bool(&amp;g_log.terminal_locked);
+786   while (!atomic_cas_bool(&amp;g_log.terminal_locked, &amp;expected, true)) {
+787     // Retry if CAS failed
+788   }
+789   atomic_store_u64(&amp;g_log.terminal_owner_thread, (uint64_t)asciichat_thread_self());
+790   return expected;
+791 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_self()</b>,
+    <b>atomic_cas_bool()</b>, <b>atomic_load_bool()</b>, and
+    <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>client_main()</b>, <b>prompt_password()</b>,
+    <b>prompt_unknown_host()</b>, and <b>ui_mdns_select()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_msg_("><a class="permalink" href="#void_log_msg_(">void
+  log_msg (<b>log_level_t</b> level, const char * file, int line, const char *
+  func, const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1016</b> of file <b>log/log.c</b>.</p>
+<pre>1016                                                                                                     {
+1017   // All state access uses atomic operations - fully lock-free
+1018   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1019     return;
+1020   }
+1021   // Safety check: if main format template has been freed during shutdown, skip logging
+1022   // This prevents heap-use-after-free when threads call logging after log_destroy() has freed g_log.format
+1023   if (!g_log.format) {
+1024     return;
+1025   }
+1026   if (level &lt; (log_level_t)atomic_load_u64(&amp;g_log.level)) {
+1027     return;
+1028   }
+1029   /* =========================================================================
+1030    * MMAP PATH: When mmap logging is active, writes go to mmap'd file
+1031    * ========================================================================= */
+1032   bool mmap_active = log_mmap_is_active();
+1033   if (mmap_active) {
+1034     maybe_rotate_log();
+1035 
+1036     va_list args;
+1037     va_start(args, fmt);
+1038     char msg_buffer[LOG_MMAP_MSG_BUFFER_SIZE];
+1039     int msg_len = safe_vsnprintf(msg_buffer, sizeof(msg_buffer), fmt, args);
+1040     va_end(args);
+1041 
+1042     // Truncate at whole line boundaries to avoid UTF-8 issues
+1043     if (msg_len &gt; 0) {
+1044       msg_len = truncate_at_whole_line(msg_buffer, msg_len, sizeof(msg_buffer));
+1045     }
+1046 
+1047     // Validate UTF-8 in formatted message
+1048     validate_log_message_utf8(msg_buffer, &quot;mmap log message&quot;);
+1049 
+1050     log_mmap_write(level, file, line, func, &quot;%s&quot;, msg_buffer);
+1051 
+1052     // Terminal output (check with atomic loads)
+1053     if (atomic_load_u64(&amp;g_log.terminal_output_enabled) &amp;&amp; !atomic_load_bool(&amp;g_log.terminal_locked)) {
+1054       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1055       uint64_t time_ns = time_get_realtime_ns();
+1056       get_current_time_formatted(time_buf);
+1057 
+1058       // Choose output stream using unified routing logic
+1059       int fd = terminal_choose_log_fd(level);
+1060       FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
+1061       // Check if colors should be used
+1062       // Priority 1: If --color was explicitly passed, force colors
+1063       bool use_colors = true; // Default: enable colors
+1064       if (g_color_flag_passed &amp;&amp; !g_color_flag_value) {
+1065         use_colors = false; // --color=false explicitly disables colors
+1066       }
+1067       // Priority 2: If --color NOT explicitly passed, enable colors by default
+1068 
+1069       char header_buffer[512];
+1070       int header_len = format_log_header(header_buffer, sizeof(header_buffer), level, time_buf, file, line, func,
+1071                                          use_colors, time_ns);
+1072 
+1073       if (header_len &gt;= 0 &amp;&amp; header_len &lt; (int)sizeof(header_buffer)) {
+1074         // Platform-specific log hook (e.g., for WASM browser console)
+1075         platform_log_hook(level, msg_buffer);
+1076 
+1077         if (use_colors) {
+1078           const char *colorized_msg = colorize_log_message(msg_buffer);
+1079           const char **colors = log_get_color_array();
+1080           if (colors) {
+1081             safe_fprintf(output_stream, &quot;%s%s%s%s\n&quot;, header_buffer, colors[LOG_COLOR_RESET], colorized_msg,
+1082                          colors[LOG_COLOR_RESET]);
+1083           } else {
+1084             safe_fprintf(output_stream, &quot;%s%s\n&quot;, header_buffer, colorized_msg);
+1085           }
+1086         } else {
+1087           safe_fprintf(output_stream, &quot;%s%s\n&quot;, header_buffer, msg_buffer);
+1088         }
+1089         (void)fflush(output_stream);
+1090       }
+1091     }
+1092     return;
+1093   }
+1094   /* =========================================================================
+1095    * FILE I/O PATH: Lock-free using atomic write() syscalls
+1096    * ========================================================================= */
+1097   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1098   uint64_t time_ns = time_get_realtime_ns();
+1099   get_current_time_formatted(time_buf);
+1100   // Format message for file output
+1101   char log_buffer[LOG_MSG_BUFFER_SIZE];
+1102   va_list args;
+1103   va_start(args, fmt);
+1104   int header_len = format_log_header(log_buffer, sizeof(log_buffer), level, time_buf, file, line, func, false, time_ns);
+1105   if (header_len &lt; 0 || header_len &gt;= (int)sizeof(log_buffer)) {
+1106     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format log header&quot;);
+1107     va_end(args);
+1108     return;
+1109   }
+1110   int msg_len = header_len;
+1111   int formatted_len = safe_vsnprintf(log_buffer + header_len, sizeof(log_buffer) - (size_t)header_len, fmt, args);
+1112   if (formatted_len &lt; 0) {
+1113     LOGGING_INTERNAL_ERROR(ERROR_INVALID_STATE, &quot;Failed to format log message&quot;);
+1114     va_end(args);
+1115     return;
+1116   }
+1117 
+1118   msg_len += formatted_len;
+1119   // Truncate at whole line boundaries to avoid UTF-8 issues
+1120   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+1121   // Add newline if there's room and message doesn't already end with one
+1122   if (msg_len &gt; 0 &amp;&amp; msg_len &lt; (int)sizeof(log_buffer) - 1) {
+1123     if (log_buffer[msg_len - 1] != '\n') {
+1124       log_buffer[msg_len++] = '\n';
+1125       log_buffer[msg_len] = '\0';
+1126     }
+1127   }
+1128   va_end(args);
+1129   // Validate UTF-8 in formatted message
+1130   validate_log_message_utf8(log_buffer, &quot;leveled log message&quot;);
+1131 
+1132   // Extract the user message part (without header) for JSON logging
+1133   const char *user_message = log_buffer + header_len;
+1134 
+1135   // For JSON output: strip automatic trailing newline (keep explicit ones)
+1136   char json_message_buf[LOG_MSG_BUFFER_SIZE];
+1137   const char *json_message = user_message;
+1138   size_t user_msg_len = strlen(user_message);
+1139 
+1140   // If message ends with newline and it was added automatically (not in original message)
+1141   if (user_msg_len &gt; 0 &amp;&amp; user_message[user_msg_len - 1] == '\n') {
+1142     // The newline was added automatically if the message part didn't end with one
+1143     // before we added it on line 1067. We can check this by looking at msg_len - 1
+1144     // If msg_len &gt;= header_len + 2, then msg_len - 2 would be the char before the newline
+1145     int msg_content_len = msg_len - header_len;
+1146     if (msg_content_len &gt; 1 &amp;&amp; log_buffer[msg_len - 2] != '\n') {
+1147       // Newline was added automatically - strip it for JSON
+1148       if (user_msg_len - 1 &lt; sizeof(json_message_buf)) {
+1149         memcpy(json_message_buf, user_message, user_msg_len - 1);
+1150         json_message_buf[user_msg_len - 1] = '\0';
+1151         json_message = json_message_buf;
+1152       }
+1153     }
+1154   }
+1155 
+1156   // Check if JSON format is enabled
+1157   int json_fd = atomic_load_int(&amp;g_log.json_file);
+1158   bool json_format_enabled = (json_fd &gt;= 0);
+1159 
+1160   // If JSON format is enabled, output ONLY JSON (skip text output)
+1161   if (json_format_enabled) {
+1162     // Output JSON to the JSON file descriptor
+1163     log_json_write(json_fd, level, time_ns, file, line, func, json_message);
+1164     // Also output JSON to console using unified routing logic, respecting quiet flag
+1165     if (atomic_load_u64(&amp;g_log.terminal_output_enabled)) {
+1166       int console_fd = terminal_choose_log_fd(level);
+1167       log_json_write(console_fd, level, time_ns, file, line, func, json_message);
+1168     }
+1169   } else {
+1170     // Text format: output to file and terminal
+1171     // No heap allocation - use log_buffer directly
+1172     // Write to file (atomic write syscall) - use original buffer (with ANSI codes)
+1173     int file_fd = (int)atomic_load_u64(&amp;g_log.file);
+1174     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
+1175       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+1176     }
+1177 
+1178     // Write to terminal (atomic state checks)
+1179     va_list args_terminal;
+1180     va_start(args_terminal, fmt);
+1181     write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args_terminal, time_ns);
+1182     va_end(args_terminal);
+1183   }
+1184 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>atomic_load_bool()</b>,
+    <b>atomic_load_int()</b>, <b>atomic_load_u64()</b>,
+    <b>colorize_log_message()</b>, <b>g_color_flag_passed</b>,
+    <b>g_color_flag_value</b>, <b>get_current_time_formatted()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_get_color_array()</b>,
+    <b>log_json_write()</b>, <b>log_mmap_is_active()</b>,
+    <b>log_mmap_write()</b>, <b>LOGGING_INTERNAL_ERROR</b>,
+    <b>platform_log_hook()</b>, <b>safe_fprintf()</b>, <b>safe_vsnprintf()</b>,
+    <b>terminal_choose_log_fd()</b>, and <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>cond_log_state()</b>,
+    <b>handle_remote_log_packet_from_client()</b>, <b>mutex_log_state()</b>, and
+    <b>rwlock_log_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_net_message_("><a class="permalink" href="#asciichat_error_t_log_net_message_(">asciichat_error_t
+  log_net_message (<b>socket_t</b> sockfd, const struct crypto_context_t *
+  crypto_ctx, <b>log_level_t</b> level, remote_log_direction_t direction, const
+  char * file, int line, const char * func, const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1483</b> of file <b>log/log.c</b>.</p>
+<pre>1485                                                         {
+1486   va_list args;
+1487   va_start(args, fmt);
+1488   asciichat_error_t result =
+1489       log_network_message_internal(sockfd, crypto_ctx, level, direction, file, line, func, fmt, args);
+1490   va_end(args);
+1491   return result;
+1492 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_network_message_("><a class="permalink" href="#asciichat_error_t_log_network_message_(">asciichat_error_t
+  log_network_message (<b>socket_t</b> sockfd, const struct crypto_context_t *
+  crypto_ctx, <b>log_level_t</b> level, remote_log_direction_t direction, const
+  char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1473</b> of file <b>log/log.c</b>.</p>
+<pre>1474                                                                                               {
+1475   va_list args;
+1476   va_start(args, fmt);
+1477   asciichat_error_t result =
+1478       log_network_message_internal(sockfd, crypto_ctx, level, direction, NULL, 0, NULL, fmt, args);
+1479   va_end(args);
+1480   return result;
+1481 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>, and
+    <b>threaded_send_client_join_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_plain_msg_(const_char_*_fmt,__"><a class="permalink" href="#void_log_plain_msg_(const_char_*_fmt,__">void
+  log_plain_msg (const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1207</b> of file <b>log/log.c</b>.</p>
+<pre>1207                                          {
+1208   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1209     return;
+1210   }
+1211 
+1212   if (shutdown_is_requested()) {
+1213     return;
+1214   }
+1215 
+1216   char log_buffer[LOG_MSG_BUFFER_SIZE];
+1217   va_list args;
+1218   va_start(args, fmt);
+1219   int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+1220   va_end(args);
+1221 
+1222   if (msg_len &lt;= 0) {
+1223     return;
+1224   }
+1225 
+1226   // Truncate at whole line boundaries to avoid UTF-8 issues
+1227   msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+1228 
+1229   // Validate UTF-8 in formatted message
+1230   validate_log_message_utf8(log_buffer, &quot;plain text log&quot;);
+1231 
+1232   // Write to mmap if active
+1233   if (log_mmap_is_active()) {
+1234     log_mmap_write(LOG_INFO, NULL, 0, NULL, &quot;%s&quot;, log_buffer);
+1235   } else {
+1236     // Write to file with headers (atomic write syscall)
+1237     int file_fd = atomic_load_u64(&amp;g_log.file);
+1238     if (file_fd &gt;= 0 &amp;&amp; file_fd != STDERR_FILENO) {
+1239       // Add header with timestamp and log level to file output
+1240       char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1241       uint64_t time_ns = time_get_realtime_ns();
+1242       get_current_time_formatted(time_buf);
+1243 
+1244       char header_buffer[512];
+1245       int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, &quot;lib/log/logging.c&quot;,
+1246                                          0, &quot;log_plain_msg&quot;, false, time_ns);
+1247 
+1248       if (header_len &gt; 0) {
+1249         write_to_log_file_atomic(header_buffer, header_len, NULL);
+1250       }
+1251       write_to_log_file_atomic(log_buffer, msg_len, NULL);
+1252       write_to_log_file_atomic(&quot;\n&quot;, 1, NULL);
+1253     }
+1254   }
+1255 
+1256   // Terminal output (atomic state checks)
+1257   if (!atomic_load_u64(&amp;g_log.terminal_output_enabled)) {
+1258     return;
+1259   }
+1260   if (atomic_load_u64(&amp;g_log.terminal_locked)) {
+1261     uint64_t owner = atomic_load_u64(&amp;g_log.terminal_owner_thread);
+1262     if (owner != (uint64_t)asciichat_thread_self()) {
+1263       return;
+1264     }
+1265   }
+1266 
+1267   // Check if JSON format is enabled
+1268   int json_fd = atomic_load_int(&amp;g_log.json_file);
+1269   bool json_format_enabled = (json_fd &gt;= 0);
+1270 
+1271   if (json_format_enabled) {
+1272     // Output JSON for plain messages too
+1273     uint64_t time_ns = time_get_realtime_ns();
+1274     int console_fd = terminal_choose_log_fd(LOG_INFO);
+1275     log_json_write(console_fd, LOG_INFO, time_ns, __FILE__, __LINE__, &quot;log_plain_msg&quot;, log_buffer);
+1276   } else {
+1277     // Choose output stream using unified routing logic (LOG_INFO level)
+1278     int fd = terminal_choose_log_fd(LOG_INFO);
+1279     FILE *output_stream = (fd == STDERR_FILENO) ? stderr : stdout;
+1280 
+1281     // Apply colorization for TTY output
+1282     if (terminal_should_color_output(fd)) {
+1283       const char *colorized_msg = colorize_log_message(log_buffer);
+1284       safe_fprintf(output_stream, &quot;%s\n&quot;, colorized_msg);
+1285     } else {
+1286       safe_fprintf(output_stream, &quot;%s\n&quot;, log_buffer);
+1287     }
+1288     (void)fflush(output_stream);
+1289   }
+1290 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>asciichat_thread_self()</b>,
+    <b>atomic_load_int()</b>, <b>atomic_load_u64()</b>,
+    <b>colorize_log_message()</b>, <b>get_current_time_formatted()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_json_write()</b>,
+    <b>log_mmap_is_active()</b>, <b>log_mmap_write()</b>, <b>safe_fprintf()</b>,
+    <b>safe_vsnprintf()</b>, <b>shutdown_is_requested()</b>,
+    <b>terminal_choose_log_fd()</b>, <b>terminal_should_color_output()</b>, and
+    <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_plain_stderr_msg_(const_char_*_fmt,__"><a class="permalink" href="#void_log_plain_stderr_msg_(const_char_*_fmt,__">void
+  log_plain_stderr_msg (const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1362</b> of file <b>log/log.c</b>.</p>
+<pre>1362                                                 {
+1363   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1364     return;
+1365   }
+1366   if (shutdown_is_requested()) {
+1367     return;
+1368   }
+1369 
+1370   va_list args;
+1371   va_start(args, fmt);
+1372   log_plain_stderr_internal_atomic(fmt, args, true);
+1373   va_end(args);
+1374 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>lifecycle_is_initialized()</b>, and
+    <b>shutdown_is_requested()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_plain_stderr_nonewline_msg_(const_char_*_fmt,__"><a class="permalink" href="#void_log_plain_stderr_nonewline_msg_(const_char_*_fmt,__">void
+  log_plain_stderr_nonewline_msg (const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1376</b> of file <b>log/log.c</b>.</p>
+<pre>1376                                                           {
+1377   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1378     return;
+1379   }
+1380   if (shutdown_is_requested()) {
+1381     return;
+1382   }
+1383 
+1384   va_list args;
+1385   va_start(args, fmt);
+1386   log_plain_stderr_internal_atomic(fmt, args, false);
+1387   va_end(args);
+1388 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>lifecycle_is_initialized()</b>, and
+    <b>shutdown_is_requested()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_log_recolor_plain_entry_(const_char_*_plain_line,_char_*_colored_buf,_size_t_buf_size)"><a class="permalink" href="#size_t_log_recolor_plain_entry_(const_char_*_plain_line,_char_*_colored_buf,_size_t_buf_size)">size_t
+  log_recolor_plain_entry (const char * plain_line, char * colored_buf, size_t
+  buf_size)</a></h2>
+<p class="Pp">Recolor a plain (non-colored) log line with proper ANSI codes.
+    Parses plain log format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in
+    FUNC(): MESSAGE And recolors it with appropriate ANSI codes matching the
+    colored format.</p>
+<p class="Pp">Definition at line <b>1790</b> of file <b>log/log.c</b>.</p>
+<pre>1790                                                                                            {
+1791   if (!plain_line || !colored_buf || buf_size &lt; 128) {
+1792     return 0;
+1793   }
+1794 
+1795   static char work_buffer[LOG_MSG_BUFFER_SIZE + 1024];
+1796 
+1797   // Parse format FIRST, regardless of color availability
+1798   // Parse format: [TIMESTAMP] [LEVEL] [tid:THREAD_ID] FILE:LINE in FUNC(): MESSAGE
+1799   const char *p = plain_line;
+1800 
+1801   // Extract timestamp [TIMESTAMP]
+1802   if (*p != '[') {
+1803     return 0; // Invalid format
+1804   }
+1805   p++;
+1806   const char *timestamp_start = p;
+1807 
+1808   // Find the closing ] for timestamp - look for pattern that ends with proper timestamp format
+1809   // Valid timestamp: HH:MM:SS.UUUUUU (time with microseconds, no date)
+1810   while (*p &amp;&amp; *p != ']') {
+1811     p++;
+1812   }
+1813   if (*p != ']') {
+1814     return 0; // Malformed - no closing bracket
+1815   }
+1816 
+1817   size_t timestamp_len = p - timestamp_start;
+1818   char timestamp[64];
+1819   if (timestamp_len &gt;= sizeof(timestamp) || timestamp_len == 0) {
+1820     return 0; // Invalid timestamp - empty or too long
+1821   }
+1822   SAFE_STRNCPY(timestamp, timestamp_start, timestamp_len);
+1823   timestamp[timestamp_len] = '\0';
+1824   p++; // Skip ]
+1825 
+1826   // Skip whitespace after timestamp
+1827   while (*p &amp;&amp; *p == ' ') {
+1828     p++;
+1829   }
+1830 
+1831   // Extract level [LEVEL]
+1832   if (*p != '[') {
+1833     return 0; // Missing opening bracket for level
+1834   }
+1835   p++;
+1836   const char *level_start = p;
+1837   while (*p &amp;&amp; *p != ']') {
+1838     p++;
+1839   }
+1840   if (*p != ']') {
+1841     return 0; // Missing closing bracket for level
+1842   }
+1843   size_t level_len = p - level_start;
+1844   char level_str[16];
+1845   if (level_len &gt;= sizeof(level_str) || level_len == 0) {
+1846     return 0; // Level string too long or empty
+1847   }
+1848   /* Use strncpy directly for substring extraction (not null-terminated source) */
+1849   strncpy(level_str, level_start, level_len);
+1850   level_str[level_len] = '\0';
+1851 
+1852   // Determine log level for color selection
+1853   log_level_t level = LOG_INFO; // Default
+1854   if (strstr(level_str, &quot;DEV&quot;) || strstr(level_str, &quot;DEBUG&quot;)) {
+1855     level = LOG_DEBUG;
+1856   } else if (strstr(level_str, &quot;INFO&quot;)) {
+1857     level = LOG_INFO;
+1858   } else if (strstr(level_str, &quot;WARN&quot;)) {
+1859     level = LOG_WARN;
+1860   } else if (strstr(level_str, &quot;ERROR&quot;)) {
+1861     level = LOG_ERROR;
+1862   } else if (strstr(level_str, &quot;FATAL&quot;)) {
+1863     level = LOG_FATAL;
+1864   }
+1865 
+1866   p++; // Skip ]
+1867 
+1868   // Skip whitespace after level
+1869   while (*p &amp;&amp; *p == ' ') {
+1870     p++;
+1871   }
+1872 
+1873   // Extract thread ID [tid:THREAD_ID] - optional field
+1874   uint64_t tid = 0;
+1875   if (*p == '[' &amp;&amp; strncmp(p, &quot;[tid:&quot;, 5) == 0) {
+1876     p += 5;
+1877     char *tid_end = NULL;
+1878     tid = strtoull(p, &amp;tid_end, 10);
+1879     if (!tid_end || *tid_end != ']') {
+1880       // tid parsing failed, but continue anyway (might still recover)
+1881       // Try to find the closing bracket
+1882       while (*p &amp;&amp; *p != ']') {
+1883         p++;
+1884       }
+1885       if (*p == ']') {
+1886         p++;
+1887       }
+1888     } else {
+1889       p = tid_end + 1; // Skip past the ]
+1890     }
+1891     // Skip whitespace after tid
+1892     while (*p &amp;&amp; *p == ' ') {
+1893       p++;
+1894     }
+1895   }
+1896   // tid is optional - continue parsing if not present
+1897 
+1898   // Extract file path (everything up to :LINE)
+1899   const char *file_start = p;
+1900   while (*p &amp;&amp; *p != ':') {
+1901     p++;
+1902   }
+1903   if (*p != ':') {
+1904     return 0; // Malformed
+1905   }
+1906   size_t file_len = p - file_start;
+1907   char file_path[256];
+1908   if (file_len &gt;= sizeof(file_path)) {
+1909     return 0;
+1910   }
+1911   /* Use strncpy directly for substring extraction (not null-terminated source) */
+1912   strncpy(file_path, file_start, file_len);
+1913   file_path[file_len] = '\0';
+1914   p++; // Skip :
+1915 
+1916   // Extract line number (digits only)
+1917   int line_num = 0;
+1918   const char *line_start = p;
+1919   while (*p &amp;&amp; isdigit((unsigned char)*p)) {
+1920     p++;
+1921   }
+1922   if (p == line_start) {
+1923     return 0; // No line number
+1924   }
+1925   line_num = (int)strtol(line_start, NULL, 10);
+1926 
+1927   // Skip whitespace and find &quot;in&quot; keyword (be very lenient)
+1928   while (*p &amp;&amp; (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')) {
+1929     p++;
+1930   }
+1931 
+1932   // Try to find &quot;in &quot; - if not found, might still be valid, just harder to parse
+1933   if (strncmp(p, &quot;in &quot;, 3) == 0) {
+1934     p += 3; // Skip &quot;in &quot;
+1935   } else if (*p == 'i' &amp;&amp; *(p + 1) == 'n' &amp;&amp; (*(p + 2) == ' ' || *(p + 2) == '\t')) {
+1936     // Allow tab after &quot;in&quot;
+1937     p += 2; // Skip &quot;in&quot;
+1938     while (*p &amp;&amp; (*p == ' ' || *p == '\t')) {
+1939       p++;
+1940     }
+1941   } else {
+1942     // Missing &quot;in&quot; keyword - this is a format error
+1943     return 0;
+1944   }
+1945 
+1946   // Extract function name (everything up to &quot;()&quot;)
+1947   const char *func_start = p;
+1948   while (*p &amp;&amp; *p != '(') {
+1949     p++;
+1950   }
+1951   if (*p != '(' || func_start == p) {
+1952     return 0; // Missing function name or parentheses
+1953   }
+1954   size_t func_len = p - func_start;
+1955 
+1956   // Trim trailing whitespace from function name
+1957   while (func_len &gt; 0 &amp;&amp; (func_start[func_len - 1] == ' ' || func_start[func_len - 1] == '\t')) {
+1958     func_len--;
+1959   }
+1960 
+1961   char func_name[256];
+1962   if (func_len &gt;= sizeof(func_name)) {
+1963     func_len = sizeof(func_name) - 1;
+1964   }
+1965   if (func_len &gt; 0) {
+1966     /* Use strncpy directly for substring extraction (not null-terminated source) */
+1967     strncpy(func_name, func_start, func_len);
+1968   }
+1969   func_name[func_len] = '\0';
+1970 
+1971   // Skip &quot;(&quot; and &quot;)&quot; - be lenient about what's between them
+1972   if (*p == '(') {
+1973     p++;
+1974     while (*p &amp;&amp; *p != ')') {
+1975       p++;
+1976     }
+1977     if (*p == ')') {
+1978       p++;
+1979     }
+1980   }
+1981 
+1982   // Skip whitespace and optional colon(s) and other separators
+1983   while (*p &amp;&amp; (*p == ' ' || *p == ':' || *p == '\t')) {
+1984     p++;
+1985   }
+1986 
+1987   // Remaining is the message
+1988   const char *message = p;
+1989 
+1990   // Format is valid, get colors from logging system
+1991   const char **colors = log_get_color_array();
+1992   if (!colors) {
+1993     // No colors available, return plain text
+1994     static bool warned_once = false;
+1995     if (!warned_once) {
+1996       log_debug(&quot;WARNING: log_recolor_plain_entry() called but colors not initialized - returning plain text&quot;);
+1997       warned_once = true;
+1998     }
+1999     size_t len = strlen(plain_line);
+2000     if (len &gt;= buf_size) {
+2001       return 0;
+2002     }
+2003     SAFE_STRNCPY(colored_buf, plain_line, buf_size - 1);
+2004     colored_buf[buf_size - 1] = '\0';
+2005     return len;
+2006   }
+2007 
+2008   // Build colored output
+2009   const char *level_color = colors[level];
+2010   const char *reset = colors[LOG_COLOR_RESET];
+2011   const char *file_color = colors[1]; // DEBUG/Cyan
+2012   const char *line_color = colors[6]; // GREY (matching tid)
+2013   const char *func_color = colors[0]; // DEV/Orange
+2014   const char *tid_color = colors[6];  // GREY
+2015 
+2016   int len = safe_snprintf(work_buffer, sizeof(work_buffer),
+2017                           &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp,
+2018                           reset, level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color,
+2019                           file_path, reset, line_color, line_num, reset, func_color, func_name, reset, message);
+2020 
+2021   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer)) {
+2022     return 0;
+2023   }
+2024 
+2025   // Colorize the message part
+2026   const char *colorized_msg = colorize_log_message(message);
+2027   len = safe_snprintf(work_buffer, sizeof(work_buffer),
+2028                       &quot;[%s%s%s] [%s%s%s] [tid:%s%llu%s] %s%s%s:%s%d%s in %s%s%s(): %s&quot;, level_color, timestamp, reset,
+2029                       level_color, level_str, reset, tid_color, (unsigned long long)tid, reset, file_color, file_path,
+2030                       reset, line_color, line_num, reset, func_color, func_name, reset, colorized_msg);
+2031 
+2032   if (len &lt;= 0 || len &gt;= (int)sizeof(work_buffer) || len &gt;= (int)buf_size) {
+2033     return 0;
+2034   }
+2035 
+2036   SAFE_STRNCPY(colored_buf, work_buffer, buf_size - 1);
+2037   colored_buf[buf_size - 1] = '\0';
+2038   return (size_t)len;
+2039 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorize_log_message()</b>, <b>file_path</b>,
+    <b>log_get_color_array()</b>, and <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_redetect_terminal_capabilities_(void_)"><a class="permalink" href="#void_log_redetect_terminal_capabilities_(void_)">void
+  log_redetect_terminal_capabilities (void )</a></h2>
+<p class="Pp">Definition at line <b>1525</b> of file <b>log/log.c</b>.</p>
+<pre>1525                                               {
+1526   // Guard against recursion
+1527   if (g_log.terminal_caps_detecting) {
+1528     return;
+1529   }
+1530 
+1531   // Detect if not initialized, or if we're using defaults (not reliably detected)
+1532   // This ensures we get proper detection after logging is ready, replacing any defaults
+1533   // Once we have reliable detection, never re-detect to keep colors consistent
+1534   if (!g_log.terminal_caps_initialized || !g_log.terminal_caps.detection_reliable) {
+1535     g_log.terminal_caps_detecting = true;
+1536     g_log.terminal_caps = detect_terminal_capabilities();
+1537     g_log.terminal_caps_detecting = false;
+1538     g_log.terminal_caps_initialized = true;
+1539 
+1540     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
+1541     log_debug(&quot;Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d&quot;,
+1542               g_log.terminal_caps.color_level, g_log.terminal_caps.capabilities,
+1543               g_log.terminal_caps.utf8_support ? &quot;yes&quot; : &quot;no&quot;, g_log.terminal_caps.desired_fps);
+1544 
+1545     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
+1546   }
+1547   // Once initialized with reliable detection, never re-detect to keep colors consistent
+1548 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>detect_terminal_capabilities()</b>.</p>
+<p class="Pp">Referenced by <b>log_init()</b>, <b>log_system_init()</b>, and
+    <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_color_scheme_(const_"><a class="permalink" href="#void_log_set_color_scheme_(const_">void
+  log_set_color_scheme (const <b>color_scheme_t</b> * scheme)</a></h2>
+<p class="Pp">Definition at line <b>1647</b> of file <b>log/log.c</b>.</p>
+<pre>1647                                                         {
+1648   if (!scheme) {
+1649     return;
+1650   }
+1651 
+1652   /* Mutex is managed by colors.c - just use it */
+1653   mutex_lock(&amp;g_colorscheme_mutex);
+1654 
+1655   /* Detect terminal background */
+1656   terminal_background_t background = detect_terminal_background();
+1657 
+1658   /* Determine color mode for compilation */
+1659   terminal_color_mode_t mode;
+1660   if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_TRUECOLOR) {
+1661     mode = TERM_COLOR_TRUECOLOR;
+1662   } else if (g_log.terminal_caps.color_level &gt;= TERM_COLOR_256) {
+1663     mode = TERM_COLOR_256;
+1664   } else {
+1665     mode = TERM_COLOR_16;
+1666   }
+1667 
+1668   /* Compile the new color scheme */
+1669   asciichat_error_t result = colorscheme_compile_scheme(scheme, mode, background, &amp;g_log.compiled_colors);
+1670 
+1671   g_log.log_colorscheme_initialized = true;
+1672   mutex_unlock(&amp;g_colorscheme_mutex);
+1673 
+1674   /* Log outside of mutex lock to avoid recursive lock deadlock */
+1675   if (result != ASCIICHAT_OK) {
+1676     log_debug(&quot;Failed to compile color scheme: %d&quot;, result);
+1677   }
+1678 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colorscheme_compile_scheme()</b>,
+    <b>detect_terminal_background()</b>, and <b>g_colorscheme_mutex</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_flush_delay_(unsigned_int_delay_ms)"><a class="permalink" href="#void_log_set_flush_delay_(unsigned_int_delay_ms)">void
+  log_set_flush_delay (unsigned int delay_ms)</a></h2>
+<p class="Pp">Definition at line <b>800</b> of file <b>log/log.c</b>.</p>
+<pre>800                                                 {
+801   atomic_store_u64(&amp;g_log.flush_delay_ms, delay_ms);
+802 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_force_stderr_("><a class="permalink" href="#void_log_set_force_stderr_(">void
+  log_set_force_stderr (<b>bool</b> enabled)</a></h2>
+<p class="Pp">Definition at line <b>718</b> of file <b>log/log.c</b>.</p>
+<pre>718                                         {
+719   atomic_store_u64(&amp;g_log.force_stderr, enabled);
+720 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, and <b>enabled</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_set_format_(const_char_*_format_str,_"><a class="permalink" href="#asciichat_error_t_log_set_format_(const_char_*_format_str,_">asciichat_error_t
+  log_set_format (const char * format_str, <b>bool</b> console_only)</a></h2>
+<p class="Pp">Definition at line <b>741</b> of file <b>log/log.c</b>.</p>
+<pre>741                                                                             {
+742   /* Free old format if it exists */
+743   if (g_log.format) {
+744     log_template_free(g_log.format);
+745     g_log.format = NULL;
+746   }
+747   if (g_log.format_console_only) {
+748     log_template_free(g_log.format_console_only);
+749     g_log.format_console_only = NULL;
+750   }
+751 
+752   /* Use default format if NULL or empty string */
+753   const char *format_to_use = (format_str &amp;&amp; format_str[0] != '\0') ? format_str : OPT_LOG_TEMPLATE_DEFAULT;
+754   bool is_custom = (format_str &amp;&amp; format_str[0] != '\0');
+755 
+756   /* Parse the format string (always parse, never skip) */
+757   log_template_t *parsed_format = log_template_parse(format_to_use, false);
+758 
+759   if (!parsed_format) {
+760     log_error(&quot;Failed to parse log format: %s&quot;, format_to_use);
+761     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid log format string&quot;);
+762   }
+763 
+764   /* If console_only is true, we also need the default format for file output */
+765   if (console_only &amp;&amp; is_custom) {
+766     log_template_t *default_format = log_template_parse(OPT_LOG_TEMPLATE_DEFAULT, false);
+767 
+768     if (!default_format) {
+769       log_template_free(parsed_format);
+770       log_error(&quot;Failed to parse default log format&quot;);
+771       return SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to parse default format&quot;);
+772     }
+773     g_log.format = default_format;
+774     g_log.format_console_only = parsed_format;
+775   } else {
+776     g_log.format = parsed_format;
+777     g_log.format_console_only = NULL;
+778   }
+779 
+780   atomic_store_u64(&amp;g_log.has_custom_format, is_custom);
+781   return ASCIICHAT_OK;
+782 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, <b>log_template_free()</b>,
+    and <b>log_template_parse()</b>.</p>
+<p class="Pp">Referenced by <b>log_init()</b>, and <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_json_output_(int_fd)"><a class="permalink" href="#void_log_set_json_output_(int_fd)">void
+  log_set_json_output (int fd)</a></h2>
+<p class="Pp">Definition at line <b>726</b> of file <b>log/log.c</b>.</p>
+<pre>726                                  {
+727   atomic_store_int(&amp;g_log.json_file, fd);
+728 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_level_("><a class="permalink" href="#void_log_set_level_(">void
+  log_set_level (<b>log_level_t</b> level)</a></h2>
+<p class="Pp">Definition at line <b>688</b> of file <b>log/log.c</b>.</p>
+<pre>688                                       {
+689   atomic_store_u64(&amp;g_log.level, (int)level);
+690   atomic_store_bool(&amp;g_log.level_manually_set, true);
+691 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+    <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>, and
+    <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_session_log_buffer_("><a class="permalink" href="#void_log_set_session_log_buffer_(">void
+  log_set_session_log_buffer (<b>session_log_buffer_t</b> * buf)</a></h2>
+<p class="Pp">Register a session log buffer with the logger. Once registered,
+    all log messages are appended to the buffer in addition to being written to
+    files/terminal. Used by splash and status screens.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buf</i> Buffer instance to register (can be NULL to
+  unregister)</div>
+<p class="Pp">Definition at line <b>1757</b> of file <b>log/log.c</b>.</p>
+<pre>1757                                                            {
+1758   atomic_ptr_store(&amp;g_log.session_log_buffer, (void *)buf);
+1759 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_ptr_store()</b>.</p>
+<p class="Pp">Referenced by <b>splash_log_init()</b>, <b>ui_mdns_log_init()</b>,
+    and <b>ui_status_log_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_set_terminal_output_("><a class="permalink" href="#void_log_set_terminal_output_(">void
+  log_set_terminal_output (<b>bool</b> enabled)</a></h2>
+<p class="Pp">Definition at line <b>697</b> of file <b>log/log.c</b>.</p>
+<pre>697                                            {
+698   // Respect --quiet flag: if quiet is set, never enable terminal output
+699   // But allow disabling even if options are unavailable (for shutdown cleanup)
+700 
+701   // Only check quiet flag when ENABLING output to avoid deadlock with
+702   // concurrent logging from other threads (options_get() can deadlock when
+703   // called while other threads are actively logging due to RCU synchronization)
+704   if (enabled) {
+705     const options_t *opts = options_get();
+706     if (opts &amp;&amp; opts-&gt;quiet) {
+707       return; // Silently ignore attempts to enable terminal output when --quiet is set
+708     }
+709   }
+710 
+711   atomic_store_u64(&amp;g_log.terminal_output_enabled, enabled);
+712 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, <b>enabled</b>, and
+    <b>options_get()</b>.</p>
+<p class="Pp">Referenced by <b>display_disable_logging_for_first_frame()</b>,
+    <b>main()</b>, <b>options_init()</b>, <b>server_connection_cleanup()</b>,
+    <b>server_connection_close()</b>, <b>server_connection_establish()</b>,
+    <b>session_client_like_run()</b>, and <b>session_render_loop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_shutdown_begin_(void_)"><a class="permalink" href="#void_log_shutdown_begin_(void_)">void
+  log_shutdown_begin (void )</a></h2>
+<p class="Pp">Definition at line <b>1714</b> of file <b>log/log.c</b>.</p>
+<pre>1714                               {
+1715   if (g_log.shutdown_in_progress) {
+1716     return; /* Already in shutdown phase */
+1717   }
+1718 
+1719   /* Save current terminal output state and disable console output */
+1720   g_log.shutdown_saved_terminal_output = atomic_load_u64(&amp;g_log.terminal_output_enabled);
+1721   atomic_store_bool(&amp;g_log.terminal_output_enabled, false);
+1722   g_log.shutdown_in_progress = true;
+1723 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+    <b>atomic_store_bool()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_shutdown_end_(void_)"><a class="permalink" href="#void_log_shutdown_end_(void_)">void
+  log_shutdown_end (void )</a></h2>
+<p class="Pp">Definition at line <b>1725</b> of file <b>log/log.c</b>.</p>
+<pre>1725                             {
+1726   if (!g_log.shutdown_in_progress) {
+1727     return; /* Not in shutdown phase, skip terminal state restoration */
+1728   }
+1729 
+1730   /* Restore previous terminal output state */
+1731   atomic_store_u64(&amp;g_log.terminal_output_enabled, g_log.shutdown_saved_terminal_output);
+1732   g_log.shutdown_in_progress = false;
+1733 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_system_destroy_(void_)"><a class="permalink" href="#void_log_system_destroy_(void_)">void
+  log_system_destroy (void )</a></h2>
+<p class="Pp">Shutdown the logging system internal state (system-level cleanup).
+    Clears registered session log buffer. Color cleanup is handled separately in
+    <b>asciichat_shared_destroy()</b> after memory reporting. Must be called
+    once at program shutdown AFTER <b>log_destroy()</b>. Safe to call multiple
+    times (idempotent).</p>
+<p class="Pp">Definition at line <b>683</b> of file <b>log/log.c</b>.</p>
+<pre>683                               {
+684   // Unregister session log buffer if registered
+685   log_clear_session_log_buffer();
+686 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_clear_session_log_buffer()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_system_init_(void_)"><a class="permalink" href="#void_log_system_init_(void_)">void
+  log_system_init (void )</a></h2>
+<p class="Pp">Initialize the logging system internal state (system-level init).
+    Initializes g_log struct, detects terminal capabilities, and compiles
+    colors. Must be called once at program startup BEFORE <b>log_init()</b>.
+    Safe to call multiple times (idempotent).</p>
+<p class="Pp">Definition at line <b>667</b> of file <b>log/log.c</b>.</p>
+<pre>667                            {
+668   // Detect terminal capabilities if not already done
+669   log_redetect_terminal_capabilities();
+670 
+671   // Initialize color scheme based on terminal capabilities
+672   log_init_colors();
+673 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_init_colors()</b>, and
+    <b>log_redetect_terminal_capabilities()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_terminal_msg_("><a class="permalink" href="#void_log_terminal_msg_(">void
+  log_terminal_msg (<b>log_level_t</b> level, const char * file, int line, const
+  char * func, const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>1186</b> of file <b>log/log.c</b>.</p>
+<pre>1186                                                                                                              {
+1187   // Lock-free: only uses atomic loads, no mutex
+1188   if (!lifecycle_is_initialized(&amp;g_log.lifecycle)) {
+1189     return;
+1190   }
+1191 
+1192   if (level &lt; (log_level_t)atomic_load_u64(&amp;g_log.level)) {
+1193     return;
+1194   }
+1195 
+1196   // Terminal output only - no file/mmap writing
+1197   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+1198   uint64_t time_ns = time_get_realtime_ns();
+1199   get_current_time_formatted(time_buf);
+1200 
+1201   va_list args;
+1202   va_start(args, fmt);
+1203   write_to_terminal_atomic(level, time_buf, file, line, func, fmt, args, time_ns);
+1204   va_end(args);
+1205 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>atomic_load_u64()</b>,
+    <b>get_current_time_formatted()</b>, <b>lifecycle_is_initialized()</b>, and
+    <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_truncate_if_large_(void_)"><a class="permalink" href="#void_log_truncate_if_large_(void_)">void
+  log_truncate_if_large (void )</a></h2>
+<p class="Pp">Definition at line <b>804</b> of file <b>log/log.c</b>.</p>
+<pre>804                                  {
+805   // Log rotation is inherently racy without locks - best-effort only
+806   // For reliable rotation, use mmap mode or external logrotate
+807   int file = atomic_load_int(&amp;g_log.file);
+808   if (file &gt;= 0 &amp;&amp; file != STDERR_FILENO &amp;&amp; strlen(g_log.filename) &gt; 0) {
+809     struct stat st;
+810     if (fstat(file, &amp;st) == 0 &amp;&amp; st.st_size &gt; MAX_LOG_SIZE) {
+811       atomic_store_u64(&amp;g_log.current_size, (size_t)st.st_size);
+812     }
+813   }
+814 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>, and
+    <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_unlock_terminal_("><a class="permalink" href="#void_log_unlock_terminal_(">void
+  log_unlock_terminal (<b>bool</b> previous_state)</a></h2>
+<p class="Pp">Definition at line <b>793</b> of file <b>log/log.c</b>.</p>
+<pre>793                                               {
+794   atomic_store_u64(&amp;g_log.terminal_locked, previous_state);
+795   if (!previous_state) {
+796     atomic_store_u64(&amp;g_log.terminal_owner_thread, 0);
+797   }
+798 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
+    <b>prompt_password()</b>, <b>prompt_unknown_host()</b>, and
+    <b>ui_mdns_select()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

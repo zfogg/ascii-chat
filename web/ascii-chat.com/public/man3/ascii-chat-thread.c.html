@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread.c - &#x1F9F5; Thread utilities and helpers</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>thread_create_or_fail</b> (asciichat_thread_t
+    *thread, void *(*func)(void *), void *arg, const char *thread_name, const
+    char *client_id)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F9F5; Thread utilities and helpers</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">December 2025</div>
+<p class="Pp">Definition in file <b>thread.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_thread_create_or_fail_(asciichat_thread_t_*_thread,_void_*(*_func_)(void_*),_void_*_arg,_const_char_*_thread_name,_const_char_*_client_id)"><a class="permalink" href="#asciichat_error_t_thread_create_or_fail_(asciichat_thread_t_*_thread,_void_*(*_func_)(void_*),_void_*_arg,_const_char_*_thread_name,_const_char_*_client_id)">asciichat_error_t
+  thread_create_or_fail (asciichat_thread_t * thread, void *(* func )(void *),
+  void * arg, const char * thread_name, const char * client_id)</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>thread.c</b>.</p>
+<pre>15                                                                                         {
+16   if (!thread || !func || !thread_name) {
+17     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for thread creation&quot;);
+18   }
+19 
+20   int result = asciichat_thread_create(thread, thread_name, func, arg);
+21   if (result != 0) {
+22     return SET_ERRNO(ERROR_PLATFORM_INIT, &quot;Failed to create %s thread for client %u (result=%d)&quot;, thread_name,
+23                      client_id, result);
+24   }
+25 
+26   log_debug(&quot;Created %s thread for client %u successfully&quot;, thread_name, client_id);
+27   return ASCIICHAT_OK;
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>server_protocol(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">server_protocol(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">server_protocol(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">server_protocol - Protocol Handler</p>
+<p class="Pp">
+  <br/>
+   - &#x1F4E1; Network packet processing and protocol implementation</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Files"><a class="permalink" href="#Files">Files</a></h2>
+<br/>
+<p class="Pp">file <b>protocol.c</b>
+  <br/>
+  &#x1F4E1; Server packet processor: client communication handling, protocol
+    state management, and packet dispatch file <b>protocol.h</b>
+  <br/>
+  Server packet processing and protocol implementation.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>handle_audio_opus_batch_packet</b> (client_info_t *client,
+    const void *data, size_t len)
+  <br/>
+  Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio batch from
+    client. void <b>handle_audio_opus_packet</b> (client_info_t *client, const
+    void *data, size_t len)
+  <br/>
+  Process AUDIO_OPUS packet - decode single Opus frame from client.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4E1; Network packet processing and protocol
+  implementation</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_handle_audio_opus_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_opus_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
+  handle_audio_opus_batch_packet (client_info_t * client, const void * data,
+  size_t len)</a></h2>
+<p class="Pp">#include &lt;<b>src/server/protocol.c</b>&gt;<b></b></p>
+<p class="Pp">Process AUDIO_OPUS_BATCH packet - efficient Opus-encoded audio
+    batch from client. Handles batched Opus-encoded audio frames sent by the
+    client. This provides ~98% bandwidth reduction compared to raw PCM audio
+    while maintaining excellent audio quality.</p>
+<p class="Pp"></p>
+<p class="Pp">PACKET STRUCTURE EXPECTED:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>opus_batch_header_t (16 bytes):</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>sample_rate (4 bytes)</dd>
+  <dt> &#x2022;</dt>
+  <dd>frame_duration (4 bytes)</dd>
+  <dt> &#x2022;</dt>
+  <dd>frame_count (4 bytes)</dd>
+  <dt> &#x2022;</dt>
+  <dd>reserved (4 bytes)</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Opus encoded data (variable size, typically ~60 bytes/frame @ 24kbps)</dd>
+</dl>
+<p class="Pp">PROCESSING FLOW:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Parse batch header</dd>
+  <dt>2.</dt>
+  <dd>Decode each Opus frame back to PCM samples (960 samples/frame @
+    48kHz)</dd>
+  <dt>3.</dt>
+  <dd>Write decoded samples to client's incoming audio buffer</dd>
+</dl>
+<p class="Pp">PERFORMANCE:</p>
+<ul class="Bl-bullet">
+  <li>Bandwidth: ~60 bytes/frame vs ~3840 bytes/frame for raw PCM (64:1
+      compression)</li>
+  <li>Quality: Excellent at 24 kbps VOIP mode</li>
+  <li>Latency: 20ms frames for real-time audio</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> Client that sent the audio packet
+<br/>
+<i>data</i> Packet payload data
+<br/>
+<i>len</i> Packet payload length</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">av_receive_audio_opus_batch() For <b>Packet Types</b>
+  parsing
+<p class="Pp"></p>
+<p class="Pp"><b>opus_codec_decode()</b> For Opus decoding</p>
+<p class="Pp"></p>
+<p class="Pp"><b>handle_audio_batch_packet()</b> For raw PCM <b>Audio</b> batch
+    handling</p>
+</div>
+<p class="Pp">Definition at line <b>1315</b> of file
+  <b>server/protocol.c</b>.</p>
+<pre>1315                                                                                          {
+1316   log_debug_every(LOG_RATE_SLOW, &quot;Received Opus audio batch from client %u (len=%zu)&quot;, client-&gt;client_id, len);
+1317 
+1318   VALIDATE_NOTNULL_DATA(client, data, &quot;AUDIO_OPUS_BATCH&quot;);
+1319   VALIDATE_AUDIO_STREAM_ENABLED(client, &quot;AUDIO_OPUS_BATCH&quot;);
+1320   VALIDATE_RESOURCE_INITIALIZED(client, client-&gt;opus_decoder, &quot;Opus decoder&quot;);
+1321 
+1322   // Parse Opus batch packet
+1323   const uint8_t *opus_data = NULL;
+1324   size_t opus_size = 0;
+1325   const uint16_t *frame_sizes = NULL;
+1326   int sample_rate = 0;
+1327   int frame_duration = 0;
+1328   int frame_count = 0;
+1329 
+1330   asciichat_error_t result = packet_parse_opus_batch(data, len, &amp;opus_data, &amp;opus_size, &amp;frame_sizes, &amp;sample_rate,
+1331                                                      &amp;frame_duration, &amp;frame_count);
+1332 
+1333   if (result != ASCIICHAT_OK) {
+1334     disconnect_client_for_bad_data(client, &quot;Failed to parse AUDIO_OPUS_BATCH packet&quot;);
+1335     return;
+1336   }
+1337 
+1338   VALIDATE_NONZERO(client, frame_count, &quot;frame_count&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
+1339   VALIDATE_NONZERO(client, opus_size, &quot;opus_size&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
+1340 
+1341   // Calculate samples per frame (20ms @ 48kHz = 960 samples)
+1342   int samples_per_frame = (sample_rate * frame_duration) / 1000;
+1343   VALIDATE_RANGE(client, samples_per_frame, 1, 4096, &quot;samples_per_frame&quot;, &quot;AUDIO_OPUS_BATCH&quot;);
+1344 
+1345   // Use static buffer for common case to avoid malloc in hot path
+1346   // Typical batches: 1-32 frames of 960 samples = up to 30,720 samples
+1347   // Static buffer holds 32 frames @ 48kHz 20ms = 30,720 samples (120KB)
+1348 #define OPUS_DECODE_STATIC_MAX_SAMPLES (32 * 960)
+1349   static float static_decode_buffer[OPUS_DECODE_STATIC_MAX_SAMPLES];
+1350 
+1351   size_t total_samples = (size_t)samples_per_frame * (size_t)frame_count;
+1352   float *decoded_samples;
+1353   bool used_malloc = false;
+1354 
+1355   if (total_samples &lt;= OPUS_DECODE_STATIC_MAX_SAMPLES) {
+1356     decoded_samples = static_decode_buffer;
+1357   } else {
+1358     // Unusual large batch - fall back to malloc
+1359     log_warn(&quot;Client %u: Large audio batch requires malloc (%zu samples)&quot;, client-&gt;client_id, total_samples);
+1360     decoded_samples = SAFE_MALLOC(total_samples * sizeof(float), float *);
+1361     if (!decoded_samples) {
+1362       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for Opus decoded samples&quot;);
+1363       return;
+1364     }
+1365     used_malloc = true;
+1366   }
+1367 
+1368   // Decode each Opus frame using frame_sizes array
+1369   int total_decoded = 0;
+1370   size_t opus_offset = 0;
+1371 
+1372   for (int i = 0; i &lt; frame_count; i++) {
+1373     // Get exact frame size from frame_sizes array (convert from network byte order)
+1374     size_t frame_size = (size_t)NET_TO_HOST_U16(frame_sizes[i]);
+1375 
+1376     // DEBUG: Log the actual bytes of each Opus frame
+1377     if (frame_size &gt; 0) {
+1378       log_debug_every(LOG_RATE_DEFAULT, &quot;Client %u: Opus frame %d: size=%zu, first_bytes=[0x%02x,0x%02x,0x%02x,0x%02x]&quot;,
+1379                       client-&gt;client_id, i, frame_size, opus_data[opus_offset] &amp; 0xFF,
+1380                       frame_size &gt; 1 ? (opus_data[opus_offset + 1] &amp; 0xFF) : 0,
+1381                       frame_size &gt; 2 ? (opus_data[opus_offset + 2] &amp; 0xFF) : 0,
+1382                       frame_size &gt; 3 ? (opus_data[opus_offset + 3] &amp; 0xFF) : 0);
+1383     }
+1384 
+1385     if (opus_offset + frame_size &gt; opus_size) {
+1386       log_error(&quot;Client %u: Frame %d size overflow (offset=%zu, frame_size=%zu, total=%zu)&quot;, client-&gt;client_id, i + 1,
+1387                 opus_offset, frame_size, opus_size);
+1388       if (used_malloc) {
+1389         SAFE_FREE(decoded_samples);
+1390       }
+1391       return;
+1392     }
+1393 
+1394     // SECURITY: Bounds check before writing decoded samples to prevent buffer overflow
+1395     // An attacker could send malicious Opus frames that decode to more samples than expected
+1396     if ((size_t)total_decoded + (size_t)samples_per_frame &gt; total_samples) {
+1397       log_error(&quot;Client %u: Opus decode would overflow buffer (decoded=%d, frame_samples=%d, max=%zu)&quot;,
+1398                 client-&gt;client_id, total_decoded, samples_per_frame, total_samples);
+1399       if (used_malloc) {
+1400         SAFE_FREE(decoded_samples);
+1401       }
+1402       return;
+1403     }
+1404 
+1405     int decoded_count = opus_codec_decode((opus_codec_t *)client-&gt;opus_decoder, &amp;opus_data[opus_offset], frame_size,
+1406                                           &amp;decoded_samples[total_decoded], samples_per_frame);
+1407 
+1408     if (decoded_count &lt; 0) {
+1409       log_error(&quot;Client %u: Opus decoding failed for frame %d/%d (size=%zu)&quot;, client-&gt;client_id, i + 1, frame_count,
+1410                 frame_size);
+1411       if (used_malloc) {
+1412         SAFE_FREE(decoded_samples);
+1413       }
+1414       return;
+1415     }
+1416 
+1417     total_decoded += decoded_count;
+1418     opus_offset += frame_size;
+1419   }
+1420 
+1421   log_debug_every(LOG_RATE_DEFAULT, &quot;Client %u: Decoded %d Opus frames -&gt; %d samples&quot;, client-&gt;client_id, frame_count,
+1422                   total_decoded);
+1423 
+1424   // DEBUG: Log sample values to detect all-zero issue
+1425   static int server_decode_count = 0;
+1426   server_decode_count++;
+1427   if (total_decoded &gt; 0 &amp;&amp; (server_decode_count &lt;= 10 || server_decode_count % 100 == 0)) {
+1428     float peak = 0.0f, rms = 0.0f;
+1429     for (int i = 0; i &lt; total_decoded &amp;&amp; i &lt; 100; i++) {
+1430       float abs_val = fabsf(decoded_samples[i]);
+1431       if (abs_val &gt; peak)
+1432         peak = abs_val;
+1433       rms += decoded_samples[i] * decoded_samples[i];
+1434     }
+1435     rms = sqrtf(rms / (total_decoded &gt; 100 ? 100 : total_decoded));
+1436     // Log first 4 bytes of Opus data to compare with client encode
+1437     log_info(&quot;SERVER OPUS DECODE #%d from client %u: decoded_rms=%.6f, opus_first4=[0x%02x,0x%02x,0x%02x,0x%02x]&quot;,
+1438              server_decode_count, client-&gt;client_id, rms, opus_size &gt; 0 ? opus_data[0] : 0,
+1439              opus_size &gt; 1 ? opus_data[1] : 0, opus_size &gt; 2 ? opus_data[2] : 0, opus_size &gt; 3 ? opus_data[3] : 0);
+1440   }
+1441 
+1442   // Write decoded samples to client's incoming audio buffer
+1443   // Note: audio_ring_buffer_write returns error code, not sample count
+1444   // Buffer overflow warnings are logged inside audio_ring_buffer_write if buffer is full
+1445   if (client-&gt;incoming_audio_buffer &amp;&amp; total_decoded &gt; 0) {
+1446     asciichat_error_t result = audio_ring_buffer_write(client-&gt;incoming_audio_buffer, decoded_samples, total_decoded);
+1447     if (result != ASCIICHAT_OK) {
+1448       log_error(&quot;Client %u: Failed to write decoded audio to buffer: %d&quot;, client-&gt;client_id, result);
+1449     }
+1450   }
+1451 
+1452   if (used_malloc) {
+1453     SAFE_FREE(decoded_samples);
+1454   }
+1455 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_ring_buffer_write()</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>opus_codec_decode()</b>,
+    <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>, and
+  <b>packet_parse_opus_batch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_handle_audio_opus_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_opus_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
+  handle_audio_opus_packet (client_info_t * client, const void * data, size_t
+  len)</a></h2>
+<p class="Pp">#include &lt;<b>src/server/protocol.c</b>&gt;<b></b></p>
+<p class="Pp">Process AUDIO_OPUS packet - decode single Opus frame from client.
+    Handles single Opus-encoded audio frames sent by clients. The packet format
+    includes a 16-byte header followed by the Opus-encoded data.</p>
+<p class="Pp"></p>
+<p class="Pp">PACKET STRUCTURE:</p>
+<ul class="Bl-bullet">
+  <li>Offset 0: sample_rate (uint32_t, native byte order - bug in client)</li>
+  <li>Offset 4: frame_duration (uint32_t, native byte order - bug in
+    client)</li>
+  <li>Offset 8: reserved (8 bytes)</li>
+  <li>Offset 16: Opus-encoded audio data</li>
+</ul>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>client</i> Client info structure
+<br/>
+<i>data</i> Packet payload
+<br/>
+<i>len</i> Packet length</div>
+<p class="Pp">Definition at line <b>1475</b> of file
+  <b>server/protocol.c</b>.</p>
+<pre>1475                                                                                    {
+1476   log_debug_every(LOG_RATE_DEFAULT, &quot;Received Opus audio from client %u (len=%zu)&quot;, client-&gt;client_id, len);
+1477 
+1478   if (VALIDATE_PACKET_NOT_NULL(client, data, &quot;AUDIO_OPUS&quot;)) {
+1479     return;
+1480   }
+1481 
+1482   // Minimum size: 16-byte header + at least 1 byte of Opus data
+1483   if (len &lt; 17) {
+1484     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS packet too small: %zu bytes&quot;, len);
+1485     return;
+1486   }
+1487 
+1488   if (!atomic_load_bool(&amp;client-&gt;is_sending_audio)) {
+1489     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS received before audio stream enabled&quot;);
+1490     return;
+1491   }
+1492 
+1493   if (!client-&gt;opus_decoder) {
+1494     disconnect_client_for_bad_data(client, &quot;Opus decoder not initialized&quot;);
+1495     return;
+1496   }
+1497 
+1498   // Parse header (16 bytes) - convert from network byte order
+1499   const uint8_t *buf = (const uint8_t *)data;
+1500   uint32_t sample_rate_net, frame_duration_net;
+1501   memcpy(&amp;sample_rate_net, buf, 4);
+1502   memcpy(&amp;frame_duration_net, buf + 4, 4);
+1503   uint32_t sample_rate = NET_TO_HOST_U32(sample_rate_net);
+1504   uint32_t frame_duration = NET_TO_HOST_U32(frame_duration_net);
+1505 
+1506   // Extract Opus data (after 16-byte header)
+1507   const uint8_t *opus_data = buf + 16;
+1508   size_t opus_size = len - 16;
+1509 
+1510   // Validate parameters
+1511   if (sample_rate == 0 || sample_rate &gt; 192000) {
+1512     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid sample_rate: %u&quot;, sample_rate);
+1513     return;
+1514   }
+1515 
+1516   if (frame_duration == 0 || frame_duration &gt; 120) {
+1517     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid frame_duration: %u ms&quot;, frame_duration);
+1518     return;
+1519   }
+1520 
+1521   // Calculate expected samples per frame
+1522   int samples_per_frame = (int)((sample_rate * frame_duration) / 1000);
+1523   if (samples_per_frame &lt;= 0 || samples_per_frame &gt; 5760) { // Max 120ms @ 48kHz
+1524     disconnect_client_for_bad_data(client, &quot;AUDIO_OPUS invalid samples_per_frame: %d&quot;, samples_per_frame);
+1525     return;
+1526   }
+1527 
+1528   // Decode Opus frame
+1529   float decoded_samples[5760]; // Max Opus frame size (120ms @ 48kHz)
+1530   int decoded_count =
+1531       opus_codec_decode((opus_codec_t *)client-&gt;opus_decoder, opus_data, opus_size, decoded_samples, samples_per_frame);
+1532 
+1533   if (decoded_count &lt; 0) {
+1534     log_error(&quot;Client %u: Opus decoding failed (size=%zu)&quot;, client-&gt;client_id, opus_size);
+1535     return;
+1536   }
+1537 
+1538   log_debug_every(LOG_RATE_VERY_FAST, &quot;Client %u: Decoded Opus frame -&gt; %d samples&quot;, client-&gt;client_id, decoded_count);
+1539 
+1540   // Write decoded samples to client's incoming audio buffer
+1541   if (client-&gt;incoming_audio_buffer &amp;&amp; decoded_count &gt; 0) {
+1542     asciichat_error_t write_result =
+1543         audio_ring_buffer_write(client-&gt;incoming_audio_buffer, decoded_samples, decoded_count);
+1544     if (write_result != ASCIICHAT_OK) {
+1545       log_error(&quot;Failed to write decoded Opus samples to buffer: %s&quot;, asciichat_error_string(write_result));
+1546     }
+1547   }
+1548 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>,
+    <b>audio_ring_buffer_write()</b>, <b>disconnect_client_for_bad_data()</b>,
+    and <b>opus_codec_decode()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

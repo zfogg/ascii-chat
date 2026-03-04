@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>backtrace.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">backtrace.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">backtrace.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">backtrace.c - WASM implementation for backtrace (no-op in
+  web).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>backtrace_t_free</b> (backtrace_t *bt)
+  <br/>
+  void <b>backtrace_print</b> (const char *label, const backtrace_t *bt, int
+    skip_frames, int max_frames, backtrace_frame_filter_t filter)
+  <br/>
+  void <b>backtrace_print_many</b> (const char *label, const backtrace_t *bts,
+    int count)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WASM implementation for backtrace (no-op in web).</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>platform/wasm/backtrace.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">void
+  backtrace_print (const char * label, const backtrace_t * bt, int skip_frames,
+  int max_frames, backtrace_frame_filter_t filter)</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file
+    <b>platform/wasm/backtrace.c</b>.</p>
+<pre>15                                                       {
+16   (void)label;
+17   (void)bt;
+18   (void)skip_frames;
+19   (void)max_frames;
+20   (void)filter;
+21   // No-op - backtraces not available in WASM
+22 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)">void
+  backtrace_print_many (const char * label, const backtrace_t * bts, int
+  count)</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>platform/wasm/backtrace.c</b>.</p>
+<pre>24                                                                                 {
+25   (void)label;
+26   (void)bts;
+27   (void)count;
+28   // No-op
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_t_free_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_t_free_(backtrace_t_*_bt)">void
+  backtrace_t_free (backtrace_t * bt)</a></h2>
+<p class="Pp">Definition at line <b>9</b> of file
+    <b>platform/wasm/backtrace.c</b>.</p>
+<pre>9                                        {
+10   (void)bt;
+11   // No-op - no resources to free in WASM
+12 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

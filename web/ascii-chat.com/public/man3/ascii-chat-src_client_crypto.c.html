@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>crypto.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">crypto.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">crypto.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">crypto.c - &#x1F510; Client cryptography: handshake integration,
+    X25519 key exchange, and per-session encryption</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>client_crypto_set_mode</b> (uint8_t mode)
+  <br/>
+  Set crypto mode for handshake (encryption + authentication). int
+    <b>client_crypto_init</b> (void)
+  <br/>
+  Initialize client crypto handshake. int <b>client_crypto_handshake</b>
+    (<b>socket_t</b> socket)
+  <br/>
+  Perform crypto handshake with server. <b>bool</b>
+    <b>crypto_client_is_ready</b> (void)
+  <br/>
+  Check if crypto handshake is ready. const crypto_context_t *
+    <b>crypto_client_get_context</b> (void)
+  <br/>
+  Get crypto context for encryption/decryption. int
+    <b>crypto_client_encrypt_packet</b> (const uint8_t *plaintext, size_t
+    plaintext_len, uint8_t *ciphertext, size_t ciphertext_size, size_t
+    *ciphertext_len)
+  <br/>
+  Encrypt a packet for transmission. int <b>crypto_client_decrypt_packet</b>
+    (const uint8_t *ciphertext, size_t ciphertext_len, uint8_t *plaintext,
+    size_t plaintext_size, size_t *plaintext_len)
+  <br/>
+  Decrypt a received packet. void <b>crypto_client_cleanup</b> (void)
+  <br/>
+  Cleanup crypto client resources. <b>bool</b> <b>crypto_client_should_rekey</b>
+    (void)
+  <br/>
+  Check if session rekeying should be triggered. int
+    <b>crypto_client_initiate_rekey</b> (void)
+  <br/>
+  Initiate session rekeying (client-initiated). int
+    <b>crypto_client_process_rekey_request</b> (const uint8_t *packet, size_t
+    packet_len)
+  <br/>
+  Process received REKEY_REQUEST packet from server. int
+    <b>crypto_client_send_rekey_response</b> (void)
+  <br/>
+  Send REKEY_RESPONSE packet to server. int
+    <b>crypto_client_process_rekey_response</b> (const uint8_t *packet, size_t
+    packet_len)
+  <br/>
+  Process received REKEY_RESPONSE packet from server. int
+    <b>crypto_client_send_rekey_complete</b> (void)
+  <br/>
+  Send REKEY_COMPLETE packet to server and commit to new key.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F510; Client cryptography: handshake integration, X25519 key
+    exchange, and per-session encryption</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_RESPONSIBILITIES:"><a class="permalink" href="#CORE_RESPONSIBILITIES:">CORE
+  RESPONSIBILITIES: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Initialize client crypto context with authentication credentials</dd>
+  <dt>2.</dt>
+  <dd>Perform cryptographic handshake with server during connection</dd>
+  <dt>3.</dt>
+  <dd>Manage global crypto context for client connection</dd>
+  <dt>4.</dt>
+  <dd>Provide encryption/decryption functions for secure packet
+    transmission</dd>
+  <dt>5.</dt>
+  <dd>Support multiple authentication modes (password, SSH key,
+    passwordless)</dd>
+  <dt>6.</dt>
+  <dd>Handle session rekeying for long-lived connections</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CRYPTOGRAPHIC_HANDSHAKE_ARCHITECTURE:"><a class="permalink" href="#CRYPTOGRAPHIC_HANDSHAKE_ARCHITECTURE:">CRYPTOGRAPHIC
+  HANDSHAKE ARCHITECTURE: </a></h1>
+<p class="Pp">The handshake follows a multi-phase protocol:</p>
+<p class="Pp"></p>
+<p class="Pp">PHASE 0: PROTOCOL NEGOTIATION:</p>
+<ul class="Bl-bullet">
+  <li>Step 0a: Send client protocol version</li>
+  <li>Step 0b: Receive server protocol version</li>
+  <li>Step 0c: Send client crypto capabilities</li>
+  <li>Step 0d: Receive server crypto parameters</li>
+</ul>
+<p class="Pp">PHASE 1: KEY EXCHANGE:</p>
+<ul class="Bl-bullet">
+  <li>Step 1: Receive server's ephemeral public key and send our public key</li>
+  <li>Client generates ephemeral key pair for this session</li>
+  <li>Both sides derive shared secret using X25519 key exchange</li>
+</ul>
+<p class="Pp">PHASE 2: AUTHENTICATION:</p>
+<ul class="Bl-bullet">
+  <li>Step 2: Receive auth challenge and send response</li>
+  <li>Client signs challenge with identity key (if client has identity key)</li>
+  <li>Server verifies client identity (if whitelist enabled)</li>
+  <li>Step 3: Receive handshake complete message</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CRYPTO_INITIALIZATION:"><a class="permalink" href="#CRYPTO_INITIALIZATION:">CRYPTO
+  INITIALIZATION: </a></h1>
+<p class="Pp">The client supports three initialization modes:</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>SSH KEY MODE (--key specified):</dd>
+  <dt> &#x2022;</dt>
+  <dd>Parses Ed25519 private key from file or gpg:keyid format</dd>
+  <dt> &#x2022;</dt>
+  <dd>Extracts public key for authentication</dd>
+  <dt> &#x2022;</dt>
+  <dd>Supports password-protected keys (SSH agent or prompt)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Optional password for dual authentication (key + password)</dd>
+  <dt>2.</dt>
+  <dd>PASSWORD MODE (--password specified):</dd>
+  <dt> &#x2022;</dt>
+  <dd>Uses Argon2id key derivation from shared password</dd>
+  <dt> &#x2022;</dt>
+  <dd>Both client and server derive same key from password</dd>
+  <dt> &#x2022;</dt>
+  <dd>No identity keys required</dd>
+  <dt>3.</dt>
+  <dd>PASSWORDLESS MODE (no credentials):</dd>
+  <dt> &#x2022;</dt>
+  <dd>Generates random ephemeral keys</dd>
+  <dt> &#x2022;</dt>
+  <dd>No long-term identity (no authentication)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Suitable for trusted networks or testing</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="GLOBAL_CRYPTO_CONTEXT:"><a class="permalink" href="#GLOBAL_CRYPTO_CONTEXT:">GLOBAL
+  CRYPTO CONTEXT: </a></h1>
+<p class="Pp">The client uses a single global crypto context (g_crypto_ctx):</p>
+<ul class="Bl-bullet">
+  <li>Shared across all connection attempts (reused on reconnection)</li>
+  <li>Initialized once per program execution</li>
+  <li>Cleaned up on program shutdown</li>
+  <li>Stores server connection info for known_hosts verification</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SERVER_IDENTITY_VERIFICATION:"><a class="permalink" href="#SERVER_IDENTITY_VERIFICATION:">SERVER
+  IDENTITY VERIFICATION: </a></h1>
+<p class="Pp">Client verifies server identity using known_hosts:</p>
+<ul class="Bl-bullet">
+  <li>Checks server's identity key against ~/.ascii-chat/known_hosts</li>
+  <li>First connection: Prompts user to accept server key</li>
+  <li>Subsequent connections: Verifies key matches stored value</li>
+  <li>Key mismatch: Warns user about potential MITM attack</li>
+  <li>Optional --server-key for explicit server key verification</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CLIENT_AUTHENTICATION_REQUIREMENTS:"><a class="permalink" href="#CLIENT_AUTHENTICATION_REQUIREMENTS:">CLIENT
+  AUTHENTICATION REQUIREMENTS: </a></h1>
+<p class="Pp">When server requires client authentication (whitelist
+  enabled):</p>
+<ul class="Bl-bullet">
+  <li>Client must provide identity key with --key option</li>
+  <li>Client's public key must be in server's --client-keys list</li>
+  <li>Authentication failure results in connection rejection</li>
+  <li>Interactive prompt warns user if no identity key provided</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SESSION_REKEYING:"><a class="permalink" href="#SESSION_REKEYING:">SESSION
+  REKEYING: </a></h1>
+<p class="Pp">Long-lived connections support periodic rekeying:</p>
+<ul class="Bl-bullet">
+  <li><b>crypto_client_should_rekey()</b>: Checks if rekey is needed</li>
+  <li><b>crypto_client_initiate_rekey()</b>: Client-initiated rekeying</li>
+  <li><b>crypto_client_process_rekey_request()</b>: Handles server-initiated
+      rekey</li>
+  <li>Rekeying refreshes encryption keys without reconnecting</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ENCRYPTION/DECRYPTION_OPERATIONS:"><a class="permalink" href="#ENCRYPTION/DECRYPTION_OPERATIONS:">ENCRYPTION/DECRYPTION
+  OPERATIONS: </a></h1>
+<p class="Pp">After handshake completion:</p>
+<ul class="Bl-bullet">
+  <li><b>crypto_client_encrypt_packet()</b>: Encrypts packets before
+      transmission</li>
+  <li><b>crypto_client_decrypt_packet()</b>: Decrypts received packets</li>
+  <li>Both functions use global crypto context</li>
+  <li>Automatic passthrough when encryption disabled (--no-encrypt)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ALGORITHM_SUPPORT:"><a class="permalink" href="#ALGORITHM_SUPPORT:">ALGORITHM
+  SUPPORT: </a></h1>
+<p class="Pp">The client currently supports:</p>
+<ul class="Bl-bullet">
+  <li>Key Exchange: X25519 (Elliptic Curve Diffie-Hellman)</li>
+  <li>Cipher: XSalsa20-Poly1305 (Authenticated Encryption)</li>
+  <li>Authentication: Ed25519 (when client has identity key)</li>
+  <li>Key Derivation: Argon2id (for password-based authentication)</li>
+  <li>HMAC: HMAC-SHA256 (for additional integrity protection)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ERROR_HANDLING:"><a class="permalink" href="#ERROR_HANDLING:">ERROR
+  HANDLING: </a></h1>
+<p class="Pp">Handshake errors are handled appropriately:</p>
+<ul class="Bl-bullet">
+  <li>Server disconnection during handshake: Log and return error</li>
+  <li>Protocol mismatch: Log detailed error and abort connection</li>
+  <li>Authentication failure: Log and return CONNECTION_ERROR_AUTH_FAILED</li>
+  <li>Network errors: Detect and handle gracefully (reconnection)</li>
+  <li>Invalid packets: Validate size and format before processing</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="THREAD_SAFETY:"><a class="permalink" href="#THREAD_SAFETY:">THREAD
+  SAFETY: </a></h1>
+<p class="Pp">Crypto operations are thread-safe:</p>
+<ul class="Bl-bullet">
+  <li>Global crypto context protected by initialization flag</li>
+  <li>Single crypto context per client process (no concurrent handshakes)</li>
+  <li>Encryption/decryption operations are safe for concurrent use</li>
+  <li>Rekeying operations coordinate with connection thread</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="INTEGRATION_WITH_OTHER_MODULES:"><a class="permalink" href="#INTEGRATION_WITH_OTHER_MODULES:">INTEGRATION
+  WITH OTHER MODULES: </a></h1>
+<ul class="Bl-bullet">
+  <li>main.c: Calls <b>client_crypto_init()</b> during client startup</li>
+  <li>server.c: Calls <b>client_crypto_handshake()</b> during connection</li>
+  <li>protocol.c: Uses encryption functions for secure packet transmission</li>
+  <li>crypto/handshake.h: Core handshake protocol implementation</li>
+  <li>crypto/keys/keys.h: Key parsing and management functions</li>
+  <li>crypto/known_hosts.h: Server identity verification</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="WHY_THIS_MODULAR_DESIGN:"><a class="permalink" href="#WHY_THIS_MODULAR_DESIGN:">WHY
+  THIS MODULAR DESIGN: </a></h1>
+<p class="Pp">Separating cryptographic operations from connection management
+    provides:</p>
+<ul class="Bl-bullet">
+  <li>Clear cryptographic interface for application code</li>
+  <li>Easier handshake protocol evolution</li>
+  <li>Better error isolation and debugging</li>
+  <li>Improved security auditing capabilities</li>
+  <li>Independent testing of crypto functionality</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">October 2025</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">2.0</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">server.c For connection establishment and crypto
+  <b>Handshake Module</b> timing
+<p class="Pp"></p>
+<p class="Pp">crypto/handshake.h For <b>Handshake Module</b> protocol
+    implementation</p>
+<p class="Pp"></p>
+<p class="Pp">crypto/keys/keys.h For key parsing and management</p>
+<p class="Pp"></p>
+<p class="Pp">crypto/known_hosts.h For server identity verification</p>
+</div>
+<p class="Pp">Definition in file <b>src/client/crypto.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

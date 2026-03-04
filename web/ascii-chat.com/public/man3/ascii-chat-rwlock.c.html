@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>rwlock.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">rwlock.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">rwlock.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">rwlock.c - Platform-agnostic read-write lock hooks and
+  utilities.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>rwlock_on_rdlock</b> (rwlock_t *<b>rwlock</b>)
+  <br/>
+  Hook called when a read lock is successfully acquired. void
+    <b>rwlock_on_wrlock</b> (rwlock_t *<b>rwlock</b>)
+  <br/>
+  Hook called when a write lock is successfully acquired. void
+    <b>rwlock_on_unlock</b> (rwlock_t *<b>rwlock</b>)
+  <br/>
+  Hook called when an rwlock is unlocked (read or write). int
+    <b>rwlock_format_state</b> (const rwlock_t *<b>rwlock</b>, char *buffer,
+    size_t size)
+  <br/>
+  Format rwlock timing and state info into buffer. void <b>rwlock_log_state</b>
+    (const rwlock_t *<b>rwlock</b>, const char *file, int line, const char
+    *func)
+  <br/>
+  Log the state of a read-write lock.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Platform-agnostic read-write lock hooks and utilities.</p>
+<p class="Pp">This file provides hook functions that can be called from
+    platform-specific rwlock implementations to record events and debug
+    information. All hooks are debug-only and disabled in release builds.</p>
+<p class="Pp">Definition in file <b>rwlock.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_rwlock_format_state_(const_rwlock_t_*_rwlock,_char_*_buffer,_size_t_size)"><a class="permalink" href="#int_rwlock_format_state_(const_rwlock_t_*_rwlock,_char_*_buffer,_size_t_size)">int
+  rwlock_format_state (const rwlock_t * rwlock, char * buffer, size_t
+  size)</a></h2>
+<p class="Pp">Format rwlock timing and state info into buffer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>rwlock</b><i></i><b> Pointer to the rwlock</b>
+<br/>
+<i>buffer</i> Output buffer
+<br/>
+<i>size</i> Buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes written</div>
+<p class="Pp">Formats timing (rdlock/wrlock/unlock), held-by info, and operation
+    counts. Called by <b>rwlock_log_state()</b> and --sync-state display
+  code.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>rwlock.c</b>.</p>
+<pre>87                                                                            {
+88   if (!rwlock || !buffer || size == 0) return 0;
+89 
+90   int offset = 0;
+91   uint64_t now_ns = time_get_ns();
+92 
+93   char rdlock_str[64] = &quot;&quot;;
+94   char wrlock_str[64] = &quot;&quot;;
+95   char unlock_str[64] = &quot;&quot;;
+96   char held_str[64] = &quot;&quot;;
+97   char count_str[256] = &quot;&quot;;
+98 
+99   if (rwlock-&gt;last_rdlock_time_ns &gt; 0 &amp;&amp; rwlock-&gt;last_rdlock_time_ns &lt;= now_ns) {
+100     char elapsed_str[64];
+101     time_pretty(now_ns - rwlock-&gt;last_rdlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+102     snprintf(rdlock_str, sizeof(rdlock_str), &quot;rdlock=%s&quot;, elapsed_str);
+103   }
+104 
+105   if (rwlock-&gt;last_wrlock_time_ns &gt; 0 &amp;&amp; rwlock-&gt;last_wrlock_time_ns &lt;= now_ns) {
+106     char elapsed_str[64];
+107     time_pretty(now_ns - rwlock-&gt;last_wrlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+108     snprintf(wrlock_str, sizeof(wrlock_str), &quot;wrlock=%s&quot;, elapsed_str);
+109   }
+110 
+111   if (rwlock-&gt;last_unlock_time_ns &gt; 0 &amp;&amp; rwlock-&gt;last_unlock_time_ns &lt;= now_ns) {
+112     char elapsed_str[64];
+113     time_pretty(now_ns - rwlock-&gt;last_unlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+114     snprintf(unlock_str, sizeof(unlock_str), &quot;unlock=%s&quot;, elapsed_str);
+115   }
+116 
+117   uint64_t read_count = atomic_load_u64(&amp;rwlock-&gt;read_lock_count);
+118   if (rwlock-&gt;write_held_by_key != 0) {
+119     snprintf(held_str, sizeof(held_str), &quot;[WRITE_LOCKED_BY=thread.%lu]&quot;, (unsigned long)rwlock-&gt;write_held_by_key);
+120   } else if (read_count &gt; 0) {
+121     snprintf(held_str, sizeof(held_str), &quot;[READ_LOCKED=%lu]&quot;, read_count);
+122   }
+123 
+124   if (rwlock-&gt;rdlock_count &gt; 0 || rwlock-&gt;wrlock_count &gt; 0 || rwlock-&gt;unlock_count &gt; 0) {
+125     snprintf(count_str, sizeof(count_str), &quot;[ops: rdlock=%lu wrlock=%lu unlock=%lu]&quot;,
+126              rwlock-&gt;rdlock_count, rwlock-&gt;wrlock_count, rwlock-&gt;unlock_count);
+127   }
+128 
+129   offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s %s %s&quot;,
+130                      rdlock_str, wrlock_str, unlock_str, held_str, count_str);
+131   return offset;
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>rwlock</b>,
+    <b>time_get_ns()</b>, and <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>rwlock_log_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rwlock_log_state_(const_rwlock_t_*_rwlock,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#void_rwlock_log_state_(const_rwlock_t_*_rwlock,_const_char_*_file,_int_line,_const_char_*_func)">void
+  rwlock_log_state (const rwlock_t * rwlock, const char * file, int line, const
+  char * func)</a></h2>
+<p class="Pp">Log the state of a read-write lock.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>rwlock</b><i></i><b> Pointer to the rwlock</b>
+<br/>
+<i>file</i> Source file of the caller
+<br/>
+<i>line</i> Source line of the caller
+<br/>
+<i>func</i> Source function of the caller</div>
+<p class="Pp">Formats and logs detailed state information about the rwlock.</p>
+<p class="Pp">Definition at line <b>145</b> of file <b>rwlock.c</b>.</p>
+<pre>145                                                                                             {
+146   if (!rwlock) return;
+147   char buf[512];
+148   rwlock_format_state(rwlock, buf, sizeof(buf));
+149   log_msg(LOG_DEBUG, file, line, func, &quot;rwlock/state %p: %s&quot;, (const void *)rwlock, buf);
+150 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_msg()</b>, <b>rwlock</b>, and
+    <b>rwlock_format_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rwlock_on_rdlock_(rwlock_t_*_rwlock)"><a class="permalink" href="#void_rwlock_on_rdlock_(rwlock_t_*_rwlock)">void
+  rwlock_on_rdlock (rwlock_t * rwlock)</a></h2>
+<p class="Pp">Hook called when a read lock is successfully acquired.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>rwlock</b><i></i><b> Pointer to the rwlock that
+  was read-locked</b></div>
+<p class="Pp">Called by platform-specific <b>rwlock_rdlock_impl()</b> after the
+    read lock is acquired. Records timing, increments current reader count and
+    total rdlock count.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>rwlock.c</b>.</p>
+<pre>29                                         {
+30   if (!rwlock) return;
+31   rwlock-&gt;last_rdlock_time_ns = time_get_ns();
+32   atomic_fetch_add_u64(&amp;rwlock-&gt;read_lock_count, 1);
+33   rwlock-&gt;rdlock_count++;
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64()</b>, <b>rwlock</b>, and
+    <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rwlock_on_unlock_(rwlock_t_*_rwlock)"><a class="permalink" href="#void_rwlock_on_unlock_(rwlock_t_*_rwlock)">void
+  rwlock_on_unlock (rwlock_t * rwlock)</a></h2>
+<p class="Pp">Hook called when an rwlock is unlocked (read or write).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>rwlock</b><i></i><b> Pointer to the rwlock that
+  was unlocked</b></div>
+<p class="Pp">Called by platform-specific <b>rwlock_rdunlock_impl()</b> or
+    <b>rwlock_wrunlock_impl()</b> before releasing the lock. Decrements
+    appropriate reader/writer count and increments total unlock count.</p>
+<p class="Pp">Definition at line <b>62</b> of file <b>rwlock.c</b>.</p>
+<pre>62                                         {
+63   if (!rwlock) return;
+64   rwlock-&gt;last_unlock_time_ns = time_get_ns();
+65   rwlock-&gt;unlock_count++;
+66   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+67   uintptr_t current_key = asciichat_thread_to_key(current_thread);
+68   if (rwlock-&gt;write_held_by_key == current_key) {
+69     rwlock-&gt;write_held_by_key = 0;
+70   } else if (atomic_load_u64(&amp;rwlock-&gt;read_lock_count) &gt; 0) {
+71     atomic_fetch_sub_u64(&amp;rwlock-&gt;read_lock_count, 1);
+72   }
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>,
+    <b>atomic_fetch_sub_u64()</b>, <b>atomic_load_u64()</b>, <b>rwlock</b>, and
+    <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_rwlock_on_wrlock_(rwlock_t_*_rwlock)"><a class="permalink" href="#void_rwlock_on_wrlock_(rwlock_t_*_rwlock)">void
+  rwlock_on_wrlock (rwlock_t * rwlock)</a></h2>
+<p class="Pp">Hook called when a write lock is successfully acquired.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>rwlock</b><i></i><b> Pointer to the rwlock that
+  was write-locked</b></div>
+<p class="Pp">Called by platform-specific <b>rwlock_wrlock_impl()</b> after the
+    write lock is acquired. Records timing, held-by thread, and increments total
+    wrlock count.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>rwlock.c</b>.</p>
+<pre>45                                         {
+46   if (!rwlock) return;
+47   rwlock-&gt;last_wrlock_time_ns = time_get_ns();
+48   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+49   rwlock-&gt;write_held_by_key = asciichat_thread_to_key(current_thread);
+50   rwlock-&gt;wrlock_count++;
+51 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>, <b>rwlock</b>,
+    and <b>time_get_ns()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

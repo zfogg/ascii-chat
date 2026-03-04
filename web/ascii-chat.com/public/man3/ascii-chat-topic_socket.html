@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>topic_socket(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">topic_socket(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">topic_socket(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">topic_socket - Socket API and Cross-Platform Networking</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Architecture"><a class="permalink" href="#Architecture">Architecture</a></h1>
+<p class="Pp">The socket abstraction layer provides a unified, cross-platform
+    interface for TCP/UDP network communication. It abstracts the differences
+    between Windows Winsock2 and POSIX BSD sockets, enabling application code to
+    remain completely platform-agnostic.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Design Principles:</b></p>
+<ul class="Bl-bullet">
+  <li>Single API: Same function signatures work on Windows, Linux, and
+    macOS</li>
+  <li>Type unification: <b>socket_t</b> abstracts SOCKET (Windows) vs int
+      (POSIX)</li>
+  <li>Error normalization: Consistent error handling across platforms</li>
+  <li>Zero overhead: Inline wrappers compile to direct API calls in release
+      builds</li>
+  <li>Auto-optimization: Accepted sockets are automatically optimized for video
+      streaming</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Quick_Start"><a class="permalink" href="#Quick_Start">Quick
+  Start</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Creating_a_TCP_Server"><a class="permalink" href="#Creating_a_TCP_Server">Creating
+  a TCP Server</a></h2>
+<pre>#include &quot;ascii-chat/platform/socket.h&quot;
+// Initialize socket subsystem (required on Windows)
+socket_init();
+// Create listening socket
+struct sockaddr_in addr;
+addr.sin_family = AF_INET;
+addr.sin_port = htons(27224);
+addr.sin_addr.s_addr = htonl(INADDR_ANY);
+socket_t server_sock = socket_create(AF_INET, SOCK_STREAM, 0);
+socket_set_reuseaddr(server_sock, true);
+socket_bind(server_sock, (struct sockaddr *)&amp;addr, sizeof(addr));
+socket_listen(server_sock, 10);
+// Accept connection
+socket_t client = socket_accept(server_sock, NULL, NULL);
+if (socket_is_valid(client)) {
+<br/>
+    // Automatic optimization for streaming
+<br/>
+    char buf[4096];
+<br/>
+    ssize_t received = socket_recv(client, buf, sizeof(buf), 0);
+<br/>
+    if (received &gt; 0) {
+<br/>
+        socket_send(client, buf, (size_t)received, 0);
+<br/>
+    }
+<br/>
+    socket_close(client);
+}
+socket_close(server_sock);
+socket_cleanup();</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Creating_a_TCP_Client"><a class="permalink" href="#Creating_a_TCP_Client">Creating
+  a TCP Client</a></h2>
+<pre>#include &quot;ascii-chat/platform/socket.h&quot;
+socket_init();
+// Create and connect socket
+struct sockaddr_in addr;
+addr.sin_family = AF_INET;
+addr.sin_port = htons(27224);
+inet_pton(AF_INET, &quot;127.0.0.1&quot;, &amp;addr.sin_addr);
+socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+if (socket_connect(sock, (struct sockaddr *)&amp;addr, sizeof(addr)) &lt; 0) {
+<br/>
+    log_error(&quot;Connection failed: %s&quot;, socket_get_error_string());
+<br/>
+    socket_close(sock);
+<br/>
+    socket_cleanup();
+<br/>
+    return;
+}
+// Send and receive data
+socket_send(sock, &quot;Hello&quot;, 5, 0);
+char buf[1024];
+ssize_t received = socket_recv(sock, buf, sizeof(buf) - 1, 0);
+if (received &gt; 0) {
+<br/>
+    buf[received] = '\0';
+<br/>
+    log_info(&quot;Received: %s&quot;, buf);
+}
+socket_close(sock);
+socket_cleanup();</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Core_Features"><a class="permalink" href="#Core_Features">Core
+  Features</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="IPv4_and_IPv6_Support"><a class="permalink" href="#IPv4_and_IPv6_Support">IPv4
+  and IPv6 Support</a></h2>
+<p class="Pp">The socket API seamlessly supports both IPv4 and IPv6 through
+    standard struct sockaddr_in (IPv4) and struct sockaddr_in6 (IPv6)
+    structures.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>IPv4 Example:</b></p>
+<p class="Pp"></p>
+<pre>struct sockaddr_in addr4;
+memset(&amp;addr4, 0, sizeof(addr4));
+addr4.sin_family = AF_INET;
+addr4.sin_port = htons(27224);
+inet_pton(AF_INET, &quot;192.168.1.100&quot;, &amp;addr4.sin_addr);
+socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+socket_bind(sock, (struct sockaddr *)&amp;addr4, sizeof(addr4));
+</pre>
+<p class="Pp"><b>IPv6 Example:</b></p>
+<p class="Pp"></p>
+<pre>struct sockaddr_in6 addr6;
+memset(&amp;addr6, 0, sizeof(addr6));
+addr6.sin6_family = AF_INET6;
+addr6.sin6_port = htons(27224);
+inet_pton(AF_INET6, &quot;::1&quot;, &amp;addr6.sin6_addr);
+socket_t sock = socket_create(AF_INET6, SOCK_STREAM, 0);
+socket_bind(sock, (struct sockaddr *)&amp;addr6, sizeof(addr6));
+// Optional: Allow IPv4 connections on IPv6 socket
+int v6only = 0;
+socket_setsockopt(sock, IPPROTO_IPV6, IPV6_V6ONLY, &amp;v6only, sizeof(v6only));
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Comprehensive_Error_Handling"><a class="permalink" href="#Comprehensive_Error_Handling">Comprehensive
+  Error Handling</a></h2>
+<p class="Pp">All socket functions use consistent error reporting with
+    platform-agnostic error code helpers.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Standard error patterns:</b></p>
+<p class="Pp"></p>
+<pre>// Socket creation errors
+socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+if (!socket_is_valid(sock)) {
+<br/>
+    log_error(&quot;Socket creation failed: %s&quot;, socket_get_error_string());
+<br/>
+    return false;
+}
+// Connection errors
+if (socket_connect(sock, &amp;addr, sizeof(addr)) &lt; 0) {
+<br/>
+    int err = socket_get_last_error();
+<br/>
+    log_error(&quot;Connection failed: %s&quot;, socket_get_error_string());
+<br/>
+    socket_close(sock);
+<br/>
+    return false;
+}
+// Send/recv errors
+ssize_t result = socket_recv(sock, buf, len, 0);
+if (result &lt; 0) {
+<br/>
+    if (socket_is_would_block_error(socket_get_last_error())) {
+<br/>
+        // Non-blocking socket, no data available
+<br/>
+    } else if (socket_is_connection_reset_error(socket_get_last_error())) {
+<br/>
+        // Connection reset
+<br/>
+    } else {
+<br/>
+        log_error(&quot;Recv failed: %s&quot;, socket_get_error_string());
+<br/>
+    }
+} else if (result == 0) {
+<br/>
+    // Connection closed gracefully
+} else {
+<br/>
+    // Process received data
+}
+</pre>
+<p class="Pp"><b>Error detection helpers:</b></p>
+<ul class="Bl-bullet">
+  <li>socket_is_would_block_error() - EAGAIN/EWOULDBLOCK (non-blocking
+    retry)</li>
+  <li>socket_is_connection_reset_error() - ECONNRESET (peer forced close)</li>
+  <li>socket_is_invalid_socket_error() - EBADF/WSAENOTSOCK (closed socket)</li>
+  <li>socket_is_in_progress_error() - EINPROGRESS/WSAEINPROGRESS (non-blocking
+      connect)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Blocking_and_Non-Blocking_Modes"><a class="permalink" href="#Blocking_and_Non-Blocking_Modes">Blocking
+  and Non-Blocking Modes</a></h2>
+<p class="Pp">Sockets are blocking by default. Switch to non-blocking for
+    asynchronous I/O.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Blocking socket (default):</b></p>
+<p class="Pp"></p>
+<pre>socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+// socket_recv() waits indefinitely for data
+ssize_t received = socket_recv(sock, buf, len, 0);
+</pre>
+<p class="Pp"><b>Non-blocking socket:</b></p>
+<p class="Pp"></p>
+<pre>socket_set_nonblocking(sock, true);
+// socket_recv() returns immediately
+ssize_t received = socket_recv(sock, buf, len, 0);
+if (received &gt; 0) {
+<br/>
+    // Data available
+} else if (received &lt; 0 &amp;&amp; socket_is_would_block_error(socket_get_last_error())) {
+<br/>
+    // No data available, retry later
+} else {
+<br/>
+    // Error
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Performance_Optimization"><a class="permalink" href="#Performance_Optimization">Performance
+  Optimization</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Video_Streaming_Optimization"><a class="permalink" href="#Video_Streaming_Optimization">Video
+  Streaming Optimization</a></h2>
+<p class="Pp">The socket layer provides automatic optimization for
+    high-throughput video streaming:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>socket_t client = socket_accept(server_sock, NULL, NULL);
+// Automatically applies:
+// - Disables Nagle's algorithm (TCP_NODELAY)
+// - Sets large send/receive buffers (2MB with fallbacks)
+// - Enables keepalive probes
+// - Sets appropriate timeouts
+socket_optimize_for_streaming(client);</pre>
+<p class="Pp"><b>Manual tuning for specialized use cases:</b></p>
+<p class="Pp"></p>
+<pre>socket_set_nodelay(sock, true);           // Reduce latency
+socket_set_reuseaddr(sock, true);         // Quick rebinding
+socket_set_keepalive(sock, true);         // Detect dead connections
+socket_set_buffer_sizes(sock, 2MB, 2MB);  // Large buffers for throughput
+socket_set_timeout(sock, 30 * 1000000000LL);  // 30s nanosecond timeout
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="TCP_Keepalive_Configuration"><a class="permalink" href="#TCP_Keepalive_Configuration">TCP
+  Keepalive Configuration</a></h2>
+<p class="Pp">Fine-tune keepalive for different use cases:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Aggressive keepalive for real-time communication
+socket_set_keepalive_params(sock, true, 10, 5, 3);
+// idle=10s, interval=5s, count=3 probes before timeout
+// Relaxed keepalive for background connections
+socket_set_keepalive_params(sock, true, 300, 60, 9);
+// idle=5min, interval=1min, count=9 probes</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="I/O_Multiplexing"><a class="permalink" href="#I/O_Multiplexing">I/O
+  Multiplexing</a></h1>
+<p class="Pp">Use multiplexing to efficiently monitor multiple sockets.</p>
+<section class="Ss">
+<h2 class="Ss" id="Poll_API_(Recommended)"><a class="permalink" href="#Poll_API_(Recommended)">Poll
+  API (Recommended)</a></h2>
+<p class="Pp">More efficient and modern than select() for high-descriptor-count
+    scenarios:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>struct pollfd fds[2];
+// Monitor server socket for incoming connections
+fds[0].fd = socket_get_fd(server_sock);
+fds[0].events = POLLIN;
+fds[0].revents = 0;
+// Monitor client socket for read and write readiness
+fds[1].fd = socket_get_fd(client_sock);
+fds[1].events = POLLIN | POLLOUT;
+fds[1].revents = 0;
+// Wait up to 5 seconds
+int ready = socket_poll(fds, 2, 5000000000LL);
+if (ready &lt; 0) {
+<br/>
+    // Error
+} else if (ready == 0) {
+<br/>
+    // Timeout
+} else {
+<br/>
+    // Check which sockets are ready
+<br/>
+    if (fds[0].revents &amp; POLLIN) {
+<br/>
+        // Server ready to accept
+<br/>
+        socket_t client = socket_accept(server_sock, NULL, NULL);
+<br/>
+    }
+<br/>
+    if (fds[1].revents &amp; POLLIN) {
+<br/>
+        // Client has data available
+<br/>
+    }
+<br/>
+    if (fds[1].revents &amp; POLLOUT) {
+<br/>
+        // Client socket writable
+<br/>
+    }
+<br/>
+    if (fds[1].revents &amp; POLLERR) {
+<br/>
+        // Client socket error
+<br/>
+    }
+}</pre>
+<p class="Pp"><b>Event flags:</b></p>
+<ul class="Bl-bullet">
+  <li>POLLIN: Data available to read</li>
+  <li>POLLOUT: Socket writable (buffer has space)</li>
+  <li>POLLERR: Socket error condition</li>
+  <li>POLLHUP: Connection closed</li>
+  <li>POLLNVAL: Invalid socket</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Select_API_(Legacy)"><a class="permalink" href="#Select_API_(Legacy)">Select
+  API (Legacy)</a></h2>
+<p class="Pp">The select() API for systems that need it:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>fd_set readfds, writefds;
+socket_fd_zero(&amp;readfds);
+socket_fd_zero(&amp;writefds);
+// Add sockets to sets
+socket_fd_set(server_sock, &amp;readfds);
+socket_fd_set(client_sock, &amp;readfds);
+socket_fd_set(client_sock, &amp;writefds);
+// Set timeout
+struct timeval timeout;
+timeout.tv_sec = 5;
+timeout.tv_usec = 0;
+int ready = socket_select(client_sock + 1, &amp;readfds, &amp;writefds, NULL, &amp;timeout);
+if (ready &gt; 0) {
+<br/>
+    if (socket_fd_isset(server_sock, &amp;readfds)) {
+<br/>
+        // Server ready to accept
+<br/>
+    }
+<br/>
+    if (socket_fd_isset(client_sock, &amp;readfds)) {
+<br/>
+        // Client ready to read
+<br/>
+    }
+}</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Platform-Specific_Details"><a class="permalink" href="#Platform-Specific_Details">Platform-Specific
+  Details</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Windows_(Winsock2)"><a class="permalink" href="#Windows_(Winsock2)">Windows
+  (Winsock2)</a></h2>
+<p class="Pp"><b>Initialization:</b> Windows requires explicit Winsock
+    initialization before socket operations:</p>
+<p class="Pp"></p>
+<pre>asciichat_error_t err = socket_init();
+if (err != ASCIICHAT_OK) {
+<br/>
+    log_error(&quot;Failed to initialize Winsock&quot;);
+<br/>
+    return false;
+}
+// ... use sockets ...
+socket_cleanup();  // Cleanup when done
+</pre>
+<p class="Pp"><b>Type mapping:</b></p>
+<ul class="Bl-bullet">
+  <li><b>socket_t</b> &#x2194; SOCKET</li>
+  <li>INVALID_SOCKET_VALUE &#x2194; INVALID_SOCKET (~0)</li>
+  <li>socklen_t &#x2194; int</li>
+</ul>
+<p class="Pp"><b>Error codes:</b></p>
+<ul class="Bl-bullet">
+  <li>WSAEWOULDBLOCK (non-blocking no-data)</li>
+  <li>WSAEINPROGRESS (operation in progress)</li>
+  <li>WSAECONNRESET (connection reset)</li>
+</ul>
+<p class="Pp"><b>Polling:</b> Uses WSAPoll() on Windows Vista+ for efficiency,
+    falls back to select() on older versions.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="POSIX_Systems_(Linux,_macOS)"><a class="permalink" href="#POSIX_Systems_(Linux,_macOS)">POSIX
+  Systems (Linux, macOS)</a></h2>
+<p class="Pp"><b>Initialization:</b> Automatic (socket_init() is a no-op on
+    POSIX):</p>
+<p class="Pp"></p>
+<pre>// On POSIX, this does nothing, but call it for portability
+socket_init();
+socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
+</pre>
+<p class="Pp"><b>Type mapping:</b></p>
+<ul class="Bl-bullet">
+  <li><b>socket_t</b> &#x2194; int (file descriptor)</li>
+  <li>INVALID_SOCKET_VALUE &#x2194; -1</li>
+  <li>socklen_t &#x2194; socklen_t (already defined)</li>
+</ul>
+<p class="Pp"><b>Error codes:</b></p>
+<ul class="Bl-bullet">
+  <li>EAGAIN/EWOULDBLOCK (non-blocking no-data)</li>
+  <li>EINPROGRESS (operation in progress)</li>
+  <li>ECONNRESET (connection reset)</li>
+</ul>
+<p class="Pp"><b>Polling:</b> Uses poll() for efficient I/O multiplexing
+    (preferred over select() for modern systems).</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Socket_State_Machine"><a class="permalink" href="#Socket_State_Machine">Socket
+  State Machine</a></h1>
+<pre>&#x250C;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2510;
+&#x2502;                    Socket Lifecycle                          &#x2502;
+&#x2514;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2500;&#x2518;
+CLIENT SIDE:
+<br/>
+    socket_create()
+<br/>
+         &#x2193;
+<br/>
+    socket_connect()  &#x2500;&#x2500;&#x2192;  (blocks until connected or error)
+<br/>
+         &#x2193;
+<br/>
+    socket_send()/recv()
+<br/>
+         &#x2193;
+<br/>
+    socket_shutdown() (optional)
+<br/>
+         &#x2193;
+<br/>
+    socket_close()
+<br/>
+         &#x2193;
+<br/>
+    CLOSED
+SERVER SIDE:
+<br/>
+    socket_create()
+<br/>
+         &#x2193;
+<br/>
+    socket_bind()
+<br/>
+         &#x2193;
+<br/>
+    socket_listen()
+<br/>
+         &#x2193;
+<br/>
+    socket_accept()  &#x2500;&#x2500;&#x2192;  Returns new socket for client
+<br/>
+         &#x2193;                 (original socket continues listening)
+<br/>
+    socket_send()/recv() on accepted socket
+<br/>
+         &#x2193;
+<br/>
+    socket_close() on accepted socket
+<br/>
+         &#x2193;
+<br/>
+    (loop back to accept for next client)
+<br/>
+         &#x2193;
+<br/>
+    socket_close() on server socket
+<br/>
+         &#x2193;
+<br/>
+    CLOSED</pre>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Best_Practices"><a class="permalink" href="#Best_Practices">Best
+  Practices</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Always_Check_Socket_Validity"><a class="permalink" href="#Always_Check_Socket_Validity">Always
+  Check Socket Validity</a></h2>
+<pre>// &#x274C; WRONG - Directly comparing to -1 (breaks on Windows)
+socket_t sock = socket_create(...);
+if (sock == -1) { ... }
+// &#x2705; CORRECT - Use portable function
+socket_t sock = socket_create(...);
+if (!socket_is_valid(sock)) { ... }</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Always_Log_Error_Context"><a class="permalink" href="#Always_Log_Error_Context">Always
+  Log Error Context</a></h2>
+<pre>// &#x274C; POOR
+if (!socket_is_valid(sock)) return false;
+// &#x2705; BETTER
+if (!socket_is_valid(sock)) {
+<br/>
+    log_error(&quot;Socket creation failed: %s&quot;, socket_get_error_string());
+<br/>
+    return false;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Handle_Partial_Sends"><a class="permalink" href="#Handle_Partial_Sends">Handle
+  Partial Sends</a></h2>
+<pre>// &#x274C; WRONG - Assumes full send
+socket_send(sock, data, 1000, 0);
+// &#x2705; CORRECT - Handles partial sends
+size_t total_sent = 0;
+while (total_sent &lt; 1000) {
+<br/>
+    ssize_t sent = socket_send(sock, (char *)data + total_sent,
+<br/>
+                                1000 - total_sent, 0);
+<br/>
+    if (sent &lt; 0) { handle_error(); }
+<br/>
+    total_sent += sent;
+}</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Non-Blocking_I/O_Patterns"><a class="permalink" href="#Non-Blocking_I/O_Patterns">Non-Blocking
+  I/O Patterns</a></h2>
+<p class="Pp">Always use helper functions for error classification:</p>
+<p class="Pp"></p>
+<pre>socket_set_nonblocking(sock, true);
+ssize_t result = socket_recv(sock, buf, len, 0);
+if (result &lt; 0) {
+<br/>
+    int err = socket_get_last_error();
+<br/>
+    if (socket_is_would_block_error(err)) {
+<br/>
+        // Retry later, don't treat as fatal
+<br/>
+    } else if (socket_is_connection_reset_error(err)) {
+<br/>
+        // Connection lost, clean up
+<br/>
+    } else {
+<br/>
+        // Other error
+<br/>
+    }
+}
+</pre>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Integration_with_ascii-chat"><a class="permalink" href="#Integration_with_ascii-chat">Integration
+  with ascii-chat</a></h1>
+<p class="Pp">The socket API is used throughout ascii-chat for:</p>
+<ul class="Bl-bullet">
+  <li>Client-server communication for video streaming</li>
+  <li>Multi-client connections to a central server</li>
+  <li>Network protocol layer abstraction</li>
+  <li>Cross-platform TCP and UDP support</li>
+</ul>
+<p class="Pp">See <b>lib/network</b> for higher-level protocol abstraction using
+    sockets.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>Platform Abstraction Layer</b>
+<p class="Pp"></p>
+<p class="Pp"><b>Network Module</b></p>
+<p class="Pp"></p>
+<p class="Pp">include/ascii-chat/platform/socket.h</p>
+</div>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

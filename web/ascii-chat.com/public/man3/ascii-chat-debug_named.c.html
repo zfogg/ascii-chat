@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>named.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">named.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">named.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">named.c - Named object registry for debugging.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>named_entry</b>
+  <br/>
+  Registry entry for uthash. struct <b>named_registry_t</b>
+  <br/>
+  Global registry with uthash and rwlock. struct <b>named_iter_entry_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MAX_NAME_LEN</b> 256
+  <br/>
+  #define <b>DESCRIBE_BUFFER_SIZE</b> 768
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>named_entry</b> <b>named_entry_t</b>
+  <br/>
+  Registry entry for uthash.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>named_init</b> (void)
+  <br/>
+  void <b>named_destroy</b> (void)
+  <br/>
+  const char * <b>named_register</b> (uintptr_t key, const char *base_name,
+    const char *type, const char *format_spec, const char *file, int line, const
+    char *func, uintptr_t parent_key)
+  <br/>
+  const char * <b>named_register_fmt</b> (uintptr_t key, const char *type, const
+    char *format_spec, const char *file, int line, const char *func, const char
+    *fmt,...)
+  <br/>
+  void <b>named_unregister</b> (uintptr_t key)
+  <br/>
+  const char * <b>named_update_name</b> (uintptr_t key, const char
+    *new_base_name)
+  <br/>
+  const char * <b>named_get</b> (uintptr_t key)
+  <br/>
+  const char * <b>named_get_type</b> (uintptr_t key)
+  <br/>
+  const char * <b>named_get_format_spec</b> (uintptr_t key)
+  <br/>
+  const char * <b>named_describe</b> (uintptr_t key, const char *type_hint)
+  <br/>
+  const char * <b>named_describe_thread</b> (void *thread)
+  <br/>
+  void <b>named_registry_for_each</b> (named_iter_callback_t callback, void
+    *user_data)
+  <br/>
+  const char * <b>named_search_by_type_id</b> (const char *type, void *id)
+  <br/>
+  const char * <b>named_register_fd</b> (int fd, const char *file, int line,
+    const char *func)
+  <br/>
+  const char * <b>named_get_fd</b> (int fd)
+  <br/>
+  const char * <b>named_get_fd_format_spec</b> (int fd)
+  <br/>
+  const char * <b>named_register_packet_type</b> (int pkt_type, const char
+    *file, int line, const char *func)
+  <br/>
+  const char * <b>named_get_packet_type</b> (int pkt_type)
+  <br/>
+  const char * <b>named_get_packet_type_format_spec</b> (int pkt_type)
+  <br/>
+  void <b>named_registry_register_packet_types</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Named object registry for debugging.</p>
+<p class="Pp">Provides a centralized registry for naming any addressable
+    resource. Uses uthash for O(1) lookup by uintptr_t key. Rwlock protects the
+    hash table with minimal critical section.</p>
+<p class="Pp">Definition in file <b>debug/named.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_DESCRIBE_BUFFER_SIZE___768"><a class="permalink" href="#_define_DESCRIBE_BUFFER_SIZE___768">#define
+  DESCRIBE_BUFFER_SIZE 768</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_describe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_NAME_LEN___256"><a class="permalink" href="#_define_MAX_NAME_LEN___256">#define
+  MAX_NAME_LEN 256</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_registry_for_each()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>named_entry</b> <b>named_entry_t</b></a></h2>
+<p class="Pp">Registry entry for uthash.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_describe_(uintptr_t_key,_const_char_*_type_hint)"><a class="permalink" href="#const_char_*_named_describe_(uintptr_t_key,_const_char_*_type_hint)">const
+  char * named_describe (uintptr_t key, const char * type_hint)</a></h2>
+<p class="Pp">Definition at line <b>336</b> of file <b>debug/named.c</b>.</p>
+<pre>336                                                                  {
+337   if (!type_hint) type_hint = &quot;object&quot;;
+338 
+339   static _Thread_local char buffer[DESCRIBE_BUFFER_SIZE];
+340 
+341   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+342     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint, (ptrdiff_t)key);
+343     return buffer;
+344   }
+345 
+346   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+347   named_entry_t *entry = NULL;
+348   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+349   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+350 
+351   if (entry) {
+352     const char *type = entry-&gt;type ? entry-&gt;type : type_hint;
+353     const char *name = entry-&gt;name ? entry-&gt;name : &quot;unknown&quot;;
+354     if (entry-&gt;file &amp;&amp; entry-&gt;func &amp;&amp; entry-&gt;line &gt; 0) {
+355       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx) @ %s:%d:%s()&quot;, type, name, (ptrdiff_t)key,
+356                entry-&gt;file, entry-&gt;line, entry-&gt;func);
+357     } else {
+358       snprintf(buffer, sizeof(buffer), &quot;%s/%s (0x%tx)&quot;, type, name, (ptrdiff_t)key);
+359     }
+360   } else {
+361     snprintf(buffer, sizeof(buffer), &quot;%s (0x%tx)&quot;, type_hint ? type_hint : &quot;unknown&quot;, (ptrdiff_t)key);
+362   }
+363 
+364   return buffer;
+365 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>DESCRIBE_BUFFER_SIZE</b>, <b>named_entry::file</b>,
+    <b>named_entry::func</b>, <b>lifecycle_is_initialized()</b>,
+    <b>named_entry::line</b>, <b>named_entry::name</b>, and
+    <b>named_entry::type</b>.</p>
+<p class="Pp">Referenced by <b>named_describe_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_describe_thread_(void_*_thread)"><a class="permalink" href="#const_char_*_named_describe_thread_(void_*_thread)">const
+  char * named_describe_thread (void * thread)</a></h2>
+<p class="Pp">Definition at line <b>367</b> of file <b>debug/named.c</b>.</p>
+<pre>367                                                 {
+368   uintptr_t key = asciichat_thread_to_key((asciichat_thread_t)thread);
+369   return named_describe(key, &quot;thread&quot;);
+370 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_describe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_destroy_(void_)"><a class="permalink" href="#void_named_destroy_(void_)">void
+  named_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>93</b> of file <b>debug/named.c</b>.</p>
+<pre>93                          {
+94   // Always attempt to shut down the lifecycle, but always cleanup entries
+95   lifecycle_shutdown(&amp;g_named_registry.lifecycle);
+96 
+97   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+98 
+99   // Find the registry's own rwlock entry (allocated during named_init bootstrap)
+100   // This entry will be unregistered by rwlock_destroy, so we must not free it here
+101   uintptr_t registry_lock_key = (uintptr_t)(const void *)&amp;g_named_registry.entries_lock;
+102   named_entry_t *registry_lock_entry = NULL;
+103   HASH_FIND(hh, g_named_registry.entries, &amp;registry_lock_key, sizeof(uintptr_t), registry_lock_entry);
+104 
+105   for (named_entry_t *e = g_named_registry.entries; e != NULL;) {
+106     named_entry_t *next = e-&gt;hh.next;
+107 
+108     // Skip the registry lock entry - it will be cleaned up by rwlock_destroy
+109     // which calls NAMED_UNREGISTER after we release the lock
+110     if (e == registry_lock_entry) {
+111       e = next;
+112       continue;
+113     }
+114 
+115     // Free all other entries
+116     free(e-&gt;name);
+117     if (e-&gt;type) free(e-&gt;type);
+118     if (e-&gt;format_spec) free(e-&gt;format_spec);
+119     if (e-&gt;file) free(e-&gt;file);
+120     if (e-&gt;func) free(e-&gt;func);
+121     free(e);
+122     e = next;
+123   }
+124 
+125   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+126 
+127   // rwlock_destroy will call NAMED_UNREGISTER on the lock entry, which will:
+128   // 1. Acquire the lock (now safe since we released it)
+129   // 2. Find and remove the lock entry from the hash
+130   // 3. Free the lock entry's fields
+131   rwlock_destroy(&amp;g_named_registry.entries_lock);
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_(uintptr_t_key)"><a class="permalink" href="#const_char_*_named_get_(uintptr_t_key)">const
+  char * named_get (uintptr_t key)</a></h2>
+<p class="Pp">Definition at line <b>297</b> of file <b>debug/named.c</b>.</p>
+<pre>297                                      {
+298   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+299     return NULL;
+300   }
+301 
+302   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+303   named_entry_t *entry = NULL;
+304   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+305   const char *result = entry ? entry-&gt;name : NULL;
+306   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+307   return result;
+308 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>named_entry::name</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_fd_(int_fd)"><a class="permalink" href="#const_char_*_named_get_fd_(int_fd)">const
+  char * named_get_fd (int fd)</a></h2>
+<p class="Pp">Definition at line <b>450</b> of file <b>debug/named.c</b>.</p>
+<pre>450                                  {
+451   if (fd &lt; 0) return NULL;
+452 
+453   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+454     return NULL;
+455   }
+456 
+457   uintptr_t key = encode_fd_key(fd);
+458   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+459   named_entry_t *entry = NULL;
+460   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+461   const char *result = entry ? entry-&gt;name : NULL;
+462   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+463   return result;
+464 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>named_entry::name</b>.</p>
+<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_fd_format_spec_(int_fd)"><a class="permalink" href="#const_char_*_named_get_fd_format_spec_(int_fd)">const
+  char * named_get_fd_format_spec (int fd)</a></h2>
+<p class="Pp">Definition at line <b>466</b> of file <b>debug/named.c</b>.</p>
+<pre>466                                              {
+467   if (fd &lt; 0) return NULL;
+468 
+469   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+470     return NULL;
+471   }
+472 
+473   uintptr_t key = encode_fd_key(fd);
+474   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+475   named_entry_t *entry = NULL;
+476   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+477   const char *result = entry ? entry-&gt;format_spec : NULL;
+478   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+479   return result;
+480 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::format_spec</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_format_spec_(uintptr_t_key)"><a class="permalink" href="#const_char_*_named_get_format_spec_(uintptr_t_key)">const
+  char * named_get_format_spec (uintptr_t key)</a></h2>
+<p class="Pp">Definition at line <b>323</b> of file <b>debug/named.c</b>.</p>
+<pre>323                                                  {
+324   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+325     return NULL;
+326   }
+327 
+328   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+329   named_entry_t *entry = NULL;
+330   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+331   const char *result = entry ? entry-&gt;format_spec : NULL;
+332   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+333   return result;
+334 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::format_spec</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_packet_type_(int_pkt_type)"><a class="permalink" href="#const_char_*_named_get_packet_type_(int_pkt_type)">const
+  char * named_get_packet_type (int pkt_type)</a></h2>
+<p class="Pp">Definition at line <b>511</b> of file <b>debug/named.c</b>.</p>
+<pre>511                                                 {
+512   if (pkt_type &lt; 0) return NULL;
+513 
+514   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+515     return NULL;
+516   }
+517 
+518   uintptr_t key = encode_pkt_type_key(pkt_type);
+519   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+520   named_entry_t *entry = NULL;
+521   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+522   const char *result = entry ? entry-&gt;name : NULL;
+523   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+524   return result;
+525 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>named_entry::name</b>.</p>
+<p class="Pp">Referenced by <b>log_named_format_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_packet_type_format_spec_(int_pkt_type)"><a class="permalink" href="#const_char_*_named_get_packet_type_format_spec_(int_pkt_type)">const
+  char * named_get_packet_type_format_spec (int pkt_type)</a></h2>
+<p class="Pp">Definition at line <b>527</b> of file <b>debug/named.c</b>.</p>
+<pre>527                                                             {
+528   if (pkt_type &lt; 0) return NULL;
+529 
+530   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+531     return NULL;
+532   }
+533 
+534   uintptr_t key = encode_pkt_type_key(pkt_type);
+535   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+536   named_entry_t *entry = NULL;
+537   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+538   const char *result = entry ? entry-&gt;format_spec : NULL;
+539   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+540   return result;
+541 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::format_spec</b>, and
+    <b>lifecycle_is_initialized()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_get_type_(uintptr_t_key)"><a class="permalink" href="#const_char_*_named_get_type_(uintptr_t_key)">const
+  char * named_get_type (uintptr_t key)</a></h2>
+<p class="Pp">Definition at line <b>310</b> of file <b>debug/named.c</b>.</p>
+<pre>310                                           {
+311   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+312     return NULL;
+313   }
+314 
+315   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+316   named_entry_t *entry = NULL;
+317   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+318   const char *result = entry ? entry-&gt;type : NULL;
+319   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+320   return result;
+321 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
+    <b>named_entry::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_named_init_(void_)"><a class="permalink" href="#asciichat_error_t_named_init_(void_)">asciichat_error_t
+  named_init (void )</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>debug/named.c</b>.</p>
+<pre>74                                    {
+75   // Idempotent: if already initialized, return success
+76   if (lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+77     return ASCIICHAT_OK;
+78   }
+79 
+80   if (!lifecycle_init(&amp;g_named_registry.lifecycle, &quot;named_registry&quot;)) {
+81     return ASCIICHAT_OK;
+82   }
+83 
+84   if (rwlock_init(&amp;g_named_registry.entries_lock, &quot;named_registry_lock&quot;) != 0) {
+85     lifecycle_shutdown(&amp;g_named_registry.lifecycle);
+86     return ASCIICHAT_OK;  // Continue even if rwlock init fails
+87   }
+88 
+89   lifecycle_init_commit(&amp;g_named_registry.lifecycle);
+90   return ASCIICHAT_OK;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_init()</b>,
+    <b>lifecycle_init_commit()</b>, <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, and <b>rwlock_init()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>, and
+  <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_(uintptr_t_key,_const_char_*_base_name,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_uintptr_t_parent_key)"><a class="permalink" href="#const_char_*_named_register_(uintptr_t_key,_const_char_*_base_name,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_uintptr_t_parent_key)">const
+  char * named_register (uintptr_t key, const char * base_name, const char *
+  type, const char * format_spec, const char * file, int line, const char *
+  func, uintptr_t parent_key)</a></h2>
+<p class="Pp">Definition at line <b>168</b> of file <b>debug/named.c</b>.</p>
+<pre>169                                                                                                {
+170   if (!base_name || !type || !format_spec) {
+171     return &quot;?&quot;;
+172   }
+173 
+174   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+175     return base_name;
+176   }
+177 
+178   // If parent_key provided, look up parent name and create hierarchical name
+179   char final_base_name[256];
+180   if (parent_key != 0) {
+181     rwlock_rdlock(&amp;g_named_registry.entries_lock);
+182     const char *parent_name = named_lookup_name_unlocked(parent_key);
+183     rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+184 
+185     if (parent_name) {
+186       snprintf(final_base_name, sizeof(final_base_name), &quot;%s#%s&quot;, parent_name, base_name);
+187     } else {
+188       // Parent not found, fall back to base name
+189       snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
+190     }
+191   } else {
+192     snprintf(final_base_name, sizeof(final_base_name), &quot;%s&quot;, base_name);
+193   }
+194 
+195   // Generate unique name using atomic counters (only for non-hierarchical names)
+196   char name_buffer[256];
+197   if (parent_key == 0) {
+198     uint64_t counter = 0;
+199     if (strcmp(type, &quot;mutex&quot;) == 0) {
+200       counter = __sync_fetch_and_add(&amp;mutex_counter, 1);
+201     } else if (strcmp(type, &quot;rwlock&quot;) == 0) {
+202       counter = __sync_fetch_and_add(&amp;rwlock_counter, 1);
+203     } else if (strcmp(type, &quot;cond&quot;) == 0) {
+204       counter = __sync_fetch_and_add(&amp;cond_counter, 1);
+205     } else if (strcmp(type, &quot;atomic&quot;) == 0) {
+206       counter = __sync_fetch_and_add(&amp;atomic_counter, 1);
+207     }
+208     snprintf(name_buffer, sizeof(name_buffer), &quot;%s.%&quot;PRIu64, final_base_name, counter);
+209   } else {
+210     // Hierarchical names don't get counters - parent already has one
+211     snprintf(name_buffer, sizeof(name_buffer), &quot;%s&quot;, final_base_name);
+212   }
+213 
+214   // Allocate entry BEFORE acquiring lock (avoid long critical section)
+215   named_entry_t *entry = malloc(sizeof(named_entry_t));
+216   if (!entry) return base_name;
+217 
+218   entry-&gt;key = key;
+219   entry-&gt;name = entry_strdup(name_buffer);
+220   named_entry_init(entry, type, format_spec, file, line, func);
+221 
+222   // Only hold lock for the hash table operation
+223   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+224   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+225   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+226 
+227   return entry-&gt;name;
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>named_entry::name</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_fd_(int_fd,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#const_char_*_named_register_fd_(int_fd,_const_char_*_file,_int_line,_const_char_*_func)">const
+  char * named_register_fd (int fd, const char * file, int line, const char *
+  func)</a></h2>
+<p class="Pp">Definition at line <b>421</b> of file <b>debug/named.c</b>.</p>
+<pre>421                                                                                     {
+422   if (fd &lt; 0) {
+423     return &quot;?&quot;;
+424   }
+425 
+426   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+427     return &quot;?&quot;;
+428   }
+429 
+430   char name_buffer[256];
+431   snprintf(name_buffer, sizeof(name_buffer), &quot;fd=%d&quot;, fd);
+432 
+433   // Allocate entry BEFORE acquiring lock
+434   named_entry_t *entry = malloc(sizeof(named_entry_t));
+435   if (!entry) return &quot;?&quot;;
+436 
+437   uintptr_t key = encode_fd_key(fd);
+438   entry-&gt;key = key;
+439   entry-&gt;name = entry_strdup(name_buffer);
+440   named_entry_init(entry, &quot;fd&quot;, &quot;%d&quot;, file, line, func);
+441 
+442   // Only hold lock for the hash table operation
+443   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+444   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+445   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+446 
+447   return entry-&gt;name;
+448 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>named_entry::name</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_fmt_(uintptr_t_key,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"><a class="permalink" href="#const_char_*_named_register_fmt_(uintptr_t_key,_const_char_*_type,_const_char_*_format_spec,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__">const
+  char * named_register_fmt (uintptr_t key, const char * type, const char *
+  format_spec, const char * file, int line, const char * func, const char * fmt,
+  ...)</a></h2>
+<p class="Pp">Definition at line <b>230</b> of file <b>debug/named.c</b>.</p>
+<pre>231                                                                        {
+232   if (!type || !format_spec || !fmt) {
+233     return &quot;?&quot;;
+234   }
+235 
+236   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+237     return fmt;
+238   }
+239 
+240   // Format the name BEFORE acquiring lock
+241   va_list args;
+242   va_start(args, fmt);
+243   char *full_name = NULL;
+244   int ret = vasprintf(&amp;full_name, fmt, args);
+245   va_end(args);
+246 
+247   if (ret &lt; 0) {
+248     return &quot;?&quot;;
+249   }
+250 
+251   // Allocate entry BEFORE acquiring lock
+252   named_entry_t *entry = malloc(sizeof(named_entry_t));
+253   if (!entry) {
+254     free(full_name);
+255     return &quot;?&quot;;
+256   }
+257 
+258   // Initialize entry (name is pre-allocated as full_name)
+259   entry-&gt;key = key;
+260   entry-&gt;name = full_name;
+261   named_entry_init(entry, type, format_spec, file, line, func);
+262 
+263   // Only hold lock for the hash table operation
+264   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+265   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+266   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+267 
+268   return entry-&gt;name;
+269 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>named_entry::name</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_register_packet_type_(int_pkt_type,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#const_char_*_named_register_packet_type_(int_pkt_type,_const_char_*_file,_int_line,_const_char_*_func)">const
+  char * named_register_packet_type (int pkt_type, const char * file, int line,
+  const char * func)</a></h2>
+<p class="Pp">Definition at line <b>482</b> of file <b>debug/named.c</b>.</p>
+<pre>482                                                                                                    {
+483   if (pkt_type &lt; 0) {
+484     return &quot;?&quot;;
+485   }
+486 
+487   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+488     return &quot;?&quot;;
+489   }
+490 
+491   char name_buffer[256];
+492   snprintf(name_buffer, sizeof(name_buffer), &quot;PACKET_TYPE=%d&quot;, pkt_type);
+493 
+494   // Allocate entry BEFORE acquiring lock
+495   named_entry_t *entry = malloc(sizeof(named_entry_t));
+496   if (!entry) return &quot;?&quot;;
+497 
+498   uintptr_t key = encode_pkt_type_key(pkt_type);
+499   entry-&gt;key = key;
+500   entry-&gt;name = entry_strdup(name_buffer);
+501   named_entry_init(entry, &quot;packet_type&quot;, &quot;%d&quot;, file, line, func);
+502 
+503   // Only hold lock for the hash table operation
+504   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+505   HASH_ADD(hh, g_named_registry.entries, key, sizeof(uintptr_t), entry);
+506   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+507 
+508   return entry-&gt;name;
+509 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::key</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>named_entry::name</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_registry_for_each_(named_iter_callback_t_callback,_void_*_user_data)"><a class="permalink" href="#void_named_registry_for_each_(named_iter_callback_t_callback,_void_*_user_data)">void
+  named_registry_for_each (named_iter_callback_t callback, void *
+  user_data)</a></h2>
+<p class="Pp">Definition at line <b>377</b> of file <b>debug/named.c</b>.</p>
+<pre>377                                                                               {
+378   if (!callback || !lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+379     return;
+380   }
+381 
+382   // Snapshot entries while holding read lock
+383   named_iter_entry_t entries[256];
+384   int count = 0;
+385 
+386   rwlock_rdlock(&amp;g_named_registry.entries_lock);
+387   for (named_entry_t *e = g_named_registry.entries; e != NULL &amp;&amp; count &lt; 256; e = e-&gt;hh.next) {
+388     entries[count].key = e-&gt;key;
+389     strncpy(entries[count].name, e-&gt;name ? e-&gt;name : &quot;?&quot;, MAX_NAME_LEN - 1);
+390     entries[count].name[MAX_NAME_LEN - 1] = '\0';
+391     count++;
+392   }
+393   rwlock_rdunlock(&amp;g_named_registry.entries_lock);
+394 
+395   // Call callback outside the lock
+396   for (int i = 0; i &lt; count; i++) {
+397     callback(entries[i].key, entries[i].name, user_data);
+398   }
+399 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_iter_entry_t::key</b>,
+    <b>lifecycle_is_initialized()</b>, <b>MAX_NAME_LEN</b>, and
+    <b>named_iter_entry_t::name</b>.</p>
+<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>, and
+    <b>debug_sync_print_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_registry_register_packet_types_(void_)"><a class="permalink" href="#void_named_registry_register_packet_types_(void_)">void
+  named_registry_register_packet_types (void )</a></h2>
+<p class="Pp">Definition at line <b>543</b> of file <b>debug/named.c</b>.</p>
+<pre>543                                                 {
+544   // No-op
+545 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_search_by_type_id_(const_char_*_type,_void_*_id)"><a class="permalink" href="#const_char_*_named_search_by_type_id_(const_char_*_type,_void_*_id)">const
+  char * named_search_by_type_id (const char * type, void * id)</a></h2>
+<p class="Pp">Definition at line <b>401</b> of file <b>debug/named.c</b>.</p>
+<pre>401                                                                 {
+402   (void)type;
+403   (void)id;
+404   return NULL;
+405 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_named_unregister_(uintptr_t_key)"><a class="permalink" href="#void_named_unregister_(uintptr_t_key)">void
+  named_unregister (uintptr_t key)</a></h2>
+<p class="Pp">Definition at line <b>271</b> of file <b>debug/named.c</b>.</p>
+<pre>271                                      {
+272   if (!lifecycle_is_initialized(&amp;g_named_registry.lifecycle)) {
+273     return;
+274   }
+275 
+276   rwlock_wrlock(&amp;g_named_registry.entries_lock);
+277   named_entry_t *entry = NULL;
+278   HASH_FIND(hh, g_named_registry.entries, &amp;key, sizeof(uintptr_t), entry);
+279   if (entry) {
+280     HASH_DEL(g_named_registry.entries, entry);
+281     free(entry-&gt;name);
+282     if (entry-&gt;type) free(entry-&gt;type);
+283     if (entry-&gt;format_spec) free(entry-&gt;format_spec);
+284     if (entry-&gt;file) free(entry-&gt;file);
+285     if (entry-&gt;func) free(entry-&gt;func);
+286     free(entry);
+287   }
+288   rwlock_wrunlock(&amp;g_named_registry.entries_lock);
+289 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_entry::file</b>,
+    <b>named_entry::format_spec</b>, <b>named_entry::func</b>,
+    <b>lifecycle_is_initialized()</b>, <b>named_entry::name</b>, and
+    <b>named_entry::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_named_update_name_(uintptr_t_key,_const_char_*_new_base_name)"><a class="permalink" href="#const_char_*_named_update_name_(uintptr_t_key,_const_char_*_new_base_name)">const
+  char * named_update_name (uintptr_t key, const char * new_base_name)</a></h2>
+<p class="Pp">Definition at line <b>291</b> of file <b>debug/named.c</b>.</p>
+<pre>291                                                                         {
+292   (void)key;
+293   (void)new_base_name;
+294   return NULL;
+295 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>tcp_client_connect()</b>, and
+    <b>websocket_client_connect()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

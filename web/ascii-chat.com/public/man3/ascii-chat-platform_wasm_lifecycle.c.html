@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>lifecycle.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">lifecycle.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">lifecycle.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lifecycle.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>lifecycle_init</b> (lifecycle_t *lc, const char
+    *name)
+  <br/>
+  <b>bool</b> <b>lifecycle_init_once</b> (lifecycle_t *lc)
+  <br/>
+  void <b>lifecycle_init_commit</b> (lifecycle_t *lc)
+  <br/>
+  void <b>lifecycle_init_abort</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_shutdown</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_shutdown_forever</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_is_initialized</b> (const lifecycle_t *lc)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_init (lifecycle_t * lc, const char *
+  name)</h2>
+<p class="Pp">Definition at line <b>10</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>10                                                        {
+11   (void)name;
+12   if (!lc) return false;
+13   atomic_store(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+14   return true;
+15 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lifecycle_init_abort_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_abort_(lifecycle_t_*_lc)">void
+  lifecycle_init_abort (lifecycle_t * lc)</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>30                                            {
+31   if (!lc) return;
+32   atomic_store(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lifecycle_init_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_commit_(lifecycle_t_*_lc)">void
+  lifecycle_init_commit (lifecycle_t * lc)</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>25                                             {
+26   if (!lc) return;
+27   atomic_store(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_init_once (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>17</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>17                                           {
+18   if (!lc) return false;
+19 
+20   // Try to transition from UNINITIALIZED to INITIALIZING
+21   int expected = LIFECYCLE_UNINITIALIZED;
+22   return atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING);
+23 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const lifecycle_t *
+  lc)</h2>
+<p class="Pp">Definition at line <b>45</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>45                                                      {
+46   if (!lc) return false;
+47   return atomic_load(&amp;((lifecycle_t *)lc)-&gt;state) == LIFECYCLE_INITIALIZED;
+48 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>35                                          {
+36   if (!lc) return false;
+37   atomic_store(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+38   return true;
+39 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>lifecycle_shutdown_forever()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>41</b> of file
+    <b>platform/wasm/lifecycle.c</b>.</p>
+<pre>41                                                  {
+42   return lifecycle_shutdown(lc);
+43 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

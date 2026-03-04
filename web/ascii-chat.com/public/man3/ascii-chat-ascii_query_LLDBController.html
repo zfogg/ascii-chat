@@ -1,0 +1,1129 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query::LLDBController(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query::LLDBController(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query::LLDBController(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query::LLDBController - LLDB process controller.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/tooling/query/lldb_controller.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
+  Member Functions</a></h2>
+<br/>
+<p class="Pp"><b>LLDBController</b> ()
+  <br/>
+  <b>~LLDBController</b> ()
+  <br/>
+  <b>LLDBController</b> (const LLDBController &amp;)=delete
+  <br/>
+  <b>LLDBController</b> &amp; <b>operator=</b> (const <b>LLDBController</b>
+    &amp;)=delete
+  <br/>
+  <b>LLDBController</b> (LLDBController &amp;&amp;)=delete
+  <br/>
+  <b>LLDBController</b> &amp; <b>operator=</b> (<b>LLDBController</b>
+    &amp;&amp;)=delete
+  <br/>
+  <b>bool</b> <b>initialize</b> ()
+  <br/>
+  Initialize LLDB. Must be called before any other methods. void <b>shutdown</b>
+    ()
+  <br/>
+  Shutdown LLDB and release resources. <b>bool</b> <b>attach</b> (pid_t pid)
+  <br/>
+  Attach to a process by PID. <b>bool</b> <b>attachByName</b> (const std::string
+    &amp;process_name, <b>bool</b> wait_for=<b>false</b>)
+  <br/>
+  Attach to a process by name. void <b>detach</b> ()
+  <br/>
+  Detach from the current process. <b>bool</b> <b>isAttached</b> () const
+  <br/>
+  Check if attached to a process. pid_t <b>targetPid</b> () const
+  <br/>
+  Get the PID of the attached process. std::string <b>targetName</b> () const
+  <br/>
+  Get the name of the attached process. <b>bool</b> <b>stop</b> ()
+  <br/>
+  Stop the target process. <b>bool</b> <b>resume</b> ()
+  <br/>
+  Resume the target process. <b>bool</b> <b>stepInto</b> ()
+  <br/>
+  Single step the current thread (step into). <b>bool</b> <b>stepOver</b> ()
+  <br/>
+  Step over the current line. <b>bool</b> <b>stepOut</b> ()
+  <br/>
+  Step out of the current function. <b>ProcessState</b> <b>state</b> () const
+  <br/>
+  Get the current process state. const std::string &amp; <b>lastError</b> ()
+    const
+  <br/>
+  Get the last error message. std::vector&lt; <b>ThreadInfo</b> &gt;
+    <b>getThreads</b> () const
+  <br/>
+  Get list of all threads. std::optional&lt; <b>ThreadInfo</b> &gt;
+    <b>getSelectedThread</b> () const
+  <br/>
+  Get the currently selected thread. <b>bool</b> <b>selectThread</b> (uint64_t
+    <b>thread_id</b>)
+  <br/>
+  Select a thread by ID. std::vector&lt; <b>FrameInfo</b> &gt; <b>getFrames</b>
+    (uint32_t max_frames=0) const
+  <br/>
+  Get stack frames for the selected thread. std::optional&lt; <b>FrameInfo</b>
+    &gt; <b>getFrame</b> (uint32_t frame_index) const
+  <br/>
+  Get a specific frame by index. std::optional&lt; <b>VariableInfo</b> &gt;
+    <b>readVariable</b> (const std::string &amp;name, uint32_t frame_index=0,
+    uint32_t expand_depth=0) const
+  <br/>
+  Read a variable from the current frame. std::vector&lt; <b>VariableInfo</b>
+    &gt; <b>listVariables</b> (uint32_t frame_index=0, <b>bool</b>
+    include_args=<b>true</b>, <b>bool</b> include_locals=<b>true</b>,
+    <b>bool</b> include_statics=<b>false</b>) const
+  <br/>
+  List all variables in scope at a frame. int32_t <b>setBreakpoint</b> (const
+    std::string &amp;file, uint32_t line, const std::string &amp;condition='')
+  <br/>
+  Set a breakpoint at file:line. <b>bool</b> <b>removeBreakpoint</b> (int32_t
+    breakpoint_id)
+  <br/>
+  Remove a breakpoint. std::vector&lt; <b>BreakpointInfo</b> &gt;
+    <b>getBreakpoints</b> () const
+  <br/>
+  Get all breakpoints. std::optional&lt; <b>BreakpointInfo</b> &gt;
+    <b>getBreakpoint</b> (int32_t breakpoint_id) const
+  <br/>
+  Get information about a specific breakpoint. <b>bool</b>
+    <b>waitForBreakpoint</b> (uint32_t timeout_ms=0)
+  <br/>
+  Wait for any breakpoint to be hit. std::optional&lt; <b>VariableInfo</b> &gt;
+    <b>evaluateExpression</b> (const std::string &amp;expression, uint32_t
+    frame_index=0) const
+  <br/>
+  Evaluate an expression in the current context.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">LLDB process controller.</p>
+<p class="Pp">Wraps LLDB's SB API to provide process attachment, breakpoint
+    management, and variable inspection for the query tool.</p>
+<p class="Pp">Definition at line <b>106</b> of file
+  <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Constructor_&amp;_Destructor_Documentation"><a class="permalink" href="#Constructor_&amp;_Destructor_Documentation">Constructor
+  &amp; Destructor Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::LLDBController::LLDBController_()"><a class="permalink" href="#ascii_query::LLDBController::LLDBController_()">ascii_query::LLDBController::LLDBController
+  () [default]</a></h2>
+<p class="Pp">Referenced by <b>LLDBController()</b>, <b>LLDBController()</b>,
+    <b>operator=()</b>, and <b>operator=()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::LLDBController::_LLDBController_()"><a class="permalink" href="#ascii_query::LLDBController::_LLDBController_()">ascii_query::LLDBController::~LLDBController
+  ()</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>36 { shutdown(); }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::LLDBController::LLDBController_(const_LLDBController_&amp;_)"><a class="permalink" href="#ascii_query::LLDBController::LLDBController_(const_LLDBController_&amp;_)">ascii_query::LLDBController::LLDBController
+  (const LLDBController &amp; ) [delete]</a></h2>
+<p class="Pp">References <b>LLDBController()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ascii_query::LLDBController::LLDBController_(LLDBController_&amp;&amp;_)"><a class="permalink" href="#ascii_query::LLDBController::LLDBController_(LLDBController_&amp;&amp;_)">ascii_query::LLDBController::LLDBController
+  (LLDBController &amp;&amp; ) [delete]</a></h2>
+<p class="Pp">References <b>LLDBController()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
+  Function Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::attach (pid_t pid)</h2>
+<p class="Pp">Attach to a process by PID.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pid</i> Process ID to attach to</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">On success, the target process is stopped.</p>
+<p class="Pp">Definition at line <b>103</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>103                                      {
+104     if (!initialized_) {
+105         setError(&quot;LLDB not initialized&quot;);
+106         return false;
+107     }
+108 
+109     // Create an empty target - LLDB will fill it in when we attach
+110     lldb::SBError error;
+111     target_ = debugger_.CreateTarget(&quot;&quot;, &quot;&quot;, &quot;&quot;, false, error);
+112     if (!target_.IsValid()) {
+113         setError(&quot;Failed to create target: &quot; + std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+114         return false;
+115     }
+116 
+117     // Attach to process
+118     lldb::SBAttachInfo attach_info(pid);
+119     attach_info.SetListener(listener_);
+120 
+121     process_ = target_.Attach(attach_info, error);
+122     if (!process_.IsValid() || error.Fail()) {
+123         setError(&quot;Failed to attach to PID &quot; + std::to_string(pid) + &quot;: &quot; +
+124                  std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+125         debugger_.DeleteTarget(target_);
+126         return false;
+127     }
+128 
+129     clearError();
+130     return true;
+131 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::attachByName (const
+  std::string &amp; process_name, <b>bool</b> wait_for =
+  <b>false</b><b>)</b></h2>
+<p class="Pp">Attach to a process by name.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>process_name</i> Name of process to attach to
+<br/>
+<i>wait_for</i> If true, wait for process to start</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">Definition at line <b>133</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>133                                                                               {
+134     if (!initialized_) {
+135         setError(&quot;LLDB not initialized&quot;);
+136         return false;
+137     }
+138 
+139     // Create an empty target
+140     lldb::SBError error;
+141     target_ = debugger_.CreateTarget(&quot;&quot;, &quot;&quot;, &quot;&quot;, false, error);
+142     if (!target_.IsValid()) {
+143         setError(&quot;Failed to create target: &quot; + std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+144         return false;
+145     }
+146 
+147     // Attach by name
+148     lldb::SBAttachInfo attach_info;
+149     attach_info.SetExecutable(process_name.c_str());
+150     attach_info.SetWaitForLaunch(wait_for, false); // false = don't async
+151     attach_info.SetListener(listener_);
+152 
+153     process_ = target_.Attach(attach_info, error);
+154     if (!process_.IsValid() || error.Fail()) {
+155         setError(&quot;Failed to attach to process '&quot; + process_name +
+156                  &quot;': &quot; + std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+157         debugger_.DeleteTarget(target_);
+158         return false;
+159     }
+160 
+161     clearError();
+162     return true;
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_query::LLDBController::detach_()"><a class="permalink" href="#void_ascii_query::LLDBController::detach_()">void
+  ascii_query::LLDBController::detach ()</a></h2>
+<p class="Pp">Detach from the current process. The target process continues
+    running after detach.</p>
+<p class="Pp">Definition at line <b>165</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>165                             {
+166     if (!isAttached()) {
+167         return;
+168     }
+169 
+170     lldb::SBError error = process_.Detach();
+171     if (error.Fail()) {
+172         setError(&quot;Detach failed: &quot; + std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+173     } else {
+174         clearError();
+175     }
+176 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>isAttached()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::optional&lt; <b>VariableInfo</b> &gt;
+  ascii_query::LLDBController::evaluateExpression (const std::string &amp;
+  expression, uint32_t frame_index = 0) const [nodiscard]</h2>
+<p class="Pp">Evaluate an expression in the current context.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>expression</i> Expression to evaluate
+<br/>
+<i>frame_index</i> Which frame context (0 = current)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>VariableInfo</b> with result, or nullopt on
+  failure</div>
+<p class="Pp">Definition at line <b>611</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>612                                                                                             {
+613     lldb::SBFrame frame = getFrameInternal(frame_index);
+614     if (!frame.IsValid()) {
+615         return std::nullopt;
+616     }
+617 
+618     lldb::SBExpressionOptions options;
+619     options.SetIgnoreBreakpoints(true);
+620     options.SetFetchDynamicValue(lldb::eDynamicDontRunTarget);
+621 
+622     lldb::SBValue result = frame.EvaluateExpression(expression.c_str(), options);
+623     if (!result.IsValid()) {
+624         return std::nullopt;
+625     }
+626 
+627     lldb::SBError error = result.GetError();
+628     if (error.Fail()) {
+629         return std::nullopt;
+630     }
+631 
+632     return valueToInfo(result, 0);
+633 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::optional&lt; <b>BreakpointInfo</b> &gt;
+  ascii_query::LLDBController::getBreakpoint (int32_t breakpoint_id) const
+  [nodiscard]</h2>
+<p class="Pp">Get information about a specific breakpoint.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>breakpoint_id</i> Breakpoint ID</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>BreakpointInfo</b> or nullopt if not found</div>
+<p class="Pp">Definition at line <b>558</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>558                                                                                      {
+559     if (!target_.IsValid()) {
+560         return std::nullopt;
+561     }
+562 
+563     lldb::SBBreakpoint bp = target_.FindBreakpointByID(static_cast&lt;lldb::break_id_t&gt;(breakpoint_id));
+564     if (!bp.IsValid()) {
+565         return std::nullopt;
+566     }
+567 
+568     return breakpointToInfo(bp);
+569 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::vector&lt; <b>BreakpointInfo</b> &gt;
+  ascii_query::LLDBController::getBreakpoints () const [nodiscard]</h2>
+<p class="Pp">Get all breakpoints.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Vector of <b>BreakpointInfo</b> structs</div>
+<p class="Pp">Definition at line <b>538</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>538                                                                {
+539     std::vector&lt;BreakpointInfo&gt; result;
+540 
+541     if (!target_.IsValid()) {
+542         return result;
+543     }
+544 
+545     uint32_t num_breakpoints = target_.GetNumBreakpoints();
+546     result.reserve(num_breakpoints);
+547 
+548     for (uint32_t i = 0; i &lt; num_breakpoints; i++) {
+549         lldb::SBBreakpoint bp = target_.GetBreakpointAtIndex(i);
+550         if (bp.IsValid()) {
+551             result.push_back(breakpointToInfo(bp));
+552         }
+553     }
+554 
+555     return result;
+556 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::optional&lt; <b>FrameInfo</b> &gt;
+  ascii_query::LLDBController::getFrame (uint32_t frame_index) const
+  [nodiscard]</h2>
+<p class="Pp">Get a specific frame by index.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>frame_index</i> Frame index (0 = innermost)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>FrameInfo</b> or nullopt if index out of range</div>
+<p class="Pp">Definition at line <b>431</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>431                                                                           {
+432     lldb::SBFrame frame = getFrameInternal(frame_index);
+433     if (!frame.IsValid()) {
+434         return std::nullopt;
+435     }
+436     return frameToInfo(frame);
+437 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::vector&lt; <b>FrameInfo</b> &gt;
+  ascii_query::LLDBController::getFrames (uint32_t max_frames = 0) const
+  [nodiscard]</h2>
+<p class="Pp">Get stack frames for the selected thread.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>max_frames</i> Maximum number of frames to return (0 =
+  all)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Vector of <b>FrameInfo</b> structs</div>
+<p class="Pp">Definition at line <b>407</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>407                                                                         {
+408     std::vector&lt;FrameInfo&gt; result;
+409 
+410     lldb::SBThread thread = getSelectedThreadInternal();
+411     if (!thread.IsValid()) {
+412         return result;
+413     }
+414 
+415     uint32_t num_frames = thread.GetNumFrames();
+416     if (max_frames &gt; 0 &amp;&amp; num_frames &gt; max_frames) {
+417         num_frames = max_frames;
+418     }
+419 
+420     result.reserve(num_frames);
+421     for (uint32_t i = 0; i &lt; num_frames; i++) {
+422         lldb::SBFrame frame = thread.GetFrameAtIndex(i);
+423         if (frame.IsValid()) {
+424             result.push_back(frameToInfo(frame));
+425         }
+426     }
+427 
+428     return result;
+429 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::optional&lt; <b>ThreadInfo</b> &gt;
+  ascii_query::LLDBController::getSelectedThread () const [nodiscard]</h2>
+<p class="Pp">Get the currently selected thread.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>ThreadInfo</b> or nullopt if no thread selected</div>
+<p class="Pp">Definition at line <b>375</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>375                                                                 {
+376     lldb::SBThread thread = getSelectedThreadInternal();
+377     if (!thread.IsValid()) {
+378         return std::nullopt;
+379     }
+380     return threadToInfo(thread, true);
+381 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::vector&lt; <b>ThreadInfo</b> &gt;
+  ascii_query::LLDBController::getThreads () const [nodiscard]</h2>
+<p class="Pp">Get list of all threads.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Vector of <b>ThreadInfo</b> structs</div>
+<p class="Pp">Definition at line <b>348</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>348                                                        {
+349     std::vector&lt;ThreadInfo&gt; result;
+350 
+351     if (!process_.IsValid()) {
+352         return result;
+353     }
+354 
+355     // Sync state to ensure we have fresh thread info
+356     syncProcessState();
+357 
+358     lldb::SBThread selected = process_.GetSelectedThread();
+359     uint64_t selected_id = selected.IsValid() ? selected.GetThreadID() : 0;
+360 
+361     uint32_t num_threads = process_.GetNumThreads();
+362     result.reserve(num_threads);
+363 
+364     for (uint32_t i = 0; i &lt; num_threads; i++) {
+365         lldb::SBThread thread = process_.GetThreadAtIndex(i);
+366         if (thread.IsValid()) {
+367             bool is_selected = (thread.GetThreadID() == selected_id);
+368             result.push_back(threadToInfo(thread, is_selected));
+369         }
+370     }
+371 
+372     return result;
+373 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::initialize ()</h2>
+<p class="Pp">Initialize LLDB. Must be called before any other methods.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">Definition at line <b>42</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>42                                 {
+43     if (initialized_) {
+44         return true;
+45     }
+46 
+47     // Initialize LLDB
+48     lldb::SBDebugger::Initialize();
+49 
+50     // Create debugger instance
+51     debugger_ = lldb::SBDebugger::Create(false); // false = no source manager
+52     if (!debugger_.IsValid()) {
+53         setError(&quot;Failed to create LLDB debugger instance&quot;);
+54         return false;
+55     }
+56 
+57     // Don't echo commands
+58     debugger_.SetAsync(true);
+59 
+60     // Create a listener for process events
+61     listener_ = debugger_.GetListener();
+62     if (!listener_.IsValid()) {
+63         setError(&quot;Failed to create LLDB listener&quot;);
+64         lldb::SBDebugger::Destroy(debugger_);
+65         return false;
+66     }
+67 
+68     initialized_ = true;
+69     clearError();
+70     return true;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::isAttached () const
+  [nodiscard]</h2>
+<p class="Pp">Check if attached to a process.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if attached, false otherwise</div>
+<p class="Pp">Definition at line <b>178</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>178                                       {
+179     if (!process_.IsValid()) {
+180         return false;
+181     }
+182 
+183     lldb::StateType state = process_.GetState();
+184     return state != lldb::eStateInvalid &amp;&amp; state != lldb::eStateDetached &amp;&amp; state != lldb::eStateExited;
+185 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>state()</b>.</p>
+<p class="Pp">Referenced by <b>detach()</b>, <b>main()</b>, <b>resume()</b>,
+    <b>shutdown()</b>, and <b>stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_std::string_&amp;_ascii_query::LLDBController::lastError_()_const"><a class="permalink" href="#const_std::string_&amp;_ascii_query::LLDBController::lastError_()_const">const
+  std::string &amp; ascii_query::LLDBController::lastError () const
+  [nodiscard]</a></h2>
+<p class="Pp">Get the last error message.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error message string</div>
+<p class="Pp">Definition at line <b>342</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>342 { return last_error_; }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::vector&lt; <b>VariableInfo</b> &gt;
+  ascii_query::LLDBController::listVariables (uint32_t frame_index = 0,
+  <b>bool</b> include_args = <b>true</b><b>, </b><b>bool</b><b> include_locals =
+  </b><b>true</b><b>, </b><b>bool</b><b> include_statics = </b><b>false</b><b>)
+  const</b> [nodiscard]<b></b></h2>
+<p class="Pp">List all variables in scope at a frame.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>frame_index</i> Which frame (0 = current)
+<br/>
+<i>include_args</i> Include function arguments
+<br/>
+<i>include_locals</i> Include local variables
+<br/>
+<i>include_statics</i> Include static variables</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Vector of <b>VariableInfo</b> structs</div>
+<p class="Pp">Definition at line <b>474</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>475                                                                                      {
+476     std::vector&lt;VariableInfo&gt; result;
+477 
+478     lldb::SBFrame frame = getFrameInternal(frame_index);
+479     if (!frame.IsValid()) {
+480         return result;
+481     }
+482 
+483     lldb::SBValueList vars = frame.GetVariables(include_args, include_locals, include_statics,
+484                                                  true); // true = in_scope_only
+485 
+486     uint32_t num_vars = vars.GetSize();
+487     result.reserve(num_vars);
+488 
+489     for (uint32_t i = 0; i &lt; num_vars; i++) {
+490         lldb::SBValue value = vars.GetValueAtIndex(i);
+491         if (value.IsValid()) {
+492             result.push_back(valueToInfo(value, 0)); // Don't expand by default
+493         }
+494     }
+495 
+496     return result;
+497 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>LLDBController</b> &amp;
+  ascii_query::LLDBController::operator= (const <b>LLDBController</b> &amp; )
+  [delete]</h2>
+<p class="Pp">References <b>LLDBController()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>LLDBController</b> &amp;
+  ascii_query::LLDBController::operator= (<b>LLDBController</b> &amp;&amp; )
+  [delete]</h2>
+<p class="Pp">References <b>frame</b>, <b>LLDBController()</b>, and
+    <b>thread_id</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">std::optional&lt; <b>VariableInfo</b> &gt;
+  ascii_query::LLDBController::readVariable (const std::string &amp; name,
+  uint32_t frame_index = 0, uint32_t expand_depth = 0) const [nodiscard]</h2>
+<p class="Pp">Read a variable from the current frame.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Variable name (supports dot notation for
+  members)
+<br/>
+<i>frame_index</i> Which frame to read from (0 = current)
+<br/>
+<i>expand_depth</i> How deep to expand struct members (0 = don't expand)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>VariableInfo</b> or nullopt if not found</div>
+<p class="Pp">Definition at line <b>443</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>444                                                                                        {
+445     lldb::SBFrame frame = getFrameInternal(frame_index);
+446     if (!frame.IsValid()) {
+447         return std::nullopt;
+448     }
+449 
+450     // Try to find the variable
+451     // First, check if it's a path expression (has dots or arrows)
+452     lldb::SBValue value;
+453 
+454     if (name.find('.') != std::string::npos || name.find(&quot;-&gt;&quot;) != std::string::npos || name.find('[') != std::string::npos) {
+455         // Path expression - use GetValueForVariablePath
+456         value = frame.GetValueForVariablePath(name.c_str());
+457     } else {
+458         // Simple name - try FindVariable first
+459         value = frame.FindVariable(name.c_str());
+460 
+461         // If not found, try as a register
+462         if (!value.IsValid()) {
+463             value = frame.FindRegister(name.c_str());
+464         }
+465     }
+466 
+467     if (!value.IsValid()) {
+468         return std::nullopt;
+469     }
+470 
+471     return valueToInfo(value, expand_depth);
+472 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>frame</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::removeBreakpoint
+  (int32_t breakpoint_id)</h2>
+<p class="Pp">Remove a breakpoint.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>breakpoint_id</i> Breakpoint ID to remove</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if breakpoint was found and removed</div>
+<p class="Pp">Definition at line <b>523</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>523                                                            {
+524     if (!target_.IsValid()) {
+525         setError(&quot;No valid target&quot;);
+526         return false;
+527     }
+528 
+529     bool result = target_.BreakpointDelete(static_cast&lt;lldb::break_id_t&gt;(breakpoint_id));
+530     if (!result) {
+531         setError(&quot;Failed to delete breakpoint &quot; + std::to_string(breakpoint_id));
+532     } else {
+533         clearError();
+534     }
+535     return result;
+536 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::resume ()</h2>
+<p class="Pp">Resume the target process.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if resumed successfully</div>
+<p class="Pp">Definition at line <b>250</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>250                             {
+251     if (!isAttached()) {
+252         setError(&quot;Not attached to a process&quot;);
+253         return false;
+254     }
+255 
+256     // Sync state first
+257     syncProcessState();
+258 
+259     // Check if already running
+260     lldb::StateType current = process_.GetState();
+261     if (current == lldb::eStateRunning || current == lldb::eStateStepping) {
+262         clearError();
+263         return true;
+264     }
+265 
+266     lldb::SBError error = process_.Continue();
+267     if (error.Fail()) {
+268         setError(&quot;Failed to resume process: &quot; + std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+269         return false;
+270     }
+271 
+272     // Wait briefly for process to start running (async mode)
+273     // Note: We don't wait long because running is the target state
+274     waitForState(lldb::eStateRunning, 2);
+275 
+276     clearError();
+277     return true;
+278 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>isAttached()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>waitForBreakpoint()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::selectThread (uint64_t
+  thread_id)</h2>
+<p class="Pp">Select a thread by ID.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>thread_id</b><i></i><b> Thread ID to
+  select</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if thread was found and selected</div>
+<p class="Pp">Definition at line <b>383</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>383                                                     {
+384     if (!process_.IsValid()) {
+385         setError(&quot;No valid process&quot;);
+386         return false;
+387     }
+388 
+389     uint32_t num_threads = process_.GetNumThreads();
+390     for (uint32_t i = 0; i &lt; num_threads; i++) {
+391         lldb::SBThread thread = process_.GetThreadAtIndex(i);
+392         if (thread.IsValid() &amp;&amp; thread.GetThreadID() == thread_id) {
+393             process_.SetSelectedThread(thread);
+394             clearError();
+395             return true;
+396         }
+397     }
+398 
+399     setError(&quot;Thread ID &quot; + std::to_string(thread_id) + &quot; not found&quot;);
+400     return false;
+401 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>thread_id</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int32_t_ascii_query::LLDBController::setBreakpoint_(const_std::string_&amp;_file,_uint32_t_line,_const_std::string_&amp;_condition_=_"><a class="permalink" href="#int32_t_ascii_query::LLDBController::setBreakpoint_(const_std::string_&amp;_file,_uint32_t_line,_const_std::string_&amp;_condition_=_">int32_t
+  ascii_query::LLDBController::setBreakpoint (const std::string &amp; file,
+  uint32_t line, const std::string &amp; condition = '')</a></h2>
+<p class="Pp">Set a breakpoint at file:line.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>file</i> Source file path
+<br/>
+<i>line</i> Line number
+<br/>
+<i>condition</i> Optional condition expression</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Breakpoint ID, or -1 on failure</div>
+<p class="Pp">Definition at line <b>503</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>503                                                                                                       {
+504     if (!target_.IsValid()) {
+505         setError(&quot;No valid target&quot;);
+506         return -1;
+507     }
+508 
+509     lldb::SBBreakpoint bp = target_.BreakpointCreateByLocation(file.c_str(), line);
+510     if (!bp.IsValid()) {
+511         setError(&quot;Failed to create breakpoint at &quot; + file + &quot;:&quot; + std::to_string(line));
+512         return -1;
+513     }
+514 
+515     if (!condition.empty()) {
+516         bp.SetCondition(condition.c_str());
+517     }
+518 
+519     clearError();
+520     return static_cast&lt;int32_t&gt;(bp.GetID());
+521 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ascii_query::LLDBController::shutdown_()"><a class="permalink" href="#void_ascii_query::LLDBController::shutdown_()">void
+  ascii_query::LLDBController::shutdown ()</a></h2>
+<p class="Pp">Shutdown LLDB and release resources.</p>
+<p class="Pp">Definition at line <b>73</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>73                               {
+74     if (!initialized_) {
+75         return;
+76     }
+77 
+78     // Detach if still attached
+79     if (isAttached()) {
+80         detach();
+81     }
+82 
+83     // Delete target if valid
+84     if (target_.IsValid()) {
+85         debugger_.DeleteTarget(target_);
+86     }
+87 
+88     // Destroy debugger
+89     if (debugger_.IsValid()) {
+90         lldb::SBDebugger::Destroy(debugger_);
+91     }
+92 
+93     // Terminate LLDB
+94     lldb::SBDebugger::Terminate();
+95 
+96     initialized_ = false;
+97 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>detach()</b>, and <b>isAttached()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>~LLDBController()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>ProcessState</b> ascii_query::LLDBController::state () const
+  [nodiscard]</h2>
+<p class="Pp">Get the current process state.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent"><b>ProcessState</b> enum value</div>
+<p class="Pp">Definition at line <b>316</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>316                                          {
+317     if (!process_.IsValid()) {
+318         return ProcessState::Invalid;
+319     }
+320 
+321     lldb::StateType lldb_state = process_.GetState();
+322     switch (lldb_state) {
+323     case lldb::eStateInvalid:
+324         return ProcessState::Invalid;
+325     case lldb::eStateRunning:
+326     case lldb::eStateStepping:
+327         return ProcessState::Running;
+328     case lldb::eStateStopped:
+329     case lldb::eStateSuspended:
+330         return ProcessState::Stopped;
+331     case lldb::eStateExited:
+332         return ProcessState::Exited;
+333     case lldb::eStateCrashed:
+334         return ProcessState::Crashed;
+335     case lldb::eStateDetached:
+336         return ProcessState::Detached;
+337     default:
+338         return ProcessState::Invalid;
+339     }
+340 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_query::Crashed</b>,
+    <b>ascii_query::Detached</b>, <b>ascii_query::Exited</b>,
+    <b>ascii_query::Invalid</b>, <b>ascii_query::Running</b>, and
+    <b>ascii_query::Stopped</b>.</p>
+<p class="Pp">Referenced by <b>isAttached()</b>, <b>main()</b>, and
+    <b>waitForBreakpoint()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::stepInto ()</h2>
+<p class="Pp">Single step the current thread (step into).</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if step completed</div>
+<p class="Pp">Definition at line <b>280</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>280                               {
+281     lldb::SBThread thread = getSelectedThreadInternal();
+282     if (!thread.IsValid()) {
+283         setError(&quot;No valid thread selected&quot;);
+284         return false;
+285     }
+286 
+287     thread.StepInto();
+288     clearError();
+289     return true;
+290 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::stepOut ()</h2>
+<p class="Pp">Step out of the current function.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if step completed</div>
+<p class="Pp">Definition at line <b>304</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>304                              {
+305     lldb::SBThread thread = getSelectedThreadInternal();
+306     if (!thread.IsValid()) {
+307         setError(&quot;No valid thread selected&quot;);
+308         return false;
+309     }
+310 
+311     thread.StepOut();
+312     clearError();
+313     return true;
+314 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::stepOver ()</h2>
+<p class="Pp">Step over the current line.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if step completed</div>
+<p class="Pp">Definition at line <b>292</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>292                               {
+293     lldb::SBThread thread = getSelectedThreadInternal();
+294     if (!thread.IsValid()) {
+295         setError(&quot;No valid thread selected&quot;);
+296         return false;
+297     }
+298 
+299     thread.StepOver();
+300     clearError();
+301     return true;
+302 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::stop ()</h2>
+<p class="Pp">Stop the target process.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if stopped successfully</div>
+<p class="Pp">Definition at line <b>212</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>212                           {
+213     if (!isAttached()) {
+214         setError(&quot;Not attached to a process&quot;);
+215         return false;
+216     }
+217 
+218     // Sync state first to ensure we have the current process state
+219     syncProcessState();
+220 
+221     // Check if already stopped
+222     lldb::StateType current = process_.GetState();
+223     if (current == lldb::eStateStopped || current == lldb::eStateSuspended) {
+224         clearError();
+225         return true;
+226     }
+227 
+228     // Only try to stop if running
+229     if (current != lldb::eStateRunning &amp;&amp; current != lldb::eStateStepping) {
+230         setError(&quot;Process is not running (state: &quot; + std::to_string(static_cast&lt;int&gt;(current)) + &quot;)&quot;);
+231         return false;
+232     }
+233 
+234     lldb::SBError error = process_.Stop();
+235     if (error.Fail()) {
+236         setError(&quot;Failed to stop process: &quot; + std::string(error.GetCString() ? error.GetCString() : &quot;unknown error&quot;));
+237         return false;
+238     }
+239 
+240     // Wait for process to actually stop (async mode)
+241     if (!waitForState(lldb::eStateStopped, 5)) {
+242         setError(&quot;Timeout waiting for process to stop&quot;);
+243         return false;
+244     }
+245 
+246     clearError();
+247     return true;
+248 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>isAttached()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::LLDBController::targetName_()_const"><a class="permalink" href="#std::string_ascii_query::LLDBController::targetName_()_const">std::string
+  ascii_query::LLDBController::targetName () const [nodiscard]</a></h2>
+<p class="Pp">Get the name of the attached process.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Process name, or empty string if not attached</div>
+<p class="Pp">Definition at line <b>194</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>194                                            {
+195     if (!target_.IsValid()) {
+196         return &quot;&quot;;
+197     }
+198 
+199     lldb::SBFileSpec exe = target_.GetExecutable();
+200     if (!exe.IsValid()) {
+201         return &quot;&quot;;
+202     }
+203 
+204     const char *filename = exe.GetFilename();
+205     return filename ? filename : &quot;&quot;;
+206 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="pid_t_ascii_query::LLDBController::targetPid_()_const"><a class="permalink" href="#pid_t_ascii_query::LLDBController::targetPid_()_const">pid_t
+  ascii_query::LLDBController::targetPid () const [nodiscard]</a></h2>
+<p class="Pp">Get the PID of the attached process.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">PID, or 0 if not attached</div>
+<p class="Pp">Definition at line <b>187</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>187                                       {
+188     if (!process_.IsValid()) {
+189         return 0;
+190     }
+191     return static_cast&lt;pid_t&gt;(process_.GetProcessID());
+192 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::LLDBController::waitForBreakpoint
+  (uint32_t timeout_ms = 0)</h2>
+<p class="Pp">Wait for any breakpoint to be hit.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>timeout_ms</i> Timeout in milliseconds (0 = no
+  timeout)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if breakpoint was hit, false on timeout</div>
+<p class="Pp">Definition at line <b>571</b> of file
+  <b>lldb_controller.cpp</b>.</p>
+<pre>571                                                           {
+572     if (!process_.IsValid()) {
+573         setError(&quot;No valid process&quot;);
+574         return false;
+575     }
+576 
+577     // First, resume the process if it's stopped
+578     if (state() == ProcessState::Stopped) {
+579         if (!resume()) {
+580             return false;
+581         }
+582     }
+583 
+584     // Wait for process to stop
+585     lldb::SBEvent event;
+586     uint32_t timeout_sec = (timeout_ms + 999) / 1000; // Round up to seconds
+587 
+588     while (true) {
+589         bool got_event = listener_.WaitForEvent(timeout_sec, event);
+590         if (!got_event) {
+591             setError(&quot;Timeout waiting for breakpoint&quot;);
+592             return false;
+593         }
+594 
+595         lldb::StateType new_state = lldb::SBProcess::GetStateFromEvent(event);
+596         if (new_state == lldb::eStateStopped) {
+597             clearError();
+598             return true;
+599         } else if (new_state == lldb::eStateExited || new_state == lldb::eStateCrashed ||
+600                    new_state == lldb::eStateDetached) {
+601             setError(&quot;Process exited/crashed while waiting for breakpoint&quot;);
+602             return false;
+603         }
+604     }
+605 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>resume()</b>, <b>state()</b>, and
+    <b>ascii_query::Stopped</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

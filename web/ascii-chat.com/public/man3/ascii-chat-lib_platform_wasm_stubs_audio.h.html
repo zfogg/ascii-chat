@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>audio.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">audio.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">audio.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">audio.h - Stub audio types for WASM builds (uses Web Audio API
+    instead of PortAudio).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>audio_batch_info_t</b>
+  <br/>
+  struct <b>audio_frame_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>audio_parse_batch_header</b> (const void
+    *data, size_t len, <b>audio_batch_info_t</b> *out_batch)
+  <br/>
+  asciichat_error_t <b>audio_validate_batch_params</b> (const
+    <b>audio_batch_info_t</b> *batch)
+  <br/>
+  <b>bool</b> <b>audio_is_supported_sample_rate</b> (uint32_t sample_rate)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Stub audio types for WASM builds (uses Web Audio API instead of
+    PortAudio).</p>
+<p class="Pp">This header provides minimal audio type definitions for WASM
+    builds. In WASM, audio is handled by Web Audio API via AudioPipeline.ts
+    instead of PortAudio. This stub provides just enough definitions for network
+    packet parsing to compile.</p>
+<p class="Pp">Definition in file <b>lib/platform/wasm/stubs/audio.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> audio_is_supported_sample_rate (uint32_t
+  sample_rate)</h2>
+<p class="Pp">Definition at line <b>2010</b> of file
+  <b>lib/audio/audio.c</b>.</p>
+<pre>2010                                                           {
+2011   // List of commonly supported audio sample rates
+2012   static const uint32_t supported_rates[] = {
+2013       8000,   // Telephone quality
+2014       16000,  // Wideband telephony
+2015       24000,  // High quality speech
+2016       32000,  // Good for video
+2017       44100,  // CD quality (less common in VoIP)
+2018       48000,  // Standard professional
+2019       96000,  // High-end professional
+2020       192000, // Ultra-high-end mastering
+2021   };
+2022 
+2023   const size_t rate_count = sizeof(supported_rates) / sizeof(supported_rates[0]);
+2024   for (size_t i = 0; i &lt; rate_count; i++) {
+2025     if (sample_rate == supported_rates[i]) {
+2026       return true;
+2027     }
+2028   }
+2029 
+2030   return false;
+2031 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>audio_validate_batch_params()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_audio_parse_batch_header_(const_void_*_data,_size_t_len,_"><a class="permalink" href="#asciichat_error_t_audio_parse_batch_header_(const_void_*_data,_size_t_len,_">asciichat_error_t
+  audio_parse_batch_header (const void * data, size_t len,
+  <b>audio_batch_info_t</b> * out_batch)</a></h2>
+<p class="Pp">Definition at line <b>1944</b> of file
+  <b>lib/audio/audio.c</b>.</p>
+<pre>1944                                                                                                         {
+1945   if (!data) {
+1946     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header data pointer is NULL&quot;);
+1947   }
+1948 
+1949   if (!out_batch) {
+1950     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info output pointer is NULL&quot;);
+1951   }
+1952 
+1953   if (len &lt; sizeof(audio_batch_packet_t)) {
+1954     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch header too small (len=%zu, expected=%zu)&quot;, len,
+1955                      sizeof(audio_batch_packet_t));
+1956   }
+1957 
+1958   const audio_batch_packet_t *batch_header = (const audio_batch_packet_t *)data;
+1959 
+1960   // Unpack network byte order values to host byte order
+1961   out_batch-&gt;batch_count = ntohl(batch_header-&gt;batch_count);
+1962   out_batch-&gt;total_samples = ntohl(batch_header-&gt;total_samples);
+1963   out_batch-&gt;sample_rate = ntohl(batch_header-&gt;sample_rate);
+1964   out_batch-&gt;channels = ntohl(batch_header-&gt;channels);
+1965 
+1966   return ASCIICHAT_OK;
+1967 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_batch_info_t::batch_count</b>,
+    <b>audio_batch_info_t::channels</b>, <b>audio_batch_info_t::sample_rate</b>,
+    and <b>audio_batch_info_t::total_samples</b>.</p>
+<p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_audio_validate_batch_params_(const_"><a class="permalink" href="#asciichat_error_t_audio_validate_batch_params_(const_">asciichat_error_t
+  audio_validate_batch_params (const <b>audio_batch_info_t</b> * batch)</a></h2>
+<p class="Pp">Definition at line <b>1969</b> of file
+  <b>lib/audio/audio.c</b>.</p>
+<pre>1969                                                                                {
+1970   if (!batch) {
+1971     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch info pointer is NULL&quot;);
+1972   }
+1973 
+1974   // Validate batch_count
+1975   if (batch-&gt;batch_count == 0) {
+1976     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count cannot be zero&quot;);
+1977   }
+1978 
+1979   // Check for reasonable max (256 frames per batch is very generous)
+1980   if (batch-&gt;batch_count &gt; 256) {
+1981     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch count too large (batch_count=%u, max=256)&quot;, batch-&gt;batch_count);
+1982   }
+1983 
+1984   // Validate channels (1=mono, 2=stereo, max 8 for multi-channel)
+1985   if (batch-&gt;channels == 0 || batch-&gt;channels &gt; 8) {
+1986     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid channel count (channels=%u, valid=1-8)&quot;, batch-&gt;channels);
+1987   }
+1988 
+1989   // Validate sample rate
+1990   if (!audio_is_supported_sample_rate(batch-&gt;sample_rate)) {
+1991     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported sample rate (sample_rate=%u)&quot;, batch-&gt;sample_rate);
+1992   }
+1993 
+1994   // Check for reasonable sample counts
+1995   if (batch-&gt;total_samples == 0) {
+1996     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch has zero samples&quot;);
+1997   }
+1998 
+1999   // Each batch typically has samples_per_frame worth of samples
+2000   // For 48kHz at 20ms per frame: 48000 * 0.02 = 960 samples per frame
+2001   // With max 256 frames, that's up to ~245k samples per batch
+2002   if (batch-&gt;total_samples &gt; 1000000) {
+2003     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Audio batch sample count suspiciously large (total_samples=%u)&quot;,
+2004                      batch-&gt;total_samples);
+2005   }
+2006 
+2007   return ASCIICHAT_OK;
+2008 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_is_supported_sample_rate()</b>,
+    <b>audio_batch_info_t::batch_count</b>, <b>audio_batch_info_t::channels</b>,
+    <b>audio_batch_info_t::sample_rate</b>, and
+    <b>audio_batch_info_t::total_samples</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

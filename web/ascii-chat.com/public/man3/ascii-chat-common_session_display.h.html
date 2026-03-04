@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>display.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">display.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">display.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">display.h - &#x1F5A5;&#xFE0F; Unified terminal display abstraction
+    for session-based rendering</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_display_config_t</b>
+  <br/>
+  Configuration for session display context.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>bool</b>(* <b>session_display_should_exit_fn</b>) (void
+    *user_data)
+  <br/>
+  Callback type to check if initialization should be cancelled.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>session_display_ctx_t</b> * <b>session_display_create</b>
+    (const <b>session_display_config_t</b> *config)
+  <br/>
+  Create a new session display context. void <b>session_display_destroy</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Destroy session display context and free resources. void
+    <b>session_display_set_stdin_reader</b> (<b>session_display_ctx_t</b> *ctx,
+    void *reader)
+  <br/>
+  Set stdin frame reader for ASCII-to-video rendering. <b>bool</b>
+    <b>session_display_has_tty</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Check if display has a TTY (terminal) available. const terminal_capabilities_t
+    * <b>session_display_get_caps</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Get detected terminal capabilities. const char *
+    <b>session_display_get_palette_chars</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Get the palette characters string. size_t
+    <b>session_display_get_palette_len</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Get the palette character count. const char *
+    <b>session_display_get_luminance_palette</b> (<b>session_display_ctx_t</b>
+    *ctx)
+  <br/>
+  Get the luminance mapping palette. int <b>session_display_get_tty_fd</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Get the TTY file descriptor. void * <b>session_display_get_stdin_reader</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Get the stdin frame reader for ASCII-to-video rendering. <b>bool</b>
+    <b>session_display_has_render_file</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Check if display has render-file configured. uint32_t
+    <b>session_display_get_render_fps</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Get the render FPS configured for file output. void
+    <b>session_display_set_render_fps</b> (<b>session_display_ctx_t</b> *ctx,
+    uint32_t fps)
+  <br/>
+  Set the render FPS for file output encoding. <b>bool</b>
+    <b>session_display_has_first_frame</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Check if the display has rendered its first frame. void
+    <b>session_display_reset_first_frame</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Reset the first frame flag to allow splash screen to show again on next
+    render. char * <b>session_display_convert_to_ascii</b>
+    (<b>session_display_ctx_t</b> *ctx, const image_t *image)
+  <br/>
+  Convert an image to ASCII art using display context and command-line options.
+    void <b>session_display_write_ascii</b> (<b>session_display_ctx_t</b> *ctx,
+    const char *frame_data)
+  <br/>
+  Write ASCII frame to terminal only (no encoding). void
+    <b>session_display_encode_frame</b> (<b>session_display_ctx_t</b> *ctx,
+    const image_t *image, uint64_t captured_ns)
+  <br/>
+  Encode frame to render-file (FFmpeg only, no terminal output). void
+    <b>session_display_render_frame</b> (<b>session_display_ctx_t</b> *ctx,
+    const char *frame_data)
+  <br/>
+  Render an ASCII frame to the terminal. void <b>session_display_write_raw</b>
+    (<b>session_display_ctx_t</b> *ctx, const char *data, size_t len)
+  <br/>
+  Render raw bytes to the terminal without frame processing. void
+    <b>session_display_render_fps_overlay</b> (<b>session_display_ctx_t</b>
+    *ctx)
+  <br/>
+  Render FPS counter overlay in top-right corner. void
+    <b>session_display_set_snapshot_actual_duration</b>
+    (<b>session_display_ctx_t</b> *ctx, double actual_duration_sec)
+  <br/>
+  Set the actual wall-clock duration for snapshot mode frame timing. void
+    <b>session_display_reset</b> (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Reset terminal to default state. void <b>session_display_clear</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Clear the terminal screen. void <b>session_display_cursor_home</b>
+    (<b>session_display_ctx_t</b> *ctx)
+  <br/>
+  Move cursor to home position (top-left). <b>bool</b>
+    <b>session_display_has_audio_playback</b> (<b>session_display_ctx_t</b>
+    *ctx)
+  <br/>
+  Check if display has audio playback configured. asciichat_error_t
+    <b>session_display_write_audio</b> (<b>session_display_ctx_t</b> *ctx, const
+    float *buffer, size_t num_samples)
+  <br/>
+  Write audio samples to playback buffer.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F5A5;&#xFE0F; Unified terminal display abstraction for
+    session-based rendering</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>common/session/display.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>capture.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">capture.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">capture.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">capture.h - ascii-chat Client Media Capture Management
+  Interface</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>capture_init</b> ()
+  <br/>
+  Initialize capture subsystem. int <b>capture_start_thread</b> ()
+  <br/>
+  Start capture thread. void <b>capture_stop_thread</b> ()
+  <br/>
+  Stop capture thread. <b>bool</b> <b>capture_thread_exited</b> ()
+  <br/>
+  Check if capture thread has exited. void <b>capture_cleanup</b> ()
+  <br/>
+  Cleanup capture subsystem.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ascii-chat Client Media Capture Management Interface</p>
+<p class="Pp">Defines the interface for video capture and transmission
+    management in the ascii-chat client. Abstracts over multiple media sources
+    (webcam, files, stdin, test patterns) and handles frame processing,
+    resizing, and FPS sync.</p>
+<p class="Pp"></p>
+<p class="Pp">The capture subsystem:</p>
+<ul class="Bl-bullet">
+  <li>Manages platform-specific webcam access via abstraction layer</li>
+  <li>Supports multiple media sources (webcam, local files, stdin, test
+      patterns)</li>
+  <li>Performs frame resizing and format conversion for network efficiency</li>
+  <li>Synchronizes frame transmission with configurable FPS rates</li>
+  <li>Handles periodic frame transmission to the server</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="Media_Source_Types"><a class="permalink" href="#Media_Source_Types">Media
+  Source Types</a></h2>
+<p class="Pp">The capture subsystem supports four media source types via the
+    <b>media_source_t</b> abstraction (see <b>media</b>):</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>WEBCAM</b>: Hardware camera device (webcam/camera)</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Platform-specific access (V4L2 on Linux, AVFoundation on macOS)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Real-time capture with variable frame rate</dd>
+  <dt> &#x2022;</dt>
+  <dd>Selected via --webcam-index &lt;N&gt; (default: 0, first camera)</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>FILE</b>: Local media file or network stream</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Supported formats: mp4, avi, mkv, webm, mov, flv, wmv, gif</dd>
+  <dt> &#x2022;</dt>
+  <dd>Specified via --file &lt;path&gt; option</dd>
+  <dt> &#x2022;</dt>
+  <dd>Playback at configurable frame rate</dd>
+  <dt> &#x2022;</dt>
+  <dd>Loop support via --media-loop option</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>STDIN</b>: Piped or redirected media data</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Specified via --file - (dash indicates stdin)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Any format supported by FFmpeg (detected automatically)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Useful for streaming pipes: ffmpeg ... | ascii-chat client --file -</dd>
+  <dt> &#x2022;</dt>
+  <dd>Does not support seeking/rewinding</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>TEST</b>: Procedural test pattern generator</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Enabled via --test-pattern option</dd>
+  <dt> &#x2022;</dt>
+  <dd>Generates animated test pattern without hardware</dd>
+  <dt> &#x2022;</dt>
+  <dd>Useful for testing without webcam access</dd>
+  <dt> &#x2022;</dt>
+  <dd>Always available (no hardware requirements)</dd>
+</dl>
+<p class="Pp">Media source selection is automatic based on command-line
+  options:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --test-pattern           # Use test pattern
+./ascii-chat client --file video.mp4         # Play file
+./ascii-chat client --file -                 # Read from stdin
+./ascii-chat client --webcam-index 0         # Use default camera
+./ascii-chat client                          # Auto-detect (webcam or test)
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Format_and_Negotiation"><a class="permalink" href="#Frame_Format_and_Negotiation">Frame
+  Format and Negotiation</a></h2>
+<p class="Pp">All media sources are normalized to a common frame format:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Color Space</b>: RGB (24-bit) - three bytes per pixel (R, G, B)</li>
+  <li><b>Byte Order</b>: Platform-native (little-endian on x86/ARM)</li>
+  <li><b>Frame Dimensions</b>: Variable (see Resize Behavior below)</li>
+  <li><b>Pixel Layout</b>: Continuous row-major array (no padding between
+    rows)</li>
+</ul>
+<p class="Pp">Frame format is opaque to the caller - the media source
+    abstraction handles all conversions. Consumers always receive RGB frames
+    ready to use:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Get frame from any media source (format already normalized)
+image_t *frame = media_source_read_video(source);
+// Frame is guaranteed to be:
+// - RGB format (8-bit per channel)
+// - Dimensions: frame-&gt;width x frame-&gt;height pixels
+// - Memory: frame-&gt;data[y * frame-&gt;width * 3 + x * 3 + channel]</pre>
+<p class="Pp">Different input types undergo conversion:</p>
+<ul class="Bl-bullet">
+  <li><b>WEBCAM</b>: V4L2/AVFoundation -&gt; RGB (platform layer
+    conversion)</li>
+  <li><b>FILE/STDIN</b>: FFmpeg decoder -&gt; RGB (FFmpeg handles all
+    codecs)</li>
+  <li><b>TEST</b>: Generated directly as RGB (no conversion needed)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Resizing_and_Aspect_Ratio"><a class="permalink" href="#Frame_Resizing_and_Aspect_Ratio">Frame
+  Resizing and Aspect Ratio</a></h2>
+<p class="Pp">Captured frames are resized for network efficiency while
+    preserving aspect ratio:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Maximum Dimensions</b>: 800x600 pixels (default) - reasonable
+    bandwidth</li>
+  <li><b>Aspect Ratio</b>: Original aspect ratio preserved via
+    fit-to-bounds</li>
+  <li><b>Scaling Algorithm</b>: Letterboxing - frame fits within bounds with
+      padding</li>
+  <li><b>Padding Color</b>: Black (0, 0, 0) for empty regions</li>
+</ul>
+<p class="Pp">Resize process:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Calculate scale factor to fit frame within 800x600</dd>
+  <dt>2.</dt>
+  <dd>Compute new dimensions maintaining aspect ratio</dd>
+  <dt>3.</dt>
+  <dd>Scale frame using resizing algorithm (maintains quality)</dd>
+  <dt>4.</dt>
+  <dd>Add black padding to fill remaining space (if needed)</dd>
+</dl>
+<p class="Pp">Example resizes:</p>
+<ul class="Bl-bullet">
+  <li>1920x1440 (4:3) &#x2192; 800x600 (fits exactly)</li>
+  <li>1280x720 (16:9) &#x2192; 800x450 (with 75px black bars top/bottom)</li>
+  <li>640x480 (4:3) &#x2192; 640x480 (no resize, smaller than max)</li>
+  <li>3840x2160 (16:9) &#x2192; 800x450 (same 16:9 aspect)</li>
+</ul>
+<p class="Pp">Frame resizing options (future):</p>
+<ul class="Bl-bullet">
+  <li>--resize-width &lt;W&gt; - Custom max width (default: 800)</li>
+  <li>--resize-height &lt;H&gt; - Custom max height (default: 600)</li>
+  <li>--no-resize - Disable resizing (use original dimensions)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Rate_Synchronization_(FPS_Control)"><a class="permalink" href="#Frame_Rate_Synchronization_(FPS_Control)">Frame
+  Rate Synchronization (FPS Control)</a></h2>
+<p class="Pp">The capture system implements frame rate limiting for bandwidth
+    efficiency and smooth playback:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Capture Rate</b>: Up to 144 FPS (high refresh rate support)</li>
+  <li><b>Target FPS</b>: Configurable via --fps &lt;rate&gt; (default: 60)</li>
+  <li><b>Range</b>: 1 to 144 FPS (1 = slowest, 144 = fastest)</li>
+  <li><b>Timing Method</b>: Monotonic clock for accuracy</li>
+  <li><b>Adaptive Delay</b>: Dynamic sleep adjustment for consistent frame
+      intervals</li>
+</ul>
+<p class="Pp">FPS configuration:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --fps 30               # 30 FPS (slower, less bandwidth)
+./ascii-chat client --fps 60               # 60 FPS (default, balanced)
+./ascii-chat client --fps 144              # 144 FPS (max, high refresh)
+</pre>
+<p class="Pp">FPS behavior by source type:</p>
+<ul class="Bl-bullet">
+  <li><b>WEBCAM</b>: Captures at hardware rate, then throttles to target
+    FPS</li>
+  <li><b>FILE</b>: Plays at media file's native FPS, then throttles to
+    target</li>
+  <li><b>STDIN</b>: Decodes frames, then throttles to target FPS</li>
+  <li><b>TEST</b>: Generates at target FPS directly (no throttling needed)</li>
+</ul>
+<p class="Pp">Frame rate calculation:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Calculate frame interval: interval_ms = 1000 / fps</dd>
+  <dt>2.</dt>
+  <dd>Record capture start time (monotonic clock)</dd>
+  <dt>3.</dt>
+  <dd>Capture and process frame</dd>
+  <dt>4.</dt>
+  <dd>Calculate elapsed time</dd>
+  <dt>5.</dt>
+  <dd>Sleep for remaining interval to achieve consistent rate</dd>
+</dl>
+<p class="Pp">Example timing (60 FPS target = 16.67ms per frame):</p>
+<ul class="Bl-bullet">
+  <li>Frame start: 0ms</li>
+  <li>Capture: 5ms</li>
+  <li>Process: 2ms</li>
+  <li>Elapsed: 7ms</li>
+  <li>Sleep: 9.67ms (to reach 16.67ms total)</li>
+  <li>Frame complete: 16.67ms &#x2713; (on schedule)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Capture_Lifecycle"><a class="permalink" href="#Capture_Lifecycle">Capture
+  Lifecycle</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Initialization</b> (capture_init): Set up platform-specific webcam
+      drivers</dd>
+  <dt>2.</dt>
+  <dd><b>Thread Start</b> (capture_start_thread): Spawn capture thread in
+      connection loop</dd>
+  <dt>3.</dt>
+  <dd><b>Capture Loop</b>: Continuously grab frames and send to server</dd>
+  <dt>4.</dt>
+  <dd><b>Thread Stop</b> (capture_stop_thread): Signal thread to exit and
+    wait</dd>
+  <dt>5.</dt>
+  <dd><b>Cleanup</b> (capture_cleanup): Release platform resources</dd>
+</dl>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">2025</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">topic_client_capture &quot;Video Capture
+  Architecture&quot;
+<p class="Pp"></p>
+<p class="Pp">media/source.h &quot;Media Source Abstraction&quot;</p>
+</div>
+<p class="Pp">Definition in file <b>client/capture.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

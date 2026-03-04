@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>wav_riff_header_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">wav_riff_header_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">wav_riff_header_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">wav_riff_header_t - WAV RIFF header (first 12 bytes of WAV
+  file).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>riff</b> [4]
+  <br/>
+  <i>RIFF&quot;</i>identifier<i></i> uint32_t <b>file_size</b>
+  <br/>
+  File size - 8 bytes. char <b>wave</b> [4]
+  <br/>
+  <i>WAVE&quot;</i>format<i>identifier</i>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WAV RIFF header (first 12 bytes of WAV file).</p>
+<p class="Pp">Definition at line <b>19</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_wav_riff_header_t::file_size"><a class="permalink" href="#uint32_t_wav_riff_header_t::file_size">uint32_t
+  wav_riff_header_t::file_size</a></h2>
+<p class="Pp">File size - 8 bytes.</p>
+<p class="Pp">Definition at line <b>21</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_wav_riff_header_t::riff_4_"><a class="permalink" href="#char_wav_riff_header_t::riff_4_">char
+  wav_riff_header_t::riff[4]</a></h2>
+<p class="Pp">&quot;RIFF&quot; identifier</p>
+<p class="Pp">Definition at line <b>20</b> of file <b>wav_writer.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_wav_riff_header_t::wave_4_"><a class="permalink" href="#char_wav_riff_header_t::wave_4_">char
+  wav_riff_header_t::wave[4]</a></h2>
+<p class="Pp">&quot;WAVE&quot; format identifier</p>
+<p class="Pp">Definition at line <b>22</b> of file <b>wav_writer.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

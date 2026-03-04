@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal.c - Terminal display options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_terminal_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Terminal display options.</p>
+<p class="Pp">Options for controlling terminal dimensions, color modes, UTF-8
+    support, and terminal capabilities.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>options/registry/terminal.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_terminal_entries__"><a class="permalink" href="#const_registry_entry_t_g_terminal_entries__">const
+  registry_entry_t g_terminal_entries[]</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>options/registry/terminal.c</b>.</p>
+<pre>21                                             {
+22     // TERMINAL GROUP (client, mirror, discovery)
+23     {&quot;width&quot;,
+24      'x',
+25      OPTION_TYPE_INT,
+26      offsetof(options_t, width),
+27      &amp;default_width_value,
+28      sizeof(int),
+29      &quot;Terminal width in characters. Can be controlled using $COLUMNS. By default your terminal width is detected at &quot;
+30      &quot;runtime and this value is updated automatically.&quot;,
+31      &quot;TERMINAL&quot;,
+32      NULL,
+33      false,
+34      &quot;ASCII_CHAT_WIDTH&quot;,
+35      NULL,
+36      NULL,
+37      false,
+38      false,
+39      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+40      {.numeric_range = {20, 1024, 0}, .examples = g_width_examples, .input_type = OPTION_INPUT_NUMERIC},
+41      NULL},
+42     {&quot;height&quot;,
+43      'y',
+44      OPTION_TYPE_INT,
+45      offsetof(options_t, height),
+46      &amp;default_height_value,
+47      sizeof(int),
+48      &quot;Terminal height in characters. Can be controlled using $ROWS. By default your terminal height is detected at &quot;
+49      &quot;runtime and this value is updated automatically.&quot;,
+50      &quot;TERMINAL&quot;,
+51      NULL,
+52      false,
+53      &quot;ASCII_CHAT_HEIGHT&quot;,
+54      NULL,
+55      NULL,
+56      false,
+57      false,
+58      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+59      {.numeric_range = {10, 1024, 0}, .examples = g_height_examples, .input_type = OPTION_INPUT_NUMERIC},
+60      NULL},
+61     {&quot;color-mode&quot;,
+62      '\0',
+63      OPTION_TYPE_CALLBACK,
+64      offsetof(options_t, color_mode),
+65      &amp;default_color_mode_value,
+66      sizeof(terminal_color_mode_t),
+67      &quot;Terminal color level (auto, none, 16, 256, truecolor). This controls what ANSI escape codes ascii-chat will use &quot;
+68      &quot;for console logging and display output if color is enabled. Press 'c' during rendering to cycle. See also &quot;
+69      &quot;--color.&quot;,
+70      &quot;TERMINAL&quot;,
+71      NULL,
+72      false,
+73      &quot;ASCII_CHAT_COLOR_MODE&quot;,
+74      NULL,
+75      parse_color_mode,
+76      false,
+77      false,
+78      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+79      {.enum_values = g_color_mode_values,
+80       .enum_descriptions = g_color_mode_descs,
+81       .enum_integer_values = g_color_mode_integers,
+82       .input_type = OPTION_INPUT_ENUM},
+83      NULL},
+84     {&quot;show-capabilities&quot;,
+85      '\0',
+86      OPTION_TYPE_ACTION,
+87      0,
+88      NULL,
+89      0,
+90      &quot;Show detected terminal capabilities and exit (useful for debugging and scripting).&quot;,
+91      &quot;TERMINAL&quot;,
+92      NULL,
+93      false,
+94      NULL,
+95      NULL,
+96      NULL,
+97      false,
+98      false,
+99      OPTION_MODE_BINARY,
+100      {0},
+101      NULL},
+102     {&quot;utf8&quot;,
+103      '\0',
+104      OPTION_TYPE_CALLBACK,
+105      offsetof(options_t, force_utf8),
+106      &amp;default_force_utf8_value,
+107      sizeof(int),
+108      &quot;UTF-8 support setting: 'auto' (default, auto-detect), 'true' (force UTF-8 on), or 'false' (force UTF-8 off).&quot;,
+109      &quot;TERMINAL&quot;,
+110      NULL,
+111      false,
+112      &quot;ASCII_CHAT_UTF8&quot;,
+113      NULL,
+114      parse_utf8_setting,
+115      false,
+116      true,
+117      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+118      {.enum_values = g_utf8_setting_values,
+119       .enum_descriptions = g_utf8_setting_descs,
+120       .enum_integer_values = g_utf8_setting_integers,
+121       .input_type = OPTION_INPUT_ENUM},
+122      NULL},
+123     {&quot;strip-ansi&quot;,
+124      '\0',
+125      OPTION_TYPE_BOOL,
+126      offsetof(options_t, strip_ansi),
+127      &amp;default_strip_ansi_value,
+128      sizeof(bool),
+129      &quot;Strip ANSI escape sequences from output before printing. Useful for scripting and debugging.&quot;,
+130      &quot;TERMINAL&quot;,
+131      NULL,
+132      false,
+133      &quot;ASCII_CHAT_STRIP_ANSI&quot;,
+134      NULL,
+135      NULL,
+136      false,
+137      false,
+138      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+139      {0},
+140      NULL},
+141     {&quot;color&quot;,
+142      '\0',
+143      OPTION_TYPE_CALLBACK,
+144      offsetof(options_t, color),
+145      &amp;default_color_value,
+146      sizeof(int),
+147      &quot;Color output setting: 'auto' (default, smart detection), 'true' (force colors on), or 'false' (force colors &quot;
+148      &quot;off).&quot;,
+149      &quot;TERMINAL&quot;,
+150      NULL,
+151      false,
+152      &quot;ASCII_CHAT_COLOR&quot;,
+153      NULL,
+154      parse_color_setting,
+155      false,
+156      true,
+157      OPTION_MODE_BINARY,
+158      {.enum_values = g_color_setting_values,
+159       .enum_descriptions = g_color_setting_descs,
+160       .enum_integer_values = g_color_setting_integers,
+161       .input_type = OPTION_INPUT_ENUM},
+162      NULL},
+163 
+164     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

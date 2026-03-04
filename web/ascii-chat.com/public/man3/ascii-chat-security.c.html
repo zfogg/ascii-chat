@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>security.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">security.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">security.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">security.c - Security and authentication options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_security_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Security and authentication options.</p>
+<p class="Pp">Options for encryption, key management, and authentication.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>security.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_security_entries__"><a class="permalink" href="#const_registry_entry_t_g_security_entries__">const
+  registry_entry_t g_security_entries[]</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>security.c</b>.</p>
+<pre>18                                             {
+19     // SECURITY GROUP (client, server, discovery)
+20     {&quot;encrypt&quot;,
+21      'E',
+22      OPTION_TYPE_BOOL,
+23      offsetof(options_t, encrypt_enabled),
+24      &amp;default_encrypt_enabled_value,
+25      sizeof(bool),
+26      &quot;Enable end-to-end encryption (requires the other party to be encrypted as well).&quot;,
+27      &quot;SECURITY&quot;,
+28      NULL,
+29      false,
+30      &quot;ASCII_CHAT_ENCRYPT&quot;,
+31      NULL,
+32      NULL,
+33      false,
+34      false,
+35      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+36      {0},
+37      NULL},
+38     {&quot;key&quot;,
+39      'K',
+40      OPTION_TYPE_STRING,
+41      offsetof(options_t, encrypt_key),
+42      &quot;&quot;,
+43      0,
+44      &quot;Server identity key (SSH Ed25519 or GPG key file, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], or &quot;
+45      &quot;HTTPS URL like https://example.com/key.pub or .gpg).&quot;,
+46      &quot;SECURITY&quot;,
+47      NULL,
+48      false,
+49      &quot;ASCII_CHAT_KEY&quot;,
+50      NULL,
+51      NULL,
+52      false,
+53      false,
+54      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+55      {0},
+56      NULL},
+57     {&quot;password&quot;,
+58      '\0',
+59      OPTION_TYPE_STRING,
+60      offsetof(options_t, password),
+61      &quot;&quot;,
+62      0,
+63      &quot;Shared password for authentication (8-256 characters).&quot;,
+64      &quot;SECURITY&quot;,
+65      NULL,
+66      false,
+67      &quot;ASCII_CHAT_PASSWORD&quot;,
+68      NULL,
+69      NULL,
+70      false,
+71      false,
+72      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+73      {0},
+74      NULL},
+75     {&quot;no-encrypt&quot;,
+76      '\0',
+77      OPTION_TYPE_BOOL,
+78      offsetof(options_t, no_encrypt),
+79      &amp;default_no_encrypt_value,
+80      sizeof(bool),
+81      &quot;Disable encryption (requires the other party to be unencrypted as well).&quot;,
+82      &quot;SECURITY&quot;,
+83      NULL,
+84      false,
+85      &quot;ASCII_CHAT_NO_ENCRYPT&quot;,
+86      NULL,
+87      NULL,
+88      false,
+89      false,
+90      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+91      {0},
+92      NULL},
+93     {&quot;no-auth&quot;,
+94      '\0',
+95      OPTION_TYPE_BOOL,
+96      offsetof(options_t, no_auth),
+97      &amp;default_no_auth_value,
+98      sizeof(bool),
+99      &quot;Disable authentication layer (--no-auth). Use with --no-encrypt to bypass ACIP entirely.&quot;,
+100      &quot;SECURITY&quot;,
+101      NULL,
+102      false,
+103      &quot;ASCII_CHAT_NO_AUTH&quot;,
+104      NULL,
+105      NULL,
+106      false,
+107      false,
+108      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+109      {0},
+110      NULL},
+111     {&quot;server-key&quot;,
+112      '\0',
+113      OPTION_TYPE_STRING,
+114      offsetof(options_t, server_key),
+115      &quot;&quot;,
+116      0,
+117      &quot;Expected server public key for verification. Supports: raw base64 public key (AAAAC3Nz...), &quot;
+118      &quot;SSH/GPG key files, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], &quot;
+119      &quot;or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg].&quot;,
+120      &quot;SECURITY&quot;,
+121      NULL,
+122      false,
+123      &quot;ASCII_CHAT_SERVER_KEY&quot;,
+124      NULL,
+125      NULL,
+126      false,
+127      false,
+128      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+129      {0},
+130      NULL},
+131     {&quot;client-keys&quot;,
+132      '\0',
+133      OPTION_TYPE_STRING,
+134      offsetof(options_t, client_keys),
+135      &quot;&quot;,
+136      0,
+137      &quot;Allowed client keys (comma-separated). Supports: raw base64 public keys (AAAAC3Nz...), &quot;
+138      &quot;file paths with one key per line, github:USER[.gpg], gitlab:USER[.gpg], gpg:KEYID, &quot;
+139      &quot;or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg].&quot;,
+140      &quot;SECURITY&quot;,
+141      NULL,
+142      false,
+143      &quot;ASCII_CHAT_CLIENT_KEYS&quot;,
+144      NULL,
+145      NULL,
+146      false,
+147      false,
+148      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+149      {0},
+150      NULL},
+151     {&quot;discovery-insecure&quot;,
+152      '\0',
+153      OPTION_TYPE_BOOL,
+154      offsetof(options_t, discovery_insecure),
+155      &amp;default_discovery_insecure_value,
+156      sizeof(bool),
+157      &quot;Skip server key verification (MITM-vulnerable, requires explicit opt-in).&quot;,
+158      &quot;SECURITY&quot;,
+159      NULL,
+160      false,
+161      &quot;ASCII_CHAT_DISCOVERY_INSECURE&quot;,
+162      NULL,
+163      NULL,
+164      false,
+165      false,
+166      OPTION_MODE_CLIENT | OPTION_MODE_DISCOVERY,
+167      {0},
+168      NULL},
+169     {&quot;discovery-service-key&quot;,
+170      '\0',
+171      OPTION_TYPE_STRING,
+172      offsetof(options_t, discovery_service_key),
+173      &quot;&quot;,
+174      0,
+175      &quot;Discovery server public key for verification. Supports: raw base64 public key (AAAAC3Nz...), &quot;
+176      &quot;SSH/GPG key files, gpg:FINGERPRINT, github:USER[.gpg], gitlab:USER[.gpg], &quot;
+177      &quot;or HTTP(S) URLs like https://github.com/zfogg.[keys|gpg].&quot;,
+178      &quot;SECURITY&quot;,
+179      NULL,
+180      false,
+181      &quot;ASCII_CHAT_DISCOVERY_SERVER_KEY&quot;,
+182      NULL,
+183      NULL,
+184      false,
+185      false,
+186      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY,
+187      {0},
+188      NULL},
+189     {&quot;require-server-identity&quot;,
+190      '\0',
+191      OPTION_TYPE_BOOL,
+192      offsetof(options_t, require_server_identity),
+193      NULL,
+194      sizeof(bool),
+195      &quot;Require servers to provide signed Ed25519 identity.&quot;,
+196      &quot;SECURITY&quot;,
+197      NULL,
+198      false,
+199      &quot;ASCII_CHAT_REQUIRE_SERVER_IDENTITY&quot;,
+200      NULL,
+201      NULL,
+202      false,
+203      false,
+204      OPTION_MODE_DISCOVERY_SVC,
+205      {0},
+206      NULL},
+207     {&quot;require-client-identity&quot;,
+208      '\0',
+209      OPTION_TYPE_BOOL,
+210      offsetof(options_t, require_client_identity),
+211      NULL,
+212      sizeof(bool),
+213      &quot;Require clients to provide signed Ed25519 identity.&quot;,
+214      &quot;SECURITY&quot;,
+215      NULL,
+216      false,
+217      &quot;ASCII_CHAT_REQUIRE_CLIENT_IDENTITY&quot;,
+218      NULL,
+219      NULL,
+220      false,
+221      false,
+222      OPTION_MODE_DISCOVERY_SVC,
+223      {0},
+224      NULL},
+225 
+226     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

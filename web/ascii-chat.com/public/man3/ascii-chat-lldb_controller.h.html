@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>lldb_controller.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">lldb_controller.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">lldb_controller.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lldb_controller.h - LLDB process attachment and control
+  wrapper.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>ascii_query::ThreadInfo</b>
+  <br/>
+  Thread information. struct <b>ascii_query::FrameInfo</b>
+  <br/>
+  Stack frame information. struct <b>ascii_query::VariableInfo</b>
+  <br/>
+  Variable information (from LLDB SBValue). struct
+    <b>ascii_query::BreakpointInfo</b>
+  <br/>
+  Breakpoint information. class <b>ascii_query::LLDBController</b>
+  <br/>
+  LLDB process controller.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Namespaces"><a class="permalink" href="#Namespaces">Namespaces</a></h2>
+<br/>
+<p class="Pp">namespace <b>ascii_query</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum class <b>ascii_query::ProcessState</b> {
+    <b>ascii_query::Invalid</b>, <b>ascii_query::Running</b>,
+    <b>ascii_query::Stopped</b>, <b>ascii_query::Exited</b>,
+    <b>ascii_query::Crashed</b>, <b>ascii_query::Detached</b> }
+  <br/>
+  Process state enumeration.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">LLDB process attachment and control wrapper.</p>
+<p class="Pp">This class wraps the LLDB SB API to provide process attachment,
+    control, and variable inspection. It's designed for external debugging - the
+    controller runs as a separate process from the target.</p>
+<p class="Pp"></p>
+<p class="Pp">Thread Safety: Most LLDB operations are NOT thread-safe. This
+    class assumes single-threaded use from the HTTP server's request handler
+    thread.</p>
+<p class="Pp">Definition in file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

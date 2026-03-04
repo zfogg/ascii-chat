@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>parsing.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">parsing.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">parsing.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">parsing.c - &#x1F50D; Safe string parsing utilities for integers,
+    sizes, and protocol messages</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>safe_parse_size_message</b> (const char
+    *message, unsigned int *width, unsigned int *height)
+  <br/>
+  asciichat_error_t <b>safe_parse_audio_message</b> (const char *message,
+    unsigned int *num_samples)
+  <br/>
+  asciichat_error_t <b>parse_long</b> (const char *str, long *out_value, long
+    min_value, long max_value)
+  <br/>
+  asciichat_error_t <b>parse_ulong</b> (const char *str, unsigned long
+    *out_value, unsigned long min_value, unsigned long max_value)
+  <br/>
+  asciichat_error_t <b>parse_ulonglong</b> (const char *str, unsigned long long
+    *out_value, unsigned long long min_value, unsigned long long max_value)
+  <br/>
+  asciichat_error_t <b>parse_port</b> (const char *str, uint16_t *out_port)
+  <br/>
+  asciichat_error_t <b>parse_int32</b> (const char *str, int32_t *out_value,
+    int32_t min_value, int32_t max_value)
+  <br/>
+  asciichat_error_t <b>parse_uint32</b> (const char *str, uint32_t *out_value,
+    uint32_t min_value, uint32_t max_value)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F50D; Safe string parsing utilities for integers, sizes, and
+    protocol messages</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>util/parsing.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_int32_(const_char_*_str,_int32_t_*_out_value,_int32_t_min_value,_int32_t_max_value)"><a class="permalink" href="#asciichat_error_t_parse_int32_(const_char_*_str,_int32_t_*_out_value,_int32_t_min_value,_int32_t_max_value)">asciichat_error_t
+  parse_int32 (const char * str, int32_t * out_value, int32_t min_value, int32_t
+  max_value)</a></h2>
+<p class="Pp">Definition at line <b>304</b> of file <b>util/parsing.c</b>.</p>
+<pre>304                                                                                                          {
+305   if (!str) {
+306     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+307   }
+308 
+309   if (!out_value) {
+310     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+311   }
+312 
+313   long value;
+314   asciichat_error_t err = parse_long(str, &amp;value, (long)min_value, (long)max_value);
+315   if (err != ASCIICHAT_OK) {
+316     return err;
+317   }
+318 
+319   *out_value = (int32_t)value;
+320   return ASCIICHAT_OK;
+321 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_long()</b>.</p>
+<p class="Pp">Referenced by <b>strtoint_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_long_(const_char_*_str,_long_*_out_value,_long_min_value,_long_max_value)"><a class="permalink" href="#asciichat_error_t_parse_long_(const_char_*_str,_long_*_out_value,_long_min_value,_long_max_value)">asciichat_error_t
+  parse_long (const char * str, long * out_value, long min_value, long
+  max_value)</a></h2>
+<p class="Pp">Definition at line <b>98</b> of file <b>util/parsing.c</b>.</p>
+<pre>98                                                                                                {
+99   if (!str) {
+100     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+101   }
+102 
+103   if (!out_value) {
+104     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+105   }
+106 
+107   if (*str == '\0') {
+108     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as integer&quot;);
+109   }
+110 
+111   // Clear errno before calling strtol to detect errors
+112   errno = 0;
+113   char *endptr = NULL;
+114   long value = strtol(str, &amp;endptr, 10);
+115 
+116   // Check for conversion errors
+117   if (errno == ERANGE) {
+118     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value out of range: %s&quot;, str);
+119   }
+120 
+121   // Check that entire string was consumed (no extra characters)
+122   if (endptr == str || *endptr != '\0') {
+123     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid integer format: %s&quot;, str);
+124   }
+125 
+126   // Check user-specified range
+127   if (value &lt; min_value) {
+128     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %ld is below minimum %ld&quot;, value, min_value);
+129   }
+130 
+131   if (value &gt; max_value) {
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %ld exceeds maximum %ld&quot;, value, max_value);
+133   }
+134 
+135   *out_value = value;
+136   return ASCIICHAT_OK;
+137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>parse_int32()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_port_(const_char_*_str,_uint16_t_*_out_port)"><a class="permalink" href="#asciichat_error_t_parse_port_(const_char_*_str,_uint16_t_*_out_port)">asciichat_error_t
+  parse_port (const char * str, uint16_t * out_port)</a></h2>
+<p class="Pp">Definition at line <b>252</b> of file <b>util/parsing.c</b>.</p>
+<pre>252                                                                   {
+253   if (!str) {
+254     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+255   }
+256 
+257   if (!out_port) {
+258     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+259   }
+260 
+261   if (*str == '\0') {
+262     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as port&quot;);
+263   }
+264 
+265   pcre2_code *regex = port_regex_get();
+266   if (!regex) {
+267     /* Fallback: use original parse_ulong method if PCRE2 not available */
+268     unsigned long port_ulong;
+269     asciichat_error_t err = parse_ulong(str, &amp;port_ulong, 0, 65535);
+270     if (err != ASCIICHAT_OK) {
+271       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
+272     }
+273     *out_port = (uint16_t)port_ulong;
+274     return ASCIICHAT_OK;
+275   }
+276 
+277   /* Validate port using PCRE2 regex */
+278   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+279   if (!match_data) {
+280     log_error(&quot;Failed to allocate match data for port validation&quot;);
+281     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
+282   }
+283 
+284   int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, strlen(str), 0, 0, match_data, NULL);
+285   pcre2_match_data_free(match_data);
+286 
+287   if (match_result &lt; 0) {
+288     /* Format validation failed */
+289     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number: %s (must be 0-65535)&quot;, str);
+290   }
+291 
+292   /* Extract matched port string and convert to uint16_t */
+293   char *endptr = NULL;
+294   unsigned long port_value = strtoul(str, &amp;endptr, 10);
+295 
+296   if (port_value &lt; 0 || port_value &gt; 65535) {
+297     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Port out of range: %lu&quot;, port_value);
+298   }
+299 
+300   *out_port = (uint16_t)port_value;
+301   return ASCIICHAT_OK;
+302 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_ulong()</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>,
+    <b>parse_address_with_optional_port()</b>, <b>parse_ip_with_port()</b>,
+    <b>parse_port_option()</b>, <b>validate_opt_port()</b>, and
+    <b>validate_port_opt()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_uint32_(const_char_*_str,_uint32_t_*_out_value,_uint32_t_min_value,_uint32_t_max_value)"><a class="permalink" href="#asciichat_error_t_parse_uint32_(const_char_*_str,_uint32_t_*_out_value,_uint32_t_min_value,_uint32_t_max_value)">asciichat_error_t
+  parse_uint32 (const char * str, uint32_t * out_value, uint32_t min_value,
+  uint32_t max_value)</a></h2>
+<p class="Pp">Definition at line <b>323</b> of file <b>util/parsing.c</b>.</p>
+<pre>323                                                                                                              {
+324   if (!str) {
+325     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+326   }
+327 
+328   if (!out_value) {
+329     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+330   }
+331 
+332   unsigned long value;
+333   asciichat_error_t err = parse_ulong(str, &amp;value, (unsigned long)min_value, (unsigned long)max_value);
+334   if (err != ASCIICHAT_OK) {
+335     return err;
+336   }
+337 
+338   *out_value = (uint32_t)value;
+339   return ASCIICHAT_OK;
+340 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_ulong()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_ulong_(const_char_*_str,_unsigned_long_*_out_value,_unsigned_long_min_value,_unsigned_long_max_value)"><a class="permalink" href="#asciichat_error_t_parse_ulong_(const_char_*_str,_unsigned_long_*_out_value,_unsigned_long_min_value,_unsigned_long_max_value)">asciichat_error_t
+  parse_ulong (const char * str, unsigned long * out_value, unsigned long
+  min_value, unsigned long max_value)</a></h2>
+<p class="Pp">Definition at line <b>139</b> of file <b>util/parsing.c</b>.</p>
+<pre>140                                                        {
+141   if (!str) {
+142     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+143   }
+144 
+145   if (!out_value) {
+146     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+147   }
+148 
+149   if (*str == '\0') {
+150     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as integer&quot;);
+151   }
+152 
+153   // Clear errno before calling strtoul to detect errors
+154   errno = 0;
+155   char *endptr = NULL;
+156   unsigned long value = strtoul(str, &amp;endptr, 10);
+157 
+158   // Check for conversion errors
+159   if (errno == ERANGE) {
+160     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value out of range: %s&quot;, str);
+161   }
+162 
+163   // Check that entire string was consumed (no extra characters)
+164   if (endptr == str || *endptr != '\0') {
+165     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid integer format: %s&quot;, str);
+166   }
+167 
+168   // Check user-specified range
+169   if (value &lt; min_value) {
+170     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %lu is below minimum %lu&quot;, value, min_value);
+171   }
+172 
+173   if (value &gt; max_value) {
+174     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value %lu exceeds maximum %lu&quot;, value, max_value);
+175   }
+176 
+177   *out_value = value;
+178   return ASCIICHAT_OK;
+179 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>, <b>parse_port()</b>, and
+    <b>parse_uint32()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parse_ulonglong_(const_char_*_str,_unsigned_long_long_*_out_value,_unsigned_long_long_min_value,_unsigned_long_long_max_value)"><a class="permalink" href="#asciichat_error_t_parse_ulonglong_(const_char_*_str,_unsigned_long_long_*_out_value,_unsigned_long_long_min_value,_unsigned_long_long_max_value)">asciichat_error_t
+  parse_ulonglong (const char * str, unsigned long long * out_value, unsigned
+  long long min_value, unsigned long long max_value)</a></h2>
+<p class="Pp">Definition at line <b>181</b> of file <b>util/parsing.c</b>.</p>
+<pre>182                                                                 {
+183   if (!str) {
+184     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;String pointer is NULL&quot;);
+185   }
+186 
+187   if (!out_value) {
+188     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output pointer is NULL&quot;);
+189   }
+190 
+191   if (*str == '\0') {
+192     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty string cannot be parsed as integer&quot;);
+193   }
+194 
+195   // Clear errno before calling strtoull to detect errors
+196   errno = 0;
+197   char *endptr = NULL;
+198   unsigned long long value = strtoull(str, &amp;endptr, 10);
+199 
+200   // Check for conversion errors
+201   if (errno == ERANGE) {
+202     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value out of range: %s&quot;, str);
+203   }
+204 
+205   // Check that entire string was consumed (no extra characters)
+206   if (endptr == str || *endptr != '\0') {
+207     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid integer format: %s&quot;, str);
+208   }
+209 
+210   // Check user-specified range
+211   if (value &lt; min_value) {
+212     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value too small (below minimum)&quot;);
+213   }
+214 
+215   if (value &gt; max_value) {
+216     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Integer value too large (exceeds maximum)&quot;);
+217   }
+218 
+219   *out_value = value;
+220   return ASCIICHAT_OK;
+221 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_safe_parse_audio_message_(const_char_*_message,_unsigned_int_*_num_samples)"><a class="permalink" href="#asciichat_error_t_safe_parse_audio_message_(const_char_*_message,_unsigned_int_*_num_samples)">asciichat_error_t
+  safe_parse_audio_message (const char * message, unsigned int *
+  num_samples)</a></h2>
+<p class="Pp">Definition at line <b>64</b> of file <b>util/parsing.c</b>.</p>
+<pre>64                                                                                            {
+65   if (!message || !num_samples) {
+66     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for audio message parsing&quot;);
+67   }
+68 
+69   // Check if message starts with &quot;AUDIO:&quot;
+70   if (strncmp(message, &quot;AUDIO:&quot;, 6) != 0) {
+71     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Message does not start with 'AUDIO:'&quot;);
+72   }
+73 
+74   const char *ptr = message + 6; // Skip &quot;AUDIO:&quot;
+75   char *endptr;
+76 
+77   // Parse number
+78   errno = 0;
+79   unsigned long samples = strtoul(ptr, &amp;endptr, 10);
+80   if (errno != 0 || endptr == ptr || samples &gt; UINT_MAX || samples == 0) {
+81     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid sample count value in audio message&quot;);
+82   }
+83 
+84   // Should end with newline or null terminator
+85   if (*endptr != '\n' &amp;&amp; *endptr != '\0') {
+86     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid format: audio message should end with newline or null terminator&quot;);
+87   }
+88 
+89   *num_samples = (unsigned int)samples;
+90   return ASCIICHAT_OK;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_safe_parse_size_message_(const_char_*_message,_unsigned_int_*_width,_unsigned_int_*_height)"><a class="permalink" href="#asciichat_error_t_safe_parse_size_message_(const_char_*_message,_unsigned_int_*_width,_unsigned_int_*_height)">asciichat_error_t
+  safe_parse_size_message (const char * message, unsigned int * width, unsigned
+  int * height)</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file <b>util/parsing.c</b>.</p>
+<pre>16                                                                                                           {
+17   if (!message || !width || !height) {
+18     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for size message parsing&quot;);
+19   }
+20 
+21   // Check if message starts with &quot;SIZE:&quot;
+22   if (strncmp(message, &quot;SIZE:&quot;, 5) != 0) {
+23     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Message does not start with 'SIZE:'&quot;);
+24   }
+25 
+26   const char *ptr = message + 5; // Skip &quot;SIZE:&quot;
+27   char *endptr;
+28 
+29   // Parse first number (width)
+30   errno = 0;
+31   unsigned long w = strtoul(ptr, &amp;endptr, 10);
+32   if (errno != 0 || endptr == ptr || w &gt; UINT_MAX || w == 0) {
+33     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid width value in size message&quot;);
+34   }
+35 
+36   // Check for comma separator
+37   if (*endptr != ',') {
+38     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing comma separator in size message&quot;);
+39   }
+40   ptr = endptr + 1;
+41 
+42   // Parse second number (height)
+43   errno = 0;
+44   unsigned long h = strtoul(ptr, &amp;endptr, 10);
+45   if (errno != 0 || endptr == ptr || h &gt; UINT_MAX || h == 0) {
+46     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid height value in size message&quot;);
+47   }
+48 
+49   // Should end with newline or null terminator
+50   if (*endptr != '\n' &amp;&amp; *endptr != '\0') {
+51     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid format: size message should end with newline or null terminator&quot;);
+52   }
+53 
+54   // Additional bounds checking
+55   if (w &gt; 65535 || h &gt; 65535) {
+56     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Size values too large (max 65535)&quot;);
+57   }
+58 
+59   *width = (unsigned int)w;
+60   *height = (unsigned int)h;
+61   return ASCIICHAT_OK;
+62 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

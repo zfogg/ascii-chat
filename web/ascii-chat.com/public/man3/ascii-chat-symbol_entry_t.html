@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>symbol_entry_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">symbol_entry_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">symbol_entry_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">symbol_entry_t - Symbol cache entry structure for
+    address-to-symbol mapping.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void * <b>addr</b>
+  <br/>
+  Memory address key (used for hashtable lookup). char * <b>symbol</b>
+  <br/>
+  Resolved symbol string (allocated, owned by cache). UT_hash_handle <b>hh</b>
+  <br/>
+  uthash handle (required for hash table operations)
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Symbol cache entry structure for address-to-symbol mapping.</p>
+<p class="Pp">Represents a single cached symbol resolution in the symbol cache
+    hashtable. Maps a memory address (key) to a resolved symbol name (value) to
+    avoid expensive addr2line subprocess spawns for the same addresses.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CORE_FIELDS:"><a class="permalink" href="#CORE_FIELDS:">CORE
+  FIELDS: </a></h1>
+<ul class="Bl-bullet">
+  <li>addr: Memory address key (used for hashtable lookup)</li>
+  <li>symbol: Resolved symbol string (allocated, owned by cache)</li>
+  <li>hh: uthash handle (required for hash table operations)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="USAGE:"><a class="permalink" href="#USAGE:">USAGE: </a></h1>
+<p class="Pp">This structure is used internally by the symbol cache
+  hashtable:</p>
+<ul class="Bl-bullet">
+  <li>Key: Memory address (void*) from backtrace</li>
+  <li>Value: Symbol name string (e.g., &quot;main&quot;,
+      &quot;process_packet&quot;, etc.)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="CACHE_OPERATIONS:"><a class="permalink" href="#CACHE_OPERATIONS:">CACHE
+  OPERATIONS: </a></h1>
+<ul class="Bl-bullet">
+  <li>Lookup: Fast O(1) hashtable lookup by address</li>
+  <li>Insertion: Cached after first addr2line resolution</li>
+  <li>Lifetime: Owned by cache, freed on cache cleanup</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MEMORY_MANAGEMENT:"><a class="permalink" href="#MEMORY_MANAGEMENT:">MEMORY
+  MANAGEMENT: </a></h1>
+<ul class="Bl-bullet">
+  <li>symbol string is allocated and owned by the cache</li>
+  <li>Do not free symbol strings manually (cache manages them)</li>
+  <li>Entries are managed by uthash</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This structure is used internally by the symbol cache
+  implementation. Users should interact with the cache via symbol_cache_*
+  functions.</div>
+<p class="Pp">Definition at line <b>108</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_symbol_entry_t::addr"><a class="permalink" href="#void*_symbol_entry_t::addr">void*
+  symbol_entry_t::addr</a></h2>
+<p class="Pp">Memory address key (used for hashtable lookup).</p>
+<p class="Pp">Definition at line <b>110</b> of file <b>symbols.c</b>.</p>
+<p class="Pp">Referenced by <b>symbol_cache_insert()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UT_hash_handle_symbol_entry_t::hh"><a class="permalink" href="#UT_hash_handle_symbol_entry_t::hh">UT_hash_handle
+  symbol_entry_t::hh</a></h2>
+<p class="Pp">uthash handle (required for hash table operations)</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>symbols.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_symbol_entry_t::symbol"><a class="permalink" href="#char*_symbol_entry_t::symbol">char*
+  symbol_entry_t::symbol</a></h2>
+<p class="Pp">Resolved symbol string (allocated, owned by cache).</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>symbols.c</b>.</p>
+<p class="Pp">Referenced by <b>symbol_cache_destroy()</b>,
+    <b>symbol_cache_insert()</b>, and <b>symbol_cache_lookup()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

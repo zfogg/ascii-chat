@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>embedded.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">embedded.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">embedded.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">embedded.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>get_manpage_template</b> (FILE **out_file, const char
+    **out_content, size_t *out_len)
+  <br/>
+  int <b>get_manpage_content</b> (FILE **out_file, const char **out_content,
+    size_t *out_len)
+  <br/>
+  void <b>release_manpage_resources</b> (FILE *file)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_get_manpage_content_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_content_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
+  get_manpage_content (FILE ** out_file, const char ** out_content, size_t *
+  out_len)</a></h2>
+<p class="Pp">Definition at line <b>75</b> of file <b>embedded.c</b>.</p>
+<pre>75                                                                                     {
+76   // Content is now consolidated into the template - return empty
+77   if (out_content) {
+78     *out_content = &quot;&quot;;
+79   }
+80   if (out_len) {
+81     *out_len = 0;
+82   }
+83   if (out_file) {
+84     *out_file = NULL;
+85   }
+86 
+87   log_debug(&quot;Man page content is now consolidated into template (empty)&quot;);
+88   return 0;
+89 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)"><a class="permalink" href="#int_get_manpage_template_(FILE_**_out_file,_const_char_**_out_content,_size_t_*_out_len)">int
+  get_manpage_template (FILE ** out_file, const char ** out_content, size_t *
+  out_len)</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>embedded.c</b>.</p>
+<pre>22                                                                                      {
+23 #ifdef NDEBUG
+24   // Release build: Return embedded data
+25   if (out_content) {
+26     *out_content = embedded_manpage_template;
+27   }
+28   if (out_len) {
+29     *out_len = embedded_manpage_template_size;
+30   }
+31   if (out_file) {
+32     *out_file = NULL;
+33   }
+34 
+35   log_debug(&quot;Using embedded man page template (%zu bytes)&quot;, embedded_manpage_template_size);
+36   return 0;
+37 #else
+38   // Debug build: Read from filesystem
+39   if (!out_file) {
+40     SET_ERRNO(ERROR_INVALID_PARAM, &quot;out_file cannot be NULL in development mode&quot;);
+41     return -1;
+42   }
+43 
+44   // Construct absolute path using ASCIICHAT_RESOURCE_DIR (set at build time)
+45 #ifdef ASCIICHAT_RESOURCE_DIR
+46   static char path_buffer[PATH_MAX];
+47   safe_snprintf(path_buffer, sizeof(path_buffer), &quot;%s/share/man/man1/ascii-chat.1.in&quot;, ASCIICHAT_RESOURCE_DIR);
+48   const char *path = path_buffer;
+49 #else
+50   // Fallback: try relative path if ASCIICHAT_RESOURCE_DIR not defined
+51   const char *path = &quot;share/man/man1/ascii-chat.1.in&quot;;
+52 #endif
+53 
+54   // Use binary mode to ensure fread byte count matches ftell file size.
+55   // Text mode on Windows translates \r\n to \n, causing size mismatch.
+56   FILE *f = platform_fopen(&quot;file_stream&quot;, path, &quot;rb&quot;);
+57   if (!f) {
+58     SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open man page template: %s&quot;, path);
+59     return -1;
+60   }
+61 
+62   *out_file = f;
+63   if (out_content) {
+64     *out_content = NULL;
+65   }
+66   if (out_len) {
+67     *out_len = 0;
+68   }
+69 
+70   log_debug(&quot;Using filesystem man page template: %s&quot;, path);
+71   return 0;
+72 #endif
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_fopen()</b>, and
+  <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>manpage_resources_load()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_release_manpage_resources_(FILE_*_file)"><a class="permalink" href="#void_release_manpage_resources_(FILE_*_file)">void
+  release_manpage_resources (FILE * file)</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file <b>embedded.c</b>.</p>
+<pre>91                                            {
+92 #ifdef NDEBUG
+93   // Release build: No-op (embedded data is static, not heap-allocated)
+94   (void)file; // Suppress unused parameter warning
+95 #else
+96   // Debug build: Close file handle if present
+97   if (file) {
+98     fclose(file);
+99   }
+100 #endif
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

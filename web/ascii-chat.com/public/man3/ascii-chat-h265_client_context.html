@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>h265_client_context(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">h265_client_context(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">h265_client_context(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">h265_client_context</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>h265_encoder_t</b> * <b>encoder</b>
+  <br/>
+  <b>h265_media_source_t</b> <b>source_type</b>
+  <br/>
+  char * <b>source_location</b>
+  <br/>
+  uint16_t <b>current_width</b>
+  <br/>
+  uint16_t <b>current_height</b>
+  <br/>
+  uint8_t * <b>frame_buf</b>
+  <br/>
+  size_t <b>frame_buf_size</b>
+  <br/>
+  void * <b>media_context</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Definition at line <b>13</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_h265_client_context::current_height"><a class="permalink" href="#uint16_t_h265_client_context::current_height">uint16_t
+  h265_client_context::current_height</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_capture_and_encode()</b>, and
+    <b>h265_client_context_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_h265_client_context::current_width"><a class="permalink" href="#uint16_t_h265_client_context::current_width">uint16_t
+  h265_client_context::current_width</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_capture_and_encode()</b>, and
+    <b>h265_client_context_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>h265_encoder_t</b>* h265_client_context::encoder</h2>
+<p class="Pp">Definition at line <b>14</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_capture_and_encode()</b>,
+    <b>h265_client_context_create()</b>, <b>h265_client_context_destroy()</b>,
+    <b>h265_client_get_stats()</b>, and
+  <b>h265_client_request_keyframe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t*_h265_client_context::frame_buf"><a class="permalink" href="#uint8_t*_h265_client_context::frame_buf">uint8_t*
+  h265_client_context::frame_buf</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_capture_and_encode()</b>,
+    <b>h265_client_context_create()</b>, and
+    <b>h265_client_context_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_h265_client_context::frame_buf_size"><a class="permalink" href="#size_t_h265_client_context::frame_buf_size">size_t
+  h265_client_context::frame_buf_size</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_capture_and_encode()</b>, and
+    <b>h265_client_context_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_h265_client_context::media_context"><a class="permalink" href="#void*_h265_client_context::media_context">void*
+  h265_client_context::media_context</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_h265_client_context::source_location"><a class="permalink" href="#char*_h265_client_context::source_location">char*
+  h265_client_context::source_location</a></h2>
+<p class="Pp">Definition at line <b>16</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_context_destroy()</b>, and
+    <b>h265_client_init_media_source()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>h265_media_source_t</b> h265_client_context::source_type</h2>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>src/session/h265/client.c</b>.</p>
+<p class="Pp">Referenced by <b>h265_client_init_media_source()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>thread_pool.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">thread_pool.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">thread_pool.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">thread_pool.c - &#x1F9F5; Generic thread pool implementation for
+    managing worker threads</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">thread_pool_t * <b>thread_pool_create</b> (const char *pool_name)
+  <br/>
+  thread_pool_t * <b>thread_pool_create_with_workers</b> (const char *pool_name,
+    size_t num_workers)
+  <br/>
+  void <b>thread_pool_destroy</b> (thread_pool_t *<b>pool</b>)
+  <br/>
+  asciichat_error_t <b>thread_pool_queue_work</b> (const char *name,
+    thread_pool_t *<b>pool</b>, void *(*work_func)(void *), void *work_arg)
+  <br/>
+  asciichat_error_t <b>thread_pool_spawn</b> (thread_pool_t *<b>pool</b>, void
+    *(*thread_func)(void *), void *thread_arg, int stop_id, const char
+    *thread_name)
+  <br/>
+  asciichat_error_t <b>thread_pool_stop_all</b> (thread_pool_t *<b>pool</b>)
+  <br/>
+  size_t <b>thread_pool_get_count</b> (const thread_pool_t *<b>pool</b>)
+  <br/>
+  <b>bool</b> <b>thread_pool_has_threads</b> (const thread_pool_t *<b>pool</b>)
+  <br/>
+  asciichat_error_t <b>thread_pool_interrupt_all</b> (thread_pool_t
+    *<b>pool</b>, int sig)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F9F5; Generic thread pool implementation for managing worker
+    threads</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>thread_pool.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="thread_pool_t_*_thread_pool_create_(const_char_*_pool_name)"><a class="permalink" href="#thread_pool_t_*_thread_pool_create_(const_char_*_pool_name)">thread_pool_t
+  * thread_pool_create (const char * pool_name)</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>thread_pool.c</b>.</p>
+<pre>74                                                          {
+75   thread_pool_t *pool = SAFE_MALLOC(sizeof(thread_pool_t), thread_pool_t *);
+76   if (!pool) {
+77     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate thread pool&quot;);
+78     return NULL;
+79   }
+80 
+81   memset(pool, 0, sizeof(*pool));
+82 
+83   // Copy pool name (truncate if necessary)
+84   if (pool_name) {
+85     SAFE_STRNCPY(pool-&gt;name, pool_name, sizeof(pool-&gt;name));
+86   } else {
+87     SAFE_STRNCPY(pool-&gt;name, &quot;unnamed&quot;, sizeof(pool-&gt;name));
+88   }
+89 
+90   // Initialize linked list
+91   pool-&gt;threads = NULL;
+92   pool-&gt;thread_count = 0;
+93   pool-&gt;is_work_queue_mode = false;
+94   pool-&gt;num_workers = 0;
+95 
+96   // Initialize mutex
+97   if (mutex_init(&amp;pool-&gt;threads_mutex, &quot;thread_pool&quot;) != 0) {
+98     SAFE_FREE(pool);
+99     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize thread pool mutex&quot;);
+100     return NULL;
+101   }
+102 
+103   NAMED_REGISTER_THREAD_POOL(pool, pool-&gt;name, NULL);
+104 
+105   // Register sync primitives for debugging
+106   NAMED_REGISTER_MUTEX(&amp;pool-&gt;threads_mutex, &quot;threads_mutex&quot;, (uintptr_t)(const void *)(pool));
+107 
+108   log_debug(&quot;Thread pool '%s' created (long-lived thread mode)&quot;, pool-&gt;name);
+109   return pool;
+110 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_init()</b>, and <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>, <b>server_main()</b>, and
+    <b>tcp_server_add_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="thread_pool_t_*_thread_pool_create_with_workers_(const_char_*_pool_name,_size_t_num_workers)"><a class="permalink" href="#thread_pool_t_*_thread_pool_create_with_workers_(const_char_*_pool_name,_size_t_num_workers)">thread_pool_t
+  * thread_pool_create_with_workers (const char * pool_name, size_t
+  num_workers)</a></h2>
+<p class="Pp">Definition at line <b>112</b> of file <b>thread_pool.c</b>.</p>
+<pre>112                                                                                           {
+113   if (num_workers == 0) {
+114     SET_ERRNO(ERROR_INVALID_PARAM, &quot;num_workers must be &gt; 0&quot;);
+115     return NULL;
+116   }
+117 
+118   thread_pool_t *pool = SAFE_MALLOC(sizeof(thread_pool_t), thread_pool_t *);
+119   if (!pool) {
+120     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate thread pool&quot;);
+121     return NULL;
+122   }
+123 
+124   memset(pool, 0, sizeof(*pool));
+125 
+126   // Copy pool name
+127   if (pool_name) {
+128     SAFE_STRNCPY(pool-&gt;name, pool_name, sizeof(pool-&gt;name));
+129   } else {
+130     SAFE_STRNCPY(pool-&gt;name, &quot;unnamed&quot;, sizeof(pool-&gt;name));
+131   }
+132 
+133   // Mark as work queue mode
+134   pool-&gt;is_work_queue_mode = true;
+135   pool-&gt;num_workers = num_workers;
+136   pool-&gt;work_queue = NULL;
+137   pool-&gt;shutdown_requested = false;
+138 
+139   // Initialize mutexes
+140   if (mutex_init(&amp;pool-&gt;threads_mutex, &quot;worker_list&quot;) != 0) {
+141     SAFE_FREE(pool);
+142     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize threads_mutex&quot;);
+143     return NULL;
+144   }
+145 
+146   if (mutex_init(&amp;pool-&gt;work_queue_mutex, &quot;pending_tasks&quot;) != 0) {
+147     mutex_destroy(&amp;pool-&gt;threads_mutex);
+148     SAFE_FREE(pool);
+149     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize work_queue_mutex&quot;);
+150     return NULL;
+151   }
+152 
+153   // Initialize condition variable
+154   if (cond_init(&amp;pool-&gt;work_available, &quot;task_available&quot;) != 0) {
+155     mutex_destroy(&amp;pool-&gt;work_queue_mutex);
+156     mutex_destroy(&amp;pool-&gt;threads_mutex);
+157     SAFE_FREE(pool);
+158     SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize work_available condition&quot;);
+159     return NULL;
+160   }
+161 
+162   // Create worker threads
+163   for (size_t i = 0; i &lt; num_workers; i++) {
+164     thread_pool_entry_t *entry = SAFE_MALLOC(sizeof(thread_pool_entry_t), thread_pool_entry_t *);
+165     if (!entry) {
+166       log_error(&quot;Failed to allocate worker entry %zu&quot;, i);
+167       thread_pool_destroy(pool);
+168       SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate worker entry&quot;);
+169       return NULL;
+170     }
+171 
+172     memset(entry, 0, sizeof(*entry));
+173     entry-&gt;stop_id = 0;
+174     entry-&gt;thread_func = thread_pool_worker_thread;
+175     entry-&gt;thread_arg = pool;
+176     SAFE_SNPRINTF(entry-&gt;name, sizeof(entry-&gt;name), &quot;%s_worker_%zu&quot;, pool-&gt;name, i);
+177 
+178     // Create worker thread
+179     if (asciichat_thread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_pool_worker_thread, pool) != 0) {
+180       log_error(&quot;Failed to create worker thread %zu&quot;, i);
+181       SAFE_FREE(entry);
+182       thread_pool_destroy(pool);
+183       SET_ERRNO(ERROR_THREAD, &quot;Failed to create worker thread %zu&quot;, i);
+184       return NULL;
+185     }
+186 
+187     // Add to thread list
+188     mutex_lock(&amp;pool-&gt;threads_mutex);
+189     entry-&gt;next = pool-&gt;threads;
+190     pool-&gt;threads = entry;
+191     pool-&gt;thread_count++;
+192     mutex_unlock(&amp;pool-&gt;threads_mutex);
+193 
+194     log_debug(&quot;[ThreadPool] Created worker thread %zu for pool '%s'&quot;, i, pool-&gt;name);
+195   }
+196 
+197   NAMED_REGISTER_THREAD_POOL(pool, pool-&gt;name, NULL);
+198 
+199   // Register sync primitives for debugging
+200   NAMED_REGISTER_MUTEX(&amp;pool-&gt;threads_mutex, &quot;threads_mutex&quot;, (uintptr_t)(const void *)(pool));
+201   NAMED_REGISTER_MUTEX(&amp;pool-&gt;work_queue_mutex, &quot;work_queue_mutex&quot;, (uintptr_t)(const void *)(pool));
+202   NAMED_REGISTER_COND(&amp;pool-&gt;work_available, &quot;work_available&quot;, (uintptr_t)(const void *)(pool));
+203 
+204   log_info(&quot;[ThreadPool] Created work queue pool '%s' with %zu worker threads&quot;, pool-&gt;name, num_workers);
+205   return pool;
+206 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>pool</b>, and
+    <b>thread_pool_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_thread_pool_destroy_(thread_pool_t_*_pool)"><a class="permalink" href="#void_thread_pool_destroy_(thread_pool_t_*_pool)">void
+  thread_pool_destroy (thread_pool_t * pool)</a></h2>
+<p class="Pp">Definition at line <b>208</b> of file <b>thread_pool.c</b>.</p>
+<pre>208                                               {
+209   if (!pool) {
+210     return;
+211   }
+212 
+213   log_debug(&quot;Destroying thread pool '%s' (thread_count=%zu, work_queue_mode=%d)&quot;, pool-&gt;name, pool-&gt;thread_count,
+214             pool-&gt;is_work_queue_mode);
+215 
+216   // Stop all threads first (if not already stopped)
+217   if (pool-&gt;thread_count &gt; 0) {
+218     log_debug(&quot;Thread pool '%s' has %zu threads, stopping them first&quot;, pool-&gt;name, pool-&gt;thread_count);
+219     thread_pool_stop_all(pool);
+220     log_debug(&quot;After thread_pool_stop_all: pool-&gt;threads=%p, pool-&gt;thread_count=%zu&quot;, (void *)pool-&gt;threads,
+221               pool-&gt;thread_count);
+222   }
+223 
+224   // Clean up work queue (in case there's pending work)
+225   if (pool-&gt;is_work_queue_mode) {
+226     mutex_lock(&amp;pool-&gt;work_queue_mutex);
+227     thread_pool_work_entry_t *entry = pool-&gt;work_queue;
+228     while (entry) {
+229       thread_pool_work_entry_t *next = entry-&gt;next;
+230       SAFE_FREE(entry);
+231       entry = next;
+232     }
+233     pool-&gt;work_queue = NULL;
+234     mutex_unlock(&amp;pool-&gt;work_queue_mutex);
+235 
+236     // Destroy condition variable and work queue mutex
+237     cond_destroy(&amp;pool-&gt;work_available);
+238     mutex_destroy(&amp;pool-&gt;work_queue_mutex);
+239   }
+240 
+241   // Destroy threads mutex
+242   mutex_destroy(&amp;pool-&gt;threads_mutex);
+243 
+244   NAMED_UNREGISTER(pool);
+245 
+246   // Free pool
+247   log_debug(&quot;About to free thread pool '%s' at %p&quot;, pool-&gt;name, (void *)pool);
+248   SAFE_FREE(pool);
+249 
+250   log_debug(&quot;Thread pool destroyed (freed memory)&quot;);
+251 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_destroy()</b>, <b>pool</b>, and
+    <b>thread_pool_stop_all()</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_shutdown()</b>, <b>server_main()</b>,
+    <b>tcp_server_destroy()</b>, <b>tcp_server_remove_client()</b>,
+    <b>thread_pool_create_with_workers()</b>, and
+    <b>websocket_server_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_thread_pool_get_count_(const_thread_pool_t_*_pool)"><a class="permalink" href="#size_t_thread_pool_get_count_(const_thread_pool_t_*_pool)">size_t
+  thread_pool_get_count (const thread_pool_t * pool)</a></h2>
+<p class="Pp">Definition at line <b>442</b> of file <b>thread_pool.c</b>.</p>
+<pre>442                                                         {
+443   if (!pool) {
+444     return 0;
+445   }
+446 
+447   // Note: We're not locking here for performance
+448   // thread_count is a simple size_t which should be atomic on most platforms
+449   // If strict thread safety is required, use mutex_lock/unlock
+450   return pool-&gt;thread_count;
+451 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>tcp_server_get_thread_count()</b>,
+    <b>tcp_server_spawn_thread()</b>, and <b>thread_pool_has_threads()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> thread_pool_has_threads (const thread_pool_t *
+  pool)</h2>
+<p class="Pp">Definition at line <b>453</b> of file <b>thread_pool.c</b>.</p>
+<pre>453                                                         {
+454   return thread_pool_get_count(pool) &gt; 0;
+455 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>pool</b>, and <b>thread_pool_get_count()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_thread_pool_interrupt_all_(thread_pool_t_*_pool,_int_sig)"><a class="permalink" href="#asciichat_error_t_thread_pool_interrupt_all_(thread_pool_t_*_pool,_int_sig)">asciichat_error_t
+  thread_pool_interrupt_all (thread_pool_t * pool, int sig)</a></h2>
+<p class="Pp">Definition at line <b>457</b> of file <b>thread_pool.c</b>.</p>
+<pre>457                                                                           {
+458   if (!pool) {
+459     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
+460   }
+461 
+462 #ifndef _WIN32
+463   // Only available on POSIX systems (Unix/Linux/macOS)
+464   mutex_lock(&amp;pool-&gt;threads_mutex);
+465 
+466   if (pool-&gt;thread_count == 0) {
+467     mutex_unlock(&amp;pool-&gt;threads_mutex);
+468     log_debug(&quot;Thread pool '%s' has no threads to interrupt&quot;, pool-&gt;name);
+469     return ASCIICHAT_OK;
+470   }
+471 
+472   log_debug(&quot;Sending signal %d to %zu threads in pool '%s'&quot;, sig, pool-&gt;thread_count, pool-&gt;name);
+473 
+474   // Iterate through all threads and send signal
+475   thread_pool_entry_t *entry = pool-&gt;threads;
+476   int sent_count = 0;
+477   int failed_count = 0;
+478 
+479   while (entry) {
+480     // pthread_kill returns 0 on success, non-zero error code on failure
+481     if (pthread_kill(entry-&gt;thread, sig) != 0) {
+482       log_warn(&quot;Failed to send signal %d to thread '%s' in pool '%s'&quot;, sig, entry-&gt;name, pool-&gt;name);
+483       failed_count++;
+484     } else {
+485       sent_count++;
+486     }
+487     entry = entry-&gt;next;
+488   }
+489 
+490   mutex_unlock(&amp;pool-&gt;threads_mutex);
+491 
+492   log_debug(&quot;Sent signal %d to %d/%zu threads in pool '%s' (%d failures)&quot;, sig, sent_count, pool-&gt;thread_count,
+493             pool-&gt;name, failed_count);
+494 
+495   if (failed_count &gt; 0 &amp;&amp; sent_count == 0) {
+496     return SET_ERRNO(ERROR_THREAD, &quot;Failed to send signal to any threads in pool '%s'&quot;, pool-&gt;name);
+497   }
+498 
+499   return ASCIICHAT_OK;
+500 #else
+501   // Windows: no pthread_kill equivalent needed - socket_shutdown() is sufficient
+502   (void)sig; // Unused on Windows
+503   log_debug(&quot;thread_pool_interrupt_all: no-op on Windows (socket shutdown is sufficient)&quot;);
+504   return ASCIICHAT_OK;
+505 #endif
+506 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>pool</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_thread_pool_queue_work_(const_char_*_name,_thread_pool_t_*_pool,_void_*(*_work_func_)(void_*),_void_*_work_arg)"><a class="permalink" href="#asciichat_error_t_thread_pool_queue_work_(const_char_*_name,_thread_pool_t_*_pool,_void_*(*_work_func_)(void_*),_void_*_work_arg)">asciichat_error_t
+  thread_pool_queue_work (const char * name, thread_pool_t * pool, void *(*
+  work_func )(void *), void * work_arg)</a></h2>
+<p class="Pp">Definition at line <b>253</b> of file <b>thread_pool.c</b>.</p>
+<pre>254                                                          {
+255   if (!name) {
+256     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;work name is required&quot;);
+257   }
+258 
+259   if (!pool) {
+260     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
+261   }
+262 
+263   if (!pool-&gt;is_work_queue_mode) {
+264     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Pool not in work queue mode. Use thread_pool_create_with_workers()&quot;);
+265   }
+266 
+267   if (!work_func) {
+268     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;work_func is NULL&quot;);
+269   }
+270 
+271   // Allocate work entry
+272   thread_pool_work_entry_t *entry = SAFE_MALLOC(sizeof(thread_pool_work_entry_t), thread_pool_work_entry_t *);
+273   if (!entry) {
+274     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate work entry&quot;);
+275   }
+276 
+277   entry-&gt;work_func = work_func;
+278   entry-&gt;work_arg = work_arg;
+279   entry-&gt;next = NULL;
+280 
+281   // Register work with debug naming system
+282   NAMED_REGISTER_THREADPOOL_WORK(entry, name, NULL);
+283 
+284   // Add to work queue (at the end)
+285   mutex_lock(&amp;pool-&gt;work_queue_mutex);
+286 
+287   // Find the last entry in the queue
+288   if (!pool-&gt;work_queue) {
+289     pool-&gt;work_queue = entry;
+290   } else {
+291     thread_pool_work_entry_t *last = pool-&gt;work_queue;
+292     while (last-&gt;next) {
+293       last = last-&gt;next;
+294     }
+295     last-&gt;next = entry;
+296   }
+297 
+298   // Signal workers that work is available (WHILE HOLDING MUTEX to prevent lost wakeup race)
+299   cond_signal(&amp;pool-&gt;work_available);
+300 
+301   mutex_unlock(&amp;pool-&gt;work_queue_mutex);
+302 
+303   log_dev(&quot;Queued work to pool '%s' (workers=%zu)&quot;, pool-&gt;name, pool-&gt;num_workers);
+304   return ASCIICHAT_OK;
+305 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>pool</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_thread_pool_spawn_(thread_pool_t_*_pool,_void_*(*_thread_func_)(void_*),_void_*_thread_arg,_int_stop_id,_const_char_*_thread_name)"><a class="permalink" href="#asciichat_error_t_thread_pool_spawn_(thread_pool_t_*_pool,_void_*(*_thread_func_)(void_*),_void_*_thread_arg,_int_stop_id,_const_char_*_thread_name)">asciichat_error_t
+  thread_pool_spawn (thread_pool_t * pool, void *(* thread_func )(void *), void
+  * thread_arg, int stop_id, const char * thread_name)</a></h2>
+<p class="Pp">Definition at line <b>307</b> of file <b>thread_pool.c</b>.</p>
+<pre>308                                                              {
+309   if (!pool) {
+310     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
+311   }
+312 
+313   if (pool-&gt;is_work_queue_mode) {
+314     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Cannot spawn threads in work queue mode. Use thread_pool_queue_work()&quot;);
+315   }
+316 
+317   if (!thread_func) {
+318     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;thread_func is NULL&quot;);
+319   }
+320 
+321   // Allocate thread entry
+322   thread_pool_entry_t *entry = SAFE_MALLOC(sizeof(thread_pool_entry_t), thread_pool_entry_t *);
+323   if (!entry) {
+324     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate thread pool entry&quot;);
+325   }
+326 
+327   memset(entry, 0, sizeof(*entry));
+328   entry-&gt;stop_id = stop_id;
+329   entry-&gt;thread_func = thread_func;
+330   entry-&gt;thread_arg = thread_arg;
+331   entry-&gt;next = NULL;
+332 
+333   // Copy thread name (truncate if necessary)
+334   if (thread_name) {
+335     SAFE_STRNCPY(entry-&gt;name, thread_name, sizeof(entry-&gt;name));
+336   } else {
+337     // Auto-generate name
+338     SAFE_SNPRINTF(entry-&gt;name, sizeof(entry-&gt;name), &quot;%s_worker_%d&quot;, pool-&gt;name, stop_id);
+339   }
+340 
+341   // Create thread
+342   if (asciichat_thread_create(&amp;entry-&gt;thread, entry-&gt;name, thread_func, thread_arg) != 0) {
+343     // Save name before freeing entry
+344     char thread_name_copy[64];
+345     SAFE_STRNCPY(thread_name_copy, entry-&gt;name, sizeof(thread_name_copy));
+346     SAFE_FREE(entry);
+347     return SET_ERRNO(ERROR_THREAD, &quot;Failed to create thread '%s' in pool '%s'&quot;, thread_name_copy, pool-&gt;name);
+348   }
+349 
+350   // Add to thread list (sorted by stop_id)
+351   mutex_lock(&amp;pool-&gt;threads_mutex);
+352 
+353   if (!pool-&gt;threads || pool-&gt;threads-&gt;stop_id &gt; stop_id) {
+354     // Insert at head
+355     entry-&gt;next = pool-&gt;threads;
+356     pool-&gt;threads = entry;
+357   } else {
+358     // Find insertion point (maintain sorted order by stop_id)
+359     thread_pool_entry_t *prev = pool-&gt;threads;
+360     while (prev-&gt;next &amp;&amp; prev-&gt;next-&gt;stop_id &lt;= stop_id) {
+361       prev = prev-&gt;next;
+362     }
+363     entry-&gt;next = prev-&gt;next;
+364     prev-&gt;next = entry;
+365   }
+366 
+367   pool-&gt;thread_count++;
+368   mutex_unlock(&amp;pool-&gt;threads_mutex);
+369 
+370   log_debug(&quot;Spawned thread '%s' (stop_id=%d) in pool '%s' (total_threads=%zu)&quot;, entry-&gt;name, stop_id, pool-&gt;name,
+371             pool-&gt;thread_count);
+372 
+373   return ASCIICHAT_OK;
+374 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>, and <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>acds_server_init()</b>,
+    <b>audio_sender_init()</b>, <b>audio_start_thread()</b>,
+    <b>capture_start_thread()</b>, <b>keepalive_start_thread()</b>,
+    <b>protocol_start_connection()</b>, <b>server_main()</b>, and
+    <b>tcp_server_spawn_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_thread_pool_stop_all_(thread_pool_t_*_pool)"><a class="permalink" href="#asciichat_error_t_thread_pool_stop_all_(thread_pool_t_*_pool)">asciichat_error_t
+  thread_pool_stop_all (thread_pool_t * pool)</a></h2>
+<p class="Pp">Definition at line <b>376</b> of file <b>thread_pool.c</b>.</p>
+<pre>376                                                             {
+377   if (!pool) {
+378     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;pool is NULL&quot;);
+379   }
+380 
+381   mutex_lock(&amp;pool-&gt;threads_mutex);
+382 
+383   if (pool-&gt;thread_count == 0) {
+384     mutex_unlock(&amp;pool-&gt;threads_mutex);
+385     log_debug(&quot;Thread pool '%s' has no threads to stop&quot;, pool-&gt;name);
+386     return ASCIICHAT_OK;
+387   }
+388 
+389   log_debug(&quot;Stopping %zu threads in pool '%s' in stop_id order&quot;, pool-&gt;thread_count, pool-&gt;name);
+390 
+391   // For work queue mode, signal workers to shutdown (BEFORE releasing the mutex to prevent new work)
+392   if (pool-&gt;is_work_queue_mode) {
+393     mutex_lock(&amp;pool-&gt;work_queue_mutex);
+394     pool-&gt;shutdown_requested = true;
+395     cond_broadcast(&amp;pool-&gt;work_available);
+396     mutex_unlock(&amp;pool-&gt;work_queue_mutex);
+397   }
+398 
+399   // Save thread list and clear it (WHILE holding mutex to prevent worker state changes)
+400   thread_pool_entry_t *threads_to_join = pool-&gt;threads;
+401   pool-&gt;threads = NULL;
+402   pool-&gt;thread_count = 0;
+403 
+404   // Release mutex BEFORE joining threads to prevent deadlock if workers need to acquire it
+405   mutex_unlock(&amp;pool-&gt;threads_mutex);
+406 
+407   // Now join threads (WITHOUT holding the mutex to prevent deadlock)
+408   thread_pool_entry_t *entry = threads_to_join;
+409   int joined_count = 0, freed_count = 0;
+410   const uint64_t THREAD_JOIN_TIMEOUT_NS = 2 * 1000000000ULL; // 2 second timeout per thread
+411 
+412   while (entry) {
+413     log_debug(&quot;Joining thread '%s' (stop_id=%d) in pool '%s' with 2s timeout&quot;, entry-&gt;name, entry-&gt;stop_id, pool-&gt;name);
+414 
+415     // Join thread with timeout to prevent hanging on stuck threads
+416     // If thread doesn't exit in 2 seconds, log warning and continue anyway
+417     // This prevents reconnection loop from being blocked by deadlocked workers
+418     int join_result = asciichat_thread_join_timeout(&amp;entry-&gt;thread, NULL, THREAD_JOIN_TIMEOUT_NS);
+419     if (join_result != 0) {
+420       if (join_result == ETIMEDOUT) {
+421         log_warn(&quot;Thread '%s' (stop_id=%d) did not exit within 2s timeout - may be stuck. Continuing anyway.&quot;,
+422                  entry-&gt;name, entry-&gt;stop_id);
+423       } else {
+424         log_warn(&quot;Failed to join thread '%s' in pool '%s' (error %d)&quot;, entry-&gt;name, pool-&gt;name, join_result);
+425       }
+426     } else {
+427       joined_count++;
+428     }
+429 
+430     thread_pool_entry_t *next = entry-&gt;next;
+431     log_debug(&quot;Freeing thread_pool_entry '%s' at %p&quot;, entry-&gt;name, (void *)entry);
+432     SAFE_FREE(entry);
+433     freed_count++;
+434     entry = next;
+435   }
+436   log_debug(&quot;thread_pool_stop_all: joined=%d, freed=%d&quot;, joined_count, freed_count);
+437 
+438   log_debug(&quot;All threads stopped in pool '%s'&quot;, pool-&gt;name);
+439   return ASCIICHAT_OK;
+440 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>pool</b>.</p>
+<p class="Pp">Referenced by <b>protocol_stop_connection()</b>,
+    <b>tcp_server_stop_client_threads()</b>, and
+  <b>thread_pool_destroy()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

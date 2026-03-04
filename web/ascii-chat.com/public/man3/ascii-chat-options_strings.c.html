@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>strings.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">strings.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">strings.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">strings.c - Centralized enum and mode string conversion - single
+    source of truth.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>mode_descriptor_t</b>
+  <br/>
+  Metadata for a mode.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>asciichat_mode_to_string</b> (asciichat_mode_t
+    mode)
+  <br/>
+  asciichat_mode_t <b>asciichat_string_to_mode</b> (const char *str)
+  <br/>
+  <b>bool</b> <b>asciichat_is_valid_mode_string</b> (const char *str)
+  <br/>
+  size_t <b>asciichat_get_all_mode_strings</b> (const char ***out_names)
+  <br/>
+  const char * <b>asciichat_suggest_mode</b> (const char *input)
+  <br/>
+  const char * <b>color_mode_to_string</b> (terminal_color_mode_t mode)
+  <br/>
+  const char * <b>render_mode_to_string</b> (render_mode_t mode)
+  <br/>
+  const char * <b>palette_type_to_string</b> (palette_type_t type)
+  <br/>
+  const char * <b>asciichat_suggest_enum_value</b> (const char *option_name,
+    const char *input)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Centralized enum and mode string conversion - single source of
+    truth.</p>
+<p class="Pp">This module provides bidirectional conversion between enums and
+    strings:</p>
+<ul class="Bl-bullet">
+  <li>Mode enum &#x2194; mode string (&quot;server&quot;, &quot;client&quot;,
+      &quot;mirror&quot;, etc.)</li>
+  <li>Option enum values &#x2194; string values (&quot;auto&quot;,
+      &quot;none&quot;, &quot;16&quot;, etc.)</li>
+  <li>Fuzzy matching suggestions via levenshtein distance</li>
+</ul>
+<p class="Pp">All mode and enum string conversions should use this module.</p>
+<p class="Pp">Definition in file <b>options/strings.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_asciichat_get_all_mode_strings_(const_char_***_out_names)"><a class="permalink" href="#size_t_asciichat_get_all_mode_strings_(const_char_***_out_names)">size_t
+  asciichat_get_all_mode_strings (const char *** out_names)</a></h2>
+<p class="Pp">Definition at line <b>85</b> of file <b>options/strings.c</b>.</p>
+<pre>85                                                                {
+86   static const char *names[32]; // Max 32 modes
+87   size_t count = 0;
+88 
+89   for (size_t i = 0; mode_registry[i].name != NULL &amp;&amp; count &lt; 32; i++) {
+90     // Skip duplicates (like &quot;acds&quot; alias)
+91     bool duplicate = false;
+92     for (size_t j = 0; j &lt; count; j++) {
+93       if (strcmp(names[j], mode_registry[i].name) == 0) {
+94         duplicate = true;
+95         break;
+96       }
+97     }
+98     if (!duplicate) {
+99       names[count++] = mode_registry[i].name;
+100     }
+101   }
+102 
+103   if (out_names) {
+104     *out_names = names;
+105   }
+106   return count;
+107 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_suggest_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> asciichat_is_valid_mode_string (const char *
+  str)</h2>
+<p class="Pp">Definition at line <b>81</b> of file <b>options/strings.c</b>.</p>
+<pre>81                                                      {
+82   return asciichat_string_to_mode(str) != MODE_INVALID;
+83 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_string_to_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_asciichat_mode_to_string_(asciichat_mode_t_mode)"><a class="permalink" href="#const_char_*_asciichat_mode_to_string_(asciichat_mode_t_mode)">const
+  char * asciichat_mode_to_string (asciichat_mode_t mode)</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>options/strings.c</b>.</p>
+<pre>53                                                             {
+54   // Special case: MODE_DISCOVERY is the default mode, show as &quot;default&quot; to users
+55   if (mode == MODE_DISCOVERY) {
+56     return &quot;default&quot;;
+57   }
+58 
+59   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
+60     if (mode_registry[i].mode == mode) {
+61       return mode_registry[i].name;
+62     }
+63   }
+64   return &quot;unknown&quot;;
+65 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_mode_t_asciichat_string_to_mode_(const_char_*_str)"><a class="permalink" href="#asciichat_mode_t_asciichat_string_to_mode_(const_char_*_str)">asciichat_mode_t
+  asciichat_string_to_mode (const char * str)</a></h2>
+<p class="Pp">Definition at line <b>67</b> of file <b>options/strings.c</b>.</p>
+<pre>67                                                            {
+68   if (!str) {
+69     return MODE_INVALID;
+70   }
+71 
+72   for (size_t i = 0; mode_registry[i].name != NULL; i++) {
+73     if (strcmp(mode_registry[i].name, str) == 0) {
+74       return mode_registry[i].mode;
+75     }
+76   }
+77 
+78   return MODE_INVALID;
+79 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_is_valid_mode_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)"><a class="permalink" href="#const_char_*_asciichat_suggest_enum_value_(const_char_*_option_name,_const_char_*_input)">const
+  char * asciichat_suggest_enum_value (const char * option_name, const char *
+  input)</a></h2>
+<p class="Pp">Definition at line <b>192</b> of file
+  <b>options/strings.c</b>.</p>
+<pre>192                                                                                      {
+193   if (!option_name || !input) {
+194     return NULL;
+195   }
+196 
+197   size_t value_count = 0;
+198   const char **values = options_get_enum_values(option_name, &amp;value_count);
+199 
+200   if (!values || value_count == 0) {
+201     return NULL;
+202   }
+203 
+204   // Create NULL-terminated array for levenshtein_find_similar
+205   static const char *null_terminated[64]; // Max 64 enum values
+206   for (size_t i = 0; i &lt; value_count &amp;&amp; i &lt; 63; i++) {
+207     null_terminated[i] = values[i];
+208   }
+209   null_terminated[value_count] = NULL;
+210 
+211   return levenshtein_find_similar(input, null_terminated);
+212 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>levenshtein_find_similar()</b>, and
+    <b>options_get_enum_values()</b>.</p>
+<p class="Pp">Referenced by <b>parse_color_mode()</b>,
+    <b>parse_palette_type()</b>, and <b>parse_render_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_asciichat_suggest_mode_(const_char_*_input)"><a class="permalink" href="#const_char_*_asciichat_suggest_mode_(const_char_*_input)">const
+  char * asciichat_suggest_mode (const char * input)</a></h2>
+<p class="Pp">Definition at line <b>109</b> of file
+  <b>options/strings.c</b>.</p>
+<pre>109                                                       {
+110   if (!input) {
+111     return NULL;
+112   }
+113 
+114   const char **names = NULL;
+115   size_t count = asciichat_get_all_mode_strings(&amp;names);
+116 
+117   // Create NULL-terminated array for levenshtein_find_similar
+118   static const char *null_terminated[33]; // Max 32 modes + NULL
+119   for (size_t i = 0; i &lt; count &amp;&amp; i &lt; 32; i++) {
+120     null_terminated[i] = names[i];
+121   }
+122   null_terminated[count] = NULL;
+123 
+124   return levenshtein_find_similar(input, null_terminated);
+125 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_get_all_mode_strings()</b>, and
+    <b>levenshtein_find_similar()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_color_mode_to_string_(terminal_color_mode_t_mode)"><a class="permalink" href="#const_char_*_color_mode_to_string_(terminal_color_mode_t_mode)">const
+  char * color_mode_to_string (terminal_color_mode_t mode)</a></h2>
+<p class="Pp">Definition at line <b>131</b> of file
+  <b>options/strings.c</b>.</p>
+<pre>131                                                              {
+132   switch (mode) {
+133   case TERM_COLOR_AUTO:
+134     return &quot;auto&quot;;
+135   case TERM_COLOR_NONE:
+136     return &quot;none&quot;;
+137   case TERM_COLOR_16:
+138     return &quot;16&quot;;
+139   case TERM_COLOR_256:
+140     return &quot;256&quot;;
+141   case TERM_COLOR_TRUECOLOR:
+142     return &quot;truecolor&quot;;
+143   default:
+144     return &quot;unknown&quot;;
+145   }
+146 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_palette_type_to_string_(palette_type_t_type)"><a class="permalink" href="#const_char_*_palette_type_to_string_(palette_type_t_type)">const
+  char * palette_type_to_string (palette_type_t type)</a></h2>
+<p class="Pp">Definition at line <b>169</b> of file
+  <b>options/strings.c</b>.</p>
+<pre>169                                                         {
+170   switch (type) {
+171   case PALETTE_STANDARD:
+172     return &quot;standard&quot;;
+173   case PALETTE_BLOCKS:
+174     return &quot;blocks&quot;;
+175   case PALETTE_DIGITAL:
+176     return &quot;digital&quot;;
+177   case PALETTE_MINIMAL:
+178     return &quot;minimal&quot;;
+179   case PALETTE_COOL:
+180     return &quot;cool&quot;;
+181   case PALETTE_CUSTOM:
+182     return &quot;custom&quot;;
+183   default:
+184     return &quot;unknown&quot;;
+185   }
+186 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_render_mode_to_string_(render_mode_t_mode)"><a class="permalink" href="#const_char_*_render_mode_to_string_(render_mode_t_mode)">const
+  char * render_mode_to_string (render_mode_t mode)</a></h2>
+<p class="Pp">Definition at line <b>152</b> of file
+  <b>options/strings.c</b>.</p>
+<pre>152                                                       {
+153   switch (mode) {
+154   case RENDER_MODE_FOREGROUND:
+155     return &quot;foreground&quot;;
+156   case RENDER_MODE_BACKGROUND:
+157     return &quot;background&quot;;
+158   case RENDER_MODE_HALF_BLOCK:
+159     return &quot;half-block&quot;;
+160   default:
+161     return &quot;unknown&quot;;
+162   }
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

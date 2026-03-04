@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_display_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_display_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_display_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_display_config_t - Configuration for session display
+    context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/display.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>snapshot_mode</b>
+  <br/>
+  Enable snapshot mode (single frame capture). palette_type_t
+    <b>palette_type</b>
+  <br/>
+  Palette type for ASCII rendering. const char * <b>custom_palette</b>
+  <br/>
+  Custom palette characters (required if palette_type == PALETTE_CUSTOM).
+    terminal_color_mode_t <b>color_mode</b>
+  <br/>
+  Color mode override (TERM_COLOR_AUTO for auto-detection). <b>bool</b>
+    <b>enable_audio_playback</b>
+  <br/>
+  Enable audio playback (mirror mode). void * <b>audio_ctx</b>
+  <br/>
+  Audio context for playback (borrowed, not owned).
+    <b>session_display_should_exit_fn</b> <b>should_exit_callback</b>
+  <br/>
+  Optional: callback to check if initialization should be cancelled (e.g.,
+    shutdown signal). void * <b>callback_data</b>
+  <br/>
+  Opaque data passed to should_exit_callback. uint32_t <b>render_fps</b>
+  <br/>
+  Video FPS for render-file encoding (0 = use default/option). void *
+    <b>render_file_audio_source</b>
+  <br/>
+  Audio source for render-file output (media source for file/URL audio,
+    borrowed). void * <b>render_file_audio_capture_rb</b>
+  <br/>
+  Audio capture ring buffer for render-file output (live mic, borrowed).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration for session display context.</p>
+<p class="Pp">Specifies display parameters including snapshot mode, palette, and
+    color mode.</p>
+<p class="Pp">Definition at line <b>75</b> of file
+    <b>common/session/display.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_display_config_t::audio_ctx"><a class="permalink" href="#void*_session_display_config_t::audio_ctx">void*
+  session_display_config_t::audio_ctx</a></h2>
+<p class="Pp">Audio context for playback (borrowed, not owned).</p>
+<p class="Pp">Definition at line <b>92</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_display_config_t::callback_data"><a class="permalink" href="#void*_session_display_config_t::callback_data">void*
+  session_display_config_t::callback_data</a></h2>
+<p class="Pp">Opaque data passed to should_exit_callback.</p>
+<p class="Pp">Definition at line <b>98</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="terminal_color_mode_t_session_display_config_t::color_mode"><a class="permalink" href="#terminal_color_mode_t_session_display_config_t::color_mode">terminal_color_mode_t
+  session_display_config_t::color_mode</a></h2>
+<p class="Pp">Color mode override (TERM_COLOR_AUTO for auto-detection).</p>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_display_config_t::custom_palette"><a class="permalink" href="#const_char*_session_display_config_t::custom_palette">const
+  char* session_display_config_t::custom_palette</a></h2>
+<p class="Pp">Custom palette characters (required if palette_type ==
+    PALETTE_CUSTOM).</p>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_display_config_t::enable_audio_playback</h2>
+<p class="Pp">Enable audio playback (mirror mode).</p>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="palette_type_t_session_display_config_t::palette_type"><a class="permalink" href="#palette_type_t_session_display_config_t::palette_type">palette_type_t
+  session_display_config_t::palette_type</a></h2>
+<p class="Pp">Palette type for ASCII rendering.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_display_config_t::render_file_audio_capture_rb"><a class="permalink" href="#void*_session_display_config_t::render_file_audio_capture_rb">void*
+  session_display_config_t::render_file_audio_capture_rb</a></h2>
+<p class="Pp">Audio capture ring buffer for render-file output (live mic,
+    borrowed).</p>
+<p class="Pp">Definition at line <b>107</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_display_config_t::render_file_audio_source"><a class="permalink" href="#void*_session_display_config_t::render_file_audio_source">void*
+  session_display_config_t::render_file_audio_source</a></h2>
+<p class="Pp">Audio source for render-file output (media source for file/URL
+    audio, borrowed).</p>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_session_display_config_t::render_fps"><a class="permalink" href="#uint32_t_session_display_config_t::render_fps">uint32_t
+  session_display_config_t::render_fps</a></h2>
+<p class="Pp">Video FPS for render-file encoding (0 = use default/option).</p>
+<p class="Pp">Definition at line <b>101</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_display_should_exit_fn</b>
+  session_display_config_t::should_exit_callback</h2>
+<p class="Pp">Optional: callback to check if initialization should be cancelled
+    (e.g., shutdown signal).</p>
+<p class="Pp">Definition at line <b>95</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_display_config_t::snapshot_mode</h2>
+<p class="Pp">Enable snapshot mode (single frame capture).</p>
+<p class="Pp">Definition at line <b>77</b> of file
+    <b>common/session/display.h</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>, and
+    <b>session_display_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.8.38</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>
