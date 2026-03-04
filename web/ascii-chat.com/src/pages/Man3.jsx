@@ -136,7 +136,9 @@ export default function Man3() {
       .then((html) => {
         const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
         const content = bodyMatch ? bodyMatch[1] : html;
-        setSelectedPageContent(content);
+        // Highlight matches in the HTML content
+        const highlightedContent = highlightMatchesInHTML(content, searchQuery);
+        setSelectedPageContent(highlightedContent);
         setSelectedPageName(pageName);
         if (lineNumber) {
           setTargetLineNumber(lineNumber);
@@ -172,6 +174,32 @@ export default function Man3() {
     }
   };
 
+  const highlightMatchesInHTML = (html, query) => {
+    if (!query.trim()) return html;
+
+    try {
+      const regex = new RegExp(`(${query})`, "gi");
+      // Split by HTML tags, only highlight text content (not tag content)
+      const parts = html.split(/(<[^>]*>)/);
+      const highlighted = parts.map(part => {
+        if (part.startsWith('<')) {
+          // It's a tag, don't modify
+          return part;
+        } else {
+          // It's text content, highlight matches
+          return part.replace(
+            regex,
+            '<span class="bg-yellow-900/50 text-yellow-200">$1</span>'
+          );
+        }
+      }).join('');
+
+      return highlighted;
+    } catch (e) {
+      return html;
+    }
+  };
+
   // Scroll to target line when content loads
   useEffect(() => {
     if (selectedPageContent && targetLineNumber && contentViewerRef.current) {
@@ -179,13 +207,16 @@ export default function Man3() {
       setTimeout(() => {
         const viewer = contentViewerRef.current;
         if (viewer) {
-          // Estimate scroll position based on line number (rough approximation)
-          // Assume each line is roughly 20px tall in the rendered content
-          const estimatedScrollPosition = (targetLineNumber - 1) * 20;
-          const centerOffset = viewer.clientHeight / 2;
-          viewer.scrollTop = Math.max(0, estimatedScrollPosition - centerOffset);
+          // Estimate scroll position based on line number
+          // HTML man pages typically render with ~40px per line (font + spacing)
+          const estimatedLineHeight = 40;
+          const estimatedScrollPosition = (targetLineNumber - 1) * estimatedLineHeight;
+          // Show matched line with ~100px of context above (avoids clamping for lines near top)
+          const topMargin = 100;
+          const finalScrollTop = Math.max(0, estimatedScrollPosition - topMargin);
+          viewer.scrollTop = finalScrollTop;
         }
-      }, 100);
+      }, 200);
       setTargetLineNumber(null);
     }
   }, [selectedPageContent, targetLineNumber]);
