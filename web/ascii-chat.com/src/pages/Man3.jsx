@@ -218,8 +218,12 @@ export default function Man3() {
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
-        // Only preserve hash if lineNumber is provided (has line number anchor)
-        const hash = lineNumber ? window.location.hash : "";
+        // Only remove line number hashes (#l0000 or #l0000-00000) when not targeting a line
+        // Preserve any other hashes
+        let hash = window.location.hash;
+        if (!lineNumber && /#l\d+(?:-\d+)?$/.test(hash)) {
+          hash = ""; // Remove line number hash
+        }
         window.history.replaceState({}, "", `/man3?${params.toString()}` + hash);
       })
       .catch((e) => console.error("Failed to load page:", e));
