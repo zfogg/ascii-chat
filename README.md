@@ -4,7 +4,7 @@ Video chat in your terminal
 
 🌐 **[ascii-chat.com](https://ascii-chat.com)** - Homepage, installation, and documentation
 
-📚 **[Doxygen Documentation](https://zfogg.github.io/ascii-chat/)** - Developer API reference, architecture guides, and more
+📚 **[API Reference & Man Pages](https://ascii-chat.com/man3)** - Developer API reference and C library documentation
 
 Probably the first command line video chat program (let me know if this isn't
 true). Initial commits _November 20-24, 2013_, with
@@ -26,9 +26,9 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 🆕 We support UTF-8 now so it's not just ASCII anymore. However, the name is still ascii-chat.
 
-🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol docs](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**.
+🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol](https://ascii-chat.com/man3?page=network_2network_8c)** in the man3 pages.
 
-🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System docs](https://zfogg.github.io/ascii-chat/group__audio.html#topic_audio)**. (TODO: buggy - needs work). Update: works with --file and --url.
+🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System](https://ascii-chat.com/man3?page=lib_2audio_2audio_8c)** in the man3 pages. (TODO: buggy - needs work). Update: works with --file and --url.
 
 🆕 **Media support with smart resolution!** ascii-chat can turn media from files and URLs into ascii art. Use `--file` for local files (all FFmpeg-supported formats) or `--url` for streaming. For complex streaming sites (YouTube, TikTok, Twitch, etc.), ascii-chat automatically uses yt-dlp to extract playable streams. For direct HTTP streams and media files, FFmpeg handles them natively. You can livestream the result with audio into an ascii-chat call, so you could watch a video with friends and discuss it live, all as ascii art. Pass arbitrary yt-dlp options with `--yt-dlp-options` if needed (e.g., `--yt-dlp-options "--no-warnings"`)
 
@@ -103,8 +103,8 @@ paru -S libasciichat-git     # Development libraries from git
 **All Platforms:**
 
 - All downloads: [GitHub Releases](https://github.com/zfogg/ascii-chat/releases)
-- Documentation: **[zfogg.github.io/ascii-chat](https://zfogg.github.io/ascii-chat/)** — API reference and developer guides
-- Source installation: follow the [Build from source](#build-from-source) steps (or the **[Build System docs](https://zfogg.github.io/ascii-chat/group__build.html)**)
+- Documentation: **[ascii-chat.com/man3](https://ascii-chat.com/man3)** — C library API reference and man3 pages
+- Source installation: follow the [Build from source](#build-from-source) steps
 
 ## Build From Source
 
@@ -232,9 +232,7 @@ See **[ascii-chat.com/man1/#ENVIRONMENT](https://www.ascii-chat.com/man1#ENVIRON
 ## ascii-chat Internet Protocol (ACIP)
 
 - 📡 **User Network Documentation: [ascii-chat.com/docs/network](https://www.ascii-chat.com/docs/network)**
-- 📡 **Developer Protocol API Reference: [Doxygen network protocol documentation](https://zfogg.github.io/ascii-chat/group__network.html#topic_network)**
-
-Regular users see the first link. Developers see the second link also.
+- 📡 **Developer API Reference: [Man3 Network Protocol Pages](https://ascii-chat.com/man3?page=network_2network_8c)**
 
 ### Philosophy
 
@@ -382,7 +380,7 @@ See the online **[API documentation](https://zfogg.github.io/ascii-chat/)** for 
 
 ascii-chat is an open source project with an MIT license, meaning you can and should use our code to make cool stuff. Follow through this Open Source section of the README and you'll be compiling against libasciichat in no time.
 
-> 💡 **For detailed API documentation**, see the **[online docs](https://zfogg.github.io/ascii-chat/)** — includes function references, architecture diagrams, and module documentation generated from source comments.
+> 💡 **For detailed API documentation**, see the **[man3 pages](https://ascii-chat.com/man3)** — includes function references, architecture, and module documentation.
 
 The first thing you need to do is get the dependencies. Some of them are git submodules of the repo. When you clone the repo get the submodules too.
 
@@ -468,11 +466,11 @@ For development tools (formatting, linting, documentation generation, packaging)
 
 📖 **[Online Documentation](https://zfogg.github.io/ascii-chat/)** — API reference, architecture guides, and module documentation
 
-The documentation is automatically generated from source code using Doxygen and published to GitHub Pages. For local documentation builds, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
+The documentation is automatically generated from source code using Doxygen and published as man3 pages on **[ascii-chat.com/man3](https://ascii-chat.com/man3)**. The original Doxygen HTML is available on **[GitHub Pages](https://zfogg.github.io/ascii-chat/)** if you prefer that format.
 
 ### Testing
 
-> 🧪 **Full documentation: [Testing Framework](https://zfogg.github.io/ascii-chat/group__testing.html)**
+> 🧪 **Full documentation: [Testing Framework](https://ascii-chat.com/man3?page=tests_2common_8c)** in the man3 pages
 
 #### Testing Framework
 
