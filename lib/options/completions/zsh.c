@@ -152,18 +152,22 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "\n"
                   "_ascii_chat_args() {\n"
                   "  case $words[1] in\n"
+                  "    # Server-like modes\n"
                   "    server)\n"
                   "      _ascii_chat_server\n"
                   "      ;;\n"
+                  "    discovery-service)\n"
+                  "      _ascii_chat_discovery_service\n"
+                  "      ;;\n"
+                  "\n"
+                  "    # Client-like modes\n"
                   "    client)\n"
                   "      _ascii_chat_client\n"
                   "      ;;\n"
                   "    mirror)\n"
                   "      _ascii_chat_mirror\n"
                   "      ;;\n"
-                  "    discovery-service)\n"
-                  "      _ascii_chat_discovery_service\n"
-                  "      ;;\n"
+                  "\n"
                   "    *)\n"
                   "      # Binary-level options\n");
 
@@ -180,6 +184,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  esac\n"
                   "}\n"
                   "\n"
+                  "# Server-like modes: handle incoming connections and stream management\n"
                   "_ascii_chat_server() {\n");
 
   /* Server options - grouped by category */
@@ -193,6 +198,21 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
 
   fprintf(output, "}\n"
                   "\n"
+                  "_ascii_chat_discovery_service() {\n");
+
+  /* Discovery-service options - grouped by category */
+  size_t discovery_svc_count = 0;
+  const option_descriptor_t *discovery_svc_opts =
+      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
+
+  if (discovery_svc_opts) {
+    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, "discovery_service");
+    SAFE_FREE(discovery_svc_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "# Client-like modes: connect to servers or render local media\n"
                   "_ascii_chat_client() {\n");
 
   /* Client options - grouped by category */
@@ -215,20 +235,6 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   if (mirror_opts) {
     zsh_write_options_grouped(output, mirror_opts, mirror_count, "mirror");
     SAFE_FREE(mirror_opts);
-  }
-
-  fprintf(output, "}\n"
-                  "\n"
-                  "_ascii_chat_discovery_service() {\n");
-
-  /* Discovery-service options - grouped by category */
-  size_t discovery_svc_count = 0;
-  const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
-
-  if (discovery_svc_opts) {
-    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, "discovery_service");
-    SAFE_FREE(discovery_svc_opts);
   }
 
   fprintf(output, "}\n"
