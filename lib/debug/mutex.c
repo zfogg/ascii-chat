@@ -212,8 +212,10 @@ static void register_thread_if_needed(void) {
 }
 
 // ============================================================================
-// Public Stack Operations
+// Public Stack Operations (Debug builds only)
 // ============================================================================
+
+#ifndef NDEBUG
 
 void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
   thread_lock_stack_t *stack = get_thread_local_stack();
@@ -261,6 +263,8 @@ void mutex_stack_pop(uintptr_t mutex_key) {
 
   // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
 }
+
+#endif
 
 int mutex_stack_get_current(mutex_stack_entry_t *out_entries, int max_entries) {
   thread_lock_stack_t *stack = get_thread_local_stack();
@@ -610,8 +614,10 @@ void mutex_stack_detect_deadlocks(void) {
 }
 
 // ============================================================================
-// Condition Variable Deadlock Detection
+// Condition Variable Deadlock Detection (Debug builds only)
 // ============================================================================
+
+#ifndef NDEBUG
 
 #define COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL) // 5 seconds
 
@@ -692,6 +698,8 @@ void debug_sync_check_cond_deadlocks(void) {
   named_registry_for_each(cond_deadlock_check_callback, NULL);
 }
 
+#endif // NDEBUG
+
 // ============================================================================
 // Initialization
 // ============================================================================
@@ -759,3 +767,29 @@ void mutex_stack_cleanup(void) {
   // Clear registry on cleanup using atomic operations
   atomic_store_int(&g_thread_registry_count, 0);
 }
+
+// ============================================================================
+// Release Build Stubs (NDEBUG)
+// ============================================================================
+// These no-op implementations replace the debug implementations in release builds
+// (when debug/mutex.c is not compiled into the library)
+
+#ifdef NDEBUG
+
+void mutex_stack_push_pending(uintptr_t mutex_key, const char *mutex_name) {
+  (void)mutex_key;
+  (void)mutex_name;
+  // No-op in release builds
+}
+
+void mutex_stack_mark_locked(uintptr_t mutex_key) {
+  (void)mutex_key;
+  // No-op in release builds
+}
+
+void mutex_stack_pop(uintptr_t mutex_key) {
+  (void)mutex_key;
+  // No-op in release builds
+}
+
+#endif

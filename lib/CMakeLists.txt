@@ -121,22 +121,22 @@ set(CORE_SRCS
     ${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/tomlc17.c
 )
 
-# Named registry always included (required for all builds)
-list(APPEND CORE_SRCS ${LIB_DIR}/debug/named.c)
+# Named registry, mutex tracking, backtrace, and sync always included (required for all builds)
+# These provide debug implementations for DEBUG builds, stubs for RELEASE builds
+list(APPEND CORE_SRCS
+    ${LIB_DIR}/debug/named.c
+    ${LIB_DIR}/debug/mutex.c
+    ${LIB_DIR}/debug/backtrace.c
+    ${LIB_DIR}/debug/sync.c
+)
 
 # Additional debug sources only in non-Release builds
 if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     list(APPEND CORE_SRCS
-        ${LIB_DIR}/debug/backtrace.c
-        ${LIB_DIR}/debug/mutex.c
         ${LIB_DIR}/debug/atomic.c
-        ${LIB_DIR}/debug/sync.c
         ${LIB_DIR}/debug/memory.c
         ${LIB_DIR}/options/registry/debug.c
     )
-else()
-    # Release builds: provide stub implementations of debug functions
-    list(APPEND CORE_SRCS ${LIB_DIR}/debug/mutex_stubs.c)
 endif()
 
 # Include subdirectories that define module source variables
@@ -1073,11 +1073,9 @@ if(TARGET libdatachannel)
 endif()
 
 # Link FFmpeg for media file streaming
-target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
-
-# Link FreeType2 and Fontconfig for font rendering
-target_link_libraries(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARIES})
-target_link_libraries(ascii-chat-shared PRIVATE ${FONTCONFIG_LIBRARIES})
+if(FFMPEG_FOUND)
+    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
+endif()
 
 # Link render-file dependencies
 if(NOT WIN32)

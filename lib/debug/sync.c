@@ -28,8 +28,10 @@
 #include <ascii-chat/atomic.h>
 
 // ============================================================================
-// Helper Functions
+// Helper Functions (Debug builds only)
 // ============================================================================
+
+#ifndef NDEBUG
 
 /**
  * @brief Format elapsed time string (uses time_pretty for consistent formatting)
@@ -372,7 +374,7 @@ static void debug_sync_print_lock_stacks(char *buffer, size_t buffer_size, size_
 }
 
 // ============================================================================
-// Public API Implementation
+// Public API Implementation (Debug builds only)
 // ============================================================================
 
 void debug_sync_print_state(void) {
@@ -719,6 +721,8 @@ void debug_sync_get_stats(uint64_t *total_acquired, uint64_t *total_released, ui
     *currently_held = 0;
 }
 
+#endif // NDEBUG (close debug-only code section)
+
 // ============================================================================
 // Debug Lock Operation Stubs - pass-through to implementations
 // ============================================================================
@@ -809,3 +813,19 @@ int debug_sync_cond_broadcast(cond_t *cond, const char *file_name, int line_numb
 bool debug_sync_is_initialized(void) {
   return true;
 }
+
+// ============================================================================
+// Release Build Stubs (NDEBUG)
+// ============================================================================
+
+#ifdef NDEBUG
+
+void debug_sync_print_state(void) {
+  // No-op in release builds
+}
+
+void debug_sync_cleanup_thread(void) {
+  // No-op in release builds
+}
+
+#endif

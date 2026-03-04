@@ -22,6 +22,8 @@ void backtrace_capture(backtrace_t *bt) {
   bt->count = platform_backtrace(bt->ptrs, 32);
 }
 
+#ifndef NDEBUG
+
 void backtrace_symbolize(backtrace_t *bt) {
   if (!bt || bt->tried_symbolize) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Invalid symbolize params");
@@ -403,3 +405,53 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
 
   return offset;
 }
+
+#endif // NDEBUG
+
+// ============================================================================
+// Release Build Stubs (NDEBUG)
+// ============================================================================
+
+#ifdef NDEBUG
+
+void backtrace_symbolize(backtrace_t *bt) {
+  (void)bt;
+  // No-op in release builds
+}
+
+void backtrace_t_free(backtrace_t *bt) {
+  (void)bt;
+  // No-op in release builds
+}
+
+void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
+                     backtrace_frame_filter_t filter) {
+  (void)label;
+  (void)bt;
+  (void)skip_frames;
+  (void)max_frames;
+  (void)filter;
+  // No-op in release builds
+}
+
+void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
+  (void)label;
+  (void)bts;
+  (void)count;
+  // No-op in release builds
+}
+
+int backtrace_format(char *buf, size_t buf_size, const char *label, const backtrace_t *bt, int skip_frames,
+                     int max_frames, backtrace_frame_filter_t filter) {
+  (void)buf;
+  (void)buf_size;
+  (void)label;
+  (void)bt;
+  (void)skip_frames;
+  (void)max_frames;
+  (void)filter;
+  // No-op in release builds
+  return 0;
+}
+
+#endif
