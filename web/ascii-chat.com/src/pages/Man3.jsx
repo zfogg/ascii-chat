@@ -215,10 +215,6 @@ export default function Man3() {
           setTargetLineNumber(lineNumber);
           setTargetSnippetIndex(snippetIndex);
         }
-        // Scroll content container to top
-        if (contentViewerRef.current) {
-          contentViewerRef.current.scrollTop = 0;
-        }
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
@@ -394,6 +390,9 @@ export default function Man3() {
   // Scroll to hash fragment when page content changes
   useEffect(() => {
     if (!selectedPageContent || !contentViewerRef.current) return;
+
+    // Scroll to top when new content loads
+    contentViewerRef.current.scrollTop = 0;
 
     const hash = window.location.hash;
     if (!hash) return;
