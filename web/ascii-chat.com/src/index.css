@@ -171,7 +171,8 @@
 /* Hide doxygen elements */
 #projectlogo,
 #MSearchResultsWindow,
-.man-page-html .footer {
+.man-page-html .footer,
+.man-page-content #doc-content .contents > p:nth-child(1) > a {
   display: none;
 }
 
