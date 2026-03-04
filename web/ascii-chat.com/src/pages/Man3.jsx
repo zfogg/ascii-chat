@@ -208,6 +208,10 @@ export default function Man3() {
     fetch(`/man3/${pageName}.html`)
       .then((r) => r.text())
       .then((html) => {
+        // Scroll to top before loading new content
+        if (contentViewerRef.current) {
+          contentViewerRef.current.scrollTop = 0;
+        }
         const processedContent = processPageContent(html, searchQuery);
         setSelectedPageContent(processedContent);
         setSelectedPageName(pageName);
@@ -390,9 +394,6 @@ export default function Man3() {
   // Scroll to hash fragment when page content changes
   useEffect(() => {
     if (!selectedPageContent || !contentViewerRef.current) return;
-
-    // Scroll to top when new content loads
-    contentViewerRef.current.scrollTop = 0;
 
     const hash = window.location.hash;
     if (!hash) return;
