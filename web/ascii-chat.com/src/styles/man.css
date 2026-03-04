@@ -234,3 +234,7 @@
   padding-top: 1rem;
   vertical-align: top;
 }
+
+.man-page-html .directory .entry .icona {
+  display: none;
+}
