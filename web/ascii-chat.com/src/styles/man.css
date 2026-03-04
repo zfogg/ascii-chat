@@ -204,9 +204,12 @@
 
 .man-page-content .memberdecls,
 #header-doc-func-members {
-  font-size: 2rem;
   margin-top: 3rem;
   margin-bottom: 1rem;
+}
+
+.man-page-content .memberdecls .heading {
+  font-size: 2rem;
 }
 
 .man-page-content .code-with-highlight + div + .man-page-html > .memtitle {
@@ -216,4 +219,13 @@
 
 .man-page-html #nav-path {
   font-size: 1.5rem;
+}
+
+.man-page-html .navpath {
+  margin-top: 4rem;
+  margin-bottom: 2rem;
+}
+
+.man-page-html #container #doc-content #header-details {
+  margin-top: 4rem;
 }
