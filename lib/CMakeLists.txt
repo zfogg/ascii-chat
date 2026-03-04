@@ -1085,6 +1085,20 @@ if(NOT WIN32)
     list(APPEND CMAKE_INSTALL_RPATH "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
 endif()
 
+# Link FreeType2 and Fontconfig for font rendering
+target_link_libraries(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARIES})
+if(FONTCONFIG_LIBRARIES)
+    target_link_libraries(ascii-chat-shared PRIVATE ${FONTCONFIG_LIBRARIES})
+endif()
+
+# Link vterm for terminal emulation
+if(VTERM_LDFLAGS)
+    target_link_libraries(ascii-chat-shared PRIVATE ${VTERM_LDFLAGS})
+endif()
+
+# Link yyjson for JSON support
+target_link_libraries(ascii-chat-shared PRIVATE ${YYJSON_LIBRARIES})
+
 # Suppress linker warnings about duplicate debug symbols in libdatachannel
 # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
 if(APPLE)

@@ -1494,4 +1494,39 @@ void debug_sync_symbolize_allocations(void) {
   mutex_unlock(&g_mem.mutex);
 }
 
+#else
+
+// ============================================================================
+// Release Build Stubs (for when DEBUG_MEMORY is not defined or NDEBUG is set)
+// ============================================================================
+
+void debug_memory_ensure_init(void) {
+  // No-op in release builds
+}
+
+void debug_memory_set_quiet_mode(bool quiet) {
+  (void)quiet;
+  // No-op in release builds
+}
+
+void debug_memory_report(void) {
+  // No-op in release builds
+}
+
+int debug_memory_thread_init(void) {
+  return 0;
+}
+
+int debug_memory_thread_start(void) {
+  return 0;
+}
+
+void debug_memory_trigger_report(void) {
+  // No-op in release builds
+}
+
+void debug_memory_thread_cleanup(void) {
+  // No-op in release builds
+}
+
 #endif
