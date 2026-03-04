@@ -281,30 +281,30 @@ export class ClientConnection {
       this.packetStats.set(parsed.type, count);
 
       // Log stats every 100 packets
-      if (
-        Array.from(this.packetStats.values()).reduce((a, b) => a + b, 0) %
-          100 ===
-        0
-      ) {
-        const stats: string[] = [];
-        for (const [type, cnt] of this.packetStats.entries()) {
-          stats.push(`${packetTypeName(type)}=${cnt}`);
-        }
-        console.error(
-          `[ClientConnection] PACKET STATS (total packets): ${stats.join(", ")}`,
-        );
-      }
+      // if (
+      //   Array.from(this.packetStats.values()).reduce((a, b) => a + b, 0) %
+      //     100 ===
+      //   0
+      // ) {
+      //   const stats: string[] = [];
+      //   for (const [type, cnt] of this.packetStats.entries()) {
+      //     stats.push(`${packetTypeName(type)}=${cnt}`);
+      //   }
+      //   console.error(
+      //     `[ClientConnection] PACKET STATS (total packets): ${stats.join(", ")}`,
+      //   );
+      // }
 
-      console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
-      console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
-      console.log(
-        `[ClientConnection] Raw packet size: ${rawPacket.length} bytes`,
-      );
-      console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
-      console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
-      console.error(
-        `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`,
-      );
+      // console.log(`[ClientConnection] ========== PACKET RECEIVED ==========`);
+      // console.log(`[ClientConnection] Type: ${parsed.type} (${name})`);
+      // console.log(
+      //   `[ClientConnection] Raw packet size: ${rawPacket.length} bytes`,
+      // );
+      // console.log(`[ClientConnection] Payload size: ${parsed.length} bytes`);
+      // console.log(`[ClientConnection] Client ID: ${parsed.client_id}`);
+      // console.error(
+      //   `[ClientConnection] <<< RECV packet type=${parsed.type} (${name}) len=${rawPacket.length} payload_len=${parsed.length} client_id=${parsed.client_id}`,
+      // );
 
       // Extract payload (skip header)
       const HEADER_SIZE = 22; // sizeof(packet_header_t): magic(8) + type(2) + length(4) + crc32(4) + client_id(4)
@@ -312,36 +312,36 @@ export class ClientConnection {
 
       // Handle handshake packets using WASM callbacks
       if (parsed.type === PacketType.CRYPTO_KEY_EXCHANGE_INIT) {
-        console.error(
-          `[ClientConnection] >>> Dispatching ${name} to WASM handleKeyExchangeInit (raw ${rawPacket.length} bytes)`,
-        );
+        // console.error(
+        //   `[ClientConnection] >>> Dispatching ${name} to WASM handleKeyExchangeInit (raw ${rawPacket.length} bytes)`,
+        // );
         handleKeyExchangeInit(rawPacket);
-        console.error(
-          `[ClientConnection] <<< WASM handleKeyExchangeInit returned OK`,
-        );
+        // console.error(
+        //   `[ClientConnection] <<< WASM handleKeyExchangeInit returned OK`,
+        // );
         this.onStateChangeCallback?.(ConnectionState.HANDSHAKE);
         return;
       }
 
       if (parsed.type === PacketType.CRYPTO_AUTH_CHALLENGE) {
-        console.error(
-          `[ClientConnection] >>> Dispatching ${name} to WASM handleAuthChallenge (raw ${rawPacket.length} bytes)`,
-        );
+        // console.error(
+        //   `[ClientConnection] >>> Dispatching ${name} to WASM handleAuthChallenge (raw ${rawPacket.length} bytes)`,
+        // );
         handleAuthChallenge(rawPacket);
-        console.error(
-          `[ClientConnection] <<< WASM handleAuthChallenge returned OK`,
-        );
+        // console.error(
+        //   `[ClientConnection] <<< WASM handleAuthChallenge returned OK`,
+        // );
         return;
       }
 
       if (parsed.type === PacketType.CRYPTO_HANDSHAKE_COMPLETE) {
-        console.error(
-          `[ClientConnection] >>> Dispatching ${name} to WASM handleHandshakeComplete (raw ${rawPacket.length} bytes)`,
-        );
+        // console.error(
+        //   `[ClientConnection] >>> Dispatching ${name} to WASM handleHandshakeComplete (raw ${rawPacket.length} bytes)`,
+        // );
         handleHandshakeComplete(rawPacket);
-        console.error(
-          `[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`,
-        );
+        // console.error(
+        //   `[ClientConnection] <<< WASM handleHandshakeComplete returned OK - transitioning to CONNECTED`,
+        // );
         this.wasEverConnected = true; // Mark that we've successfully connected at least once
         // Note: Don't start heartbeat here - it interferes with ACIP protocol
         // The protocol exchange will complete and normal operation will resume
@@ -351,9 +351,9 @@ export class ClientConnection {
 
       // Allow SERVER_STATE packets during any state (they arrive early in connection)
       if (parsed.type === PacketType.SERVER_STATE) {
-        console.error(
-          `[ClientConnection] >>> Got SERVER_STATE packet during ${ConnectionState[getConnectionState()]} state - processing anyway`,
-        );
+        // console.error(
+        //   `[ClientConnection] >>> Got SERVER_STATE packet during ${ConnectionState[getConnectionState()]} state - processing anyway`,
+        // );
         // Dispatch to callback but don't require CONNECTED state
         const payload = rawPacket.slice(22); // Skip header
         this.onPacketCallback?.(parsed, payload);
@@ -363,71 +363,71 @@ export class ClientConnection {
       // For non-handshake packets during handshake, log a warning
       const state = getConnectionState();
       if (state !== ConnectionState.CONNECTED) {
-        console.error(
-          `[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state ${ConnectionState[state]} (${state}) - ignoring`,
-        );
+        // console.error(
+        //   `[ClientConnection] *** Got non-handshake packet ${name} (${parsed.type}) while in state ${ConnectionState[state]} (${state}) - ignoring`,
+        // );
         return;
       }
 
       // Handle PACKET_TYPE_ENCRYPTED: decrypt to get inner packet, then process
       if (parsed.type === PacketType.ENCRYPTED) {
-        console.log(
-          `[ClientConnection] ========== ENCRYPTED PACKET ==========`,
-        );
-        console.log(
-          `[ClientConnection] Encrypted payload size: ${payload.length} bytes`,
-        );
+        // console.log(
+        //   `[ClientConnection] ========== ENCRYPTED PACKET ==========`,
+        // );
+        // console.log(
+        //   `[ClientConnection] Encrypted payload size: ${payload.length} bytes`,
+        // );
         try {
           // Decrypt the payload (ciphertext) to get the inner plaintext packet (header + payload)
-          console.log(`[ClientConnection] Calling decryptPacket...`);
+          // console.log(`[ClientConnection] Calling decryptPacket...`);
           const plaintext = new Uint8Array(decryptPacket(payload));
-          console.log(
-            `[ClientConnection] Decryption complete, plaintext length: ${plaintext.length} bytes`,
-          );
-          console.error(
-            `[ClientConnection] Decrypted ENCRYPTED packet, inner length: ${plaintext.length}`,
-          );
+          // console.log(
+          //   `[ClientConnection] Decryption complete, plaintext length: ${plaintext.length} bytes`,
+          // );
+          // console.error(
+          //   `[ClientConnection] Decrypted ENCRYPTED packet, inner length: ${plaintext.length}`,
+          // );
 
           // Parse the inner packet header
           const innerParsed = parsePacket(plaintext);
           const innerName = packetTypeName(innerParsed.type);
-          console.log(
-            `[ClientConnection] Inner packet type: ${innerParsed.type} (${innerName})`,
-          );
-          console.log(
-            `[ClientConnection] Inner packet payload size: ${innerParsed.length}`,
-          );
-          console.error(
-            `[ClientConnection] Inner packet: type=${innerParsed.type} (${innerName}) len=${innerParsed.length}`,
-          );
+          // console.log(
+          //   `[ClientConnection] Inner packet type: ${innerParsed.type} (${innerName})`,
+          // );
+          // console.log(
+          //   `[ClientConnection] Inner packet payload size: ${innerParsed.length}`,
+          // );
+          // console.error(
+          //   `[ClientConnection] Inner packet: type=${innerParsed.type} (${innerName}) len=${innerParsed.length}`,
+          // );
 
           // Extract inner payload (skip inner header)
           const innerPayload = plaintext.slice(HEADER_SIZE);
-          console.log(
-            `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
-          );
+          // console.log(
+          //   `[ClientConnection] Inner payload extracted: ${innerPayload.length} bytes`,
+          // );
 
           // Track inner packet types too
           const innerCount = (this.packetStats.get(innerParsed.type) || 0) + 1;
           this.packetStats.set(innerParsed.type, innerCount);
 
-          if (innerParsed.type === PacketType.ASCII_FRAME) {
-            console.log(
-              `[ClientConnection] ========== INNER PACKET IS ASCII_FRAME ==========`,
-            );
-            console.log(
-              `[ClientConnection] Calling user callback with ASCII_FRAME...`,
-            );
-          }
+          // if (innerParsed.type === PacketType.ASCII_FRAME) {
+          //   console.log(
+          //     `[ClientConnection] ========== INNER PACKET IS ASCII_FRAME ==========`,
+          //   );
+          //   console.log(
+          //     `[ClientConnection] Calling user callback with ASCII_FRAME...`,
+          //   );
+          // }
 
           // Call user callback with the decrypted inner packet
           this.onPacketCallback?.(innerParsed, innerPayload);
 
-          if (innerParsed.type === PacketType.ASCII_FRAME) {
-            console.log(
-              `[ClientConnection] ========== ASCII_FRAME CALLBACK COMPLETE ==========`,
-            );
-          }
+          // if (innerParsed.type === PacketType.ASCII_FRAME) {
+          //   console.log(
+          //     `[ClientConnection] ========== ASCII_FRAME CALLBACK COMPLETE ==========`,
+          //   );
+          // }
         } catch (error) {
           console.error(
             "[ClientConnection] ========== DECRYPTION ERROR ==========",

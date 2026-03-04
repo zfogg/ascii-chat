@@ -74,25 +74,25 @@ export class SocketBridge {
     resolve: () => void,
     reject: (error: Error) => void,
   ): void {
-    console.log(
-      "[SocketBridge] Creating WebSocket connection to:",
-      this.options.url,
-    );
+    // console.log(
+    //   "[SocketBridge] Creating WebSocket connection to:",
+    //   this.options.url,
+    // );
     this.ws = new WebSocket(this.options.url, "acip");
     this.ws.binaryType = "arraybuffer";
 
     const handleOpen = () => {
-      console.error("[SocketBridge] ✓✓✓ handleOpen CALLED");
+      // console.error("[SocketBridge] ✓✓✓ handleOpen CALLED");
       console.log("[SocketBridge] WebSocket connected");
       this.wasEverConnected = true;
       this.reconnectAttempts = 0;
-      console.error("[SocketBridge] About to call onStateChangeCallback(open)");
+      // console.error("[SocketBridge] About to call onStateChangeCallback(open)");
       this.onStateChangeCallback?.("open");
-      console.error(
-        "[SocketBridge] onStateChangeCallback(open) returned, calling resolve()",
-      );
+      // console.error(
+      //   "[SocketBridge] onStateChangeCallback(open) returned, calling resolve()",
+      // );
       resolve();
-      console.error("[SocketBridge] resolve() returned");
+      // console.error("[SocketBridge] resolve() returned");
     };
 
     const handleMessage = (event: Event) => {
@@ -108,9 +108,9 @@ export class SocketBridge {
         // Start new reassembly with this fragment
         this.reassemblyBuffer = new Uint8Array(fragment);
         this.reassemblySize = fragment.length;
-        console.error(
-          `[SocketBridge] ★ START REASSEMBLY: received first fragment ${fragment.length} bytes`,
-        );
+        // console.error(
+        //   `[SocketBridge] ★ START REASSEMBLY: received first fragment ${fragment.length} bytes`,
+        // );
       } else {
         // Append to existing reassembly buffer
         const newSize = this.reassemblySize + fragment.length;
@@ -119,9 +119,9 @@ export class SocketBridge {
         newBuffer.set(fragment, this.reassemblySize);
         this.reassemblyBuffer = newBuffer;
         this.reassemblySize = newSize;
-        console.error(
-          `[SocketBridge] ★ CONTINUE REASSEMBLY: appended ${fragment.length} bytes, total now ${newSize} bytes`,
-        );
+        // console.error(
+        //   `[SocketBridge] ★ CONTINUE REASSEMBLY: appended ${fragment.length} bytes, total now ${newSize} bytes`,
+        // );
       }
 
       // ★ CRITICAL: Process ALL complete packets in the reassembly buffer
@@ -146,18 +146,18 @@ export class SocketBridge {
           );
           const pktType = quickParseType(completePacket);
           const typeHex = pktType !== null ? pktType.toString(16) : "??";
-          console.error(
-            `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType} (0x${typeHex})`,
-          );
+          // console.error(
+          //   `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType} (0x${typeHex})`,
+          // );
 
           // Save any leftover data for next packet
           if (this.reassemblySize > expectedPacketSize) {
             const leftover = this.reassemblyBuffer.slice(expectedPacketSize);
             this.reassemblyBuffer = leftover;
             this.reassemblySize = leftover.length;
-            console.error(
-              `[SocketBridge] ★ LEFTOVER: saved ${leftover.length} bytes for next packet`,
-            );
+            // console.error(
+            //   `[SocketBridge] ★ LEFTOVER: saved ${leftover.length} bytes for next packet`,
+            // );
           } else {
             this.reassemblyBuffer = null;
             this.reassemblySize = 0;
@@ -168,22 +168,22 @@ export class SocketBridge {
           this.onPacketCallback?.(completePacket);
         } else {
           // Not enough data for a complete packet yet
-          console.error(
-            `[SocketBridge] ★ INCOMPLETE: need ${expectedPacketSize} bytes, have ${this.reassemblySize} bytes, waiting for more fragments`,
-          );
+          // console.error(
+          //   `[SocketBridge] ★ INCOMPLETE: need ${expectedPacketSize} bytes, have ${this.reassemblySize} bytes, waiting for more fragments`,
+          // );
           break; // Exit loop and wait for next message
         }
       }
 
-      if (packetsProcessed === 0 && this.reassemblySize < 14) {
-        console.error(
-          `[SocketBridge] ★ NEED MORE: only ${this.reassemblySize} bytes, need at least 14 to read length field`,
-        );
-      } else if (packetsProcessed > 0) {
-        console.error(
-          `[SocketBridge] ★ PROCESSED ${packetsProcessed} packet(s) from this message`,
-        );
-      }
+      // if (packetsProcessed === 0 && this.reassemblySize < 14) {
+      //   console.error(
+      //     `[SocketBridge] ★ NEED MORE: only ${this.reassemblySize} bytes, need at least 14 to read length field`,
+      //   );
+      // } else if (packetsProcessed > 0) {
+      //   console.error(
+      //     `[SocketBridge] ★ PROCESSED ${packetsProcessed} packet(s) from this message`,
+      //   );
+      // }
     };
 
     const handleError = (event: Event) => {
@@ -266,14 +266,14 @@ export class SocketBridge {
 
     this.reconnectTimeoutId = setTimeout(() => {
       this.reconnectTimeoutId = null;
-      console.error(
-        `[SocketBridge] ⏱️ RECONNECT TIMER FIRED: attempt ${this.reconnectAttempts}, calling createAndSetupWebSocket`,
-      );
+      // console.error(
+      //   `[SocketBridge] ⏱️ RECONNECT TIMER FIRED: attempt ${this.reconnectAttempts}, calling createAndSetupWebSocket`,
+      // );
       try {
         const resolve = () => {
-          console.error(
-            "[SocketBridge] ✅ Reconnection successful - resolve callback fired",
-          );
+          // console.error(
+          //   "[SocketBridge] ✅ Reconnection successful - resolve callback fired",
+          // );
         };
         const reject = (error: Error) => {
           console.error(
@@ -281,11 +281,11 @@ export class SocketBridge {
           );
           this.scheduleReconnect();
         };
-        console.error(
-          `[SocketBridge] About to call createAndSetupWebSocket with resolve/reject`,
-        );
+        // console.error(
+        //   `[SocketBridge] About to call createAndSetupWebSocket with resolve/reject`,
+        // );
         this.createAndSetupWebSocket(resolve, reject);
-        console.error(`[SocketBridge] createAndSetupWebSocket returned`);
+        // console.error(`[SocketBridge] createAndSetupWebSocket returned`);
       } catch (error) {
         console.error("[SocketBridge] Exception in reconnect timeout:", error);
         this.scheduleReconnect();
@@ -306,9 +306,9 @@ export class SocketBridge {
     }
     const pktType = quickParseType(packet);
     const typeHex = pktType !== null ? pktType.toString(16) : "??";
-    console.error(
-      `[SocketBridge] >>> SEND ${packet.length} bytes, pkt_type=${pktType} (0x${typeHex})`,
-    );
+    // console.error(
+    //   `[SocketBridge] >>> SEND ${packet.length} bytes, pkt_type=${pktType} (0x${typeHex})`,
+    // );
     this.ws.send(packet);
   }
 
@@ -338,31 +338,31 @@ export class SocketBridge {
    */
   startHeartbeat(): void {
     this.stopHeartbeat();
-    console.log(
-      "[SocketBridge] Starting heartbeat (interval:",
-      this.HEARTBEAT_INTERVAL,
-      "ms)",
-    );
+    // console.log(
+    //   "[SocketBridge] Starting heartbeat (interval:",
+    //   this.HEARTBEAT_INTERVAL,
+    //   "ms)",
+    // );
     this.heartbeatTimeoutId = setInterval(() => {
       if (!this.ws) {
-        console.log("[SocketBridge] Heartbeat: WebSocket is null, stopping");
+        // console.log("[SocketBridge] Heartbeat: WebSocket is null, stopping");
         this.stopHeartbeat();
         return;
       }
 
       const readyState = this.ws.readyState;
       if (readyState !== WebSocket.OPEN) {
-        console.log(
-          "[SocketBridge] Heartbeat: WebSocket not in OPEN state:",
-          readyState,
-        );
+        // console.log(
+        //   "[SocketBridge] Heartbeat: WebSocket not in OPEN state:",
+        //   readyState,
+        // );
         this.stopHeartbeat();
         return;
       }
 
       // Try to send a test message to detect dead connections
       try {
-        console.log("[SocketBridge] Heartbeat: sending test ping");
+        // console.log("[SocketBridge] Heartbeat: sending test ping");
         this.ws.send(new Uint8Array([0xff])); // Send a single byte as keep-alive
       } catch (error) {
         console.error("[SocketBridge] Heartbeat: send failed:", error);

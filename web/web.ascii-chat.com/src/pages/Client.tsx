@@ -86,6 +86,21 @@ class H265Encoder {
     this.height = height;
     this.frameCount = 0;
 
+    // Check H.265 support first
+    const bitrate = Math.max(500_000, width * height * 2 * fps);
+    const configSupport = await VideoEncoder.isConfigSupported({
+      codec: "hvc1",
+      width,
+      height,
+      bitrate,
+      framerate: fps,
+    });
+    if (!configSupport.supported) {
+      throw new Error(
+        "H.265 (HEVC) codec not supported in this browser. Please use a browser with H.265 support enabled.",
+      );
+    }
+
     this.encoder = new VideoEncoder({
       output: (chunk: EncodedVideoChunk) => {
         const flags = chunk.type === "key" ? 0x01 : 0x00;
@@ -108,11 +123,14 @@ class H265Encoder {
       codec: "hvc1", // H.265/HEVC base profile
       width,
       height,
-      bitrate: Math.max(500_000, width * height * 2 * fps), // adaptive bitrate
+      bitrate,
       framerate: fps,
       hardwareAcceleration: "prefer-hardware",
     });
     this.isOpen = true;
+    console.log(
+      `[H265Encoder] Successfully initialized with H.265: ${width}x${height} @ ${fps} FPS`,
+    );
   }
 
   encode(frame: VideoFrame, forceKeyframe: boolean = false): void {
@@ -860,17 +878,17 @@ export function ClientPage() {
             uniqueFrameCountRef.current++;
             videFrameUpdateCountRef.current++;
             lastFrameHashRef.current = frameHash;
-            console.log(
-              `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(
-                16,
-              )}, size=${frame.data.length}`,
-            );
+            // console.log(
+            //   `[Client] SEND #${captureLoopFrameCountRef.current} (UNIQUE #${uniqueFrameCountRef.current}): hash=0x${frameHash.toString(
+            //     16,
+            //   )}, size=${frame.data.length}`,
+            // );
           } else {
-            console.log(
-              `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(
-                16,
-              )}, size=${frame.data.length}`,
-            );
+            // console.log(
+            //   `[Client] SEND #${captureLoopFrameCountRef.current} (DUPLICATE): hash=0x${frameHash.toString(
+            //     16,
+            //   )}, size=${frame.data.length}`,
+            // );
           }
 
           // Try H.265 encoding if available (but prioritize RGBA for stability)
@@ -1036,23 +1054,66 @@ export function ClientPage() {
       const w = settings.width || 1280;
       const h = settings.height || 720;
       console.log(`[Client] Requesting webcam stream: ${w}x${h}`);
+      console.log(
+        `[DEBUG] videoRef.current before getUserMedia:`,
+        videoRef.current,
+      );
 
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          width: { ideal: w },
-          height: { ideal: h },
-          facingMode: "user",
-        },
-        audio: false,
-      });
+      let stream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: w }, height: { ideal: h } },
+          audio: false,
+        });
+      } catch (err) {
+        console.error(
+          "[Client] getUserMedia failed (trying fallback without constraints):",
+          err,
+        );
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false,
+          });
+        } catch (err2) {
+          console.error("[Client] getUserMedia failed completely:", err2);
+          throw err2;
+        }
+      }
 
       console.log("[Client] Webcam stream acquired");
+      console.log(`[DEBUG] Stream object:`, stream);
       console.log(
         `[Client] Stream tracks: ${stream.getTracks().length}, active=${stream.active}`,
       );
+
+      // Log track details
+      stream.getTracks().forEach((track, idx) => {
+        console.log(`[DEBUG] Track ${idx}:`, {
+          kind: track.kind,
+          enabled: track.enabled,
+          readyState: track.readyState,
+          label: track.label,
+          settings: track.getSettings ? track.getSettings() : "N/A",
+        });
+      });
+
       streamRef.current = stream;
       const video = videoRef.current!;
+      console.log("[DEBUG] Before setting srcObject, video element:", {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        readyState: video.readyState,
+        networkState: video.networkState,
+      });
+
       video.srcObject = stream;
+      console.log("[DEBUG] After setting srcObject");
+      console.log("[DEBUG] Video element after srcObject:", {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        srcObject: !!video.srcObject,
+      });
 
       // Monitor stream for unexpected end
       stream.getTracks().forEach((track) => {
@@ -1077,24 +1138,69 @@ export function ClientPage() {
           console.log(
             `[Client] Webcam metadata loaded: ${video.videoWidth}x${video.videoHeight}, videoTime=${video.currentTime}, paused=${video.paused}`,
           );
-          canvas.width = video.videoWidth;
-          canvas.height = video.videoHeight;
-          console.log(
-            `[Client] Canvas resized to: ${canvas.width}x${canvas.height}`,
-          );
+          console.log("[DEBUG] Metadata event - full video element state:", {
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            readyState: video.readyState,
+            networkState: video.networkState,
+            currentTime: video.currentTime,
+            duration: video.duration,
+            paused: video.paused,
+            srcObject: !!video.srcObject,
+            src: video.src,
+          });
+
+          // Check if dimensions are valid before resizing
+          if (video.videoWidth > 0 && video.videoHeight > 0) {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            console.log(
+              `[Client] Canvas resized to: ${canvas.width}x${canvas.height}`,
+            );
+            console.log("[DEBUG] Canvas state after resize:", {
+              width: canvas.width,
+              height: canvas.height,
+              clientWidth: canvas.clientWidth,
+              clientHeight: canvas.clientHeight,
+            });
+          } else {
+            console.warn(
+              `[DEBUG] Invalid video dimensions: ${video.videoWidth}x${video.videoHeight}, not resizing canvas`,
+            );
+          }
           video.removeEventListener("loadedmetadata", handleMetadata);
           resolve();
         };
         videoRef.current!.addEventListener("loadedmetadata", handleMetadata);
+        console.log("[DEBUG] loadedmetadata listener attached");
       });
 
       // Now play the video (metadata event may already be queued)
       console.log("[Client] Attempting to play video...");
+      console.log("[DEBUG] Video element before play():", {
+        videoWidth: video.videoWidth,
+        videoHeight: video.videoHeight,
+        readyState: video.readyState,
+        paused: video.paused,
+        srcObject: !!video.srcObject,
+      });
       try {
         await video.play();
         console.log("[Client] Video is playing");
+        console.log("[DEBUG] Video element after play():", {
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          readyState: video.readyState,
+          paused: video.paused,
+        });
       } catch (playErr) {
         console.error("[Client] Video play failed (may be expected):", playErr);
+        console.error("[DEBUG] Video state when play() failed:", {
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          readyState: video.readyState,
+          srcObject: !!video.srcObject,
+        });
       }
 
       // Wait for metadata with a timeout (5 seconds) in case it never fires
