@@ -161,4 +161,5 @@
 
 .man-page-content pre {
   font-size: 1rem;
+  overflow-x: auto;
 }
