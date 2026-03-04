@@ -372,7 +372,7 @@ export default function Man3() {
                               );
                             })}
                             {page.totalMatchesInFile > page.snippets.length && (
-                              <div className="bg-red-900/30 border border-red-700/50 rounded px-3 py-2 text-sm font-semibold text-red-300">
+                              <div className="bg-yellow-900/50 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-200">
                                 ... {page.totalMatchesInFile - page.snippets.length} more matching result{page.totalMatchesInFile - page.snippets.length !== 1 ? "s" : ""} for this file
                               </div>
                             )}
