@@ -110,6 +110,14 @@ static void *frame_queue_pop(frame_queue_t *q, uint64_t timeout_ns) {
     return item;
 }
 
+static int frame_queue_count(frame_queue_t *q) {
+    if (!q) return 0;
+    mutex_lock(&q->mu);
+    int count = q->count;
+    mutex_unlock(&q->mu);
+    return count;
+}
+
 static void frame_queue_flush(frame_queue_t *q, void (*free_fn)(void *)) {
     if (!q) return;
     mutex_lock(&q->mu);
@@ -237,16 +245,30 @@ static void *pipeline_capture_thread(void *arg) {
             double snapshot_delay = GET_OPTION(snapshot_delay);
 
             if (elapsed >= snapshot_delay) {
-                log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f", elapsed, snapshot_delay);
-                // Update with actual measured duration so encoder can scale remaining frames accurately
+                log_info("[PIPELINE_CAPTURE] Snapshot video elapsed=%.3f reached delay=%.2f - stopping capture but waiting for encode queue to drain",
+                         elapsed, snapshot_delay);
+
+                // Update with actual measured duration so encoder can scale frames accurately
                 extern uint64_t g_snapshot_actual_duration_ms;
                 extern uint64_t g_snapshot_last_capture_elapsed_ns;
                 uint64_t actual_ms = (uint64_t)(elapsed * 1000.0);
                 g_snapshot_actual_duration_ms = actual_ms;
                 uint64_t last_frame_elapsed_ns = now_ns - g_snapshot_first_capture_ns;
                 g_snapshot_last_capture_elapsed_ns = last_frame_elapsed_ns;
-                log_info("[PIPELINE_CAPTURE] Updated g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
+                log_info("[PIPELINE_CAPTURE] g_snapshot_actual_duration_ms=%llu, last_capture_elapsed_ns=%llu",
                          (unsigned long long)actual_ms, (unsigned long long)last_frame_elapsed_ns);
+
+                // Wait for encode queue to drain (all buffered frames processed)
+                // This ensures slow encoders can catch up and encode all captured frames
+                if (pipeline->has_render_file) {
+                    while (frame_queue_count(pipeline->encode_queue) > 0) {
+                        log_debug("[PIPELINE_CAPTURE] Waiting for encode queue to drain (%d frames pending)",
+                                 frame_queue_count(pipeline->encode_queue));
+                        platform_sleep_ns(10 * NS_PER_MS_INT);
+                    }
+                    log_info("[PIPELINE_CAPTURE] Encode queue drained, sending EOF sentinel");
+                }
+
                 // Push EOF sentinels (zero-initialized)
                 pipeline_frame_t *sentinel1 = SAFE_CALLOC(1, sizeof(*sentinel1), pipeline_frame_t *);
                 frame_queue_push(pipeline->display_queue, sentinel1, 10 * NS_PER_MS_INT);
