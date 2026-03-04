@@ -367,77 +367,39 @@ export default function Man3() {
     const hash = window.location.hash;
     if (!hash) return;
 
-    // Wait for DOM to render, then scroll to anchor
-    const scrollToAnchor = () => {
-      const element = contentViewerRef.current.querySelector(hash);
-      if (element) {
-        // If anchor is hidden (offsetTop: 0), find the visible equivalent
-        let scrollTarget = element;
-        if (element.offsetTop === 0 && hash.match(/^#l\d+$/)) {
-          // Extract line number from anchor ID (e.g., "l00044" -> "44")
-          const lineNum = hash.substring(2).replace(/^0+/, '') || '0';
+    // Try to find and scroll to the line with the arrow marker
+    const scrollToHash = () => {
+      const container = contentViewerRef.current;
 
-          // Find the visible CodeBlock and scroll to that line
-          // CodeBlocks render as pre > code, find the first one
-          const codeBlocks = contentViewerRef.current.querySelectorAll('pre code');
-          if (codeBlocks.length > 0) {
-            const codeBlock = codeBlocks[0];
-            const lines = codeBlock.querySelectorAll('[data-line-number="' + lineNum + '"]');
-            if (lines.length > 0) {
-              scrollTarget = lines[0];
-            } else {
-              // If no data-line-number attribute, estimate position
-              const allLines = codeBlock.textContent.split('\n');
-              if (lineNum <= allLines.length) {
-                // Scroll proportionally based on line number
-                const scrollPercent = lineNum / allLines.length;
-                const container = contentViewerRef.current;
-                container.scrollTop = (container.scrollHeight - container.clientHeight) * scrollPercent;
-                return;
-              }
-            }
+      // Look for the arrow marker (⟹) in visible code blocks
+      const codeBlocks = container.querySelectorAll("pre code");
+      for (const block of codeBlocks) {
+        const spans = block.querySelectorAll("span");
+        for (const span of spans) {
+          if (span.textContent.includes("⟹")) {
+            // Found the arrow, scroll it to the center of the viewport
+            span.scrollIntoView({ block: "center" });
+            return true;
           }
         }
-
-        // Scroll the container to the element
-        const container = contentViewerRef.current;
-        const elementTop = scrollTarget.offsetTop;
-        container.scrollTop = elementTop - 50; // Leave some space at top
       }
+      return false;
     };
 
     // Try multiple times in case elements are still rendering
     let attempts = 0;
     const maxAttempts = 20;
-    const checkAndScroll = () => {
+
+    const tryScroll = () => {
+      if (scrollToHash()) return;
+
       attempts++;
-      let element = contentViewerRef.current?.querySelector(hash);
-
-      // If anchor not found, try finding the parent line element
-      if (!element && hash.match(/^#l\d+$/)) {
-        element = contentViewerRef.current?.querySelector(`[name="${hash.substring(1)}"]`);
-        if (!element) {
-          // Try finding by data attribute or nearby line div
-          const lineMatch = hash.match(/l(\d+)/);
-          if (lineMatch) {
-            const lineNum = lineMatch[1];
-            element = contentViewerRef.current?.querySelector(`.line [id="l${lineNum}"]`)?.closest('.line');
-          }
-        }
-      }
-
-      console.log(`Attempt ${attempts}: looking for ${hash}, found:`, !!element);
-      if (element) {
-        console.log("Element found! Scrolling...");
-        scrollToAnchor();
-      } else if (attempts < maxAttempts) {
-        setTimeout(checkAndScroll, 50);
-      } else {
-        console.log("Max attempts reached, giving up on scroll");
+      if (attempts < maxAttempts) {
+        setTimeout(tryScroll, 50);
       }
     };
 
-    checkAndScroll();
+    tryScroll();
   }, [selectedPageContent]);
 
   // Convert HTML with pre blocks into JSX with CodeBlock components
