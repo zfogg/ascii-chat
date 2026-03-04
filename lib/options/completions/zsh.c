@@ -45,7 +45,7 @@ static void zsh_escape_help(FILE *output, const char *text) {
   }
 }
 
-static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
+static void zsh_write_option(FILE *output, const option_descriptor_t *opt, const char *group) {
   if (!opt) {
     return;
   }
@@ -90,15 +90,21 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
     }
   }
 
+  // Build group spec - zsh's (group-name) syntax for option grouping
+  char group_spec[256] = "";
+  if (group) {
+    safe_snprintf(group_spec, sizeof(group_spec), "(%s)", group);
+  }
+
   // Write short option if present
   if (opt->short_name != '\0') {
-    fprintf(output, "    '-%c[", opt->short_name);
+    fprintf(output, "    '%s-%c[", group_spec, opt->short_name);
     zsh_escape_help(output, opt->help_text);
     fprintf(output, "]%s' \\\n", completion_spec);
   }
 
   // Write long option
-  fprintf(output, "    '--%s[", opt->long_name);
+  fprintf(output, "    '%s--%s[", group_spec, opt->long_name);
   zsh_escape_help(output, opt->help_text);
   fprintf(output, "]%s' \\\n", completion_spec);
 }
@@ -150,7 +156,7 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
- * Write grouped options with category headers
+ * Write grouped options with category headers using zsh's native grouping
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count) {
   if (!opts || count == 0) return;
@@ -158,17 +164,14 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
   size_t group_count = 0;
   const char **groups = zsh_collect_groups(opts, count, &group_count);
 
-  // Write options grouped by category
+  // Write options grouped by category using zsh's (group-name) syntax
   for (size_t g = 0; g < group_count; g++) {
     const char *group = groups[g];
 
-    // Write group header as a comment
-    fprintf(output, "    # %s\n", group);
-
-    // Write all options in this group
+    // Write all options in this group with group prefix
     for (size_t i = 0; i < count; i++) {
       if (opts[i].group && strcmp(opts[i].group, group) == 0) {
-        zsh_write_option(output, &opts[i]);
+        zsh_write_option(output, &opts[i], group);
       }
     }
   }
