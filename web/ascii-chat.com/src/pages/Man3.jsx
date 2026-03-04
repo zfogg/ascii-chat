@@ -16,6 +16,7 @@ export default function Man3() {
   const [selectedPageName, setSelectedPageName] = useState(null);
   const [targetLineNumber, setTargetLineNumber] = useState(null);
   const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
+  const [regexError, setRegexError] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
 
@@ -91,11 +92,30 @@ export default function Man3() {
       setFilesMatched(0);
       setTotalMatches(0);
       setSearching(false);
+      setRegexError(null);
       // Clear search param but preserve page param if present
       const params = new URLSearchParams(window.location.search);
       params.delete("q");
       const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
       window.history.replaceState({}, "", newUrl + window.location.hash);
+      return;
+    }
+
+    // Validate regex syntax
+    try {
+      const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
+      if (regexMatch) {
+        new RegExp(regexMatch[1], regexMatch[2] || "i");
+      } else {
+        // Try as literal string with i flag
+        new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      }
+      setRegexError(null);
+    } catch (e) {
+      setRegexError(e.message);
+      setSearchResults([]);
+      setFilesMatched(0);
+      setTotalMatches(0);
       return;
     }
 
@@ -879,24 +899,39 @@ export default function Man3() {
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="Search by name or regex (e.g., 'socket', '^asciichat_.*', 'error|crypto')..."
+                    placeholder="Search by name or regex (e.g., 'socket' or /^asciichat_.*/ or /error|crypto/)..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-colors"
+                    className={`w-full border rounded-lg px-4 py-3 placeholder-gray-500 focus:outline-none transition-colors ${
+                      regexError
+                        ? "bg-red-900 border-red-500 text-white placeholder-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
+                        : "bg-gray-900 border-gray-700 text-gray-100 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                    }`}
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery("")}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                      className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                        regexError
+                          ? "text-red-200 hover:text-red-100"
+                          : "text-gray-500 hover:text-gray-300"
+                      }`}
                     >
                       ✕
                     </button>
                   )}
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-2">
-                Standard regex syntax supported
-              </p>
+              {regexError && (
+                <p className="text-sm text-red-400 mt-2 font-medium">
+                  ⚠ Regex Error: {regexError}
+                </p>
+              )}
+              {!regexError && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Regex search (default case-insensitive). Examples: <code className="bg-gray-800 px-1 rounded">socket</code>, <code className="bg-gray-800 px-1 rounded">error|crypto</code>, or <code className="bg-gray-800 px-1 rounded">/^socket$/gi</code> for flags
+                </p>
+              )}
             </div>
             <p className="text-sm text-gray-400 mt-3 text-center">
               {searching
