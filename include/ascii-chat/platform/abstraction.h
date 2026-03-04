@@ -1,19 +1,28 @@
 #pragma once
 
-// Platform abstraction layer umbrella header
-// This file includes all platform abstraction components.
-// Individual component headers (system.h, terminal.h, thread.h, etc.) are documented separately.
-
-/*! @cond INTERNAL_IMPL
+/**
+ * @defgroup platform Platform Abstractions
+ * @brief 🔌 Cross-platform abstractions for threading, sockets, and system calls, and hardware access
+ * @{
+ *
+ * @file platform/abstraction.h
+ * @brief Platform abstraction layer umbrella header providing unified cross-platform API
+ *
+ * This is the main entry point for the platform abstraction layer. It includes
+ * all platform-specific component headers (system.h, terminal.h, thread.h, etc.)
+ * and provides a unified API that works identically on Windows, Linux, and macOS.
  *
  * The actual function declarations and implementations are in the component headers:
  * - system.h / system.c - System functions, timers, environment variables
  * - terminal.h / terminal.c - Terminal I/O and control sequences
  * - thread.h - Threading primitives
  * - socket.h - Network socket operations
- * - And other component headers...
+ * - mutex.h, rwlock.h, cond.h - Synchronization primitives
+ * - string.h, memory.h - Safe string and memory functions
+ * - file.h, process.h - File and process operations
  *
- * @endcond */
+ * Platform-specific implementations are in lib/platform/posix/ and lib/platform/windows/
+ */
 
 // ============================================================================
 // Platform Detection
