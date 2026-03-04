@@ -381,7 +381,7 @@ export default function Man3() {
     return () => {
       contentViewerRef.current?.removeEventListener("click", handleLinkClick);
     };
-  }, []);
+  }, [loadPageContent, selectedPageContent]);
 
   // Scroll to hash fragment when page content changes
   useEffect(() => {
