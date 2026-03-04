@@ -3,7 +3,8 @@
  * @brief Mode-aware default value getters for options
  * @ingroup options
  *
- * Provides mode-specific default values for options that vary by mode.
+ * Provides mode-specific default values for options that vary by mode,
+ * and mode metadata (names, descriptions, groups) for UI generation.
  *
  * @author Zachary Fogg <me@zfo.gg>
  * @date February 2026
@@ -14,6 +15,90 @@
 #include <ascii-chat/platform/system.h>
 #include <string.h>
 #include <stdio.h>
+
+// ============================================================================
+// Mode Descriptors - Names, Descriptions, and Groups
+// ============================================================================
+
+/**
+ * @brief Metadata for a mode
+ */
+typedef struct {
+  asciichat_mode_t mode;
+  const char *name;        // "server", "client", etc.
+  const char *description; // User-friendly description
+  const char *group;       // "server-like" or "client-like"
+} mode_descriptor_t;
+
+/**
+ * @brief Mode metadata for all modes
+ */
+static const mode_descriptor_t g_mode_descriptors[] = {
+    {MODE_SERVER, "server", "Multi-client video broadcast server", "server-like"},
+    {MODE_DISCOVERY_SERVICE, "discovery-service", "Session discovery and registration service", "server-like"},
+    {MODE_CLIENT, "client", "Connect to a server and send/receive streams", "client-like"},
+    {MODE_MIRROR, "mirror", "Local webcam preview without networking", "client-like"},
+    {MODE_DISCOVERY, "discovery", "Participant with dynamic session discovery", "client-like"},
+    {MODE_INVALID, NULL, NULL, NULL}};
+
+/**
+ * @brief Get mode descriptor by mode
+ * @param mode Mode to look up
+ * @return Pointer to mode descriptor, or NULL if not found
+ */
+const mode_descriptor_t *get_mode_descriptor(asciichat_mode_t mode) {
+  for (size_t i = 0; g_mode_descriptors[i].name; i++) {
+    if (g_mode_descriptors[i].mode == mode) {
+      return &g_mode_descriptors[i];
+    }
+  }
+  return NULL;
+}
+
+/**
+ * @brief Get all mode descriptors grouped by category
+ * @param group Group name ("server-like" or "client-like")
+ * @param out_count OUTPUT: Number of modes in this group
+ * @return Array of mode descriptors, or NULL if group not found
+ */
+const mode_descriptor_t *get_modes_by_group(const char *group, size_t *out_count) {
+  if (!group || !out_count) {
+    return NULL;
+  }
+
+  // Count matching modes
+  size_t count = 0;
+  for (size_t i = 0; g_mode_descriptors[i].name; i++) {
+    if (strcmp(g_mode_descriptors[i].group, group) == 0) {
+      count++;
+    }
+  }
+
+  if (count == 0) {
+    *out_count = 0;
+    return NULL;
+  }
+
+  // Allocate result array
+  mode_descriptor_t *result = SAFE_MALLOC((count + 1) * sizeof(mode_descriptor_t), mode_descriptor_t *);
+  size_t idx = 0;
+
+  // Fill result array
+  for (size_t i = 0; g_mode_descriptors[i].name && idx < count; i++) {
+    if (strcmp(g_mode_descriptors[i].group, group) == 0) {
+      result[idx++] = g_mode_descriptors[i];
+    }
+  }
+
+  // Add terminator
+  result[idx].mode = MODE_INVALID;
+  result[idx].name = NULL;
+  result[idx].description = NULL;
+  result[idx].group = NULL;
+
+  *out_count = count;
+  return result;
+}
 
 // ============================================================================
 // Mode-Aware Default: log-file

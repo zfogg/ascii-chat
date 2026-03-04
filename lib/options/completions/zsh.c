@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <ascii-chat/options/completions/zsh.h>
 #include <ascii-chat/options/registry.h>
+#include <ascii-chat/options/registry/mode_defaults.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 
@@ -151,14 +152,32 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  case $state in\n"
                   "    mode)\n"
                   "      local -a server_modes client_modes\n"
-                  "      server_modes=(\n"
-                  "        'server:Multi-client video broadcast server'\n"
-                  "        'discovery-service:Session discovery and registration service'\n"
-                  "      )\n"
-                  "      client_modes=(\n"
-                  "        'client:Connect to a server and send/receive streams'\n"
-                  "        'mirror:Local webcam preview without networking'\n"
-                  "      )\n"
+                  "      server_modes=(\n");
+
+  /* Generate server-like modes from registry */
+  size_t mode_server_count = 0;
+  const mode_descriptor_t *mode_server_descs = get_modes_by_group("server-like", &mode_server_count);
+  if (mode_server_descs) {
+    for (size_t i = 0; i < mode_server_count; i++) {
+      fprintf(output, "        '%s:%s'\n", mode_server_descs[i].name, mode_server_descs[i].description);
+    }
+    SAFE_FREE(mode_server_descs);
+  }
+
+  fprintf(output, "      )\n"
+                  "      client_modes=(\n");
+
+  /* Generate client-like modes from registry */
+  size_t mode_client_count = 0;
+  const mode_descriptor_t *mode_client_descs = get_modes_by_group("client-like", &mode_client_count);
+  if (mode_client_descs) {
+    for (size_t i = 0; i < mode_client_count; i++) {
+      fprintf(output, "        '%s:%s'\n", mode_client_descs[i].name, mode_client_descs[i].description);
+    }
+    SAFE_FREE(mode_client_descs);
+  }
+
+  fprintf(output, "      )\n"
                   "      _describe -t server-modes 'server-like modes' server_modes\n"
                   "      _describe -t client-modes 'client-like modes' client_modes\n"
                   "      ;;\n"
