@@ -430,15 +430,9 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], ui
   uint8_t message[11];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
 
-  // Convert timestamp to big-endian (network byte order)
-  message[1] = (uint8_t)(timestamp >> 56);
-  message[2] = (uint8_t)(timestamp >> 48);
-  message[3] = (uint8_t)(timestamp >> 40);
-  message[4] = (uint8_t)(timestamp >> 32);
-  message[5] = (uint8_t)(timestamp >> 24);
-  message[6] = (uint8_t)(timestamp >> 16);
-  message[7] = (uint8_t)(timestamp >> 8);
-  message[8] = (uint8_t)(timestamp);
+  // Convert timestamp to network byte order and pack into message
+  uint64_t timestamp_net = htonll(timestamp);
+  memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   message[9] = capabilities;
   message[10] = max_participants;
@@ -465,15 +459,9 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], 
   uint8_t message[11];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
 
-  // Convert timestamp to big-endian (network byte order)
-  message[1] = (uint8_t)(timestamp >> 56);
-  message[2] = (uint8_t)(timestamp >> 48);
-  message[3] = (uint8_t)(timestamp >> 40);
-  message[4] = (uint8_t)(timestamp >> 32);
-  message[5] = (uint8_t)(timestamp >> 24);
-  message[6] = (uint8_t)(timestamp >> 16);
-  message[7] = (uint8_t)(timestamp >> 8);
-  message[8] = (uint8_t)(timestamp);
+  // Convert timestamp to network byte order and pack into message
+  uint64_t timestamp_net = htonll(timestamp);
+  memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   message[9] = capabilities;
   message[10] = max_participants;
@@ -503,15 +491,9 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint
   uint8_t message[1 + 8 + 48];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
-  // Convert timestamp to big-endian (network byte order)
-  message[1] = (uint8_t)(timestamp >> 56);
-  message[2] = (uint8_t)(timestamp >> 48);
-  message[3] = (uint8_t)(timestamp >> 40);
-  message[4] = (uint8_t)(timestamp >> 32);
-  message[5] = (uint8_t)(timestamp >> 24);
-  message[6] = (uint8_t)(timestamp >> 16);
-  message[7] = (uint8_t)(timestamp >> 8);
-  message[8] = (uint8_t)(timestamp);
+  // Convert timestamp to network byte order and pack into message
+  uint64_t timestamp_net = htonll(timestamp);
+  memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
   memcpy(&message[9], session_string, session_len);
@@ -544,15 +526,9 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], ui
   uint8_t message[1 + 8 + 48];
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
-  // Convert timestamp to big-endian (network byte order)
-  message[1] = (uint8_t)(timestamp >> 56);
-  message[2] = (uint8_t)(timestamp >> 48);
-  message[3] = (uint8_t)(timestamp >> 40);
-  message[4] = (uint8_t)(timestamp >> 32);
-  message[5] = (uint8_t)(timestamp >> 24);
-  message[6] = (uint8_t)(timestamp >> 16);
-  message[7] = (uint8_t)(timestamp >> 8);
-  message[8] = (uint8_t)(timestamp);
+  // Convert timestamp to network byte order and pack into message
+  uint64_t timestamp_net = htonll(timestamp);
+  memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
   memcpy(&message[9], session_string, session_len);
