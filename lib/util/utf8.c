@@ -349,3 +349,34 @@ const char *utf8_strcasestr(const char *haystack, const char *needle) {
   free(needle_folded);
   return NULL;
 }
+
+/**
+ * @brief Write UTF-8 string to file with ASCII lowercase conversion
+ *
+ * Converts ASCII uppercase to lowercase while preserving all UTF-8 multi-byte
+ * sequences unchanged. This ensures proper handling of emoji and non-ASCII
+ * characters while still performing ASCII case conversion.
+ */
+void utf8_write_lowercase(FILE *output, const char *text) {
+  if (!text) {
+    return;
+  }
+
+  for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+    // Check if this is the start of a multi-byte UTF-8 sequence
+    if (*p >= 0xC0) {
+      // Multi-byte UTF-8 character - copy as-is without modification
+      fputc(*p, output);
+      // Copy continuation bytes (0x80-0xBF)
+      while (p[1] >= 0x80 && p[1] < 0xC0) {
+        fputc(*++p, output);
+      }
+    } else if (*p >= 'A' && *p <= 'Z') {
+      // ASCII uppercase - convert to lowercase
+      fputc(*p + 32, output);
+    } else {
+      // ASCII lowercase or control character - copy as-is
+      fputc(*p, output);
+    }
+  }
+}

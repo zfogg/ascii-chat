@@ -1,6 +1,6 @@
 /**
  * @file zsh.c
- * @brief Zsh shell completion script generator
+ * @brief Zsh shell completion script generator with category grouping
  * @ingroup options
  */
 
@@ -10,103 +10,33 @@
 #include <ascii-chat/options/completions/zsh.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/common.h>
+#include <ascii-chat/util/utf8.h>
 
 /**
- * Escape help text for zsh's _arguments command
- * Zsh interprets square brackets as special syntax, so they need to be escaped
+ * Escape special characters in completion descriptions for zsh
  */
-static void zsh_escape_help(FILE *output, const char *text) {
+static void zsh_escape_desc(FILE *output, const char *text) {
   if (!text) {
     return;
   }
 
   for (const char *p = text; *p; p++) {
     switch (*p) {
-    case '[':
-    case ']':
-      // Escape square brackets for zsh _arguments
-      fprintf(output, "\\%c", *p);
-      break;
     case '\'':
-      // Escape single quotes
       fprintf(output, "'\\''");
       break;
     case '\n':
-      // Convert newlines to spaces in help text
+    case '\t':
       fprintf(output, " ");
       break;
-    case '\t':
-      // Convert tabs to spaces in help text
-      fprintf(output, " ");
+    case ':':
+      // Escape colons which are special in completion descriptions
+      fprintf(output, "\\:");
       break;
     default:
       fputc(*p, output);
     }
   }
-}
-
-static void zsh_write_option(FILE *output, const option_descriptor_t *opt, const char *group) {
-  if (!opt) {
-    return;
-  }
-
-  // Get completion metadata for this option
-  const option_metadata_t *meta = options_registry_get_metadata(opt->long_name);
-
-  // Build completion spec based on metadata
-  char completion_spec[512] = "";
-  if (meta) {
-    if (meta->input_type == OPTION_INPUT_ENUM && meta->enum_values && meta->enum_values[0] != NULL) {
-      // Enum completion: "(value1 value2 value3)"
-      size_t pos = 0;
-      pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ":(");
-      for (size_t i = 0; meta->enum_values[i] != NULL && pos < sizeof(completion_spec) - 1; i++) {
-        if (i > 0)
-          pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, " ");
-        pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s", meta->enum_values[i]);
-      }
-      safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ")");
-    } else if (meta->input_type == OPTION_INPUT_FILEPATH) {
-      // File path completion
-      SAFE_STRNCPY(completion_spec, ":_files", sizeof(completion_spec));
-    } else if (meta->examples && meta->examples[0] != NULL) {
-      // Examples: "(example1 example2)" - practical values, higher priority than calculated ranges
-      size_t pos = 0;
-      pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ":(");
-      for (size_t i = 0; meta->examples[i] != NULL && pos < sizeof(completion_spec) - 1; i++) {
-        if (i > 0)
-          pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, " ");
-        pos += safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, "%s", meta->examples[i]);
-      }
-      safe_snprintf(completion_spec + pos, sizeof(completion_spec) - pos, ")");
-    } else if (meta->input_type == OPTION_INPUT_NUMERIC) {
-      // Numeric completion with range - only if no examples
-      if (meta->numeric_range.min > 0 || meta->numeric_range.max > 0) {
-        safe_snprintf(completion_spec, sizeof(completion_spec), ":(numeric %d-%d)", meta->numeric_range.min,
-                      meta->numeric_range.max);
-      } else {
-        SAFE_STRNCPY(completion_spec, ":(numeric)", sizeof(completion_spec));
-      }
-    }
-  }
-
-  // Build group spec - zsh's (group-name) syntax for option grouping
-  char group_spec[256] = "";
-  if (group) {
-    safe_snprintf(group_spec, sizeof(group_spec), "(%s)", group);
-  }
-
-  // Write short option if present
-  if (opt->short_name != '\0') {
-    fprintf(output, "    '%s-%c[", group_spec, opt->short_name);
-    zsh_escape_help(output, opt->help_text);
-    fprintf(output, "]%s' \\\n", completion_spec);
-  }
-
-  // Write long option
-  fprintf(output, "    '%s--%s[", group_spec, opt->long_name);
-  zsh_escape_help(output, opt->help_text);
-  fprintf(output, "]%s' \\\n", completion_spec);
 }
 
 /**
@@ -156,24 +86,46 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
- * Write grouped options with category headers using zsh's native grouping
+ * Write options grouped by category using _describe for proper group headers
  */
-static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count) {
+static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
+                                       const char *func_prefix) {
   if (!opts || count == 0) return;
 
   size_t group_count = 0;
   const char **groups = zsh_collect_groups(opts, count, &group_count);
 
-  // Write options grouped by category using zsh's (group-name) syntax
+  // First pass: declare arrays for each group
   for (size_t g = 0; g < group_count; g++) {
     const char *group = groups[g];
+    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
 
-    // Write all options in this group with group prefix
+    // Write all options in this group
     for (size_t i = 0; i < count; i++) {
-      if (opts[i].group && strcmp(opts[i].group, group) == 0) {
-        zsh_write_option(output, &opts[i], group);
+      if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
+
+      // Short option if present
+      if (opts[i].short_name != '\0') {
+        fprintf(output, "    '-%c:", opts[i].short_name);
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "'\n");
       }
+
+      // Long option
+      fprintf(output, "    '--%s:", opts[i].long_name);
+      zsh_escape_desc(output, opts[i].help_text);
+      fprintf(output, "'\n");
     }
+
+    fprintf(output, "  )\n");
+  }
+
+  // Second pass: call _describe for each group (with lowercase display)
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+    fprintf(output, "  _describe -t %s '", group);
+    utf8_write_lowercase(output, group);
+    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
   }
 
   SAFE_FREE(groups);
@@ -193,67 +145,81 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "\n"
                   "_ascii_chat() {\n"
                   "  local curcontext=\"$curcontext\" state line\n"
-                  "  _arguments -C \\\n");
+                  "  _arguments \\\n"
+                  "    '1:mode:(server client mirror discovery-service)' \\\n"
+                  "    '*::args:_ascii_chat_args'\n"
+                  "}\n"
+                  "\n"
+                  "_ascii_chat_args() {\n"
+                  "  case $words[1] in\n"
+                  "    server)\n"
+                  "      _ascii_chat_server\n"
+                  "      ;;\n"
+                  "    client)\n"
+                  "      _ascii_chat_client\n"
+                  "      ;;\n"
+                  "    mirror)\n"
+                  "      _ascii_chat_mirror\n"
+                  "      ;;\n"
+                  "    discovery-service)\n"
+                  "      _ascii_chat_discovery_service\n"
+                  "      ;;\n"
+                  "    *)\n"
+                  "      # Binary-level options\n");
 
   /* Binary options - grouped by category */
   size_t binary_count = 0;
   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
 
   if (binary_opts) {
-    zsh_write_options_grouped(output, binary_opts, binary_count);
+    zsh_write_options_grouped(output, binary_opts, binary_count, "binary");
     SAFE_FREE(binary_opts);
   }
 
-  fprintf(output, "    '1:mode:(server client mirror discovery-service)' \\\n"
-                  "    '*::mode args:_ascii_chat_subcommand'\n"
+  fprintf(output, "      ;;\n"
+                  "  esac\n"
                   "}\n"
                   "\n"
-                  "_ascii_chat_subcommand() {\n"
-                  "  case $line[1] in\n"
-                  "  server)\n"
-                  "    _arguments \\\n");
+                  "_ascii_chat_server() {\n");
 
   /* Server options - grouped by category */
   size_t server_count = 0;
   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
 
   if (server_opts) {
-    zsh_write_options_grouped(output, server_opts, server_count);
+    zsh_write_options_grouped(output, server_opts, server_count, "server");
     SAFE_FREE(server_opts);
   }
 
-  fprintf(output, "      && return 0\n"
-                  "    ;;\n"
-                  "  client)\n"
-                  "    _arguments \\\n");
+  fprintf(output, "}\n"
+                  "\n"
+                  "_ascii_chat_client() {\n");
 
   /* Client options - grouped by category */
   size_t client_count = 0;
   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
 
   if (client_opts) {
-    zsh_write_options_grouped(output, client_opts, client_count);
+    zsh_write_options_grouped(output, client_opts, client_count, "client");
     SAFE_FREE(client_opts);
   }
 
-  fprintf(output, "      && return 0\n"
-                  "    ;;\n"
-                  "  mirror)\n"
-                  "    _arguments \\\n");
+  fprintf(output, "}\n"
+                  "\n"
+                  "_ascii_chat_mirror() {\n");
 
   /* Mirror options - grouped by category */
   size_t mirror_count = 0;
   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
 
   if (mirror_opts) {
-    zsh_write_options_grouped(output, mirror_opts, mirror_count);
+    zsh_write_options_grouped(output, mirror_opts, mirror_count, "mirror");
     SAFE_FREE(mirror_opts);
   }
 
-  fprintf(output, "      && return 0\n"
-                  "    ;;\n"
-                  "  discovery-service)\n"
-                  "    _arguments \\\n");
+  fprintf(output, "}\n"
+                  "\n"
+                  "_ascii_chat_discovery_service() {\n");
 
   /* Discovery-service options - grouped by category */
   size_t discovery_svc_count = 0;
@@ -261,14 +227,11 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
-    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count);
+    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, "discovery_service");
     SAFE_FREE(discovery_svc_opts);
   }
 
-  fprintf(output, "      && return 0\n"
-                  "    ;;\n"
-                  "  esac\n"
-                  "}\n"
+  fprintf(output, "}\n"
                   "\n"
                   "_ascii_chat \"$@\"\n");
 

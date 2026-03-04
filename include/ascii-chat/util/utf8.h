@@ -44,6 +44,7 @@
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdio.h>
 
 /* ============================================================================
  * UTF-8 Decoding Functions
@@ -410,3 +411,40 @@ int utf8_read_and_insert_continuation_bytes(char *buffer, size_t *cursor, size_t
  * @ingroup util
  */
 const char *utf8_strcasestr(const char *haystack, const char *needle);
+
+/**
+ * @brief Write UTF-8 string to file with ASCII lowercase conversion
+ * @param output File pointer to write to (must not be NULL)
+ * @param text UTF-8 string to convert and write (may be NULL)
+ *
+ * Writes text to output file, converting ASCII uppercase letters (A-Z) to
+ * lowercase (a-z) while preserving all UTF-8 multi-byte sequences unchanged.
+ * This is UTF-8 aware and does not modify non-ASCII characters.
+ *
+ * Useful for terminal output where uppercase letters should be displayed as
+ * lowercase while preserving Unicode characters like emoji and accented letters.
+ *
+ * @note If text is NULL, function returns immediately without writing anything
+ * @note Multi-byte UTF-8 sequences (e.g., emoji, CJK characters) are copied unchanged
+ * @note Only ASCII uppercase (A-Z) is converted to lowercase (a-z)
+ * @note Continuation bytes in multi-byte sequences are never modified
+ *
+ * @par Example
+ * @code
+ * FILE *fp = fopen("output.txt", "w");
+ *
+ * // ASCII text: converts uppercase
+ * utf8_write_lowercase(fp, "HELLO World");    // Writes "hello world"
+ *
+ * // UTF-8 emoji and non-ASCII: preserved
+ * utf8_write_lowercase(fp, "CAFÉ 😀");       // Writes "café 😀" (emoji unchanged)
+ *
+ * // Mixed case with non-ASCII
+ * utf8_write_lowercase(fp, "HELLO 世界");     // Writes "hello 世界" (CJK unchanged)
+ *
+ * fclose(fp);
+ * @endcode
+ *
+ * @ingroup util
+ */
+void utf8_write_lowercase(FILE *output, const char *text);
