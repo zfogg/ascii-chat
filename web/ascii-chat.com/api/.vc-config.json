@@ -1,5 +1,5 @@
 {
-  "runtime": "nodejs22.x",
+  "runtime": "bun1.x",
   "maxDuration": 10,
   "memory": 512
 }
