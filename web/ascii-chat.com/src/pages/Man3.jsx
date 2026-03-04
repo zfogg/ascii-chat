@@ -215,6 +215,10 @@ export default function Man3() {
           setTargetLineNumber(lineNumber);
           setTargetSnippetIndex(snippetIndex);
         }
+        // Scroll content container to top
+        if (contentViewerRef.current) {
+          contentViewerRef.current.scrollTop = 0;
+        }
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
