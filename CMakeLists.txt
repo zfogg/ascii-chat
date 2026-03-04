@@ -81,7 +81,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/init/BuildConfiguration.cmake)
 #set(CMAKE_EXPERIMENTAL_EXPORT_PACKAGE_INFO "b80be207-778e-46ba-8080-b23bba22639e")
 
 include(${CMAKE_SOURCE_DIR}/cmake/platform/Musl.cmake)
-configure_musl_pre_project()
+configure_musl_pre_project("${CMAKE_BUILD_TYPE}")
 
 # Configure musl-specific compiler flags BEFORE project()
 if(USE_MUSL)

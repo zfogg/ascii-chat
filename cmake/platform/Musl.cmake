@@ -19,7 +19,19 @@
 # This section must run before project() to set CMAKE_C_COMPILER
 # =============================================================================
 
-function(configure_musl_pre_project)
+function(configure_musl_pre_project BUILD_TYPE_PARAM)
+    # If BUILD_TYPE_PARAM is empty, try to get from CMAKE_BUILD_TYPE cache variable (from preset)
+    # Presets set CMAKE_BUILD_TYPE before project() via cacheVariables
+    if(NOT BUILD_TYPE_PARAM)
+        set(BUILD_TYPE_PARAM "${CMAKE_BUILD_TYPE}")
+    endif()
+    if(NOT BUILD_TYPE_PARAM)
+        # Still empty - try to read from CMakeUserPresets.json or cache
+        get_property(_build_type_cached CACHE CMAKE_BUILD_TYPE PROPERTY VALUE)
+        if(_build_type_cached)
+            set(BUILD_TYPE_PARAM "${_build_type_cached}")
+        endif()
+    endif()
     # Option to use musl libc (Linux only - musl is not compatible with macOS or Windows)
     # =============================================================================
     # musl libc Configuration for Linux Release Builds
@@ -74,7 +86,7 @@ function(configure_musl_pre_project)
 
         # Only enable musl by default on x86_64 - ARM64 musl support on GitHub runners is limited
         # Autotools (autoconf, automake, libtool) are installed by scripts/install-deps.sh before cmake runs
-        if(HOST_ARCH STREQUAL "x86_64" AND (CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        if(HOST_ARCH STREQUAL "x86_64" AND (BUILD_TYPE STREQUAL "Release" OR BUILD_TYPE STREQUAL "RelWithDebInfo"))
             option(USE_MUSL "Use musl libc + mimalloc for optimal performance (Linux Release builds)" ON)
         else()
             option(USE_MUSL "Use musl libc instead of glibc (Linux only)" OFF)
