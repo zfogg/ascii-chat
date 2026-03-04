@@ -261,8 +261,9 @@ app.get("/api/man3/search", limiter, (req, res) => {
       totalMatches: totalMatches,
       results: results.slice(0, 10), // Limit to 10 results
     });
-  } catch (_e) {
-    res.status(400).json({ error: "Invalid regex pattern" });
+  } catch (err) {
+    logger.error("Search error:", err);
+    res.status(400).json({ error: err.message });
   }
 });
 
