@@ -85,58 +85,67 @@ export default function Man3() {
       });
   }, []);
 
-  // Debounced search via API
+  // Debounced search function
+  const performSearch = async (query) => {
+    if (!query.trim()) {
+      setSearchResults(manPages);
+      setFilesMatched(0);
+      setTotalMatches(0);
+      setSearching(false);
+      // Clear search param but preserve page param if present
+      const params = new URLSearchParams(window.location.search);
+      params.delete("q");
+      const newUrl = params.toString()
+        ? `/man3?${params.toString()}`
+        : "/man3";
+      window.history.replaceState({}, "", newUrl + window.location.hash);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/man3/search?q=${encodeURIComponent(query)}`,
+      );
+      const data = await response.json();
+
+      if (data.error) {
+        setSearchResults([]);
+        setFilesMatched(0);
+        setTotalMatches(0);
+      } else {
+        setSearchResults(data.results || []);
+        setFilesMatched(data.filesMatched || 0);
+        setTotalMatches(data.totalMatches || 0);
+      }
+
+      // Update URL with search query (preserve page param if present)
+      const params = new URLSearchParams(window.location.search);
+      params.set("q", query);
+      window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
+    } catch (e) {
+      console.error("Search error:", e);
+      setSearchResults([]);
+      setFilesMatched(0);
+      setTotalMatches(0);
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  // Debounce the API call when search query changes
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
-    searchTimeoutRef.current = setTimeout(async () => {
-      if (!searchQuery.trim()) {
-        setSearchResults(manPages);
-        setFilesMatched(0);
-        setTotalMatches(0);
-        setSearching(false);
-        // Clear search param but preserve page param if present
-        const params = new URLSearchParams(window.location.search);
-        params.delete("q");
-        const newUrl = params.toString()
-          ? `/man3?${params.toString()}`
-          : "/man3";
-        window.history.replaceState({}, "", newUrl + window.location.hash);
-        return;
-      }
+    if (!searchQuery.trim()) {
+      performSearch("");
+      return;
+    }
 
-      setSearching(true);
-
-      try {
-        const response = await fetch(
-          `/api/man3/search?q=${encodeURIComponent(searchQuery)}`,
-        );
-        const data = await response.json();
-
-        if (data.error) {
-          setSearchResults([]);
-          setFilesMatched(0);
-          setTotalMatches(0);
-        } else {
-          setSearchResults(data.results || []);
-          setFilesMatched(data.filesMatched || 0);
-          setTotalMatches(data.totalMatches || 0);
-        }
-
-        // Update URL with search query (preserve page param if present)
-        const params = new URLSearchParams(window.location.search);
-        params.set("q", searchQuery);
-        window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
-      } catch (e) {
-        console.error("Search error:", e);
-        setSearchResults([]);
-        setFilesMatched(0);
-        setTotalMatches(0);
-      } finally {
-        setSearching(false);
-      }
+    setSearching(true);
+    searchTimeoutRef.current = setTimeout(() => {
+      performSearch(searchQuery);
     }, 500);
 
     return () => {
