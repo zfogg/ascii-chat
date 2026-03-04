@@ -826,6 +826,7 @@ int main(int argc, char *argv[]) {
 
   // Truncate log if it's already too large
   log_truncate_if_large();
+  fflush(stderr);
 
   // Handle --help and --version (these are detected and flagged by options_init)
   // Terminal capabilities already initialized before options_init() at startup
