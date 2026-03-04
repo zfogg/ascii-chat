@@ -88,17 +88,28 @@ class H265Encoder {
 
     // Check H.265 support first
     const bitrate = Math.max(500_000, width * height * 2 * fps);
-    const configSupport = await VideoEncoder.isConfigSupported({
-      codec: "hvc1",
-      width,
-      height,
-      bitrate,
-      framerate: fps,
-    });
-    if (!configSupport.supported) {
-      throw new Error(
-        "H.265 (HEVC) codec not supported in this browser. Please use a browser with H.265 support enabled.",
+    try {
+      const configSupport = await VideoEncoder.isConfigSupported({
+        codec: "hvc1",
+        width,
+        height,
+        bitrate,
+        framerate: fps,
+      });
+      if (!configSupport.supported) {
+        console.log(
+          "[H265Encoder] H.265 not supported, will use IMAGE_FRAME packets instead",
+        );
+        this.isOpen = false;
+        return; // Skip encoder initialization, will use IMAGE_FRAME fallback
+      }
+    } catch (err) {
+      console.log(
+        "[H265Encoder] H.265 check failed, will use IMAGE_FRAME packets instead:",
+        err,
       );
+      this.isOpen = false;
+      return; // Skip encoder initialization, will use IMAGE_FRAME fallback
     }
 
     this.encoder = new VideoEncoder({
