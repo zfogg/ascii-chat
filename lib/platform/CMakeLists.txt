@@ -1,7 +1,6 @@
 # lib/platform - Platform abstraction layer
 
 set(PLATFORM_SRCS_COMMON
-    ${CMAKE_CURRENT_SOURCE_DIR}/abstraction.c
     ${CMAKE_CURRENT_SOURCE_DIR}/socket.c
     ${CMAKE_CURRENT_SOURCE_DIR}/thread.c
     ${CMAKE_CURRENT_SOURCE_DIR}/filesystem.c
@@ -9,6 +8,7 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/rwlock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cond.c
     ${CMAKE_CURRENT_SOURCE_DIR}/system.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/terminal.c
 )
 
 if(WIN32)

@@ -21,8 +21,6 @@ set(CORE_SRCS
     ${LIB_DIR}/log/json.c
     ${LIB_DIR}/log/websocket.c
     ${LIB_DIR}/log/io.c
-    # platform/terminal.c - unified color detection
-    ${LIB_DIR}/platform/terminal.c
     # ui/
     ${LIB_DIR}/ui/frame_buffer.c
     ${LIB_DIR}/ui/fps_counter.c
