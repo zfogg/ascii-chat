@@ -190,6 +190,7 @@ export default function Man3() {
     pageName,
     lineNumber = null,
     snippetIndex = null,
+    skipHistoryPush = false,
   ) => {
     if (selectedPageName === pageName && lineNumber === null) {
       // Toggle off if clicking same page
@@ -202,6 +203,14 @@ export default function Man3() {
       params.delete("page");
       const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
       window.history.replaceState({}, "", newUrl);
+      return;
+    }
+
+    // If clicking a line number on the same page, just update the hash without fetching
+    if (selectedPageName === pageName && lineNumber !== null) {
+      setTargetLineNumber(lineNumber);
+      const hash = "#l" + lineNumber.toString().padStart(5, "0");
+      window.history.replaceState({}, "", window.location.pathname + window.location.search + hash);
       return;
     }
 
@@ -234,7 +243,9 @@ export default function Man3() {
             hash = currentHash;
           }
         }
-        window.history.pushState({}, "", `/man3?${params.toString()}` + hash);
+        if (!skipHistoryPush) {
+          window.history.pushState({}, "", `/man3?${params.toString()}` + hash);
+        }
       })
       .catch((e) => console.error("Failed to load page:", e));
   };
@@ -447,7 +458,8 @@ export default function Man3() {
         if (lineMatch) {
           lineNumber = parseInt(lineMatch[1], 10);
         }
-        loadPageContent(pageName, lineNumber);
+        // Skip pushState since history is already being managed by the back button
+        loadPageContent(pageName, lineNumber, null, true);
       } else {
         // No page param, clear the page
         setSelectedPageName(null);
