@@ -486,7 +486,7 @@ export default function Man3() {
     return lines;
   };
 
-  const renderContentWithCodeBlocks = (html) => {
+  const renderContentWithCodeBlocks = (html, isSourcePage = false) => {
     const elements = [];
     let remaining = html;
     let position = 0;
@@ -520,8 +520,8 @@ export default function Man3() {
             targetLineNum = parseInt(hash.substring(2), 10);
           }
 
-          // If target line exists, render with yellow background and nice arrows
-          if (targetLineNum) {
+          // If target line exists on source pages, render with yellow background and nice arrows
+          if (targetLineNum && isSourcePage) {
             const highlightedHtml = lines
               .map((text, idx) => {
                 const lineNum = idx + 1;
@@ -629,7 +629,7 @@ export default function Man3() {
           // Extract target line number from hash if present
           const hash = window.location.hash;
           let targetLineNum = null;
-          if (hash.match(/^#l\d+$/)) {
+          if (hash.match(/^#l\d+$/) && isSourcePage) {
             const lineNum = parseInt(hash.substring(2), 10);
             // Only set targetLineNum if this line actually exists in the code
             if (codeLines.some((line) => line.number === lineNum)) {
@@ -642,7 +642,7 @@ export default function Man3() {
             .map((line) => {
               const lineNum = line.number || "";
               const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-              const isTarget = line.number === targetLineNum;
+              const isTarget = targetLineNum !== null && line.number === targetLineNum;
 
               if (isTarget) {
                 return `⟹ ${paddedNum}  ${line.text} ⟸`;
@@ -673,7 +673,7 @@ export default function Man3() {
           );
 
           // Add JavaScript to highlight the line with arrow after CodeBlock renders
-          if (targetLineNum) {
+          if (targetLineNum && isSourcePage) {
             setTimeout(() => {
               const codeBlocks = document.querySelectorAll(".code-with-highlight pre code");
               codeBlocks.forEach((block) => {
@@ -923,7 +923,10 @@ export default function Man3() {
                     </button>
                   </div>
                   <div className="man-page-content">
-                    {renderContentWithCodeBlocks(selectedPageContent)}
+                    {renderContentWithCodeBlocks(
+                      selectedPageContent,
+                      selectedPageName?.endsWith("_source") || false
+                    )}
                   </div>
                 </div>
               ) : (
