@@ -17,7 +17,7 @@ interface FooterProps {
   className?: string;
 }
 
-export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkColor = "text-cyan-400 hover:text-cyan-300", className = "mt-16 pt-8 border-t-2 border-gray-700" }: FooterProps) {
+export function Footer({ links, commitSha, onCommitClick, extraLine, authorLinkColor = "text-cyan-400 hover:text-cyan-300", className = "mt-8 pt-8 border-t-2 border-gray-700" }: FooterProps) {
   return (
     <footer className={`${className} w-full flex flex-col text-center text-sm md:text-base`}>
       <p className="mb-3 mx-auto flex flex-row flex-wrap justify-center items-center gap-2">

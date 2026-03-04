@@ -56,7 +56,7 @@ export default function Man1() {
           />
 
           {/* Footer */}
-          <div className="mt-16">
+          <div className="mt-8">
             <Footer />
           </div>
         </div>
