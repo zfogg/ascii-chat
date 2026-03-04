@@ -15,31 +15,37 @@ if [ -d "$REPO_ROOT" ]; then
     echo "TOUCHING options.c"
     touch "$REPO_ROOT/lib/options/options.c"
   fi
-  cmake --build "$REPO_ROOT/build_release" --target man1 man5 || true
+  # Use build directory for man page generation (build_release uses musl and may not be available)
+  BUILD_DIR="$REPO_ROOT/build"
+  if [ ! -d "$BUILD_DIR" ]; then
+    BUILD_DIR="$REPO_ROOT/build_release"
+  fi
+
+  cmake --build "$BUILD_DIR" --target man1 man5 || true
 
   # Generate man(1) page from troff format and convert to HTML
-  #$REPO_ROOT/build_release/bin/ascii-chat --man-page-create | mandoc -Thtml > public/ascii-chat-man1.html
-  mandoc -Thtml "$REPO_ROOT/build_release/share/man/man1/ascii-chat.1" > public/ascii-chat-man1.html || true
+  #$BUILD_DIR/bin/ascii-chat --man-page-create | mandoc -Thtml > public/ascii-chat-man1.html
+  mandoc -Thtml "$BUILD_DIR/share/man/man1/ascii-chat.1" > public/ascii-chat-man1.html || true
   echo "📜 man(1) page updated"
 
   # Generate man(5) page from built manpage and convert to HTML
-  mandoc -Thtml "$REPO_ROOT/build_release/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html || true
+  mandoc -Thtml "$BUILD_DIR/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html || true
   echo "📜 man(5) page updated"
 
   # Generate man(3) pages from Doxygen (man pages only, no HTML)
   echo "📚 Generating man(3) pages from Doxygen..."
-  cmake --build "$REPO_ROOT/build_release" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
+  cmake --build "$BUILD_DIR" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
 
   echo "📚 Generating man(3) pages from Doxygen..."
-  cmake --build "$REPO_ROOT/build_release" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
+  cmake --build "$BUILD_DIR" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
 
   # Check if man3 directory exists and has files
-  if [ -d "$REPO_ROOT/build_release/share/man/man3" ]; then
+  if [ -d "$BUILD_DIR/share/man/man3" ]; then
     # Convert all man(3) pages to HTML and create index
     mkdir -p public/man3
 
     # Convert each .3 file to HTML
-    for manfile in "$REPO_ROOT/build_release/share/man/man3"/*.3; do
+    for manfile in "$BUILD_DIR/share/man/man3"/*.3; do
       if [ -f "$manfile" ]; then
         basename=$(basename "$manfile" .3)
         mandoc -Thtml "$manfile" > "public/man3/${basename}.html"
