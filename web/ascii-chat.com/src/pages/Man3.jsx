@@ -76,8 +76,11 @@ export default function Man3() {
         setFilesMatched(0);
         setTotalMatches(0);
         setSearching(false);
-        // Clear URL param when search is empty
-        window.history.replaceState({}, "", "/man3");
+        // Clear search param but preserve page param if present
+        const params = new URLSearchParams(window.location.search);
+        params.delete("q");
+        const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
+        window.history.replaceState({}, "", newUrl);
         return;
       }
 
@@ -99,9 +102,10 @@ export default function Man3() {
           setTotalMatches(data.totalMatches || 0);
         }
 
-        // Update URL with search query
-        const newUrl = `/man3?q=${encodeURIComponent(searchQuery)}`;
-        window.history.replaceState({}, "", newUrl);
+        // Update URL with search query (preserve page param if present)
+        const params = new URLSearchParams(window.location.search);
+        params.set("q", searchQuery);
+        window.history.replaceState({}, "", `/man3?${params.toString()}`);
       } catch (e) {
         console.error("Search error:", e);
         setSearchResults([]);
