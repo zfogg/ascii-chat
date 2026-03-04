@@ -314,6 +314,7 @@ static void *pipeline_capture_thread(void *arg) {
                 log_debug_every(60 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Enqueued frame to encode_queue (%dx%d)", frame->w, frame->h);
             }
         } else {
+            log_warn_every(1000 * NS_PER_MS_INT, "[PIPELINE_CAPTURE] has_render_file=false, NOT encoding frames");
             free_frame(frame);
         }
     }
