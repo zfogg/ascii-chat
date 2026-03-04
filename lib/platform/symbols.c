@@ -885,8 +885,24 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // First pass: check cache for all addresses
   int uncached_count = 0;
-  void *uncached_addrs[size];
-  int uncached_indices[size];
+
+  // Allocate arrays for uncached addresses on heap instead of stack
+  // VLAs can cause stack overflow with large backtrace sizes
+  void **uncached_addrs = SAFE_MALLOC((size_t)size, void **);
+  int *uncached_indices = SAFE_MALLOC((size_t)size * sizeof(int), int *);
+
+  if (!uncached_addrs || !uncached_indices) {
+    SAFE_FREE(uncached_addrs);
+    SAFE_FREE(uncached_indices);
+    // Return result array with raw addresses as fallback
+    for (int i = 0; i < size; i++) {
+      result[i] = SAFE_MALLOC(32, char *);
+      if (result[i]) {
+        SAFE_SNPRINTF(result[i], 32, "%p", buffer[i]);
+      }
+    }
+    return result;
+  }
 
   for (int i = 0; i < size; i++) {
     const char *cached = symbol_cache_lookup(buffer[i]);
@@ -968,6 +984,10 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
       }
     }
   }
+
+  // Clean up heap-allocated arrays
+  SAFE_FREE(uncached_addrs);
+  SAFE_FREE(uncached_indices);
 
   return result;
 }
