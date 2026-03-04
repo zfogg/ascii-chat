@@ -265,73 +265,34 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
  * ============================================================================ */
 
 /**
- * @brief Get a backtrace of the current call stack
- * @param buffer Array of pointers to store return addresses
- * @param size Maximum number of frames to capture
- * @return Number of frames captured
+ * @brief Print a backtrace of the current call stack
+ * @param skip_frames Number of frames to skip from the top
  *
- * Captures the current call stack into the provided buffer.
- * Returns the number of frames actually captured.
+ * Captures a backtrace and prints it using platform_print_backtrace_symbols().
+ * Useful for debugging crashes or errors.
  *
  * @ingroup debug_util
  */
-int platform_backtrace(void **buffer, int size);
-
-/**
- * @brief Convert backtrace addresses to symbol names
- * @param buffer Array of return addresses from platform_backtrace()
- * @param size Number of frames in buffer
- * @return Array of symbol name strings, or NULL on error
- *
- * Converts the return addresses from platform_backtrace() into
- * human-readable symbol names (function names, file names, line numbers).
- *
- * @note The returned array must be freed with platform_backtrace_symbols_destroy().
- *
- * @ingroup debug_util
- */
-char **platform_backtrace_symbols(void *const *buffer, int size);
-
-/**
- * @brief Free symbol array returned by platform_backtrace_symbols()
- * @param strings Array of symbol strings to free
- *
- * Frees the memory allocated by platform_backtrace_symbols().
- *
- * @ingroup debug_util
- */
-void platform_backtrace_symbols_destroy(char **strings);
-
-/**
- * @brief Install crash handlers for the application
- *
- * Installs signal handlers for common crash signals (SIGSEGV, SIGABRT, etc.)
- * that will print a backtrace before terminating the process.
- *
- * @note This should be called early in program initialization.
- *
- * @ingroup debug_util
- */
-void platform_install_crash_handler(void);
+void backtrace_print(int skip_frames);
 
 /**
  * @brief Print pre-resolved backtrace symbols with consistent formatting
  *
  * Uses colored format for all backtraces:
- *   [0] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
- *   [1] server_crypto_handshake() (src/server/crypto.c:511)
+ *   [-1] crypto_handshake_server_complete() (lib/crypto/handshake.c:1471)
+ *   [0] server_crypto_handshake() (src/server/crypto.c:511)
  *
  * @param label Header label (e.g., "Backtrace", "Call stack")
  * @param symbols Array of pre-resolved symbol strings
  * @param count Number of symbols in the array
  * @param skip_frames Number of frames to skip from the start
- * @param max_frames Maximum frames to print (0 = unlimited)
+ * @param max_frames Maximum frames to print (-1 = unlimited)
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
  *
  * @ingroup debug_util
  */
-void platform_print_backtrace_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
-                                      backtrace_frame_filter_t filter);
+void backtrace_print_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
+                             backtrace_frame_filter_t filter);
 
 /**
  * @brief Format pre-resolved backtrace symbols to a buffer
@@ -344,25 +305,14 @@ void platform_print_backtrace_symbols(const char *label, char **symbols, int cou
  * @param symbols Array of pre-resolved symbol strings
  * @param count Number of symbols in the array
  * @param skip_frames Number of frames to skip from the start
- * @param max_frames Maximum frames to print (0 = unlimited)
+ * @param max_frames Maximum frames to print (-1 = unlimited)
  * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
  * @return Number of bytes written (excluding null terminator)
  *
  * @ingroup debug_util
  */
-int platform_format_backtrace_symbols(char *buffer, size_t buffer_size, const char *label, char **symbols, int count,
-                                      int skip_frames, int max_frames, backtrace_frame_filter_t filter);
-
-/**
- * @brief Print a backtrace of the current call stack
- * @param skip_frames Number of frames to skip from the top
- *
- * Captures a backtrace and prints it using platform_print_backtrace_symbols().
- * Useful for debugging crashes or errors.
- *
- * @ingroup debug_util
- */
-void platform_print_backtrace(int skip_frames);
+int backtrace_format_symbols(char *buffer, size_t buffer_size, const char *label, char **symbols, int count,
+                             int skip_frames, int max_frames, backtrace_frame_filter_t filter);
 
 /**
  * @brief Log N backtrace frames with function name, line number, and file
@@ -383,7 +333,7 @@ void platform_print_backtrace(int skip_frames);
  *
  * @ingroup debug_util
  */
-void platform_log_backtrace_frames(int num_frames, int skip_frames);
+void backtrace_log_frames(int num_frames, int skip_frames);
 
 #ifdef __cplusplus
 }

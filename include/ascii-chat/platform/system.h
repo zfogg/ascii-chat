@@ -44,6 +44,18 @@ extern "C" {
  */
 typedef void (*signal_handler_t)(int);
 
+/**
+ * @brief Install crash handlers for the application
+ *
+ * Installs signal handlers for common crash signals (SIGSEGV, SIGABRT, etc.)
+ * that will print a backtrace before terminating the process.
+ *
+ * @note This should be called early in program initialization.
+ *
+ * @ingroup debug_util
+ */
+void platform_install_crash_handler(void);
+
 // ============================================================================
 // System Functions
 // ============================================================================

@@ -4,8 +4,9 @@
  * @brief 📍 Backtrace capture, symbolization, and formatting implementation
  */
 
+#include "ascii-chat/common/error_codes.h"
 #include <ascii-chat/debug/backtrace.h>
-#include <ascii-chat/platform/system.h>
+#include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
@@ -15,6 +16,7 @@
 
 void backtrace_capture(backtrace_t *bt) {
   if (!bt) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace");
     return;
   }
   bt->count = platform_backtrace(bt->ptrs, 32);
@@ -22,6 +24,7 @@ void backtrace_capture(backtrace_t *bt) {
 
 void backtrace_symbolize(backtrace_t *bt) {
   if (!bt || bt->tried_symbolize) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid symbolize params");
     return; // Already tried or invalid (don't try twice)
   }
   bt->tried_symbolize = true;
@@ -30,6 +33,7 @@ void backtrace_symbolize(backtrace_t *bt) {
 
 void backtrace_capture_and_symbolize(backtrace_t *bt) {
   if (!bt) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace params");
     return;
   }
   backtrace_capture(bt);
@@ -38,6 +42,7 @@ void backtrace_capture_and_symbolize(backtrace_t *bt) {
 
 void backtrace_t_free(backtrace_t *bt) {
   if (!bt) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace params");
     return;
   }
   if (bt->symbols) {
@@ -46,9 +51,26 @@ void backtrace_t_free(backtrace_t *bt) {
   }
 }
 
+void backtrace_print_simple(int skip_frames) {
+  void *buffer[32];
+  int size = platform_backtrace(buffer, 32);
+
+  if (size > 0) {
+    char **symbols = platform_backtrace_symbols(buffer, size);
+
+    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
+    backtrace_print_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
+
+    platform_backtrace_symbols_destroy(symbols);
+  } else {
+    SET_ERRNO(ERROR_INVALID_STATE, "Failed to capture backtrace");
+  }
+}
+
 void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
   if (!bt || !bt->symbols || bt->count <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid backtrace params");
     return;
   }
 
@@ -328,6 +350,7 @@ void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, 
 
 void backtrace_print_many(const char *label, const backtrace_t *bts, int count) {
   if (!bts || count <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: bts is NULL or count <= 0");
     return;
   }
   for (int i = 0; i < count; i++) {
@@ -338,6 +361,7 @@ void backtrace_print_many(const char *label, const backtrace_t *bts, int count) 
 int backtrace_format(char *buf, size_t buf_size, const char *label, const backtrace_t *bt, int skip_frames,
                      int max_frames, backtrace_frame_filter_t filter) {
   if (!buf || buf_size == 0 || !bt || !bt->symbols || bt->count <= 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters");
     return -1;
   }
 
@@ -378,17 +402,4 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   }
 
   return offset;
-}
-void platform_print_backtrace(int skip_frames) {
-  void *buffer[32];
-  int size = platform_backtrace(buffer, 32);
-
-  if (size > 0) {
-    char **symbols = platform_backtrace_symbols(buffer, size);
-
-    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
-
-    platform_backtrace_symbols_destroy(symbols);
-  }
 }
