@@ -940,6 +940,9 @@ export default function Man3() {
                   ? `${filesMatched} file${filesMatched !== 1 ? "s" : ""} matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
                   : "No results"}
             </p>
+            <p className="text-sm text-gray-400 mt-6 text-center">
+              📖 <a href="https://zfogg.github.io/ascii-chat/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 transition-colors">View original Doxygen documentation on GitHub Pages</a>
+            </p>
           </header>
 
           {/* Main content area */}
