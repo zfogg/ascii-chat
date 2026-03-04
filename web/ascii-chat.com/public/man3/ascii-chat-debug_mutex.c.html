@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mutex.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mutex.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mutex.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mutex.c - Per-thread mutex lock stack for deadlock detection.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>thread_lock_stack_t</b>
+  <br/>
+  struct <b>thread_registry_entry_t</b>
+  <br/>
+  struct <b>deadlock_state_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>MUTEX_STACK_MAX_DEPTH</b> 64
+  <br/>
+  #define <b>MAX_THREADS</b> 256
+  <br/>
+  #define <b>MAX_CYCLE_MUTEXES</b> 16
+  <br/>
+  #define <b>MAX_CYCLE_LEN</b> 64
+  <br/>
+  DFS-based cycle detection in the waits-for graph Returns cycle start index if
+    found, -1 otherwise Fills cycle_path with indices of threads in the cycle
+    (if found). #define <b>COND_DEADLOCK_THRESHOLD_NS</b> (5ULL * 1000000000ULL)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>mutex_stack_push_pending</b> (uintptr_t mutex_key, const
+    char *mutex_name)
+  <br/>
+  void <b>mutex_stack_mark_locked</b> (uintptr_t mutex_key)
+  <br/>
+  void <b>mutex_stack_pop</b> (uintptr_t mutex_key)
+  <br/>
+  int <b>mutex_stack_get_current</b> (mutex_stack_entry_t *out_entries, int
+    max_entries)
+  <br/>
+  int <b>mutex_stack_get_all_threads</b> (mutex_stack_entry_t ***out_stacks, int
+    **out_stack_counts, int *out_thread_count)
+  <br/>
+  void <b>mutex_stack_free_all_threads</b> (mutex_stack_entry_t **stacks, int
+    *stack_counts, int thread_count)
+  <br/>
+  void <b>mutex_stack_detect_deadlocks</b> (void)
+  <br/>
+  Detect circular wait deadlocks using DFS-based cycle detection. <b>bool</b>
+    <b>debug_sync_is_cleanup_in_progress</b> (void)
+  <br/>
+  void <b>debug_sync_check_cond_deadlocks</b> (void)
+  <br/>
+  Check all condition variables for deadlocks. int <b>mutex_stack_init</b>
+    (void)
+  <br/>
+  void <b>mutex_stack_cleanup_current_thread</b> (void)
+  <br/>
+  void <b>mutex_stack_cleanup</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Per-thread mutex lock stack for deadlock detection.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Tracks which mutexes are held and pending per thread. Detects
+    circular wait patterns (classic deadlock condition).</p>
+<p class="Pp">Definition in file <b>debug/mutex.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_COND_DEADLOCK_THRESHOLD_NS___(5ULL_*_1000000000ULL)"><a class="permalink" href="#_define_COND_DEADLOCK_THRESHOLD_NS___(5ULL_*_1000000000ULL)">#define
+  COND_DEADLOCK_THRESHOLD_NS (5ULL * 1000000000ULL)</a></h2>
+<p class="Pp">Definition at line <b>622</b> of file <b>debug/mutex.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_CYCLE_LEN___64"><a class="permalink" href="#_define_MAX_CYCLE_LEN___64">#define
+  MAX_CYCLE_LEN 64</a></h2>
+<p class="Pp">DFS-based cycle detection in the waits-for graph Returns cycle
+    start index if found, -1 otherwise Fills cycle_path with indices of threads
+    in the cycle (if found).</p>
+<p class="Pp">Definition at line <b>413</b> of file <b>debug/mutex.c</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_CYCLE_MUTEXES___16"><a class="permalink" href="#_define_MAX_CYCLE_MUTEXES___16">#define
+  MAX_CYCLE_MUTEXES 16</a></h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>debug/mutex.c</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MAX_THREADS___256"><a class="permalink" href="#_define_MAX_THREADS___256">#define
+  MAX_THREADS 256</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>debug/mutex.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_MUTEX_STACK_MAX_DEPTH___64"><a class="permalink" href="#_define_MUTEX_STACK_MAX_DEPTH___64">#define
+  MUTEX_STACK_MAX_DEPTH 64</a></h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>debug/mutex.c</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_get_all_threads()</b>, and
+    <b>mutex_stack_push_pending()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_sync_check_cond_deadlocks_(void_)"><a class="permalink" href="#void_debug_sync_check_cond_deadlocks_(void_)">void
+  debug_sync_check_cond_deadlocks (void )</a></h2>
+<p class="Pp">Check all condition variables for deadlocks. Scans all registered
+    condition variables and logs warnings for any that have been waiting without
+    signal for longer than COND_DEADLOCK_THRESHOLD_NS. Called periodically by
+    the debug thread (every 100ms).</p>
+<p class="Pp"></p>
+<p class="Pp">Skips checks during shutdown to avoid accessing freed memory.</p>
+<p class="Pp">Definition at line <b>694</b> of file <b>debug/mutex.c</b>.</p>
+<pre>694                                            {
+695   if (debug_sync_is_cleanup_in_progress()) {
+696     return;
+697   }
+698   named_registry_for_each(cond_deadlock_check_callback, NULL);
+699 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>debug_sync_is_cleanup_in_progress()</b>, and
+    <b>named_registry_for_each()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> debug_sync_is_cleanup_in_progress (void )
+  [extern]</h2>
+<p class="Pp">Definition at line <b>646</b> of file <b>sync.c</b>.</p>
+<pre>646                                              {
+647   return atomic_load_bool(&amp;g_cleanup_in_progress);
+648 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+<p class="Pp">Referenced by <b>debug_sync_check_cond_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_cleanup_(void_)"><a class="permalink" href="#void_mutex_stack_cleanup_(void_)">void
+  mutex_stack_cleanup (void )</a></h2>
+<p class="Pp">Definition at line <b>743</b> of file <b>debug/mutex.c</b>.</p>
+<pre>743                                {
+744   // Signal shutdown to prevent new allocations from threads still running
+745   atomic_store_bool(&amp;g_shutting_down, true);
+746 
+747   // Manually free all stacks in the registry
+748   // This must happen BEFORE deleting the TLS key to avoid double-free
+749   // (destructor won't run on still-running threads until they exit, by which time
+750   // these stacks will already be freed)
+751   int count = atomic_load_int(&amp;g_thread_registry_count);
+752   for (int i = 0; i &lt; count; i++) {
+753     if (g_thread_registry[i].stack) {
+754       // Use raw free() - stacks are allocated with raw malloc(), not SAFE_CALLOC()
+755       free(g_thread_registry[i].stack);
+756       g_thread_registry[i].stack = NULL;
+757     }
+758   }
+759 
+760   // Now delete the TLS key - destructors will see NULL in registry and skip freeing
+761   // For any threads that haven't been registered yet, destructor will free directly
+762   if (atomic_load_bool(&amp;g_tls_initialized)) {
+763     ascii_tls_key_delete(g_tls_mutex_stack);
+764     atomic_store_bool(&amp;g_tls_initialized, false);
+765   }
+766 
+767   // Clear registry on cleanup using atomic operations
+768   atomic_store_int(&amp;g_thread_registry_count, 0);
+769 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_tls_key_delete()</b>,
+    <b>atomic_load_bool()</b>, <b>atomic_load_int()</b>,
+    <b>atomic_store_bool()</b>, and <b>atomic_store_int()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_cleanup_current_thread_(void_)"><a class="permalink" href="#void_mutex_stack_cleanup_current_thread_(void_)">void
+  mutex_stack_cleanup_current_thread (void )</a></h2>
+<p class="Pp">Definition at line <b>712</b> of file <b>debug/mutex.c</b>.</p>
+<pre>712                                               {
+713   // Explicitly free the current thread's TLS stack
+714   // This is used to prevent leaks when TLS destructors might not run reliably
+715   // (e.g., debug threads exiting before mutex_stack_cleanup() deletes the TLS key)
+716 
+717   if (!atomic_load_bool(&amp;g_tls_initialized)) {
+718     return; // TLS not initialized, nothing to clean up
+719   }
+720 
+721   thread_lock_stack_t *stack = (thread_lock_stack_t *)ascii_tls_get(g_tls_mutex_stack);
+722   if (!stack) {
+723     return; // No stack allocated for this thread
+724   }
+725 
+726   // Clear from TLS
+727   ascii_tls_set(g_tls_mutex_stack, NULL);
+728 
+729   // Update registry if this thread is registered
+730   thread_id_t current_thread = asciichat_thread_self();
+731   int count = atomic_load_int(&amp;g_thread_registry_count);
+732   for (int i = 0; i &lt; count; i++) {
+733     if (asciichat_thread_equal(g_thread_registry[i].thread_id, current_thread) &amp;&amp; g_thread_registry[i].stack == stack) {
+734       g_thread_registry[i].stack = NULL; // Mark as freed in registry
+735       break;
+736     }
+737   }
+738 
+739   // Free the stack (raw free to match raw malloc above)
+740   free(stack);
+741 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_set()</b>,
+    <b>asciichat_thread_equal()</b>, <b>asciichat_thread_self()</b>,
+    <b>atomic_load_bool()</b>, <b>atomic_load_int()</b>, and
+  <b>thread_id</b>.</p>
+<p class="Pp">Referenced by <b>debug_sync_final_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_detect_deadlocks_(void_)"><a class="permalink" href="#void_mutex_stack_detect_deadlocks_(void_)">void
+  mutex_stack_detect_deadlocks (void )</a></h2>
+<p class="Pp">Detect circular wait deadlocks using DFS-based cycle detection.
+    Detects both same-thread and multi-thread deadlock patterns of any
+  length:</p>
+<p class="Pp"></p>
+<p class="Pp">Same-thread deadlock:</p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd>Thread tries to acquire a mutex it already holds (recursive lock on
+      non-recursive mutex)</dd>
+</dl>
+<p class="Pp">Multi-thread circular wait (2-way, 3-way, N-way):</p>
+<ul class="Bl-bullet">
+  <li>Uses DFS to detect cycles in the &quot;waits-for&quot; graph</li>
+  <li>Reports all threads involved in the cycle</li>
+</ul>
+<p class="Pp">Definition at line <b>524</b> of file <b>debug/mutex.c</b>.</p>
+<pre>524                                         {
+525   mutex_stack_entry_t **all_stacks = NULL;
+526   int *stack_counts = NULL;
+527   int thread_count = 0;
+528 
+529   if (mutex_stack_get_all_threads(&amp;all_stacks, &amp;stack_counts, &amp;thread_count) != 0) {
+530     return;
+531   }
+532 
+533   // Check each thread for deadlock conditions
+534   for (int i = 0; i &lt; thread_count; i++) {
+535     thread_lock_stack_t *stack_a = g_thread_registry[i].stack;
+536     uintptr_t waiting_for = thread_waiting_for_mutex(stack_a);
+537 
+538     if (waiting_for == 0)
+539       continue; // Thread not waiting
+540 
+541     // Same-thread deadlock: thread trying to acquire a mutex it already holds
+542     if (thread_holds_mutex(stack_a, waiting_for)) {
+543       log_error(&quot;%s&quot;, colored_string(LOG_COLOR_ERROR, &quot;&#x2554;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2557;&quot;));
+544       log_error(&quot;%s&quot;, colored_string(LOG_COLOR_ERROR, &quot;&#x2551;  &#x26A0;&#xFE0F;  DEADLOCK DETECTED: Same-thread Recursive Lock  &#x26A0;&#xFE0F;  &#x2551;&quot;));
+545       log_error(&quot;%s&quot;, colored_string(LOG_COLOR_ERROR, &quot;&#x255A;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x255D;&quot;));
+546       log_error(&quot;  Thread Address:        0x%lx&quot;, (unsigned long)g_thread_registry[i].thread_id);
+547       log_error(&quot;  Mutex:                 0x%lx&quot;, waiting_for);
+548       log_error(&quot;  Issue:                 Thread attempts recursive lock on non-recursive mutex&quot;);
+549       continue;
+550     }
+551 
+552     // Multi-thread circular wait: use DFS to detect cycles
+553     int cycle_path[MAX_CYCLE_LEN];
+554     int cycle_len = 0;
+555     int cycle_start = detect_cycle_dfs(thread_count, i, cycle_path, &amp;cycle_len);
+556 
+557     if (cycle_start &gt;= 0 &amp;&amp; cycle_len &gt; 1) {
+558       // Collect mutexes involved in this deadlock
+559       uintptr_t cycle_mutexes[MAX_CYCLE_MUTEXES];
+560       int mutex_count = 0;
+561       for (int k = 0; k &lt; cycle_len &amp;&amp; mutex_count &lt; MAX_CYCLE_MUTEXES; k++) {
+562         int thread_idx = cycle_path[k];
+563         thread_lock_stack_t *stack = g_thread_registry[thread_idx].stack;
+564         uintptr_t waiting_for = thread_waiting_for_mutex(stack);
+565         if (waiting_for != 0) {
+566           cycle_mutexes[mutex_count++] = waiting_for;
+567         }
+568       }
+569 
+570       // Check if mutexes are different from last deadlock
+571       bool is_new_deadlock = deadlock_mutexes_changed(cycle_mutexes, mutex_count);
+572       if (is_new_deadlock) {
+573         update_deadlock_state(cycle_mutexes, mutex_count);
+574       }
+575 
+576       // Cycle detected! Build complete message in one string
+577       char cycle_msg[4096];
+578       int msg_len = 0;
+579 
+580       // Leading newline and header box
+581       msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, &quot;\n%s\n&quot;,
+582                           colored_string(LOG_COLOR_ERROR, &quot;&#x2554;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2557;&quot;));
+583       msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, &quot;%s\n&quot;,
+584                           colored_string(LOG_COLOR_ERROR, &quot;&#x2551;  DEADLOCK: Circular Wait Cycle  &#x2551;&quot;));
+585       msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, &quot;%s\n&quot;,
+586                           colored_string(LOG_COLOR_ERROR, &quot;&#x255A;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x2550;&#x255D;&quot;));
+587 
+588       // Print each thread in the cycle
+589       for (int k = 0; k &lt; cycle_len; k++) {
+590         int thread_idx = cycle_path[k];
+591         int next_thread_idx = cycle_path[(k + 1) % cycle_len];
+592 
+593         thread_lock_stack_t *current_stack = g_thread_registry[thread_idx].stack;
+594         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
+595 
+596         char thread_name[256], mutex_name[256], held_by_name[256];
+597         NAMED_GET_BY_PTR(g_thread_registry[thread_idx].thread_id, thread_name, sizeof(thread_name));
+598         NAMED_GET_BY_PTR(current_waiting, mutex_name, sizeof(mutex_name));
+599         NAMED_GET_BY_PTR(g_thread_registry[next_thread_idx].thread_id, held_by_name, sizeof(held_by_name));
+600 
+601         msg_len +=
+602             snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, &quot;  T%d: %s waits for %s (held by %s)%s&quot;,
+603                      k + 1, thread_name, mutex_name, held_by_name, k &lt; cycle_len - 1 ? &quot;\n&quot; : &quot;&quot;);
+604       }
+605 
+606       // Log repeated deadlock detections (skip first call, throttle subsequent ones)
+607       if (!is_new_deadlock) {
+608         log_error_every(1000000, &quot;%s&quot;, cycle_msg); // 1000000 &#x00B5;s = 1 second
+609       }
+610     }
+611   }
+612 
+613   mutex_stack_free_all_threads(all_stacks, stack_counts, thread_count);
+614 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>MAX_CYCLE_LEN</b>,
+    <b>MAX_CYCLE_MUTEXES</b>, <b>mutex_stack_free_all_threads()</b>,
+    <b>mutex_stack_get_all_threads()</b>, <b>thread_lock_stack_t::stack</b>, and
+    <b>thread_id</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_free_all_threads_(mutex_stack_entry_t_**_stacks,_int_*_stack_counts,_int_thread_count)"><a class="permalink" href="#void_mutex_stack_free_all_threads_(mutex_stack_entry_t_**_stacks,_int_*_stack_counts,_int_thread_count)">void
+  mutex_stack_free_all_threads (mutex_stack_entry_t ** stacks, int *
+  stack_counts, int thread_count)</a></h2>
+<p class="Pp">Definition at line <b>347</b> of file <b>debug/mutex.c</b>.</p>
+<pre>347                                                                                                      {
+348 
+349   if (!stacks || !stack_counts)
+350     return;
+351 
+352   for (int i = 0; i &lt; thread_count; i++) {
+353     SAFE_FREE(stacks[i]);
+354   }
+355 
+356   SAFE_FREE(stacks);
+357   SAFE_FREE(stack_counts);
+358 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_mutex_stack_get_all_threads_(mutex_stack_entry_t_***_out_stacks,_int_**_out_stack_counts,_int_*_out_thread_count)"><a class="permalink" href="#int_mutex_stack_get_all_threads_(mutex_stack_entry_t_***_out_stacks,_int_**_out_stack_counts,_int_*_out_thread_count)">int
+  mutex_stack_get_all_threads (mutex_stack_entry_t *** out_stacks, int **
+  out_stack_counts, int * out_thread_count)</a></h2>
+<p class="Pp">Definition at line <b>284</b> of file <b>debug/mutex.c</b>.</p>
+<pre>284                                                                                                                   {
+285 
+286   if (!out_stacks || !out_stack_counts || !out_thread_count) {
+287     return -1;
+288   }
+289 
+290   // Read the thread count with acquire semantics (lock-free, no mutex needed)
+291   // Use memory_order_seq_cst to ensure we get a consistent snapshot
+292   int thread_count = atomic_load_int(&amp;g_thread_registry_count);
+293 
+294   // Allocate arrays for threads in the registry
+295   // Note: SAFE_MALLOC takes bytes as first parameter, not count
+296   *out_stacks = SAFE_MALLOC(thread_count * sizeof(mutex_stack_entry_t *), mutex_stack_entry_t **);
+297   *out_stack_counts = SAFE_MALLOC(thread_count * sizeof(int), int *);
+298 
+299   if (!*out_stacks || !*out_stack_counts) {
+300     SAFE_FREE(*out_stacks);
+301     SAFE_FREE(*out_stack_counts);
+302     return -1;
+303   }
+304 
+305   // Copy each thread's stack from the registry
+306   // Note: the thread count can change concurrently, so we re-read it in the loop
+307   // to avoid accessing out-of-bounds memory if threads exit during iteration
+308   int actual_count = 0;
+309   for (int i = 0; i &lt; thread_count; i++) {
+310     // Re-check thread count in case registry shrank
+311     int current_registry_count = atomic_load_int(&amp;g_thread_registry_count);
+312     if (i &gt;= current_registry_count) {
+313       break;
+314     }
+315 
+316     thread_lock_stack_t *src = g_thread_registry[i].stack;
+317     if (!src) {
+318       // Stack not yet initialized for this thread, skip it
+319       (*out_stack_counts)[i] = 0;
+320       (*out_stacks)[i] = NULL;
+321       continue;
+322     }
+323 
+324     // Defensively get depth - it could change or be freed by another thread
+325     int depth = 0;
+326     if (src &amp;&amp; src-&gt;depth &gt;= 0 &amp;&amp; src-&gt;depth &lt; MUTEX_STACK_MAX_DEPTH) {
+327       depth = src-&gt;depth;
+328     }
+329 
+330     (*out_stack_counts)[i] = depth;
+331 
+332     if (depth &gt; 0) {
+333       (*out_stacks)[i] = SAFE_MALLOC(depth * sizeof(mutex_stack_entry_t), mutex_stack_entry_t *);
+334       if ((*out_stacks)[i]) {
+335         memcpy((*out_stacks)[i], src-&gt;stack, depth * sizeof(mutex_stack_entry_t));
+336         actual_count++;
+337       }
+338     } else {
+339       (*out_stacks)[i] = NULL;
+340     }
+341   }
+342 
+343   *out_thread_count = actual_count;
+344   return 0;
+345 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>,
+    <b>thread_lock_stack_t::depth</b>, <b>MUTEX_STACK_MAX_DEPTH</b>, and
+    <b>thread_lock_stack_t::stack</b>.</p>
+<p class="Pp">Referenced by <b>mutex_stack_detect_deadlocks()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_mutex_stack_get_current_(mutex_stack_entry_t_*_out_entries,_int_max_entries)"><a class="permalink" href="#int_mutex_stack_get_current_(mutex_stack_entry_t_*_out_entries,_int_max_entries)">int
+  mutex_stack_get_current (mutex_stack_entry_t * out_entries, int
+  max_entries)</a></h2>
+<p class="Pp">Definition at line <b>269</b> of file <b>debug/mutex.c</b>.</p>
+<pre>269                                                                                {
+270   thread_lock_stack_t *stack = get_thread_local_stack();
+271   if (!stack || !out_entries) {
+272     return 0;
+273   }
+274 
+275   int count = (stack-&gt;depth &lt; max_entries) ? stack-&gt;depth : max_entries;
+276   memcpy(out_entries, stack-&gt;stack, count * sizeof(mutex_stack_entry_t));
+277   return stack-&gt;depth; // Return actual depth even if truncated
+278 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>thread_lock_stack_t::depth</b>, and
+    <b>thread_lock_stack_t::stack</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_mutex_stack_init_(void_)"><a class="permalink" href="#int_mutex_stack_init_(void_)">int
+  mutex_stack_init (void )</a></h2>
+<p class="Pp">Definition at line <b>707</b> of file <b>debug/mutex.c</b>.</p>
+<pre>707                            {
+708   // No initialization needed - registry uses lock-free atomic operations
+709   return 0;
+710 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_mark_locked_(uintptr_t_mutex_key)"><a class="permalink" href="#void_mutex_stack_mark_locked_(uintptr_t_mutex_key)">void
+  mutex_stack_mark_locked (uintptr_t mutex_key)</a></h2>
+<p class="Pp">Definition at line <b>236</b> of file <b>debug/mutex.c</b>.</p>
+<pre>236                                                   {
+237   thread_lock_stack_t *stack = get_thread_local_stack();
+238   if (!stack || stack-&gt;depth == 0) {
+239     return;
+240   }
+241 
+242   // Mark the top of the stack as locked
+243   int top = stack-&gt;depth - 1;
+244   if (stack-&gt;stack[top].mutex_key == mutex_key) {
+245     stack-&gt;stack[top].state = MUTEX_STACK_STATE_LOCKED;
+246     stack-&gt;stack[top].timestamp_ns = time_get_ns();
+247   }
+248 
+249   // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
+250 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>thread_lock_stack_t::depth</b>,
+    <b>thread_lock_stack_t::stack</b>, and <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_pop_(uintptr_t_mutex_key)"><a class="permalink" href="#void_mutex_stack_pop_(uintptr_t_mutex_key)">void
+  mutex_stack_pop (uintptr_t mutex_key)</a></h2>
+<p class="Pp">Definition at line <b>252</b> of file <b>debug/mutex.c</b>.</p>
+<pre>252                                           {
+253   thread_lock_stack_t *stack = get_thread_local_stack();
+254   if (!stack || stack-&gt;depth == 0) {
+255     return;
+256   }
+257 
+258   // Validate top matches
+259   int top = stack-&gt;depth - 1;
+260   if (stack-&gt;stack[top].mutex_key == mutex_key) {
+261     stack-&gt;depth--;
+262   }
+263 
+264   // Thread-local only. Registry is populated on-demand by mutex_stack_get_all_threads()
+265 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>thread_lock_stack_t::depth</b>, and
+    <b>thread_lock_stack_t::stack</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_stack_push_pending_(uintptr_t_mutex_key,_const_char_*_mutex_name)"><a class="permalink" href="#void_mutex_stack_push_pending_(uintptr_t_mutex_key,_const_char_*_mutex_name)">void
+  mutex_stack_push_pending (uintptr_t mutex_key, const char *
+  mutex_name)</a></h2>
+<p class="Pp">Definition at line <b>220</b> of file <b>debug/mutex.c</b>.</p>
+<pre>220                                                                            {
+221   thread_lock_stack_t *stack = get_thread_local_stack();
+222   if (!stack || stack-&gt;depth &gt;= MUTEX_STACK_MAX_DEPTH) {
+223     return;
+224   }
+225 
+226   // Register this thread in the global registry on first mutex use
+227   register_thread_if_needed();
+228 
+229   stack-&gt;stack[stack-&gt;depth].mutex_key = mutex_key;
+230   stack-&gt;stack[stack-&gt;depth].mutex_name = mutex_name;
+231   stack-&gt;stack[stack-&gt;depth].state = MUTEX_STACK_STATE_PENDING;
+232   stack-&gt;stack[stack-&gt;depth].timestamp_ns = time_get_ns();
+233   stack-&gt;depth++;
+234 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>thread_lock_stack_t::depth</b>,
+    <b>MUTEX_STACK_MAX_DEPTH</b>, <b>thread_lock_stack_t::stack</b>, and
+    <b>time_get_ns()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>system.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">system.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">system.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">system.c - &#x1F527; Shared cross-platform system utilities (safe
+    string functions, etc.)</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>bin_cache_entry_t</b>
+  <br/>
+  Cache entry for binary PATH lookup.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>PLATFORM_SYSTEM_C</b>
+  <br/>
+  #define <b>BIN_SUFFIX</b> ''
+  <br/>
+  #define <b>PLATFORM_MAX_PATH_LENGTH</b> 4096
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>check_binary_in_path_uncached</b> (const char
+    *bin_name)
+  <br/>
+  void <b>platform_cleanup_binary_path_cache</b> (void)
+  <br/>
+  Cleanup the binary PATH cache. int <b>safe_snprintf</b> (char *buffer, size_t
+    <b>buffer_size</b>, const char *format,...)
+  <br/>
+  Safe formatted string printing to buffer. int <b>safe_fprintf</b> (FILE
+    *stream, const char *format,...)
+  <br/>
+  Safe formatted output to file stream. int <b>safe_vsnprintf</b> (char *buffer,
+    size_t <b>buffer_size</b>, const char *format, va_list ap)
+  <br/>
+  Safe formatted string printing with va_list. size_t <b>platform_write_all</b>
+    (int fd, const void *buf, size_t count)
+  <br/>
+  Write all bytes to a file descriptor, handling partial writes.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F527; Shared cross-platform system utilities (safe string
+    functions, etc.)</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>system.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_BIN_SUFFIX___''"><a class="permalink" href="#_define_BIN_SUFFIX___''">#define
+  BIN_SUFFIX ''</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>system.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_MAX_PATH_LENGTH___4096"><a class="permalink" href="#_define_PLATFORM_MAX_PATH_LENGTH___4096">#define
+  PLATFORM_MAX_PATH_LENGTH 4096</a></h2>
+<p class="Pp">Maximum path length supported by the operating system</p>
+<p class="Pp"></p>
+<p class="Pp">Platform-specific values:</p>
+<ul class="Bl-bullet">
+  <li>Windows: 32767 characters (extended-length path with \?\ prefix)</li>
+  <li>Linux: 4096 bytes (PATH_MAX from limits.h)</li>
+  <li>macOS: 1024 bytes (PATH_MAX from sys/syslimits.h)</li>
+</ul>
+<p class="Pp">Note: Windows legacy MAX_PATH (260) is too restrictive for modern
+    use. We use the extended-length limit instead.</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>system.c</b>.</p>
+<p class="Pp">Referenced by <b>acds_identity_save()</b>, <b>acds_main()</b>,
+    <b>discovery_keys_clear_cache()</b>, <b>discovery_keys_load_cached()</b>,
+    <b>discovery_keys_save_cached()</b>,
+    <b>get_binary_file_address_offsets()</b>, <b>get_log_dir()</b>,
+    <b>gpg_agent_connect()</b>, <b>gpg_sign_with_key()</b>,
+    <b>gpg_verify_detached_ed25519()</b>,
+    <b>gpg_verify_signature_with_binary()</b>, <b>options_init()</b>,
+    <b>parse_gpg_keys_from_response()</b>, <b>path_is_within_base()</b>,
+    <b>path_validate_user_path()</b>, and <b>query_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_PLATFORM_SYSTEM_C"><a class="permalink" href="#_define_PLATFORM_SYSTEM_C">#define
+  PLATFORM_SYSTEM_C</a></h2>
+<p class="Pp">Definition at line <b>8</b> of file <b>system.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> check_binary_in_path_uncached (const char * bin_name)
+  [extern]</h2>
+<p class="Pp">Referenced by <b>platform_is_binary_in_path()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_cleanup_binary_path_cache_(void_)"><a class="permalink" href="#void_platform_cleanup_binary_path_cache_(void_)">void
+  platform_cleanup_binary_path_cache (void )</a></h2>
+<p class="Pp">Cleanup the binary PATH cache.</p>
+<p class="Pp">Definition at line <b>229</b> of file <b>system.c</b>.</p>
+<pre>229                                               {
+230   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
+231     return;
+232   }
+233 
+234   if (g_bin_path_cache) {
+235     rwlock_wrlock(&amp;g_cache_rwlock);
+236 
+237     // Free all cached entries using uthash iteration
+238     bin_cache_entry_t *entry, *tmp;
+239     HASH_ITER(hh, g_bin_path_cache, entry, tmp) {
+240       HASH_DELETE(hh, g_bin_path_cache, entry);
+241       free_cache_entry(entry);
+242     }
+243 
+244     rwlock_wrunlock(&amp;g_cache_rwlock);
+245     rwlock_destroy(&amp;g_cache_rwlock);
+246     g_bin_path_cache = NULL;
+247   }
+248 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_platform_write_all_(int_fd,_const_void_*_buf,_size_t_count)"><a class="permalink" href="#size_t_platform_write_all_(int_fd,_const_void_*_buf,_size_t_count)">size_t
+  platform_write_all (int fd, const void * buf, size_t count)</a></h2>
+<p class="Pp">Write all bytes to a file descriptor, handling partial writes.
+    Handles partial writes and EAGAIN errors, retrying up to 1000 times before
+    giving up. This ensures that data is fully written even when dealing with
+    non-blocking I/O or interrupted syscalls.</p>
+<p class="Pp">Definition at line <b>342</b> of file <b>system.c</b>.</p>
+<pre>342                                                                  {
+343   if (!buf || count == 0) {
+344     return 0;
+345   }
+346 
+347   size_t written_total = 0;
+348   int attempts = 0;
+349   const int MAX_ATTEMPTS = 1000;
+350 
+351   while (written_total &lt; count &amp;&amp; attempts &lt; MAX_ATTEMPTS) {
+352     ssize_t result = platform_write(fd, (const char *)buf + written_total, count - written_total);
+353 
+354     if (result &gt; 0) {
+355       written_total += (size_t)result;
+356       attempts = 0; // Reset attempt counter on successful write
+357     } else if (result &lt; 0) {
+358       // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
+359       if (errno == EAGAIN || errno == EWOULDBLOCK) {
+360         // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
+361         platform_sleep_us(100);
+362       } else {
+363         // Other write errors - log and retry
+364         log_warn(&quot;platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)&quot;, fd, written_total,
+365                  count, errno);
+366       }
+367       attempts++;
+368     } else {
+369       // result == 0: no bytes written, retry
+370       attempts++;
+371     }
+372   }
+373 
+374   if (attempts &gt;= MAX_ATTEMPTS &amp;&amp; written_total &lt; count) {
+375     log_warn(&quot;platform_write_all: Hit retry limit on fd=%d: wrote %zu of %zu bytes&quot;, fd, written_total, count);
+376   }
+377 
+378   return written_total;
+379 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_sleep_us()</b>, and
+    <b>platform_write()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_write()</b>,
+    <b>config_create_default()</b>, <b>frame_buffer_flush()</b>,
+    <b>log_console_impl()</b>, <b>log_json_async_safe()</b>,
+    <b>log_search_render_input_line()</b>, <b>session_client_like_run()</b>,
+    <b>session_display_render_fps_overlay()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_display_write_raw()</b>,
+    and <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_safe_fprintf_(FILE_*_stream,_const_char_*_format,__"><a class="permalink" href="#int_safe_fprintf_(FILE_*_stream,_const_char_*_format,__">int
+  safe_fprintf (FILE * stream, const char * format, ...)</a></h2>
+<p class="Pp">Safe formatted output to file stream.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>stream</i> Output file stream
+<br/>
+<i>format</i> Printf-style format string</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written, or -1 on error</div>
+<p class="Pp">Safely formats and prints output to a file stream. Returns the
+    number of characters written, or -1 on error.</p>
+<p class="Pp">Definition at line <b>290</b> of file <b>system.c</b>.</p>
+<pre>290                                                         {
+291   if (!stream || !format) {
+292     return -1;
+293   }
+294 
+295   va_list args;
+296   va_start(args, format);
+297   int ret = vfprintf(stream, format, args);
+298   va_end(args);
+299 
+300   return ret;
+301 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>.</p>
+<p class="Pp">Referenced by <b>add_known_host()</b>,
+    <b>asciichat_fatal_with_context()</b>,
+    <b>asciichat_print_error_context()</b>, <b>log_init()</b>,
+    <b>log_labeled()</b>, <b>log_msg()</b>, <b>log_plain_msg()</b>, and
+    <b>webcam_print_init_error_help()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_safe_snprintf_(char_*_buffer,_size_t_buffer_size,_const_char_*_format,__"><a class="permalink" href="#int_safe_snprintf_(char_*_buffer,_size_t_buffer_size,_const_char_*_format,__">int
+  safe_snprintf (char * buffer, size_t buffer_size, const char * format,
+  ...)</a></h2>
+<p class="Pp">Safe formatted string printing to buffer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buffer</i> Output buffer
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b>
+<br/>
+<i>format</i> Printf-style format string</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written, or -1 on error</div>
+<p class="Pp">Safely formats a string into a buffer with bounds checking. Uses
+    platform_snprintf for cross-platform implementation. Returns the number of
+    characters written (not including null terminator). Returns -1 if buffer is
+    too small.</p>
+<p class="Pp">Definition at line <b>266</b> of file <b>system.c</b>.</p>
+<pre>266                                                                              {
+267   if (!buffer || !format || buffer_size == 0) {
+268     return -1;
+269   }
+270 
+271   va_list args;
+272   va_start(args, format);
+273 
+274   /* Delegate to platform_snprintf for actual formatting */
+275   int ret = platform_vsnprintf(buffer, buffer_size, format, args);
+276 
+277   va_end(args);
+278   return ret;
+279 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>, <b>buffer_size</b>, and
+    <b>platform_vsnprintf()</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>,
+    <b>acds_identity_default_path()</b>, <b>acds_identity_fingerprint()</b>,
+    <b>acds_main()</b>, <b>acds_string_generate()</b>, <b>add_client()</b>,
+    <b>asciichat_instr_log_line()</b>, <b>asciichat_instr_log_pc()</b>,
+    <b>backtrace_format()</b>, <b>backtrace_print()</b>,
+    <b>build_github_gpg_url()</b>, <b>build_github_ssh_url()</b>,
+    <b>build_gitlab_gpg_url()</b>, <b>build_gitlab_ssh_url()</b>,
+    <b>capture_init()</b>, <b>check_gpg_key_expiry()</b>,
+    <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
+    <b>colored_string()</b>, <b>colorize_log_message()</b>,
+    <b>colorize_named_string()</b>, <b>colorscheme_compile_scheme()</b>,
+    <b>colorscheme_export_scheme()</b>, <b>config_load_and_apply()</b>,
+    <b>create_client_render_threads()</b>, <b>crypto_get_rekey_status()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>crypto_handshake_server_auth_challenge()</b>,
+    <b>crypto_handshake_server_start()</b>,
+    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_save_cached()</b>,
+    <b>display_mitm_warning()</b>, <b>expand_path()</b>,
+    <b>find_similar_option_with_mode()</b>, <b>format_available_modes()</b>,
+    <b>format_bytes_pretty()</b>, <b>format_gpg_key_display()</b>,
+    <b>format_mode_names()</b>, <b>format_option_default_value_str()</b>,
+    <b>format_public_key()</b>, <b>format_uptime_hms()</b>,
+    <b>get_current_time_formatted()</b>, <b>get_discovery_database_dir()</b>,
+    <b>get_known_hosts_path()</b>, <b>get_log_dir()</b>,
+    <b>get_manpage_template()</b>, <b>gpg_agent_sign()</b>,
+    <b>gpg_get_public_key()</b>, <b>gpg_sign_detached_ed25519()</b>,
+    <b>gpg_sign_with_key()</b>, <b>gpg_verify_detached_ed25519()</b>,
+    <b>gpg_verify_signature()</b>, <b>gpg_verify_signature_with_binary()</b>,
+    <b>https_get()</b>, <b>ice_format_candidate()</b>,
+    <b>image_print_color()</b>, <b>log_mmap_write()</b>,
+    <b>log_recolor_plain_entry()</b>, <b>log_template_apply()</b>,
+    <b>manpage_content_generate_environment()</b>,
+    <b>manpage_content_generate_environment_with_manual()</b>,
+    <b>manpage_content_generate_examples()</b>,
+    <b>manpage_content_generate_options()</b>,
+    <b>manpage_content_generate_positional()</b>,
+    <b>manpage_content_generate_usage()</b>, <b>manpage_fmt_write_title()</b>,
+    <b>manpage_merger_generate_synopsis()</b>,
+    <b>manpage_merger_generate_usage()</b>, <b>nat_upnp_get_address()</b>,
+    <b>options_config_calculate_max_col_width()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, <b>options_format_default_value()</b>,
+    <b>options_init()</b>, <b>options_preset_unified()</b>,
+    <b>options_print_help_for_mode()</b>, <b>parallel_connect()</b>,
+    <b>parse_client_address()</b>, <b>parse_color_filter()</b>,
+    <b>parse_color_mode()</b>, <b>parse_gpg_key()</b>,
+    <b>parse_gpg_key_binary()</b>, <b>parse_gpg_keys_from_response()</b>,
+    <b>parse_log_level()</b>, <b>parse_palette_chars()</b>,
+    <b>parse_palette_type()</b>, <b>parse_port_option()</b>,
+    <b>parse_private_key()</b>, <b>parse_render_mode()</b>,
+    <b>parse_render_theme()</b>, <b>parse_server_bind_address()</b>,
+    <b>parse_ssh_private_key()</b>, <b>path_validate_user_path()</b>,
+    <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>,
+    <b>pubkey_to_hex()</b>, <b>query_init()</b>, <b>remove_known_host()</b>,
+    <b>rgb_to_truecolor_ansi()</b>, <b>sdp_generate_answer()</b>,
+    <b>sdp_generate_offer()</b>, <b>server_main()</b>,
+    <b>session_capture_create()</b>, <b>session_network_capture_create()</b>,
+    <b>stats_logger_thread()</b>, <b>test_get_binary_path()</b>,
+    <b>time_pretty()</b>, <b>turn_generate_credentials()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_safe_vsnprintf_(char_*_buffer,_size_t_buffer_size,_const_char_*_format,_va_list_ap)"><a class="permalink" href="#int_safe_vsnprintf_(char_*_buffer,_size_t_buffer_size,_const_char_*_format,_va_list_ap)">int
+  safe_vsnprintf (char * buffer, size_t buffer_size, const char * format,
+  va_list ap)</a></h2>
+<p class="Pp">Safe formatted string printing with va_list.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>buffer</i> Output buffer (can be NULL if buffer_size
+  is 0 for size calculation)
+<br/>
+<i></i><b>buffer_size</b><i></i><b> Size of output buffer</b>
+<br/>
+<i>format</i> Printf-style format string
+<br/>
+<i>ap</i> Variable argument list</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of characters written, or -1 on error</div>
+<p class="Pp">Safely formats a string into a buffer with bounds checking using
+    va_list. Uses platform_vsnprintf for cross-platform implementation. Returns
+    the number of characters written (not including null terminator). Special
+    case: NULL buffer with size 0 returns required buffer size for size
+    calculation. Returns -1 if buffer is too small, format is invalid, or buffer
+    is NULL with size &gt; 0.</p>
+<p class="Pp">Definition at line <b>317</b> of file <b>system.c</b>.</p>
+<pre>317                                                                                      {
+318   if (!format) {
+319     return -1;
+320   }
+321 
+322   // Allow NULL buffer with size 0 for size calculation (standard vsnprintf behavior)
+323   if (!buffer &amp;&amp; buffer_size &gt; 0) {
+324     return -1; // Non-NULL buffer required when buffer_size &gt; 0
+325   }
+326 
+327   /* Delegate to platform_vsnprintf for actual formatting */
+328   return platform_vsnprintf(buffer, buffer_size, format, ap);
+329 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_size</b>, and
+  <b>platform_vsnprintf()</b>.</p>
+<p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
+    <b>format_message()</b>, <b>log_file_msg()</b>, <b>log_mmap_write()</b>,
+    <b>log_msg()</b>, and <b>log_plain_msg()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

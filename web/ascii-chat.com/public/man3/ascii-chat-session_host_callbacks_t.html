@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_host_callbacks_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_host_callbacks_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_host_callbacks_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_host_callbacks_t - Callback function prototypes for
+    session host events.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/host.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void(* <b>on_client_join</b> )(<b>session_host_t</b> *h, uint32_t
+    client_id, void *user_data)
+  <br/>
+  Called when a client joins the session. void(* <b>on_client_leave</b>
+    )(<b>session_host_t</b> *h, uint32_t client_id, void *user_data)
+  <br/>
+  Called when a client leaves the session. void(* <b>on_frame_received</b>
+    )(<b>session_host_t</b> *h, uint32_t client_id, const image_t *<b>frame</b>,
+    void *user_data)
+  <br/>
+  Called when video frame received from a client. void(*
+    <b>on_audio_received</b> )(<b>session_host_t</b> *h, uint32_t client_id,
+    const float *samples, size_t count, void *user_data)
+  <br/>
+  Called when audio samples received from a client. void(* <b>on_error</b>
+    )(<b>session_host_t</b> *h, asciichat_error_t error, const char *message,
+    void *user_data)
+  <br/>
+  Called when an error occurs.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Callback function prototypes for session host events.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>host.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_host_callbacks_t::on_audio_received)_("><a class="permalink" href="#void(*_session_host_callbacks_t::on_audio_received)_(">void(*
+  session_host_callbacks_t::on_audio_received) (<b>session_host_t</b> *h,
+  uint32_t client_id, const float *samples, size_t count, void
+  *user_data)</a></h2>
+<p class="Pp">Called when audio samples received from a client.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>h</i> Host handle
+<br/>
+<i>client_id</i> Source client's ID
+<br/>
+<i>samples</i> Audio sample buffer (float format)
+<br/>
+<i>count</i> Number of samples
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>138</b> of file <b>host.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_host_callbacks_t::on_client_join)_("><a class="permalink" href="#void(*_session_host_callbacks_t::on_client_join)_(">void(*
+  session_host_callbacks_t::on_client_join) (<b>session_host_t</b> *h, uint32_t
+  client_id, void *user_data)</a></h2>
+<p class="Pp">Called when a client joins the session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>h</i> Host handle
+<br/>
+<i>client_id</i> New client's ID
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>111</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_add_client()</b>, and
+    <b>session_host_add_memory_participant()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_host_callbacks_t::on_client_leave)_("><a class="permalink" href="#void(*_session_host_callbacks_t::on_client_leave)_(">void(*
+  session_host_callbacks_t::on_client_leave) (<b>session_host_t</b> *h, uint32_t
+  client_id, void *user_data)</a></h2>
+<p class="Pp">Called when a client leaves the session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>h</i> Host handle
+<br/>
+<i>client_id</i> Departing client's ID
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>119</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_remove_client()</b>, and
+    <b>session_host_stop()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_host_callbacks_t::on_error)_("><a class="permalink" href="#void(*_session_host_callbacks_t::on_error)_(">void(*
+  session_host_callbacks_t::on_error) (<b>session_host_t</b> *h,
+  asciichat_error_t error, const char *message, void *user_data)</a></h2>
+<p class="Pp">Called when an error occurs.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>h</i> Host handle
+<br/>
+<i>error</i> Error code
+<br/>
+<i>message</i> Error message
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>147</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_start()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_host_callbacks_t::on_frame_received)_("><a class="permalink" href="#void(*_session_host_callbacks_t::on_frame_received)_(">void(*
+  session_host_callbacks_t::on_frame_received) (<b>session_host_t</b> *h,
+  uint32_t client_id, const image_t *<b>frame</b>, void *user_data)</a></h2>
+<p class="Pp">Called when video frame received from a client.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>h</i> Host handle
+<br/>
+<i>client_id</i> Source client's ID
+<br/>
+<i></i><b>frame</b><i></i><b> Video frame image</b>
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>128</b> of file <b>host.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

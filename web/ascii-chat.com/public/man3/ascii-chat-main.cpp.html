@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>main.cpp(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">main.cpp(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">main.cpp(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">main.cpp - ascii-query-server entry point</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>main</b> (int argc, char *argv[])
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ascii-query-server entry point</p>
+<p class="Pp">This is the controller process for the query tool. It attaches to
+    a target process via LLDB and serves HTTP requests for variable
+  inspection.</p>
+<p class="Pp"></p>
+<p class="Pp">Usage: ascii-query-server --attach &lt;pid&gt; --port 9999
+    ascii-query-server --attach-name ascii-chat --port 9999</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">docs/tooling/QUERY_TOOL_PLAN.md</div>
+<p class="Pp">Definition in file <b>main.cpp</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
+  main (int argc, char * argv[])</a></h2>
+<p class="Pp">Definition at line <b>392</b> of file <b>main.cpp</b>.</p>
+<pre>392                                  {
+393   // Parse command line arguments
+394   pid_t attach_pid = 0;
+395   std::string attach_name;
+396   bool wait_for = false;
+397   uint16_t port = 9999;
+398 
+399   for (int i = 1; i &lt; argc; i++) {
+400     if (strcmp(argv[i], &quot;--help&quot;) == 0 || strcmp(argv[i], &quot;-h&quot;) == 0) {
+401       printUsage(argv[0]);
+402       return 0;
+403     } else if (strcmp(argv[i], &quot;--attach&quot;) == 0 &amp;&amp; i + 1 &lt; argc) {
+404       // Parse PID using safe parsing utility
+405       unsigned long pid_val = 0;
+406       if (parse_ulong(argv[++i], &amp;pid_val, 1, ULONG_MAX) != ASCIICHAT_OK) {
+407         fprintf(stderr, &quot;Error: Invalid PID value\n&quot;);
+408         return 1;
+409       }
+410       attach_pid = static_cast&lt;pid_t&gt;(pid_val);
+411     } else if (strcmp(argv[i], &quot;--attach-name&quot;) == 0 &amp;&amp; i + 1 &lt; argc) {
+412       attach_name = argv[++i];
+413     } else if (strcmp(argv[i], &quot;--wait&quot;) == 0) {
+414       wait_for = true;
+415     } else if (strcmp(argv[i], &quot;--port&quot;) == 0 &amp;&amp; i + 1 &lt; argc) {
+416       // Parse port using safe parsing utility with proper range validation
+417       if (parse_port(argv[++i], &amp;port) != ASCIICHAT_OK) {
+418         fprintf(stderr, &quot;Error: Invalid port number (must be 1-65535)\n&quot;);
+419         return 1;
+420       }
+421     } else {
+422       fprintf(stderr, &quot;Unknown option: %s\n&quot;, argv[i]);
+423       printUsage(argv[0]);
+424       return 1;
+425     }
+426   }
+427 
+428   // Validate arguments
+429   if (attach_pid == 0 &amp;&amp; attach_name.empty()) {
+430     fprintf(stderr, &quot;Error: Must specify --attach &lt;pid&gt; or --attach-name &lt;name&gt;\n\n&quot;);
+431     printUsage(argv[0]);
+432     return 1;
+433   }
+434 
+435   // Setup signal handlers
+436   signal(SIGINT, signalHandler);
+437   signal(SIGTERM, signalHandler);
+438 #ifndef _WIN32
+439   signal(SIGPIPE, SIG_IGN);
+440 #endif
+441 
+442   // Initialize LLDB controller
+443   ascii_query::LLDBController controller;
+444   g_controller = &amp;controller;
+445 
+446   if (!controller.initialize()) {
+447     fprintf(stderr, &quot;Error: Failed to initialize LLDB: %s\n&quot;, controller.lastError().c_str());
+448     return 1;
+449   }
+450 
+451   // Attach to target
+452   fprintf(stderr, &quot;[ascii-query-server] Attaching to &quot;);
+453   if (attach_pid &gt; 0) {
+454     fprintf(stderr, &quot;PID %llu...\n&quot;, static_cast&lt;unsigned long long&gt;(attach_pid));
+455     if (!controller.attach(attach_pid)) {
+456       fprintf(stderr, &quot;Error: Failed to attach: %s\n&quot;, controller.lastError().c_str());
+457       return 1;
+458     }
+459   } else {
+460     fprintf(stderr, &quot;process '%s'%s...\n&quot;, attach_name.c_str(), wait_for ? &quot; (waiting)&quot; : &quot;&quot;);
+461     if (!controller.attachByName(attach_name, wait_for)) {
+462       fprintf(stderr, &quot;Error: Failed to attach: %s\n&quot;, controller.lastError().c_str());
+463       return 1;
+464     }
+465   }
+466 
+467   fprintf(stderr, &quot;[ascii-query-server] Attached to %s (PID %llu)\n&quot;, controller.targetName().c_str(),
+468           static_cast&lt;unsigned long long&gt;(controller.targetPid()));
+469 
+470   // Resume the target (it's stopped after attach)
+471   if (controller.state() == ascii_query::ProcessState::Stopped) {
+472     fprintf(stderr, &quot;[ascii-query-server] Resuming target...\n&quot;);
+473     controller.resume();
+474   }
+475 
+476   // Setup HTTP server
+477   ascii_query::HttpServer server;
+478   g_server = &amp;server;
+479 
+480   setupRoutes(server, controller);
+481 
+482   // Start HTTP server
+483   if (!server.start(port)) {
+484     fprintf(stderr, &quot;Error: Failed to start HTTP server: %s\n&quot;, server.lastError().c_str());
+485     controller.detach();
+486     return 1;
+487   }
+488 
+489   fprintf(stderr, &quot;[ascii-query-server] HTTP server listening on http://localhost:%d\n&quot;, port);
+490   fprintf(stderr, &quot;[ascii-query-server] Press Ctrl+C to stop\n&quot;);
+491 
+492   // Wait for shutdown
+493   while (!g_shutdown_requested &amp;&amp; controller.isAttached()) {
+494 #ifdef _WIN32
+495     Sleep(100);
+496 #else
+497     usleep(100000);
+498 #endif
+499     ascii_query::ProcessState state = controller.state();
+500     if (state == ascii_query::ProcessState::Exited || state == ascii_query::ProcessState::Crashed) {
+501       fprintf(stderr, &quot;[ascii-query-server] Target %s, shutting down\n&quot;,
+502               state == ascii_query::ProcessState::Exited ? &quot;exited&quot; : &quot;crashed&quot;);
+503       break;
+504     }
+505   }
+506 
+507   // Cleanup
+508   fprintf(stderr, &quot;[ascii-query-server] Shutting down...\n&quot;);
+509   server.stop();
+510   controller.detach();
+511   controller.shutdown();
+512 
+513   fprintf(stderr, &quot;[ascii-query-server] Done\n&quot;);
+514   return 0;
+515 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ascii_query::LLDBController::attach()</b>,
+    <b>ascii_query::LLDBController::attachByName()</b>,
+    <b>ascii_query::Crashed</b>, <b>ascii_query::LLDBController::detach()</b>,
+    <b>ascii_query::Exited</b>,
+    <b>ascii_query::LLDBController::initialize()</b>,
+    <b>ascii_query::LLDBController::isAttached()</b>,
+    <b>ascii_query::HttpServer::lastError()</b>,
+    <b>ascii_query::LLDBController::lastError()</b>, <b>parse_port()</b>,
+    <b>parse_ulong()</b>, <b>ascii_query::LLDBController::resume()</b>,
+    <b>ascii_query::LLDBController::shutdown()</b>,
+    <b>ascii_query::HttpServer::start()</b>,
+    <b>ascii_query::LLDBController::state()</b>,
+    <b>ascii_query::HttpServer::stop()</b>, <b>ascii_query::Stopped</b>,
+    <b>ascii_query::LLDBController::targetName()</b>, and
+    <b>ascii_query::LLDBController::targetPid()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>option_type_handler_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">option_type_handler_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">option_type_handler_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">option_type_handler_t - Type handler - encapsulates all 4
+    operations for one option type.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void(* <b>extract</b> )(toml_datum_t datum, char *value_str, int
+    *int_val, <b>bool</b> *bool_val, double *double_val, <b>bool</b> *has_value)
+  <br/>
+  Extract value from TOML datum. asciichat_error_t(* <b>parse_validate</b>
+    )(const char *value_str, const config_option_metadata_t *meta,
+    <b>option_parsed_value_t</b> *parsed, char *error_msg, size_t error_size)
+  <br/>
+  Parse and validate value. asciichat_error_t(* <b>write_to_struct</b> )(const
+    <b>option_parsed_value_t</b> *parsed, const config_option_metadata_t *meta,
+    options_t *opts, char *error_msg, size_t error_size)
+  <br/>
+  Write to options struct. void(* <b>format_output</b> )(const char *field_ptr,
+    size_t field_size, const config_option_metadata_t *meta, char *buf, size_t
+    bufsize)
+  <br/>
+  Format for TOML output.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Type handler - encapsulates all 4 operations for one option
+  type.</p>
+<p class="Pp">Each operation is a stage in the config parsing pipeline:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Extract: TOML datum &#x2192; intermediate (value_str, int_val, etc)</dd>
+  <dt>2.</dt>
+  <dd>Parse: intermediate &#x2192; validated parsed value</dd>
+  <dt>3.</dt>
+  <dd>Write: parsed value &#x2192; struct field</dd>
+  <dt>4.</dt>
+  <dd>Format: struct field &#x2192; TOML output string</dd>
+</dl>
+<p class="Pp">Type handler - encapsulates all 4 operations for one option
+  type</p>
+<p class="Pp"></p>
+<p class="Pp">Function pointers for TOML extraction, validation, writing to
+    options struct, and formatting output for each option type (bool, int,
+    string, double).</p>
+<p class="Pp">Definition at line <b>145</b> of file <b>config.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void(*_option_type_handler_t::extract)_(toml_datum_t_datum,_char_*value_str,_int_*int_val,_"><a class="permalink" href="#void(*_option_type_handler_t::extract)_(toml_datum_t_datum,_char_*value_str,_int_*int_val,_">void(*
+  option_type_handler_t::extract) (toml_datum_t datum, char *value_str, int
+  *int_val, <b>bool</b> *bool_val, double *double_val, <b>bool</b>
+  *has_value)</a></h2>
+<p class="Pp">Extract value from TOML datum.</p>
+<p class="Pp">Definition at line <b>146</b> of file <b>config.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_option_type_handler_t::format_output)_(const_char_*field_ptr,_size_t_field_size,_const_config_option_metadata_t_*meta,_char_*buf,_size_t_bufsize)"><a class="permalink" href="#void(*_option_type_handler_t::format_output)_(const_char_*field_ptr,_size_t_field_size,_const_config_option_metadata_t_*meta,_char_*buf,_size_t_bufsize)">void(*
+  option_type_handler_t::format_output) (const char *field_ptr, size_t
+  field_size, const config_option_metadata_t *meta, char *buf, size_t
+  bufsize)</a></h2>
+<p class="Pp">Format for TOML output.</p>
+<p class="Pp">Definition at line <b>154</b> of file <b>config.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t(*_option_type_handler_t::parse_validate)_(const_char_*value_str,_const_config_option_metadata_t_*meta,_"><a class="permalink" href="#asciichat_error_t(*_option_type_handler_t::parse_validate)_(const_char_*value_str,_const_config_option_metadata_t_*meta,_">asciichat_error_t(*
+  option_type_handler_t::parse_validate) (const char *value_str, const
+  config_option_metadata_t *meta, <b>option_parsed_value_t</b> *parsed, char
+  *error_msg, size_t error_size)</a></h2>
+<p class="Pp">Parse and validate value.</p>
+<p class="Pp">Definition at line <b>148</b> of file <b>config.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t(*_option_type_handler_t::write_to_struct)_(const_"><a class="permalink" href="#asciichat_error_t(*_option_type_handler_t::write_to_struct)_(const_">asciichat_error_t(*
+  option_type_handler_t::write_to_struct) (const <b>option_parsed_value_t</b>
+  *parsed, const config_option_metadata_t *meta, options_t *opts, char
+  *error_msg, size_t error_size)</a></h2>
+<p class="Pp">Write to options struct.</p>
+<p class="Pp">Definition at line <b>151</b> of file <b>config.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

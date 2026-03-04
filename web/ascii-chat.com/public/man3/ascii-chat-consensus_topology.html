@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>consensus_topology(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">consensus_topology(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">consensus_topology(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">consensus_topology - Ring topology for consensus participants.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint8_t <b>participant_ids</b> [64][16]
+  <br/>
+  Participant UUIDs in sorted order. int <b>num_participants</b>
+  <br/>
+  Total number of participants. int <b>my_position</b>
+  <br/>
+  My index in the sorted list.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Ring topology for consensus participants.</p>
+<p class="Pp">Maintains a sorted list of participant IDs for ring-based
+    consensus algorithms and leader election.</p>
+<p class="Pp">Definition at line <b>17</b> of file <b>topology.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_consensus_topology::my_position"><a class="permalink" href="#int_consensus_topology::my_position">int
+  consensus_topology::my_position</a></h2>
+<p class="Pp">My index in the sorted list.</p>
+<p class="Pp">Definition at line <b>20</b> of file <b>topology.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_topology_am_leader()</b>,
+    <b>consensus_topology_create()</b>, <b>consensus_topology_get_next()</b>,
+    <b>consensus_topology_get_position()</b>, and
+    <b>consensus_topology_get_prev()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_consensus_topology::num_participants"><a class="permalink" href="#int_consensus_topology::num_participants">int
+  consensus_topology::num_participants</a></h2>
+<p class="Pp">Total number of participants.</p>
+<p class="Pp">Definition at line <b>19</b> of file <b>topology.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_topology_am_leader()</b>,
+    <b>consensus_topology_create()</b>, <b>consensus_topology_get_all()</b>,
+    <b>consensus_topology_get_leader()</b>,
+    <b>consensus_topology_get_next()</b>, and
+    <b>consensus_topology_get_prev()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_consensus_topology::participant_ids_64__16_"><a class="permalink" href="#uint8_t_consensus_topology::participant_ids_64__16_">uint8_t
+  consensus_topology::participant_ids[64][16]</a></h2>
+<p class="Pp">Participant UUIDs in sorted order.</p>
+<p class="Pp">Definition at line <b>18</b> of file <b>topology.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_topology_create()</b>,
+    <b>consensus_topology_get_all()</b>, <b>consensus_topology_get_leader()</b>,
+    <b>consensus_topology_get_next()</b>, and
+    <b>consensus_topology_get_prev()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

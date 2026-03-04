@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>server.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">server.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">server.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">server.c - WebSocket server implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>websocket_connection_data_t</b>
+  <br/>
+  Per-connection user data.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>websocket_server_init</b> (websocket_server_t
+    *server, const websocket_server_config_t *config)
+  <br/>
+  asciichat_error_t <b>websocket_server_run</b> (websocket_server_t *server)
+  <br/>
+  void <b>websocket_server_cancel_service</b> (websocket_server_t *server)
+  <br/>
+  void <b>websocket_server_destroy</b> (websocket_server_t *server)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebSocket server implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>lib/network/websocket/server.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_server_cancel_service_(websocket_server_t_*_server)"><a class="permalink" href="#void_websocket_server_cancel_service_(websocket_server_t_*_server)">void
+  websocket_server_cancel_service (websocket_server_t * server)</a></h2>
+<p class="Pp">Definition at line <b>804</b> of file
+    <b>lib/network/websocket/server.c</b>.</p>
+<pre>804                                                                  {
+805   if (server &amp;&amp; server-&gt;context) {
+806     lws_cancel_service(server-&gt;context);
+807   }
+808 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_websocket_server_destroy_(websocket_server_t_*_server)"><a class="permalink" href="#void_websocket_server_destroy_(websocket_server_t_*_server)">void
+  websocket_server_destroy (websocket_server_t * server)</a></h2>
+<p class="Pp">Definition at line <b>810</b> of file
+    <b>lib/network/websocket/server.c</b>.</p>
+<pre>810                                                           {
+811   if (!server) {
+812     return;
+813   }
+814 
+815   atomic_store_bool(&amp;server-&gt;running, false);
+816 
+817   // Cancel any pending libwebsockets service calls to interrupt blocking lws_service()
+818   // This prevents the event loop from getting stuck in lws_service()
+819   if (server-&gt;context) {
+820     log_debug(&quot;[WEBSOCKET_SERVER_DESTROY] Cancelling libwebsockets service&quot;);
+821     lws_cancel_service(server-&gt;context);
+822   }
+823 
+824   // Unregister atomic fields
+825   NAMED_UNREGISTER(&amp;server-&gt;running);
+826 
+827   // Destroy handler thread pool (waits for pending work to complete)
+828   if (server-&gt;handler_pool) {
+829     thread_pool_destroy(server-&gt;handler_pool);
+830     server-&gt;handler_pool = NULL;
+831   }
+832 
+833   // Context is normally destroyed by websocket_server_run (from the event loop
+834   // thread) for fast shutdown. This handles the case where run() wasn't called
+835   // or didn't complete normally.
+836   if (server-&gt;context) {
+837     NAMED_UNREGISTER(server-&gt;context);
+838     log_debug(&quot;WebSocket context still alive in destroy, cleaning up&quot;);
+839     lws_context_destroy(server-&gt;context);
+840     server-&gt;context = NULL;
+841   }
+842 
+843   log_debug(&quot;WebSocket server destroyed&quot;);
+844 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+    <b>thread_pool_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_websocket_server_init_(websocket_server_t_*_server,_const_websocket_server_config_t_*_config)"><a class="permalink" href="#asciichat_error_t_websocket_server_init_(websocket_server_t_*_server,_const_websocket_server_config_t_*_config)">asciichat_error_t
+  websocket_server_init (websocket_server_t * server, const
+  websocket_server_config_t * config)</a></h2>
+<p class="Pp">Definition at line <b>676</b> of file
+    <b>lib/network/websocket/server.c</b>.</p>
+<pre>676                                                                                                              {
+677   if (!server || !config || !config-&gt;client_handler) {
+678     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+679   }
+680 
+681   memset(server, 0, sizeof(*server));
+682   server-&gt;handler = config-&gt;client_handler;
+683   server-&gt;user_data = config-&gt;user_data;
+684   server-&gt;port = config-&gt;port;
+685   atomic_store_bool(&amp;server-&gt;running, true);
+686 
+687   // Store server pointer in protocol user data so callbacks can access it
+688   // Both the HTTP and ACIP protocols need access to the server
+689   websocket_protocols[0].user = server; // http protocol
+690   websocket_protocols[1].user = server; // acip protocol
+691 
+692   // Enable libwebsockets logging through centralized logging system
+693   lws_log_init_server();
+694 
+695   // Configure libwebsockets context
+696   struct lws_context_creation_info info = {0};
+697   info.port = config-&gt;port;
+698   info.protocols = websocket_protocols;
+699   info.gid = (gid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
+700   info.uid = (uid_t)-1;                                // Cast to avoid undefined behavior with unsigned type
+701   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT; // Initialize SSL/TLS support (required for server binding)
+702   info.extensions = NULL;                              // Disable permessage-deflate - causing connection issues
+703   info.retry_and_idle_policy = &amp;keep_alive_policy; // Configure keep-alive to prevent idle disconnects during handshake
+704 
+705   // Configure TLS/WSS support if certificates are provided (check for non-empty strings)
+706   if (config-&gt;tls_cert_path &amp;&amp; config-&gt;tls_cert_path[0] != '\0' &amp;&amp; config-&gt;tls_key_path &amp;&amp;
+707       config-&gt;tls_key_path[0] != '\0') {
+708 #ifdef LWS_WITH_TLS
+709     info.ssl_cert_filepath = config-&gt;tls_cert_path;
+710     info.ssl_private_key_filepath = config-&gt;tls_key_path;
+711     log_info(&quot;WebSocket server configured for WSS (TLS): cert=%s, key=%s&quot;, config-&gt;tls_cert_path, config-&gt;tls_key_path);
+712 #else
+713     log_warn(&quot;WebSocket server: TLS support not compiled in libwebsockets; WSS unavailable&quot;);
+714 #endif
+715   } else if ((config-&gt;tls_cert_path &amp;&amp; config-&gt;tls_cert_path[0] != '\0') ||
+716              (config-&gt;tls_key_path &amp;&amp; config-&gt;tls_key_path[0] != '\0')) {
+717     log_warn(&quot;WebSocket server: Both TLS certificate and key must be provided for WSS; using plain WS&quot;);
+718   }
+719 
+720   // Increase per-thread service buffer to prevent fragmentation of large messages
+721   // Default is 4KB, causing large frames to fragment into many chunks
+722   // Video frames are 921KB, so increase to 2MB to handle them without fragmentation
+723   info.pt_serv_buf_size = 2 * 1024 * 1024; // 2MB per-thread service buffer
+724 
+725   // Disable ALL default timeouts and keep-alive mechanisms
+726   // Use only the explicit retry_and_idle_policy we set above (30/35 seconds)
+727   info.ka_time = 0;           // Disable TCP keep-alive probes (use WebSocket pings instead)
+728   info.ka_probes = 0;         // Disable TCP probes
+729   info.ka_interval = 0;       // Disable TCP probe intervals
+730   info.keepalive_timeout = 0; // Disable HTTP keep-alive timeout entirely
+731 
+732   // Explicitly set a very large idle timeout to prevent early disconnection
+733   // Without this, libwebsockets defaults to 5 seconds for HTTP connections
+734   // Set to effectively infinite (100 hours) since we use retry_and_idle_policy instead
+735   info.timeout_secs = 360000; // 100 hours - effectively disabled
+736 
+737   // Create libwebsockets context
+738   server-&gt;context = lws_create_context(&amp;info);
+739   if (!server-&gt;context) {
+740     return SET_ERRNO(ERROR_NETWORK_BIND, &quot;Failed to create libwebsockets context&quot;);
+741   }
+742 
+743   // Create thread pool for handling client connections
+744   // Use 4 worker threads to handle concurrent client handlers without blocking LWS event loop
+745   server-&gt;handler_pool = thread_pool_create_with_workers(&quot;websocket_handlers&quot;, 4);
+746   if (!server-&gt;handler_pool) {
+747     lws_context_destroy(server-&gt;context);
+748     server-&gt;context = NULL;
+749     return SET_ERRNO(ERROR_THREAD, &quot;Failed to create WebSocket handler thread pool&quot;);
+750   }
+751 
+752   /* Register WebSocket server with named registry */
+753   char ws_port_name[32];
+754   snprintf(ws_port_name, sizeof(ws_port_name), &quot;ws:%d&quot;, server-&gt;port);
+755   NAMED_REGISTER(server, ws_port_name, &quot;websocket_server&quot;, &quot;0x%tx&quot;, NULL);
+756 
+757   /* Register server's sync primitives with hierarchical naming */
+758   NAMED_REGISTER_ATOMIC(&amp;server-&gt;running, &quot;is_running&quot;, (uintptr_t)(const void *)(server));
+759 
+760   /* Register WebSocket context as child of server */
+761   NAMED_REGISTER_WEBSOCKET(server-&gt;context, &quot;context&quot;, (uintptr_t)(const void *)(server));
+762 
+763   log_info(&quot;WebSocket server initialized on port %d with static file serving&quot;, config-&gt;port);
+764   return ASCIICHAT_OK;
+765 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>lws_log_init_server()</b>, and
+  <b>thread_pool_create_with_workers()</b>.</p>
+<p class="Pp">Referenced by <b>acds_main()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_websocket_server_run_(websocket_server_t_*_server)"><a class="permalink" href="#asciichat_error_t_websocket_server_run_(websocket_server_t_*_server)">asciichat_error_t
+  websocket_server_run (websocket_server_t * server)</a></h2>
+<p class="Pp">Definition at line <b>767</b> of file
+    <b>lib/network/websocket/server.c</b>.</p>
+<pre>767                                                                    {
+768   if (!server || !server-&gt;context) {
+769     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid server&quot;);
+770   }
+771 
+772   log_info(&quot;WebSocket server starting event loop on port %d&quot;, server-&gt;port);
+773 
+774   // Run libwebsockets event loop
+775   uint64_t last_service_ns = 0;
+776   int service_call_count = 0;
+777   while (atomic_load_bool(&amp;server-&gt;running)) {
+778     // Service libwebsockets with 16ms timeout to match 60 FPS frame rate.
+779     // This provides frequent event processing (~60 callback invocations per second) so that
+780     // WebSocket frames queued by the render loop are sent promptly, matching TCP performance.
+781     // All client connections share this single server context, so a single lws_service() call
+782     // services fragments and events for all clients simultaneously.
+783     uint64_t service_start_ns = time_get_ns();
+784     if (last_service_ns &amp;&amp; service_start_ns - last_service_ns &gt; 30 * US_PER_MS_INT) {
+785       // &gt; 30ms gap between service calls
+786       double gap_ms = (double)(service_start_ns - last_service_ns) / 1e6;
+787       log_info_every(1 * US_PER_MS_INT, &quot;[LWS_SERVICE_GAP] %.1fms gap between lws_service calls&quot;, gap_ms);
+788     }
+789     service_call_count++;
+790     log_debug_every(500 * US_PER_MS_INT, &quot;[LWS_SERVICE] Call #%d, context=%s&quot;, service_call_count,
+791                     NAMED_DESCRIBE(server-&gt;context, &quot;websocket_server&quot;));
+792     int result = lws_service(server-&gt;context, 1);
+793     if (result &lt; 0) {
+794       log_error(&quot;libwebsockets service error: %d&quot;, result);
+795       break;
+796     }
+797   }
+798 
+799   log_info(
+800       &quot;WebSocket server event loop exited (context will be destroyed by main thread after handler threads complete)&quot;);
+801   return ASCIICHAT_OK;
+802 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>, and
+  <b>time_get_ns()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

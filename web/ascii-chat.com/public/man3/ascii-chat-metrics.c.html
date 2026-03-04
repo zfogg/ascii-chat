@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>metrics.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">metrics.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">metrics.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">metrics.c - Ring consensus metrics collection and wire protocol
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>consensus_metrics_collection</b>
+  <br/>
+  Metrics collection structure for participant quality measurements.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>DEFAULT_BANDWIDTH_KBPS</b> 50000
+  <br/>
+  #define <b>DEFAULT_RTT_MS</b> 25
+  <br/>
+  #define <b>NUM_STUN_PROBES</b> 10
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>consensus_metrics_collection</b>
+    <b>consensus_metrics_collection_t</b>
+  <br/>
+  Metrics collection structure for participant quality measurements.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>__attribute__</b> ((unused))
+  <br/>
+  asciichat_error_t <b>consensus_metrics_measure</b> (const uint8_t my_id[16],
+    participant_metrics_t *out_metrics)
+  <br/>
+  asciichat_error_t <b>consensus_metrics_to_wire</b> (const
+    participant_metrics_t *metrics, participant_metrics_t *out_wire)
+  <br/>
+  asciichat_error_t <b>consensus_metrics_from_wire</b> (const
+    participant_metrics_t *wire_metrics, participant_metrics_t *out_metrics)
+  <br/>
+  asciichat_error_t <b>consensus_metrics_collection_create</b>
+    (<b>consensus_metrics_collection_t</b> **out_collection)
+  <br/>
+  asciichat_error_t <b>consensus_metrics_collection_add</b>
+    (<b>consensus_metrics_collection_t</b> *collection, const
+    participant_metrics_t *metrics)
+  <br/>
+  asciichat_error_t <b>consensus_metrics_collection_get</b> (const
+    <b>consensus_metrics_collection_t</b> *collection, const
+    participant_metrics_t **out_metrics, int *out_count)
+  <br/>
+  void <b>consensus_metrics_collection_destroy</b>
+    (<b>consensus_metrics_collection_t</b> *collection)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Ring consensus metrics collection and wire protocol
+    implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>metrics.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEFAULT_BANDWIDTH_KBPS___50000"><a class="permalink" href="#_define_DEFAULT_BANDWIDTH_KBPS___50000">#define
+  DEFAULT_BANDWIDTH_KBPS 50000</a></h2>
+<p class="Pp">Default bandwidth estimate (50 Mbps = 50000 Kbps)</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>metrics.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_metrics_measure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_DEFAULT_RTT_MS___25"><a class="permalink" href="#_define_DEFAULT_RTT_MS___25">#define
+  DEFAULT_RTT_MS 25</a></h2>
+<p class="Pp">Default RTT estimate (25 milliseconds)</p>
+<p class="Pp">Definition at line <b>34</b> of file <b>metrics.c</b>.</p>
+<p class="Pp">Referenced by <b>consensus_metrics_measure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NUM_STUN_PROBES___10"><a class="permalink" href="#_define_NUM_STUN_PROBES___10">#define
+  NUM_STUN_PROBES 10</a></h2>
+<p class="Pp">Number of STUN probes to send for success rate measurement</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>metrics.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>consensus_metrics_collection</b>
+  <b>consensus_metrics_collection_t</b></a></h2>
+<p class="Pp">Metrics collection structure for participant quality measurements.
+    Dynamic array storing network quality metrics for all participants in a
+    consensus session.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="__attribute___((unused)_)"><a class="permalink" href="#__attribute___((unused)_)">__attribute__
+  ((unused) )</a></h2>
+<p class="Pp">Convert NAT type to tier (0=best, 4=worst)</p>
+<p class="Pp"></p>
+<p class="Pp">Mapping:</p>
+<ul class="Bl-bullet">
+  <li>Open/LAN (no NAT) = 0</li>
+  <li>Full cone NAT = 1</li>
+  <li>Address-restricted NAT = 2</li>
+  <li>Port-restricted NAT = 3</li>
+  <li>Symmetric NAT = 4</li>
+</ul>
+<p class="Pp">Note: This function is reserved for future use when NAT detection
+    is integrated. For now, we use a hardcoded default tier.</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>metrics.c</b>.</p>
+<pre>72                                                                       {
+73   // ACIP_NAT_TYPE_* enum values:
+74   // 0 = Open (OPEN = no NAT, essentially LAN)
+75   // 1 = Full cone (best NAT)
+76   // 2 = Address-restricted
+77   // 3 = Port-restricted
+78   // 4 = Symmetric (worst NAT)
+79 
+80   if (nat_type &lt; 0 || nat_type &gt; 4) {
+81     return 4; // Default to worst case
+82   }
+83   return (uint8_t)nat_type;
+84 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_metrics_collection_add_("><a class="permalink" href="#asciichat_error_t_consensus_metrics_collection_add_(">asciichat_error_t
+  consensus_metrics_collection_add (<b>consensus_metrics_collection_t</b> *
+  collection, const participant_metrics_t * metrics)</a></h2>
+<p class="Pp">Definition at line <b>179</b> of file <b>metrics.c</b>.</p>
+<pre>180                                                                                          {
+181   if (!collection || !metrics) {
+182     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to collection_add&quot;);
+183   }
+184 
+185   // Resize if needed
+186   if (collection-&gt;count &gt;= collection-&gt;capacity) {
+187     int new_capacity = collection-&gt;capacity * 2;
+188     participant_metrics_t *new_metrics =
+189         SAFE_MALLOC(new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+190 
+191     if (!new_metrics) {
+192       return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate metrics array&quot;);
+193     }
+194 
+195     // Copy existing metrics
+196     if (collection-&gt;count &gt; 0 &amp;&amp; collection-&gt;metrics) {
+197       memcpy(new_metrics, collection-&gt;metrics, collection-&gt;count * sizeof(participant_metrics_t));
+198       SAFE_FREE(collection-&gt;metrics);
+199     }
+200 
+201     collection-&gt;metrics = new_metrics;
+202     collection-&gt;capacity = new_capacity;
+203   }
+204 
+205   // Add new metrics
+206   if (!collection-&gt;metrics) {
+207     return SET_ERRNO(ERROR_MEMORY, &quot;Collection metrics array is NULL&quot;);
+208   }
+209 
+210   memcpy(&amp;collection-&gt;metrics[collection-&gt;count], metrics, sizeof(*metrics));
+211   collection-&gt;count++;
+212 
+213   return ASCIICHAT_OK;
+214 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_metrics_collection::capacity</b>,
+    <b>consensus_metrics_collection::count</b>, and
+    <b>consensus_metrics_collection::metrics</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_metrics_collection_create_("><a class="permalink" href="#asciichat_error_t_consensus_metrics_collection_create_(">asciichat_error_t
+  consensus_metrics_collection_create (<b>consensus_metrics_collection_t</b> **
+  out_collection)</a></h2>
+<p class="Pp">Definition at line <b>163</b> of file <b>metrics.c</b>.</p>
+<pre>163                                                                                                        {
+164   if (!out_collection) {
+165     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid output parameter&quot;);
+166   }
+167 
+168   consensus_metrics_collection_t *collection = SAFE_MALLOC(sizeof(*collection), consensus_metrics_collection_t *);
+169   memset(collection, 0, sizeof(*collection));
+170 
+171   collection-&gt;capacity = 10; // Start with capacity for 10 participants
+172   collection-&gt;metrics = SAFE_MALLOC(collection-&gt;capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+173   collection-&gt;count = 0;
+174 
+175   *out_collection = collection;
+176   return ASCIICHAT_OK;
+177 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_metrics_collection::capacity</b>,
+    <b>consensus_metrics_collection::count</b>, and
+    <b>consensus_metrics_collection::metrics</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_metrics_collection_destroy_("><a class="permalink" href="#void_consensus_metrics_collection_destroy_(">void
+  consensus_metrics_collection_destroy (<b>consensus_metrics_collection_t</b> *
+  collection)</a></h2>
+<p class="Pp">Definition at line <b>228</b> of file <b>metrics.c</b>.</p>
+<pre>228                                                                                       {
+229   if (!collection) {
+230     return;
+231   }
+232 
+233   if (collection-&gt;metrics) {
+234     SAFE_FREE(collection-&gt;metrics);
+235   }
+236 
+237   SAFE_FREE(collection);
+238 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_metrics_collection::metrics</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_metrics_collection_get_(const_"><a class="permalink" href="#asciichat_error_t_consensus_metrics_collection_get_(const_">asciichat_error_t
+  consensus_metrics_collection_get (const <b>consensus_metrics_collection_t</b>
+  * collection, const participant_metrics_t ** out_metrics, int *
+  out_count)</a></h2>
+<p class="Pp">Definition at line <b>216</b> of file <b>metrics.c</b>.</p>
+<pre>217                                                                                                               {
+218   if (!collection || !out_metrics || !out_count) {
+219     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to collection_get&quot;);
+220   }
+221 
+222   *out_metrics = collection-&gt;metrics;
+223   *out_count = collection-&gt;count;
+224 
+225   return ASCIICHAT_OK;
+226 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_metrics_collection::count</b>, and
+    <b>consensus_metrics_collection::metrics</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_metrics_from_wire_(const_participant_metrics_t_*_wire_metrics,_participant_metrics_t_*_out_metrics)"><a class="permalink" href="#asciichat_error_t_consensus_metrics_from_wire_(const_participant_metrics_t_*_wire_metrics,_participant_metrics_t_*_out_metrics)">asciichat_error_t
+  consensus_metrics_from_wire (const participant_metrics_t * wire_metrics,
+  participant_metrics_t * out_metrics)</a></h2>
+<p class="Pp">Definition at line <b>144</b> of file <b>metrics.c</b>.</p>
+<pre>145                                                                                   {
+146   if (!wire_metrics || !out_metrics) {
+147     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to consensus_metrics_from_wire&quot;);
+148   }
+149 
+150   // Copy entire structure first
+151   memcpy(out_metrics, wire_metrics, sizeof(*out_metrics));
+152 
+153   // Convert multi-byte fields from network byte order
+154   out_metrics-&gt;upload_kbps = endian_unpack_u32(wire_metrics-&gt;upload_kbps);
+155   out_metrics-&gt;rtt_ns = endian_unpack_u32(wire_metrics-&gt;rtt_ns);
+156   out_metrics-&gt;public_port = endian_unpack_u16(wire_metrics-&gt;public_port);
+157   out_metrics-&gt;measurement_time_ns = endian_unpack_u64(wire_metrics-&gt;measurement_time_ns);
+158   out_metrics-&gt;measurement_window_ns = endian_unpack_u64(wire_metrics-&gt;measurement_window_ns);
+159 
+160   return ASCIICHAT_OK;
+161 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_metrics_measure_(const_uint8_t_my_id_16_,_participant_metrics_t_*_out_metrics)"><a class="permalink" href="#asciichat_error_t_consensus_metrics_measure_(const_uint8_t_my_id_16_,_participant_metrics_t_*_out_metrics)">asciichat_error_t
+  consensus_metrics_measure (const uint8_t my_id[16], participant_metrics_t *
+  out_metrics)</a></h2>
+<p class="Pp">Definition at line <b>86</b> of file <b>metrics.c</b>.</p>
+<pre>86                                                                                                          {
+87   if (!my_id || !out_metrics) {
+88     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to consensus_metrics_measure&quot;);
+89   }
+90 
+91   // Initialize metrics structure
+92   memset(out_metrics, 0, sizeof(*out_metrics));
+93 
+94   // Copy participant ID
+95   memcpy(out_metrics-&gt;participant_id, my_id, 16);
+96 
+97   // NAT tier: Default to 1 (Public IP, no NAT needed)
+98   // TODO: In production, query NAT detection module
+99   out_metrics-&gt;nat_tier = 1;
+100 
+101   // Upload bandwidth: Default 50 Mbps
+102   out_metrics-&gt;upload_kbps = DEFAULT_BANDWIDTH_KBPS;
+103 
+104   // RTT: Default 25ms (25,000,000 nanoseconds)
+105   out_metrics-&gt;rtt_ns = DEFAULT_RTT_MS * NS_PER_MS;
+106 
+107   // STUN probe success rate: Measure by sending probes
+108   out_metrics-&gt;stun_probe_success_pct = measure_stun_probe_success();
+109 
+110   // Public address and port: Placeholder values
+111   snprintf(out_metrics-&gt;public_address, sizeof(out_metrics-&gt;public_address), &quot;127.0.0.1&quot;);
+112   out_metrics-&gt;public_port = 27224;
+113 
+114   // Connection type: Default to direct
+115   out_metrics-&gt;connection_type = 0; // Direct connection
+116 
+117   // Measurement time: Current time in nanoseconds
+118   out_metrics-&gt;measurement_time_ns = time_get_realtime_ns();
+119 
+120   // Measurement window: 1 second in nanoseconds
+121   out_metrics-&gt;measurement_window_ns = 1 * NS_PER_SEC;
+122 
+123   return ASCIICHAT_OK;
+124 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>DEFAULT_BANDWIDTH_KBPS</b>, <b>DEFAULT_RTT_MS</b>,
+    and <b>time_get_realtime_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_metrics_to_wire_(const_participant_metrics_t_*_metrics,_participant_metrics_t_*_out_wire)"><a class="permalink" href="#asciichat_error_t_consensus_metrics_to_wire_(const_participant_metrics_t_*_metrics,_participant_metrics_t_*_out_wire)">asciichat_error_t
+  consensus_metrics_to_wire (const participant_metrics_t * metrics,
+  participant_metrics_t * out_wire)</a></h2>
+<p class="Pp">Definition at line <b>126</b> of file <b>metrics.c</b>.</p>
+<pre>126                                                                                                                    {
+127   if (!metrics || !out_wire) {
+128     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to consensus_metrics_to_wire&quot;);
+129   }
+130 
+131   // Copy entire structure first
+132   memcpy(out_wire, metrics, sizeof(*out_wire));
+133 
+134   // Convert multi-byte fields to network byte order
+135   out_wire-&gt;upload_kbps = endian_pack_u32(metrics-&gt;upload_kbps);
+136   out_wire-&gt;rtt_ns = endian_pack_u32(metrics-&gt;rtt_ns);
+137   out_wire-&gt;public_port = endian_pack_u16(metrics-&gt;public_port);
+138   out_wire-&gt;measurement_time_ns = endian_pack_u64(metrics-&gt;measurement_time_ns);
+139   out_wire-&gt;measurement_window_ns = endian_pack_u64(metrics-&gt;measurement_window_ns);
+140 
+141   return ASCIICHAT_OK;
+142 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

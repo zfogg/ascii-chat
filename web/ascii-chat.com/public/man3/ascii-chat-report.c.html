@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>report.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">report.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">report.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">report.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>thread_filter_list</b>
+  <br/>
+  Dynamic array of thread IDs for filtering instrumentation logs. struct
+    <b>report_config</b>
+  <br/>
+  Configuration for panic report generation. struct <b>log_record</b>
+  <br/>
+  Parsed instrumentation log record. struct <b>thread_entry</b>
+  <br/>
+  Hash table entry for thread-local last log record.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>thread_filter_list</b>
+    <b>thread_filter_list_t</b>
+  <br/>
+  Dynamic array of thread IDs for filtering instrumentation logs. typedef struct
+    <b>report_config</b> <b>report_config_t</b>
+  <br/>
+  Configuration for panic report generation. typedef struct <b>log_record</b>
+    <b>log_record_t</b>
+  <br/>
+  Parsed instrumentation log record. typedef struct <b>thread_entry</b>
+    <b>thread_entry_t</b>
+  <br/>
+  Hash table entry for thread-local last log record.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>main</b> (int argc, char **argv)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>log_record</b> <b>log_record_t</b></h2>
+<p class="Pp">Parsed instrumentation log record. Represents a single line from
+    an instrumentation log file with all fields extracted and parsed.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>report_config</b> <b>report_config_t</b></h2>
+<p class="Pp">Configuration for panic report generation.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>thread_entry</b> <b>thread_entry_t</b></h2>
+<p class="Pp">Hash table entry for thread-local last log record. Used by uthash
+    to track the most recent log record for each thread when generating panic
+    reports.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">typedef struct <b>thread_filter_list</b>
+  <b>thread_filter_list_t</b></h2>
+<p class="Pp">Dynamic array of thread IDs for filtering instrumentation
+  logs.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_main_(int_argc,_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_char_**_argv)">int
+  main (int argc, char ** argv)</a></h2>
+<p class="Pp">Definition at line <b>632</b> of file <b>report.c</b>.</p>
+<pre>632                                 {
+633   report_config_t config = {
+634       .log_dir = NULL,
+635       .log_file = NULL,
+636       .include_filter = NULL,
+637       .exclude_filter = NULL,
+638       .threads = {.values = NULL, .count = 0, .capacity = 0},
+639       .emit_raw_line = false,
+640   };
+641 
+642   log_init(NULL, LOG_INFO, false, false);
+643 
+644   int exit_code = EXIT_SUCCESS;
+645   if (!parse_arguments(argc, argv, &amp;config)) {
+646     exit_code = ERROR_USAGE;
+647     goto cleanup;
+648   }
+649 
+650   thread_entry_t *entries = NULL;
+651   if (!collect_entries(&amp;config, &amp;entries)) {
+652     exit_code = ERROR_GENERAL;
+653     destroy_entries(&amp;entries);
+654     goto cleanup;
+655   }
+656 
+657   print_summary(&amp;config, &amp;entries);
+658   destroy_entries(&amp;entries);
+659 
+660 cleanup:
+661   thread_filter_list_destroy(&amp;config.threads);
+662   log_destroy();
+663   return exit_code;
+664 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_destroy()</b>, <b>log_init()</b>, and
+    <b>report_config::threads</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

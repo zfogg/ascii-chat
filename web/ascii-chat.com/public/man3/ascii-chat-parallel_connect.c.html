@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>parallel_connect.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">parallel_connect.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">parallel_connect.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">parallel_connect.c - Parallel IPv4/IPv6 connection
+  implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>connection_attempt_t</b>
+  <br/>
+  Per-thread connection attempt state for parallel IPv4/IPv6 racing.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>parallel_connect</b> (const
+    parallel_connect_config_t *config, <b>socket_t</b> *out_socket)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Parallel IPv4/IPv6 connection implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>parallel_connect.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_parallel_connect_(const_parallel_connect_config_t_*_config,_"><a class="permalink" href="#asciichat_error_t_parallel_connect_(const_parallel_connect_config_t_*_config,_">asciichat_error_t
+  parallel_connect (const parallel_connect_config_t * config, <b>socket_t</b> *
+  out_socket)</a></h2>
+<p class="Pp">Definition at line <b>174</b> of file
+  <b>parallel_connect.c</b>.</p>
+<pre>174                                                                                                   {
+175   if (!config || !out_socket) {
+176     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;config or out_socket is NULL&quot;);
+177   }
+178 
+179   *out_socket = INVALID_SOCKET_VALUE;
+180 
+181   // Resolve hostname
+182   log_debug(&quot;PCONN: Resolving %s:%d&quot;, config-&gt;hostname, config-&gt;port);
+183 
+184   struct addrinfo hints;
+185   struct addrinfo *result = NULL;
+186   memset(&amp;hints, 0, sizeof(hints));
+187   hints.ai_family = AF_UNSPEC;
+188   hints.ai_socktype = SOCK_STREAM;
+189 
+190   char port_str[16];
+191   safe_snprintf(port_str, sizeof(port_str), &quot;%d&quot;, config-&gt;port);
+192 
+193   int gai_result = getaddrinfo(config-&gt;hostname, port_str, &amp;hints, &amp;result);
+194   if (gai_result != 0) {
+195     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to resolve %s: %s&quot;, config-&gt;hostname, gai_strerror(gai_result));
+196   }
+197 
+198   // Find first IPv4 and IPv6 addresses
+199   struct addrinfo *ipv4_addr = NULL;
+200   struct addrinfo *ipv6_addr = NULL;
+201 
+202   for (struct addrinfo *rp = result; rp != NULL; rp = rp-&gt;ai_next) {
+203     if (rp-&gt;ai_family == AF_INET &amp;&amp; !ipv4_addr) {
+204       ipv4_addr = rp;
+205       log_debug(&quot;PCONN: Found IPv4 address&quot;);
+206     } else if (rp-&gt;ai_family == AF_INET6 &amp;&amp; !ipv6_addr) {
+207       ipv6_addr = rp;
+208       log_debug(&quot;PCONN: Found IPv6 address&quot;);
+209     }
+210     if (ipv4_addr &amp;&amp; ipv6_addr)
+211       break;
+212   }
+213 
+214   // Need at least one address
+215   if (!ipv4_addr &amp;&amp; !ipv6_addr) {
+216     freeaddrinfo(result);
+217     return SET_ERRNO(ERROR_NETWORK, &quot;No IPv4 or IPv6 addresses found for %s&quot;, config-&gt;hostname);
+218   }
+219 
+220   // Shared state
+221   mutex_t lock;
+222   cond_t signal;
+223   mutex_init(&amp;lock, &quot;parallel_connect&quot;);
+224   cond_init(&amp;signal, &quot;parallel_connect&quot;);
+225 
+226   volatile socket_t winner_socket = INVALID_SOCKET_VALUE;
+227   volatile bool winner_found = false;
+228 
+229   connection_attempt_t ipv4_attempt = {0};
+230   connection_attempt_t ipv6_attempt = {0};
+231   asciichat_thread_t ipv4_thread;
+232   asciichat_thread_t ipv6_thread;
+233 
+234   asciichat_thread_init(&amp;ipv4_thread);
+235   asciichat_thread_init(&amp;ipv6_thread);
+236 
+237   // Start IPv4 attempt if available
+238   if (ipv4_addr) {
+239     ipv4_attempt.family = AF_INET;
+240     ipv4_attempt.family_name = &quot;IPv4&quot;;
+241     ipv4_attempt.timeout_ms = config-&gt;timeout_ms;
+242     ipv4_attempt.winner_socket = &amp;winner_socket;
+243     ipv4_attempt.winner_found = &amp;winner_found;
+244     ipv4_attempt.lock = &amp;lock;
+245     ipv4_attempt.signal = &amp;signal;
+246     ipv4_attempt.should_exit_callback = config-&gt;should_exit_callback;
+247     ipv4_attempt.callback_data = config-&gt;callback_data;
+248     memcpy(&amp;ipv4_attempt.addr, ipv4_addr-&gt;ai_addr, ipv4_addr-&gt;ai_addrlen);
+249     ipv4_attempt.addr_len = ipv4_addr-&gt;ai_addrlen;
+250 
+251     asciichat_thread_create(&amp;ipv4_thread, &quot;connect_ipv4&quot;, attempt_connection_thread, &amp;ipv4_attempt);
+252   }
+253 
+254   // Start IPv6 attempt if available
+255   if (ipv6_addr) {
+256     ipv6_attempt.family = AF_INET6;
+257     ipv6_attempt.family_name = &quot;IPv6&quot;;
+258     ipv6_attempt.timeout_ms = config-&gt;timeout_ms;
+259     ipv6_attempt.winner_socket = &amp;winner_socket;
+260     ipv6_attempt.winner_found = &amp;winner_found;
+261     ipv6_attempt.lock = &amp;lock;
+262     ipv6_attempt.signal = &amp;signal;
+263     ipv6_attempt.should_exit_callback = config-&gt;should_exit_callback;
+264     ipv6_attempt.callback_data = config-&gt;callback_data;
+265     memcpy(&amp;ipv6_attempt.addr, ipv6_addr-&gt;ai_addr, ipv6_addr-&gt;ai_addrlen);
+266     ipv6_attempt.addr_len = ipv6_addr-&gt;ai_addrlen;
+267 
+268     asciichat_thread_create(&amp;ipv6_thread, &quot;connect_ipv6&quot;, attempt_connection_thread, &amp;ipv6_attempt);
+269   }
+270 
+271   // Wait for winner or both to finish
+272   uint32_t max_wait_ms = config-&gt;timeout_ms + 1000;
+273   uint32_t elapsed_ms = 0;
+274 
+275   mutex_lock(&amp;lock);
+276   while (!winner_found &amp;&amp; elapsed_ms &lt; max_wait_ms) {
+277     cond_timedwait(&amp;signal, &amp;lock, 100 * NS_PER_MS_INT);
+278     elapsed_ms += 100;
+279 
+280     // Check if both are done
+281     if (ipv4_addr &amp;&amp; ipv6_addr) {
+282       if (ipv4_attempt.done &amp;&amp; ipv6_attempt.done) {
+283         break;
+284       }
+285     } else if (ipv4_addr &amp;&amp; ipv4_attempt.done) {
+286       break;
+287     } else if (ipv6_addr &amp;&amp; ipv6_attempt.done) {
+288       break;
+289     }
+290   }
+291   mutex_unlock(&amp;lock);
+292 
+293   // Join threads (must wait for both to complete before returning)
+294   // The threads access shared state on our stack, so we cannot return until they're done
+295   if (asciichat_thread_is_initialized(&amp;ipv4_thread)) {
+296     asciichat_thread_join(&amp;ipv4_thread, NULL);
+297   }
+298   if (asciichat_thread_is_initialized(&amp;ipv6_thread)) {
+299     asciichat_thread_join(&amp;ipv6_thread, NULL);
+300   }
+301 
+302   // Close any remaining sockets
+303   if (ipv4_attempt.socket != INVALID_SOCKET_VALUE) {
+304     socket_close(ipv4_attempt.socket);
+305   }
+306   if (ipv6_attempt.socket != INVALID_SOCKET_VALUE) {
+307     socket_close(ipv6_attempt.socket);
+308   }
+309 
+310   // Cleanup
+311   mutex_destroy(&amp;lock);
+312   cond_destroy(&amp;signal);
+313   freeaddrinfo(result);
+314 
+315   // Check result
+316   if (winner_socket == INVALID_SOCKET_VALUE) {
+317     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to connect to %s:%d (both IPv4 and IPv6 failed)&quot;, config-&gt;hostname,
+318                      config-&gt;port);
+319   }
+320 
+321   *out_socket = (socket_t)winner_socket;
+322   log_info(&quot;PCONN: Successfully connected to %s:%d&quot;, config-&gt;hostname, config-&gt;port);
+323   return ASCIICHAT_OK;
+324 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>connection_attempt_t::addr</b>,
+    <b>connection_attempt_t::addr_len</b>, <b>asciichat_thread_create()</b>,
+    <b>asciichat_thread_join()</b>, <b>connection_attempt_t::callback_data</b>,
+    <b>connection_attempt_t::done</b>, <b>connection_attempt_t::family</b>,
+    <b>connection_attempt_t::family_name</b>, <b>connection_attempt_t::lock</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>safe_snprintf()</b>,
+    <b>connection_attempt_t::should_exit_callback</b>,
+    <b>connection_attempt_t::signal</b>, <b>connection_attempt_t::socket</b>,
+    <b>connection_attempt_t::timeout_ms</b>,
+    <b>connection_attempt_t::winner_found</b>, and
+    <b>connection_attempt_t::winner_socket</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_connect()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

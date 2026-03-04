@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>host_liveness_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">host_liveness_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">host_liveness_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">host_liveness_t - Host liveness detection state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/discovery/session.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint64_t <b>last_ping_sent_ms</b>
+  <br/>
+  Timestamp of last ping sent (monotonic). uint64_t <b>last_pong_received_ms</b>
+  <br/>
+  Timestamp of last pong received (monotonic). uint32_t
+    <b>consecutive_failures</b>
+  <br/>
+  Number of consecutive ping failures. uint32_t <b>max_failures</b>
+  <br/>
+  Threshold for triggering migration (default: 3). uint64_t
+    <b>ping_interval_ms</b>
+  <br/>
+  Time between pings (default: 3000ms). uint64_t <b>timeout_ms</b>
+  <br/>
+  Timeout for ping response (default: 10000ms). <b>bool</b>
+    <b>ping_in_flight</b>
+  <br/>
+  True if waiting for pong.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Host liveness detection state.</p>
+<p class="Pp">Participants periodically ping the host to detect disconnects.
+    After 3 consecutive ping failures (10s timeout each), host migration is
+    triggered.</p>
+<p class="Pp">Definition at line <b>68</b> of file <b>session.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_host_liveness_t::consecutive_failures"><a class="permalink" href="#uint32_t_host_liveness_t::consecutive_failures">uint32_t
+  host_liveness_t::consecutive_failures</a></h2>
+<p class="Pp">Number of consecutive ping failures.</p>
+<p class="Pp">Definition at line <b>71</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
+    <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_host_liveness_t::last_ping_sent_ms"><a class="permalink" href="#uint64_t_host_liveness_t::last_ping_sent_ms">uint64_t
+  host_liveness_t::last_ping_sent_ms</a></h2>
+<p class="Pp">Timestamp of last ping sent (monotonic).</p>
+<p class="Pp">Definition at line <b>69</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
+    <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_host_liveness_t::last_pong_received_ms"><a class="permalink" href="#uint64_t_host_liveness_t::last_pong_received_ms">uint64_t
+  host_liveness_t::last_pong_received_ms</a></h2>
+<p class="Pp">Timestamp of last pong received (monotonic).</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_host_liveness_t::max_failures"><a class="permalink" href="#uint32_t_host_liveness_t::max_failures">uint32_t
+  host_liveness_t::max_failures</a></h2>
+<p class="Pp">Threshold for triggering migration (default: 3).</p>
+<p class="Pp">Definition at line <b>72</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
+    <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> host_liveness_t::ping_in_flight</h2>
+<p class="Pp">True if waiting for pong.</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
+    <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_host_liveness_t::ping_interval_ms"><a class="permalink" href="#uint64_t_host_liveness_t::ping_interval_ms">uint64_t
+  host_liveness_t::ping_interval_ms</a></h2>
+<p class="Pp">Time between pings (default: 3000ms).</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
+    <b>discovery_session_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_host_liveness_t::timeout_ms"><a class="permalink" href="#uint64_t_host_liveness_t::timeout_ms">uint64_t
+  host_liveness_t::timeout_ms</a></h2>
+<p class="Pp">Timeout for ping response (default: 10000ms).</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_check_host_alive()</b>, and
+    <b>discovery_session_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

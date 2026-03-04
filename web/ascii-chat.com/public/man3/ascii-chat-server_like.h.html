@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>server_like.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">server_like.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">server_like.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">server_like.h - Shared initialization and teardown for server-like
+    modes (server, discovery-service).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_server_like_config</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef asciichat_error_t(* <b>session_server_like_init_fn</b>)
+    (void *user_data)
+  <br/>
+  typedef asciichat_error_t(* <b>session_server_like_run_fn</b>) (void
+    *user_data)
+  <br/>
+  typedef void(* <b>session_server_like_interrupt_fn</b>) (void)
+  <br/>
+  typedef void(* <b>session_server_like_status_fn</b>) (void *user_data,
+    ui_status_t *out_status)
+  <br/>
+  typedef struct <b>session_server_like_config</b>
+    <b>session_server_like_config_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>session_server_like_run</b> (const
+    <b>session_server_like_config_t</b> *config)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Shared initialization and teardown for server-like modes (server,
+    discovery-service).</p>
+<p class="Pp">Provides a unified interface for running server-like modes that
+    share common initialization patterns: socket binding, key loading, status
+    screen management, keyboard input handling, and clean shutdown.</p>
+<p class="Pp"></p>
+<p class="Pp">Each mode registers mode-specific callbacks for initialization,
+    the main accept loop, status gathering, and signal-based interruption. The
+    shared layer handles all the boilerplate.</p>
+<p class="Pp"></p>
+<section class="Ss">
+<h2 class="Ss" id="Modes_Supported"><a class="permalink" href="#Modes_Supported">Modes
+  Supported</a></h2>
+<ul class="Bl-bullet">
+  <li><b>Server mode</b>: TCP/WebSocket server with audio mixing and H.265
+      encoding</li>
+  <li><b>Discovery-Service mode</b>: ACDS (ASCII Chat Discovery Service)
+    server</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Shared_Responsibilities"><a class="permalink" href="#Shared_Responsibilities">Shared
+  Responsibilities</a></h2>
+<p class="Pp">This layer automatically handles:</p>
+<ul class="Bl-bullet">
+  <li>Keepawake system (platform sleep prevention)</li>
+  <li>Signal handler registration (SIGINT, SIGTERM, SIGPIPE)</li>
+  <li>Status screen lifecycle and animation</li>
+  <li>Keyboard input and grep-mode toggle</li>
+  <li>Proper cleanup ordering</li>
+  <li>Terminal logging restoration</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Mode-Specific_Responsibilities"><a class="permalink" href="#Mode-Specific_Responsibilities">Mode-Specific
+  Responsibilities</a></h2>
+<p class="Pp">Mode files provide:</p>
+<ul class="Bl-bullet">
+  <li>init_fn: Create sockets, load keys, start worker threads</li>
+  <li>run_fn: Blocking accept/event loop (tcp_server_run, acds_server_run,
+    etc.)</li>
+  <li>interrupt_fn: Async-signal-safe callback to close sockets on
+      SIGINT/SIGTERM</li>
+  <li>status_fn: Optional callback to gather and display live status at FPS
+    rate</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Memory_and_Lifecycle"><a class="permalink" href="#Memory_and_Lifecycle">Memory
+  and Lifecycle</a></h2>
+<p class="Pp">All global state created by init_fn (sockets, threads, etc.) is
+    owned by the mode. The shared layer does not allocate on behalf of
+  modes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">March 2026</div>
+<p class="Pp">Definition in file <b>server_like.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

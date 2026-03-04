@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>url.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">url.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">url.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">url.c - Production-grade URL parsing and validation using
+  PCRE2.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>url_is_valid</b> (const char *url)
+  <br/>
+  asciichat_error_t <b>url_parse</b> (const char *url, url_parts_t *parts_out)
+  <br/>
+  void <b>url_parts_destroy</b> (url_parts_t *parts)
+  <br/>
+  <b>bool</b> <b>url_is_websocket_scheme</b> (const char *scheme)
+  <br/>
+  <b>bool</b> <b>url_is_websocket</b> (const char *url)
+  <br/>
+  <b>bool</b> <b>url_looks_like_websocket</b> (const char *url)
+  <br/>
+  <b>bool</b> <b>url_is_tcp_scheme</b> (const char *scheme)
+  <br/>
+  <b>bool</b> <b>url_is_tcp</b> (const char *url)
+  <br/>
+  <b>bool</b> <b>url_looks_like_tcp</b> (const char *url)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Production-grade URL parsing and validation using PCRE2.</p>
+<p class="Pp">Implements robust HTTP(S) URL validation using the
+    production-grade regex by Diego Perini (MIT License), compiled with PCRE2
+    and JIT for high performance.</p>
+<p class="Pp">Definition in file <b>url.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_is_tcp (const char * url)</h2>
+<p class="Pp">Definition at line <b>342</b> of file <b>url.c</b>.</p>
+<pre>342                                  {
+343   if (!url || !*url) {
+344     SET_ERRNO(ERROR_INVALID_PARAM, &quot;url is NULL or empty&quot;);
+345     return false;
+346   }
+347 
+348   /* Parse URL to validate and check scheme */
+349   url_parts_t parts = {0};
+350   asciichat_error_t result = url_parse(url, &amp;parts);
+351   bool is_tcp = (result == ASCIICHAT_OK &amp;&amp; url_is_tcp_scheme(parts.scheme));
+352   url_parts_destroy(&amp;parts);
+353 
+354   return is_tcp;
+355 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>url_is_tcp_scheme()</b>, <b>url_parse()</b>, and
+    <b>url_parts_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_is_tcp_scheme (const char * scheme)</h2>
+<p class="Pp">Definition at line <b>332</b> of file <b>url.c</b>.</p>
+<pre>332                                            {
+333   if (!scheme || !*scheme) {
+334     SET_ERRNO(ERROR_INVALID_PARAM, &quot;scheme is NULL or empty&quot;);
+335     return false;
+336   }
+337 
+338   /* Case-insensitive comparison for &quot;tcp&quot; */
+339   return (strcasecmp(scheme, &quot;tcp&quot;) == 0);
+340 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>url_is_tcp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_is_valid (const char * url)</h2>
+<p class="Pp">Definition at line <b>81</b> of file <b>url.c</b>.</p>
+<pre>81                                    {
+82   if (!url || !*url) {
+83     SET_ERRNO(ERROR_INVALID_PARAM, &quot;URL is NULL or empty&quot;);
+84     return false;
+85   }
+86 
+87   pcre2_code *regex = url_regex_get();
+88   if (!regex) {
+89     return false;
+90   }
+91 
+92   /* Check if URL needs http:// prefix (bare hostname or IP) */
+93   char url_with_scheme[2048];
+94   const char *url_to_match = url;
+95 
+96   if (!strstr(url, &quot;://&quot;)) {
+97     /* No scheme - check if it looks like a bare hostname/IP */
+98 
+99     /* Reject bare scheme words like &quot;http&quot;, &quot;https&quot;, &quot;ftp&quot; */
+100     if (strcmp(url, &quot;http&quot;) == 0 || strcmp(url, &quot;https&quot;) == 0 || strcmp(url, &quot;ftp&quot;) == 0 || strcmp(url, &quot;ftps&quot;) == 0) {
+101       return false;
+102     }
+103 
+104     /* Reject URLs that look like malformed schemes (http/ instead of http://) */
+105     if (strncmp(url, &quot;http/&quot;, 5) == 0 || strncmp(url, &quot;https/&quot;, 6) == 0) {
+106       return false;
+107     }
+108 
+109     /* Reject if it contains @ (email-like) */
+110     if (strchr(url, '@')) {
+111       return false;
+112     }
+113 
+114     /* Reject pure hex strings (raw keys, not hostnames) */
+115     if (strlen(url) == 64) {
+116       bool all_hex = true;
+117       for (const char *p = url; *p &amp;&amp; all_hex; p++) {
+118         if (!((*p &gt;= '0' &amp;&amp; *p &lt;= '9') || (*p &gt;= 'a' &amp;&amp; *p &lt;= 'f') || (*p &gt;= 'A' &amp;&amp; *p &lt;= 'F'))) {
+119           all_hex = false;
+120         }
+121       }
+122       if (all_hex) {
+123         return false; /* Looks like raw hex key, not hostname */
+124       }
+125     }
+126 
+127     /* Check colon handling */
+128     const char *colon_pos = strchr(url, ':');
+129     if (colon_pos) {
+130       /* Has colon - reject unless colon is followed by port number */
+131       const char *after_colon = colon_pos + 1;
+132       bool looks_like_port = true;
+133       for (const char *p = after_colon; *p &amp;&amp; *p != '/'; p++) {
+134         if (!(*p &gt;= '0' &amp;&amp; *p &lt;= '9')) {
+135           looks_like_port = false;
+136           break;
+137         }
+138       }
+139       if (!looks_like_port) {
+140         return false; /* Colon but not a port number */
+141       }
+142     }
+143 
+144     /* Looks like a bare hostname/IP - prepend http:// */
+145     int result = snprintf(url_with_scheme, sizeof(url_with_scheme), &quot;http://%s&quot;, url);
+146     if (result &lt; 0 || result &gt;= (int)sizeof(url_with_scheme)) {
+147       return false; /* URL too long */
+148     }
+149     url_to_match = url_with_scheme;
+150   }
+151 
+152   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+153   if (!match_data) {
+154     return false;
+155   }
+156 
+157   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+158   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+159                            0,                                                        /* options */
+160                            match_data, NULL);                                        /* mcontext */
+161 
+162   pcre2_match_data_free(match_data);
+163   return rc &gt;= 0; /* rc &gt;= 0 means successful match */
+164 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>options_init()</b>, <b>parse_public_key()</b>, and
+    <b>yt_dlp_extract_stream_url()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_is_websocket (const char * url)</h2>
+<p class="Pp">Definition at line <b>307</b> of file <b>url.c</b>.</p>
+<pre>307                                        {
+308   if (!url || !*url) {
+309     SET_ERRNO(ERROR_INVALID_PARAM, &quot;url is NULL or empty&quot;);
+310     return false;
+311   }
+312 
+313   /* Parse URL to validate and check scheme */
+314   url_parts_t parts = {0};
+315   asciichat_error_t result = url_parse(url, &amp;parts);
+316   bool is_ws = (result == ASCIICHAT_OK &amp;&amp; url_is_websocket_scheme(parts.scheme));
+317   url_parts_destroy(&amp;parts);
+318 
+319   return is_ws;
+320 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>url_is_websocket_scheme()</b>, <b>url_parse()</b>,
+    and <b>url_parts_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>,
+    <b>connection_attempt_tcp()</b>, and
+  <b>server_connection_establish()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_is_websocket_scheme (const char * scheme)</h2>
+<p class="Pp">Definition at line <b>297</b> of file <b>url.c</b>.</p>
+<pre>297                                                  {
+298   if (!scheme || !*scheme) {
+299     SET_ERRNO(ERROR_INVALID_PARAM, &quot;scheme is NULL or empty&quot;);
+300     return false;
+301   }
+302 
+303   /* Case-insensitive comparison for &quot;ws&quot; or &quot;wss&quot; */
+304   return (strcasecmp(scheme, &quot;ws&quot;) == 0 || strcasecmp(scheme, &quot;wss&quot;) == 0);
+305 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>url_is_websocket()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_looks_like_tcp (const char * url)</h2>
+<p class="Pp">Definition at line <b>357</b> of file <b>url.c</b>.</p>
+<pre>357                                          {
+358   if (!url || !*url) {
+359     SET_ERRNO(ERROR_INVALID_PARAM, &quot;url is NULL or empty&quot;);
+360     return false;
+361   }
+362 
+363   /* Quick check for tcp:// prefix (case-insensitive) */
+364   return (strncasecmp(url, &quot;tcp://&quot;, 6) == 0);
+365 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> url_looks_like_websocket (const char * url)</h2>
+<p class="Pp">Definition at line <b>322</b> of file <b>url.c</b>.</p>
+<pre>322                                                {
+323   if (!url || !*url) {
+324     SET_ERRNO(ERROR_INVALID_PARAM, &quot;url is NULL or empty&quot;);
+325     return false;
+326   }
+327 
+328   /* Quick check for ws:// or wss:// prefix (case-insensitive) */
+329   return (strncasecmp(url, &quot;ws://&quot;, 5) == 0 || strncasecmp(url, &quot;wss://&quot;, 6) == 0);
+330 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_url_parse_(const_char_*_url,_url_parts_t_*_parts_out)"><a class="permalink" href="#asciichat_error_t_url_parse_(const_char_*_url,_url_parts_t_*_parts_out)">asciichat_error_t
+  url_parse (const char * url, url_parts_t * parts_out)</a></h2>
+<p class="Pp">Definition at line <b>166</b> of file <b>url.c</b>.</p>
+<pre>166                                                                      {
+167   if (!url || !*url) {
+168     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;URL is NULL or empty&quot;);
+169   }
+170 
+171   if (!parts_out) {
+172     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;parts_out is NULL&quot;);
+173   }
+174 
+175   /* Clear output structure */
+176   memset(parts_out, 0, sizeof(*parts_out));
+177 
+178   pcre2_code *regex = url_regex_get();
+179   if (!regex) {
+180     return SET_ERRNO(ERROR_CONFIG, &quot;URL validator not initialized&quot;);
+181   }
+182 
+183   /* Check if URL needs http:// prefix (bare hostname or IP) */
+184   // allocate twice the &quot;safe limit&quot; of 2048 for website URLs, even though modern browsers can handle up
+185   // to 80k character URLs in some cases.
+186   char url_with_scheme[4096];
+187   const char *url_to_match = url;
+188   const char *original_url = url;
+189 
+190   if (!strstr(url, &quot;://&quot;)) {
+191     /* No scheme - check if it looks like a bare hostname/IP */
+192 
+193     /* Reject bare scheme words like &quot;http&quot;, &quot;https&quot;, &quot;ftp&quot; */
+194     if (strcmp(url, &quot;http&quot;) == 0 || strcmp(url, &quot;https&quot;) == 0 || strcmp(url, &quot;ftp&quot;) == 0 || strcmp(url, &quot;ftps&quot;) == 0) {
+195       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid URL format: %s&quot;, url);
+196     }
+197 
+198     /* Reject URLs that look like malformed schemes (http/ instead of http://) */
+199     if (strncmp(url, &quot;http/&quot;, 5) == 0 || strncmp(url, &quot;https/&quot;, 6) == 0) {
+200       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid URL format (looks like malformed scheme): %s&quot;, url);
+201     }
+202 
+203     /* Reject pure hex strings (raw keys, not hostnames) */
+204     if (strlen(url) == 64) {
+205       bool all_hex = true;
+206       for (const char *p = url; *p &amp;&amp; all_hex; p++) {
+207         if (!((*p &gt;= '0' &amp;&amp; *p &lt;= '9') || (*p &gt;= 'a' &amp;&amp; *p &lt;= 'f') || (*p &gt;= 'A' &amp;&amp; *p &lt;= 'F'))) {
+208           all_hex = false;
+209         }
+210       }
+211       if (all_hex) {
+212         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid URL: appears to be raw hex data, not a URL&quot;);
+213       }
+214     }
+215 
+216     const char *colon_pos = strchr(url, ':');
+217     if (colon_pos) {
+218       /* Has colon - check if what follows is numeric (port) */
+219       const char *after_colon = colon_pos + 1;
+220       bool looks_like_port = true;
+221       for (const char *p = after_colon; *p &amp;&amp; *p != '/'; p++) {
+222         if (!(*p &gt;= '0' &amp;&amp; *p &lt;= '9')) {
+223           looks_like_port = false;
+224           break;
+225         }
+226       }
+227       if (!looks_like_port) {
+228         return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid URL format (invalid scheme): %s&quot;, url);
+229       }
+230     }
+231 
+232     /* Looks like a bare hostname/IP - prepend http:// */
+233     int result = snprintf(url_with_scheme, sizeof(url_with_scheme), &quot;http://%s&quot;, url);
+234     if (result &lt; 0 || result &gt;= (int)sizeof(url_with_scheme)) {
+235       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;URL too long&quot;);
+236     }
+237     url_to_match = url_with_scheme;
+238   }
+239 
+240   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+241   if (!match_data) {
+242     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to create match data&quot;);
+243   }
+244 
+245   /* Perform JIT match (falls back to interpreted if JIT unavailable) */
+246   int rc = pcre2_jit_match(regex, (PCRE2_SPTR)url_to_match, strlen(url_to_match), 0, /* startoffset */
+247                            0,                                                        /* options */
+248                            match_data, NULL);                                        /* mcontext */
+249 
+250   if (rc &lt; 0) {
+251     pcre2_match_data_free(match_data);
+252     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid URL format: %s&quot;, original_url);
+253   }
+254 
+255   /* Extract named groups */
+256   parts_out-&gt;scheme = asciichat_pcre2_extract_named_group(regex, match_data, &quot;scheme&quot;, url_to_match);
+257   parts_out-&gt;userinfo = asciichat_pcre2_extract_named_group(regex, match_data, &quot;userinfo&quot;, url_to_match);
+258   parts_out-&gt;host = asciichat_pcre2_extract_named_group(regex, match_data, &quot;host&quot;, url_to_match);
+259   parts_out-&gt;ipv6 = asciichat_pcre2_extract_named_group(regex, match_data, &quot;ipv6&quot;, url_to_match);
+260   parts_out-&gt;path = asciichat_pcre2_extract_named_group(regex, match_data, &quot;path_query_fragment&quot;, url_to_match);
+261 
+262   /* Extract port number */
+263   parts_out-&gt;port = 0;
+264   char *port_str = asciichat_pcre2_extract_named_group(regex, match_data, &quot;port&quot;, url_to_match);
+265   if (port_str) {
+266     parts_out-&gt;port = (int)strtol(port_str, NULL, 10);
+267     SAFE_FREE(port_str);
+268   }
+269 
+270   pcre2_match_data_free(match_data);
+271 
+272   /* Verify we got required fields */
+273   if (!parts_out-&gt;scheme || !parts_out-&gt;host) {
+274     url_parts_destroy(parts_out);
+275     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Missing required URL components&quot;);
+276   }
+277 
+278   return ASCIICHAT_OK;
+279 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>, and
+    <b>url_parts_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>parse_public_key()</b>, <b>server_connection_establish()</b>,
+    <b>url_is_tcp()</b>, and <b>url_is_websocket()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_url_parts_destroy_(url_parts_t_*_parts)"><a class="permalink" href="#void_url_parts_destroy_(url_parts_t_*_parts)">void
+  url_parts_destroy (url_parts_t * parts)</a></h2>
+<p class="Pp">Definition at line <b>281</b> of file <b>url.c</b>.</p>
+<pre>281                                            {
+282   if (!parts) {
+283     SET_ERRNO(ERROR_INVALID_PARAM, &quot;parts is NULL&quot;);
+284     return;
+285   }
+286 
+287   SAFE_FREE(parts-&gt;scheme);
+288   SAFE_FREE(parts-&gt;userinfo);
+289   SAFE_FREE(parts-&gt;host);
+290   SAFE_FREE(parts-&gt;ipv6);
+291   SAFE_FREE(parts-&gt;path);
+292   parts-&gt;port = 0;
+293 
+294   memset(parts, 0, sizeof(*parts));
+295 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
+    <b>parse_public_key()</b>, <b>server_connection_establish()</b>,
+    <b>url_is_tcp()</b>, <b>url_is_websocket()</b>, and <b>url_parse()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

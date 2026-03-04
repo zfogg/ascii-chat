@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>negotiate_ctx_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">negotiate_ctx_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">negotiate_ctx_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">negotiate_ctx_t - Host negotiation context.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/discovery/negotiate.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint8_t <b>session_id</b> [16]
+  <br/>
+  uint8_t <b>participant_id</b> [16]
+  <br/>
+  <b>bool</b> <b>is_initiator</b>
+  <br/>
+  Did we create this session? <b>nat_quality_t</b> <b>our_quality</b>
+  <br/>
+  Our NAT quality. <b>nat_quality_t</b> <b>peer_quality</b>
+  <br/>
+  Peer's NAT quality (when received). <b>bool</b> <b>peer_quality_received</b>
+  <br/>
+  Have we received peer's quality? <b>negotiate_state_t</b> <b>state</b>
+  <br/>
+  asciichat_error_t <b>error</b>
+  <br/>
+  <b>bool</b> <b>we_are_host</b>
+  <br/>
+  True if we should become host. char <b>host_address</b> [64]
+  <br/>
+  Host's address (ours if we_are_host). uint16_t <b>host_port</b>
+  <br/>
+  Host's port. uint8_t <b>connection_type</b>
+  <br/>
+  acip_connection_type_t
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Host negotiation context.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>negotiate.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_negotiate_ctx_t::connection_type"><a class="permalink" href="#uint8_t_negotiate_ctx_t::connection_type">uint8_t
+  negotiate_ctx_t::connection_type</a></h2>
+<p class="Pp">acip_connection_type_t</p>
+<p class="Pp">Definition at line <b>59</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_determine_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_negotiate_ctx_t::error"><a class="permalink" href="#asciichat_error_t_negotiate_ctx_t::error">asciichat_error_t
+  negotiate_ctx_t::error</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_get_error()</b>, and
+    <b>negotiate_start_detection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_negotiate_ctx_t::host_address_64_"><a class="permalink" href="#char_negotiate_ctx_t::host_address_64_">char
+  negotiate_ctx_t::host_address[64]</a></h2>
+<p class="Pp">Host's address (ours if we_are_host).</p>
+<p class="Pp">Definition at line <b>57</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
+    <b>negotiate_determine_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_negotiate_ctx_t::host_port"><a class="permalink" href="#uint16_t_negotiate_ctx_t::host_port">uint16_t
+  negotiate_ctx_t::host_port</a></h2>
+<p class="Pp">Host's port.</p>
+<p class="Pp">Definition at line <b>58</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>, and
+    <b>negotiate_determine_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> negotiate_ctx_t::is_initiator</h2>
+<p class="Pp">Did we create this session?</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_determine_result()</b>, and
+    <b>negotiate_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>nat_quality_t</b> negotiate_ctx_t::our_quality</h2>
+<p class="Pp">Our NAT quality.</p>
+<p class="Pp">Definition at line <b>47</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>,
+    <b>negotiate_determine_result()</b>, <b>negotiate_init()</b>,
+    <b>negotiate_receive_peer_quality()</b>, and
+    <b>negotiate_start_detection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_negotiate_ctx_t::participant_id_16_"><a class="permalink" href="#uint8_t_negotiate_ctx_t::participant_id_16_">uint8_t
+  negotiate_ctx_t::participant_id[16]</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>nat_quality_t</b> negotiate_ctx_t::peer_quality</h2>
+<p class="Pp">Peer's NAT quality (when received).</p>
+<p class="Pp">Definition at line <b>48</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>,
+    <b>negotiate_determine_result()</b>, <b>negotiate_init()</b>, and
+    <b>negotiate_receive_peer_quality()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> negotiate_ctx_t::peer_quality_received</h2>
+<p class="Pp">Have we received peer's quality?</p>
+<p class="Pp">Definition at line <b>49</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>,
+    <b>negotiate_determine_result()</b>, <b>negotiate_init()</b>,
+    <b>negotiate_receive_peer_quality()</b>, and
+    <b>negotiate_start_detection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_negotiate_ctx_t::session_id_16_"><a class="permalink" href="#uint8_t_negotiate_ctx_t::session_id_16_">uint8_t
+  negotiate_ctx_t::session_id[16]</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>negotiate_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>negotiate_state_t</b> negotiate_ctx_t::state</h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>,
+    <b>negotiate_determine_result()</b>, <b>negotiate_get_state()</b>,
+    <b>negotiate_init()</b>, <b>negotiate_is_complete()</b>,
+    <b>negotiate_receive_peer_quality()</b>, and
+    <b>negotiate_start_detection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> negotiate_ctx_t::we_are_host</h2>
+<p class="Pp">True if we should become host.</p>
+<p class="Pp">Definition at line <b>56</b> of file <b>negotiate.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_process()</b>,
+    <b>negotiate_determine_result()</b>, and <b>negotiate_init()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

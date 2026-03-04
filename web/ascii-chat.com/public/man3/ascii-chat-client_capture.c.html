@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>capture.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">capture.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">capture.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">capture.c - &#x1F4F9; Client webcam capture: dedicated capture
+    thread with frame rate limiting and network transmission</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>CAPTURE_TARGET_FPS</b> 144
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>capture_init</b> ()
+  <br/>
+  Initialize capture subsystem. int <b>capture_start_thread</b> ()
+  <br/>
+  Start capture thread. void <b>capture_stop_thread</b> ()
+  <br/>
+  Stop capture thread. <b>bool</b> <b>capture_thread_exited</b> ()
+  <br/>
+  Check if capture thread has exited. void <b>capture_cleanup</b> ()
+  <br/>
+  Cleanup capture subsystem.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4F9; Client webcam capture: dedicated capture thread with
+    frame rate limiting and network transmission</p>
+<p class="Pp">The capture system follows a producer-consumer pattern:</p>
+<ul class="Bl-bullet">
+  <li><b>Producer</b>: Webcam capture thread reads frames from camera</li>
+  <li><b>Processing</b>: Frame resizing and format conversion pipeline</li>
+  <li><b>Consumer</b>: Network transmission thread sends processed frames</li>
+  <li><b>Rate Limiting</b>: Frame rate control to prevent bandwidth
+    overload</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="Threading_Model"><a class="permalink" href="#Threading_Model">Threading
+  Model</a></h2>
+<p class="Pp">Capture operations run in a dedicated thread:</p>
+<ul class="Bl-bullet">
+  <li><b>Main Thread</b>: Manages thread lifecycle and coordination</li>
+  <li><b>Capture Thread</b>: Continuous frame capture and processing loop</li>
+  <li><b>Synchronization</b>: Atomic flags coordinate thread shutdown</li>
+  <li><b>Resource Management</b>: Clean webcam and memory resource cleanup</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Processing_Pipeline"><a class="permalink" href="#Frame_Processing_Pipeline">Frame
+  Processing Pipeline</a></h2>
+<p class="Pp">Raw webcam frames undergo comprehensive processing:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Capture</b>: Read raw frame from webcam device</dd>
+  <dt>2.</dt>
+  <dd><b>Validation</b>: Check frame validity and dimensions</dd>
+  <dt>3.</dt>
+  <dd><b>Aspect Ratio</b>: Calculate optimal resize dimensions</dd>
+  <dt>4.</dt>
+  <dd><b>Resizing</b>: Scale frame to network-optimal size (800x600 max)</dd>
+  <dt>5.</dt>
+  <dd><b>Serialization</b>: Pack frame data into network packet format</dd>
+  <dt>6.</dt>
+  <dd><b>Transmission</b>: Send via IMAGE_FRAME packet to server</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Rate_Management"><a class="permalink" href="#Frame_Rate_Management">Frame
+  Rate Management</a></h2>
+<p class="Pp">Implements intelligent frame rate limiting:</p>
+<ul class="Bl-bullet">
+  <li><b>Capture Rate</b>: 144 FPS to support high-refresh displays (~6.9ms
+      intervals)</li>
+  <li><b>Timing Control</b>: Monotonic clock for accurate frame intervals</li>
+  <li><b>Adaptive Delays</b>: Dynamic sleep adjustment for consistent
+    timing</li>
+  <li><b>Display Support</b>: High capture rate enables smooth playback on
+      promotion displays</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Image_Resizing_Strategy"><a class="permalink" href="#Image_Resizing_Strategy">Image
+  Resizing Strategy</a></h2>
+<p class="Pp">Optimizes frame size for network efficiency:</p>
+<ul class="Bl-bullet">
+  <li><b>Maximum Dimensions</b>: 800x600 pixels for reasonable bandwidth</li>
+  <li><b>Aspect Ratio Preservation</b>: Maintain original camera aspect
+    ratio</li>
+  <li><b>Intelligent Scaling</b>: Fit-to-bounds algorithm for optimal
+    sizing</li>
+  <li><b>Quality Balance</b>: Large enough for server flexibility, small enough
+      for efficiency</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Packet_Format_and_Transmission"><a class="permalink" href="#Packet_Format_and_Transmission">Packet
+  Format and Transmission</a></h2>
+<p class="Pp">Frame data serialized for network transmission:</p>
+<ul class="Bl-bullet">
+  <li><b>Header</b>: Width and height as 32-bit network byte order integers</li>
+  <li><b>Payload</b>: RGB pixel data as continuous byte array</li>
+  <li><b>Size Limits</b>: Enforce maximum packet size for protocol
+    compliance</li>
+  <li><b>Error Handling</b>: Graceful handling of oversized frames</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Platform_Compatibility"><a class="permalink" href="#Platform_Compatibility">Platform
+  Compatibility</a></h2>
+<p class="Pp">Uses webcam abstraction layer for cross-platform support:</p>
+<ul class="Bl-bullet">
+  <li><b>Linux</b>: Video4Linux2 (V4L2) webcam interface</li>
+  <li><b>macOS</b>: AVFoundation framework integration</li>
+  <li><b>Windows</b>: DirectShow API wrapper (stub implementation)</li>
+  <li><b>Fallback</b>: Test pattern generation when webcam unavailable</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Integration_Points"><a class="permalink" href="#Integration_Points">Integration
+  Points</a></h2>
+<ul class="Bl-bullet">
+  <li><b>main.c</b>: Capture subsystem lifecycle management</li>
+  <li><b>server.c</b>: Network packet transmission and connection
+    monitoring</li>
+  <li><b>webcam.c</b>: Low-level webcam device interface and frame reading</li>
+  <li><b>image.c</b>: Image processing and memory management functions</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Handling"><a class="permalink" href="#Error_Handling">Error
+  Handling</a></h2>
+<p class="Pp">Capture errors handled with appropriate recovery:</p>
+<ul class="Bl-bullet">
+  <li><b>Device Errors</b>: Webcam unavailable or device busy (continue with
+      warnings)</li>
+  <li><b>Memory Errors</b>: Frame allocation failures (skip frame,
+    continue)</li>
+  <li><b>Network Errors</b>: Transmission failures (trigger connection loss
+      detection)</li>
+  <li><b>Processing Errors</b>: Invalid frames or resize failures (skip and
+      retry)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Resource_Management"><a class="permalink" href="#Resource_Management">Resource
+  Management</a></h2>
+<p class="Pp">Careful resource lifecycle management:</p>
+<ul class="Bl-bullet">
+  <li><b>Webcam Device</b>: Proper initialization and cleanup</li>
+  <li><b>Frame Buffers</b>: Automatic memory management with leak
+    prevention</li>
+  <li><b>Thread Resources</b>: Clean thread termination and resource
+    release</li>
+  <li><b>Network Buffers</b>: Efficient packet buffer allocation and
+    cleanup</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">2025</div>
+<p class="Pp">Definition in file <b>client/capture.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_CAPTURE_TARGET_FPS___144"><a class="permalink" href="#_define_CAPTURE_TARGET_FPS___144">#define
+  CAPTURE_TARGET_FPS 144</a></h2>
+<p class="Pp">Target capture FPS for network transmission (144 FPS for
+    high-refresh displays)</p>
+<p class="Pp">Definition at line <b>155</b> of file <b>client/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>capture_init()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_capture_cleanup_()"><a class="permalink" href="#void_capture_cleanup_()">void
+  capture_cleanup ()</a></h2>
+<p class="Pp">Cleanup capture subsystem. Cleanup capture subsystem</p>
+<p class="Pp"></p>
+<p class="Pp">Stops capture thread and cleans up media source resources. Called
+    during client shutdown.</p>
+<p class="Pp">Definition at line <b>546</b> of file <b>client/capture.c</b>.</p>
+<pre>546                        {
+547   capture_stop_thread();
+548 
+549   // Destroy capture context
+550   if (g_capture_capture_ctx) {
+551     session_capture_destroy(g_capture_capture_ctx);
+552     g_capture_capture_ctx = NULL;
+553   }
+554 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>capture_stop_thread()</b>, and
+    <b>session_capture_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_capture_init_()"><a class="permalink" href="#int_capture_init_()">int
+  capture_init ()</a></h2>
+<p class="Pp">Initialize capture subsystem. Initialize capture subsystem</p>
+<p class="Pp"></p>
+<p class="Pp">Sets up media source (webcam, file, or stdin) and prepares capture
+    system for operation. Must be called once during client initialization.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>405</b> of file <b>client/capture.c</b>.</p>
+<pre>405                    {
+406   // Build capture configuration from options
+407   session_capture_config_t config = {0};
+408   const char *media_url = GET_OPTION(media_url);
+409   const char *media_file = GET_OPTION(media_file);
+410   bool media_from_stdin = GET_OPTION(media_from_stdin);
+411 
+412   if (media_url &amp;&amp; media_url[0] != '\0') {
+413     // Network URL streaming (takes priority over --file)
+414     // Don't open webcam when streaming from URL
+415     config.type = MEDIA_SOURCE_FILE;
+416     config.path = media_url;
+417     config.loop = false; // Network URLs cannot be looped
+418     log_debug(&quot;Using network URL: %s (webcam disabled)&quot;, media_url);
+419   } else if (media_file &amp;&amp; media_file[0] != '\0') {
+420     // File or stdin streaming - don't open webcam
+421     config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+422     config.path = media_file;
+423     config.loop = GET_OPTION(media_loop) &amp;&amp; !media_from_stdin;
+424     log_debug(&quot;Using media %s: %s (webcam disabled)&quot;, media_from_stdin ? &quot;stdin&quot; : &quot;file&quot;, media_file);
+425   } else if (GET_OPTION(test_pattern)) {
+426     // Test pattern mode - don't open real webcam
+427     config.type = MEDIA_SOURCE_TEST;
+428     config.path = NULL;
+429     log_debug(&quot;Using test pattern mode&quot;);
+430   } else {
+431     // Webcam mode (default)
+432     static char webcam_index_str[32];
+433     safe_snprintf(webcam_index_str, sizeof(webcam_index_str), &quot;%u&quot;, GET_OPTION(webcam_index));
+434     config.type = MEDIA_SOURCE_WEBCAM;
+435     config.path = webcam_index_str;
+436     log_debug(&quot;Using webcam device %u&quot;, GET_OPTION(webcam_index));
+437   }
+438   config.target_fps = CAPTURE_TARGET_FPS;
+439   config.resize_for_network = true; // Client always resizes for network transmission
+440 
+441   // Configure audio capture with fallback to microphone
+442   config.enable_audio = true;
+443   config.audio_fallback_to_mic = true;
+444   config.mic_audio_ctx = audio_get_context();
+445 
+446   // Add seek timestamp if specified
+447   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+448 
+449   // Create capture context using session library
+450   g_capture_capture_ctx = session_capture_create(&amp;config);
+451   if (!g_capture_capture_ctx) {
+452     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
+453     asciichat_error_t existing_error = GET_ERRNO();
+454     log_debug(&quot;session_capture_create failed, GET_ERRNO() returned: %d&quot;, existing_error);
+455     if (existing_error != ASCIICHAT_OK) {
+456       log_debug(&quot;Returning existing error code %d&quot;, existing_error);
+457       return existing_error;
+458     }
+459     SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to initialize capture source&quot;);
+460     return -1;
+461   }
+462 
+463   return 0;
+464 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_capture_config_t::audio_fallback_to_mic</b>,
+    <b>audio_get_context()</b>, <b>CAPTURE_TARGET_FPS</b>,
+    <b>session_capture_config_t::enable_audio</b>,
+    <b>session_capture_config_t::initial_seek_timestamp</b>,
+    <b>session_capture_config_t::loop</b>,
+    <b>session_capture_config_t::mic_audio_ctx</b>,
+    <b>session_capture_config_t::path</b>,
+    <b>session_capture_config_t::resize_for_network</b>, <b>safe_snprintf()</b>,
+    <b>session_capture_create()</b>,
+    <b>session_capture_config_t::target_fps</b>, and
+    <b>session_capture_config_t::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_capture_start_thread_()"><a class="permalink" href="#int_capture_start_thread_()">int
+  capture_start_thread ()</a></h2>
+<p class="Pp">Start capture thread. Start capture thread</p>
+<p class="Pp"></p>
+<p class="Pp">Creates and starts the webcam capture thread. Also sends stream
+    start notification to server.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>475</b> of file <b>client/capture.c</b>.</p>
+<pre>475                            {
+476   if (THREAD_IS_CREATED(g_capture_thread_created)) {
+477     log_warn(&quot;Capture thread already created&quot;);
+478     return 0;
+479   }
+480 
+481   // Register capture atomics with named debug registry
+482   static bool capture_atomics_registered = false;
+483   if (!capture_atomics_registered) {
+484     NAMED_REGISTER_ATOMIC(&amp;g_capture_thread_exited, &quot;capture_webcam_thread_exit_confirmation&quot;, NULL);
+485     capture_atomics_registered = true;
+486   }
+487 
+488   // Start webcam capture thread
+489   atomic_store_bool(&amp;g_capture_thread_exited, false);
+490   if (thread_pool_spawn(g_client_worker_pool, webcam_capture_thread_func, NULL, 2, &quot;webcam_capture&quot;) != ASCIICHAT_OK) {
+491     SET_ERRNO(ERROR_THREAD, &quot;Webcam capture thread creation failed&quot;);
+492     LOG_ERRNO_IF_SET(&quot;Webcam capture thread creation failed&quot;);
+493     return -1;
+494   }
+495 
+496   g_capture_thread_created = true;
+497   log_debug(&quot;Webcam capture thread created successfully&quot;);
+498 
+499   return 0;
+500 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>g_client_worker_pool</b>, and <b>thread_pool_spawn()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_capture_stop_thread_()"><a class="permalink" href="#void_capture_stop_thread_()">void
+  capture_stop_thread ()</a></h2>
+<p class="Pp">Stop capture thread. Stop capture thread</p>
+<p class="Pp"></p>
+<p class="Pp">Gracefully stops the capture thread and cleans up resources. Safe
+    to call multiple times.</p>
+<p class="Pp">Definition at line <b>509</b> of file <b>client/capture.c</b>.</p>
+<pre>509                            {
+510   if (!THREAD_IS_CREATED(g_capture_thread_created)) {
+511     return;
+512   }
+513 
+514   // Wait for thread to exit gracefully
+515   int wait_count = 0;
+516   while (wait_count &lt; 20 &amp;&amp; !atomic_load_bool(&amp;g_capture_thread_exited)) {
+517     platform_sleep_us(100 * US_PER_MS_INT); // 100ms
+518     wait_count++;
+519   }
+520 
+521   if (!atomic_load_bool(&amp;g_capture_thread_exited)) {
+522     log_warn(&quot;Capture thread not responding after 2 seconds - will be joined by thread pool&quot;);
+523   }
+524 
+525   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
+526   g_capture_thread_created = false;
+527 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>, and
+    <b>platform_sleep_us()</b>.</p>
+<p class="Pp">Referenced by <b>capture_cleanup()</b>, and
+    <b>protocol_stop_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> capture_thread_exited ()</h2>
+<p class="Pp">Check if capture thread has exited. Check if capture thread has
+    exited</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if thread has exited, false otherwise</div>
+<p class="Pp">Definition at line <b>535</b> of file <b>client/capture.c</b>.</p>
+<pre>535                              {
+536   return atomic_load_bool(&amp;g_capture_thread_exited);
+537 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

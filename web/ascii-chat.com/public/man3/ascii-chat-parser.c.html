@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>parser.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">parser.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">parser.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">parser.c - Man page template parsing and section extraction
+    implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>manpage_parser_parse_file</b> (FILE *f,
+    parsed_section_t **out_sections, size_t *out_count)
+  <br/>
+  asciichat_error_t <b>manpage_parser_parse_memory</b> (const char *content,
+    size_t content_len, parsed_section_t **out_sections, size_t *out_count)
+  <br/>
+  void <b>manpage_parser_free_sections</b> (parsed_section_t *sections, size_t
+    count)
+  <br/>
+  const parsed_section_t * <b>manpage_parser_find_section</b> (const
+    parsed_section_t *sections, size_t count, const char *section_name)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Man page template parsing and section extraction
+  implementation.</p>
+<p class="Pp">Parses man page templates to extract sections and detect their
+    types (AUTO-generated, MANUAL, or MERGE sections).</p>
+<p class="Pp">Definition in file <b>parser.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_parsed_section_t_*_manpage_parser_find_section_(const_parsed_section_t_*_sections,_size_t_count,_const_char_*_section_name)"><a class="permalink" href="#const_parsed_section_t_*_manpage_parser_find_section_(const_parsed_section_t_*_sections,_size_t_count,_const_char_*_section_name)">const
+  parsed_section_t * manpage_parser_find_section (const parsed_section_t *
+  sections, size_t count, const char * section_name)</a></h2>
+<p class="Pp">Definition at line <b>396</b> of file <b>parser.c</b>.</p>
+<pre>397                                                                               {
+398   if (!sections || !section_name) {
+399     return NULL;
+400   }
+401 
+402   for (size_t i = 0; i &lt; count; i++) {
+403     if (sections[i].section_name &amp;&amp; strcmp(sections[i].section_name, section_name) == 0) {
+404       return &amp;sections[i];
+405     }
+406   }
+407 
+408   return NULL;
+409 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>find_section()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_parser_free_sections_(parsed_section_t_*_sections,_size_t_count)"><a class="permalink" href="#void_manpage_parser_free_sections_(parsed_section_t_*_sections,_size_t_count)">void
+  manpage_parser_free_sections (parsed_section_t * sections, size_t
+  count)</a></h2>
+<p class="Pp">Definition at line <b>379</b> of file <b>parser.c</b>.</p>
+<pre>379                                                                             {
+380   if (!sections) {
+381     return;
+382   }
+383 
+384   for (size_t i = 0; i &lt; count; i++) {
+385     if (sections[i].section_name) {
+386       SAFE_FREE(sections[i].section_name);
+387     }
+388     if (sections[i].content) {
+389       SAFE_FREE(sections[i].content);
+390     }
+391   }
+392 
+393   SAFE_FREE(sections);
+394 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>free_parsed_sections()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_manpage_parser_parse_file_(FILE_*_f,_parsed_section_t_**_out_sections,_size_t_*_out_count)"><a class="permalink" href="#asciichat_error_t_manpage_parser_parse_file_(FILE_*_f,_parsed_section_t_**_out_sections,_size_t_*_out_count)">asciichat_error_t
+  manpage_parser_parse_file (FILE * f, parsed_section_t ** out_sections, size_t
+  * out_count)</a></h2>
+<p class="Pp">Definition at line <b>338</b> of file <b>parser.c</b>.</p>
+<pre>338                                                                                                          {
+339   if (!f || !out_sections || !out_count) {
+340     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for manpage_parser_parse_file&quot;);
+341   }
+342 
+343   return parse_sections_internal(f, out_sections, out_count);
+344 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>parse_manpage_sections()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_manpage_parser_parse_memory_(const_char_*_content,_size_t_content_len,_parsed_section_t_**_out_sections,_size_t_*_out_count)"><a class="permalink" href="#asciichat_error_t_manpage_parser_parse_memory_(const_char_*_content,_size_t_content_len,_parsed_section_t_**_out_sections,_size_t_*_out_count)">asciichat_error_t
+  manpage_parser_parse_memory (const char * content, size_t content_len,
+  parsed_section_t ** out_sections, size_t * out_count)</a></h2>
+<p class="Pp">Definition at line <b>346</b> of file <b>parser.c</b>.</p>
+<pre>347                                                                  {
+348   if (!content || content_len == 0 || !out_sections || !out_count) {
+349     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for manpage_parser_parse_memory&quot;);
+350   }
+351 
+352   // Create temporary file from memory
+353   FILE *tmp = platform_tmpfile();
+354   if (!tmp) {
+355     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to create temporary file for memory parsing&quot;);
+356   }
+357 
+358   // Write content to temporary file
+359   // Write content_len + 1 to include the null terminator.
+360   // The embedded string is content_len + 1 bytes (content_len chars + null terminator).
+361   // platform_getline() needs the null terminator to properly handle EOF.
+362   size_t bytes_to_write = content_len + 1;
+363   size_t written = fwrite(content, 1, bytes_to_write, tmp);
+364   if (written != bytes_to_write) {
+365     fclose(tmp);
+366     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to write complete content to temporary file&quot;);
+367   }
+368 
+369   // Rewind to beginning for reading
+370   rewind(tmp);
+371 
+372   // Parse using common function
+373   asciichat_error_t err = parse_sections_internal(tmp, out_sections, out_count);
+374   fclose(tmp);
+375 
+376   return err;
+377 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_tmpfile()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

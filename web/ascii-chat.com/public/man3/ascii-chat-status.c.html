@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>status.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">status.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">status.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">status.c - Status screen display with live log feed at FPS
+  rate.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>ui_status_log_init</b> (void)
+  <br/>
+  void <b>ui_status_log_destroy</b> (void)
+  <br/>
+  void <b>ui_status_log_clear</b> (void)
+  <br/>
+  asciichat_error_t <b>ui_status_gather</b> (tcp_server_t *server, const char
+    *session_string, const char *ipv4_address, const char *ipv6_address,
+    uint16_t port, time_t start_time, const char *mode_name, <b>bool</b>
+    session_is_mdns_only, ui_status_t *out_status)
+  <br/>
+  void <b>ui_status_display</b> (const ui_status_t *status)
+  <br/>
+  <b>bool</b> <b>ui_status_display_interactive</b> (const ui_status_t *status)
+  <br/>
+  Display status screen with keyboard input support Returns true if status
+    screen should continue, false if Escape was pressed to exit. void
+    <b>ui_status_update</b> (tcp_server_t *server, const char *session_string,
+    const char *ipv4_address, const char *ipv6_address, uint16_t port, time_t
+    start_time, const char *mode_name, <b>bool</b> session_is_mdns_only,
+    uint64_t *last_update_ns)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Status screen display with live log feed at FPS rate.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>status.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_status_display_(const_ui_status_t_*_status)"><a class="permalink" href="#void_ui_status_display_(const_ui_status_t_*_status)">void
+  ui_status_display (const ui_status_t * status)</a></h2>
+<p class="Pp">Definition at line <b>194</b> of file <b>status.c</b>.</p>
+<pre>194                                                   {
+195   if (!status) {
+196     return;
+197   }
+198 
+199   // Only render the status screen if:
+200   // 1. Terminal is interactive (default behavior), OR
+201   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
+202   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+203   if (!terminal_is_interactive() &amp;&amp; !GET_OPTION(status_screen_explicitly_set)) {
+204     return;
+205   }
+206 
+207   // Redirect status screen to stderr when stdout is piped (not a TTY)
+208   // This keeps stdout clean for frame data while status goes to stderr
+209   if (!isatty(STDOUT_FILENO)) {
+210     terminal_screen_set_output_fd(STDERR_FILENO);
+211   }
+212 
+213   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+214   // Only do this once (check if not already entering)
+215   static bool grep_mode_entered = false;
+216   if (!grep_mode_entered &amp;&amp; grep_get_last_pattern() &amp;&amp; grep_get_last_pattern()[0] != '\0') {
+217     log_search_enter_mode();
+218     grep_mode_entered = true;
+219   }
+220 
+221   // Use terminal_screen abstraction for rendering
+222   terminal_screen_config_t config = {
+223       .fixed_header_lines = 4,
+224       .render_header = render_ui_status_header,
+225       .user_data = (void *)status,
+226       .show_logs = true,
+227   };
+228 
+229   terminal_screen_render(&amp;config);
+230 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>grep_get_last_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>terminal_is_interactive()</b>,
+    <b>terminal_screen_render()</b>, and
+  <b>terminal_screen_set_output_fd()</b>.</p>
+<p class="Pp">Referenced by <b>ui_status_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ui_status_display_interactive (const ui_status_t *
+  status)</h2>
+<p class="Pp">Display status screen with keyboard input support Returns true if
+    status screen should continue, false if Escape was pressed to exit.</p>
+<p class="Pp">Definition at line <b>236</b> of file <b>status.c</b>.</p>
+<pre>236                                                               {
+237   if (!status) {
+238     return true;
+239   }
+240 
+241   // Only render the status screen if:
+242   // 1. Terminal is interactive (default behavior), OR
+243   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
+244   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+245   if (!terminal_is_interactive() &amp;&amp; !GET_OPTION(status_screen_explicitly_set)) {
+246     return true;
+247   }
+248 
+249   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+250   static bool grep_mode_entered = false;
+251   if (!grep_mode_entered &amp;&amp; grep_get_last_pattern() &amp;&amp; grep_get_last_pattern()[0] != '\0') {
+252     log_search_enter_mode();
+253     grep_mode_entered = true;
+254   }
+255 
+256   // Initialize keyboard for interactive grep
+257   bool keyboard_enabled = false;
+258   if (keyboard_init() == ASCIICHAT_OK) {
+259     keyboard_enabled = true;
+260   }
+261 
+262   // Use terminal_screen abstraction for rendering
+263   terminal_screen_config_t config = {
+264       .fixed_header_lines = 4,
+265       .render_header = render_ui_status_header,
+266       .user_data = (void *)status,
+267       .show_logs = true,
+268   };
+269 
+270   terminal_screen_render(&amp;config);
+271 
+272   // Poll keyboard for Escape to exit or for interactive grep
+273   bool should_exit_status = false;
+274   if (keyboard_enabled) {
+275     keyboard_key_t key = keyboard_read_nonblocking();
+276     if (key == KEY_ESCAPE) {
+277       // Escape key: cancel grep if active, otherwise exit status screen
+278       if (log_search_is_active()) {
+279         log_search_exit_mode(false); // Cancel grep without applying
+280       } else {
+281         should_exit_status = true; // Exit status screen
+282       }
+283     } else if (key != KEY_NONE &amp;&amp; log_search_should_handle(key)) {
+284       log_search_handle_key(key);
+285     }
+286   }
+287 
+288   // Cleanup keyboard
+289   if (keyboard_enabled) {
+290     keyboard_destroy();
+291   }
+292 
+293   return !should_exit_status; // Return false if user wants to exit
+294 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>grep_get_last_pattern()</b>,
+    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
+    <b>log_search_handle_key()</b>, <b>log_search_is_active()</b>,
+    <b>log_search_should_handle()</b>, <b>terminal_is_interactive()</b>, and
+    <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_ui_status_gather_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_"><a class="permalink" href="#asciichat_error_t_ui_status_gather_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_">asciichat_error_t
+  ui_status_gather (tcp_server_t * server, const char * session_string, const
+  char * ipv4_address, const char * ipv6_address, uint16_t port, time_t
+  start_time, const char * mode_name, <b>bool</b> session_is_mdns_only,
+  ui_status_t * out_status)</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>status.c</b>.</p>
+<pre>54                                                                                                                   {
+55   if (!server || !out_status || !mode_name) {
+56     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters for ui_status_gather&quot;);
+57   }
+58 
+59   memset(out_status, 0, sizeof(*out_status));
+60 
+61   // Copy session string
+62   if (session_string) {
+63     SAFE_STRNCPY(out_status-&gt;session_string, session_string, sizeof(out_status-&gt;session_string));
+64   }
+65 
+66   // Format IPv4 address
+67   out_status-&gt;ipv4_bound = (ipv4_address &amp;&amp; ipv4_address[0] != '\0');
+68   if (out_status-&gt;ipv4_bound) {
+69     snprintf(out_status-&gt;ipv4_address, sizeof(out_status-&gt;ipv4_address), &quot;%s:%u&quot;, ipv4_address, port);
+70   }
+71 
+72   // Format IPv6 address
+73   out_status-&gt;ipv6_bound = (ipv6_address &amp;&amp; ipv6_address[0] != '\0');
+74   if (out_status-&gt;ipv6_bound) {
+75     snprintf(out_status-&gt;ipv6_address, sizeof(out_status-&gt;ipv6_address), &quot;[%s]:%u&quot;, ipv6_address, port);
+76   }
+77 
+78   out_status-&gt;port = port;
+79   out_status-&gt;start_time = start_time;
+80   out_status-&gt;mode_name = mode_name;
+81   out_status-&gt;session_is_mdns_only = session_is_mdns_only;
+82   out_status-&gt;connected_count = tcp_server_get_client_count(server);
+83 
+84   return ASCIICHAT_OK;
+85 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>tcp_server_get_client_count()</b>.</p>
+<p class="Pp">Referenced by <b>ui_status_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_status_log_clear_(void_)"><a class="permalink" href="#void_ui_status_log_clear_(void_)">void
+  ui_status_log_clear (void )</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>status.c</b>.</p>
+<pre>43                                {
+44   // Delegate to terminal_screen log abstraction
+45   terminal_screen_log_clear();
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>terminal_screen_log_clear()</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_status_log_destroy_(void_)"><a class="permalink" href="#void_ui_status_log_destroy_(void_)">void
+  ui_status_log_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>status.c</b>.</p>
+<pre>36                                  {
+37   // Unregister from logger before destroying
+38   log_clear_session_log_buffer();
+39   // Cleanup the shared terminal screen log buffer
+40   terminal_screen_log_destroy();
+41 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_clear_session_log_buffer()</b>, and
+    <b>terminal_screen_log_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_status_log_init_(void_)"><a class="permalink" href="#void_ui_status_log_init_(void_)">void
+  ui_status_log_init (void )</a></h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>status.c</b>.</p>
+<pre>28                               {
+29   // Initialize the shared terminal screen log buffer
+30   session_log_buffer_t *buf = terminal_screen_log_init();
+31   if (buf) {
+32     log_set_session_log_buffer(buf);
+33   }
+34 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_set_session_log_buffer()</b>, and
+    <b>terminal_screen_log_init()</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_ui_status_update_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_"><a class="permalink" href="#void_ui_status_update_(tcp_server_t_*_server,_const_char_*_session_string,_const_char_*_ipv4_address,_const_char_*_ipv6_address,_uint16_t_port,_time_t_start_time,_const_char_*_mode_name,_">void
+  ui_status_update (tcp_server_t * server, const char * session_string, const
+  char * ipv4_address, const char * ipv6_address, uint16_t port, time_t
+  start_time, const char * mode_name, <b>bool</b> session_is_mdns_only, uint64_t
+  * last_update_ns)</a></h2>
+<p class="Pp">Definition at line <b>296</b> of file <b>status.c</b>.</p>
+<pre>298                                                                                {
+299   if (!server || !last_update_ns) {
+300     return;
+301   }
+302 
+303   // Update at FPS rate (60 Hz = 16.67ms by default)
+304   uint32_t fps = GET_OPTION(fps);
+305   if (fps == 0) {
+306     fps = 60; // Default
+307   }
+308 
+309   // Calculate frame interval in microseconds
+310   uint64_t frame_interval_us = US_PER_SEC_INT / fps;
+311 
+312   // Get current time in microseconds using platform abstraction
+313   uint64_t now_us = platform_get_monotonic_time_us();
+314 
+315   // Check if enough time has passed
+316   if ((now_us - *last_update_ns) &lt; frame_interval_us) {
+317     return; // Too soon, skip frame
+318   }
+319 
+320   ui_status_t status;
+321   if (ui_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
+322                            session_is_mdns_only, &amp;status) == ASCIICHAT_OK) {
+323     ui_status_display(&amp;status);
+324     *last_update_ns = now_us;
+325   }
+326 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_get_monotonic_time_us()</b>,
+    <b>ui_status_display()</b>, and <b>ui_status_gather()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

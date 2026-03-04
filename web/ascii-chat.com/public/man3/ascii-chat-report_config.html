@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>report_config(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">report_config(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">report_config(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">report_config - Configuration for panic report generation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>log_dir</b>
+  <br/>
+  Directory containing instrumentation log files. const char * <b>log_file</b>
+  <br/>
+  Single log file path (alternative to log_dir). const char *
+    <b>include_filter</b>
+  <br/>
+  File path substring filter for inclusion. const char * <b>exclude_filter</b>
+  <br/>
+  File path substring filter for exclusion. <b>thread_filter_list_t</b>
+    <b>threads</b>
+  <br/>
+  Thread IDs to include in report. <b>bool</b> <b>emit_raw_line</b>
+  <br/>
+  Whether to emit raw log lines in output.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration for panic report generation.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>report.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> report_config::emit_raw_line</h2>
+<p class="Pp">Whether to emit raw log lines in output.</p>
+<p class="Pp">Definition at line <b>47</b> of file <b>report.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_report_config::exclude_filter"><a class="permalink" href="#const_char*_report_config::exclude_filter">const
+  char* report_config::exclude_filter</a></h2>
+<p class="Pp">File path substring filter for exclusion.</p>
+<p class="Pp">Definition at line <b>45</b> of file <b>report.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_report_config::include_filter"><a class="permalink" href="#const_char*_report_config::include_filter">const
+  char* report_config::include_filter</a></h2>
+<p class="Pp">File path substring filter for inclusion.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>report.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_report_config::log_dir"><a class="permalink" href="#const_char*_report_config::log_dir">const
+  char* report_config::log_dir</a></h2>
+<p class="Pp">Directory containing instrumentation log files.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>report.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_report_config::log_file"><a class="permalink" href="#const_char*_report_config::log_file">const
+  char* report_config::log_file</a></h2>
+<p class="Pp">Single log file path (alternative to log_dir).</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>report.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>thread_filter_list_t</b> report_config::threads</h2>
+<p class="Pp">Thread IDs to include in report.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>report.c</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

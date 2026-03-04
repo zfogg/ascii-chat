@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mmap.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mmap.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mmap.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mmap.c - Lock-free memory-mapped text logging implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>log_mmap_install_crash_handlers</b> (void)
+  <br/>
+  asciichat_error_t <b>log_mmap_init</b> (const log_mmap_config_t *config)
+  <br/>
+  asciichat_error_t <b>log_mmap_init_simple</b> (const char *log_path, size_t
+    max_size)
+  <br/>
+  void <b>log_mmap_destroy</b> (void)
+  <br/>
+  void <b>log_mmap_write</b> (int level, const char *file, int line, const char
+    *func, const char *fmt,...)
+  <br/>
+  <b>bool</b> <b>log_mmap_is_active</b> (void)
+  <br/>
+  void <b>log_mmap_sync</b> (void)
+  <br/>
+  void <b>log_mmap_get_stats</b> (uint64_t *<b>bytes_written</b>, uint64_t
+    *<b>wrap_count</b>)
+  <br/>
+  <b>bool</b> <b>log_mmap_get_usage</b> (size_t *used, size_t *capacity)
+  <br/>
+  void <b>log_mmap_rotate</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Lock-free memory-mapped text logging implementation.</p>
+<p class="Pp">Writes human-readable log text directly to a memory-mapped file.
+    On crash, the log file is immediately readable with cat/tail.</p>
+<p class="Pp">Definition in file <b>mmap.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_destroy_(void_)"><a class="permalink" href="#void_log_mmap_destroy_(void_)">void
+  log_mmap_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>260</b> of file <b>mmap.c</b>.</p>
+<pre>260                             {
+261   if (!g_mmap_log.initialized) {
+262     return;
+263   }
+264 
+265   /* Write shutdown marker */
+266   log_mmap_write(1 /* LOG_INFO */, NULL, 0, NULL, &quot;=== Log ended ===&quot;);
+267 
+268   /* Sync to disk */
+269   platform_mmap_sync(&amp;g_mmap_log.mmap, true);
+270 
+271   /* Truncate file to actual content size to save space
+272    * This converts the large mmap file (4MB with newlines) to just the actual log content */
+273   uint64_t final_pos = atomic_load_u64(&amp;g_mmap_log.write_pos);
+274   if (final_pos &lt; g_mmap_log.text_capacity &amp;&amp; strlen(g_mmap_log.file_path) &gt; 0) {
+275 #ifdef _WIN32
+276     /* Windows: Close mmap first, then truncate file, then reopen for truncation */
+277     platform_mmap_close(&amp;g_mmap_log.mmap);
+278     HANDLE hFile =
+279         CreateFileA(g_mmap_log.file_path, GENERIC_WRITE, 0, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+280     if (hFile != INVALID_HANDLE_VALUE) {
+281       LARGE_INTEGER size;
+282       size.QuadPart = (LONGLONG)final_pos;
+283       if (SetFilePointerEx(hFile, size, NULL, FILE_BEGIN)) {
+284         SetEndOfFile(hFile);
+285       }
+286       CloseHandle(hFile);
+287       log_debug(&quot;mmap log: truncated %s to %zu bytes (was %zu MB)&quot;, g_mmap_log.file_path, (size_t)final_pos,
+288                 g_mmap_log.text_capacity / 1024 / 1024);
+289     }
+290 #else
+291     /* POSIX: Use ftruncate() on the file descriptor */
+292     if (g_mmap_log.mmap.fd &gt;= 0) {
+293       if (ftruncate(g_mmap_log.mmap.fd, (off_t)final_pos) == 0) {
+294         log_debug(&quot;mmap log: truncated %s to %zu bytes (was %zu MB)&quot;, g_mmap_log.file_path, (size_t)final_pos,
+295                   g_mmap_log.text_capacity / 1024 / 1024);
+296       }
+297     }
+298     platform_mmap_close(&amp;g_mmap_log.mmap);
+299 #endif
+300   } else {
+301     /* No truncation needed or path not set */
+302     platform_mmap_close(&amp;g_mmap_log.mmap);
+303   }
+304 
+305   g_mmap_log.text_region = NULL;
+306   g_mmap_log.file_path[0] = '\0';
+307 
+308   g_mmap_log.initialized = false;
+309   log_debug(&quot;mmap log: destroyed&quot;);
+310 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and
+  <b>log_mmap_write()</b>.</p>
+<p class="Pp">Referenced by <b>log_destroy()</b>, <b>log_disable_mmap()</b>, and
+    <b>log_mmap_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_get_stats_(uint64_t_*_bytes_written,_uint64_t_*_wrap_count)"><a class="permalink" href="#void_log_mmap_get_stats_(uint64_t_*_bytes_written,_uint64_t_*_wrap_count)">void
+  log_mmap_get_stats (uint64_t * bytes_written, uint64_t * wrap_count)</a></h2>
+<p class="Pp">Definition at line <b>400</b> of file <b>mmap.c</b>.</p>
+<pre>400                                                                        {
+401   if (bytes_written) {
+402     *bytes_written = atomic_load_u64(&amp;g_mmap_log.bytes_written);
+403   }
+404   if (wrap_count) {
+405     *wrap_count = atomic_load_u64(&amp;g_mmap_log.wrap_count);
+406   }
+407 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>bytes_written</b>, and
+    <b>wrap_count</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_mmap_get_usage (size_t * used, size_t *
+  capacity)</h2>
+<p class="Pp">Definition at line <b>409</b> of file <b>mmap.c</b>.</p>
+<pre>409                                                         {
+410   if (!g_mmap_log.initialized) {
+411     return false;
+412   }
+413 
+414   if (used) {
+415     *used = (size_t)atomic_load_u64(&amp;g_mmap_log.write_pos);
+416   }
+417   if (capacity) {
+418     *capacity = g_mmap_log.text_capacity;
+419   }
+420   return true;
+421 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_mmap_init_(const_log_mmap_config_t_*_config)"><a class="permalink" href="#asciichat_error_t_log_mmap_init_(const_log_mmap_config_t_*_config)">asciichat_error_t
+  log_mmap_init (const log_mmap_config_t * config)</a></h2>
+<p class="Pp">Definition at line <b>191</b> of file <b>mmap.c</b>.</p>
+<pre>191                                                                  {
+192   if (!config || !config-&gt;log_path) {
+193     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;mmap log: config or log_path is NULL&quot;);
+194   }
+195 
+196   if (g_mmap_log.initialized) {
+197     log_warn(&quot;mmap log: already initialized, destroying first&quot;);
+198     log_mmap_destroy();
+199   }
+200 
+201   /* Determine file size */
+202   size_t file_size = config-&gt;max_size &gt; 0 ? config-&gt;max_size : LOG_MMAP_DEFAULT_SIZE;
+203   if (file_size &lt; 1024) {
+204     file_size = 1024; /* Minimum reasonable size */
+205   }
+206 
+207   /* Store file path for later truncation */
+208   SAFE_STRNCPY(g_mmap_log.file_path, config-&gt;log_path, sizeof(g_mmap_log.file_path) - 1);
+209 
+210   /* Open mmap file */
+211   platform_mmap_init(&amp;g_mmap_log.mmap);
+212   asciichat_error_t result = platform_mmap_open(&quot;mmap_log_file&quot;, config-&gt;log_path, file_size, &amp;g_mmap_log.mmap);
+213   if (result != ASCIICHAT_OK) {
+214     return result;
+215   }
+216 
+217   /* Entire file is text - no header */
+218   g_mmap_log.text_region = (char *)g_mmap_log.mmap.addr;
+219   g_mmap_log.text_capacity = file_size;
+220 
+221   /* Find where existing content ends (scan for last newline before spaces/nulls) */
+222   size_t existing_pos = find_content_end(g_mmap_log.text_region, file_size);
+223   atomic_store_u64(&amp;g_mmap_log.write_pos, existing_pos);
+224 
+225   /* Clear unused portion with newlines (grep-friendly without needing -a flag)
+226    * We truncate the file on clean shutdown to save space */
+227   if (existing_pos &lt; file_size) {
+228     memset(g_mmap_log.text_region + existing_pos, '\n', file_size - existing_pos);
+229   }
+230 
+231   if (existing_pos &gt; 0) {
+232     log_info(&quot;mmap log: resumed existing log at position %zu&quot;, existing_pos);
+233   } else {
+234     log_info(&quot;mmap log: created new log file %s (%zu bytes)&quot;, config-&gt;log_path, file_size);
+235   }
+236 
+237   /* Reset statistics */
+238   atomic_store_u64(&amp;g_mmap_log.bytes_written, 0);
+239   atomic_store_u64(&amp;g_mmap_log.wrap_count, 0);
+240 
+241   /* Install crash handlers */
+242   log_mmap_install_crash_handlers();
+243 
+244   g_mmap_log.initialized = true;
+245 
+246   /* Write startup marker */
+247   log_mmap_write(1 /* LOG_INFO */, NULL, 0, NULL, &quot;=== Log started (mmap text mode, %zu bytes) ===&quot;, file_size);
+248 
+249   return ASCIICHAT_OK;
+250 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>, <b>log_mmap_destroy()</b>,
+    <b>log_mmap_install_crash_handlers()</b>, and <b>log_mmap_write()</b>.</p>
+<p class="Pp">Referenced by <b>log_mmap_init_simple()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_log_mmap_init_simple_(const_char_*_log_path,_size_t_max_size)"><a class="permalink" href="#asciichat_error_t_log_mmap_init_simple_(const_char_*_log_path,_size_t_max_size)">asciichat_error_t
+  log_mmap_init_simple (const char * log_path, size_t max_size)</a></h2>
+<p class="Pp">Definition at line <b>252</b> of file <b>mmap.c</b>.</p>
+<pre>252                                                                               {
+253   log_mmap_config_t config = {
+254       .log_path = log_path,
+255       .max_size = max_size,
+256   };
+257   return log_mmap_init(&amp;config);
+258 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_mmap_init()</b>.</p>
+<p class="Pp">Referenced by <b>log_enable_mmap_sized()</b>, and
+    <b>log_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_install_crash_handlers_(void_)"><a class="permalink" href="#void_log_mmap_install_crash_handlers_(void_)">void
+  log_mmap_install_crash_handlers (void )</a></h2>
+<p class="Pp">Definition at line <b>144</b> of file <b>mmap.c</b>.</p>
+<pre>144                                            {
+145 #ifndef _WIN32
+146   struct sigaction sa = {0};
+147   sa.sa_handler = crash_signal_handler;
+148   sigemptyset(&amp;sa.sa_mask);
+149   sa.sa_flags = (int)SA_RESETHAND; /* One-shot */
+150 
+151   sigaction(SIGSEGV, &amp;sa, NULL);
+152   sigaction(SIGABRT, &amp;sa, NULL);
+153   sigaction(SIGBUS, &amp;sa, NULL);
+154   sigaction(SIGFPE, &amp;sa, NULL);
+155   sigaction(SIGILL, &amp;sa, NULL);
+156 #else
+157   SetUnhandledExceptionFilter(windows_crash_handler);
+158 #endif
+159 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>log_mmap_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> log_mmap_is_active (void )</h2>
+<p class="Pp">Definition at line <b>390</b> of file <b>mmap.c</b>.</p>
+<pre>390                               {
+391   return g_mmap_log.initialized;
+392 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>log_destroy()</b>, <b>log_disable_mmap()</b>,
+    <b>log_file_msg()</b>, <b>log_msg()</b>, and <b>log_plain_msg()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_rotate_(void_)"><a class="permalink" href="#void_log_mmap_rotate_(void_)">void
+  log_mmap_rotate (void )</a></h2>
+<p class="Pp">Definition at line <b>423</b> of file <b>mmap.c</b>.</p>
+<pre>423                            {
+424   if (!g_mmap_log.initialized || !g_mmap_log.text_region) {
+425     return;
+426   }
+427 
+428   /* NOTE: Caller must hold the rotation mutex from logging.c */
+429 
+430   uint64_t current_pos = atomic_load_u64(&amp;g_mmap_log.write_pos);
+431   size_t capacity = g_mmap_log.text_capacity;
+432 
+433   /* Keep last 2/3 of the log (same ratio as file rotation) */
+434   size_t keep_size = capacity * 2 / 3;
+435   if (current_pos &lt;= keep_size) {
+436     return;
+437   }
+438 
+439   /* Find where to start keeping (skip to beginning of current_pos - keep_size) */
+440   size_t skip_bytes = (size_t)current_pos - keep_size;
+441   char *keep_start = g_mmap_log.text_region + skip_bytes;
+442 
+443   /* Skip to next line boundary to avoid partial lines */
+444   size_t skipped = 0;
+445   while (skipped &lt; keep_size &amp;&amp; *keep_start != '\n') {
+446     keep_start++;
+447     skipped++;
+448   }
+449   if (skipped &lt; keep_size &amp;&amp; *keep_start == '\n') {
+450     keep_start++;
+451     skipped++;
+452   }
+453 
+454   size_t actual_keep = keep_size - skipped;
+455   if (actual_keep == 0) {
+456     /* Nothing to keep - just reset */
+457     atomic_store_u64(&amp;g_mmap_log.write_pos, 0);
+458     memset(g_mmap_log.text_region, '\n', capacity);
+459     return;
+460   }
+461 
+462   /* Move the tail to the beginning using memmove (handles overlap) */
+463   memmove(g_mmap_log.text_region, keep_start, actual_keep);
+464 
+465   /* Clear the rest with newlines (grep-friendly without needing -a flag) */
+466   memset(g_mmap_log.text_region + actual_keep, '\n', capacity - actual_keep);
+467 
+468   /* Update write position */
+469   atomic_store_u64(&amp;g_mmap_log.write_pos, actual_keep);
+470 
+471   /* Write rotation marker */
+472   const char *rotate_msg = &quot;\n=== LOG ROTATED ===\n&quot;;
+473   size_t rotate_len = strlen(rotate_msg);
+474   if (actual_keep + rotate_len &lt; capacity) {
+475     memcpy(g_mmap_log.text_region + actual_keep, rotate_msg, rotate_len);
+476     atomic_store_u64(&amp;g_mmap_log.write_pos, actual_keep + rotate_len);
+477   }
+478 
+479   atomic_fetch_add_u64(&amp;g_mmap_log.wrap_count, 1);
+480 
+481   /* Sync after rotation */
+482   platform_mmap_sync(&amp;g_mmap_log.mmap, true);
+483 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_fetch_add_u64()</b>,
+    <b>atomic_load_u64()</b>, and <b>atomic_store_u64()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_sync_(void_)"><a class="permalink" href="#void_log_mmap_sync_(void_)">void
+  log_mmap_sync (void )</a></h2>
+<p class="Pp">Definition at line <b>394</b> of file <b>mmap.c</b>.</p>
+<pre>394                          {
+395   if (g_mmap_log.initialized) {
+396     platform_mmap_sync(&amp;g_mmap_log.mmap, true);
+397   }
+398 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__"><a class="permalink" href="#void_log_mmap_write_(int_level,_const_char_*_file,_int_line,_const_char_*_func,_const_char_*_fmt,__">void
+  log_mmap_write (int level, const char * file, int line, const char * func,
+  const char * fmt, ...)</a></h2>
+<p class="Pp">Definition at line <b>312</b> of file <b>mmap.c</b>.</p>
+<pre>312                                                                                                    {
+313   if (!g_mmap_log.initialized || !g_mmap_log.text_region) {
+314     return;
+315   }
+316 
+317   static const char *level_names[] = {&quot;DEV&quot;, &quot;DEBUG&quot;, &quot;INFO&quot;, &quot;WARN&quot;, &quot;ERROR&quot;, &quot;FATAL&quot;};
+318   const char *level_name = (level &gt;= 0 &amp;&amp; level &lt; 6) ? level_names[level] : &quot;???&quot;;
+319 
+320   /* Format the complete log line into a local buffer first */
+321   char line_buf[LOG_MMAP_MSG_BUFFER_SIZE];
+322   char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+323   format_timestamp(time_buf, sizeof(time_buf));
+324 
+325   int prefix_len;
+326   if (file &amp;&amp; func) {
+327     prefix_len =
+328         safe_snprintf(line_buf, sizeof(line_buf), &quot;[%s] [%s] %s:%d in %s(): &quot;, time_buf, level_name, file, line, func);
+329   } else {
+330     prefix_len = safe_snprintf(line_buf, sizeof(line_buf), &quot;[%s] [%s] &quot;, time_buf, level_name);
+331   }
+332 
+333   if (prefix_len &lt; 0) {
+334     return;
+335   }
+336 
+337   /* Format the message */
+338   va_list args;
+339   va_start(args, fmt);
+340   int msg_len = safe_vsnprintf(line_buf + prefix_len, sizeof(line_buf) - (size_t)prefix_len - 1, fmt, args);
+341   va_end(args);
+342 
+343   if (msg_len &lt; 0) {
+344     return;
+345   }
+346 
+347   /* Add newline */
+348   size_t total_len = (size_t)prefix_len + (size_t)msg_len;
+349   if (total_len &gt;= sizeof(line_buf) - 1) {
+350     total_len = sizeof(line_buf) - 2; /* Truncate if too long */
+351   }
+352   line_buf[total_len] = '\n';
+353   total_len++;
+354   line_buf[total_len] = '\0';
+355 
+356   /* Strip ANSI escape codes from the log message before writing to file */
+357   char *stripped = ansi_strip_escapes(line_buf, total_len);
+358   const char *write_buf = stripped ? stripped : line_buf;
+359   size_t write_len = stripped ? strlen(stripped) : total_len;
+360 
+361   /* Atomically claim space in the mmap'd region */
+362   uint64_t pos = atomic_fetch_add_u64(&amp;g_mmap_log.write_pos, write_len);
+363 
+364   /* Check if we exceeded capacity - drop this message if so */
+365   /* Rotation is handled by maybe_rotate_log() called from logging.c */
+366   if (pos + write_len &gt; g_mmap_log.text_capacity) {
+367     /* Undo our claim - we can't fit */
+368     atomic_fetch_sub_u64(&amp;g_mmap_log.write_pos, write_len);
+369     if (stripped) {
+370       SAFE_FREE(stripped);
+371     }
+372     return;
+373   }
+374 
+375   /* Copy formatted text to mmap'd region */
+376   memcpy(g_mmap_log.text_region + pos, write_buf, write_len);
+377 
+378   atomic_fetch_add_u64(&amp;g_mmap_log.bytes_written, write_len);
+379 
+380   if (stripped) {
+381     SAFE_FREE(stripped);
+382   }
+383 
+384   /* Sync for ERROR/FATAL to ensure visibility on crash */
+385   if (level &gt;= 4 /* LOG_ERROR */) {
+386     platform_mmap_sync(&amp;g_mmap_log.mmap, false);
+387   }
+388 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_strip_escapes()</b>, <b>args</b>,
+    <b>atomic_fetch_add_u64()</b>, <b>atomic_fetch_sub_u64()</b>,
+    <b>safe_snprintf()</b>, and <b>safe_vsnprintf()</b>.</p>
+<p class="Pp">Referenced by <b>log_file_msg()</b>, <b>log_mmap_destroy()</b>,
+    <b>log_mmap_init()</b>, <b>log_msg()</b>, and <b>log_plain_msg()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_bytes_written"><a class="permalink" href="#atomic_t_bytes_written">atomic_t
+  bytes_written</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>mmap.c</b>.</p>
+<p class="Pp">Referenced by <b>gpg_get_public_key()</b>,
+    <b>gpg_verify_signature_with_binary()</b>, <b>log_mmap_get_stats()</b>,
+    <b>ssh_agent_add_key()</b>, and <b>ssh_agent_has_key()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_file_path_"><a class="permalink" href="#char_file_path_">char
+  file_path[<b>PLATFORM_MAX_PATH_LENGTH</b>]</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>mmap.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>,
+    <b>colorscheme_export_scheme()</b>, <b>discovery_keys_load_file()</b>, and
+    <b>log_recolor_plain_entry()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> initialized</h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>mmap.c</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_from_builders()</b>, and
+    <b>test_get_binary_path()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="platform_mmap_t_mmap"><a class="permalink" href="#platform_mmap_t_mmap">platform_mmap_t
+  mmap</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>mmap.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_text_capacity"><a class="permalink" href="#size_t_text_capacity">size_t
+  text_capacity</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>mmap.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_text_region"><a class="permalink" href="#char*_text_region">char*
+  text_region</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>mmap.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_wrap_count"><a class="permalink" href="#atomic_t_wrap_count">atomic_t
+  wrap_count</a></h2>
+<p class="Pp">Definition at line <b>43</b> of file <b>mmap.c</b>.</p>
+<p class="Pp">Referenced by <b>log_mmap_get_stats()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_write_pos"><a class="permalink" href="#atomic_t_write_pos">atomic_t
+  write_pos</a></h2>
+<p class="Pp">Definition at line <b>37</b> of file <b>mmap.c</b>.</p>
+<p class="Pp">Referenced by <b>session_log_buffer_get_recent()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal.c - Terminal function stubs for WASM (not needed for
+    mirror mode).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>terminal_get_size</b> (terminal_size_t *size)
+  <br/>
+  asciichat_error_t <b>terminal_cursor_hide</b> (void)
+  <br/>
+  asciichat_error_t <b>terminal_cursor_show</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Terminal function stubs for WASM (not needed for mirror mode).</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>platform/wasm/stubs/terminal.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_terminal_cursor_hide_(void_)"><a class="permalink" href="#asciichat_error_t_terminal_cursor_hide_(void_)">asciichat_error_t
+  terminal_cursor_hide (void )</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>15                                              {
+16   return ASCIICHAT_OK;
+17 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_write_init()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_terminal_cursor_show_(void_)"><a class="permalink" href="#asciichat_error_t_terminal_cursor_show_(void_)">asciichat_error_t
+  terminal_cursor_show (void )</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>19                                              {
+20   return ASCIICHAT_OK;
+21 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_write_destroy()</b>,
+    <b>log_search_enter_mode()</b>, <b>main()</b>,
+    <b>session_display_reset()</b>, <b>session_display_write_ascii()</b>,
+    <b>splash_intro_start()</b>, and <b>terminal_screen_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_terminal_get_size_(terminal_size_t_*_size)"><a class="permalink" href="#asciichat_error_t_terminal_get_size_(terminal_size_t_*_size)">asciichat_error_t
+  terminal_get_size (terminal_size_t * size)</a></h2>
+<p class="Pp">Definition at line <b>10</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>10                                                            {
+11   (void)size;
+12   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Terminal operations not supported in WASM&quot;);
+13 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_print_help_for_mode()</b>,
+    <b>sdp_detect_terminal_capabilities()</b>,
+    <b>terminal_get_effective_height()</b>,
+    <b>terminal_get_effective_width()</b>, and
+  <b>terminal_screen_render()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

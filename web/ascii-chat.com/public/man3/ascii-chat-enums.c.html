@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>enums.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">enums.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">enums.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">enums.c - Option enum value implementation - single source of
+    truth.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char ** <b>options_get_enum_values</b> (const char
+    *option_name, size_t *value_count)
+  <br/>
+  <b>bool</b> <b>options_is_enum_option</b> (const char *option_name)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Option enum value implementation - single source of truth.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>enums.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
+  char ** options_get_enum_values (const char * option_name, size_t *
+  value_count)</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>enums.c</b>.</p>
+<pre>49                                                                                    {
+50   if (!option_name || !value_count) {
+51     return NULL;
+52   }
+53 
+54   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+55     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+56       *value_count = enum_registry[i].value_count;
+57       return enum_registry[i].values;
+58     }
+59   }
+60 
+61   *value_count = 0;
+62   return NULL;
+63 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> options_is_enum_option (const char *
+  option_name)</h2>
+<p class="Pp">Definition at line <b>65</b> of file <b>enums.c</b>.</p>
+<pre>65                                                      {
+66   if (!option_name) {
+67     return false;
+68   }
+69 
+70   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+71     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+72       return true;
+73     }
+74   }
+75 
+76   return false;
+77 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_capture_ctx(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_capture_ctx(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_capture_ctx(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_capture_ctx - Internal session capture context
+  structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>media_source_t</b> * <b>source</b>
+  <br/>
+  Underlying media source (webcam, file, stdin, test). adaptive_sleep_state_t
+    <b>sleep_state</b>
+  <br/>
+  Adaptive sleep state for frame rate limiting. fps_t <b>fps_tracker</b>
+  <br/>
+  FPS tracker for monitoring capture rate. uint32_t <b>target_fps</b>
+  <br/>
+  Target frames per second. <b>bool</b> <b>resize_for_network</b>
+  <br/>
+  Whether to resize frames for network transmission. <b>bool</b>
+    <b>initialized</b>
+  <br/>
+  Context has been successfully initialized. uint64_t <b>frame_count</b>
+  <br/>
+  Frame count for FPS calculation. uint64_t <b>start_time_ns</b>
+  <br/>
+  Start time for FPS calculation (nanoseconds). <b>bool</b> <b>audio_enabled</b>
+  <br/>
+  Audio is enabled for capture. <b>bool</b> <b>file_has_audio</b>
+  <br/>
+  File has audio stream available. <b>bool</b> <b>using_file_audio</b>
+  <br/>
+  Using file audio (true) or microphone fallback (false). <b>bool</b>
+    <b>audio_fallback_enabled</b>
+  <br/>
+  Fall back to microphone if file has no audio. void * <b>mic_audio_ctx</b>
+  <br/>
+  Microphone audio context for fallback (borrowed, not owned). void *
+    <b>audio_ctx</b>
+  <br/>
+  Main audio context for playback (borrowed, not owned). <b>bool</b>
+    <b>should_pause_after_first_frame</b>
+  <br/>
+  Pause media source after first frame is read (--pause flag). <b>bool</b>
+    <b>paused_after_first_frame</b>
+  <br/>
+  Whether we've already paused after the first frame.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal session capture context structure.</p>
+<p class="Pp">Contains all state for media capture including source, timing, and
+    FPS tracking.</p>
+<p class="Pp">Definition at line <b>47</b> of file
+    <b>common/session/capture.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_capture_ctx::audio_ctx"><a class="permalink" href="#void*_session_capture_ctx::audio_ctx">void*
+  session_capture_ctx::audio_ctx</a></h2>
+<p class="Pp">Main audio context for playback (borrowed, not owned).</p>
+<p class="Pp">Definition at line <b>88</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_get_audio_context()</b>, and
+    <b>session_capture_set_audio_context()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::audio_enabled</h2>
+<p class="Pp">Audio is enabled for capture.</p>
+<p class="Pp">Definition at line <b>73</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_has_audio()</b>, <b>session_capture_read_audio()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::audio_fallback_enabled</h2>
+<p class="Pp">Fall back to microphone if file has no audio.</p>
+<p class="Pp">Definition at line <b>82</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::file_has_audio</h2>
+<p class="Pp">File has audio stream available.</p>
+<p class="Pp">Definition at line <b>76</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fps_t_session_capture_ctx::fps_tracker"><a class="permalink" href="#fps_t_session_capture_ctx::fps_tracker">fps_t
+  session_capture_ctx::fps_tracker</a></h2>
+<p class="Pp">FPS tracker for monitoring capture rate.</p>
+<p class="Pp">Definition at line <b>55</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_destroy()</b>, <b>session_capture_read_frame()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_session_capture_ctx::frame_count"><a class="permalink" href="#uint64_t_session_capture_ctx::frame_count">uint64_t
+  session_capture_ctx::frame_count</a></h2>
+<p class="Pp">Frame count for FPS calculation.</p>
+<p class="Pp">Definition at line <b>67</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_get_current_fps()</b>, and
+    <b>session_capture_read_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::initialized</h2>
+<p class="Pp">Context has been successfully initialized.</p>
+<p class="Pp">Definition at line <b>64</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_at_end()</b>,
+    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
+    <b>session_capture_get_audio_context()</b>,
+    <b>session_capture_get_current_fps()</b>,
+    <b>session_capture_get_media_source()</b>,
+    <b>session_capture_has_audio()</b>, <b>session_capture_is_valid()</b>,
+    <b>session_capture_read_audio()</b>, <b>session_capture_read_frame()</b>,
+    <b>session_capture_sleep_for_fps()</b>,
+    <b>session_capture_using_file_audio()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_capture_ctx::mic_audio_ctx"><a class="permalink" href="#void*_session_capture_ctx::mic_audio_ctx">void*
+  session_capture_ctx::mic_audio_ctx</a></h2>
+<p class="Pp">Microphone audio context for fallback (borrowed, not owned).</p>
+<p class="Pp">Definition at line <b>85</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>, and
+    <b>session_capture_read_audio()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::paused_after_first_frame</h2>
+<p class="Pp">Whether we've already paused after the first frame.</p>
+<p class="Pp">Definition at line <b>94</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_read_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::resize_for_network</h2>
+<p class="Pp">Whether to resize frames for network transmission.</p>
+<p class="Pp">Definition at line <b>61</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_process_for_transmission()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>
+  session_capture_ctx::should_pause_after_first_frame</h2>
+<p class="Pp">Pause media source after first frame is read (--pause flag).</p>
+<p class="Pp">Definition at line <b>91</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>, and
+    <b>session_capture_read_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="adaptive_sleep_state_t_session_capture_ctx::sleep_state"><a class="permalink" href="#adaptive_sleep_state_t_session_capture_ctx::sleep_state">adaptive_sleep_state_t
+  session_capture_ctx::sleep_state</a></h2>
+<p class="Pp">Adaptive sleep state for frame rate limiting.</p>
+<p class="Pp">Definition at line <b>52</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_sleep_for_fps()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>media_source_t</b>* session_capture_ctx::source</h2>
+<p class="Pp">Underlying media source (webcam, file, stdin, test).</p>
+<p class="Pp">Definition at line <b>49</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_at_end()</b>,
+    <b>session_capture_create()</b>, <b>session_capture_destroy()</b>,
+    <b>session_capture_get_media_source()</b>,
+    <b>session_capture_is_valid()</b>, <b>session_capture_read_audio()</b>,
+    <b>session_capture_read_frame()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_session_capture_ctx::start_time_ns"><a class="permalink" href="#uint64_t_session_capture_ctx::start_time_ns">uint64_t
+  session_capture_ctx::start_time_ns</a></h2>
+<p class="Pp">Start time for FPS calculation (nanoseconds).</p>
+<p class="Pp">Definition at line <b>70</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_get_current_fps()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_session_capture_ctx::target_fps"><a class="permalink" href="#uint32_t_session_capture_ctx::target_fps">uint32_t
+  session_capture_ctx::target_fps</a></h2>
+<p class="Pp">Target frames per second.</p>
+<p class="Pp">Definition at line <b>58</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_get_target_fps()</b>, and
+    <b>session_network_capture_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_capture_ctx::using_file_audio</h2>
+<p class="Pp">Using file audio (true) or microphone fallback (false).</p>
+<p class="Pp">Definition at line <b>79</b> of file
+    <b>common/session/capture.c</b>.</p>
+<p class="Pp">Referenced by <b>session_capture_create()</b>,
+    <b>session_capture_read_audio()</b>, and
+    <b>session_capture_using_file_audio()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

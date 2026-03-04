@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>image.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">image.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">image.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">image.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">image_t * <b>image_new</b> (size_t width, size_t height)
+  <br/>
+  void <b>image_destroy</b> (image_t *p)
+  <br/>
+  image_t * <b>image_new_from_pool</b> (size_t width, size_t height)
+  <br/>
+  void <b>image_destroy_to_pool</b> (image_t *image)
+  <br/>
+  void <b>image_clear</b> (image_t *p)
+  <br/>
+  image_t * <b>image_new_copy</b> (const image_t *source)
+  <br/>
+  rgb_pixel_t * <b>image_pixel</b> (image_t *p, const int x, const int y)
+  <br/>
+  void <b>image_resize</b> (const image_t *s, image_t *d)
+  <br/>
+  void <b>image_resize_interpolation</b> (const image_t *source, image_t *dest)
+  <br/>
+  void <b>precalc_rgb_palettes</b> (const float red, const float green, const
+    float blue)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_image_clear_(image_t_*_p)"><a class="permalink" href="#void_image_clear_(image_t_*_p)">void
+  image_clear (image_t * p)</a></h2>
+<p class="Pp">Definition at line <b>205</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>205                              {
+206   if (!p || !p-&gt;pixels) {
+207     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_clear: p or p-&gt;pixels is NULL&quot;);
+208     return;
+209   }
+210   // Check for integer overflow before multiplication.
+211   unsigned long w_ul = (unsigned long)p-&gt;w;
+212   unsigned long h_ul = (unsigned long)p-&gt;h;
+213   if (w_ul &gt; 0 &amp;&amp; h_ul &gt; ULONG_MAX / w_ul) {
+214     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_clear: dimensions overflow: %d x %d&quot;, p-&gt;w, p-&gt;h);
+215     return;
+216   }
+217   unsigned long pixel_count = w_ul * h_ul;
+218   if (pixel_count &gt; ULONG_MAX / sizeof(rgb_pixel_t)) {
+219     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_clear: buffer size overflow&quot;);
+220     return;
+221   }
+222   size_t clear_size = pixel_count * sizeof(rgb_pixel_t);
+223   SAFE_MEMSET(p-&gt;pixels, clear_size, 0, clear_size);
+224 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>, and
+    <b>ascii_convert_with_capabilities()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_image_destroy_(image_t_*_p)"><a class="permalink" href="#void_image_destroy_(image_t_*_p)">void
+  image_destroy (image_t * p)</a></h2>
+<p class="Pp">Definition at line <b>87</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>87                                {
+88   if (!p) {
+89     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_destroy: p is NULL&quot;);
+90     return;
+91   }
+92 
+93   // Check allocation method and deallocate appropriately
+94   if (p-&gt;alloc_method == IMAGE_ALLOC_POOL) {
+95     // Pool-allocated images: free entire contiguous buffer (image + pixels)
+96     // Validate dimensions before calculating size (guard against corruption)
+97     if (p-&gt;w &lt;= 0 || p-&gt;h &lt;= 0) {
+98       SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_destroy: invalid dimensions %dx%d (pool-allocated)&quot;, p-&gt;w, p-&gt;h);
+99       return;
+100     }
+101 
+102     // Calculate original allocation size for proper buffer pool free
+103     size_t w = (size_t)p-&gt;w;
+104     size_t h = (size_t)p-&gt;h;
+105     size_t pixels_size;
+106     if (checked_size_mul3(w, h, sizeof(rgb_pixel_t), &amp;pixels_size) != ASCIICHAT_OK) {
+107       SET_ERRNO(ERROR_INVALID_STATE, &quot;image_destroy: dimensions would overflow: %dx%d&quot;, p-&gt;w, p-&gt;h);
+108       return;
+109     }
+110     size_t total_size;
+111     if (checked_size_add(sizeof(image_t), pixels_size, &amp;total_size) != ASCIICHAT_OK) {
+112       SET_ERRNO(ERROR_INVALID_STATE, &quot;image_destroy: total size would overflow: %dx%d&quot;, p-&gt;w, p-&gt;h);
+113       return;
+114     }
+115 
+116     // Free the entire contiguous buffer back to pool
+117     buffer_pool_free(NULL, p, total_size);
+118   } else {
+119     // SIMD-allocated images: free pixels and structure separately
+120     // SAFE_MALLOC_SIMD allocates with aligned allocation (posix_memalign on macOS, aligned_alloc on Linux)
+121     // These can be freed with standard free() / SAFE_FREE()
+122     SAFE_FREE(p-&gt;pixels);
+123     SAFE_FREE(p);
+124   }
+125 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_free()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>,
+    <b>ascii_convert_with_capabilities()</b>,
+    <b>create_mixed_ascii_frame_for_client()</b>,
+    <b>ffmpeg_decoder_destroy()</b>, <b>media_source_destroy()</b>,
+    <b>session_display_convert_to_ascii()</b>, <b>session_host_add_client()</b>,
+    <b>session_host_add_memory_participant()</b>, <b>session_host_destroy()</b>,
+    <b>session_host_inject_frame()</b>, <b>session_host_remove_client()</b>, and
+    <b>webcam_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_image_destroy_to_pool_(image_t_*_image)"><a class="permalink" href="#void_image_destroy_to_pool_(image_t_*_image)">void
+  image_destroy_to_pool (image_t * image)</a></h2>
+<p class="Pp">Definition at line <b>173</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>173                                            {
+174   if (!image) {
+175     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_destroy_to_pool: image is NULL&quot;);
+176     return;
+177   }
+178 
+179   // Validate dimensions before calculating size (guard against corruption)
+180   if (image-&gt;w &lt;= 0 || image-&gt;h &lt;= 0) {
+181     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_destroy_to_pool: invalid dimensions %dx%d&quot;, image-&gt;w, image-&gt;h);
+182     return;
+183   }
+184 
+185   // Calculate original allocation size for proper buffer pool free
+186   // Check for overflow (defensive - should match original allocation)
+187   size_t w = (size_t)image-&gt;w;
+188   size_t h = (size_t)image-&gt;h;
+189   size_t pixels_size;
+190   if (checked_size_mul3(w, h, sizeof(rgb_pixel_t), &amp;pixels_size) != ASCIICHAT_OK) {
+191     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_destroy_to_pool: dimensions would overflow: %dx%d&quot;, image-&gt;w, image-&gt;h);
+192     return;
+193   }
+194   size_t total_size;
+195   if (checked_size_add(sizeof(image_t), pixels_size, &amp;total_size) != ASCIICHAT_OK) {
+196     SET_ERRNO(ERROR_INVALID_STATE, &quot;image_destroy_to_pool: total size would overflow: %dx%d&quot;, image-&gt;w, image-&gt;h);
+197     return;
+198   }
+199 
+200   // Free the entire contiguous buffer back to pool
+201   buffer_pool_free(NULL, image, total_size);
+202   // Note: Don't set image = NULL here since caller owns the pointer
+203 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_free()</b>.</p>
+<p class="Pp">Referenced by <b>create_mixed_ascii_frame_for_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t_*_image_new_(size_t_width,_size_t_height)"><a class="permalink" href="#image_t_*_image_new_(size_t_width,_size_t_height)">image_t
+  * image_new (size_t width, size_t height)</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>38                                                 {
+39   image_t *p;
+40 
+41   p = SAFE_MALLOC(sizeof(image_t), image_t *);
+42 
+43   // Validate dimensions are non-zero and within bounds
+44   if (image_validate_dimensions(width, height) != ASCIICHAT_OK) {
+45     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image dimensions invalid or too large: %zu x %zu&quot;, width, height);
+46     SAFE_FREE(p);
+47     return NULL;
+48   }
+49 
+50   // Calculate pixel count with overflow checking
+51   size_t total_pixels;
+52   if (checked_size_mul(width, height, &amp;total_pixels) != ASCIICHAT_OK) {
+53     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image dimensions would cause overflow: %zu x %zu&quot;, width, height);
+54     SAFE_FREE(p);
+55     return NULL;
+56   }
+57 
+58   // Calculate total pixel buffer size with overflow checking
+59   size_t pixels_size;
+60   if (checked_size_mul(total_pixels, sizeof(rgb_pixel_t), &amp;pixels_size) != ASCIICHAT_OK) {
+61     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image pixel buffer size would cause overflow&quot;);
+62     SAFE_FREE(p);
+63     return NULL;
+64   }
+65 
+66   if (pixels_size &gt; IMAGE_MAX_PIXELS_SIZE) {
+67     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Image size exceeds maximum allowed: %zu x %zu (%zu bytes)&quot;, width, height,
+68               pixels_size);
+69     SAFE_FREE(p);
+70     return NULL;
+71   }
+72 
+73   // Use SIMD-aligned allocation for optimal NEON/AVX performance with vld3q_u8
+74   p-&gt;pixels = SAFE_MALLOC_SIMD(pixels_size, rgb_pixel_t *);
+75   if (!p-&gt;pixels) {
+76     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate image pixels: %zu bytes&quot;, pixels_size);
+77     SAFE_FREE(p);
+78     return NULL;
+79   }
+80 
+81   p-&gt;w = (int)width;
+82   p-&gt;h = (int)height;
+83   p-&gt;alloc_method = IMAGE_ALLOC_SIMD; // Track allocation method for correct deallocation
+84   return p;
+85 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>image_validate_dimensions()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>,
+    <b>ascii_convert_with_capabilities()</b>, <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>image_new_copy()</b>,
+    <b>media_source_read_video()</b>,
+    <b>session_capture_process_for_transmission()</b>,
+    <b>session_display_convert_to_ascii()</b>, <b>session_host_add_client()</b>,
+    <b>session_host_add_memory_participant()</b>,
+    <b>session_host_inject_frame()</b>, and <b>webcam_read()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t_*_image_new_copy_(const_image_t_*_source)"><a class="permalink" href="#image_t_*_image_new_copy_(const_image_t_*_source)">image_t
+  * image_new_copy (const image_t * source)</a></h2>
+<p class="Pp">Definition at line <b>226</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>226                                                {
+227   if (!source) {
+228     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_new_copy: source is NULL&quot;);
+229     return NULL;
+230   }
+231 
+232   // Create new image with same dimensions
+233   image_t *copy = image_new((size_t)source-&gt;w, (size_t)source-&gt;h);
+234   if (!copy) {
+235     return NULL;
+236   }
+237 
+238   // Copy pixel data from source to copy
+239   if (source-&gt;pixels &amp;&amp; copy-&gt;pixels) {
+240     size_t pixel_count = (size_t)source-&gt;w * (size_t)source-&gt;h;
+241     size_t pixels_size = pixel_count * sizeof(rgb_pixel_t);
+242     memcpy(copy-&gt;pixels, source-&gt;pixels, pixels_size);
+243   }
+244 
+245   return copy;
+246 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>image_new()</b>.</p>
+<p class="Pp">Referenced by <b>create_mixed_ascii_frame_for_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t_*_image_new_from_pool_(size_t_width,_size_t_height)"><a class="permalink" href="#image_t_*_image_new_from_pool_(size_t_width,_size_t_height)">image_t
+  * image_new_from_pool (size_t width, size_t height)</a></h2>
+<p class="Pp">Definition at line <b>128</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>128                                                           {
+129   if (width == 0 || height == 0) {
+130     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_new_from_pool: invalid dimensions %zux%zu&quot;, width, height);
+131     return NULL;
+132   }
+133 
+134   if (width &gt; IMAGE_MAX_WIDTH || height &gt; IMAGE_MAX_HEIGHT) {
+135     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_new_from_pool: dimensions %zux%zu exceed maximum %ux%u&quot;, width, height,
+136               IMAGE_MAX_WIDTH, IMAGE_MAX_HEIGHT);
+137     return NULL;
+138   }
+139 
+140   // Calculate total allocation size (structure + pixel data in single buffer)
+141   // Check for integer overflow before multiplication
+142   size_t pixels_size;
+143   if (checked_size_mul3(width, height, sizeof(rgb_pixel_t), &amp;pixels_size) != ASCIICHAT_OK) {
+144     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_new_from_pool: dimensions would overflow: %zux%zu&quot;, width, height);
+145     return NULL;
+146   }
+147 
+148   size_t total_size;
+149   if (checked_size_add(sizeof(image_t), pixels_size, &amp;total_size) != ASCIICHAT_OK) {
+150     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_new_from_pool: total size would overflow&quot;);
+151     return NULL;
+152   }
+153 
+154   // Allocate from buffer pool as single contiguous block
+155   void *buffer = buffer_pool_alloc(NULL, total_size);
+156   if (!buffer) {
+157     SET_ERRNO(ERROR_MEMORY, &quot;image_new_from_pool: buffer pool allocation failed for %zu bytes (%zux%zu)&quot;, total_size,
+158               width, height);
+159     return NULL;
+160   }
+161 
+162   // Set up image structure at start of buffer
+163   image_t *image = (image_t *)buffer;
+164   image-&gt;w = (int)width;
+165   image-&gt;h = (int)height;
+166   // Pixel data immediately follows the image structure
+167   image-&gt;pixels = (rgb_pixel_t *)((uint8_t *)buffer + sizeof(image_t));
+168   image-&gt;alloc_method = IMAGE_ALLOC_POOL; // Track allocation method for correct deallocation
+169 
+170   return image;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_alloc()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="rgb_pixel_t_*_image_pixel_(image_t_*_p,_const_int_x,_const_int_y)"><a class="permalink" href="#rgb_pixel_t_*_image_pixel_(image_t_*_p,_const_int_x,_const_int_y)">rgb_pixel_t
+  * image_pixel (image_t * p, const int x, const int y) [inline]</a></h2>
+<p class="Pp">Definition at line <b>248</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>248                                                                       {
+249   // Add bounds checking to prevent buffer overflow on invalid coordinates
+250   if (!p || !p-&gt;pixels || x &lt; 0 || x &gt;= p-&gt;w || y &lt; 0 || y &gt;= p-&gt;h) {
+251     return NULL;
+252   }
+253   return &amp;p-&gt;pixels[x + y * p-&gt;w];
+254 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_image_resize_(const_image_t_*_s,_image_t_*_d)"><a class="permalink" href="#void_image_resize_(const_image_t_*_s,_image_t_*_d)">void
+  image_resize (const image_t * s, image_t * d)</a></h2>
+<p class="Pp">Definition at line <b>256</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>256                                                 {
+257   if (!s || !d) {
+258     SET_ERRNO(ERROR_INVALID_PARAM, &quot;image_resize: s or d is NULL&quot;);
+259     return;
+260   }
+261 
+262   image_resize_interpolation(s, d);
+263 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>image_resize_interpolation()</b>.</p>
+<p class="Pp">Referenced by <b>ascii_convert()</b>,
+    <b>ascii_convert_with_capabilities()</b>, and
+    <b>session_capture_process_for_transmission()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_image_resize_interpolation_(const_image_t_*_source,_image_t_*_dest)"><a class="permalink" href="#void_image_resize_interpolation_(const_image_t_*_source,_image_t_*_dest)">void
+  image_resize_interpolation (const image_t * source, image_t * dest)</a></h2>
+<p class="Pp">Definition at line <b>267</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>267                                                                       {
+268   if (!source || !dest || !source-&gt;pixels || !dest-&gt;pixels) {
+269     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters to image_resize_interpolation&quot;);
+270     return;
+271   }
+272 
+273   const int src_w = source-&gt;w;
+274   const int src_h = source-&gt;h;
+275   const int dst_w = dest-&gt;w;
+276   const int dst_h = dest-&gt;h;
+277 
+278   // Handle edge cases
+279   if (src_w &lt;= 0 || src_h &lt;= 0 || dst_w &lt;= 0 || dst_h &lt;= 0) {
+280     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid image dimensions for resize: src=%dx%d dst=%dx%d&quot;, src_w, src_h, dst_w,
+281               dst_h);
+282     return;
+283   }
+284 
+285   // Defensive checks to prevent invalid shift (UBSan protection)
+286   if (src_w &lt; 1 || src_h &lt; 1 || dst_w &lt; 1 || dst_h &lt; 1) {
+287     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid dimensions detected after first check&quot;);
+288     return;
+289   }
+290 
+291   // Use fixed-point arithmetic for better performance
+292   // Use uint64_t intermediate to prevent overflow when shifting large dimensions
+293   const uint32_t x_ratio = (uint32_t)((((uint64_t)src_w &lt;&lt; 16) / (uint64_t)dst_w) + 1);
+294   const uint32_t y_ratio = (uint32_t)((((uint64_t)src_h &lt;&lt; 16) / (uint64_t)dst_h) + 1);
+295 
+296   const rgb_pixel_t *src_pixels = source-&gt;pixels;
+297   rgb_pixel_t *dst_pixels = dest-&gt;pixels;
+298 
+299   for (int y = 0; y &lt; dst_h; y++) {
+300     const uint32_t src_y = ((uint32_t)(unsigned int)y * y_ratio) &gt;&gt; 16;
+301     // Explicitly clamp to valid range [0, src_h-1]
+302     const uint32_t safe_src_y = src_y &gt;= (uint32_t)(unsigned int)src_h ? (uint32_t)(src_h - 1) : src_y;
+303 
+304     // Bounds check: ensure safe_src_y is valid
+305     if (safe_src_y &gt;= (uint32_t)(unsigned int)src_h) {
+306       SET_ERRNO(ERROR_INVALID_PARAM, &quot;safe_src_y out of bounds: %u &gt;= %d&quot;, safe_src_y, src_h);
+307       return;
+308     }
+309 
+310     const rgb_pixel_t *src_row = src_pixels + (safe_src_y * (size_t)src_w);
+311 
+312     rgb_pixel_t *dst_row = dst_pixels + ((size_t)y * (size_t)dst_w);
+313 
+314     for (int x = 0; x &lt; dst_w; x++) {
+315       const uint32_t src_x = ((uint32_t)(unsigned int)x * x_ratio) &gt;&gt; 16;
+316       // Explicitly clamp to valid range [0, src_w-1]
+317       const uint32_t safe_src_x = src_x &gt;= (uint32_t)(unsigned int)src_w ? (uint32_t)(src_w - 1) : src_x;
+318 
+319       // Bounds check: ensure safe_src_x is valid
+320       if (safe_src_x &gt;= (uint32_t)(unsigned int)src_w) {
+321         SET_ERRNO(ERROR_INVALID_PARAM, &quot;safe_src_x out of bounds: %u &gt;= %d&quot;, safe_src_x, src_w);
+322         return;
+323       }
+324 
+325       dst_row[x] = src_row[safe_src_x];
+326     }
+327   }
+328 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>image_resize()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_precalc_rgb_palettes_(const_float_red,_const_float_green,_const_float_blue)"><a class="permalink" href="#void_precalc_rgb_palettes_(const_float_red,_const_float_green,_const_float_blue)">void
+  precalc_rgb_palettes (const float red, const float green, const float
+  blue)</a></h2>
+<p class="Pp">Definition at line <b>332</b> of file
+  <b>video/rgba/image.c</b>.</p>
+<pre>332                                                                                 {
+333   // Validate input parameters to prevent overflow
+334   // Luminance weights should typically be in range 0.0-1.0
+335   // But allow slightly larger values for brightness adjustment
+336   const float max_weight = 255.0f;  // Maximum value that won't overflow when multiplied by 255
+337   const float min_weight = -255.0f; // Allow negative for color correction
+338 
+339   // Note: isfinite() checks are skipped in Release builds due to -ffinite-math-only flag
+340   // which disables NaN/infinity support for performance. Range checks below are sufficient.
+341 #if !defined(NDEBUG) &amp;&amp; !defined(__FAST_MATH__)
+342   if (!isfinite(red) || !isfinite(green) || !isfinite(blue)) {
+343     log_error(&quot;Invalid weight values (non-finite): red=%f, green=%f, blue=%f&quot;, red, green, blue);
+344     SET_ERRNO(ERROR_INVALID_PARAM, &quot;precalc_rgb_palettes: non-finite weight values&quot;);
+345     return;
+346   }
+347 #endif
+348 
+349   if (red &lt; min_weight || red &gt; max_weight || green &lt; min_weight || green &gt; max_weight || blue &lt; min_weight ||
+350       blue &gt; max_weight) {
+351     log_warn(
+352         &quot;precalc_rgb_palettes: Weight values out of expected range: red=%f, green=%f, blue=%f (clamping to safe range)&quot;,
+353         red, green, blue);
+354   }
+355 
+356   // Clamp weights to safe range to prevent overflow
+357   const float safe_red = (red &lt; min_weight) ? min_weight : ((red &gt; max_weight) ? max_weight : red);
+358   const float safe_green = (green &lt; min_weight) ? min_weight : ((green &gt; max_weight) ? max_weight : green);
+359   const float safe_blue = (blue &lt; min_weight) ? min_weight : ((blue &gt; max_weight) ? max_weight : blue);
+360 
+361   const unsigned short max_ushort = 65535;
+362   const unsigned short min_ushort = 0;
+363 
+364   for (int n = 0; n &lt; ASCII_LUMINANCE_LEVELS; ++n) {
+365     // Compute with float, then clamp to unsigned short range
+366     float red_val = (float)n * safe_red;
+367     float green_val = (float)n * safe_green;
+368     float blue_val = (float)n * safe_blue;
+369 
+370     // Clamp to unsigned short range before assignment
+371     if (red_val &lt; (float)min_ushort) {
+372       red_val = (float)min_ushort;
+373     } else if (red_val &gt; (float)max_ushort) {
+374       red_val = (float)max_ushort;
+375     }
+376 
+377     if (green_val &lt; (float)min_ushort) {
+378       green_val = (float)min_ushort;
+379     } else if (green_val &gt; (float)max_ushort) {
+380       green_val = (float)max_ushort;
+381     }
+382 
+383     if (blue_val &lt; (float)min_ushort) {
+384       blue_val = (float)min_ushort;
+385     } else if (blue_val &gt; (float)max_ushort) {
+386       blue_val = (float)max_ushort;
+387     }
+388 
+389     RED[n] = (unsigned short)red_val;
+390     GREEN[n] = (unsigned short)green_val;
+391     BLUE[n] = (unsigned short)blue_val;
+392     GRAY[n] = (unsigned short)n;
+393   }
+394 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>BLUE</b>, <b>GRAY</b>, <b>GREEN</b>, and
+  <b>RED</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

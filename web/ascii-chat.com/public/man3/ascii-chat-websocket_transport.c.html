@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>transport.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">transport.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">transport.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">transport.c - WebSocket transport implementation for ACIP
+    protocol.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b> 64
+  <br/>
+  Maximum incoming message queue size (frames received from peer). #define
+    <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b> 512
+  <br/>
+  Maximum outgoing message queue size (frames to send to peer). #define
+    <b>WEBSOCKET_RECV_QUEUE_SIZE</b>
+    <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b>
+  <br/>
+  #define <b>WEBSOCKET_SEND_QUEUE_SIZE</b>
+    <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>acip_transport_t</b> *
+    <b>acip_websocket_client_transport_create</b> (const char *name, const char
+    *url, crypto_context_t *crypto_ctx)
+  <br/>
+  Create WebSocket client transport. <b>acip_transport_t</b> *
+    <b>acip_websocket_server_transport_create</b> (const char *name, struct lws
+    *wsi, crypto_context_t *crypto_ctx)
+  <br/>
+  Create WebSocket server transport from existing connection.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebSocket transport implementation for ACIP protocol.</p>
+<p class="Pp">Implements the <b>acip_transport_t</b> interface for WebSocket
+    connections. Enables browser clients to connect via WebSocket protocol.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="ARCHITECTURE:"><a class="permalink" href="#ARCHITECTURE:">ARCHITECTURE:
+  </a></h1>
+<ul class="Bl-bullet">
+  <li>Uses libwebsockets for WebSocket protocol handling</li>
+  <li>Async libwebsockets callbacks bridge to sync recv() via ringbuffer</li>
+  <li>Thread-safe receive queue handles async message arrival</li>
+  <li>Same pattern as WebRTC transport for consistency</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MESSAGE_FLOW:"><a class="permalink" href="#MESSAGE_FLOW:">MESSAGE
+  FLOW: </a></h1>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>send(): Synchronous write via lws_write()</dd>
+  <dt>2.</dt>
+  <dd>LWS callback: Async write to receive ringbuffer</dd>
+  <dt>3.</dt>
+  <dd>recv(): Blocking read from receive ringbuffer</dd>
+</dl>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="MEMORY_OWNERSHIP:"><a class="permalink" href="#MEMORY_OWNERSHIP:">MEMORY
+  OWNERSHIP: </a></h1>
+<ul class="Bl-bullet">
+  <li>Transport OWNS wsi (WebSocket instance)</li>
+  <li>Receive queue owns buffered message data</li>
+  <li>recv() allocates message buffer, caller must free</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>websocket/transport.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING___64"><a class="permalink" href="#_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING___64">#define
+  WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING 64</a></h2>
+<p class="Pp">Maximum incoming message queue size (frames received from peer).
+    Set to 64 for balance: allows buffering across one large frame's fragments
+    while keeping latency reasonable. With ~70 fragments per 291KB frame, we
+    need at least 64 slots to avoid dropping the frame while it's
+  fragmenting.</p>
+<p class="Pp">Definition at line <b>56</b> of file
+  <b>websocket/transport.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING___512"><a class="permalink" href="#_define_WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING___512">#define
+  WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING 512</a></h2>
+<p class="Pp">Maximum outgoing message queue size (frames to send to peer). Set
+    to 64 to match incoming queue and prevent &quot;BINARY after FIN&quot;
+    errors. Large video frames fragment into ~70 chunks; queue must be large
+    enough to buffer one complete message worth of fragments.</p>
+<p class="Pp">Definition at line <b>65</b> of file
+  <b>websocket/transport.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEBSOCKET_RECV_QUEUE_SIZE___"><a class="permalink" href="#_define_WEBSOCKET_RECV_QUEUE_SIZE___">#define
+  WEBSOCKET_RECV_QUEUE_SIZE
+  <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_INCOMING</b></a></h2>
+<p class="Pp">Definition at line <b>68</b> of file
+  <b>websocket/transport.c</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEBSOCKET_SEND_QUEUE_SIZE___"><a class="permalink" href="#_define_WEBSOCKET_SEND_QUEUE_SIZE___">#define
+  WEBSOCKET_SEND_QUEUE_SIZE
+  <b>WEBSOCKET_MESSAGE_QUEUE_SIZE_OUTGOING</b></a></h2>
+<p class="Pp">Definition at line <b>69</b> of file
+  <b>websocket/transport.c</b>.</p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>, and
+    <b>acip_websocket_server_transport_create()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_client_transport_create
+  (const char * name, const char * url, crypto_context_t * crypto_ctx)</h2>
+<p class="Pp">Create WebSocket client transport.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>url</i> WebSocket URL (e.g.,
+  &quot;ws://localhost:27225&quot;)
+<br/>
+<i>crypto_ctx</i> Optional encryption context (can be NULL)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on failure</div>
+<p class="Pp">Definition at line <b>1289</b> of file
+    <b>websocket/transport.c</b>.</p>
+<pre>1290                                                                                        {
+1291   if (!name) {
+1292     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+1293     return NULL;
+1294   }
+1295 
+1296   if (!url) {
+1297     SET_ERRNO(ERROR_INVALID_PARAM, &quot;url is required&quot;);
+1298     return NULL;
+1299   }
+1300 
+1301   // Parse URL to extract host, port, and path
+1302   // Format: ws://host:port/path or wss://host:port/path
+1303   const char *protocol_end = strstr(url, &quot;://&quot;);
+1304   if (!protocol_end) {
+1305     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid WebSocket URL format (missing ://)&quot;);
+1306     return NULL;
+1307   }
+1308 
+1309   bool use_ssl = (strncmp(url, &quot;wss://&quot;, 6) == 0);
+1310   const char *host_start = protocol_end + 3;
+1311 
+1312   // Find port (if specified)
+1313   const char *port_start = strchr(host_start, ':');
+1314   const char *path_start = strchr(host_start, '/');
+1315 
+1316   char host[256] = {0};
+1317   int port = use_ssl ? 443 : 27226; // Default: wss:// uses 443, ws:// uses 27226 (ascii-chat WebSocket port)
+1318   char path[256] = &quot;/&quot;;
+1319 
+1320   if (port_start &amp;&amp; (!path_start || port_start &lt; path_start)) {
+1321     // Port is specified
+1322     size_t host_len = port_start - host_start;
+1323     if (host_len &gt;= sizeof(host)) {
+1324       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Host name too long&quot;);
+1325       return NULL;
+1326     }
+1327     memcpy(host, host_start, host_len);
+1328     host[host_len] = '\0';
+1329 
+1330     // Extract port
+1331     port = atoi(port_start + 1);
+1332     if (port &lt;= 0 || port &gt; 65535) {
+1333       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port number&quot;);
+1334       return NULL;
+1335     }
+1336   } else {
+1337     // No port specified, use default
+1338     size_t host_len = path_start ? (size_t)(path_start - host_start) : strlen(host_start);
+1339     if (host_len &gt;= sizeof(host)) {
+1340       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Host name too long&quot;);
+1341       return NULL;
+1342     }
+1343     memcpy(host, host_start, host_len);
+1344     host[host_len] = '\0';
+1345   }
+1346 
+1347   // Extract path
+1348   if (path_start) {
+1349     SAFE_STRNCPY(path, path_start, sizeof(path) - 1);
+1350     path[sizeof(path) - 1] = '\0';
+1351   }
+1352 
+1353   log_info(&quot;Connecting to WebSocket: %s (host=%s, port=%d, path=%s, ssl=%d)&quot;, url, host, port, path, use_ssl);
+1354 
+1355   // Allocate transport structure
+1356   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+1357   if (!transport) {
+1358     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport&quot;);
+1359     return NULL;
+1360   }
+1361 
+1362   // Allocate WebSocket-specific data
+1363   websocket_transport_data_t *ws_data =
+1364       SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
+1365   if (!ws_data) {
+1366     SAFE_FREE(transport);
+1367     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport data&quot;);
+1368     return NULL;
+1369   }
+1370 
+1371   // Initialize destruction state flag (CALLOC zero-initializes, but explicit for clarity)
+1372   atomic_store_bool(&amp;ws_data-&gt;is_destroying, false);
+1373 
+1374   // Create receive queue
+1375   ws_data-&gt;recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+1376   if (!ws_data-&gt;recv_queue) {
+1377     SAFE_FREE(ws_data);
+1378     SAFE_FREE(transport);
+1379     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create receive queue&quot;);
+1380     return NULL;
+1381   }
+1382 
+1383   // Create send queue for client transport to buffer outgoing messages
+1384   ws_data-&gt;send_queue = ringbuffer_create(sizeof(websocket_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
+1385   if (!ws_data-&gt;send_queue) {
+1386     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1387     SAFE_FREE(ws_data);
+1388     SAFE_FREE(transport);
+1389     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create send queue&quot;);
+1390     return NULL;
+1391   }
+1392 
+1393   // Initialize synchronization primitives with transport-aware names
+1394   char recv_name[64], state_name[64];
+1395   snprintf(recv_name, sizeof(recv_name), &quot;recv_%s&quot;, name);
+1396   snprintf(state_name, sizeof(state_name), &quot;state_%s&quot;, name);
+1397 
+1398   if (mutex_init(&amp;ws_data-&gt;recv_mutex, recv_name) != 0) {
+1399     ringbuffer_destroy(ws_data-&gt;send_queue);
+1400     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1401     SAFE_FREE(ws_data);
+1402     SAFE_FREE(transport);
+1403     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize recv mutex&quot;);
+1404     return NULL;
+1405   }
+1406 
+1407   if (cond_init(&amp;ws_data-&gt;recv_cond, recv_name) != 0) {
+1408     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1409     ringbuffer_destroy(ws_data-&gt;send_queue);
+1410     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1411     SAFE_FREE(ws_data);
+1412     SAFE_FREE(transport);
+1413     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize recv condition variable&quot;);
+1414     return NULL;
+1415   }
+1416 
+1417   if (mutex_init(&amp;ws_data-&gt;state_mutex, state_name) != 0) {
+1418     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1419     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1420     ringbuffer_destroy(ws_data-&gt;send_queue);
+1421     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1422     SAFE_FREE(ws_data);
+1423     SAFE_FREE(transport);
+1424     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize state mutex&quot;);
+1425     return NULL;
+1426   }
+1427 
+1428   if (cond_init(&amp;ws_data-&gt;state_cond, state_name) != 0) {
+1429     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1430     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1431     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1432     ringbuffer_destroy(ws_data-&gt;send_queue);
+1433     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1434     SAFE_FREE(ws_data);
+1435     SAFE_FREE(transport);
+1436     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to initialize state condition variable&quot;);
+1437     return NULL;
+1438   }
+1439 
+1440   // Allocate initial send buffer
+1441   ws_data-&gt;send_buffer_capacity = LWS_PRE + 524288; // Match tx_packet_size (512KB)
+1442   ws_data-&gt;send_buffer = SAFE_MALLOC(ws_data-&gt;send_buffer_capacity, uint8_t *);
+1443   if (!ws_data-&gt;send_buffer) {
+1444     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1445     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1446     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1447     ringbuffer_destroy(ws_data-&gt;send_queue);
+1448     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1449     SAFE_FREE(ws_data);
+1450     SAFE_FREE(transport);
+1451     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate send buffer&quot;);
+1452     return NULL;
+1453   }
+1454 
+1455   // Create libwebsockets context
+1456   // Protocol array must persist for lifetime of context - use static
+1457   // IMPORTANT: &quot;http&quot; protocol MUST be first for WebSocket upgrade handshake to work
+1458   static struct lws_protocols client_protocols[] = {
+1459       {
+1460           &quot;http&quot;, // Required first for WebSocket upgrade
+1461           websocket_callback,
+1462           0,      // Per-session data (unused, using connect_info.userdata instead)
+1463           524288, // RX buffer size
+1464           0,      // ID
+1465           NULL,   // User pointer (will be set from connect_info.userdata)
+1466           524288  // TX packet size
+1467       },
+1468       {
+1469           &quot;acip&quot;, // ACIP protocol
+1470           websocket_callback,
+1471           0,      // Per-session data (unused, using connect_info.userdata instead)
+1472           524288, // RX buffer size
+1473           0,      // ID
+1474           NULL,   // User pointer (will be set from connect_info.userdata)
+1475           524288  // TX packet size
+1476       },
+1477       {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
+1478   };
+1479 
+1480   // Disable client compression for now - causes assertion in lws_set_extension_option()
+1481   // This is a known issue with libwebsockets permessage-deflate negotiation
+1482   // Server-side compression is still enabled, data will be compressed from server to client
+1483   // but client-&gt;server traffic remains uncompressed (acceptable since client sends less data)
+1484   // static const struct lws_extension client_extensions[] = {
+1485   //     {&quot;permessage-deflate&quot;, lws_extension_callback_pm_deflate, &quot;permessage-deflate; client_max_window_bits=15&quot;},
+1486   //     {NULL, NULL, NULL}};
+1487 
+1488   struct lws_context_creation_info info;
+1489   memset(&amp;info, 0, sizeof(info));
+1490   info.port = CONTEXT_PORT_NO_LISTEN; // Client mode - no listening
+1491   info.protocols = client_protocols;
+1492   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
+1493   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
+1494   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
+1495   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
+1496 
+1497   // Increase per-thread service buffer to prevent fragmentation of large messages
+1498   // Default is 4KB, causing 291KB frames to fragment into 73 &#x00D7; 4KB chunks
+1499   // Increase to 512KB to match server and allow larger WebSocket frames without fragmentation
+1500   info.pt_serv_buf_size = 512 * 1024; // 512KB per-thread service buffer
+1501 
+1502   // Configure keep-alive to prevent idle disconnects during handshake
+1503   // PING every 30 seconds if idle, close after 35 seconds total with no response
+1504   static const lws_retry_bo_t client_keep_alive_policy = {
+1505       .secs_since_valid_ping = 30,   // Send PING after 30s idle
+1506       .secs_since_valid_hangup = 35, // Hangup if still idle after 35s
+1507   };
+1508   info.retry_and_idle_policy = &amp;client_keep_alive_policy;
+1509 
+1510   // Enable libwebsockets logging through centralized logging system
+1511   lws_log_init_client();
+1512 
+1513   ws_data-&gt;context = lws_create_context(&amp;info);
+1514 
+1515   if (!ws_data-&gt;context) {
+1516     SAFE_FREE(ws_data-&gt;send_buffer);
+1517     cond_destroy(&amp;ws_data-&gt;state_cond);
+1518     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1519     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1520     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1521     ringbuffer_destroy(ws_data-&gt;send_queue);
+1522     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1523     SAFE_FREE(ws_data);
+1524     SAFE_FREE(transport);
+1525     SET_ERRNO(ERROR_NETWORK, &quot;Failed to create libwebsockets context&quot;);
+1526     return NULL;
+1527   }
+1528 
+1529   // Connect to WebSocket server
+1530   log_debug(&quot;Initiating WebSocket connection to %s:%d%s&quot;, host, port, path);
+1531   struct lws_client_connect_info connect_info;
+1532   memset(&amp;connect_info, 0, sizeof(connect_info));
+1533   connect_info.context = ws_data-&gt;context;
+1534   connect_info.address = host;
+1535   connect_info.port = port;
+1536   connect_info.path = path;
+1537   connect_info.host = host;
+1538   connect_info.origin = host;
+1539   connect_info.protocol = &quot;acip&quot;;
+1540   // Use SSL + skip server certificate hostname verification (for self-signed certs in development)
+1541   connect_info.ssl_connection = use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK) : 0;
+1542   connect_info.userdata = ws_data;
+1543 
+1544   log_debug(&quot;Calling lws_client_connect_via_info...&quot;);
+1545   ws_data-&gt;wsi = lws_client_connect_via_info(&amp;connect_info);
+1546   log_debug(&quot;lws_client_connect_via_info returned: %p&quot;, (void *)ws_data-&gt;wsi);
+1547   if (!ws_data-&gt;wsi) {
+1548     lws_context_destroy(ws_data-&gt;context);
+1549     SAFE_FREE(ws_data-&gt;send_buffer);
+1550     cond_destroy(&amp;ws_data-&gt;state_cond);
+1551     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1552     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1553     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1554     ringbuffer_destroy(ws_data-&gt;send_queue);
+1555     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1556     SAFE_FREE(ws_data);
+1557     SAFE_FREE(transport);
+1558     SET_ERRNO(ERROR_NETWORK, &quot;Failed to connect to WebSocket server&quot;);
+1559     return NULL;
+1560   }
+1561 
+1562   ws_data-&gt;is_connected = false;      // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
+1563   ws_data-&gt;connection_failed = false; // Set to true in LWS_CALLBACK_CLIENT_CONNECTION_ERROR
+1564   ws_data-&gt;owns_context = true;       // Client transport owns the context
+1565 
+1566   // Initialize transport
+1567   transport-&gt;methods = &amp;websocket_methods;
+1568   transport-&gt;crypto_ctx = crypto_ctx;
+1569   transport-&gt;impl_data = ws_data;
+1570 
+1571   // CRITICAL: Give libwebsockets time to initialize connection before starting service thread
+1572   // libwebsockets needs to process the initial connection handshake callbacks before lws_service()
+1573   // is called repeatedly. Concurrent access to context during connection setup can trigger assertions.
+1574   // Sleep 50ms to let lws_client_connect_via_info() callbacks complete initialization.
+1575   log_debug(&quot;Delaying service thread start to allow libwebsockets connection initialization...&quot;);
+1576   platform_sleep_us(50000); // 50ms delay
+1577 
+1578   // Start service thread after connection initialization
+1579   // Only the service thread should call lws_service() on this context
+1580   log_debug(&quot;Starting WebSocket service thread...&quot;);
+1581   ws_data-&gt;service_running = true;
+1582   if (asciichat_thread_create(&amp;ws_data-&gt;service_thread, &quot;ws_service&quot;, websocket_service_thread, ws_data) != 0) {
+1583     log_error(&quot;Failed to create WebSocket service thread&quot;);
+1584     ws_data-&gt;service_running = false;
+1585     lws_context_destroy(ws_data-&gt;context);
+1586     SAFE_FREE(ws_data-&gt;send_buffer);
+1587     cond_destroy(&amp;ws_data-&gt;state_cond);
+1588     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1589     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1590     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1591     ringbuffer_destroy(ws_data-&gt;send_queue);
+1592     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1593     SAFE_FREE(ws_data);
+1594     SAFE_FREE(transport);
+1595     SET_ERRNO(ERROR_INTERNAL, &quot;Failed to create service thread&quot;);
+1596     return NULL;
+1597   }
+1598   log_debug(&quot;WebSocket service thread started&quot;);
+1599 
+1600   // CRITICAL FIX: Do NOT block the main thread waiting for connection!
+1601   // This prevents stdin/keyboard input from being processed and causes the client to hang.
+1602   // The service thread will establish the connection asynchronously.
+1603   // The protocol layer (recv) will detect if connection fails and handle it there.
+1604   // Return immediately so the main thread can respond to keyboard input.
+1605   log_debug(&quot;WebSocket transport created, service thread will establish connection asynchronously&quot;);
+1606 
+1607   // Register transport
+1608   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+1609 
+1610   // Register websocket implementation data with transport as parent
+1611   NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
+1612 
+1613   // Return transport immediately - connection will be established by service thread
+1614   // If connection fails, recv() will detect is_connected=false and return error
+1615   return transport;
+1616 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_create()</b>,
+    <b>atomic_store_bool()</b>, <b>lws_log_init_client()</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>platform_sleep_us()</b>,
+    <b>ringbuffer_create()</b>, <b>ringbuffer_destroy()</b>,
+    <b>WEBSOCKET_RECV_QUEUE_SIZE</b>, and <b>WEBSOCKET_SEND_QUEUE_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
+    <b>websocket_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_websocket_server_transport_create
+  (const char * name, struct lws * wsi, crypto_context_t * crypto_ctx)</h2>
+<p class="Pp">Create WebSocket server transport from existing connection. Wraps
+    an already-established libwebsockets connection (from server accept). Used
+    by websocket_server module to create transports for incoming clients.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>wsi</i> Established libwebsockets connection (not
+  owned by transport)
+<br/>
+<i>crypto_ctx</i> Optional crypto context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL on error</div>
+<p class="Pp">Definition at line <b>1628</b> of file
+    <b>websocket/transport.c</b>.</p>
+<pre>1629                                                                                        {
+1630   if (!name) {
+1631     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+1632     return NULL;
+1633   }
+1634 
+1635   if (!wsi) {
+1636     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid wsi parameter&quot;);
+1637     return NULL;
+1638   }
+1639 
+1640   // Allocate transport structure
+1641   acip_transport_t *transport = SAFE_CALLOC(1, sizeof(acip_transport_t), acip_transport_t *);
+1642   if (!transport) {
+1643     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport&quot;);
+1644     return NULL;
+1645   }
+1646 
+1647   // Allocate transport-specific data
+1648   websocket_transport_data_t *ws_data =
+1649       SAFE_CALLOC(1, sizeof(websocket_transport_data_t), websocket_transport_data_t *);
+1650   if (!ws_data) {
+1651     SAFE_FREE(transport);
+1652     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate WebSocket transport data&quot;);
+1653     return NULL;
+1654   }
+1655 
+1656   // Initialize receive queue
+1657   ws_data-&gt;recv_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_RECV_QUEUE_SIZE);
+1658   if (!ws_data-&gt;recv_queue) {
+1659     SAFE_FREE(ws_data);
+1660     SAFE_FREE(transport);
+1661     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create receive queue&quot;);
+1662     return NULL;
+1663   }
+1664 
+1665   // Initialize send queue (for server-side transports)
+1666   ws_data-&gt;send_queue = ringbuffer_create(sizeof(websocket_recv_msg_t), WEBSOCKET_SEND_QUEUE_SIZE);
+1667   if (!ws_data-&gt;send_queue) {
+1668     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1669     SAFE_FREE(ws_data);
+1670     SAFE_FREE(transport);
+1671     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create send queue&quot;);
+1672     return NULL;
+1673   }
+1674 
+1675   // Initialize pending-free queue for deferred buffer freeing
+1676   // permessage-deflate compression holds buffer references asynchronously,
+1677   // so we defer freeing to prevent use-after-free errors
+1678   ws_data-&gt;pending_free_queue = ringbuffer_create(sizeof(pending_free_item_t), 256);
+1679   if (!ws_data-&gt;pending_free_queue) {
+1680     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1681     ringbuffer_destroy(ws_data-&gt;send_queue);
+1682     SAFE_FREE(ws_data);
+1683     SAFE_FREE(transport);
+1684     SET_ERRNO(ERROR_MEMORY, &quot;Failed to create pending-free queue&quot;);
+1685     return NULL;
+1686   }
+1687 
+1688   // Initialize synchronization primitives with transport-aware names
+1689   char recv_name[64], send_name[64], state_name[64], pending_free_name[64];
+1690   snprintf(recv_name, sizeof(recv_name), &quot;recv_%s&quot;, name);
+1691   snprintf(send_name, sizeof(send_name), &quot;send_%s&quot;, name);
+1692   snprintf(state_name, sizeof(state_name), &quot;state_%s&quot;, name);
+1693   snprintf(pending_free_name, sizeof(pending_free_name), &quot;pending_free_%s&quot;, name);
+1694 
+1695   if (mutex_init(&amp;ws_data-&gt;recv_mutex, recv_name) != 0) {
+1696     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1697     ringbuffer_destroy(ws_data-&gt;send_queue);
+1698     SAFE_FREE(ws_data);
+1699     SAFE_FREE(transport);
+1700     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize recv mutex&quot;);
+1701     return NULL;
+1702   }
+1703 
+1704   if (cond_init(&amp;ws_data-&gt;recv_cond, recv_name) != 0) {
+1705     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1706     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1707     ringbuffer_destroy(ws_data-&gt;send_queue);
+1708     SAFE_FREE(ws_data);
+1709     SAFE_FREE(transport);
+1710     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize recv condition variable&quot;);
+1711     return NULL;
+1712   }
+1713 
+1714   if (mutex_init(&amp;ws_data-&gt;send_mutex, send_name) != 0) {
+1715     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1716     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1717     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1718     ringbuffer_destroy(ws_data-&gt;send_queue);
+1719     SAFE_FREE(ws_data);
+1720     SAFE_FREE(transport);
+1721     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize send mutex&quot;);
+1722     return NULL;
+1723   }
+1724 
+1725   if (mutex_init(&amp;ws_data-&gt;state_mutex, state_name) != 0) {
+1726     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1727     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1728     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1729     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1730     ringbuffer_destroy(ws_data-&gt;send_queue);
+1731     SAFE_FREE(ws_data);
+1732     SAFE_FREE(transport);
+1733     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize state mutex&quot;);
+1734     return NULL;
+1735   }
+1736 
+1737   if (cond_init(&amp;ws_data-&gt;state_cond, state_name) != 0) {
+1738     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1739     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1740     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1741     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1742     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1743     ringbuffer_destroy(ws_data-&gt;send_queue);
+1744     SAFE_FREE(ws_data);
+1745     SAFE_FREE(transport);
+1746     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize state condition variable&quot;);
+1747     return NULL;
+1748   }
+1749 
+1750   if (mutex_init(&amp;ws_data-&gt;pending_free_mutex, pending_free_name) != 0) {
+1751     cond_destroy(&amp;ws_data-&gt;state_cond);
+1752     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1753     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1754     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1755     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1756     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1757     ringbuffer_destroy(ws_data-&gt;send_queue);
+1758     ringbuffer_destroy(ws_data-&gt;pending_free_queue);
+1759     SAFE_FREE(ws_data);
+1760     SAFE_FREE(transport);
+1761     SET_ERRNO(ERROR_NETWORK, &quot;Failed to initialize pending-free mutex&quot;);
+1762     return NULL;
+1763   }
+1764 
+1765   // Allocate send buffer with LWS_PRE padding
+1766   size_t initial_capacity = 4096 + LWS_PRE;
+1767   ws_data-&gt;send_buffer = SAFE_MALLOC(initial_capacity, uint8_t *);
+1768   if (!ws_data-&gt;send_buffer) {
+1769     mutex_destroy(&amp;ws_data-&gt;state_mutex);
+1770     mutex_destroy(&amp;ws_data-&gt;send_mutex);
+1771     cond_destroy(&amp;ws_data-&gt;recv_cond);
+1772     mutex_destroy(&amp;ws_data-&gt;recv_mutex);
+1773     ringbuffer_destroy(ws_data-&gt;recv_queue);
+1774     ringbuffer_destroy(ws_data-&gt;send_queue);
+1775     SAFE_FREE(ws_data);
+1776     SAFE_FREE(transport);
+1777     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate send buffer&quot;);
+1778     return NULL;
+1779   }
+1780   ws_data-&gt;send_buffer_capacity = initial_capacity;
+1781 
+1782   // Store connection info (server-side: no context ownership, connection already established)
+1783   ws_data-&gt;wsi = wsi;
+1784   ws_data-&gt;context = lws_get_context(wsi); // Get context from wsi (not owned)
+1785   ws_data-&gt;owns_context = false;           // Server owns context, not transport
+1786   ws_data-&gt;is_connected = true;            // Already connected (server-side)
+1787   log_info(&quot;[WEBSOCKET_TRANSPORT_CREATE] &#x2605;&#x2605;&#x2605; SERVER TRANSPORT CREATED: is_connected=true, wsi=%p, ws_data=%p&quot;,
+1788            (void *)wsi, (void *)ws_data);
+1789   log_debug(&quot;Server transport created: is_connected=true, wsi=%p&quot;, (void *)wsi);
+1790 
+1791   // Initialize transport
+1792   transport-&gt;methods = &amp;websocket_methods;
+1793   transport-&gt;crypto_ctx = crypto_ctx;
+1794   transport-&gt;impl_data = ws_data;
+1795 
+1796   log_info(&quot;Created WebSocket server transport (crypto: %s)&quot;, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+1797 
+1798   // Register transport
+1799   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+1800 
+1801   // Register websocket implementation data with transport as parent
+1802   NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
+1803 
+1804   return transport;
+1805 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>ringbuffer_create()</b>, <b>ringbuffer_destroy()</b>,
+    <b>WEBSOCKET_RECV_QUEUE_SIZE</b>, and <b>WEBSOCKET_SEND_QUEUE_SIZE</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

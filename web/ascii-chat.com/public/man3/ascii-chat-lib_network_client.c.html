@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client.c - Client application state implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">app_client_t * <b>app_client_create</b> (void)
+  <br/>
+  Create and initialize client application context. void
+    <b>app_client_destroy</b> (app_client_t **client_ptr)
+  <br/>
+  Destroy client application context and free all resources.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Client application state implementation.</p>
+<p class="Pp">Implements <b>app_client_create()</b> and
+    <b>app_client_destroy()</b> for managing the application-layer state of
+    ASCII chat clients.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>lib/network/client.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="app_client_t_*_app_client_create_(void_)"><a class="permalink" href="#app_client_t_*_app_client_create_(void_)">app_client_t
+  * app_client_create (void )</a></h2>
+<p class="Pp">Create and initialize client application context.</p>
+<p class="Pp">Definition at line <b>24</b> of file
+  <b>lib/network/client.c</b>.</p>
+<pre>24                                       {
+25   app_client_t *client = SAFE_MALLOC(sizeof(app_client_t), app_client_t *);
+26   if (!client) {
+27     log_error(&quot;Failed to allocate app_client_t&quot;);
+28     return NULL;
+29   }
+30 
+31   // Zero-initialize all fields
+32   memset(client, 0, sizeof(*client));
+33 
+34   /* Transport */
+35   client-&gt;active_transport = NULL;
+36   client-&gt;transport_type = ACIP_TRANSPORT_TCP;
+37   client-&gt;tcp_client = NULL;
+38   client-&gt;ws_client = NULL;
+39 
+40   /* Audio State */
+41   memset(&amp;client-&gt;audio_ctx, 0, sizeof(client-&gt;audio_ctx));
+42   memset(client-&gt;audio_send_queue, 0, sizeof(client-&gt;audio_send_queue));
+43   client-&gt;audio_send_queue_head = 0;
+44   client-&gt;audio_send_queue_tail = 0;
+45   client-&gt;audio_send_queue_initialized = false;
+46   atomic_store_bool(&amp;client-&gt;audio_sender_should_exit, false);
+47   client-&gt;audio_capture_thread_created = false;
+48   client-&gt;audio_sender_thread_created = false;
+49   atomic_store_bool(&amp;client-&gt;audio_capture_thread_exited, false);
+50 
+51   // Initialize audio queue mutex and condition variable
+52   if (mutex_init(&amp;client-&gt;audio_send_queue_mutex, &quot;audio_queue&quot;) != 0) {
+53     log_error(&quot;Failed to initialize audio queue mutex&quot;);
+54     SAFE_FREE(client);
+55     return NULL;
+56   }
+57 
+58   if (cond_init(&amp;client-&gt;audio_send_queue_cond, &quot;audio_queue&quot;) != 0) {
+59     log_error(&quot;Failed to initialize audio queue cond&quot;);
+60     mutex_destroy(&amp;client-&gt;audio_send_queue_mutex);
+61     SAFE_FREE(client);
+62     return NULL;
+63   }
+64 
+65   /* Protocol State */
+66   client-&gt;data_thread_created = false;
+67   atomic_store_bool(&amp;client-&gt;data_thread_exited, false);
+68   client-&gt;last_active_count = 0;
+69   client-&gt;server_state_initialized = false;
+70   client-&gt;should_clear_before_next_frame = false;
+71   client-&gt;my_client_id = 0;
+72   client-&gt;encryption_enabled = false;
+73 
+74   /* Capture State */
+75   client-&gt;capture_thread_created = false;
+76   atomic_store_bool(&amp;client-&gt;capture_thread_exited, false);
+77 
+78   /* Keepalive State */
+79   client-&gt;ping_thread_created = false;
+80   atomic_store_bool(&amp;client-&gt;ping_thread_exited, false);
+81 
+82   /* Display State */
+83   client-&gt;has_tty = false;
+84   atomic_store_bool(&amp;client-&gt;is_first_frame_of_connection, false);
+85   memset(&amp;client-&gt;tty_info, 0, sizeof(client-&gt;tty_info));
+86 
+87   /* Crypto State */
+88   memset(&amp;client-&gt;crypto_ctx, 0, sizeof(client-&gt;crypto_ctx));
+89   client-&gt;crypto_initialized = false;
+90 
+91   // Register atomic fields for sync state monitoring with fully descriptive names
+92   char atomic_name[256];
+93 
+94   // Audio subsystem control and status
+95   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.audio_sender_thread_should_exit_signal&quot;);
+96   NAMED_REGISTER_ATOMIC(&amp;client-&gt;audio_sender_should_exit, atomic_name, NULL);
+97 
+98   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.audio_capture_thread_has_exited_status&quot;);
+99   NAMED_REGISTER_ATOMIC(&amp;client-&gt;audio_capture_thread_exited, atomic_name, NULL);
+100 
+101   // Protocol and network data handling
+102   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.protocol_data_dispatch_thread_has_exited_status&quot;);
+103   NAMED_REGISTER_ATOMIC(&amp;client-&gt;data_thread_exited, atomic_name, NULL);
+104 
+105   // Media capture control and status
+106   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.media_capture_thread_has_exited_status&quot;);
+107   NAMED_REGISTER_ATOMIC(&amp;client-&gt;capture_thread_exited, atomic_name, NULL);
+108 
+109   // Keepalive and connection health monitoring
+110   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.keepalive_ping_thread_has_exited_status&quot;);
+111   NAMED_REGISTER_ATOMIC(&amp;client-&gt;ping_thread_exited, atomic_name, NULL);
+112 
+113   // Display frame sequencing
+114   snprintf(atomic_name, sizeof(atomic_name), &quot;app_client.is_first_frame_of_new_connection_flag&quot;);
+115   NAMED_REGISTER_ATOMIC(&amp;client-&gt;is_first_frame_of_connection, atomic_name, NULL);
+116 
+117   log_debug(&quot;App client created&quot;);
+118 
+119   return client;
+120 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>mutex_destroy()</b>, and
+    <b>mutex_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_app_client_destroy_(app_client_t_**_client_ptr)"><a class="permalink" href="#void_app_client_destroy_(app_client_t_**_client_ptr)">void
+  app_client_destroy (app_client_t ** client_ptr)</a></h2>
+<p class="Pp">Destroy client application context and free all resources.</p>
+<p class="Pp">Definition at line <b>125</b> of file
+  <b>lib/network/client.c</b>.</p>
+<pre>125                                                    {
+126   if (!client_ptr || !*client_ptr) {
+127     return; // No-op if NULL
+128   }
+129 
+130   app_client_t *client = *client_ptr;
+131 
+132   log_debug(&quot;Destroying app client&quot;);
+133 
+134   // Unregister atomic fields
+135   NAMED_UNREGISTER(&amp;client-&gt;audio_sender_should_exit);
+136   NAMED_UNREGISTER(&amp;client-&gt;audio_capture_thread_exited);
+137   NAMED_UNREGISTER(&amp;client-&gt;data_thread_exited);
+138   NAMED_UNREGISTER(&amp;client-&gt;capture_thread_exited);
+139   NAMED_UNREGISTER(&amp;client-&gt;ping_thread_exited);
+140   NAMED_UNREGISTER(&amp;client-&gt;is_first_frame_of_connection);
+141 
+142   // Destroy mutexes and condition variables
+143   mutex_destroy(&amp;client-&gt;audio_send_queue_mutex);
+144   cond_destroy(&amp;client-&gt;audio_send_queue_cond);
+145 
+146   // Note: Network clients (tcp_client, ws_client) are not destroyed here.
+147   // They should be destroyed separately in connection_context_cleanup()
+148   // to maintain proper lifecycle management.
+149 
+150   SAFE_FREE(*client_ptr);
+151 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex_destroy()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>memory.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">memory.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">memory.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">memory.c - &#x1F9E0; Memory debugging implementation for
+    ascii-chat debug builds</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>debug_memory_ensure_init</b> (void)
+  <br/>
+  void <b>debug_memory_set_quiet_mode</b> (<b>bool</b> quiet)
+  <br/>
+  void <b>debug_memory_report</b> (void)
+  <br/>
+  int <b>debug_memory_thread_init</b> (void)
+  <br/>
+  int <b>debug_memory_thread_start</b> (void)
+  <br/>
+  void <b>debug_memory_trigger_report</b> (void)
+  <br/>
+  void <b>debug_memory_thread_cleanup</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F9E0; Memory debugging implementation for ascii-chat debug
+    builds</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>debug/memory.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_memory_ensure_init_(void_)"><a class="permalink" href="#void_debug_memory_ensure_init_(void_)">void
+  debug_memory_ensure_init (void )</a></h2>
+<p class="Pp">Definition at line <b>1503</b> of file <b>debug/memory.c</b>.</p>
+<pre>1503                                     {
+1504   // No-op in release builds
+1505 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_memory_report_(void_)"><a class="permalink" href="#void_debug_memory_report_(void_)">void
+  debug_memory_report (void )</a></h2>
+<p class="Pp">Definition at line <b>1512</b> of file <b>debug/memory.c</b>.</p>
+<pre>1512                                {
+1513   // No-op in release builds
+1514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_memory_set_quiet_mode_("><a class="permalink" href="#void_debug_memory_set_quiet_mode_(">void
+  debug_memory_set_quiet_mode (<b>bool</b> quiet)</a></h2>
+<p class="Pp">Definition at line <b>1507</b> of file <b>debug/memory.c</b>.</p>
+<pre>1507                                              {
+1508   (void)quiet;
+1509   // No-op in release builds
+1510 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>main()</b>, and <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_memory_thread_cleanup_(void_)"><a class="permalink" href="#void_debug_memory_thread_cleanup_(void_)">void
+  debug_memory_thread_cleanup (void )</a></h2>
+<p class="Pp">Definition at line <b>1528</b> of file <b>debug/memory.c</b>.</p>
+<pre>1528                                        {
+1529   // No-op in release builds
+1530 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_debug_memory_thread_init_(void_)"><a class="permalink" href="#int_debug_memory_thread_init_(void_)">int
+  debug_memory_thread_init (void )</a></h2>
+<p class="Pp">Definition at line <b>1516</b> of file <b>debug/memory.c</b>.</p>
+<pre>1516                                    {
+1517   return 0;
+1518 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_debug_memory_thread_start_(void_)"><a class="permalink" href="#int_debug_memory_thread_start_(void_)">int
+  debug_memory_thread_start (void )</a></h2>
+<p class="Pp">Definition at line <b>1520</b> of file <b>debug/memory.c</b>.</p>
+<pre>1520                                     {
+1521   return 0;
+1522 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_debug_memory_trigger_report_(void_)"><a class="permalink" href="#void_debug_memory_trigger_report_(void_)">void
+  debug_memory_trigger_report (void )</a></h2>
+<p class="Pp">Definition at line <b>1524</b> of file <b>debug/memory.c</b>.</p>
+<pre>1524                                        {
+1525   // No-op in release builds
+1526 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

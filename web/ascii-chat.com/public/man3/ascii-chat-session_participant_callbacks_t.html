@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_participant_callbacks_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_participant_callbacks_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_participant_callbacks_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_participant_callbacks_t - Callback function prototypes for
+    session participant events.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/participant.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">void(* <b>on_connected</b> )(<b>session_participant_t</b> *p,
+    uint32_t client_id, void *user_data)
+  <br/>
+  Called when successfully connected to session. void(* <b>on_disconnected</b>
+    )(<b>session_participant_t</b> *p, void *user_data)
+  <br/>
+  Called when disconnected from session. void(* <b>on_frame_received</b>
+    )(<b>session_participant_t</b> *p, const char *<b>frame</b>, void
+    *user_data)
+  <br/>
+  Called when ASCII frame received from server. void(* <b>on_audio_received</b>
+    )(<b>session_participant_t</b> *p, const float *samples, size_t count, void
+    *user_data)
+  <br/>
+  Called when audio samples received from server. void(*
+    <b>on_settings_changed</b> )(<b>session_participant_t</b> *p, const
+    <b>session_settings_t</b> *settings, void *user_data)
+  <br/>
+  Called when session settings change. void(* <b>on_error</b>
+    )(<b>session_participant_t</b> *p, asciichat_error_t error, const char
+    *message, void *user_data)
+  <br/>
+  Called when an error occurs.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Callback function prototypes for session participant events.</p>
+<p class="Pp">Definition at line <b>77</b> of file <b>participant.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_audio_received)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_audio_received)_(">void(*
+  session_participant_callbacks_t::on_audio_received)
+  (<b>session_participant_t</b> *p, const float *samples, size_t count, void
+  *user_data)</a></h2>
+<p class="Pp">Called when audio samples received from server.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Participant handle
+<br/>
+<i>samples</i> Audio sample buffer (float format)
+<br/>
+<i>count</i> Number of samples
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>108</b> of file <b>participant.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_connected)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_connected)_(">void(*
+  session_participant_callbacks_t::on_connected) (<b>session_participant_t</b>
+  *p, uint32_t client_id, void *user_data)</a></h2>
+<p class="Pp">Called when successfully connected to session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Participant handle
+<br/>
+<i>client_id</i> Assigned client ID from server
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>84</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_disconnected)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_disconnected)_(">void(*
+  session_participant_callbacks_t::on_disconnected)
+  (<b>session_participant_t</b> *p, void *user_data)</a></h2>
+<p class="Pp">Called when disconnected from session.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Participant handle
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>91</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_disconnect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_error)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_error)_(">void(*
+  session_participant_callbacks_t::on_error) (<b>session_participant_t</b> *p,
+  asciichat_error_t error, const char *message, void *user_data)</a></h2>
+<p class="Pp">Called when an error occurs.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Participant handle
+<br/>
+<i>error</i> Error code
+<br/>
+<i>message</i> Error message
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>125</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_frame_received)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_frame_received)_(">void(*
+  session_participant_callbacks_t::on_frame_received)
+  (<b>session_participant_t</b> *p, const char *<b>frame</b>, void
+  *user_data)</a></h2>
+<p class="Pp">Called when ASCII frame received from server.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Participant handle
+<br/>
+<i></i><b>frame</b><i></i><b> ASCII frame data (null-terminated)</b>
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>99</b> of file <b>participant.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void(*_session_participant_callbacks_t::on_settings_changed)_("><a class="permalink" href="#void(*_session_participant_callbacks_t::on_settings_changed)_(">void(*
+  session_participant_callbacks_t::on_settings_changed)
+  (<b>session_participant_t</b> *p, const <b>session_settings_t</b> *settings,
+  void *user_data)</a></h2>
+<p class="Pp">Called when session settings change.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>p</i> Participant handle
+<br/>
+<i>settings</i> New session settings
+<br/>
+<i>user_data</i> User-provided context pointer</div>
+<p class="Pp">Definition at line <b>116</b> of file <b>participant.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

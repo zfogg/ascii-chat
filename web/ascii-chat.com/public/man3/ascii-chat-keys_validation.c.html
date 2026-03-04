@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>keys_validation.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">keys_validation.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">keys_validation.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">keys_validation.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>validate_public_key</b> (const public_key_t
+    *key)
+  <br/>
+  asciichat_error_t <b>validate_private_key</b> (const private_key_t *key)
+  <br/>
+  asciichat_error_t <b>check_key_expiry</b> (const public_key_t *key,
+    <b>bool</b> *is_expired)
+  <br/>
+  asciichat_error_t <b>validate_key_security</b> (const char *key_path)
+  <br/>
+  asciichat_error_t <b>validate_ssh_key_format</b> (const char *key_text)
+  <br/>
+  asciichat_error_t <b>validate_gpg_key_format</b> (const char *key_text)
+  <br/>
+  asciichat_error_t <b>validate_x25519_key_format</b> (const char *key_hex)
+  <br/>
+  asciichat_error_t <b>check_key_strength</b> (const public_key_t *key,
+    <b>bool</b> *is_weak)
+  <br/>
+  asciichat_error_t <b>check_key_patterns</b> (const public_key_t *key,
+    <b>bool</b> *has_weak_patterns)
+  <br/>
+  asciichat_error_t <b>compare_public_keys</b> (const public_key_t *key1, const
+    public_key_t *key2, <b>bool</b> *are_equal)
+  <br/>
+  asciichat_error_t <b>check_key_fingerprint</b> (const public_key_t *key, const
+    uint8_t *fingerprint, size_t fingerprint_len, <b>bool</b> *matches)
+  <br/>
+  asciichat_error_t <b>generate_key_fingerprint</b> (const public_key_t *key,
+    uint8_t *fingerprint_out, size_t fingerprint_size)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_check_key_expiry_(const_public_key_t_*_key,_"><a class="permalink" href="#asciichat_error_t_check_key_expiry_(const_public_key_t_*_key,_">asciichat_error_t
+  check_key_expiry (const public_key_t * key, <b>bool</b> * is_expired)</a></h2>
+<p class="Pp">Definition at line <b>118</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>118                                                                               {
+119   if (!key || !is_expired) {
+120     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p, is_expired=%p&quot;, key, is_expired);
+121     return ERROR_INVALID_PARAM;
+122   }
+123 
+124   // For now, we don't implement key expiry checking
+125   // This would require parsing key creation dates and expiration times
+126   *is_expired = false;
+127 
+128   return ASCIICHAT_OK;
+129 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_check_key_fingerprint_(const_public_key_t_*_key,_const_uint8_t_*_fingerprint,_size_t_fingerprint_len,_"><a class="permalink" href="#asciichat_error_t_check_key_fingerprint_(const_public_key_t_*_key,_const_uint8_t_*_fingerprint,_size_t_fingerprint_len,_">asciichat_error_t
+  check_key_fingerprint (const public_key_t * key, const uint8_t * fingerprint,
+  size_t fingerprint_len, <b>bool</b> * matches)</a></h2>
+<p class="Pp">Definition at line <b>420</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>421                                                        {
+422   if (!key || !fingerprint || !matches) {
+423     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p, fingerprint=%p, matches=%p&quot;, key, fingerprint, matches);
+424     return ERROR_INVALID_PARAM;
+425   }
+426 
+427   *matches = false;
+428 
+429   // Generate fingerprint for the key
+430   uint8_t key_fingerprint[32];
+431   asciichat_error_t fingerprint_result = generate_key_fingerprint(key, key_fingerprint, 32);
+432   if (fingerprint_result != ASCIICHAT_OK) {
+433     return fingerprint_result;
+434   }
+435 
+436   // Compare fingerprints
+437   size_t compare_len = (fingerprint_len &lt; 32) ? fingerprint_len : 32;
+438   if (sodium_memcmp(key_fingerprint, fingerprint, compare_len) == 0) {
+439     *matches = true;
+440   }
+441 
+442   return ASCIICHAT_OK;
+443 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>generate_key_fingerprint()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_check_key_patterns_(const_public_key_t_*_key,_"><a class="permalink" href="#asciichat_error_t_check_key_patterns_(const_public_key_t_*_key,_">asciichat_error_t
+  check_key_patterns (const public_key_t * key, <b>bool</b> *
+  has_weak_patterns)</a></h2>
+<p class="Pp">Definition at line <b>305</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>305                                                                                        {
+306   if (!key || !has_weak_patterns) {
+307     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p, has_weak_patterns=%p&quot;, key, has_weak_patterns);
+308     return ERROR_INVALID_PARAM;
+309   }
+310 
+311   *has_weak_patterns = false;
+312 
+313   // Check for sequential patterns
+314   bool is_sequential = true;
+315   for (int i = 1; i &lt; 32; i++) {
+316     if (key-&gt;key[i] != key-&gt;key[i - 1] + 1) {
+317       is_sequential = false;
+318       break;
+319     }
+320   }
+321 
+322   if (is_sequential) {
+323     *has_weak_patterns = true;
+324     return ASCIICHAT_OK;
+325   }
+326 
+327   // Check for repeated byte patterns (e.g., all 0xAA, all 0x55)
+328   // Common weak patterns to check
+329   const uint8_t weak_bytes[] = {0x00, 0xFF, 0xAA, 0x55, 0x11, 0x22, 0x33, 0x44,
+330                                 0x66, 0x77, 0x88, 0x99, 0xBB, 0xCC, 0xDD, 0xEE};
+331   for (size_t pattern_idx = 0; pattern_idx &lt; sizeof(weak_bytes); pattern_idx++) {
+332     uint8_t pattern_byte = weak_bytes[pattern_idx];
+333     bool is_repeated = true;
+334     for (size_t j = 0; j &lt; 32; j++) {
+335       // CORRECT: Compare against pattern_byte, not key-&gt;key[0]
+336       if (key-&gt;key[j] != pattern_byte) {
+337         is_repeated = false;
+338         break;
+339       }
+340     }
+341     if (is_repeated) {
+342       *has_weak_patterns = true;
+343       return ASCIICHAT_OK;
+344     }
+345   }
+346 
+347   // Check for alternating bit patterns (e.g., 0xAA 0xBB 0xAA 0xBB or 0x55 0xAA 0x55 0xAA)
+348   // A proper alternating pattern has at most 2 unique byte values that truly alternate
+349   bool byte_appeared[256] = {0};
+350   int unique_values = 0;
+351   for (size_t i = 0; i &lt; 32; i++) {
+352     if (!byte_appeared[key-&gt;key[i]]) {
+353       byte_appeared[key-&gt;key[i]] = true;
+354       unique_values++;
+355     }
+356   }
+357 
+358   // Only consider it weak if there are 2 or fewer unique values AND they properly alternate
+359   if (unique_values &lt;= 2) {
+360     bool is_alternating = true;
+361     for (size_t i = 1; i &lt; 32; i++) {
+362       // In a true alternating pattern:
+363       // 1. Adjacent bytes must be different
+364       // 2. Pattern must repeat every 2 bytes (byte[i] == byte[i-2])
+365       if (key-&gt;key[i] == key-&gt;key[i - 1] || (i &gt;= 2 &amp;&amp; key-&gt;key[i] != key-&gt;key[i - 2])) {
+366         is_alternating = false;
+367         break;
+368       }
+369     }
+370     if (is_alternating) {
+371       *has_weak_patterns = true;
+372       return ASCIICHAT_OK;
+373     }
+374   }
+375 
+376   // Check for common cryptographic initialization patterns
+377   // OpenSSL weak keys, old Debian SSH keys, etc.
+378   uint32_t *words = (uint32_t *)key-&gt;key;
+379   // Check if all 32-bit words are identical
+380   bool all_words_same = true;
+381   for (size_t i = 1; i &lt; 8; i++) {
+382     if (words[i] != words[0]) {
+383       all_words_same = false;
+384       break;
+385     }
+386   }
+387   if (all_words_same) {
+388     *has_weak_patterns = true;
+389     return ASCIICHAT_OK;
+390   }
+391 
+392   return ASCIICHAT_OK;
+393 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_check_key_strength_(const_public_key_t_*_key,_"><a class="permalink" href="#asciichat_error_t_check_key_strength_(const_public_key_t_*_key,_">asciichat_error_t
+  check_key_strength (const public_key_t * key, <b>bool</b> * is_weak)</a></h2>
+<p class="Pp">Definition at line <b>255</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>255                                                                              {
+256   if (!key || !is_weak) {
+257     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p, is_weak=%p&quot;, key, is_weak);
+258     return ERROR_INVALID_PARAM;
+259   }
+260 
+261   *is_weak = false;
+262 
+263   // Check for all zeros (already checked in validate_public_key)
+264   // Check for all ones
+265   bool is_ones = true;
+266   for (int i = 0; i &lt; 32; i++) {
+267     if (key-&gt;key[i] != 0xFF) {
+268       is_ones = false;
+269       break;
+270     }
+271   }
+272 
+273   if (is_ones) {
+274     *is_weak = true;
+275     return ASCIICHAT_OK;
+276   }
+277 
+278   // Check for low entropy: Count unique bytes
+279   // A properly random 32-byte key should have ~24-32 unique values
+280   // Low entropy keys will have very few unique bytes
+281   bool byte_seen[256] = {0};
+282   int unique_bytes = 0;
+283   for (int i = 0; i &lt; 32; i++) {
+284     uint8_t byte_val = key-&gt;key[i];
+285     if (!byte_seen[byte_val]) {
+286       byte_seen[byte_val] = true;
+287       unique_bytes++;
+288     }
+289   }
+290 
+291   // If less than 8 unique bytes in 32 bytes, entropy is very low
+292   // This indicates non-random key generation (e.g., PRNG seed not properly initialized)
+293   if (unique_bytes &lt; 8) {
+294     *is_weak = true;
+295     return ASCIICHAT_OK;
+296   }
+297 
+298   // Additional weak key pattern detection:
+299   // - Check for repeated patterns (handled in check_key_patterns)
+300   // - Check for known weak sequences (see check_key_patterns)
+301 
+302   return ASCIICHAT_OK;
+303 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_compare_public_keys_(const_public_key_t_*_key1,_const_public_key_t_*_key2,_"><a class="permalink" href="#asciichat_error_t_compare_public_keys_(const_public_key_t_*_key1,_const_public_key_t_*_key2,_">asciichat_error_t
+  compare_public_keys (const public_key_t * key1, const public_key_t * key2,
+  <b>bool</b> * are_equal)</a></h2>
+<p class="Pp">Definition at line <b>399</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>399                                                                                                            {
+400   if (!key1 || !key2 || !are_equal) {
+401     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key1=%p, key2=%p, are_equal=%p&quot;, key1, key2, are_equal);
+402     return ERROR_INVALID_PARAM;
+403   }
+404 
+405   *are_equal = false;
+406 
+407   // Compare key types
+408   if (key1-&gt;type != key2-&gt;type) {
+409     return ASCIICHAT_OK;
+410   }
+411 
+412   // Compare key data using constant-time comparison
+413   if (sodium_memcmp(key1-&gt;key, key2-&gt;key, 32) == 0) {
+414     *are_equal = true;
+415   }
+416 
+417   return ASCIICHAT_OK;
+418 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_generate_key_fingerprint_(const_public_key_t_*_key,_uint8_t_*_fingerprint_out,_size_t_fingerprint_size)"><a class="permalink" href="#asciichat_error_t_generate_key_fingerprint_(const_public_key_t_*_key,_uint8_t_*_fingerprint_out,_size_t_fingerprint_size)">asciichat_error_t
+  generate_key_fingerprint (const public_key_t * key, uint8_t * fingerprint_out,
+  size_t fingerprint_size)</a></h2>
+<p class="Pp">Definition at line <b>445</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>445                                                                                                                        {
+446   if (!key || !fingerprint_out) {
+447     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p, fingerprint_out=%p&quot;, key, fingerprint_out);
+448     return ERROR_INVALID_PARAM;
+449   }
+450 
+451   if (fingerprint_size &lt; 32) {
+452     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Fingerprint buffer too small: %zu (minimum 32)&quot;, fingerprint_size);
+453     return ERROR_INVALID_PARAM;
+454   }
+455 
+456   // Generate SHA-256 fingerprint of the key
+457   if (crypto_hash_sha256(fingerprint_out, key-&gt;key, 32) != 0) {
+458     SET_ERRNO(ERROR_CRYPTO, &quot;Failed to generate key fingerprint&quot;);
+459     return ERROR_CRYPTO;
+460   }
+461 
+462   return ASCIICHAT_OK;
+463 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>check_key_fingerprint()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_validate_gpg_key_format_(const_char_*_key_text)"><a class="permalink" href="#asciichat_error_t_validate_gpg_key_format_(const_char_*_key_text)">asciichat_error_t
+  validate_gpg_key_format (const char * key_text)</a></h2>
+<p class="Pp">Definition at line <b>184</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>184                                                                 {
+185   if (!key_text) {
+186     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key_text=%p&quot;, key_text);
+187     return ERROR_INVALID_PARAM;
+188   }
+189 
+190   // Check for GPG armor header
+191   if (strncmp(key_text, &quot;-----BEGIN PGP&quot;, 14) != 0) {
+192     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;GPG key does not start with armor header&quot;);
+193     return ERROR_CRYPTO_KEY;
+194   }
+195 
+196   // Check for GPG armor footer
+197   if (strstr(key_text, &quot;-----END PGP&quot;) == NULL) {
+198     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;GPG key does not contain armor footer&quot;);
+199     return ERROR_CRYPTO_KEY;
+200   }
+201 
+202   // Additional GPG key validation
+203   // Validate armor format (should have valid armor headers)
+204   bool has_version_header = (strstr(key_text, &quot;Version:&quot;) != NULL);
+205   bool has_charset_header = (strstr(key_text, &quot;Charset:&quot;) != NULL || strstr(key_text, &quot;Version:&quot;) != NULL);
+206 
+207   if (!has_version_header &amp;&amp; !has_charset_header) {
+208     // Missing common armor headers - might be incomplete
+209     log_warn(&quot;GPG armor missing version/charset headers - key might be incomplete&quot;);
+210   }
+211 
+212   // Validate base64 content (keys must have non-empty body between headers and footer)
+213   const char *start_pos = strstr(key_text, &quot;\n\n&quot;);
+214   const char *end_pos = strstr(key_text, &quot;\n-----END&quot;);
+215   if (start_pos &amp;&amp; end_pos &amp;&amp; start_pos &lt; end_pos) {
+216     // -2 for \n\n at start_pos; check for underflow before casting to size_t
+217     ptrdiff_t diff = end_pos - start_pos - 2;
+218     if (diff &lt;= 0) {
+219       SET_ERRNO(ERROR_CRYPTO_KEY, &quot;GPG key has empty or malformed body content&quot;);
+220       return ERROR_CRYPTO_KEY;
+221     }
+222   }
+223 
+224   return ASCIICHAT_OK;
+225 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_validate_key_security_(const_char_*_key_path)"><a class="permalink" href="#asciichat_error_t_validate_key_security_(const_char_*_key_path)">asciichat_error_t
+  validate_key_security (const char * key_path)</a></h2>
+<p class="Pp">Definition at line <b>131</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>131                                                               {
+132   if (!key_path) {
+133     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key_path=%p&quot;, key_path);
+134     return ERROR_INVALID_PARAM;
+135   }
+136 
+137   // Check file permissions
+138   asciichat_error_t perm_result = platform_validate_key_file_permissions(key_path);
+139   if (perm_result != ASCIICHAT_OK) {
+140     return perm_result;
+141   }
+142 
+143   // Additional security checks have been implemented in check_key_strength()
+144   // and check_key_patterns() functions. File permissions check is the critical one.
+145   // Known weak keys database would require periodic updates and is beyond scope.
+146 
+147   return ASCIICHAT_OK;
+148 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_validate_private_key_(const_private_key_t_*_key)"><a class="permalink" href="#asciichat_error_t_validate_private_key_(const_private_key_t_*_key)">asciichat_error_t
+  validate_private_key (const private_key_t * key)</a></h2>
+<p class="Pp">Definition at line <b>69</b> of file <b>keys_validation.c</b>.</p>
+<pre>69                                                                  {
+70   if (!key) {
+71     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p&quot;, key);
+72     return ERROR_INVALID_PARAM;
+73   }
+74 
+75   // Check key type
+76   if (key-&gt;type == KEY_TYPE_UNKNOWN) {
+77     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Private key type is unknown&quot;);
+78     return ERROR_CRYPTO_KEY;
+79   }
+80 
+81   if (key-&gt;type != KEY_TYPE_ED25519 &amp;&amp; key-&gt;type != KEY_TYPE_X25519) {
+82     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Unsupported private key type: %d&quot;, key-&gt;type);
+83     return ERROR_CRYPTO_KEY;
+84   }
+85 
+86   // Check key data is not all zeros
+87   bool is_zero = true;
+88   size_t key_size = (key-&gt;type == KEY_TYPE_ED25519) ? 64 : 32;
+89 
+90   for (size_t i = 0; i &lt; key_size; i++) {
+91     if (key-&gt;key.ed25519[i] != 0) {
+92       is_zero = false;
+93       break;
+94     }
+95   }
+96 
+97   if (is_zero) {
+98     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Private key data is all zeros&quot;);
+99     return ERROR_CRYPTO_KEY;
+100   }
+101 
+102   // Check comment length
+103   if (strlen(key-&gt;key_comment) &gt;= MAX_COMMENT_LEN) {
+104     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Private key comment too long: %zu (maximum %d)&quot;, strlen(key-&gt;key_comment),
+105               MAX_COMMENT_LEN - 1);
+106     return ERROR_CRYPTO_KEY;
+107   }
+108 
+109   // Validate comment is valid UTF-8 (user-provided text in key files)
+110   if (key-&gt;key_comment[0] != '\0' &amp;&amp; !utf8_is_valid(key-&gt;key_comment)) {
+111     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Private key comment contains invalid UTF-8 sequence&quot;);
+112     return ERROR_CRYPTO_KEY;
+113   }
+114 
+115   return ASCIICHAT_OK;
+116 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_is_valid()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_validate_public_key_(const_public_key_t_*_key)"><a class="permalink" href="#asciichat_error_t_validate_public_key_(const_public_key_t_*_key)">asciichat_error_t
+  validate_public_key (const public_key_t * key)</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>keys_validation.c</b>.</p>
+<pre>23                                                                {
+24   if (!key) {
+25     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key=%p&quot;, key);
+26     return ERROR_INVALID_PARAM;
+27   }
+28 
+29   // Check key type
+30   if (key-&gt;type == KEY_TYPE_UNKNOWN) {
+31     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key type is unknown&quot;);
+32     return ERROR_CRYPTO_KEY;
+33   }
+34 
+35   if (key-&gt;type != KEY_TYPE_ED25519 &amp;&amp; key-&gt;type != KEY_TYPE_X25519 &amp;&amp; key-&gt;type != KEY_TYPE_GPG) {
+36     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Unsupported key type: %d&quot;, key-&gt;type);
+37     return ERROR_CRYPTO_KEY;
+38   }
+39 
+40   // Check key data is not all zeros
+41   bool is_zero = true;
+42   for (int i = 0; i &lt; 32; i++) {
+43     if (key-&gt;key[i] != 0) {
+44       is_zero = false;
+45       break;
+46     }
+47   }
+48 
+49   if (is_zero) {
+50     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key data is all zeros&quot;);
+51     return ERROR_CRYPTO_KEY;
+52   }
+53 
+54   // Check comment length
+55   if (strlen(key-&gt;comment) &gt;= MAX_COMMENT_LEN) {
+56     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key comment too long: %zu (maximum %d)&quot;, strlen(key-&gt;comment), MAX_COMMENT_LEN - 1);
+57     return ERROR_CRYPTO_KEY;
+58   }
+59 
+60   // Validate comment is valid UTF-8 (user-provided text in key files)
+61   if (key-&gt;comment[0] != '\0' &amp;&amp; !utf8_is_valid(key-&gt;comment)) {
+62     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key comment contains invalid UTF-8 sequence&quot;);
+63     return ERROR_CRYPTO_KEY;
+64   }
+65 
+66   return ASCIICHAT_OK;
+67 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_is_valid()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_validate_ssh_key_format_(const_char_*_key_text)"><a class="permalink" href="#asciichat_error_t_validate_ssh_key_format_(const_char_*_key_text)">asciichat_error_t
+  validate_ssh_key_format (const char * key_text)</a></h2>
+<p class="Pp">Definition at line <b>154</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>154                                                                 {
+155   if (!key_text) {
+156     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key_text=%p&quot;, key_text);
+157     return ERROR_INVALID_PARAM;
+158   }
+159 
+160   // Check for SSH key format
+161   if (strncmp(key_text, &quot;ssh-ed25519 &quot;, 12) != 0) {
+162     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;SSH key does not start with 'ssh-ed25519 '&quot;);
+163     return ERROR_CRYPTO_KEY;
+164   }
+165 
+166   // Check for base64 data
+167   const char *base64_start = key_text + 12;
+168   while (*base64_start == ' ' || *base64_start == '\t') {
+169     base64_start++;
+170   }
+171 
+172   if (*base64_start == '\0' || *base64_start == '\n' || *base64_start == '\r') {
+173     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;SSH key has no base64 data&quot;);
+174     return ERROR_CRYPTO_KEY;
+175   }
+176 
+177   // Additional comprehensive SSH key validation (base64, blob structure, etc.)
+178   // would require full OpenSSH format parsing. Basic format check above is sufficient
+179   // to catch malformed keys. Full validation happens during key loading.
+180 
+181   return ASCIICHAT_OK;
+182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_validate_x25519_key_format_(const_char_*_key_hex)"><a class="permalink" href="#asciichat_error_t_validate_x25519_key_format_(const_char_*_key_hex)">asciichat_error_t
+  validate_x25519_key_format (const char * key_hex)</a></h2>
+<p class="Pp">Definition at line <b>227</b> of file
+  <b>keys_validation.c</b>.</p>
+<pre>227                                                                   {
+228   if (!key_hex) {
+229     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: key_hex=%p&quot;, key_hex);
+230     return ERROR_INVALID_PARAM;
+231   }
+232 
+233   // Check hex string length (32 bytes = 64 hex characters)
+234   size_t hex_len = strlen(key_hex);
+235   if (hex_len != 64) {
+236     SET_ERRNO(ERROR_CRYPTO_KEY, &quot;X25519 key has invalid length: %zu (expected 64)&quot;, hex_len);
+237     return ERROR_CRYPTO_KEY;
+238   }
+239 
+240   // Check that all characters are valid hex
+241   for (size_t i = 0; i &lt; hex_len; i++) {
+242     if (!isxdigit(key_hex[i])) {
+243       SET_ERRNO(ERROR_CRYPTO_KEY, &quot;X25519 key contains invalid hex character at position %zu: '%c'&quot;, i, key_hex[i]);
+244       return ERROR_CRYPTO_KEY;
+245     }
+246   }
+247 
+248   return ASCIICHAT_OK;
+249 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

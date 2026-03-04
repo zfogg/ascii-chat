@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>known_hosts.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">known_hosts.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">known_hosts.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">known_hosts.c - &#x1F4DC; SSH known_hosts file parser for host key
+    verification and trust management</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>get_known_hosts_path</b> (void)
+  <br/>
+  Get the path to the known_hosts file. asciichat_error_t
+    <b>check_known_host</b> (const char *server_ip, uint16_t port, const uint8_t
+    server_key[32])
+  <br/>
+  asciichat_error_t <b>check_known_host_no_identity</b> (const char *server_ip,
+    uint16_t port)
+  <br/>
+  asciichat_error_t <b>add_known_host</b> (const char *server_ip, uint16_t port,
+    const uint8_t server_key[32])
+  <br/>
+  asciichat_error_t <b>remove_known_host</b> (const char *server_ip, uint16_t
+    port)
+  <br/>
+  void <b>compute_key_fingerprint</b> (const uint8_t
+    key[ED25519_PUBLIC_KEY_SIZE], char fingerprint[CRYPTO_HEX_KEY_SIZE_NULL])
+  <br/>
+  <b>bool</b> <b>prompt_unknown_host</b> (const char *server_ip, uint16_t port,
+    const uint8_t server_key[32])
+  <br/>
+  <b>bool</b> <b>display_mitm_warning</b> (const char *server_ip, uint16_t port,
+    const uint8_t expected_key[32], const uint8_t received_key[32])
+  <br/>
+  <b>bool</b> <b>prompt_unknown_host_no_identity</b> (const char *server_ip,
+    uint16_t port)
+  <br/>
+  void <b>known_hosts_destroy</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4DC; SSH known_hosts file parser for host key verification
+    and trust management</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>known_hosts.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_add_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)"><a class="permalink" href="#asciichat_error_t_add_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)">asciichat_error_t
+  add_known_host (const char * server_ip, uint16_t port, const uint8_t
+  server_key[32])</a></h2>
+<p class="Pp">Definition at line <b>381</b> of file <b>known_hosts.c</b>.</p>
+<pre>381                                                                                                      {
+382   // Validate parameters first
+383   if (!server_ip || !server_key) {
+384     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: server_ip=%p, server_key=%p&quot;, server_ip, server_key);
+385   }
+386 
+387   // Check for empty string (must be after NULL check)
+388   size_t ip_len = strlen(server_ip);
+389   if (ip_len == 0) {
+390     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty hostname/IP&quot;);
+391   }
+392 
+393   const char *path = get_known_hosts_path();
+394   if (!path || path[0] == '\0') {
+395     SET_ERRNO(ERROR_CONFIG, &quot;Failed to get known hosts file path&quot;);
+396     return ERROR_CONFIG;
+397   }
+398 
+399   // Create parent directories recursively (like mkdir -p)
+400   size_t path_len = strlen(path);
+401   if (path_len == 0) {
+402     SET_ERRNO(ERROR_CONFIG, &quot;Empty known hosts file path&quot;);
+403     return ERROR_CONFIG;
+404   }
+405   char *dir = SAFE_MALLOC(path_len + 1, char *);
+406   defer(SAFE_FREE(dir));
+407   if (!dir) {
+408     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate memory for directory path&quot;);
+409     return ERROR_MEMORY;
+410   }
+411   memcpy(dir, path, path_len + 1);
+412 
+413   // Find the last path separator
+414   char *last_sep = strrchr(dir, PATH_DELIM);
+415 
+416   if (last_sep) {
+417     *last_sep = '\0'; // Truncate to get directory path
+418     asciichat_error_t result = mkdir_recursive(dir);
+419     if (result != ASCIICHAT_OK) {
+420       return result; // Error already set by mkdir_recursive
+421     }
+422   }
+423 
+424   // Create the file if it doesn't exist, then append to it
+425   // Note: Temporarily removed log_debug to avoid potential crashes during debugging
+426   // log_debug(&quot;KNOWN_HOSTS: Attempting to create/open file: %s&quot;, path);
+427   // Use &quot;a&quot; mode for append-only (simpler and works better with chmod)
+428   FILE *f = platform_fopen(&quot;file_stream&quot;, path, &quot;a&quot;);
+429   defer(SAFE_FCLOSE(f));
+430   if (!f) {
+431     // log_debug(&quot;KNOWN_HOSTS: platform_fopen failed: %s (errno=%d)&quot;, SAFE_STRERROR(errno), errno);
+432     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to create/open known hosts file: %s&quot;, path);
+433   }
+434   // Set secure permissions (0600) - only owner can read/write
+435   // Note: chmod may fail if file was just created by fopen, but that's okay
+436   (void)platform_chmod(path, FILE_PERM_PRIVATE);
+437   // log_debug(&quot;KNOWN_HOSTS: Successfully opened file: %s&quot;, path);
+438 
+439   // Format IP:port with proper bracket notation for IPv6
+440   char ip_with_port[BUFFER_SIZE_MEDIUM];
+441   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+442     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, server_ip);
+443   }
+444 
+445   // Convert key to hex for storage
+446   char hex[CRYPTO_HEX_KEY_SIZE_NULL] = {0}; // Initialize to zeros for safety
+447   bool is_placeholder = true;
+448   // Build hex string byte by byte to avoid buffer overflow issues
+449   for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+450     // Convert each byte to 2 hex digits directly
+451     uint8_t byte = server_key[i];
+452     hex[i * 2] = &quot;0123456789abcdef&quot;[byte &gt;&gt; 4];      // High nibble
+453     hex[i * 2 + 1] = &quot;0123456789abcdef&quot;[byte &amp; 0xf]; // Low nibble
+454     if (byte != 0) {
+455       is_placeholder = false;
+456     }
+457   }
+458   hex[CRYPTO_HEX_KEY_SIZE] = '\0'; // Ensure null termination (64 hex digits + null terminator)
+459 
+460   // Write to file and check for errors
+461   int fprintf_result;
+462   if (is_placeholder) {
+463     // Server has no identity key - store as placeholder
+464     fprintf_result = safe_fprintf(f, &quot;%s %s 0000000000000000000000000000000000000000000000000000000000000000 %s\n&quot;,
+465                                   ip_with_port, NO_IDENTITY_MARKER, ASCII_CHAT_APP_NAME);
+466   } else {
+467     // Server has identity key - store normally
+468     fprintf_result = safe_fprintf(f, &quot;%s %s %s %s\n&quot;, ip_with_port, X25519_KEY_TYPE, hex, ASCII_CHAT_APP_NAME);
+469   }
+470 
+471   // Check if fprintf failed
+472   if (fprintf_result &lt; 0) {
+473     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;CRITICAL SECURITY ERROR: Failed to write to known_hosts file: %s&quot;, path);
+474   }
+475 
+476   // Flush to ensure data is written
+477   if (fflush(f) != 0) {
+478     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;CRITICAL SECURITY ERROR: Failed to flush known_hosts file: %s&quot;, path);
+479   }
+480 
+481   log_debug(&quot;KNOWN_HOSTS: Successfully added host to known_hosts file: %s&quot;, path);
+482 
+483   return ASCIICHAT_OK;
+484 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>format_ip_with_port()</b>,
+    <b>get_known_hosts_path()</b>, <b>platform_fopen()</b>, and
+    <b>safe_fprintf()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_check_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)"><a class="permalink" href="#asciichat_error_t_check_known_host_(const_char_*_server_ip,_uint16_t_port,_const_uint8_t_server_key_32_)">asciichat_error_t
+  check_known_host (const char * server_ip, uint16_t port, const uint8_t
+  server_key[32])</a></h2>
+<p class="Pp">Definition at line <b>78</b> of file <b>known_hosts.c</b>.</p>
+<pre>78                                                                                                        {
+79   // Validate parameters first
+80   if (!server_ip || !server_key) {
+81     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters: server_ip=%p, server_key=%p&quot;, server_ip, server_key);
+82   }
+83 
+84   // Format IP:port with proper bracket notation for IPv6
+85   char ip_with_port[BUFFER_SIZE_MEDIUM];
+86   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+87     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, server_ip);
+88   }
+89 
+90   // Add space after IP:port for prefix matching
+91   char expected_prefix[BUFFER_SIZE_MEDIUM];
+92   safe_snprintf(expected_prefix, sizeof(expected_prefix), &quot;%s &quot;, ip_with_port);
+93 
+94   // Use platform abstraction to find all known_hosts files across standard locations
+95   // Append semantics: search ALL files for matching entries (user + system)
+96   config_file_list_t known_hosts_files = {0};
+97   asciichat_error_t search_result = platform_find_config_file(&quot;known_hosts&quot;, &amp;known_hosts_files);
+98 
+99   if (search_result != ASCIICHAT_OK) {
+100     // Platform search failed - non-fatal, treat as unknown host
+101     log_debug(&quot;KNOWN_HOSTS: Failed to search for known_hosts files: %d&quot;, search_result);
+102     return ASCIICHAT_OK;
+103   }
+104 
+105   // If no files found, this is an unknown host (first connection)
+106   if (known_hosts_files.count == 0) {
+107     return ASCIICHAT_OK;
+108   }
+109 
+110   // Search through ALL known_hosts files for matching entry (append semantics)
+111   bool found_entries = false;
+112   for (size_t file_idx = 0; file_idx &lt; known_hosts_files.count; file_idx++) {
+113     const char *path = known_hosts_files.files[file_idx].path;
+114 
+115     int fd = platform_open(&quot;known_hosts_file&quot;, path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+116     if (fd &lt; 0) {
+117       log_debug(&quot;KNOWN_HOSTS: Cannot open file: %s&quot;, path);
+118       continue; // Skip files that can't be opened
+119     }
+120 
+121     FILE *f = platform_fdopen(&quot;known_hosts_stream&quot;, fd, &quot;r&quot;);
+122     if (!f) {
+123       platform_close(fd);
+124       log_debug(&quot;KNOWN_HOSTS: Failed to fdopen: %s&quot;, path);
+125       continue;
+126     }
+127 
+128     char line[BUFFER_SIZE_XLARGE];
+129 
+130     // Search this file for matching IP:port entries
+131     while (fgets(line, sizeof(line), f)) {
+132       if (line[0] == '#')
+133         continue; // Comment
+134 
+135       // Use regex to parse and extract known_hosts line components
+136       char *parsed_ip_port = NULL, *parsed_key_type = NULL, *parsed_hex_key = NULL, *parsed_comment = NULL;
+137       if (!crypto_regex_match_known_hosts(line, &amp;parsed_ip_port, &amp;parsed_key_type, &amp;parsed_hex_key, &amp;parsed_comment)) {
+138         continue; // Line doesn't match known_hosts format
+139       }
+140 
+141       // Check if IP:port matches what we're looking for (with IPv6 normalization)
+142       if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
+143         SAFE_FREE(parsed_ip_port);
+144         SAFE_FREE(parsed_key_type);
+145         SAFE_FREE(parsed_hex_key);
+146         SAFE_FREE(parsed_comment);
+147         continue; // Different IP:port
+148       }
+149 
+150       found_entries = true;
+151 
+152       if (strcmp(parsed_key_type, NO_IDENTITY_MARKER) == 0) {
+153         // No-identity entry but server has identity - continue searching
+154         log_debug(&quot;SECURITY_DEBUG: Found no-identity entry, but server has identity key&quot;);
+155         SAFE_FREE(parsed_ip_port);
+156         SAFE_FREE(parsed_key_type);
+157         SAFE_FREE(parsed_hex_key);
+158         SAFE_FREE(parsed_comment);
+159         continue;
+160       }
+161 
+162       // Parse identity key from hex string
+163       if (!parsed_hex_key) {
+164         // No hex key found - invalid entry
+165         SAFE_FREE(parsed_ip_port);
+166         SAFE_FREE(parsed_key_type);
+167         SAFE_FREE(parsed_comment);
+168         continue;
+169       }
+170 
+171       public_key_t stored_key;
+172       if (parse_public_key(parsed_hex_key, &amp;stored_key) != 0) {
+173         SAFE_FREE(parsed_ip_port);
+174         SAFE_FREE(parsed_key_type);
+175         SAFE_FREE(parsed_hex_key);
+176         SAFE_FREE(parsed_comment);
+177         continue; // Invalid key format
+178       }
+179 
+180       // Check if server key is all zeros (no-identity server)
+181       bool server_key_is_zero = true;
+182       for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+183         if (server_key[i] != 0) {
+184           server_key_is_zero = false;
+185           break;
+186         }
+187       }
+188 
+189       // Check if stored key is all zeros
+190       bool stored_key_is_zero = true;
+191       for (int i = 0; i &lt; ED25519_PUBLIC_KEY_SIZE; i++) {
+192         if (stored_key.key[i] != 0) {
+193           stored_key_is_zero = false;
+194           break;
+195         }
+196       }
+197 
+198       // Both zero = no-identity connection (weaker security)
+199       if (server_key_is_zero &amp;&amp; stored_key_is_zero) {
+200         log_warn(&quot;SECURITY: Connecting to no-identity server at known IP:port&quot;);
+201         SAFE_FREE(parsed_ip_port);
+202         SAFE_FREE(parsed_key_type);
+203         SAFE_FREE(parsed_hex_key);
+204         SAFE_FREE(parsed_comment);
+205         fclose(f);
+206         config_file_list_destroy(&amp;known_hosts_files);
+207         return 1; // Match found
+208       }
+209 
+210       // Compare keys (constant-time)
+211       if (sodium_memcmp(server_key, stored_key.key, ED25519_PUBLIC_KEY_SIZE) == 0) {
+212         log_info(&quot;SECURITY: Server key matches known_hosts - connection verified&quot;);
+213         SAFE_FREE(parsed_ip_port);
+214         SAFE_FREE(parsed_key_type);
+215         SAFE_FREE(parsed_hex_key);
+216         SAFE_FREE(parsed_comment);
+217         fclose(f);
+218         config_file_list_destroy(&amp;known_hosts_files);
+219         return 1; // Match found!
+220       }
+221 
+222       // Key mismatch - free and continue searching
+223       SAFE_FREE(parsed_ip_port);
+224       SAFE_FREE(parsed_key_type);
+225       SAFE_FREE(parsed_hex_key);
+226       SAFE_FREE(parsed_comment);
+227     }
+228 
+229     fclose(f);
+230   }
+231 
+232   config_file_list_destroy(&amp;known_hosts_files);
+233 
+234   // Check if we found any entries at all
+235   if (found_entries) {
+236     // We found entries for this IP:port but none matched the server key
+237     // This is a MITM warning!
+238     log_error(&quot;SECURITY: Server key does NOT match any known_hosts entries!&quot;);
+239     log_error(&quot;SECURITY: This indicates a possible man-in-the-middle attack!&quot;);
+240     return ERROR_CRYPTO_VERIFICATION;
+241   }
+242 
+243   // No entries found for this IP:port - first connection
+244   return ASCIICHAT_OK;
+245 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>compare_ip_port_strings()</b>,
+    <b>config_file_list_destroy()</b>, <b>crypto_regex_match_known_hosts()</b>,
+    <b>format_ip_with_port()</b>, <b>parse_public_key()</b>,
+    <b>platform_close()</b>, <b>platform_find_config_file()</b>,
+    <b>platform_open()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_check_known_host_no_identity_(const_char_*_server_ip,_uint16_t_port)"><a class="permalink" href="#asciichat_error_t_check_known_host_no_identity_(const_char_*_server_ip,_uint16_t_port)">asciichat_error_t
+  check_known_host_no_identity (const char * server_ip, uint16_t port)</a></h2>
+<p class="Pp">Definition at line <b>251</b> of file <b>known_hosts.c</b>.</p>
+<pre>251                                                                                      {
+252   const char *path = get_known_hosts_path();
+253   int fd = platform_open(&quot;known_hosts_file&quot;, path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+254   if (fd &lt; 0) {
+255     // File doesn't exist - this is an unknown host that needs verification
+256     log_warn(&quot;Known hosts file does not exist: %s&quot;, path);
+257     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
+258   }
+259 
+260   FILE *f = platform_fdopen(&quot;known_hosts_stream&quot;, fd, &quot;r&quot;);
+261   defer(SAFE_FCLOSE(f));
+262   if (!f) {
+263     // Failed to open file descriptor as FILE*
+264     platform_close(fd);
+265     log_warn(&quot;Failed to open known hosts file: %s&quot;, path);
+266     return ASCIICHAT_OK; // Return 0 to indicate unknown host (first connection)
+267   }
+268 
+269   char line[BUFFER_SIZE_XLARGE];
+270   char expected_prefix[BUFFER_SIZE_MEDIUM];
+271 
+272   // Format IP:port with proper bracket notation for IPv6
+273   char ip_with_port[BUFFER_SIZE_MEDIUM];
+274   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+275 
+276     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, server_ip);
+277   }
+278 
+279   // Add space after IP:port for prefix matching
+280   safe_snprintf(expected_prefix, sizeof(expected_prefix), &quot;%s &quot;, ip_with_port);
+281 
+282   while (fgets(line, sizeof(line), f)) {
+283     if (line[0] == '#')
+284       continue; // Comment
+285 
+286     // Use regex to parse and extract known_hosts line components
+287     char *parsed_ip_port = NULL, *parsed_key_type = NULL, *parsed_hex_key = NULL, *parsed_comment = NULL;
+288     if (!crypto_regex_match_known_hosts(line, &amp;parsed_ip_port, &amp;parsed_key_type, &amp;parsed_hex_key, &amp;parsed_comment)) {
+289       continue; // Line doesn't match known_hosts format
+290     }
+291 
+292     // Check if IP:port matches what we're looking for (with IPv6 normalization)
+293     if (!compare_ip_port_strings(parsed_ip_port, ip_with_port)) {
+294       SAFE_FREE(parsed_ip_port);
+295       SAFE_FREE(parsed_key_type);
+296       SAFE_FREE(parsed_hex_key);
+297       SAFE_FREE(parsed_comment);
+298       continue; // Different IP:port
+299     }
+300 
+301     // Found matching IP:port - check key type
+302     if (strcmp(parsed_key_type, &quot;no-identity&quot;) == 0) {
+303       // This is a server without identity key that was previously accepted by the user
+304       // No warnings or user confirmation needed - user already accepted this server
+305       SAFE_FREE(parsed_ip_port);
+306       SAFE_FREE(parsed_key_type);
+307       SAFE_FREE(parsed_hex_key);
+308       SAFE_FREE(parsed_comment);
+309       return 1; // Known host (no-identity entry) - secure connection
+310     }
+311 
+312     // If we found a normal identity key entry, this is a mismatch
+313     // Server previously had identity key but now has none
+314     log_warn(&quot;Server previously had identity key but now has none - potential security issue&quot;);
+315     SAFE_FREE(parsed_ip_port);
+316     SAFE_FREE(parsed_key_type);
+317     SAFE_FREE(parsed_hex_key);
+318     SAFE_FREE(parsed_comment);
+319     return ERROR_CRYPTO_VERIFICATION; // Mismatch - server changed from identity to no-identity
+320   }
+321 
+322   return ASCIICHAT_OK; // Not found = first connection
+323 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>compare_ip_port_strings()</b>,
+    <b>crypto_regex_match_known_hosts()</b>, <b>format_ip_with_port()</b>,
+    <b>get_known_hosts_path()</b>, <b>platform_close()</b>,
+    <b>platform_open()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_compute_key_fingerprint_(const_uint8_t_key_ED25519_PUBLIC_KEY_SIZE_,_char_fingerprint_CRYPTO_HEX_KEY_SIZE_NULL_)"><a class="permalink" href="#void_compute_key_fingerprint_(const_uint8_t_key_ED25519_PUBLIC_KEY_SIZE_,_char_fingerprint_CRYPTO_HEX_KEY_SIZE_NULL_)">void
+  compute_key_fingerprint (const uint8_t key[ED25519_PUBLIC_KEY_SIZE], char
+  fingerprint[CRYPTO_HEX_KEY_SIZE_NULL])</a></h2>
+<p class="Pp">Definition at line <b>571</b> of file <b>known_hosts.c</b>.</p>
+<pre>571                                                                                                                      {
+572   uint8_t hash[HMAC_SHA256_SIZE];
+573   crypto_hash_sha256(hash, key, ED25519_PUBLIC_KEY_SIZE);
+574 
+575   // Build hex string byte by byte to avoid buffer overflow issues
+576   for (int i = 0; i &lt; HMAC_SHA256_SIZE; i++) {
+577     uint8_t byte = hash[i];
+578     fingerprint[i * 2] = &quot;0123456789abcdef&quot;[byte &gt;&gt; 4];      // High nibble
+579     fingerprint[i * 2 + 1] = &quot;0123456789abcdef&quot;[byte &amp; 0xf]; // Low nibble
+580   }
+581   fingerprint[CRYPTO_HEX_KEY_SIZE] = '\0';
+582 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>discovery_keys_verify_change()</b>,
+    <b>display_mitm_warning()</b>, and <b>prompt_unknown_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> display_mitm_warning (const char * server_ip,
+  uint16_t port, const uint8_t expected_key[32], const uint8_t
+  received_key[32])</h2>
+<p class="Pp">Definition at line <b>656</b> of file <b>known_hosts.c</b>.</p>
+<pre>657                                                           {
+658   char expected_fp[CRYPTO_HEX_KEY_SIZE_NULL], received_fp[CRYPTO_HEX_KEY_SIZE_NULL];
+659   compute_key_fingerprint(expected_key, expected_fp);
+660   compute_key_fingerprint(received_key, received_fp);
+661 
+662   const char *known_hosts_path = get_known_hosts_path();
+663 
+664   // Format IP:port with proper bracket notation for IPv6
+665   char ip_with_port[BUFFER_SIZE_MEDIUM];
+666   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+667     // Fallback to basic format if error
+668     safe_snprintf(ip_with_port, sizeof(ip_with_port), &quot;%s:%u&quot;, server_ip, port);
+669   }
+670 
+671   char escaped_ip_with_port[128];
+672   escape_ascii(ip_with_port, &quot;[]&quot;, escaped_ip_with_port, 128);
+673   log_warn(&quot;\n&quot;
+674            &quot;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n&quot;
+675            &quot;@    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @\n&quot;
+676            &quot;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n&quot;
+677            &quot;\n&quot;
+678            &quot;IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!\n&quot;
+679            &quot;Someone could be eavesdropping on you right now (man-in-the-middle attack)!\n&quot;
+680            &quot;It is also possible that the host key has just been changed.\n&quot;
+681            &quot;\n&quot;
+682            &quot;The fingerprint for the Ed25519 key sent by the remote host is:\n&quot;
+683            &quot;SHA256:%s\n&quot;
+684            &quot;\n&quot;
+685            &quot;Expected fingerprint:\n&quot;
+686            &quot;SHA256:%s\n&quot;
+687            &quot;\n&quot;
+688            &quot;Please contact your system administrator.\n&quot;
+689            &quot;\n&quot;
+690            &quot;Add correct host key in %s to get rid of this message.\n&quot;
+691            &quot;Offending key for IP address %s was found at:\n&quot;
+692            &quot;%s\n&quot;
+693            &quot;\n&quot;
+694            &quot;To update the key, run:\n&quot;
+695            &quot;  # Linux/macOS:\n&quot;
+696            &quot;    sed -i '' '/%s /d' ~/.ascii-chat/known_hosts\n&quot;
+697            &quot;    # or run this instead:\n&quot;
+698            &quot;    cat ~/.ascii-chat/known_hosts | grep -v '%s ' &gt; /tmp/x; cp /tmp/x ~/.ascii-chat/known_hosts\n&quot;
+699            &quot;  # Windows PowerShell:\n&quot;
+700            &quot;    (Get-Content ~/.ascii-chat/known_hosts) | Where-Object { $_ -notmatch '^%s ' } | Set-Content &quot;
+701            &quot;~/.ascii-chat/known_hosts\n&quot;
+702            &quot;  # Or manually edit ~/.ascii-chat/known_hosts to remove lines starting with '%s '\n&quot;
+703            &quot;\n&quot;
+704            &quot;Host key verification failed.\n&quot;
+705            &quot;\n&quot;,
+706            received_fp, expected_fp, known_hosts_path, ip_with_port, known_hosts_path, ip_with_port,
+707            escaped_ip_with_port, ip_with_port, ip_with_port);
+708 
+709   return false;
+710 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>compute_key_fingerprint()</b>,
+    <b>escape_ascii()</b>, <b>format_ip_with_port()</b>,
+    <b>get_known_hosts_path()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_get_known_hosts_path_(void_)"><a class="permalink" href="#const_char_*_get_known_hosts_path_(void_)">const
+  char * get_known_hosts_path (void )</a></h2>
+<p class="Pp">Get the path to the known_hosts file. Returns the path to the
+    known_hosts file, using the same directory as all other ascii-chat
+    configuration files (<b>get_config_dir()</b>).</p>
+<p class="Pp"></p>
+<p class="Pp">PATH RESOLUTION:</p>
+<ul class="Bl-bullet">
+  <li>Unix: $XDG_CONFIG_HOME/ascii-chat/known_hosts or
+      ~/.config/ascii-chat/known_hosts</li>
+  <li>Windows: APPDATA%\ascii-chat\known_hosts</li>
+</ul>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to cached known_hosts path (do not free), or NULL
+  on failure</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The returned pointer is valid for the lifetime of the
+  program</div>
+<p class="Pp">Definition at line <b>47</b> of file <b>known_hosts.c</b>.</p>
+<pre>47                                        {
+48   // Return cached path if already determined
+49   if (!g_known_hosts_path_cache) {
+50     char *config_dir = get_config_dir();
+51     if (!config_dir) {
+52       log_error(&quot;Failed to determine configuration directory for known_hosts&quot;);
+53       return NULL;
+54     }
+55 
+56     // Build path: config_dir + &quot;known_hosts&quot;
+57     size_t config_len = strlen(config_dir);
+58     size_t total_len = config_len + strlen(&quot;known_hosts&quot;) + 1;
+59     char *path = SAFE_MALLOC(total_len, char *);
+60     if (!path) {
+61       SAFE_FREE(config_dir);
+62       log_error(&quot;Failed to allocate memory for known_hosts path&quot;);
+63       return NULL;
+64     }
+65 
+66     safe_snprintf(path, total_len, &quot;%sknown_hosts&quot;, config_dir);
+67     SAFE_FREE(config_dir);
+68 
+69     g_known_hosts_path_cache = path;
+70     log_debug(&quot;KNOWN_HOSTS: Using path %s&quot;, g_known_hosts_path_cache);
+71   }
+72   return g_known_hosts_path_cache;
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_config_dir()</b>, and
+  <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>add_known_host()</b>,
+    <b>check_known_host_no_identity()</b>,
+    <b>crypto_handshake_client_key_exchange()</b>,
+    <b>display_mitm_warning()</b>, <b>prompt_unknown_host()</b>, and
+    <b>remove_known_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_known_hosts_destroy_(void_)"><a class="permalink" href="#void_known_hosts_destroy_(void_)">void
+  known_hosts_destroy (void )</a></h2>
+<p class="Pp">Definition at line <b>829</b> of file <b>known_hosts.c</b>.</p>
+<pre>829                                {
+830   if (g_known_hosts_path_cache) {
+831     SAFE_FREE(g_known_hosts_path_cache);
+832     g_known_hosts_path_cache = NULL;
+833   }
+834 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> prompt_unknown_host (const char * server_ip, uint16_t
+  port, const uint8_t server_key[32])</h2>
+<p class="Pp">Definition at line <b>585</b> of file <b>known_hosts.c</b>.</p>
+<pre>585                                                                                              {
+586   char fingerprint[CRYPTO_HEX_KEY_SIZE_NULL];
+587   compute_key_fingerprint(server_key, fingerprint);
+588 
+589   // Format IP:port with proper bracket notation for IPv6
+590   char ip_with_port[BUFFER_SIZE_MEDIUM];
+591   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+592     // Fallback to basic format if error
+593     safe_snprintf(ip_with_port, sizeof(ip_with_port), &quot;%s:%u&quot;, server_ip, port);
+594   }
+595 
+596   // Check if we're running interactively (stdin is a terminal and not in snapshot mode)
+597   const char *env_skip_known_hosts_checking = platform_getenv(&quot;ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK&quot;);
+598   if (env_skip_known_hosts_checking &amp;&amp; strcmp(env_skip_known_hosts_checking, STR_ONE) == 0) {
+599     log_warn(&quot;Skipping known_hosts checking. This is a security vulnerability.&quot;);
+600     return true;
+601   }
+602 #ifndef NDEBUG
+603   // In debug builds, also skip for Claude Code (LLM automation can't do interactive prompts)
+604   const char *env_claudecode = platform_getenv(&quot;CLAUDECODE&quot;);
+605   if (env_claudecode &amp;&amp; strlen(env_claudecode) &gt; 0) {
+606     log_warn(&quot;Skipping known_hosts checking (CLAUDECODE set in debug build).&quot;);
+607     return true;
+608   }
+609 #endif
+610   if (!terminal_can_prompt_user()) {
+611     // SECURITY: Non-interactive mode - REJECT unknown hosts to prevent MITM attacks
+612     SET_ERRNO(ERROR_CRYPTO, &quot;SECURITY: Cannot verify unknown host in non-interactive mode&quot;);
+613     log_error(&quot;ERROR: Cannot verify unknown host in non-interactive mode without environment variable bypass.\n&quot;
+614               &quot;This connection may be a man-in-the-middle attack!\n&quot;
+615               &quot;\n&quot;
+616               &quot;To connect to this host:\n&quot;
+617               &quot;  1. Run the client interactively (from a terminal with TTY)\n&quot;
+618               &quot;  2. Verify the fingerprint: SHA256:%s\n&quot;
+619               &quot;  3. Accept the host when prompted\n&quot;
+620               &quot;  4. The host will be added to: %s\n&quot;
+621               &quot;\n&quot;
+622               &quot;Connection aborted for security.\n&quot;
+623               &quot;To bypass this check, set the environment variable ASCII_CHAT_INSECURE_NO_HOST_IDENTITY_CHECK to 1&quot;,
+624               fingerprint, get_known_hosts_path());
+625     return false; // REJECT unknown hosts in non-interactive mode
+626   }
+627 
+628   // Interactive mode - prompt user
+629   // Lock terminal so only this thread can output to terminal
+630   // Other threads' logs are buffered until we unlock
+631   bool previous_terminal_state = log_lock_terminal();
+632 
+633   log_plain(&quot;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n&quot;
+634             &quot;@    WARNING: REMOTE HOST IDENTIFICATION NOT KNOWN!      @\n&quot;
+635             &quot;@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@\n&quot;
+636             &quot;\n&quot;
+637             &quot;The authenticity of host '%s' can't be established.\n&quot;
+638             &quot;Ed25519 key fingerprint is SHA256:%s\n&quot;,
+639             ip_with_port, fingerprint);
+640 
+641   // Unlock before prompt (prompt_yes_no handles its own terminal locking)
+642   log_unlock_terminal(previous_terminal_state);
+643 
+644   // Prompt user - default is No for security
+645   if (platform_prompt_yes_no(&quot;Are you sure you want to continue connecting&quot;, false)) {
+646     log_warn(&quot;Warning: Permanently added '%s' to the list of known hosts.&quot;, ip_with_port);
+647     return true;
+648   }
+649 
+650   log_warn(&quot;Connection aborted by user.&quot;);
+651   return false;
+652 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>compute_key_fingerprint()</b>,
+    <b>format_ip_with_port()</b>, <b>get_known_hosts_path()</b>,
+    <b>log_lock_terminal()</b>, <b>log_unlock_terminal()</b>,
+    <b>platform_getenv()</b>, <b>platform_prompt_yes_no()</b>,
+    <b>safe_snprintf()</b>, and <b>terminal_can_prompt_user()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> prompt_unknown_host_no_identity (const char *
+  server_ip, uint16_t port)</h2>
+<p class="Pp">Definition at line <b>767</b> of file <b>known_hosts.c</b>.</p>
+<pre>767                                                                            {
+768   // Format IP:port with proper bracket notation for IPv6
+769   char ip_with_port[BUFFER_SIZE_MEDIUM];
+770   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+771     // Fallback to basic format if error
+772     safe_snprintf(ip_with_port, sizeof(ip_with_port), &quot;%s:%u&quot;, server_ip, port);
+773   }
+774 
+775   // LOCALHOST OPTIMIZATION: Skip authentication prompt for localhost addresses
+776   // Localhost is inherently trusted (same machine, no network exposure)
+777   // This matches SSH behavior (ssh-keyscan doesn't prompt for localhost)
+778   if (is_localhost_address(server_ip)) {
+779     log_debug(
+780         &quot;SECURITY: Localhost address %s detected - skipping unknown host prompt (localhost is inherently trusted)&quot;,
+781         ip_with_port);
+782     return true; // Silently trust localhost
+783   }
+784 
+785   // Check if running in automated/non-interactive environment
+786   // In debug builds, Claude Code automation can't interact with prompts
+787   if (is_automated_mode()) {
+788     SET_ERRNO(ERROR_CRYPTO, &quot;SECURITY: Cannot verify server without identity key in non-interactive/automated mode&quot;);
+789     log_error(&quot;ERROR: Cannot verify server without identity key in non-interactive/automated mode.\n&quot;
+790               &quot;ERROR: This connection is vulnerable to man-in-the-middle attacks!\n&quot;
+791               &quot;\n&quot;
+792               &quot;To connect to this host:\n&quot;
+793               &quot;  1. Run the client interactively (from a terminal with TTY)\n&quot;
+794               &quot;  2. Verify you trust this server despite no identity key\n&quot;
+795               &quot;  3. Accept the risk when prompted\n&quot;
+796               &quot;  OR better: Ask server admin to use --key for proper authentication\n&quot;
+797               &quot;\n&quot;
+798               &quot;Connection aborted for security.\n&quot;
+799               &quot;\n&quot;);
+800     return false;
+801   }
+802 
+803   log_warn(&quot;\n&quot;
+804            &quot;The authenticity of host '%s' can't be established.\n&quot;
+805            &quot;The server has no identity key to verify its authenticity.\n&quot;
+806            &quot;\n&quot;
+807            &quot;WARNING: This connection is vulnerable to man-in-the-middle attacks!\n&quot;
+808            &quot;Anyone can intercept your connection and read your data.\n&quot;
+809            &quot;\n&quot;
+810            &quot;To secure this connection:\n&quot;
+811            &quot;  1. Server should use --key to provide an identity key\n&quot;
+812            &quot;  2. Client should use --server-key to verify the server\n&quot;
+813            &quot;\n&quot;,
+814            ip_with_port);
+815 
+816   // Interactive mode - prompt user (default is No for security)
+817   if (platform_prompt_yes_no(&quot;Are you sure you want to continue connecting&quot;, false)) {
+818     log_warn(&quot;Warning: Proceeding with unverified connection.\n&quot;
+819              &quot;Your data may be intercepted by attackers!\n&quot;
+820              &quot;\n&quot;);
+821     return true;
+822   }
+823 
+824   log_plain(&quot;Connection aborted by user.&quot;);
+825   return false;
+826 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>format_ip_with_port()</b>,
+    <b>platform_prompt_yes_no()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_remove_known_host_(const_char_*_server_ip,_uint16_t_port)"><a class="permalink" href="#asciichat_error_t_remove_known_host_(const_char_*_server_ip,_uint16_t_port)">asciichat_error_t
+  remove_known_host (const char * server_ip, uint16_t port)</a></h2>
+<p class="Pp">Definition at line <b>486</b> of file <b>known_hosts.c</b>.</p>
+<pre>486                                                                           {
+487   // Validate parameters first
+488   if (!server_ip) {
+489     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameter: server_ip=%p&quot;, server_ip);
+490   }
+491 
+492   const char *path = get_known_hosts_path();
+493   int fd = platform_open(&quot;known_hosts_file&quot;, path, PLATFORM_O_RDONLY, FILE_PERM_PRIVATE);
+494   if (fd &lt; 0) {
+495     // File doesn't exist - nothing to remove, return success
+496     return ASCIICHAT_OK;
+497   }
+498   FILE *f = platform_fdopen(&quot;known_hosts_stream&quot;, fd, &quot;r&quot;);
+499   defer(SAFE_FCLOSE(f));
+500   if (!f) {
+501     platform_close(fd);
+502     SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open known hosts file: %s&quot;, path);
+503     return ERROR_CONFIG;
+504   }
+505 
+506   // Format IP:port with proper bracket notation for IPv6
+507   char ip_with_port[BUFFER_SIZE_MEDIUM];
+508   if (format_ip_with_port(server_ip, port, ip_with_port, sizeof(ip_with_port)) != ASCIICHAT_OK) {
+509 
+510     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, server_ip);
+511   }
+512 
+513   // Read all lines into memory
+514   char **lines = NULL;
+515   size_t num_lines = 0;
+516   defer({
+517     if (lines) {
+518       for (size_t i = 0; i &lt; num_lines; i++) {
+519         SAFE_FREE(lines[i]);
+520       }
+521     }
+522     SAFE_FREE(lines);
+523   });
+524   char line[BUFFER_SIZE_XLARGE];
+525 
+526   char expected_prefix[BUFFER_SIZE_MEDIUM];
+527   safe_snprintf(expected_prefix, sizeof(expected_prefix), &quot;%s &quot;, ip_with_port);
+528 
+529   while (fgets(line, sizeof(line), f)) {
+530     // Skip lines that match this IP:port
+531     if (strncmp(line, expected_prefix, strlen(expected_prefix)) != 0) {
+532       // Keep this line
+533       char **new_lines = SAFE_REALLOC((void *)lines, (num_lines + 1) * sizeof(char *), char **);
+534       if (new_lines) {
+535         lines = new_lines;
+536         lines[num_lines] = platform_strdup(line);
+537         if (lines[num_lines] == NULL) {
+538           return SET_ERRNO(ERROR_MEMORY, &quot;Failed to duplicate line from known_hosts file&quot;);
+539         }
+540         num_lines++;
+541       }
+542     }
+543   }
+544   // Close first file before opening for write
+545   if (f) {
+546     fclose(f);
+547     f = NULL; // Prevent double-close by defer
+548   }
+549 
+550   // Write back the filtered lines
+551   fd = platform_open(&quot;known_hosts_file_write&quot;, path, PLATFORM_O_WRONLY | PLATFORM_O_CREAT | PLATFORM_O_TRUNC,
+552                      FILE_PERM_PRIVATE);
+553   f = platform_fdopen(&quot;known_hosts_write_stream&quot;, fd, &quot;w&quot;);
+554   if (!f) {
+555     // Cleanup on error - fdopen failed, so fd is still open but f is NULL
+556     // Individual line strings will be freed by defer cleanup
+557     platform_close(fd); // Close fd directly since fdopen failed
+558     return SET_ERRNO_SYS(ERROR_CONFIG, &quot;Failed to open known hosts file: %s&quot;, path);
+559   }
+560 
+561   for (size_t i = 0; i &lt; num_lines; i++) {
+562     (void)fputs(lines[i], f);
+563   }
+564   // All cleanup (lines, individual strings, file handle) handled by defer statements
+565 
+566   log_debug(&quot;KNOWN_HOSTS: Successfully removed host from known_hosts file: %s&quot;, path);
+567   return ASCIICHAT_OK;
+568 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>format_ip_with_port()</b>,
+    <b>get_known_hosts_path()</b>, <b>platform_close()</b>,
+    <b>platform_open()</b>, <b>platform_strdup()</b>, and
+    <b>safe_snprintf()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

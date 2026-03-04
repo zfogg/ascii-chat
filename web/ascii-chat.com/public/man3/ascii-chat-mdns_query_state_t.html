@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mdns_query_state_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mdns_query_state_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mdns_query_state_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mdns_query_state_t - Internal state for collecting discovered
+    services.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">ui_mdns_server_t * <b>servers</b>
+  <br/>
+  Array of discovered servers. int <b>count</b>
+  <br/>
+  Number of servers discovered so far. int <b>capacity</b>
+  <br/>
+  Allocated capacity. int64_t <b>start_time_ms</b>
+  <br/>
+  When discovery started (for timeout). int <b>timeout_ms</b>
+  <br/>
+  Discovery timeout in milliseconds. <b>bool</b> <b>query_complete</b>
+  <br/>
+  Set when discovery completes.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal state for collecting discovered services.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>discovery.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_mdns_query_state_t::capacity"><a class="permalink" href="#int_mdns_query_state_t::capacity">int
+  mdns_query_state_t::capacity</a></h2>
+<p class="Pp">Allocated capacity.</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_mdns_query_state_t::count"><a class="permalink" href="#int_mdns_query_state_t::count">int
+  mdns_query_state_t::count</a></h2>
+<p class="Pp">Number of servers discovered so far.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> mdns_query_state_t::query_complete</h2>
+<p class="Pp">Set when discovery completes.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ui_mdns_server_t*_mdns_query_state_t::servers"><a class="permalink" href="#ui_mdns_server_t*_mdns_query_state_t::servers">ui_mdns_server_t*
+  mdns_query_state_t::servers</a></h2>
+<p class="Pp">Array of discovered servers.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int64_t_mdns_query_state_t::start_time_ms"><a class="permalink" href="#int64_t_mdns_query_state_t::start_time_ms">int64_t
+  mdns_query_state_t::start_time_ms</a></h2>
+<p class="Pp">When discovery started (for timeout).</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_mdns_query_state_t::timeout_ms"><a class="permalink" href="#int_mdns_query_state_t::timeout_ms">int
+  mdns_query_state_t::timeout_ms</a></h2>
+<p class="Pp">Discovery timeout in milliseconds.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>discovery.c</b>.</p>
+<p class="Pp">Referenced by <b>discovery_mdns_query()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

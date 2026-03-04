@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>fish.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">fish.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">fish.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">fish.c - Fish shell completion script generator.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>completions_generate_fish</b> (FILE *output)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Fish shell completion script generator.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>fish.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_completions_generate_fish_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_fish_(FILE_*_output)">asciichat_error_t
+  completions_generate_fish (FILE * output)</a></h2>
+<p class="Pp">Definition at line <b>130</b> of file <b>fish.c</b>.</p>
+<pre>130                                                           {
+131   if (!output) {
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+133   }
+134 
+135   fprintf(output,
+136           &quot;# Fish completion script for ascii-chat\n&quot;
+137           &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
+138           &quot;\n&quot;
+139           &quot;complete -c ascii-chat -f\n&quot;
+140           &quot;\n&quot;
+141           &quot;function __fish_ascii_chat_using_mode\n&quot;
+142           &quot;    set -l cmd (commandline -opc)\n&quot;
+143           &quot;    for arg in $cmd\n&quot;
+144           &quot;        if contains -- $arg server client mirror\n&quot;
+145           &quot;            echo $arg\n&quot;
+146           &quot;            return 0\n&quot;
+147           &quot;        end\n&quot;
+148           &quot;    end\n&quot;
+149           &quot;    return 1\n&quot;
+150           &quot;end\n&quot;
+151           &quot;\n&quot;
+152           &quot;function __fish_ascii_chat_mode_is\n&quot;
+153           &quot;    test (string match -q $argv[1] (command __fish_ascii_chat_using_mode))\n&quot;
+154           &quot;end\n&quot;
+155           &quot;\n&quot;
+156           &quot;function __fish_ascii_chat_no_mode\n&quot;
+157           &quot;    not __fish_ascii_chat_using_mode &gt; /dev/null\n&quot;
+158           &quot;end\n&quot;
+159           &quot;\n&quot;
+160           &quot;# Modes\n&quot;
+161           &quot;complete -c ascii-chat -n __fish_ascii_chat_no_mode -a server -d 'Run a video chat server'\n&quot;
+162           &quot;complete -c ascii-chat -n __fish_ascii_chat_no_mode -a client -d 'Connect to a video chat server'\n&quot;
+163           &quot;complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mirror -d 'View webcam locally without network'\n&quot;
+164           &quot;\n&quot;);
+165 
+166   /* Binary options - use unified display API matching help system */
+167   size_t binary_count = 0;
+168   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
+169 
+170   fprintf(output, &quot;# Binary-level options (same as 'ascii-chat --help')\n&quot;);
+171   if (binary_opts) {
+172     for (size_t i = 0; i &lt; binary_count; i++) {
+173       fish_write_option(output, &amp;binary_opts[i], &quot;&quot;);
+174     }
+175     SAFE_FREE(binary_opts);
+176   }
+177   fprintf(output, &quot;\n&quot;);
+178 
+179   /* Server options - use unified display API matching help system */
+180   size_t server_count = 0;
+181   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
+182 
+183   fprintf(output, &quot;# Server options (same as 'ascii-chat server --help')\n&quot;);
+184   if (server_opts) {
+185     for (size_t i = 0; i &lt; server_count; i++) {
+186       fish_write_option(output, &amp;server_opts[i], &quot;-n '__fish_seen_subcommand_from server'&quot;);
+187     }
+188     SAFE_FREE(server_opts);
+189   }
+190   fprintf(output, &quot;\n&quot;);
+191 
+192   /* Client options - use unified display API matching help system */
+193   size_t client_count = 0;
+194   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
+195 
+196   fprintf(output, &quot;# Client options (same as 'ascii-chat client --help')\n&quot;);
+197   if (client_opts) {
+198     for (size_t i = 0; i &lt; client_count; i++) {
+199       fish_write_option(output, &amp;client_opts[i], &quot;-n '__fish_seen_subcommand_from client'&quot;);
+200     }
+201     SAFE_FREE(client_opts);
+202   }
+203   fprintf(output, &quot;\n&quot;);
+204 
+205   /* Mirror options - use unified display API matching help system */
+206   size_t mirror_count = 0;
+207   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
+208 
+209   fprintf(output, &quot;# Mirror options (same as 'ascii-chat mirror --help')\n&quot;);
+210   if (mirror_opts) {
+211     for (size_t i = 0; i &lt; mirror_count; i++) {
+212       fish_write_option(output, &amp;mirror_opts[i], &quot;-n '__fish_seen_subcommand_from mirror'&quot;);
+213     }
+214     SAFE_FREE(mirror_opts);
+215   }
+216   fprintf(output, &quot;\n&quot;);
+217 
+218   /* Discovery-service options */
+219   size_t discovery_svc_count = 0;
+220   const option_descriptor_t *discovery_svc_opts =
+221       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
+222 
+223   fprintf(output, &quot;# Discovery-service options (same as 'ascii-chat discovery-service --help')\n&quot;);
+224   if (discovery_svc_opts) {
+225     for (size_t i = 0; i &lt; discovery_svc_count; i++) {
+226       fish_write_option(output, &amp;discovery_svc_opts[i], &quot;-n '__fish_seen_subcommand_from discovery-service'&quot;);
+227     }
+228     SAFE_FREE(discovery_svc_opts);
+229   }
+230 
+231   return ASCIICHAT_OK;
+232 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

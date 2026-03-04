@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>client_pipeline.cpp(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">client_pipeline.cpp(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">client_pipeline.cpp(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">client_pipeline.cpp - Unified client-side audio processing
+    pipeline with WebRTC AEC3.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>WebRTCAec3Wrapper</b>
+  <br/>
+  C++ wrapper for WebRTC AEC3 (opaque to C code).
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>WEBRTC_APM_DEBUG_DUMP</b> 0
+  <br/>
+  #define <b>WEBRTC_MODULE_AUDIO_PROCESSING</b> 1
+  <br/>
+  #define <b>__STDC_NO_ATOMICS__</b> 1
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">client_audio_pipeline_config_t
+    <b>client_audio_pipeline_default_config</b> (void)
+  <br/>
+  client_audio_pipeline_t * <b>client_audio_pipeline_create</b> (const
+    client_audio_pipeline_config_t *config)
+  <br/>
+  Create and initialize a client audio pipeline. void
+    <b>client_audio_pipeline_destroy</b> (client_audio_pipeline_t *pipeline)
+  <br/>
+  void <b>client_audio_pipeline_set_flags</b> (client_audio_pipeline_t
+    *pipeline, client_audio_pipeline_flags_t flags)
+  <br/>
+  client_audio_pipeline_flags_t <b>client_audio_pipeline_get_flags</b>
+    (client_audio_pipeline_t *pipeline)
+  <br/>
+  int <b>client_audio_pipeline_capture</b> (client_audio_pipeline_t *pipeline,
+    const float *input, int num_samples, uint8_t *opus_out, int max_opus_len)
+  <br/>
+  int <b>client_audio_pipeline_playback</b> (client_audio_pipeline_t *pipeline,
+    const uint8_t *opus_in, int opus_len, float *output, int num_samples)
+  <br/>
+  int <b>client_audio_pipeline_get_playback_frame</b> (client_audio_pipeline_t
+    *pipeline, float *output, int num_samples)
+  <br/>
+  void <b>client_audio_pipeline_process_duplex</b> (client_audio_pipeline_t
+    *pipeline, const float *render_samples, int render_count, const float
+    *capture_samples, int capture_count, float *processed_output)
+  <br/>
+  int <b>client_audio_pipeline_jitter_margin</b> (client_audio_pipeline_t
+    *pipeline)
+  <br/>
+  void <b>client_audio_pipeline_reset</b> (client_audio_pipeline_t *pipeline)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Unified client-side audio processing pipeline with WebRTC
+  AEC3.</p>
+<p class="Pp">Implements production-grade echo cancellation using WebRTC AEC3
+    (Acoustic Echo Cancellation v3) with automatic network delay estimation,
+    adaptive filtering, and residual echo suppression.</p>
+<p class="Pp"></p>
+<p class="Pp">Uses WebRTC directly via C++ API - no wrapper layer.</p>
+<p class="Pp">Definition in file <b>client_pipeline.cpp</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define___STDC_NO_ATOMICS_____1"><a class="permalink" href="#_define___STDC_NO_ATOMICS_____1">#define
+  __STDC_NO_ATOMICS__ 1</a></h2>
+<p class="Pp">Definition at line <b>67</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEBRTC_APM_DEBUG_DUMP___0"><a class="permalink" href="#_define_WEBRTC_APM_DEBUG_DUMP___0">#define
+  WEBRTC_APM_DEBUG_DUMP 0</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_WEBRTC_MODULE_AUDIO_PROCESSING___1"><a class="permalink" href="#_define_WEBRTC_MODULE_AUDIO_PROCESSING___1">#define
+  WEBRTC_MODULE_AUDIO_PROCESSING 1</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_capture_(client_audio_pipeline_t_*_pipeline,_const_float_*_input,_int_num_samples,_uint8_t_*_opus_out,_int_max_opus_len)"><a class="permalink" href="#int_client_audio_pipeline_capture_(client_audio_pipeline_t_*_pipeline,_const_float_*_input,_int_num_samples,_uint8_t_*_opus_out,_int_max_opus_len)">int
+  client_audio_pipeline_capture (client_audio_pipeline_t * pipeline, const float
+  * input, int num_samples, uint8_t * opus_out, int max_opus_len)</a></h2>
+<p class="Pp">Encode already-processed audio to Opus.</p>
+<p class="Pp"></p>
+<p class="Pp">In full-duplex mode, AEC3 and DSP processing are done in
+    process_duplex(). This function just does Opus encoding.</p>
+<p class="Pp">Definition at line <b>438</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>439                                                                        {
+440   if (!pipeline || !input || !opus_out || num_samples != pipeline-&gt;frame_size) {
+441     return -1;
+442   }
+443 
+444   // Input is already processed by process_duplex() in full-duplex mode.
+445   // Just encode with Opus.
+446   int opus_len = opus_encode_float(pipeline-&gt;encoder, input, num_samples, opus_out, max_opus_len);
+447 
+448   if (opus_len &lt; 0) {
+449     log_error(&quot;Opus encoding failed: %d&quot;, opus_len);
+450     return -1;
+451   }
+452 
+453   return opus_len;
+454 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="client_audio_pipeline_t_*_client_audio_pipeline_create_(const_client_audio_pipeline_config_t_*_config)"><a class="permalink" href="#client_audio_pipeline_t_*_client_audio_pipeline_create_(const_client_audio_pipeline_config_t_*_config)">client_audio_pipeline_t
+  * client_audio_pipeline_create (const client_audio_pipeline_config_t *
+  config)</a></h2>
+<p class="Pp">Create and initialize a client audio pipeline. This function:</p>
+<ul class="Bl-bullet">
+  <li>Allocates the pipeline structure</li>
+  <li>Initializes Opus encoder/decoder</li>
+  <li>Sets up WebRTC AEC3 echo cancellation</li>
+  <li>Configures all audio processing parameters</li>
+</ul>
+<p class="Pp">Definition at line <b>156</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>156                                                                                                     {
+157   client_audio_pipeline_t *p = SAFE_CALLOC(1, sizeof(client_audio_pipeline_t), client_audio_pipeline_t *);
+158   if (!p) {
+159     log_error(&quot;Failed to allocate client audio pipeline&quot;);
+160     return NULL;
+161   }
+162 
+163   // Use default config if none provided
+164   if (config) {
+165     p-&gt;config = *config;
+166   } else {
+167     p-&gt;config = client_audio_pipeline_default_config();
+168   }
+169 
+170   p-&gt;flags = p-&gt;config.flags;
+171   p-&gt;frame_size = p-&gt;config.sample_rate * p-&gt;config.frame_size_ns / 1000;
+172 
+173   // No mutex needed - full-duplex means single callback thread handles all AEC3
+174 
+175   // Initialize Opus encoder/decoder first (no exceptions)
+176   int opus_error = 0;
+177   p-&gt;encoder = opus_encoder_create(p-&gt;config.sample_rate, 1, OPUS_APPLICATION_VOIP, &amp;opus_error);
+178   if (!p-&gt;encoder || opus_error != OPUS_OK) {
+179     log_error(&quot;Failed to create Opus encoder: %d&quot;, opus_error);
+180     goto error;
+181   }
+182   opus_encoder_ctl(p-&gt;encoder, OPUS_SET_BITRATE(p-&gt;config.opus_bitrate));
+183 
+184   // Disable DTX (Discontinuous Transmission) to prevent &quot;beeps&quot;.
+185   // DTX stops sending frames during silence, causing audible clicks/beeps when audio resumes.
+186   // opus_encoder_ctl(p-&gt;encoder, OPUS_SET_DTX(0));
+187 
+188   // Create Opus decoder
+189   p-&gt;decoder = opus_decoder_create(p-&gt;config.sample_rate, 1, &amp;opus_error);
+190   if (!p-&gt;decoder || opus_error != OPUS_OK) {
+191     log_error(&quot;Failed to create Opus decoder: %d&quot;, opus_error);
+192     goto error;
+193   }
+194 
+195   // Create WebRTC AEC3 Echo Cancellation
+196   // AEC3 provides production-grade acoustic echo cancellation with:
+197   // - Automatic network delay estimation (0-500ms)
+198   // - Adaptive filtering to actual echo path
+199   // - Residual echo suppression via spectral subtraction
+200   // - Jitter buffer handling via side information
+201   if (p-&gt;flags.echo_cancel) {
+202     // Configure AEC3 for better low-frequency (bass) echo cancellation
+203     webrtc::EchoCanceller3Config aec3_config;
+204 
+205     // Increase filter length for bass frequencies (default 13 blocks = ~17ms)
+206     // Bass at 80Hz has 12.5ms period, so we need at least 50+ blocks (~67ms)
+207     // to properly model the echo path for low frequencies
+208     aec3_config.filter.main.length_blocks = 50;           // ~67ms (was 13)
+209     aec3_config.filter.shadow.length_blocks = 50;         // ~67ms (was 13)
+210     aec3_config.filter.main_initial.length_blocks = 25;   // ~33ms (was 12)
+211     aec3_config.filter.shadow_initial.length_blocks = 25; // ~33ms (was 12)
+212 
+213     // More aggressive low-frequency suppression thresholds
+214     // Lower values = more aggressive echo suppression
+215     aec3_config.echo_audibility.audibility_threshold_lf = 5; // (was 10)
+216 
+217     // Create AEC3 using the factory
+218     auto factory = webrtc::EchoCanceller3Factory(aec3_config);
+219 
+220     std::unique_ptr&lt;webrtc::EchoControl&gt; echo_control = factory.Create(static_cast&lt;int&gt;(p-&gt;config.sample_rate), // 48kHz
+221                                                                        1, // num_render_channels (speaker output)
+222                                                                        1  // num_capture_channels (microphone input)
+223     );
+224 
+225     if (!echo_control) {
+226       log_warn(&quot;Failed to create WebRTC AEC3 instance - echo cancellation unavailable&quot;);
+227       p-&gt;echo_canceller = NULL;
+228     } else {
+229       // Successfully created AEC3 - wrap in our C++ wrapper for C compatibility
+230       auto wrapper = new WebRTCAec3Wrapper();
+231       wrapper-&gt;aec3 = std::move(echo_control);
+232       wrapper-&gt;config = aec3_config;
+233       p-&gt;echo_canceller = wrapper;
+234 
+235       log_info(&quot;&#x2713; WebRTC AEC3 initialized (67ms filter for bass, adaptive delay)&quot;);
+236 
+237       // Create persistent AudioBuffer instances for AEC3
+238       p-&gt;aec3_render_buffer = new webrtc::AudioBuffer(48000, 1, 48000, 1, 48000, 1);
+239       p-&gt;aec3_capture_buffer = new webrtc::AudioBuffer(48000, 1, 48000, 1, 48000, 1);
+240 
+241       auto *render_buf = static_cast&lt;webrtc::AudioBuffer *&gt;(p-&gt;aec3_render_buffer);
+242       auto *capture_buf = static_cast&lt;webrtc::AudioBuffer *&gt;(p-&gt;aec3_capture_buffer);
+243 
+244       // Zero-initialize channel data
+245       float *const *render_ch = render_buf-&gt;channels();
+246       float *const *capture_ch = capture_buf-&gt;channels();
+247       if (render_ch &amp;&amp; render_ch[0]) {
+248         memset(render_ch[0], 0, 480 * sizeof(float)); // 10ms at 48kHz
+249       }
+250       if (capture_ch &amp;&amp; capture_ch[0]) {
+251         memset(capture_ch[0], 0, 480 * sizeof(float));
+252       }
+253 
+254       // Prime filterbank state with dummy processing cycle
+255       render_buf-&gt;SplitIntoFrequencyBands();
+256       render_buf-&gt;MergeFrequencyBands();
+257       capture_buf-&gt;SplitIntoFrequencyBands();
+258       capture_buf-&gt;MergeFrequencyBands();
+259 
+260       log_info(&quot;  - AudioBuffer filterbank state initialized&quot;);
+261 
+262       // Warm up AEC3 with 10 silent frames to initialize internal state
+263       for (int warmup = 0; warmup &lt; 10; warmup++) {
+264         memset(render_ch[0], 0, 480 * sizeof(float));
+265         memset(capture_ch[0], 0, 480 * sizeof(float));
+266 
+267         render_buf-&gt;SplitIntoFrequencyBands();
+268         wrapper-&gt;aec3-&gt;AnalyzeRender(render_buf);
+269         render_buf-&gt;MergeFrequencyBands();
+270 
+271         wrapper-&gt;aec3-&gt;AnalyzeCapture(capture_buf);
+272         capture_buf-&gt;SplitIntoFrequencyBands();
+273         wrapper-&gt;aec3-&gt;SetAudioBufferDelay(0);
+274         wrapper-&gt;aec3-&gt;ProcessCapture(capture_buf, false);
+275         capture_buf-&gt;MergeFrequencyBands();
+276       }
+277       log_info(&quot;  - AEC3 warmed up with 10 silent frames&quot;);
+278       log_info(&quot;  - Persistent AudioBuffer instances created&quot;);
+279     }
+280   }
+281 
+282   // Initialize debug WAV writers for AEC3 analysis (if echo_cancel enabled)
+283   p-&gt;debug_wav_aec3_in = NULL;
+284   p-&gt;debug_wav_aec3_out = NULL;
+285   if (p-&gt;flags.echo_cancel) {
+286     // Open WAV files to capture AEC3 input and output
+287     p-&gt;debug_wav_aec3_in = wav_writer_open(&quot;/tmp/aec3_input.wav&quot;, 48000, 1);
+288     p-&gt;debug_wav_aec3_out = wav_writer_open(&quot;/tmp/aec3_output.wav&quot;, 48000, 1);
+289     if (p-&gt;debug_wav_aec3_in) {
+290       log_info(&quot;Debug: Recording AEC3 input to /tmp/aec3_input.wav&quot;);
+291     }
+292     if (p-&gt;debug_wav_aec3_out) {
+293       log_info(&quot;Debug: Recording AEC3 output to /tmp/aec3_output.wav&quot;);
+294     }
+295 
+296     log_info(&quot;&#x2713; AEC3 echo cancellation enabled (full-duplex mode, no ring buffer delay)&quot;);
+297   }
+298 
+299   // Initialize audio processing components (compressor, noise gate, filters)
+300   // These are applied in the capture path after AEC3 and before Opus encoding
+301   {
+302     float sample_rate = (float)p-&gt;config.sample_rate;
+303 
+304     // Initialize compressor with config values
+305     compressor_init(&amp;p-&gt;compressor, sample_rate);
+306     compressor_set_params(&amp;p-&gt;compressor, p-&gt;config.comp_threshold_db, p-&gt;config.comp_ratio, p-&gt;config.comp_attack_ns,
+307                           p-&gt;config.comp_release_ns, p-&gt;config.comp_makeup_db);
+308     log_info(&quot;&#x2713; Capture compressor: threshold=%.1fdB, ratio=%.1f:1, makeup=+%.1fdB&quot;, p-&gt;config.comp_threshold_db,
+309              p-&gt;config.comp_ratio, p-&gt;config.comp_makeup_db);
+310 
+311     // Initialize noise gate with config values
+312     noise_gate_init(&amp;p-&gt;noise_gate, sample_rate);
+313     noise_gate_set_params(&amp;p-&gt;noise_gate, p-&gt;config.gate_threshold, p-&gt;config.gate_attack_ns, p-&gt;config.gate_release_ns,
+314                           p-&gt;config.gate_hysteresis);
+315     log_info(&quot;&#x2713; Capture noise gate: threshold=%.4f (%.1fdB)&quot;, p-&gt;config.gate_threshold,
+316              20.0f * log10f(p-&gt;config.gate_threshold + 1e-10f));
+317 
+318     // Initialize PLAYBACK noise gate - cuts quiet received audio before speakers
+319     // Very low threshold - only cut actual silence, not quiet voice audio
+320     // The server sends audio with RMS=0.01-0.02, so threshold must be below that
+321     noise_gate_init(&amp;p-&gt;playback_noise_gate, sample_rate);
+322     noise_gate_set_params(&amp;p-&gt;playback_noise_gate,
+323                           0.002f, // -54dB threshold - only cut near-silence
+324                           1.0f,   // 1ms attack - fast open
+325                           50.0f,  // 50ms release - smooth close
+326                           0.4f);  // Hysteresis
+327     log_info(&quot;&#x2713; Playback noise gate: threshold=0.002 (-54dB)&quot;);
+328 
+329     // Initialize highpass filter (removes low-frequency rumble)
+330     highpass_filter_init(&amp;p-&gt;highpass, p-&gt;config.highpass_hz, sample_rate);
+331     log_info(&quot;&#x2713; Capture highpass filter: %.1f Hz&quot;, p-&gt;config.highpass_hz);
+332 
+333     // Initialize lowpass filter (removes high-frequency hiss)
+334     lowpass_filter_init(&amp;p-&gt;lowpass, p-&gt;config.lowpass_hz, sample_rate);
+335     log_info(&quot;&#x2713; Capture lowpass filter: %.1f Hz&quot;, p-&gt;config.lowpass_hz);
+336   }
+337 
+338   p-&gt;initialized = true;
+339 
+340   // Initialize startup fade-in to prevent initial microphone click
+341   // 200ms at 48kHz = 9600 samples - gradual ramp from silence to full volume
+342   // Longer fade-in (200ms vs 50ms) gives much smoother transition without audible pop
+343   p-&gt;capture_fadein_remaining = (p-&gt;config.sample_rate * 200) / 1000; // 200ms worth of samples
+344   log_info(&quot;&#x2713; Capture fade-in: %d samples (200ms)&quot;, p-&gt;capture_fadein_remaining);
+345 
+346   log_info(&quot;Audio pipeline created: %dHz, %dms frames, %dkbps Opus&quot;, p-&gt;config.sample_rate, p-&gt;config.frame_size_ns,
+347            p-&gt;config.opus_bitrate / 1000);
+348 
+349   (void)NAMED_REGISTER_CLIENT_AUDIO_PIPELINE(p, &quot;audio_pipeline&quot;, NULL);
+350 
+351   return p;
+352 
+353 error:
+354   if (p-&gt;encoder)
+355     opus_encoder_destroy(p-&gt;encoder);
+356   if (p-&gt;decoder)
+357     opus_decoder_destroy(p-&gt;decoder);
+358   if (p-&gt;echo_canceller) {
+359     delete static_cast&lt;WebRTCAec3Wrapper *&gt;(p-&gt;echo_canceller);
+360   }
+361   SAFE_FREE(p);
+362   return NULL;
+363 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>client_audio_pipeline_default_config()</b>,
+    <b>compressor_init()</b>, <b>compressor_set_params()</b>,
+    <b>highpass_filter_init()</b>, <b>lowpass_filter_init()</b>,
+    <b>noise_gate_init()</b>, <b>noise_gate_set_params()</b>, and
+    <b>wav_writer_open()</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="client_audio_pipeline_config_t_client_audio_pipeline_default_config_(void_)"><a class="permalink" href="#client_audio_pipeline_config_t_client_audio_pipeline_default_config_(void_)">client_audio_pipeline_config_t
+  client_audio_pipeline_default_config (void )</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>103                                                                           {
+104   return (client_audio_pipeline_config_t){
+105       .sample_rate = CLIENT_AUDIO_PIPELINE_SAMPLE_RATE,
+106       .frame_size_ns = CLIENT_AUDIO_PIPELINE_FRAME_MS,
+107       .opus_bitrate = 24000,
+108 
+109       .echo_filter_ns = 250,
+110 
+111       .noise_suppress_db = -25,
+112       .agc_level = 16000, // Increased from 8000 for louder output
+113       .agc_max_gain = 35, // Increased from 30 dB to handle very quiet mics (35 dB = ~56x gain)
+114 
+115       // Jitter margin: wait this long before starting playback
+116       // Lower = less latency but more risk of underruns
+117       // Must match AUDIO_JITTER_BUFFER_THRESHOLD in ringbuffer.h.
+118       .jitter_margin_ns = 20, // 20ms = 1 Opus packet (optimized for LAN)
+119 
+120       // Higher cutoff to cut low-frequency rumble and feedback
+121       .highpass_hz = 150.0f, // Was 80Hz, increased to break rumble feedback loop
+122       .lowpass_hz = 8000.0f,
+123 
+124       // Compressor: only compress loud peaks, moderate makeup for volume
+125       // User reported clipping with +6dB makeup gain
+126       .comp_threshold_db = -12.0f,            // Compress above -12dB (was -6dB)
+127       .comp_ratio = 3.0f,                     // Gentler 3:1 ratio
+128       .comp_attack_ns = 5 * NS_PER_MS_INT,    // Fast attack for peaks
+129       .comp_release_ns = 150 * NS_PER_MS_INT, // Slower release
+130       .comp_makeup_db = 6.0f,                 // Increased from 2dB for more output volume
+131 
+132       // Noise gate: VERY aggressive to cut quiet background audio completely
+133       // User feedback: &quot;don't amplify or play quiet background audio at all&quot;
+134       .gate_threshold = 0.08f,               // -22dB threshold (was 0.02/-34dB) - cuts quiet audio hard
+135       .gate_attack_ns = 500 * NS_PER_US_INT, // Very fast attack
+136       .gate_release_ns = 30 * NS_PER_MS_INT, // Fast release (was 50ms)
+137       .gate_hysteresis = 0.3f,               // Tighter hysteresis = stays closed longer
+138 
+139       .flags = CLIENT_AUDIO_PIPELINE_FLAGS_ALL,
+140   };
+141 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>client_audio_pipeline_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_destroy_(client_audio_pipeline_t_*_pipeline)"><a class="permalink" href="#void_client_audio_pipeline_destroy_(client_audio_pipeline_t_*_pipeline)">void
+  client_audio_pipeline_destroy (client_audio_pipeline_t * pipeline)</a></h2>
+<p class="Pp">Definition at line <b>365</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>365                                                                       {
+366   if (!pipeline)
+367     return;
+368 
+369   // Clean up WebRTC AEC3 AudioBuffer instances
+370   if (pipeline-&gt;aec3_render_buffer) {
+371     delete static_cast&lt;webrtc::AudioBuffer *&gt;(pipeline-&gt;aec3_render_buffer);
+372     pipeline-&gt;aec3_render_buffer = NULL;
+373   }
+374   if (pipeline-&gt;aec3_capture_buffer) {
+375     delete static_cast&lt;webrtc::AudioBuffer *&gt;(pipeline-&gt;aec3_capture_buffer);
+376     pipeline-&gt;aec3_capture_buffer = NULL;
+377   }
+378 
+379   // Clean up WebRTC AEC3
+380   if (pipeline-&gt;echo_canceller) {
+381     delete static_cast&lt;WebRTCAec3Wrapper *&gt;(pipeline-&gt;echo_canceller);
+382     pipeline-&gt;echo_canceller = NULL;
+383   }
+384 
+385   // Clean up Opus
+386   if (pipeline-&gt;encoder) {
+387     opus_encoder_destroy(pipeline-&gt;encoder);
+388     pipeline-&gt;encoder = NULL;
+389   }
+390   if (pipeline-&gt;decoder) {
+391     opus_decoder_destroy(pipeline-&gt;decoder);
+392     pipeline-&gt;decoder = NULL;
+393   }
+394 
+395   // Clean up debug WAV writers
+396   if (pipeline-&gt;debug_wav_aec3_in) {
+397     wav_writer_close((wav_writer_t *)pipeline-&gt;debug_wav_aec3_in);
+398     pipeline-&gt;debug_wav_aec3_in = NULL;
+399   }
+400   if (pipeline-&gt;debug_wav_aec3_out) {
+401     wav_writer_close((wav_writer_t *)pipeline-&gt;debug_wav_aec3_out);
+402     pipeline-&gt;debug_wav_aec3_out = NULL;
+403   }
+404 
+405   NAMED_UNREGISTER(pipeline);
+406 
+407   SAFE_FREE(pipeline);
+408 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>wav_writer_close()</b>.</p>
+<p class="Pp">Referenced by <b>audio_cleanup()</b>, and
+    <b>audio_client_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="client_audio_pipeline_flags_t_client_audio_pipeline_get_flags_(client_audio_pipeline_t_*_pipeline)"><a class="permalink" href="#client_audio_pipeline_flags_t_client_audio_pipeline_get_flags_(client_audio_pipeline_t_*_pipeline)">client_audio_pipeline_flags_t
+  client_audio_pipeline_get_flags (client_audio_pipeline_t * pipeline)</a></h2>
+<p class="Pp">Definition at line <b>421</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>421                                                                                                  {
+422   if (!pipeline)
+423     return CLIENT_AUDIO_PIPELINE_FLAGS_MINIMAL;
+424   // No mutex needed - flags are only written from main thread during setup
+425   return pipeline-&gt;flags;
+426 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_get_playback_frame_(client_audio_pipeline_t_*_pipeline,_float_*_output,_int_num_samples)"><a class="permalink" href="#int_client_audio_pipeline_get_playback_frame_(client_audio_pipeline_t_*_pipeline,_float_*_output,_int_num_samples)">int
+  client_audio_pipeline_get_playback_frame (client_audio_pipeline_t * pipeline,
+  float * output, int num_samples)</a></h2>
+<p class="Pp">Get a processed playback frame (currently just returns decoded
+    frame)</p>
+<p class="Pp">Definition at line <b>489</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>489                                                                                                                 {
+490   if (!pipeline || !output) {
+491     return -1;
+492   }
+493 
+494   // No mutex needed - this is a placeholder
+495   memset(output, 0, num_samples * sizeof(float));
+496   return num_samples;
+497 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_jitter_margin_(client_audio_pipeline_t_*_pipeline)"><a class="permalink" href="#int_client_audio_pipeline_jitter_margin_(client_audio_pipeline_t_*_pipeline)">int
+  client_audio_pipeline_jitter_margin (client_audio_pipeline_t *
+  pipeline)</a></h2>
+<p class="Pp">Get jitter buffer margin</p>
+<p class="Pp">Definition at line <b>691</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>691                                                                            {
+692   if (!pipeline)
+693     return 0;
+694   return pipeline-&gt;config.jitter_margin_ns;
+695 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_client_audio_pipeline_playback_(client_audio_pipeline_t_*_pipeline,_const_uint8_t_*_opus_in,_int_opus_len,_float_*_output,_int_num_samples)"><a class="permalink" href="#int_client_audio_pipeline_playback_(client_audio_pipeline_t_*_pipeline,_const_uint8_t_*_opus_in,_int_opus_len,_float_*_output,_int_num_samples)">int
+  client_audio_pipeline_playback (client_audio_pipeline_t * pipeline, const
+  uint8_t * opus_in, int opus_len, float * output, int num_samples)</a></h2>
+<p class="Pp">Process network playback (decode and register with echo canceller
+    as reference)</p>
+<p class="Pp">Definition at line <b>459</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>460                                                                    {
+461   if (!pipeline || !opus_in || !output) {
+462     return -1;
+463   }
+464 
+465   // No mutex needed - Opus decoder is only used from this thread
+466 
+467   // Decode Opus
+468   int decoded_samples = opus_decode_float(pipeline-&gt;decoder, opus_in, opus_len, output, num_samples, 0);
+469 
+470   if (decoded_samples &lt; 0) {
+471     log_error(&quot;Opus decoding failed: %d&quot;, decoded_samples);
+472     return -1;
+473   }
+474 
+475   // Apply playback noise gate - cut quiet background audio before it reaches speakers
+476   if (decoded_samples &gt; 0) {
+477     noise_gate_process_buffer(&amp;pipeline-&gt;playback_noise_gate, output, decoded_samples);
+478   }
+479 
+480   // NOTE: Render signal is queued to AEC3 in output_callback() when audio plays,
+481   // not here. The capture thread drains the queue and processes AEC3.
+482 
+483   return decoded_samples;
+484 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>noise_gate_process_buffer()</b>.</p>
+<p class="Pp">Referenced by <b>audio_decode_opus()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_process_duplex_(client_audio_pipeline_t_*_pipeline,_const_float_*_render_samples,_int_render_count,_const_float_*_capture_samples,_int_capture_count,_float_*_processed_output)"><a class="permalink" href="#void_client_audio_pipeline_process_duplex_(client_audio_pipeline_t_*_pipeline,_const_float_*_render_samples,_int_render_count,_const_float_*_capture_samples,_int_capture_count,_float_*_processed_output)">void
+  client_audio_pipeline_process_duplex (client_audio_pipeline_t * pipeline,
+  const float * render_samples, int render_count, const float * capture_samples,
+  int capture_count, float * processed_output)</a></h2>
+<p class="Pp">Process AEC3 inline in full-duplex callback (REAL-TIME SAFE).</p>
+<p class="Pp"></p>
+<p class="Pp">This is the PROFESSIONAL approach to AEC3 timing:</p>
+<ul class="Bl-bullet">
+  <li>Called from a single PortAudio full-duplex callback</li>
+  <li>render_samples = what is being played to speakers RIGHT NOW</li>
+  <li>capture_samples = what microphone captured RIGHT NOW</li>
+  <li>Perfect synchronization - no timing mismatch possible</li>
+</ul>
+<p class="Pp">This function does ALL AEC3 processing inline:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>AnalyzeRender on render samples (speaker output)</dd>
+  <dt>2.</dt>
+  <dd>AnalyzeCapture + ProcessCapture on capture samples</dd>
+  <dt>3.</dt>
+  <dd>Apply filters, noise gate, compressor</dd>
+</dl>
+<p class="Pp">Returns processed capture samples in processed_output. Opus
+    encoding is done separately by the encoding thread.</p>
+<p class="Pp">Definition at line <b>516</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>518                                                                    {
+519   if (!pipeline || !processed_output)
+520     return;
+521 
+522   // Copy capture samples to output buffer for processing
+523   if (capture_samples &amp;&amp; capture_count &gt; 0) {
+524     memcpy(processed_output, capture_samples, capture_count * sizeof(float));
+525   } else {
+526     memset(processed_output, 0, capture_count * sizeof(float));
+527     return;
+528   }
+529 
+530   // Check for AEC3 bypass
+531   static int bypass_aec3 = -1;
+532   if (bypass_aec3 == -1) {
+533     const char *env = platform_getenv(&quot;BYPASS_AEC3&quot;);
+534     bypass_aec3 = (env &amp;&amp; (strcmp(env, &quot;1&quot;) == 0 || strcmp(env, &quot;true&quot;) == 0)) ? 1 : 0;
+535     if (bypass_aec3) {
+536       log_warn(&quot;AEC3 BYPASSED (full-duplex mode) via BYPASS_AEC3=1&quot;);
+537     }
+538   }
+539 
+540   // Debug WAV recording
+541   if (pipeline-&gt;debug_wav_aec3_in) {
+542     wav_writer_write((wav_writer_t *)pipeline-&gt;debug_wav_aec3_in, capture_samples, capture_count);
+543   }
+544 
+545   // Apply startup fade-in using smoothstep curve
+546   if (pipeline-&gt;capture_fadein_remaining &gt; 0) {
+547     const int total_fadein_samples = (pipeline-&gt;config.sample_rate * 200) / 1000;
+548     for (int i = 0; i &lt; capture_count &amp;&amp; pipeline-&gt;capture_fadein_remaining &gt; 0; i++) {
+549       float progress = 1.0f - ((float)pipeline-&gt;capture_fadein_remaining / (float)total_fadein_samples);
+550       float gain = smoothstep(progress);
+551       processed_output[i] *= gain;
+552       pipeline-&gt;capture_fadein_remaining--;
+553     }
+554   }
+555 
+556   // WebRTC AEC3 processing - INLINE, no ring buffer, no mutex
+557   if (!bypass_aec3 &amp;&amp; pipeline-&gt;flags.echo_cancel &amp;&amp; pipeline-&gt;echo_canceller) {
+558     auto wrapper = static_cast&lt;WebRTCAec3Wrapper *&gt;(pipeline-&gt;echo_canceller);
+559     if (wrapper &amp;&amp; wrapper-&gt;aec3) {
+560       const int webrtc_frame_size = 480; // 10ms at 48kHz
+561 
+562       auto *render_buf = static_cast&lt;webrtc::AudioBuffer *&gt;(pipeline-&gt;aec3_render_buffer);
+563       auto *capture_buf = static_cast&lt;webrtc::AudioBuffer *&gt;(pipeline-&gt;aec3_capture_buffer);
+564 
+565       if (render_buf &amp;&amp; capture_buf) {
+566         float *const *render_channels = render_buf-&gt;channels();
+567         float *const *capture_channels = capture_buf-&gt;channels();
+568 
+569         if (render_channels &amp;&amp; render_channels[0] &amp;&amp; capture_channels &amp;&amp; capture_channels[0]) {
+570           // Verify render_samples is valid before accessing
+571           if (!render_samples &amp;&amp; render_count &gt; 0) {
+572             log_warn_every(1000000, &quot;AEC3: render_samples is NULL but render_count=%d&quot;, render_count);
+573             return;
+574           }
+575 
+576           // Process in 10ms chunks (AEC3 requirement)
+577           int render_offset = 0;
+578           int capture_offset = 0;
+579 
+580           while (capture_offset &lt; capture_count || render_offset &lt; render_count) {
+581             // STEP 1: Feed render signal (what's playing to speakers)
+582             // In full-duplex, this is THE EXACT audio being played RIGHT NOW
+583             if (render_samples &amp;&amp; render_offset &lt; render_count) {
+584               int render_chunk = (render_offset + webrtc_frame_size &lt;= render_count) ? webrtc_frame_size
+585                                                                                      : (render_count - render_offset);
+586               if (render_chunk == webrtc_frame_size) {
+587                 // Scale float [-1,1] to WebRTC int16-range [-32768, 32767]
+588                 copy_buffer_with_gain(&amp;render_samples[render_offset], render_channels[0], webrtc_frame_size, 32768.0f);
+589                 render_buf-&gt;SplitIntoFrequencyBands();
+590                 wrapper-&gt;aec3-&gt;AnalyzeRender(render_buf);
+591                 render_buf-&gt;MergeFrequencyBands();
+592                 g_render_frames_fed.fetch_add(1, std::memory_order_relaxed);
+593               }
+594               render_offset += render_chunk;
+595             }
+596 
+597             // STEP 2: Process capture (microphone input)
+598             if (capture_offset &lt; capture_count) {
+599               int capture_chunk = (capture_offset + webrtc_frame_size &lt;= capture_count)
+600                                       ? webrtc_frame_size
+601                                       : (capture_count - capture_offset);
+602               if (capture_chunk == webrtc_frame_size) {
+603                 // Scale float [-1,1] to WebRTC int16-range [-32768, 32767]
+604                 copy_buffer_with_gain(&amp;processed_output[capture_offset], capture_channels[0], webrtc_frame_size,
+605                                       32768.0f);
+606 
+607                 // AEC3 sequence: AnalyzeCapture, split, ProcessCapture, merge
+608                 wrapper-&gt;aec3-&gt;AnalyzeCapture(capture_buf);
+609                 capture_buf-&gt;SplitIntoFrequencyBands();
+610 
+611                 // NOTE: SetAudioBufferDelay() is just an initial hint when use_external_delay_estimator=false
+612                 // (default). AEC3's internal delay estimator will find the actual delay (~144ms in practice). We don't
+613                 // call it here - let AEC3 estimate delay automatically.
+614 
+615                 wrapper-&gt;aec3-&gt;ProcessCapture(capture_buf, false);
+616                 capture_buf-&gt;MergeFrequencyBands();
+617 
+618                 // Scale back to float range and apply soft clip to prevent distortion
+619                 // Use gentle soft_clip (threshold=0.6, steepness=2.5) to leave headroom for compressor
+620                 for (int j = 0; j &lt; webrtc_frame_size; j++) {
+621                   float sample = capture_channels[0][j] / 32768.0f;
+622                   processed_output[capture_offset + j] = soft_clip(sample, 0.6f, 2.5f);
+623                 }
+624 
+625                 // Log AEC3 metrics periodically
+626                 static int duplex_log_count = 0;
+627                 if (++duplex_log_count % 100 == 1) {
+628                   webrtc::EchoControl::Metrics metrics = wrapper-&gt;aec3-&gt;GetMetrics();
+629                   log_info(&quot;AEC3 DUPLEX: ERL=%.1f ERLE=%.1f delay=%dms&quot;, metrics.echo_return_loss,
+630                            metrics.echo_return_loss_enhancement, metrics.delay_ms);
+631                   audio_analysis_set_aec3_metrics(metrics.echo_return_loss, metrics.echo_return_loss_enhancement,
+632                                                   metrics.delay_ms);
+633                 }
+634               }
+635               capture_offset += capture_chunk;
+636             }
+637           }
+638         }
+639       }
+640     }
+641   }
+642 
+643   // Debug WAV recording (after AEC3)
+644   if (pipeline-&gt;debug_wav_aec3_out) {
+645     wav_writer_write((wav_writer_t *)pipeline-&gt;debug_wav_aec3_out, processed_output, capture_count);
+646   }
+647 
+648   // Apply manual AGC (simple pre-gain to boost quiet microphones)
+649   // TODO: Replace with proper WebRTC AGC module for adaptive gain control
+650   static int agc_call_count = 0;
+651   agc_call_count++;
+652   if (agc_call_count &lt;= 3 || agc_call_count % 100 == 0) {
+653     log_info(&quot;AGC check #%d: flags.agc=%d, agc_max_gain=%.1f&quot;, agc_call_count, pipeline-&gt;flags.agc,
+654              pipeline-&gt;config.agc_max_gain);
+655   }
+656 
+657   if (pipeline-&gt;flags.agc) {
+658     // Convert dB to linear gain: linear = 10^(dB/20)
+659     const float agc_pregain = powf(10.0f, pipeline-&gt;config.agc_max_gain / 20.0f);
+660     for (int i = 0; i &lt; capture_count; i++) {
+661       processed_output[i] *= agc_pregain;
+662     }
+663     if (agc_call_count &lt;= 3 || agc_call_count % 100 == 0) {
+664       log_info(&quot;AGC: Applied %.1f dB pre-gain (%.2fx multiplier)&quot;, pipeline-&gt;config.agc_max_gain, agc_pregain);
+665     }
+666   }
+667 
+668   // Apply capture processing chain: filters, noise gate, compressor
+669   if (pipeline-&gt;flags.highpass) {
+670     highpass_filter_process_buffer(&amp;pipeline-&gt;highpass, processed_output, capture_count);
+671   }
+672   if (pipeline-&gt;flags.lowpass) {
+673     lowpass_filter_process_buffer(&amp;pipeline-&gt;lowpass, processed_output, capture_count);
+674   }
+675   if (pipeline-&gt;flags.noise_gate) {
+676     noise_gate_process_buffer(&amp;pipeline-&gt;noise_gate, processed_output, capture_count);
+677   }
+678   if (pipeline-&gt;flags.compressor) {
+679     for (int i = 0; i &lt; capture_count; i++) {
+680       float gain = compressor_process_sample(&amp;pipeline-&gt;compressor, processed_output[i]);
+681       processed_output[i] *= gain;
+682     }
+683     // Apply soft clipping after compressor - threshold=0.7 gives 3dB headroom
+684     soft_clip_buffer(processed_output, capture_count, 0.7f, 3.0f);
+685   }
+686 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_analysis_set_aec3_metrics()</b>,
+    <b>compressor_process_sample()</b>, <b>copy_buffer_with_gain()</b>,
+    <b>highpass_filter_process_buffer()</b>,
+    <b>lowpass_filter_process_buffer()</b>, <b>noise_gate_process_buffer()</b>,
+    <b>platform_getenv()</b>, <b>smoothstep()</b>, <b>soft_clip()</b>,
+    <b>soft_clip_buffer()</b>, and <b>wav_writer_write()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_reset_(client_audio_pipeline_t_*_pipeline)"><a class="permalink" href="#void_client_audio_pipeline_reset_(client_audio_pipeline_t_*_pipeline)">void
+  client_audio_pipeline_reset (client_audio_pipeline_t * pipeline)</a></h2>
+<p class="Pp">Reset pipeline state</p>
+<p class="Pp">Definition at line <b>700</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>700                                                                     {
+701   if (!pipeline)
+702     return;
+703 
+704   // Reset global counters
+705   g_render_frames_fed.store(0, std::memory_order_relaxed);
+706   g_max_render_rms.store(0.0f, std::memory_order_relaxed);
+707 
+708   log_info(&quot;Pipeline state reset&quot;);
+709 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_client_audio_pipeline_set_flags_(client_audio_pipeline_t_*_pipeline,_client_audio_pipeline_flags_t_flags)"><a class="permalink" href="#void_client_audio_pipeline_set_flags_(client_audio_pipeline_t_*_pipeline,_client_audio_pipeline_flags_t_flags)">void
+  client_audio_pipeline_set_flags (client_audio_pipeline_t * pipeline,
+  client_audio_pipeline_flags_t flags)</a></h2>
+<p class="Pp">Definition at line <b>414</b> of file
+  <b>client_pipeline.cpp</b>.</p>
+<pre>414                                                                                                              {
+415   if (!pipeline)
+416     return;
+417   // No mutex needed - flags are only read by capture thread
+418   pipeline-&gt;flags = flags;
+419 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

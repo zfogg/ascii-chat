@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>stun.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">stun.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">stun.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">stun.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>stun_servers_parse</b> (const char *csv_servers, const char
+    *default_csv, stun_server_t *out_servers, int max_count)
+  <br/>
+  Parse comma-separated STUN server URLs into stun_server_t array.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_stun_servers_parse_(const_char_*_csv_servers,_const_char_*_default_csv,_stun_server_t_*_out_servers,_int_max_count)"><a class="permalink" href="#int_stun_servers_parse_(const_char_*_csv_servers,_const_char_*_default_csv,_stun_server_t_*_out_servers,_int_max_count)">int
+  stun_servers_parse (const char * csv_servers, const char * default_csv,
+  stun_server_t * out_servers, int max_count)</a></h2>
+<p class="Pp">Parse comma-separated STUN server URLs into stun_server_t array.
+    Parses a comma-separated string of STUN server URLs into stun_server_t
+    structs. If the input string is empty or NULL, uses the provided default
+    string.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>csv_servers</i> Comma-separated STUN server URLs (can
+  be empty)
+<br/>
+<i>default_csv</i> Default servers to use if csv_servers is empty
+<br/>
+<i>out_servers</i> Output array of stun_server_t structs (must be pre-allocated)
+<br/>
+<i>max_count</i> Maximum number of servers to parse</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of servers parsed (0-max_count), or -1 on
+  error</div>
+<p class="Pp">Definition at line <b>51</b> of file <b>stun.c</b>.</p>
+<pre>51                                                                                                                     {
+52   if (!out_servers || max_count &lt;= 0) {
+53     log_warn(&quot;stun_servers_parse: Invalid output array or max_count&quot;);
+54     return -1;
+55   }
+56 
+57   // Use defaults if input is empty
+58   const char *servers_to_parse = csv_servers;
+59   if (!servers_to_parse || servers_to_parse[0] == '\0') {
+60     servers_to_parse = default_csv;
+61   }
+62 
+63   if (!servers_to_parse || servers_to_parse[0] == '\0') {
+64     log_warn(&quot;stun_servers_parse: No servers to parse and no defaults provided&quot;);
+65     return 0;
+66   }
+67 
+68   // Get compiled regex (lazy initialization)
+69   pcre2_code *regex = stun_entry_regex_get();
+70 
+71   // If regex not available, fall back to manual parsing
+72   if (!regex) {
+73     log_warn(&quot;stun_servers_parse: PCRE2 regex not available, falling back to manual parsing&quot;);
+74     // Fallback: manual character-by-character parsing (original implementation)
+75     int count = 0;
+76     const char *current = servers_to_parse;
+77     const char *end;
+78 
+79     while (count &lt; max_count &amp;&amp; *current != '\0') {
+80       while (isspace(*current)) {
+81         current++;
+82       }
+83       if (*current == '\0')
+84         break;
+85 
+86       end = strchr(current, ',');
+87       if (!end) {
+88         end = current + strlen(current);
+89       }
+90 
+91       while (end &gt; current &amp;&amp; isspace(*(end - 1))) {
+92         end--;
+93       }
+94 
+95       size_t len = end - current;
+96       if (len == 0) {
+97         current = *end ? end + 1 : end;
+98         continue;
+99       }
+100 
+101       if (len &gt;= STUN_MAX_URL_LEN) {
+102         log_warn(&quot;stun_servers_parse: STUN server URL too long (max %d): %.*s&quot;, STUN_MAX_URL_LEN, (int)len, current);
+103         return -1;
+104       }
+105 
+106       out_servers[count].host_len = (uint8_t)len;
+107       memcpy(out_servers[count].host, current, len);
+108       out_servers[count].host[len] = '\0';
+109       count++;
+110 
+111       current = *end ? end + 1 : end;
+112     }
+113     return count;
+114   }
+115 
+116   // Parse using PCRE2 regex: match each trimmed entry
+117   int count = 0;
+118   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+119   if (!match_data) {
+120     log_warn(&quot;stun_servers_parse: Failed to allocate PCRE2 match data&quot;);
+121     return -1;
+122   }
+123 
+124   size_t offset = 0;
+125   int rc;
+126 
+127   while (count &lt; max_count) {
+128     rc = pcre2_jit_match(regex, (PCRE2_SPTR8)servers_to_parse, strlen(servers_to_parse), offset, 0, match_data, NULL);
+129 
+130     if (rc &lt; 0) {
+131       // No more matches (PCRE2_ERROR_NOMATCH or other error)
+132       break;
+133     }
+134 
+135     // Extract the captured group (group 1)
+136     size_t len;
+137     const char *server_url = asciichat_pcre2_extract_group_ptr(match_data, 1, servers_to_parse, &amp;len);
+138 
+139     if (!server_url) {
+140       break; // Group not matched
+141     }
+142 
+143     if (len &gt;= STUN_MAX_URL_LEN) {
+144       log_warn(&quot;stun_servers_parse: STUN server URL too long (max %d): %.*s&quot;, STUN_MAX_URL_LEN, (int)len, server_url);
+145       pcre2_match_data_free(match_data);
+146       return -1;
+147     }
+148 
+149     // Copy trimmed entry to output
+150     out_servers[count].host_len = (uint8_t)len;
+151     memcpy(out_servers[count].host, server_url, len);
+152     out_servers[count].host[len] = '\0';
+153 
+154     count++;
+155 
+156     // Move offset to end of this match (need ovector for overall match end)
+157     PCRE2_SIZE *ovector = pcre2_get_ovector_pointer(match_data);
+158     offset = ovector[1];
+159 
+160     // Skip comma if present
+161     if (offset &lt; strlen(servers_to_parse) &amp;&amp; servers_to_parse[offset] == ',') {
+162       offset++;
+163     }
+164   }
+165 
+166   pcre2_match_data_free(match_data);
+167   return count;
+168 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_pcre2_extract_group_ptr()</b>.</p>
+<p class="Pp">Referenced by <b>server_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

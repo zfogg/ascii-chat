@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>time.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">time.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">time.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">time.c - Time functions for WASM/Emscripten.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">uint64_t <b>platform_get_time_ms</b> (void)
+  <br/>
+  uint64_t <b>platform_get_time_us</b> (void)
+  <br/>
+  void <b>platform_sleep_ms</b> (unsigned int ms)
+  <br/>
+  void <b>platform_sleep_us</b> (unsigned int us)
+  <br/>
+  uint64_t <b>platform_get_monotonic_time_ns</b> (void)
+  <br/>
+  uint64_t <b>platform_get_monotonic_time_us</b> (void)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Time functions for WASM/Emscripten.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>platform/wasm/time.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_platform_get_monotonic_time_ns_(void_)"><a class="permalink" href="#uint64_t_platform_get_monotonic_time_ns_(void_)">uint64_t
+  platform_get_monotonic_time_ns (void )</a></h2>
+<p class="Pp">Definition at line <b>38</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>38                                               {
+39   struct timespec ts;
+40   clock_gettime(CLOCK_MONOTONIC, &amp;ts);
+41   return (uint64_t)ts.tv_sec * 1000000000ULL + (uint64_t)ts.tv_nsec;
+42 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_platform_get_monotonic_time_us_(void_)"><a class="permalink" href="#uint64_t_platform_get_monotonic_time_us_(void_)">uint64_t
+  platform_get_monotonic_time_us (void )</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>44                                               {
+45   struct timespec ts;
+46   clock_gettime(CLOCK_MONOTONIC, &amp;ts);
+47   return (uint64_t)ts.tv_sec * 1000000ULL + (uint64_t)ts.tv_nsec / 1000ULL;
+48 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>backtrace_print()</b>,
+    <b>discovery_session_process()</b>, <b>server_main()</b>,
+    <b>terminal_screen_render()</b>, <b>ui_status_update()</b>, and
+    <b>webrtc_is_gathering_timed_out()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_platform_get_time_ms_(void_)"><a class="permalink" href="#uint64_t_platform_get_time_ms_(void_)">uint64_t
+  platform_get_time_ms (void )</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>12                                     {
+13   struct timeval tv;
+14   gettimeofday(&amp;tv, NULL);
+15   return (uint64_t)tv.tv_sec * 1000 + (uint64_t)tv.tv_usec / 1000;
+16 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_platform_get_time_us_(void_)"><a class="permalink" href="#uint64_t_platform_get_time_us_(void_)">uint64_t
+  platform_get_time_us (void )</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>18                                     {
+19   struct timeval tv;
+20   gettimeofday(&amp;tv, NULL);
+21   return (uint64_t)tv.tv_sec * 1000000 + (uint64_t)tv.tv_usec;
+22 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_sleep_ms_(unsigned_int_ms)"><a class="permalink" href="#void_platform_sleep_ms_(unsigned_int_ms)">void
+  platform_sleep_ms (unsigned int ms)</a></h2>
+<p class="Pp">Definition at line <b>24</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>24                                         {
+25   struct timespec ts;
+26   ts.tv_sec = ms / 1000;
+27   ts.tv_nsec = (ms % 1000) * 1000000;
+28   nanosleep(&amp;ts, NULL);
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_server_shutdown()</b>,
+    <b>client_receive_thread()</b>, <b>client_video_render_thread()</b>,
+    <b>disconnect_client_for_bad_data()</b>, <b>discovery_session_process()</b>,
+    <b>session_client_like_run()</b>, and <b>ui_mdns_select()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_platform_sleep_us_(unsigned_int_us)"><a class="permalink" href="#void_platform_sleep_us_(unsigned_int_us)">void
+  platform_sleep_us (unsigned int us)</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+  <b>platform/wasm/time.c</b>.</p>
+<pre>31                                         {
+32   struct timespec ts;
+33   ts.tv_sec = us / 1000000;
+34   ts.tv_nsec = (us % 1000000) * 1000;
+35   nanosleep(&amp;ts, NULL);
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acip_websocket_client_transport_create()</b>,
+    <b>audio_client_init()</b>, <b>audio_stop_thread()</b>,
+    <b>capture_stop_thread()</b>, <b>client_send_thread_func()</b>,
+    <b>discovery_session_process()</b>, <b>platform_write_all()</b>,
+    <b>protocol_stop_connection()</b>, <b>remove_client()</b>,
+    <b>server_connection_establish()</b>, <b>server_main()</b>,
+    <b>session_capture_create()</b>, <b>stats_logger_thread()</b>, and
+    <b>time_sleep_ns()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

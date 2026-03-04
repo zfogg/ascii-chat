@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>webrtc_peer_connection(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">webrtc_peer_connection(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">webrtc_peer_connection(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">webrtc_peer_connection - WebRTC peer connection state.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>rtc_id</b>
+  <br/>
+  libdatachannel peer connection ID webrtc_config_t <b>config</b>
+  <br/>
+  Configuration with callbacks. webrtc_state_t <b>state</b>
+  <br/>
+  Current connection state. webrtc_gathering_state_t <b>gathering_state</b>
+  <br/>
+  Current ICE gathering state. uint64_t <b>gathering_start_time_ms</b>
+  <br/>
+  When gathering started (platform_get_time_ms). webrtc_data_channel_t *
+    <b>dc</b>
+  <br/>
+  Primary data channel (if created/received).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebRTC peer connection state.</p>
+<p class="Pp">Represents a WebRTC peer-to-peer connection using libdatachannel.
+    Manages ICE state, connection state, and data channels.</p>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_config_t_webrtc_peer_connection::config"><a class="permalink" href="#webrtc_config_t_webrtc_peer_connection::config">webrtc_config_t
+  webrtc_peer_connection::config</a></h2>
+<p class="Pp">Configuration with callbacks.</p>
+<p class="Pp">Definition at line <b>38</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_data_channel_t*_webrtc_peer_connection::dc"><a class="permalink" href="#webrtc_data_channel_t*_webrtc_peer_connection::dc">webrtc_data_channel_t*
+  webrtc_peer_connection::dc</a></h2>
+<p class="Pp">Primary data channel (if created/received).</p>
+<p class="Pp">Definition at line <b>42</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_webrtc_peer_connection::gathering_start_time_ms"><a class="permalink" href="#uint64_t_webrtc_peer_connection::gathering_start_time_ms">uint64_t
+  webrtc_peer_connection::gathering_start_time_ms</a></h2>
+<p class="Pp">When gathering started (platform_get_time_ms).</p>
+<p class="Pp">Definition at line <b>41</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_gathering_state_t_webrtc_peer_connection::gathering_state"><a class="permalink" href="#webrtc_gathering_state_t_webrtc_peer_connection::gathering_state">webrtc_gathering_state_t
+  webrtc_peer_connection::gathering_state</a></h2>
+<p class="Pp">Current ICE gathering state.</p>
+<p class="Pp">Definition at line <b>40</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_webrtc_peer_connection::rtc_id"><a class="permalink" href="#int_webrtc_peer_connection::rtc_id">int
+  webrtc_peer_connection::rtc_id</a></h2>
+<p class="Pp">libdatachannel peer connection ID</p>
+<p class="Pp">Definition at line <b>37</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_state_t_webrtc_peer_connection::state"><a class="permalink" href="#webrtc_state_t_webrtc_peer_connection::state">webrtc_state_t
+  webrtc_peer_connection::state</a></h2>
+<p class="Pp">Current connection state.</p>
+<p class="Pp">Definition at line <b>39</b> of file
+    <b>lib/network/webrtc/webrtc.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

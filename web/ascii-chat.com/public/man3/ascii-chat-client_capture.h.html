@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>capture.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">capture.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">capture.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">capture.h - ascii-chat Client Media Capture Management
+  Interface</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>capture_init</b> ()
+  <br/>
+  Initialize capture subsystem. int <b>capture_start_thread</b> ()
+  <br/>
+  Start capture thread. void <b>capture_stop_thread</b> ()
+  <br/>
+  Stop capture thread. <b>bool</b> <b>capture_thread_exited</b> ()
+  <br/>
+  Check if capture thread has exited. void <b>capture_cleanup</b> ()
+  <br/>
+  Cleanup capture subsystem.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ascii-chat Client Media Capture Management Interface</p>
+<p class="Pp">Defines the interface for video capture and transmission
+    management in the ascii-chat client. Abstracts over multiple media sources
+    (webcam, files, stdin, test patterns) and handles frame processing,
+    resizing, and FPS sync.</p>
+<p class="Pp"></p>
+<p class="Pp">The capture subsystem:</p>
+<ul class="Bl-bullet">
+  <li>Manages platform-specific webcam access via abstraction layer</li>
+  <li>Supports multiple media sources (webcam, local files, stdin, test
+      patterns)</li>
+  <li>Performs frame resizing and format conversion for network efficiency</li>
+  <li>Synchronizes frame transmission with configurable FPS rates</li>
+  <li>Handles periodic frame transmission to the server</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="Media_Source_Types"><a class="permalink" href="#Media_Source_Types">Media
+  Source Types</a></h2>
+<p class="Pp">The capture subsystem supports four media source types via the
+    <b>media_source_t</b> abstraction (see <b>media</b>):</p>
+<p class="Pp"></p>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>WEBCAM</b>: Hardware camera device (webcam/camera)</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Platform-specific access (V4L2 on Linux, AVFoundation on macOS)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Real-time capture with variable frame rate</dd>
+  <dt> &#x2022;</dt>
+  <dd>Selected via --webcam-index &lt;N&gt; (default: 0, first camera)</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>FILE</b>: Local media file or network stream</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Supported formats: mp4, avi, mkv, webm, mov, flv, wmv, gif</dd>
+  <dt> &#x2022;</dt>
+  <dd>Specified via --file &lt;path&gt; option</dd>
+  <dt> &#x2022;</dt>
+  <dd>Playback at configurable frame rate</dd>
+  <dt> &#x2022;</dt>
+  <dd>Loop support via --media-loop option</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>STDIN</b>: Piped or redirected media data</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Specified via --file - (dash indicates stdin)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Any format supported by FFmpeg (detected automatically)</dd>
+  <dt> &#x2022;</dt>
+  <dd>Useful for streaming pipes: ffmpeg ... | ascii-chat client --file -</dd>
+  <dt> &#x2022;</dt>
+  <dd>Does not support seeking/rewinding</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt>&#x2022;</dt>
+  <dd><b>TEST</b>: Procedural test pattern generator</dd>
+</dl>
+<dl class="Bl-tag">
+  <dt> &#x2022;</dt>
+  <dd>Enabled via --test-pattern option</dd>
+  <dt> &#x2022;</dt>
+  <dd>Generates animated test pattern without hardware</dd>
+  <dt> &#x2022;</dt>
+  <dd>Useful for testing without webcam access</dd>
+  <dt> &#x2022;</dt>
+  <dd>Always available (no hardware requirements)</dd>
+</dl>
+<p class="Pp">Media source selection is automatic based on command-line
+  options:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --test-pattern           # Use test pattern
+./ascii-chat client --file video.mp4         # Play file
+./ascii-chat client --file -                 # Read from stdin
+./ascii-chat client --webcam-index 0         # Use default camera
+./ascii-chat client                          # Auto-detect (webcam or test)
+</pre>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Format_and_Negotiation"><a class="permalink" href="#Frame_Format_and_Negotiation">Frame
+  Format and Negotiation</a></h2>
+<p class="Pp">All media sources are normalized to a common frame format:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Color Space</b>: RGB (24-bit) - three bytes per pixel (R, G, B)</li>
+  <li><b>Byte Order</b>: Platform-native (little-endian on x86/ARM)</li>
+  <li><b>Frame Dimensions</b>: Variable (see Resize Behavior below)</li>
+  <li><b>Pixel Layout</b>: Continuous row-major array (no padding between
+    rows)</li>
+</ul>
+<p class="Pp">Frame format is opaque to the caller - the media source
+    abstraction handles all conversions. Consumers always receive RGB frames
+    ready to use:</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<pre>// Get frame from any media source (format already normalized)
+image_t *frame = media_source_read_video(source);
+// Frame is guaranteed to be:
+// - RGB format (8-bit per channel)
+// - Dimensions: frame-&gt;width x frame-&gt;height pixels
+// - Memory: frame-&gt;data[y * frame-&gt;width * 3 + x * 3 + channel]</pre>
+<p class="Pp">Different input types undergo conversion:</p>
+<ul class="Bl-bullet">
+  <li><b>WEBCAM</b>: V4L2/AVFoundation -&gt; RGB (platform layer
+    conversion)</li>
+  <li><b>FILE/STDIN</b>: FFmpeg decoder -&gt; RGB (FFmpeg handles all
+    codecs)</li>
+  <li><b>TEST</b>: Generated directly as RGB (no conversion needed)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Resizing_and_Aspect_Ratio"><a class="permalink" href="#Frame_Resizing_and_Aspect_Ratio">Frame
+  Resizing and Aspect Ratio</a></h2>
+<p class="Pp">Captured frames are resized for network efficiency while
+    preserving aspect ratio:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Maximum Dimensions</b>: 800x600 pixels (default) - reasonable
+    bandwidth</li>
+  <li><b>Aspect Ratio</b>: Original aspect ratio preserved via
+    fit-to-bounds</li>
+  <li><b>Scaling Algorithm</b>: Letterboxing - frame fits within bounds with
+      padding</li>
+  <li><b>Padding Color</b>: Black (0, 0, 0) for empty regions</li>
+</ul>
+<p class="Pp">Resize process:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Calculate scale factor to fit frame within 800x600</dd>
+  <dt>2.</dt>
+  <dd>Compute new dimensions maintaining aspect ratio</dd>
+  <dt>3.</dt>
+  <dd>Scale frame using resizing algorithm (maintains quality)</dd>
+  <dt>4.</dt>
+  <dd>Add black padding to fill remaining space (if needed)</dd>
+</dl>
+<p class="Pp">Example resizes:</p>
+<ul class="Bl-bullet">
+  <li>1920x1440 (4:3) &#x2192; 800x600 (fits exactly)</li>
+  <li>1280x720 (16:9) &#x2192; 800x450 (with 75px black bars top/bottom)</li>
+  <li>640x480 (4:3) &#x2192; 640x480 (no resize, smaller than max)</li>
+  <li>3840x2160 (16:9) &#x2192; 800x450 (same 16:9 aspect)</li>
+</ul>
+<p class="Pp">Frame resizing options (future):</p>
+<ul class="Bl-bullet">
+  <li>--resize-width &lt;W&gt; - Custom max width (default: 800)</li>
+  <li>--resize-height &lt;H&gt; - Custom max height (default: 600)</li>
+  <li>--no-resize - Disable resizing (use original dimensions)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Rate_Synchronization_(FPS_Control)"><a class="permalink" href="#Frame_Rate_Synchronization_(FPS_Control)">Frame
+  Rate Synchronization (FPS Control)</a></h2>
+<p class="Pp">The capture system implements frame rate limiting for bandwidth
+    efficiency and smooth playback:</p>
+<p class="Pp"></p>
+<ul class="Bl-bullet">
+  <li><b>Capture Rate</b>: Up to 144 FPS (high refresh rate support)</li>
+  <li><b>Target FPS</b>: Configurable via --fps &lt;rate&gt; (default: 60)</li>
+  <li><b>Range</b>: 1 to 144 FPS (1 = slowest, 144 = fastest)</li>
+  <li><b>Timing Method</b>: Monotonic clock for accuracy</li>
+  <li><b>Adaptive Delay</b>: Dynamic sleep adjustment for consistent frame
+      intervals</li>
+</ul>
+<p class="Pp">FPS configuration:</p>
+<p class="Pp"></p>
+<pre>./ascii-chat client --fps 30               # 30 FPS (slower, less bandwidth)
+./ascii-chat client --fps 60               # 60 FPS (default, balanced)
+./ascii-chat client --fps 144              # 144 FPS (max, high refresh)
+</pre>
+<p class="Pp">FPS behavior by source type:</p>
+<ul class="Bl-bullet">
+  <li><b>WEBCAM</b>: Captures at hardware rate, then throttles to target
+    FPS</li>
+  <li><b>FILE</b>: Plays at media file's native FPS, then throttles to
+    target</li>
+  <li><b>STDIN</b>: Decodes frames, then throttles to target FPS</li>
+  <li><b>TEST</b>: Generates at target FPS directly (no throttling needed)</li>
+</ul>
+<p class="Pp">Frame rate calculation:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Calculate frame interval: interval_ms = 1000 / fps</dd>
+  <dt>2.</dt>
+  <dd>Record capture start time (monotonic clock)</dd>
+  <dt>3.</dt>
+  <dd>Capture and process frame</dd>
+  <dt>4.</dt>
+  <dd>Calculate elapsed time</dd>
+  <dt>5.</dt>
+  <dd>Sleep for remaining interval to achieve consistent rate</dd>
+</dl>
+<p class="Pp">Example timing (60 FPS target = 16.67ms per frame):</p>
+<ul class="Bl-bullet">
+  <li>Frame start: 0ms</li>
+  <li>Capture: 5ms</li>
+  <li>Process: 2ms</li>
+  <li>Elapsed: 7ms</li>
+  <li>Sleep: 9.67ms (to reach 16.67ms total)</li>
+  <li>Frame complete: 16.67ms &#x2713; (on schedule)</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Capture_Lifecycle"><a class="permalink" href="#Capture_Lifecycle">Capture
+  Lifecycle</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Initialization</b> (capture_init): Set up platform-specific webcam
+      drivers</dd>
+  <dt>2.</dt>
+  <dd><b>Thread Start</b> (capture_start_thread): Spawn capture thread in
+      connection loop</dd>
+  <dt>3.</dt>
+  <dd><b>Capture Loop</b>: Continuously grab frames and send to server</dd>
+  <dt>4.</dt>
+  <dd><b>Thread Stop</b> (capture_stop_thread): Signal thread to exit and
+    wait</dd>
+  <dt>5.</dt>
+  <dd><b>Cleanup</b> (capture_cleanup): Release platform resources</dd>
+</dl>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">2025</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent">topic_client_capture &quot;Video Capture
+  Architecture&quot;
+<p class="Pp"></p>
+<p class="Pp">media/source.h &quot;Media Source Abstraction&quot;</p>
+</div>
+<p class="Pp">Definition in file <b>client/capture.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_capture_cleanup_()"><a class="permalink" href="#void_capture_cleanup_()">void
+  capture_cleanup ()</a></h2>
+<p class="Pp">Cleanup capture subsystem. Releases all platform resources
+    associated with webcam access. This must be called after
+    <b>capture_stop_thread()</b> and before process exit.</p>
+<p class="Pp"></p>
+<p class="Pp">The cleanup process:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Closes webcam device (platform-specific close)</dd>
+  <dt>2.</dt>
+  <dd>Frees frame buffers</dd>
+  <dt>3.</dt>
+  <dd>Releases platform driver resources</dd>
+  <dt>4.</dt>
+  <dd>Cleans up thread handles</dd>
+</dl>
+<p class="Pp">Must be called in proper order during shutdown to avoid resource
+    leaks and to restore the platform to a clean state.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>capture_init</b> &quot;Initialize capture
+  subsystem&quot;</div>
+<p class="Pp">Cleanup capture subsystem</p>
+<p class="Pp"></p>
+<p class="Pp">Stops capture thread and cleans up media source resources. Called
+    during client shutdown.</p>
+<p class="Pp">Definition at line <b>546</b> of file <b>client/capture.c</b>.</p>
+<pre>546                        {
+547   capture_stop_thread();
+548 
+549   // Destroy capture context
+550   if (g_capture_capture_ctx) {
+551     session_capture_destroy(g_capture_capture_ctx);
+552     g_capture_capture_ctx = NULL;
+553   }
+554 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>capture_stop_thread()</b>, and
+    <b>session_capture_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_capture_init_()"><a class="permalink" href="#int_capture_init_()">int
+  capture_init ()</a></h2>
+<p class="Pp">Initialize capture subsystem. Initializes the media source and
+    capture resources. Determines media source type from command-line options,
+    then sets up platform-specific drivers and buffers. This must be called
+    before any other capture functions.</p>
+<p class="Pp"></p>
+<p class="Pp">The initialization process:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Determines media source type from options (test pattern, file, stdin, or
+      webcam)</dd>
+  <dt>2.</dt>
+  <dd>Creates appropriate media source (<b>media_source_create()</b>)</dd>
+  <dt>3.</dt>
+  <dd>For WEBCAM: Initializes platform driver (V4L2/AVFoundation/Media
+      Foundation)</dd>
+  <dt>4.</dt>
+  <dd>For FILE/STDIN: Opens FFmpeg decoder with format detection</dd>
+  <dt>5.</dt>
+  <dd>For TEST: Initializes procedural test pattern generator</dd>
+  <dt>6.</dt>
+  <dd>Initializes frame buffers and capture parameters</dd>
+</dl>
+<p class="Pp"><b>Media source selection</b> (in order):</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>If --test-pattern &#x2192; MEDIA_SOURCE_TEST</dd>
+  <dt>2.</dt>
+  <dd>Else if --file - &#x2192; MEDIA_SOURCE_STDIN</dd>
+  <dt>3.</dt>
+  <dd>Else if --file &lt;path&gt; &#x2192; MEDIA_SOURCE_FILE</dd>
+  <dt>4.</dt>
+  <dd>Else if --url &lt;url&gt; &#x2192; MEDIA_SOURCE_FILE (network URL)</dd>
+  <dt>5.</dt>
+  <dd>Else &#x2192; MEDIA_SOURCE_WEBCAM (with --webcam-index)</dd>
+</dl>
+<p class="Pp"><b>Options affecting initialization</b>:</p>
+<ul class="Bl-bullet">
+  <li>--test-pattern: Use synthetic test pattern (any platform, no hardware
+      needed)</li>
+  <li>--file &lt;path&gt;: Media file to play (mp4, avi, mkv, gif, etc.)</li>
+  <li>--file -: Read media from stdin (any FFmpeg format)</li>
+  <li>--url &lt;url&gt;: Network stream (HTTP/HTTPS/RTSP/YouTube/etc.)</li>
+  <li>--webcam-index &lt;N&gt;: Which camera to open (default: 0, first
+    camera)</li>
+  <li>--media-loop: Loop file playback when EOF reached</li>
+  <li>--webcam-flip: Flip video vertically (webcam and test patterns only)</li>
+  <li>--fps &lt;rate&gt;: Target frame rate in FPS (1-144, default: 60)</li>
+</ul>
+<p class="Pp"><b>Error handling</b>:</p>
+<ul class="Bl-bullet">
+  <li>WEBCAM: Device not found, driver error, device busy</li>
+  <li>FILE: File not found, unsupported format, FFmpeg error</li>
+  <li>STDIN: FFmpeg format detection failure</li>
+  <li>TEST: Rarely fails (only if display dimensions unavailable)</li>
+</ul>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure:
+<ul class="Bl-bullet">
+  <li>ERROR_WEBCAM: Device not found or driver error</li>
+  <li>ERROR_WEBCAM_IN_USE: Device busy (another app using it)</li>
+  <li>ERROR_FILE_NOT_FOUND: Media file not found</li>
+  <li>ERROR_FORMAT: Unsupported media format</li>
+  <li>ERROR_NOT_SUPPORTED: Platform doesn't support this source type</li>
+</ul>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This is called during client initialization, before
+  entering the connection loop.
+<p class="Pp"></p>
+<p class="Pp">The actual frame capture happens in the capture thread
+    (capture_start_thread).</p>
+<p class="Pp"></p>
+<p class="Pp">Frame resizing to 800x600 (max) happens during capture, not
+    initialization.</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>media_source_create</b> &quot;Media source
+  creation&quot;
+<p class="Pp"></p>
+<p class="Pp"><b>capture_start_thread</b> &quot;Start capture thread&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>capture_cleanup</b> &quot;Cleanup resources&quot;</p>
+</div>
+<p class="Pp">Initialize capture subsystem</p>
+<p class="Pp"></p>
+<p class="Pp">Sets up media source (webcam, file, or stdin) and prepares capture
+    system for operation. Must be called once during client initialization.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>405</b> of file <b>client/capture.c</b>.</p>
+<pre>405                    {
+406   // Build capture configuration from options
+407   session_capture_config_t config = {0};
+408   const char *media_url = GET_OPTION(media_url);
+409   const char *media_file = GET_OPTION(media_file);
+410   bool media_from_stdin = GET_OPTION(media_from_stdin);
+411 
+412   if (media_url &amp;&amp; media_url[0] != '\0') {
+413     // Network URL streaming (takes priority over --file)
+414     // Don't open webcam when streaming from URL
+415     config.type = MEDIA_SOURCE_FILE;
+416     config.path = media_url;
+417     config.loop = false; // Network URLs cannot be looped
+418     log_debug(&quot;Using network URL: %s (webcam disabled)&quot;, media_url);
+419   } else if (media_file &amp;&amp; media_file[0] != '\0') {
+420     // File or stdin streaming - don't open webcam
+421     config.type = media_from_stdin ? MEDIA_SOURCE_STDIN : MEDIA_SOURCE_FILE;
+422     config.path = media_file;
+423     config.loop = GET_OPTION(media_loop) &amp;&amp; !media_from_stdin;
+424     log_debug(&quot;Using media %s: %s (webcam disabled)&quot;, media_from_stdin ? &quot;stdin&quot; : &quot;file&quot;, media_file);
+425   } else if (GET_OPTION(test_pattern)) {
+426     // Test pattern mode - don't open real webcam
+427     config.type = MEDIA_SOURCE_TEST;
+428     config.path = NULL;
+429     log_debug(&quot;Using test pattern mode&quot;);
+430   } else {
+431     // Webcam mode (default)
+432     static char webcam_index_str[32];
+433     safe_snprintf(webcam_index_str, sizeof(webcam_index_str), &quot;%u&quot;, GET_OPTION(webcam_index));
+434     config.type = MEDIA_SOURCE_WEBCAM;
+435     config.path = webcam_index_str;
+436     log_debug(&quot;Using webcam device %u&quot;, GET_OPTION(webcam_index));
+437   }
+438   config.target_fps = CAPTURE_TARGET_FPS;
+439   config.resize_for_network = true; // Client always resizes for network transmission
+440 
+441   // Configure audio capture with fallback to microphone
+442   config.enable_audio = true;
+443   config.audio_fallback_to_mic = true;
+444   config.mic_audio_ctx = audio_get_context();
+445 
+446   // Add seek timestamp if specified
+447   config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+448 
+449   // Create capture context using session library
+450   g_capture_capture_ctx = session_capture_create(&amp;config);
+451   if (!g_capture_capture_ctx) {
+452     // Check if there's already an error set (e.g., ERROR_WEBCAM_IN_USE)
+453     asciichat_error_t existing_error = GET_ERRNO();
+454     log_debug(&quot;session_capture_create failed, GET_ERRNO() returned: %d&quot;, existing_error);
+455     if (existing_error != ASCIICHAT_OK) {
+456       log_debug(&quot;Returning existing error code %d&quot;, existing_error);
+457       return existing_error;
+458     }
+459     SET_ERRNO(ERROR_MEDIA_INIT, &quot;Failed to initialize capture source&quot;);
+460     return -1;
+461   }
+462 
+463   return 0;
+464 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_capture_config_t::audio_fallback_to_mic</b>,
+    <b>audio_get_context()</b>, <b>CAPTURE_TARGET_FPS</b>,
+    <b>session_capture_config_t::enable_audio</b>,
+    <b>session_capture_config_t::initial_seek_timestamp</b>,
+    <b>session_capture_config_t::loop</b>,
+    <b>session_capture_config_t::mic_audio_ctx</b>,
+    <b>session_capture_config_t::path</b>,
+    <b>session_capture_config_t::resize_for_network</b>, <b>safe_snprintf()</b>,
+    <b>session_capture_create()</b>,
+    <b>session_capture_config_t::target_fps</b>, and
+    <b>session_capture_config_t::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_capture_start_thread_()"><a class="permalink" href="#int_capture_start_thread_()">int
+  capture_start_thread ()</a></h2>
+<p class="Pp">Start capture thread. Spawns the capture thread in the global
+    client worker thread pool. The thread runs the main capture loop,
+    continuously acquiring frames from the media source, processing them
+    (resize, format conversion), and transmitting to the server with FPS rate
+    limiting.</p>
+<p class="Pp"></p>
+<p class="Pp">The capture loop implements this pipeline:</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Frame Acquisition:</b></p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Read frame from media source (<b>media_source_read_video()</b>)</dd>
+  <dt>2.</dt>
+  <dd>Verify frame is valid (non-null, valid dimensions)</dd>
+  <dt>3.</dt>
+  <dd>Measure acquisition time for timing/debug</dd>
+</dl>
+<p class="Pp"><b>Frame Processing (Resize &amp; Format):</b></p>
+<dl class="Bl-tag">
+  <dt>4.</dt>
+  <dd>Calculate optimal resize dimensions (fit-to-bounds, aspect ratio
+      preserved)</dd>
+  <dt>5.</dt>
+  <dd>Scale frame to max 800x600 using high-quality resizing</dd>
+  <dt>6.</dt>
+  <dd>Format frame as RGB (already normalized by media source)</dd>
+  <dt>7.</dt>
+  <dd>Add black padding if frame smaller than target area</dd>
+</dl>
+<p class="Pp"><b>FPS Synchronization:</b></p>
+<dl class="Bl-tag">
+  <dt>8.</dt>
+  <dd>Calculate frame interval from target FPS (e.g., 60 FPS = 16.67ms)</dd>
+  <dt>9.</dt>
+  <dd>Measure actual processing time (acquisition + resize)</dd>
+  <dt>10.</dt>
+  <dd>Sleep for remaining interval to maintain target FPS</dd>
+  <dt>11.</dt>
+  <dd>Account for monotonic clock drift and OS scheduling</dd>
+</dl>
+<p class="Pp"><b>Network Transmission:</b></p>
+<dl class="Bl-tag">
+  <dt>12.</dt>
+  <dd>Optionally compress frame if --compress is enabled</dd>
+  <dt>13.</dt>
+  <dd>Serialize frame to PACKET_TYPE_IMAGE_FRAME format (width + height +
+      pixels)</dd>
+  <dt>14.</dt>
+  <dd>Send packet to server via send_packet_to_server()</dd>
+  <dt>15.</dt>
+  <dd>Log transmission metrics (size, latency, dropped frames)</dd>
+</dl>
+<p class="Pp"><b>Loop Control:</b></p>
+<dl class="Bl-tag">
+  <dt>16.</dt>
+  <dd>Check if in snapshot mode and should exit (--snapshot mode)</dd>
+  <dt>17.</dt>
+  <dd>Check for shutdown signal (<b>capture_stop_thread()</b> called)</dd>
+  <dt>18.</dt>
+  <dd>Check for connection loss (reconnect trigger)</dd>
+  <dt>19.</dt>
+  <dd>Loop back to step 1</dd>
+</dl>
+<p class="Pp"><b>FPS Behavior:</b></p>
+<ul class="Bl-bullet">
+  <li>Target FPS from --fps option (default: 60)</li>
+  <li>Achieved via sleep-based rate limiting (monotonic clock)</li>
+  <li>Maintains consistent frame intervals even if processing takes variable
+      time</li>
+  <li>Adapts to system load and media source frame availability</li>
+</ul>
+<p class="Pp">Must be called after server connection is established and protocol
+    thread started.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure:
+<ul class="Bl-bullet">
+  <li>ERROR_THREAD: Thread pool full or system thread creation failed</li>
+  <li>ERROR_NO_MEMORY: Insufficient memory for thread resources</li>
+</ul>
+</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Must be paired with <b>capture_stop_thread()</b> to
+  properly clean up.
+<p class="Pp"></p>
+<p class="Pp">Frame resizing and FPS limiting are handled transparently by the
+    capture thread.</p>
+<p class="Pp"></p>
+<p class="Pp">Rate limiting is frame-by-frame, not based on network round-trip
+    time.</p>
+</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>capture_stop_thread</b> &quot;Stop capture
+  thread&quot;
+<p class="Pp"></p>
+<p class="Pp"><b>capture_thread_exited</b> &quot;Check if thread has
+    exited&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>media_source_read_video</b> &quot;Frame acquisition from media
+    source&quot;</p>
+</div>
+<p class="Pp">Start capture thread</p>
+<p class="Pp"></p>
+<p class="Pp">Creates and starts the webcam capture thread. Also sends stream
+    start notification to server.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>475</b> of file <b>client/capture.c</b>.</p>
+<pre>475                            {
+476   if (THREAD_IS_CREATED(g_capture_thread_created)) {
+477     log_warn(&quot;Capture thread already created&quot;);
+478     return 0;
+479   }
+480 
+481   // Register capture atomics with named debug registry
+482   static bool capture_atomics_registered = false;
+483   if (!capture_atomics_registered) {
+484     NAMED_REGISTER_ATOMIC(&amp;g_capture_thread_exited, &quot;capture_webcam_thread_exit_confirmation&quot;, NULL);
+485     capture_atomics_registered = true;
+486   }
+487 
+488   // Start webcam capture thread
+489   atomic_store_bool(&amp;g_capture_thread_exited, false);
+490   if (thread_pool_spawn(g_client_worker_pool, webcam_capture_thread_func, NULL, 2, &quot;webcam_capture&quot;) != ASCIICHAT_OK) {
+491     SET_ERRNO(ERROR_THREAD, &quot;Webcam capture thread creation failed&quot;);
+492     LOG_ERRNO_IF_SET(&quot;Webcam capture thread creation failed&quot;);
+493     return -1;
+494   }
+495 
+496   g_capture_thread_created = true;
+497   log_debug(&quot;Webcam capture thread created successfully&quot;);
+498 
+499   return 0;
+500 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>,
+    <b>g_client_worker_pool</b>, and <b>thread_pool_spawn()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_capture_stop_thread_()"><a class="permalink" href="#void_capture_stop_thread_()">void
+  capture_stop_thread ()</a></h2>
+<p class="Pp">Stop capture thread. Signals the capture thread to exit and waits
+    for it to join cleanly. Called during connection loss handling or
+  shutdown.</p>
+<p class="Pp"></p>
+<p class="Pp">The function:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd>Sets shutdown flag</dd>
+  <dt>2.</dt>
+  <dd>Polls <b>capture_thread_exited()</b> until thread exits</dd>
+  <dt>3.</dt>
+  <dd>Releases thread-specific resources</dd>
+</dl>
+<p class="Pp">Must be called before reconnection to prevent resource leaks.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">This function blocks until the capture thread exits.
+  Typical wait time: &lt;1 second (one frame interval).</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>capture_start_thread</b> &quot;Start capture
+  thread&quot;</div>
+<p class="Pp">Stop capture thread</p>
+<p class="Pp"></p>
+<p class="Pp">Gracefully stops the capture thread and cleans up resources. Safe
+    to call multiple times.</p>
+<p class="Pp">Definition at line <b>509</b> of file <b>client/capture.c</b>.</p>
+<pre>509                            {
+510   if (!THREAD_IS_CREATED(g_capture_thread_created)) {
+511     return;
+512   }
+513 
+514   // Wait for thread to exit gracefully
+515   int wait_count = 0;
+516   while (wait_count &lt; 20 &amp;&amp; !atomic_load_bool(&amp;g_capture_thread_exited)) {
+517     platform_sleep_us(100 * US_PER_MS_INT); // 100ms
+518     wait_count++;
+519   }
+520 
+521   if (!atomic_load_bool(&amp;g_capture_thread_exited)) {
+522     log_warn(&quot;Capture thread not responding after 2 seconds - will be joined by thread pool&quot;);
+523   }
+524 
+525   // Thread will be joined by thread_pool_stop_all() in protocol_stop_connection()
+526   g_capture_thread_created = false;
+527 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>, and
+    <b>platform_sleep_us()</b>.</p>
+<p class="Pp">Referenced by <b>capture_cleanup()</b>, and
+    <b>protocol_stop_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> capture_thread_exited ()</h2>
+<p class="Pp">Check if capture thread has exited. Atomically checks whether the
+    capture thread has finished execution. The main thread uses this to wait for
+    clean thread shutdown before reconnection or final cleanup.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if thread exited, false otherwise</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The main thread typically polls this in a 10-100ms loop
+  until true.</div>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>capture_stop_thread</b> &quot;Stop capture
+  thread&quot;</div>
+<p class="Pp">Check if capture thread has exited</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if thread has exited, false otherwise</div>
+<p class="Pp">Definition at line <b>535</b> of file <b>client/capture.c</b>.</p>
+<pre>535                              {
+536   return atomic_load_bool(&amp;g_capture_thread_exited);
+537 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>capture.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">capture.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">capture.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">capture.h - &#x1F4F9; Unified media capture abstraction for
+    session-based video sources</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>session_capture_config_t</b>
+  <br/>
+  Configuration for session capture context.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef <b>bool</b>(* <b>session_capture_should_exit_fn</b>) (void
+    *user_data)
+  <br/>
+  Callback type to check if initialization should be cancelled. typedef struct
+    <b>session_capture_ctx</b> <b>session_capture_ctx_t</b>
+  <br/>
+  Opaque session capture context handle.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>session_capture_ctx_t</b> *
+    <b>session_mirror_capture_create</b> (const <b>session_capture_config_t</b>
+    *config)
+  <br/>
+  Create a new session capture context. <b>session_capture_ctx_t</b> *
+    <b>session_network_capture_create</b> (uint32_t target_fps)
+  <br/>
+  Create network mode capture context without media source.
+    <b>session_capture_ctx_t</b> * <b>session_capture_create</b> (const
+    <b>session_capture_config_t</b> *config)
+  <br/>
+  Legacy function - creates either mirror or network capture based on options.
+    void <b>session_capture_destroy</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Destroy session capture context and free resources. image_t *
+    <b>session_capture_read_frame</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Read the next video frame from the capture source. image_t *
+    <b>session_capture_process_for_transmission</b>
+    (<b>session_capture_ctx_t</b> *ctx, image_t *<b>frame</b>)
+  <br/>
+  Process a frame for network transmission (resize if needed). void
+    <b>session_capture_sleep_for_fps</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Sleep to maintain target frame rate. <b>bool</b> <b>session_capture_at_end</b>
+    (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Check if capture source has reached end of stream. <b>bool</b>
+    <b>session_capture_is_valid</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Check if capture context is initialized and valid. double
+    <b>session_capture_get_current_fps</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Get the current FPS being achieved by the capture source. uint32_t
+    <b>session_capture_get_target_fps</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Get the target FPS configured for this capture context. <b>bool</b>
+    <b>session_capture_has_audio</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Check if capture source has audio available. size_t
+    <b>session_capture_read_audio</b> (<b>session_capture_ctx_t</b> *ctx, float
+    *buffer, size_t num_samples)
+  <br/>
+  Read audio samples from capture source. <b>bool</b>
+    <b>session_capture_using_file_audio</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Check if currently using file audio vs microphone fallback. void *
+    <b>session_capture_get_media_source</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Get the underlying media source from capture context. void *
+    <b>session_capture_get_audio_context</b> (<b>session_capture_ctx_t</b> *ctx)
+  <br/>
+  Get the audio context for playback control. void
+    <b>session_capture_set_audio_context</b> (<b>session_capture_ctx_t</b> *ctx,
+    void *audio_ctx)
+  <br/>
+  Set the audio context for playback control.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4F9; Unified media capture abstraction for session-based
+    video sources</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>common/session/capture.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_*_session_capture_get_audio_context_("><a class="permalink" href="#void_*_session_capture_get_audio_context_(">void
+  * session_capture_get_audio_context (<b>session_capture_ctx_t</b> *
+  ctx)</a></h2>
+<p class="Pp">Get the audio context for playback control.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Capture context</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Audio context pointer (borrowed, not owned) or NULL</div>
+<p class="Pp">Definition at line <b>560</b> of file
+    <b>common/session/capture.c</b>.</p>
+<pre>560                                                                     {
+561   if (!ctx || !ctx-&gt;initialized) {
+562     return NULL;
+563   }
+564   return ctx-&gt;audio_ctx;
+565 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_capture_ctx::audio_ctx</b>, and
+    <b>session_capture_ctx::initialized</b>.</p>
+<p class="Pp">Referenced by <b>session_handle_keyboard_input()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_session_capture_set_audio_context_("><a class="permalink" href="#void_session_capture_set_audio_context_(">void
+  session_capture_set_audio_context (<b>session_capture_ctx_t</b> * ctx, void *
+  audio_ctx)</a></h2>
+<p class="Pp">Set the audio context for playback control.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ctx</i> Capture context (must not be NULL)
+<br/>
+<i>audio_ctx</i> Audio context pointer (borrowed, not owned)</div>
+<p class="Pp">Definition at line <b>567</b> of file
+    <b>common/session/capture.c</b>.</p>
+<pre>567                                                                                     {
+568   if (ctx) {
+569     ctx-&gt;audio_ctx = audio_ctx;
+570   }
+571 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_capture_ctx::audio_ctx</b>.</p>
+<p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

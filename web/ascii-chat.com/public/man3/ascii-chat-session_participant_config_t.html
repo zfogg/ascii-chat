@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_participant_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_participant_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_participant_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_participant_config_t - Configuration for session
+    participant.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/participant.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">const char * <b>address</b>
+  <br/>
+  Server address to connect to. int <b>port</b>
+  <br/>
+  Server port (default: 27224). <b>bool</b> <b>encryption_enabled</b>
+  <br/>
+  Enable encryption (default: true). const char * <b>password</b>
+  <br/>
+  Password for server authentication (optional). const char * <b>server_key</b>
+  <br/>
+  Expected server key for verification (optional). <b>bool</b>
+    <b>enable_audio</b>
+  <br/>
+  Enable audio streaming. <b>bool</b> <b>enable_video</b>
+  <br/>
+  Enable video capture and streaming. <b>session_participant_callbacks_t</b>
+    <b>callbacks</b>
+  <br/>
+  Event callbacks. void * <b>user_data</b>
+  <br/>
+  User-provided context pointer passed to callbacks.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration for session participant.</p>
+<p class="Pp">Definition at line <b>132</b> of file <b>participant.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_participant_config_t::address"><a class="permalink" href="#const_char*_session_participant_config_t::address">const
+  char* session_participant_config_t::address</a></h2>
+<p class="Pp">Server address to connect to.</p>
+<p class="Pp">Definition at line <b>134</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_participant_callbacks_t</b>
+  session_participant_config_t::callbacks</h2>
+<p class="Pp">Event callbacks.</p>
+<p class="Pp">Definition at line <b>155</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_participant_config_t::enable_audio</h2>
+<p class="Pp">Enable audio streaming.</p>
+<p class="Pp">Definition at line <b>149</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_participant_config_t::enable_video</h2>
+<p class="Pp">Enable video capture and streaming.</p>
+<p class="Pp">Definition at line <b>152</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_participant_config_t::encryption_enabled</h2>
+<p class="Pp">Enable encryption (default: true).</p>
+<p class="Pp">Definition at line <b>140</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_participant_config_t::password"><a class="permalink" href="#const_char*_session_participant_config_t::password">const
+  char* session_participant_config_t::password</a></h2>
+<p class="Pp">Password for server authentication (optional).</p>
+<p class="Pp">Definition at line <b>143</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_session_participant_config_t::port"><a class="permalink" href="#int_session_participant_config_t::port">int
+  session_participant_config_t::port</a></h2>
+<p class="Pp">Server port (default: 27224).</p>
+<p class="Pp">Definition at line <b>137</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_participant_config_t::server_key"><a class="permalink" href="#const_char*_session_participant_config_t::server_key">const
+  char* session_participant_config_t::server_key</a></h2>
+<p class="Pp">Expected server key for verification (optional).</p>
+<p class="Pp">Definition at line <b>146</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_participant_config_t::user_data"><a class="permalink" href="#void*_session_participant_config_t::user_data">void*
+  session_participant_config_t::user_data</a></h2>
+<p class="Pp">User-provided context pointer passed to callbacks.</p>
+<p class="Pp">Definition at line <b>158</b> of file <b>participant.h</b>.</p>
+<p class="Pp">Referenced by <b>session_participant_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

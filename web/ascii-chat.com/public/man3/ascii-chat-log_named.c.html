@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>named.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">named.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">named.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">named.c - Format named objects in log messages (replaces hex
+    addresses with type/name descriptions).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>type_check_context</b>
+  <br/>
+  Check if a type string is actually registered in the named registry.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>NAMED_FORMAT_BUFFER_SIZE</b> (4096)
+  <br/>
+  #define <b>COLORIZE_BUFFERS</b> 4
+  <br/>
+  #define <b>COLORIZE_BUFFER_SIZE</b> 512
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>log_named_format_message</b> (const char *message, char
+    *output, size_t output_size)
+  <br/>
+  const char * <b>log_named_format_or_original</b> (const char *message)
+  <br/>
+  Format named objects in a message (thread-local buffer). const char *
+    <b>colorize_named_string</b> (const char *name_str)
+  <br/>
+  Colorize a
+    <i>type/name</i>(0xaddress)&quot;<i>string</i>for<i>display</i>in<i>memory</i>reports.<i></i>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Format named objects in log messages (replaces hex addresses with
+    type/name descriptions).</p>
+<p class="Pp">This module scans log message text for hex addresses
+    (0x[0-9a-fA-F]+) and replaces them with friendly descriptions from the named
+    object registry when available. For example, 0x7f1234567890 might become
+    &quot;mutex/recv_mutex.2 (0x7f1234567890)&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">Output is colorized for better readability:</p>
+<ul class="Bl-bullet">
+  <li>Type name: yellow (LOG_COLOR_WARN)</li>
+  <li>Name: orange (LOG_COLOR_DEV)</li>
+  <li>ID value: grey (LOG_COLOR_GREY)</li>
+</ul>
+<p class="Pp">Definition in file <b>log/named.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_COLORIZE_BUFFER_SIZE___512"><a class="permalink" href="#_define_COLORIZE_BUFFER_SIZE___512">#define
+  COLORIZE_BUFFER_SIZE 512</a></h2>
+<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_COLORIZE_BUFFERS___4"><a class="permalink" href="#_define_COLORIZE_BUFFERS___4">#define
+  COLORIZE_BUFFERS 4</a></h2>
+<p class="Pp">Referenced by <b>colorize_named_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_NAMED_FORMAT_BUFFER_SIZE___(4096)"><a class="permalink" href="#_define_NAMED_FORMAT_BUFFER_SIZE___(4096)">#define
+  NAMED_FORMAT_BUFFER_SIZE (4096)</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file <b>log/named.c</b>.</p>
+<p class="Pp">Referenced by <b>log_named_format_or_original()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_colorize_named_string_(const_char_*_name_str)"><a class="permalink" href="#const_char_*_colorize_named_string_(const_char_*_name_str)">const
+  char * colorize_named_string (const char * name_str)</a></h2>
+<p class="Pp">Colorize a &quot;type/name (0xaddress)&quot; string for display in
+    memory reports.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name_str</i> String in &quot;type/name
+  (0xaddress)&quot; format (e.g., &quot;thread/splash_anim.0
+  (0x7f123456)&quot;)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Colorized string with ANSI codes: type(yellow)/name(blue)
+  (id(grey))</div>
+<p class="Pp">Used by memory report to colorize named object display. Returns a
+    pointer to a static rotating buffer (4 buffers, valid until next call).</p>
+<p class="Pp"></p>
+<p class="Pp">Example: &quot;thread/splash_anim.0 (0x7f123456)&quot; displays
+    with:</p>
+<ul class="Bl-bullet">
+  <li>&quot;thread&quot; in yellow</li>
+  <li>&quot;splash_anim.0&quot; in blue</li>
+  <li>&quot;0x7f123456&quot; in grey</li>
+</ul>
+<p class="Pp">Definition at line <b>796</b> of file <b>log/named.c</b>.</p>
+<pre>796                                                         {
+797 #define COLORIZE_BUFFERS 4
+798 #define COLORIZE_BUFFER_SIZE 512
+799   static char buffers[COLORIZE_BUFFERS][COLORIZE_BUFFER_SIZE];
+800   static int buffer_idx = 0;
+801 
+802   if (!name_str || name_str[0] == '\0') {
+803     return name_str;
+804   }
+805 
+806   char *current_buf = buffers[buffer_idx];
+807   buffer_idx = (buffer_idx + 1) % COLORIZE_BUFFERS;
+808 
+809   /* Find the slash separator (type/name) */
+810   const char *slash = strchr(name_str, '/');
+811   if (!slash) {
+812     /* No slash found - just return the string as-is */
+813     return name_str;
+814   }
+815 
+816   /* Find opening paren for address */
+817   const char *paren = strchr(name_str, '(');
+818 
+819   /* Extract type (before slash) */
+820   size_t type_len = slash - name_str;
+821   char type_buf[256];
+822   strncpy(type_buf, name_str, type_len &lt; sizeof(type_buf) - 1 ? type_len : sizeof(type_buf) - 1);
+823   type_buf[type_len] = '\0';
+824 
+825   /* Extract name (between slash and paren, or end of string) */
+826   const char *name_start = slash + 1;
+827   size_t name_len;
+828   if (paren &amp;&amp; paren &gt; slash) {
+829     /* Skip spaces before paren */
+830     const char *name_end = paren - 1;
+831     while (name_end &gt; name_start &amp;&amp; *name_end == ' ') {
+832       name_end--;
+833     }
+834     name_len = name_end - name_start + 1;
+835   } else {
+836     name_len = strlen(name_start);
+837   }
+838 
+839   char name_buf[256];
+840   strncpy(name_buf, name_start, name_len &lt; sizeof(name_buf) - 1 ? name_len : sizeof(name_buf) - 1);
+841   name_buf[name_len] = '\0';
+842 
+843   /* Apply colors */
+844   const char *type_colored = colored_string(LOG_COLOR_WARN, type_buf);
+845   const char *name_colored = colored_string(LOG_COLOR_DEV, name_buf);
+846 
+847   /* Format: type(yellow)/name(blue) and add address part if present */
+848   if (paren) {
+849     /* Extract address (0x...) from parentheses */
+850     const char *addr_start = paren + 1;
+851     const char *addr_end = strchr(addr_start, ')');
+852     if (addr_end) {
+853       size_t addr_len = addr_end - addr_start;
+854       char addr_buf[128];
+855       strncpy(addr_buf, addr_start, addr_len &lt; sizeof(addr_buf) - 1 ? addr_len : sizeof(addr_buf) - 1);
+856       addr_buf[addr_len] = '\0';
+857 
+858       const char *addr_colored = colored_string(LOG_COLOR_GREY, addr_buf);
+859       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s (%s)&quot;, type_colored, name_colored, addr_colored);
+860     } else {
+861       safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s %s&quot;, type_colored, name_colored, paren);
+862     }
+863   } else {
+864     safe_snprintf(current_buf, COLORIZE_BUFFER_SIZE, &quot;%s/%s&quot;, type_colored, name_colored);
+865   }
+866 
+867   return current_buf;
+868 #undef COLORIZE_BUFFERS
+869 #undef COLORIZE_BUFFER_SIZE
+870 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>colored_string()</b>, <b>COLORIZE_BUFFER_SIZE</b>,
+    <b>COLORIZE_BUFFERS</b>, and <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_log_named_format_message_(const_char_*_message,_char_*_output,_size_t_output_size)"><a class="permalink" href="#int_log_named_format_message_(const_char_*_message,_char_*_output,_size_t_output_size)">int
+  log_named_format_message (const char * message, char * output, size_t
+  output_size)</a></h2>
+<p class="Pp">Definition at line <b>467</b> of file <b>log/named.c</b>.</p>
+<pre>467                                                                                     {
+468   if (!message || !output || output_size == 0) {
+469     return -1;
+470   }
+471 
+472   size_t out_pos = 0;
+473   const char *p = message;
+474   bool any_transformed = false;
+475 
+476   while (*p &amp;&amp; out_pos &lt; output_size - 1) {
+477     /* Look for &quot;0x&quot; prefix indicating a hex address */
+478     if (*p == '0' &amp;&amp; *(p + 1) == 'x' &amp;&amp; isxdigit(*(p + 2))) {
+479       const char *hex_start = p;
+480       if (try_format_hex_address(message, hex_start, output, output_size, &amp;out_pos, &amp;p)) {
+481         any_transformed = true;
+482         continue;
+483       }
+484 
+485       /* Not registered or formatting failed - copy original hex address */
+486       const char *hex_end = hex_start + 2; /* Start after &quot;0x&quot; */
+487       while (*hex_end &amp;&amp; isxdigit(*hex_end)) {
+488         hex_end++;
+489       }
+490       size_t hex_len = hex_end - hex_start;
+491       if (hex_len &lt; output_size - out_pos) {
+492         memcpy(output + out_pos, hex_start, hex_len);
+493         out_pos += hex_len;
+494         p = hex_end;
+495       } else {
+496         /* Buffer overflow - truncate and stop */
+497         break;
+498       }
+499     } else if (isdigit(*p)) {
+500       /* Look for decimal integers that might be FDs or packet types */
+501       const char *int_start = p;
+502       int fd_value = 0;
+503       int digit_count = 0;
+504 
+505       /* Parse decimal digits */
+506       while (*p &amp;&amp; isdigit(*p) &amp;&amp; digit_count &lt; 6) { /* FDs rarely exceed 999999 */
+507         fd_value = fd_value * 10 + (*p - '0');
+508         p++;
+509         digit_count++;
+510       }
+511 
+512       /* Skip if this integer is part of already-formatted output like &quot;(fd=20)&quot; or &quot;(type/name (...))&quot; */
+513       bool is_already_formatted = false;
+514       if (int_start - message &gt;= 5) {
+515         /* Check for &quot;(fd=&quot;, &quot;(pkt_type=&quot;, &quot;(socket=&quot;, &quot;(sockfd=&quot;, or &quot;(type/&quot; patterns to prevent re-formatting.
+516          * Named objects are formatted as: type/name (0xaddress) or type/name (key=value)
+517          * We need to detect if we're already inside a formatted output.
+518          */
+519         const char *check = int_start - 1;
+520         while (check &gt; message &amp;&amp; isspace(*check))
+521           check--;
+522 
+523         // Only access *check if pointer is within bounds
+524         if (check &gt;= message &amp;&amp; *check == '=') {
+525           /* Found &quot;=&quot;, now check what prefix it has for patterns like &quot;(fd=20)&quot; or &quot;(socket=20)&quot; or &quot;(pkt_type=123)&quot; */
+526           const char *eq_pos = check;
+527           check--;
+528           while (check &gt; message &amp;&amp; (isalnum(*check) || *check == '_')) {
+529             check--;
+530           }
+531           check++;
+532 
+533           size_t prefix_len = eq_pos - check;
+534           if ((prefix_len == 2 &amp;&amp; strncmp(check, &quot;fd&quot;, 2) == 0) ||
+535               (prefix_len == 6 &amp;&amp; strncmp(check, &quot;socket&quot;, 6) == 0) ||
+536               (prefix_len == 6 &amp;&amp; strncmp(check, &quot;sockfd&quot;, 6) == 0) ||
+537               (prefix_len == 8 &amp;&amp; strncmp(check, &quot;pkt_type&quot;, 8) == 0)) {
+538             is_already_formatted = true;
+539           }
+540         } else if (check &gt;= message &amp;&amp; *check == '/') {
+541           /* Found &quot;/&quot;, now check if this is a type/name pattern.
+542            * Format is &quot;(type/name (...)&quot; where type is word characters (thread, mutex, socket, etc.)
+543            * Must verify &quot;/&quot; is preceded by word characters AND &quot;(&quot; to ensure it's a formatted type.
+544            */
+545           const char *slash_pos = check;
+546           check--;
+547           while (check &gt; message &amp;&amp; (isalnum(*check) || *check == '_')) {
+548             check--;
+549           }
+550           check++;
+551 
+552           /* Check that the &quot;/&quot; was preceded by word characters (indicating a type name) */
+553           size_t type_len = slash_pos - check;
+554           if (type_len &gt; 0 &amp;&amp; (isalpha(*check) || *check == '_')) {
+555             /* Verify this is a registered type/name pattern by checking for &quot;(&quot; before the type
+556              * AND checking if the type actually exists in the registry */
+557             const char *type_start = check;
+558             const char *before_type = type_start - 1;
+559             while (before_type &gt; message &amp;&amp; isspace(*before_type)) {
+560               before_type--;
+561             }
+562 
+563             /* Only mark as formatted if:
+564              * 1. Preceded by &quot;(&quot; - ensures pattern looks like &quot;(type/name ...)&quot;
+565              * 2. Type exists in registry - prevents false positives on random text */
+566             if (before_type &gt;= message &amp;&amp; *before_type == '(' &amp;&amp; is_type_in_registry(type_start, type_len)) {
+567               is_already_formatted = true;
+568             }
+569           }
+570         }
+571       }
+572 
+573       /* Check if this is a registered packet type */
+574       if (!is_already_formatted &amp;&amp; digit_count &gt; 0 &amp;&amp; has_packet_type_prefix(message, int_start)) {
+575         const char *name = named_get_packet_type(fd_value);
+576         if (name) {
+577           const char *prefix_start = find_packet_type_prefix_start(message, int_start);
+578           size_t prefix_len = int_start - prefix_start;
+579           size_t saved_pos = out_pos;
+580 
+581           if (out_pos &gt;= prefix_len) {
+582             out_pos -= prefix_len;
+583           }
+584 
+585           if (write_formatted_packet_type(fd_value, name, output, output_size, &amp;out_pos)) {
+586             any_transformed = true;
+587             continue;
+588           }
+589 
+590           out_pos = saved_pos; /* Restore on failure */
+591         }
+592       }
+593 
+594 
+595       /* Check if this is a registered file descriptor */
+596       if (!is_already_formatted &amp;&amp; digit_count &gt; 0 &amp;&amp; has_fd_prefix(message, int_start)) {
+597         const char *name = named_get_fd(fd_value);
+598         if (name) {
+599           const char *prefix_start = find_fd_prefix_start(message, int_start);
+600           size_t prefix_len = int_start - prefix_start;
+601           size_t saved_pos = out_pos;
+602 
+603           if (out_pos &gt;= prefix_len) {
+604             out_pos -= prefix_len;
+605           }
+606 
+607           if (write_formatted_fd(fd_value, name, output, output_size, &amp;out_pos)) {
+608             any_transformed = true;
+609             continue;
+610           }
+611 
+612           out_pos = saved_pos; /* Restore on failure */
+613         }
+614       }
+615 
+616       /* Check if this integer has a generic type prefix (socket, client, connection, etc.)
+617        * DISABLED: This feature has a backtracking bug that corrupts output when applied after
+618        * other formatting operations. Re-enable only after fixing the backtracking logic to
+619        * properly track correspondence between input and output positions.
+620        * See commit b86fed2a8 which introduced the bug.
+621        */
+622       if (false &amp;&amp; !is_already_formatted &amp;&amp; digit_count &gt; 0) {
+623         const char *type_name = NULL;
+624         size_t type_len = 0;
+625         const char *prefix_start = find_generic_type_prefix(message, int_start, &amp;type_name, &amp;type_len);
+626 
+627         if (type_name &amp;&amp; prefix_start != int_start) {
+628           /* Skip if already formatted with a name (e.g., &quot;socket/listener.0&quot; already has a /) */
+629           bool skip_format = false;
+630           /* Check if this looks like it's already been formatted by looking for / in the pattern */
+631           const char *check_ptr = prefix_start;
+632           while (check_ptr &lt; int_start &amp;&amp; *check_ptr &amp;&amp; *check_ptr != '/') {
+633             check_ptr++;
+634           }
+635           if (check_ptr &lt; int_start &amp;&amp; *check_ptr == '/') {
+636             /* Already formatted (contains /), skip */
+637             skip_format = true;
+638           }
+639 
+640           if (!skip_format) {
+641             /* We found a type prefix like &quot;socket&quot;, &quot;client&quot;, etc.
+642              * Try to look up a registered name for this type+id */
+643 
+644             /* Normalize type name aliases: &quot;sockfd&quot; &#x2192; &quot;socket&quot;, &quot;descriptor&quot; &#x2192; &quot;fd&quot; */
+645             const char *lookup_type = type_name;
+646             size_t lookup_len = type_len;
+647             if (type_len == 6 &amp;&amp; strncmp(type_name, &quot;sockfd&quot;, 6) == 0) {
+648               lookup_type = &quot;socket&quot;;
+649               lookup_len = 6;
+650             } else if (type_len == 10 &amp;&amp; strncmp(type_name, &quot;descriptor&quot;, 10) == 0) {
+651               lookup_type = &quot;fd&quot;;
+652               lookup_len = 2;
+653             }
+654 
+655             const char *name = named_get_by_type_and_id(lookup_type, lookup_len, fd_value);
+656 
+657             char temp_output[512];
+658             char type_str[32];
+659             char id_buffer[64];
+660 
+661             /* Safely copy type name */
+662             if (type_len &lt; sizeof(type_str)) {
+663               memcpy(type_str, type_name, type_len);
+664               type_str[type_len] = '\0';
+665 
+666               int id_written = snprintf(id_buffer, sizeof(id_buffer), &quot;%d&quot;, fd_value);
+667               if (id_written &gt; 0 &amp;&amp; id_written &lt; (int)sizeof(id_buffer)) {
+668                 int temp_written = 0;
+669                 if (name) {
+670                   /* Format with name: type/name (type=value) */
+671                   temp_written =
+672                       snprintf(temp_output, sizeof(temp_output), &quot;%s/%s (%s=%s)&quot;, type_str, name, type_str, id_buffer);
+673 
+674                   if (temp_written &gt; 0 &amp;&amp; (size_t)temp_written &lt; sizeof(temp_output)) {
+675                     /* Backtrack to remove the prefix we already copied */
+676                     size_t prefix_len = int_start - prefix_start;
+677                     if (out_pos &gt;= prefix_len) {
+678                       out_pos -= prefix_len;
+679                     }
+680 
+681                     int copy_len = temp_written;
+682                     if (out_pos + copy_len &lt; output_size - 1) {
+683                       memcpy(output + out_pos, temp_output, copy_len);
+684                       out_pos += copy_len;
+685                       any_transformed = true;
+686                       continue;
+687                     }
+688                   }
+689                 }
+690               }
+691             }
+692           }
+693         }
+694       }
+695 
+696       /* Not a registered FD or formatting failed - copy original number */
+697       if (!copy_unformatted_decimal(int_start, p, output, output_size, &amp;out_pos)) {
+698         break;
+699       }
+700     } else {
+701       /* Check if this is the start of &quot;type=DIGIT&quot; pattern */
+702       if (*p == 't' &amp;&amp; p + 4 &lt; message + strlen(message) &amp;&amp; is_type_equals_pattern(p)) {
+703         if (!type_equals_inside_parens(p, message)) {
+704           const char *digit_end = p + 5;
+705           int pkt_value = parse_decimal_digits(digit_end, &amp;digit_end);
+706 
+707           if (pkt_value &gt; 0) {
+708             const char *name = named_get_packet_type(pkt_value);
+709             if (name &amp;&amp; write_formatted_type_equals(pkt_value, name, output, output_size, &amp;out_pos)) {
+710               p = digit_end;
+711               any_transformed = true;
+712               continue;
+713             }
+714           }
+715         }
+716       }
+717 
+718       /* Regular character - copy it */
+719       copy_char_to_output(output, &amp;out_pos, *p++);
+720     }
+721   }
+722 
+723   /* Null terminate */
+724   if (out_pos &lt; output_size) {
+725     output[out_pos] = '\0';
+726   } else {
+727     output[output_size - 1] = '\0';
+728   }
+729 
+730   return any_transformed ? (int)out_pos : -1;
+731 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>named_get_fd()</b>, and
+    <b>named_get_packet_type()</b>.</p>
+<p class="Pp">Referenced by <b>log_named_format_or_original()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_log_named_format_or_original_(const_char_*_message)"><a class="permalink" href="#const_char_*_log_named_format_or_original_(const_char_*_message)">const
+  char * log_named_format_or_original (const char * message)</a></h2>
+<p class="Pp">Format named objects in a message (thread-local buffer).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>message</i> Input message</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Formatted message string (thread-local buffer, valid only
+  until next call)</div>
+<p class="Pp">Convenience wrapper that uses a thread-local buffer internally.
+    Applies formatting iteratively until the message stops changing (fixpoint).
+    Returns the original message if no formatting was applied.</p>
+<p class="Pp">Definition at line <b>742</b> of file <b>log/named.c</b>.</p>
+<pre>742                                                               {
+743   if (!message) {
+744     return message;
+745   }
+746 
+747   static _Thread_local char format_buffer[NAMED_FORMAT_BUFFER_SIZE];
+748   static _Thread_local char work_buffer[NAMED_FORMAT_BUFFER_SIZE];
+749 
+750   /* Apply formatting iteratively until the message stabilizes (no more changes) */
+751   const char *current = message;
+752   size_t max_iterations = 3; /* Reduce iterations to prevent recursion (prevent transforming already-transformed output) */
+753 
+754   for (size_t iter = 0; iter &lt; max_iterations; iter++) {
+755     int result = log_named_format_message(current, format_buffer, sizeof(format_buffer));
+756 
+757     if (result &lt;= 0) {
+758       /* No transformation was made, we've reached a fixpoint */
+759       return current == message ? message : format_buffer;
+760     }
+761 
+762     /* Check if the message changed */
+763     if (strcmp(current, format_buffer) == 0) {
+764       /* No actual change, return the current version */
+765       return format_buffer;
+766     }
+767 
+768     /* Message changed, prepare for next iteration */
+769     if (current == message) {
+770       /* First iteration, use format_buffer as input for next iteration */
+771       current = format_buffer;
+772     } else {
+773       /* Subsequent iterations, swap buffers */
+774       strcpy(work_buffer, format_buffer);
+775       current = work_buffer;
+776     }
+777   }
+778 
+779   /* Max iterations reached, return last formatted version */
+780   return format_buffer;
+781 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_named_format_message()</b>, and
+    <b>NAMED_FORMAT_BUFFER_SIZE</b>.</p>
+<p class="Pp">Referenced by <b>log_template_apply()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

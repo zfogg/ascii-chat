@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query::VariableInfo(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query::VariableInfo(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query::VariableInfo(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query::VariableInfo - Variable information (from LLDB
+    SBValue).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/tooling/query/lldb_controller.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">std::string <b>name</b>
+  <br/>
+  Variable name. std::string <b>type</b>
+  <br/>
+  Type name. std::string <b>value</b>
+  <br/>
+  Value as string. std::string <b>summary</b>
+  <br/>
+  LLDB summary (for complex types). uint64_t <b>address</b>
+  <br/>
+  Memory address. size_t <b>size</b>
+  <br/>
+  Size in bytes. <b>bool</b> <b>is_valid</b>
+  <br/>
+  Whether value could be read. <b>bool</b> <b>is_pointer</b>
+  <br/>
+  Whether this is a pointer type. <b>bool</b> <b>is_aggregate</b>
+  <br/>
+  Whether this is struct/class/array. std::vector&lt; <b>VariableInfo</b> &gt;
+    <b>children</b>
+  <br/>
+  Struct members / array elements.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Variable information (from LLDB SBValue).</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ascii_query::VariableInfo::address"><a class="permalink" href="#uint64_t_ascii_query::VariableInfo::address">uint64_t
+  ascii_query::VariableInfo::address</a></h2>
+<p class="Pp">Memory address.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::vector_"><a class="permalink" href="#std::vector_">std::vector&lt;<b>VariableInfo</b>&gt;
+  ascii_query::VariableInfo::children</a></h2>
+<p class="Pp">Struct members / array elements.</p>
+<p class="Pp">Definition at line <b>84</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::VariableInfo::is_aggregate</h2>
+<p class="Pp">Whether this is struct/class/array.</p>
+<p class="Pp">Definition at line <b>82</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::VariableInfo::is_pointer</h2>
+<p class="Pp">Whether this is a pointer type.</p>
+<p class="Pp">Definition at line <b>81</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::VariableInfo::is_valid</h2>
+<p class="Pp">Whether value could be read.</p>
+<p class="Pp">Definition at line <b>80</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::VariableInfo::name"><a class="permalink" href="#std::string_ascii_query::VariableInfo::name">std::string
+  ascii_query::VariableInfo::name</a></h2>
+<p class="Pp">Variable name.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ascii_query::VariableInfo::size"><a class="permalink" href="#size_t_ascii_query::VariableInfo::size">size_t
+  ascii_query::VariableInfo::size</a></h2>
+<p class="Pp">Size in bytes.</p>
+<p class="Pp">Definition at line <b>79</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::VariableInfo::summary"><a class="permalink" href="#std::string_ascii_query::VariableInfo::summary">std::string
+  ascii_query::VariableInfo::summary</a></h2>
+<p class="Pp">LLDB summary (for complex types).</p>
+<p class="Pp">Definition at line <b>77</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::VariableInfo::type"><a class="permalink" href="#std::string_ascii_query::VariableInfo::type">std::string
+  ascii_query::VariableInfo::type</a></h2>
+<p class="Pp">Type name.</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>lldb_controller.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::VariableInfo::value"><a class="permalink" href="#std::string_ascii_query::VariableInfo::value">std::string
+  ascii_query::VariableInfo::value</a></h2>
+<p class="Pp">Value as string.</p>
+<p class="Pp">Definition at line <b>76</b> of file <b>lldb_controller.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

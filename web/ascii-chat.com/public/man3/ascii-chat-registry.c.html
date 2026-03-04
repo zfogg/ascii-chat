@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>registry.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">registry.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">registry.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">registry.c - Master registry composition - combines all category
+    arrays.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">category_builder_t <b>g_category_builders</b> []
+  <br/>
+  registry_entry_t <b>g_options_registry</b> [2048]
+  <br/>
+  size_t <b>g_registry_size</b> = 0
+  <br/>
+  <b>bool</b> <b>g_metadata_populated</b> = <b>false</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Master registry composition - combines all category arrays.</p>
+<p class="Pp">This file contains the master registry that combines all
+    category-specific option arrays into a single unified registry. It does not
+    implement any logic, only data composition.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>registry.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="category_builder_t_g_category_builders__"><a class="permalink" href="#category_builder_t_g_category_builders__">category_builder_t
+  g_category_builders[]</a></h2>
+<p class="Pp"><b>Initial value:</b></p>
+<pre>
+<br/>
+                                   = {
+{g_general_entries, &quot;GENERAL&quot;},   {g_logging_entries, &quot;LOGGING&quot;},
+{g_terminal_entries, &quot;TERMINAL&quot;}, {g_configuration_entries, &quot;CONFIGURATION&quot;},
+{g_display_entries, &quot;DISPLAY&quot;},   {g_webcam_entries, &quot;WEBCAM&quot;},
+{g_audio_entries, &quot;AUDIO&quot;},       {g_media_entries, &quot;MEDIA&quot;},
+{g_network_entries, &quot;NETWORK&quot;},   {g_security_entries, &quot;SECURITY&quot;},
+{g_database_entries, &quot;DATABASE&quot;}, {g_debug_entries, &quot;DEBUG&quot;},
+{NULL, NULL}}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>27</b> of file <b>registry.c</b>.</p>
+<pre>27                                          {
+28     {g_general_entries, &quot;GENERAL&quot;},   {g_logging_entries, &quot;LOGGING&quot;},
+29     {g_terminal_entries, &quot;TERMINAL&quot;}, {g_configuration_entries, &quot;CONFIGURATION&quot;},
+30     {g_display_entries, &quot;DISPLAY&quot;},   {g_webcam_entries, &quot;WEBCAM&quot;},
+31     {g_audio_entries, &quot;AUDIO&quot;},       {g_media_entries, &quot;MEDIA&quot;},
+32     {g_network_entries, &quot;NETWORK&quot;},   {g_security_entries, &quot;SECURITY&quot;},
+33     {g_database_entries, &quot;DATABASE&quot;}, {g_debug_entries, &quot;DEBUG&quot;},
+34     {NULL, NULL}};</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>registry_init_from_builders()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> g_metadata_populated = <b>false</b></h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>registry.c</b>.</p>
+<p class="Pp">Referenced by <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="registry_entry_t_g_options_registry_2048_"><a class="permalink" href="#registry_entry_t_g_options_registry_2048_">registry_entry_t
+  g_options_registry[2048]</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>registry.c</b>.</p>
+<p class="Pp">Referenced by <b>options_get_help_text()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>,
+    <b>options_registry_get_metadata()</b>, <b>options_registry_get_raw()</b>,
+    <b>registry_find_entry_by_name()</b>, <b>registry_find_entry_by_short()</b>,
+    <b>registry_init_from_builders()</b>, <b>registry_init_size()</b>, and
+    <b>registry_validate_unique_options()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_g_registry_size_=_0"><a class="permalink" href="#size_t_g_registry_size_=_0">size_t
+  g_registry_size = 0</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>registry.c</b>.</p>
+<p class="Pp">Referenced by <b>options_get_help_text()</b>,
+    <b>options_registry_add_all_to_builder()</b>,
+    <b>options_registry_get_binary_options()</b>,
+    <b>options_registry_get_count()</b>,
+    <b>options_registry_get_for_display()</b>,
+    <b>options_registry_get_for_mode()</b>,
+    <b>options_registry_get_metadata()</b>, and <b>registry_init_size()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

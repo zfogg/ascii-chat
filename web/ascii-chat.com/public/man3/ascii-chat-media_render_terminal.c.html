@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>terminal.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">terminal.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">terminal.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">terminal.c - Pixel renderer for render-file: libvterm + FreeType2
+    software compositor.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>terminal_renderer_s</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>term_renderer_create</b> (const
+    term_renderer_config_t *cfg, terminal_renderer_t **out)
+  <br/>
+  asciichat_error_t <b>term_renderer_feed</b> (terminal_renderer_t *r, const
+    char *ansi_frame, size_t len)
+  <br/>
+  const uint8_t * <b>term_renderer_pixels</b> (terminal_renderer_t *r)
+  <br/>
+  int <b>term_renderer_width_px</b> (terminal_renderer_t *r)
+  <br/>
+  int <b>term_renderer_height_px</b> (terminal_renderer_t *r)
+  <br/>
+  int <b>term_renderer_pitch</b> (terminal_renderer_t *r)
+  <br/>
+  void <b>term_renderer_destroy</b> (terminal_renderer_t *r)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Pixel renderer for render-file: libvterm + FreeType2 software
+    compositor.</p>
+<p class="Pp">Cross-platform implementation using:</p>
+<ul class="Bl-bullet">
+  <li>libvterm: Terminal emulation without any display backend</li>
+  <li>FreeType2: Glyph rasterization</li>
+  <li>fontconfig: Font resolution (Linux/macOS)</li>
+</ul>
+<p class="Pp">No platform-specific code (#if guards) needed &#x2014; this code
+    compiles on all platforms.</p>
+<p class="Pp">Definition in file <b>media/render/terminal.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_term_renderer_create_(const_term_renderer_config_t_*_cfg,_terminal_renderer_t_**_out)"><a class="permalink" href="#asciichat_error_t_term_renderer_create_(const_term_renderer_config_t_*_cfg,_terminal_renderer_t_**_out)">asciichat_error_t
+  term_renderer_create (const term_renderer_config_t * cfg, terminal_renderer_t
+  ** out)</a></h2>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>104                                                                                                      {
+105   terminal_renderer_t *r = SAFE_CALLOC(1, sizeof(*r), terminal_renderer_t *);
+106   r-&gt;cols = cfg-&gt;cols;
+107   r-&gt;rows = cfg-&gt;rows;
+108   r-&gt;theme = cfg-&gt;theme;
+109 
+110   log_debug_every(1000, &quot;term_renderer_create: Initializing FreeType&quot;);
+111   if (FT_Init_FreeType(&amp;r-&gt;ft_lib)) {
+112     SAFE_FREE(r);
+113     return SET_ERRNO(ERROR_INIT, &quot;FreeType init failed&quot;);
+114   }
+115 
+116   // Load font from either file path or memory
+117   if (cfg-&gt;font_data &amp;&amp; cfg-&gt;font_data_size &gt; 0) {
+118     log_debug_every(1000, &quot;term_renderer_create: Loading font from memory (%zu bytes)&quot;, cfg-&gt;font_data_size);
+119     if (FT_New_Memory_Face(r-&gt;ft_lib, cfg-&gt;font_data, (FT_Long)cfg-&gt;font_data_size, 0, &amp;r-&gt;ft_face)) {
+120       FT_Done_FreeType(r-&gt;ft_lib);
+121       SAFE_FREE(r);
+122       return SET_ERRNO(ERROR_INIT, &quot;FreeType: cannot load bundled font&quot;);
+123     }
+124   } else {
+125     log_debug_every(1000, &quot;term_renderer_create: Loading font from path '%s'&quot;, cfg-&gt;font_spec);
+126     if (FT_New_Face(r-&gt;ft_lib, cfg-&gt;font_spec, 0, &amp;r-&gt;ft_face)) {
+127       FT_Done_FreeType(r-&gt;ft_lib);
+128       SAFE_FREE(r);
+129       return SET_ERRNO(ERROR_NOT_FOUND, &quot;FreeType: cannot load font '%s'&quot;, cfg-&gt;font_spec);
+130     }
+131   }
+132 
+133   // Detect if this is the matrix font (needs character mapping to Private Use Area)
+134   r-&gt;is_matrix_font = (strstr(cfg-&gt;font_spec, &quot;matrix&quot;) != NULL || strstr(cfg-&gt;font_spec, &quot;Matrix&quot;) != NULL);
+135   if (r-&gt;is_matrix_font) {
+136     log_debug(&quot;term_renderer_create: Detected matrix font - will use Private Use Area character mapping&quot;);
+137   }
+138 
+139   // Handle scalable vs bitmap fonts differently
+140   // Bitmap fonts (like matrix) don't respond to FT_Set_Char_Size
+141   // Instead, we need to select the best available bitmap strike
+142   log_debug(&quot;term_renderer_create: font='%s' num_fixed_sizes=%d&quot;, cfg-&gt;font_spec, r-&gt;ft_face-&gt;num_fixed_sizes);
+143   if (r-&gt;ft_face-&gt;num_fixed_sizes &gt; 0) {
+144     // Bitmap font: select the best matching bitmap strike
+145     int err = FT_Select_Size(r-&gt;ft_face, 0); // Use first available strike
+146     log_debug(&quot;term_renderer_create: [BITMAP] FT_Select_Size(0) returned %d&quot;, err);
+147   } else {
+148     // Scalable font: use FT_Set_Char_Size
+149     // FT_Set_Char_Size takes 1/64pt units and DPI &#x2014; supports fractional point sizes.
+150     // 96 DPI is the standard screen DPI used here; the 64 factor is the 26.6 fixed-point scale.
+151     int err = FT_Set_Char_Size(r-&gt;ft_face, 0, (FT_F26Dot6)(cfg-&gt;font_size_pt * 64.0), 96, 96);
+152     log_debug(&quot;term_renderer_create: [SCALABLE] FT_Set_Char_Size(size_pt=%.1f &#x2192; %ld 1/64pt) returned %d&quot;,
+153               cfg-&gt;font_size_pt, (long)(cfg-&gt;font_size_pt * 64.0), err);
+154   }
+155 
+156   int load_err = FT_Load_Char(r-&gt;ft_face, 'M', FT_LOAD_RENDER);
+157   log_debug(&quot;DEBUG: FT_Load_Char('M', FT_LOAD_RENDER) returned %d&quot;, load_err);
+158   log_debug(&quot;DEBUG: glyph-&gt;bitmap.rows=%d, glyph-&gt;bitmap.width=%d, glyph-&gt;bitmap_top=%d&quot;,
+159             r-&gt;ft_face-&gt;glyph-&gt;bitmap.rows, r-&gt;ft_face-&gt;glyph-&gt;bitmap.width, r-&gt;ft_face-&gt;glyph-&gt;bitmap_top);
+160 
+161   // For monospace ASCII grid: use advance.x (proper character spacing) and rendered height
+162   FT_Pos advance_x_26_6 = r-&gt;ft_face-&gt;glyph-&gt;advance.x;
+163   log_debug(&quot;DEBUG: advance.x (26.6pt)=%ld&quot;, advance_x_26_6);
+164 
+165   // Calculate cell width from font metrics
+166   r-&gt;cell_w = (int)(advance_x_26_6 &gt;&gt; 6);
+167 
+168   // Only add spacing to fill entire frame if --stretch is specified
+169   bool stretch_mode = GET_OPTION(stretch);
+170   if (stretch_mode) {
+171     r-&gt;cell_w++;
+172     log_info(&quot;ADVANCE_X: value=%ld (26.6pt) &#x2192; cell_w=%d (advance + 1 for stretch), cols=%d &#x2192; width_px=%d&quot;,
+173              advance_x_26_6, r-&gt;cell_w, r-&gt;cols, r-&gt;cols * r-&gt;cell_w);
+174   } else {
+175     log_info(&quot;ADVANCE_X: value=%ld (26.6pt) &#x2192; cell_w=%d (preserve aspect ratio), cols=%d &#x2192; width_px=%d&quot;, advance_x_26_6,
+176              r-&gt;cell_w, r-&gt;cols, r-&gt;cols * r-&gt;cell_w);
+177   }
+178 
+179   // For both bitmap and scalable fonts, use the actual glyph bitmap height
+180   // This ensures text doesn't overflow cells. Using size-&gt;metrics.height (line spacing)
+181   // instead of bitmap.rows causes cells to be too large and text to overflow.
+182   r-&gt;cell_h = r-&gt;ft_face-&gt;glyph-&gt;bitmap.rows;
+183   int raw_bitmap_top = r-&gt;ft_face-&gt;glyph-&gt;bitmap_top;
+184   log_debug(&quot;DEBUG: cell_h=%d (from bitmap.rows), raw_bitmap_top=%d&quot;, r-&gt;cell_h, raw_bitmap_top);
+185 
+186   // Apply aspect ratio correction unless --stretch is specified
+187   // Terminal characters are typically 2:1 (height:width) to appear normal
+188   if (!stretch_mode) {
+189     int corrected_h = r-&gt;cell_w * 2;
+190     if (corrected_h != r-&gt;cell_h &amp;&amp; r-&gt;cell_h &gt; 0) {
+191       log_info(&quot;ASPECT_RATIO: Correcting cell_h from %d to %d (2x width=%d)&quot;, r-&gt;cell_h, corrected_h, r-&gt;cell_w);
+192       r-&gt;cell_h = corrected_h;
+193     }
+194   }
+195 
+196   // Position baseline vertically within the cell.
+197   // Baseline should be positioned at approximately 75% of cell height to allow proper
+198   // glyph rendering with space both above and below. This prevents glyphs from being
+199   // clipped at the cell boundaries.
+200   //
+201   // Baseline position: y_glyph = py + r-&gt;baseline - g-&gt;bitmap_top
+202   // We want: 0 &lt;= baseline - bitmap_top &lt; cell_h (glyph fits within cell)
+203   // Choose: baseline = (3 * cell_h) / 4 (positions at 75% height)
+204   r-&gt;baseline = (3 * r-&gt;cell_h) / 4;
+205   log_debug(&quot;DEBUG: baseline set to %d (75%% of cell_h=%d)&quot;, r-&gt;baseline, r-&gt;cell_h);
+206 
+207   r-&gt;width_px = r-&gt;cols * r-&gt;cell_w;
+208   r-&gt;height_px = r-&gt;rows * r-&gt;cell_h;
+209   log_debug(&quot;DEBUG: calculated dimensions: width_px=%d (cols=%d * cell_w=%d), height_px=%d (rows=%d * cell_h=%d)&quot;,
+210             r-&gt;width_px, r-&gt;cols, r-&gt;cell_w, r-&gt;height_px, r-&gt;rows, r-&gt;cell_h);
+211   // Pitch in bytes: align to 4-byte boundary for proper row alignment
+212   // Each pixel is 3 bytes (RGB), so we calculate base pitch and round up
+213   int base_pitch = r-&gt;width_px * 3;
+214   r-&gt;pitch = (base_pitch + 3) &amp; ~3; // Round up to next multiple of 4
+215   log_info(&quot;PITCH_CALC: width_px=%d, base_pitch=%d, final_pitch=%d (padded by %d bytes)&quot;, r-&gt;width_px, base_pitch,
+216            r-&gt;pitch, r-&gt;pitch - base_pitch);
+217   log_debug(&quot;DEBUG: Allocating framebuffer: %d bytes total (%d pitch * %d height)&quot;,
+218             (int)((size_t)r-&gt;pitch * r-&gt;height_px), r-&gt;pitch, r-&gt;height_px);
+219   r-&gt;framebuffer = SAFE_MALLOC((size_t)r-&gt;pitch * r-&gt;height_px, uint8_t *);
+220 
+221   r-&gt;vt = vterm_new(r-&gt;rows, r-&gt;cols);
+222   r-&gt;vts = vterm_obtain_screen(r-&gt;vt);
+223 
+224   // Set size BEFORE reset to ensure screen is allocated with correct dimensions
+225   vterm_set_size(r-&gt;vt, r-&gt;rows, r-&gt;cols);
+226   log_debug(&quot;DEBUG: vterm_set_size called with rows=%d cols=%d&quot;, r-&gt;rows, r-&gt;cols);
+227 
+228   vterm_screen_set_callbacks(r-&gt;vts, &amp;g_vterm_cbs, r);
+229   // Reset MUST come before any input writing to initialize state correctly
+230   vterm_screen_reset(r-&gt;vts, 1);
+231 
+232   // Verify the size was set correctly after reset
+233   int vt_rows, vt_cols;
+234   vterm_get_size(r-&gt;vt, &amp;vt_rows, &amp;vt_cols);
+235   log_info(&quot;DEBUG: vterm_get_size returned rows=%d cols=%d (expected %d,%d)&quot;, vt_rows, vt_cols, r-&gt;rows, r-&gt;cols);
+236 
+237   // CRITICAL: Set size AGAIN after reset, as reset may have affected it
+238   vterm_set_size(r-&gt;vt, r-&gt;rows, r-&gt;cols);
+239   log_debug(&quot;DEBUG: vterm_set_size called AGAIN after reset&quot;);
+240 
+241   *out = r;
+242   return ASCIICHAT_OK;
+243 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_term_renderer_destroy_(terminal_renderer_t_*_r)"><a class="permalink" href="#void_term_renderer_destroy_(terminal_renderer_t_*_r)">void
+  term_renderer_destroy (terminal_renderer_t * r)</a></h2>
+<p class="Pp">Definition at line <b>522</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>522                                                    {
+523   if (!r)
+524     return;
+525   vterm_free(r-&gt;vt);
+526   FT_Done_Face(r-&gt;ft_face);
+527   FT_Done_FreeType(r-&gt;ft_lib);
+528   SAFE_FREE(r-&gt;framebuffer);
+529   SAFE_FREE(r);
+530 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_term_renderer_feed_(terminal_renderer_t_*_r,_const_char_*_ansi_frame,_size_t_len)"><a class="permalink" href="#asciichat_error_t_term_renderer_feed_(terminal_renderer_t_*_r,_const_char_*_ansi_frame,_size_t_len)">asciichat_error_t
+  term_renderer_feed (terminal_renderer_t * r, const char * ansi_frame, size_t
+  len)</a></h2>
+<p class="Pp">Definition at line <b>245</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>245                                                                                                  {
+246   // Clear framebuffer to ensure no leftover pixels from previous frames
+247   uint8_t def_bg = (r-&gt;theme == TERM_RENDERER_THEME_LIGHT) ? 255 : 0;
+248   memset(r-&gt;framebuffer, def_bg, (size_t)r-&gt;pitch * r-&gt;height_px);
+249 
+250   // DEBUG: Log cell dimensions and font info
+251   static int feed_count = 0;
+252   if (feed_count++ &lt; 2) {
+253     log_info(&quot;TERM_RENDERER_FEED[%d]: Grid=%dx%d, Cell=(%d,%d)px, Output=(%dx%d)px, Baseline=%d&quot;,
+254              feed_count, r-&gt;cols, r-&gt;rows, r-&gt;cell_w, r-&gt;cell_h, r-&gt;width_px, r-&gt;height_px, r-&gt;baseline);
+255   }
+256 
+257   static const char home[] = &quot;\033[H&quot;;
+258   vterm_input_write(r-&gt;vt, home, sizeof(home) - 1);
+259 
+260   // Count newlines to determine CRLF conversion size
+261   int newline_count = 0;
+262   for (size_t i = 0; i &lt; len; i++) {
+263     if (ansi_frame[i] == '\n')
+264       newline_count++;
+265   }
+266 
+267   // Convert LF-only line endings to CRLF (vterm expects CRLF)
+268   // This fixes cursor positioning on alternate rows
+269   char *fixed_frame = SAFE_MALLOC(len + newline_count, char *);
+270   if (!fixed_frame) {
+271     log_error(&quot;failed to allocate memory for CRLF conversion&quot;);
+272     return SET_ERRNO(ERROR_MEMORY, &quot;CRLF conversion allocation failed&quot;);
+273   }
+274 
+275   size_t fixed_pos = 0;
+276   for (size_t i = 0; i &lt; len; i++) {
+277     fixed_frame[fixed_pos++] = ansi_frame[i];
+278     if (ansi_frame[i] == '\n' &amp;&amp; (i == 0 || ansi_frame[i - 1] != '\r')) {
+279       // Insert carriage return before LF if not already preceded by CR
+280       fixed_frame[fixed_pos - 1] = '\r';
+281       fixed_frame[fixed_pos++] = '\n';
+282     }
+283   }
+284 
+285   vterm_input_write(r-&gt;vt, fixed_frame, fixed_pos);
+286   log_debug(&quot;DEBUG: fed ANSI frame to vterm with CRLF line endings (original_len=%zu, fixed_len=%zu)&quot;, len, fixed_pos);
+287   SAFE_FREE(fixed_frame);
+288 
+289   // Check ALL line lengths to see if there's an alternating pattern
+290   size_t line_num = 0;
+291   size_t pos = 0;
+292   size_t visible_chars = 0;
+293   bool in_ansi = false;
+294 
+295   while (pos &lt; len &amp;&amp; line_num &lt; 45) { // Check all 42 lines
+296     char c = ansi_frame[pos];
+297 
+298     if (c == '\033') {
+299       in_ansi = true;
+300     } else if (in_ansi &amp;&amp; c == 'm') {
+301       in_ansi = false;
+302     } else if (!in_ansi &amp;&amp; c == '\n') {
+303       if (line_num &lt; 10 || line_num &gt;= 40) {
+304         log_debug(&quot;DEBUG: ANSI line %zu has %zu visible chars&quot;, line_num, visible_chars);
+305       }
+306       visible_chars = 0;
+307       line_num++;
+308     } else if (!in_ansi) {
+309       visible_chars++;
+310     }
+311     pos++;
+312   }
+313 
+314   int cells_with_chars = 0, cells_rendered = 0;
+315   log_debug(&quot;DEBUG: RENDER_LOOP starting - grid is %d rows &#x00D7; %d cols, cell dimensions w=%d h=%d&quot;, r-&gt;rows, r-&gt;cols,
+316             r-&gt;cell_w, r-&gt;cell_h);
+317 
+318   for (int row = 0; row &lt; r-&gt;rows; row++) {
+319     for (int col = 0; col &lt; r-&gt;cols; col++) {
+320       VTermScreenCell cell;
+321       vterm_screen_get_cell(r-&gt;vts, (VTermPos){row, col}, &amp;cell);
+322 
+323       // Debug sample: first row, every 50th column
+324       if (row == 0 &amp;&amp; col % 50 == 0) {
+325         log_debug(&quot;DEBUG: ROW0 COL%d: char=0x%02x ('%c'), has_fg=%d has_bg=%d&quot;, col, cell.chars[0],
+326                   (cell.chars[0] &gt;= 32 &amp;&amp; cell.chars[0] &lt; 127) ? cell.chars[0] : '?', VTERM_COLOR_IS_RGB(&amp;cell.fg),
+327                   VTERM_COLOR_IS_RGB(&amp;cell.bg));
+328       }
+329 
+330       uint8_t fr, fg, fb, br, bg, bb;
+331       if (VTERM_COLOR_IS_RGB(&amp;cell.fg)) {
+332         fr = cell.fg.rgb.red;
+333         fg = cell.fg.rgb.green;
+334         fb = cell.fg.rgb.blue;
+335       } else {
+336         fr = fg = fb = 204;
+337       }
+338 
+339       if (VTERM_COLOR_IS_RGB(&amp;cell.bg)) {
+340         br = cell.bg.rgb.red;
+341         bg = cell.bg.rgb.green;
+342         bb = cell.bg.rgb.blue;
+343       } else {
+344         br = bg = bb = def_bg;
+345       }
+346 
+347       // DEBUG: Log color extraction for sample cells
+348       if ((row == 0 &amp;&amp; col % 50 == 0) || (row == 5 &amp;&amp; col % 50 == 0)) {
+349         log_info(&quot;COLORS_EXTRACTED: row=%d col=%d char=0x%02x FG=RGB(%u,%u,%u) BG=RGB(%u,%u,%u)&quot;,
+350                  row, col, cell.chars[0], fr, fg, fb, br, bg, bb);
+351       }
+352 
+353       int px = col * r-&gt;cell_w, py = row * r-&gt;cell_h;
+354       for (int dy = 0; dy &lt; r-&gt;cell_h; dy++) {
+355         int y = py + dy;
+356         if (y &lt; 0 || y &gt;= r-&gt;height_px)
+357           continue;
+358         uint8_t *line = r-&gt;framebuffer + y * r-&gt;pitch + px * 3;
+359         for (int dx = 0; dx &lt; r-&gt;cell_w; dx++) {
+360           int x = px + dx;
+361           if (x &lt; 0 || x &gt;= r-&gt;width_px)
+362             continue;
+363           line[dx * 3] = br;
+364           line[dx * 3 + 1] = bg;
+365           line[dx * 3 + 2] = bb;
+366         }
+367       }
+368 
+369       // Debug: log bounds for rightmost column
+370       if (col == r-&gt;cols - 1 &amp;&amp; row == 0) {
+371         log_debug(&quot;DEBUG: CELL_BG_FILL: col=%d px=%d cell_w=%d extends to px=%d (width_px=%d) cell would extend to &quot;
+372                   &quot;pixel %d%s&quot;,
+373                   col, px, r-&gt;cell_w, px + r-&gt;cell_w - 1, r-&gt;width_px, px + r-&gt;cell_w,
+374                   (px + r-&gt;cell_w &gt; r-&gt;width_px) ? &quot; [OVERFLOW!]&quot; : &quot;&quot;);
+375       }
+376 
+377       // Debug: log all characters in rightmost column
+378       if (col == r-&gt;cols - 1) {
+379         int char_code = (int)(unsigned char)cell.chars[0];
+380         char char_display = (char_code &gt;= 32 &amp;&amp; char_code &lt; 127) ? (char)char_code : '?';
+381         log_debug(&quot;DEBUG: RIGHTMOST_CHAR: row=%d col=%d char=0x%02x (dec %d '%c') space=%d&quot;, row, col,
+382                   (unsigned char)cell.chars[0], char_code, char_display, (cell.chars[0] == ' ' ? 1 : 0));
+383       }
+384 
+385       if (cell.chars[0] &amp;&amp; cell.chars[0] != ' ') {
+386         cells_with_chars++;
+387         // For matrix font, map ASCII characters to Private Use Area glyphs (U+E900-U+E91A)
+388         uint32_t char_to_render = r-&gt;is_matrix_font ? matrix_char_map(cell.chars[0]) : cell.chars[0];
+389         FT_UInt gi = FT_Get_Char_Index(r-&gt;ft_face, char_to_render);
+390 
+391         // Debug: sample cells (every 50 cols, every 5 rows) AND all cells in rightmost column
+392         int is_rightmost = (col == r-&gt;cols - 1);
+393         int is_sample = (col % 50 == 0 &amp;&amp; row % 5 == 0);
+394         if (is_sample || is_rightmost) {
+395           log_debug(&quot;DEBUG: GLYPH_LOOKUP: row=%d col=%d char=0x%02x ('%c') &#x2192; gi=%u%s&quot;, row, col, cell.chars[0],
+396                     (cell.chars[0] &gt;= 32 &amp;&amp; cell.chars[0] &lt; 127) ? cell.chars[0] : '?', gi,
+397                     is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+398         }
+399 
+400         if (gi) {
+401           if (FT_Load_Glyph(r-&gt;ft_face, gi, FT_LOAD_RENDER) == 0) {
+402             FT_GlyphSlot g = r-&gt;ft_face-&gt;glyph;
+403 
+404             // Blit if we have content
+405             if (g-&gt;bitmap.width &gt; 0 &amp;&amp; g-&gt;bitmap.rows &gt; 0) {
+406               // Debug: sample rendered glyphs AND all rightmost column glyphs
+407               if (is_sample || is_rightmost) {
+408                 log_debug(&quot;DEBUG: GLYPH_RENDER: row=%d col=%d bitmap(%dx%d) &#x2192; px=%d py=%d blit_pos(x=%d,y=%d) &quot;
+409                           &quot;offset(bmp_left=%d, baseline=%d, bmp_top=%d)%s&quot;,
+410                           row, col, g-&gt;bitmap.width, g-&gt;bitmap.rows, px, py, px + g-&gt;bitmap_left,
+411                           py + r-&gt;baseline - g-&gt;bitmap_top, g-&gt;bitmap_left, r-&gt;baseline, g-&gt;bitmap_top,
+412                           is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+413               }
+414               blit_glyph(r, &amp;g-&gt;bitmap, px + g-&gt;bitmap_left, py + r-&gt;baseline - g-&gt;bitmap_top, fr, fg, fb, br, bg, bb);
+415               cells_rendered++;
+416             } else if (is_sample || is_rightmost) {
+417               log_debug(&quot;DEBUG: GLYPH_EMPTY: row=%d col=%d gi=%u has empty bitmap (%dx%d)%s&quot;, row, col, gi,
+418                         g-&gt;bitmap.width, g-&gt;bitmap.rows, is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+419             }
+420           } else if (is_sample || is_rightmost) {
+421             log_debug(&quot;DEBUG: GLYPH_LOAD_FAIL: row=%d col=%d gi=%u FT_Load_Glyph failed%s&quot;, row, col, gi,
+422                       is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+423           }
+424         } else if (is_sample || is_rightmost) {
+425           log_debug(&quot;DEBUG: GLYPH_NOT_FOUND: row=%d col=%d char=0x%02x no glyph index%s&quot;, row, col, cell.chars[0],
+426                     is_rightmost ? &quot; [RIGHTMOST]&quot; : &quot;&quot;);
+427         }
+428       }
+429     }
+430   }
+431 
+432   log_info(&quot;DEBUG: RENDER_COMPLETE: cells_with_chars=%d cells_rendered=%d (grid capacity=%d)&quot;, cells_with_chars,
+433            cells_rendered, r-&gt;rows * r-&gt;cols);
+434   log_debug(&quot;DEBUG: render loop finished - processed %d cells total&quot;, r-&gt;rows * r-&gt;cols);
+435 
+436   // Sample pixels from framebuffer to verify content
+437   uint8_t *sample_top = r-&gt;framebuffer;
+438   uint8_t *sample_mid = r-&gt;framebuffer + (r-&gt;height_px / 2) * r-&gt;pitch;
+439   uint8_t *sample_bot = r-&gt;framebuffer + (r-&gt;height_px - 1) * r-&gt;pitch;
+440 
+441   // Enhanced pixel sampling
+442   log_debug(&quot;DEBUG: pixel samples:&quot;);
+443   log_debug(&quot;  top_left RGB(%d,%d,%d), top_mid RGB(%d,%d,%d), top_right RGB(%d,%d,%d)&quot;, sample_top[0], sample_top[1],
+444             sample_top[2], sample_top[r-&gt;pitch / 2], sample_top[r-&gt;pitch / 2 + 1], sample_top[r-&gt;pitch / 2 + 2],
+445             sample_top[(r-&gt;width_px - 1) * 3], sample_top[(r-&gt;width_px - 1) * 3 + 1],
+446             sample_top[(r-&gt;width_px - 1) * 3 + 2]);
+447   log_debug(&quot;  mid_left RGB(%d,%d,%d), mid_mid RGB(%d,%d,%d), mid_right RGB(%d,%d,%d)&quot;, sample_mid[0], sample_mid[1],
+448             sample_mid[2], sample_mid[r-&gt;pitch / 2], sample_mid[r-&gt;pitch / 2 + 1], sample_mid[r-&gt;pitch / 2 + 2],
+449             sample_mid[(r-&gt;width_px - 1) * 3], sample_mid[(r-&gt;width_px - 1) * 3 + 1],
+450             sample_mid[(r-&gt;width_px - 1) * 3 + 2]);
+451   log_debug(&quot;  bot_left RGB(%d,%d,%d), bot_mid RGB(%d,%d,%d), bot_right RGB(%d,%d,%d)&quot;, sample_bot[0], sample_bot[1],
+452             sample_bot[2], sample_bot[r-&gt;pitch / 2], sample_bot[r-&gt;pitch / 2 + 1], sample_bot[r-&gt;pitch / 2 + 2],
+453             sample_bot[(r-&gt;width_px - 1) * 3], sample_bot[(r-&gt;width_px - 1) * 3 + 1],
+454             sample_bot[(r-&gt;width_px - 1) * 3 + 2]);
+455 
+456   log_debug(&quot;term_renderer_feed: cells_with_chars=%d, cells_rendered=%d&quot;, cells_with_chars, cells_rendered);
+457 
+458   // Write ANSI frame size and sample bottom row characters to debug file
+459   FILE *dbg_dims = fopen(&quot;/tmp/render-dims.txt&quot;, &quot;a&quot;);
+460   if (dbg_dims) {
+461     fprintf(dbg_dims, &quot;[TERM_FEED] len=%zu, grid=%dx%d, pixels=%dx%d, cells_with_chars=%d, cells_rendered=%d\n&quot;, len,
+462             r-&gt;cols, r-&gt;rows, r-&gt;width_px, r-&gt;height_px, cells_with_chars, cells_rendered);
+463 
+464     // Sample bottom row to see what characters are there
+465     fprintf(dbg_dims, &quot;  Bottom row (41): &quot;);
+466     for (int col = 0; col &lt; 20; col++) { // First 20 chars
+467       VTermScreenCell cell;
+468       vterm_screen_get_cell(r-&gt;vts, (VTermPos){r-&gt;rows - 1, col}, &amp;cell);
+469       if (cell.chars[0]) {
+470         fprintf(dbg_dims, &quot;%c&quot;, (cell.chars[0] &gt;= 32 &amp;&amp; cell.chars[0] &lt; 127) ? cell.chars[0] : '?');
+471       } else {
+472         fprintf(dbg_dims, &quot; &quot;);
+473       }
+474     }
+475     fprintf(dbg_dims, &quot;\n&quot;);
+476 
+477     // Check color of first char in bottom row
+478     for (int col = 0; col &lt; r-&gt;cols; col++) {
+479       VTermScreenCell cell;
+480       vterm_screen_get_cell(r-&gt;vts, (VTermPos){r-&gt;rows - 1, col}, &amp;cell);
+481       if (cell.chars[0] &amp;&amp; cell.chars[0] != ' ') {
+482         int has_rgb_fg = VTERM_COLOR_IS_RGB(&amp;cell.fg);
+483         int has_rgb_bg = VTERM_COLOR_IS_RGB(&amp;cell.bg);
+484         fprintf(dbg_dims, &quot;  Colors - has_rgb_fg=%d has_rgb_bg=%d\n&quot;, has_rgb_fg, has_rgb_bg);
+485         if (has_rgb_fg) {
+486           fprintf(dbg_dims, &quot;    fg=RGB(%d,%d,%d)\n&quot;, cell.fg.rgb.red, cell.fg.rgb.green, cell.fg.rgb.blue);
+487         }
+488         if (has_rgb_bg) {
+489           fprintf(dbg_dims, &quot;    bg=RGB(%d,%d,%d)\n&quot;, cell.bg.rgb.red, cell.bg.rgb.green, cell.bg.rgb.blue);
+490         }
+491         break;
+492       }
+493     }
+494     fflush(dbg_dims);
+495     fclose(dbg_dims);
+496   }
+497 
+498   log_debug(&quot;term_renderer_feed: Grid dimensions: %d cols x %d rows, Pixel dimensions: %d x %d px&quot;, r-&gt;cols, r-&gt;rows,
+499             r-&gt;width_px, r-&gt;height_px);
+500 
+501   log_debug(
+502       &quot;term_renderer_feed: pixel samples - top_left RGB(%d,%d,%d), mid_left RGB(%d,%d,%d), bot_left RGB(%d,%d,%d)&quot;,
+503       sample_top[0], sample_top[1], sample_top[2], sample_mid[0], sample_mid[1], sample_mid[2], sample_bot[0],
+504       sample_bot[1], sample_bot[2]);
+505 
+506   return ASCIICHAT_OK;
+507 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_term_renderer_height_px_(terminal_renderer_t_*_r)"><a class="permalink" href="#int_term_renderer_height_px_(terminal_renderer_t_*_r)">int
+  term_renderer_height_px (terminal_renderer_t * r)</a></h2>
+<p class="Pp">Definition at line <b>515</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>515                                                     {
+516   return r-&gt;height_px;
+517 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_term_renderer_pitch_(terminal_renderer_t_*_r)"><a class="permalink" href="#int_term_renderer_pitch_(terminal_renderer_t_*_r)">int
+  term_renderer_pitch (terminal_renderer_t * r)</a></h2>
+<p class="Pp">Definition at line <b>518</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>518                                                 {
+519   return r-&gt;pitch;
+520 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_uint8_t_*_term_renderer_pixels_(terminal_renderer_t_*_r)"><a class="permalink" href="#const_uint8_t_*_term_renderer_pixels_(terminal_renderer_t_*_r)">const
+  uint8_t * term_renderer_pixels (terminal_renderer_t * r)</a></h2>
+<p class="Pp">Definition at line <b>509</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>509                                                             {
+510   return r-&gt;framebuffer;
+511 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_write_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_term_renderer_width_px_(terminal_renderer_t_*_r)"><a class="permalink" href="#int_term_renderer_width_px_(terminal_renderer_t_*_r)">int
+  term_renderer_width_px (terminal_renderer_t * r)</a></h2>
+<p class="Pp">Definition at line <b>512</b> of file
+    <b>media/render/terminal.c</b>.</p>
+<pre>512                                                    {
+513   return r-&gt;width_px;
+514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>render_file_create()</b>, and
+    <b>render_file_write_frame()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

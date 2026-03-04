@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>levenshtein.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">levenshtein.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">levenshtein.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">levenshtein.c - Levenshtein distance algorithm for fuzzy string
+    matching.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">size_t <b>levenshtein_n</b> (const char *a, const size_t length,
+    const char *b, const size_t bLength)
+  <br/>
+  size_t <b>levenshtein</b> (const char *a, const char *b)
+  <br/>
+  const char * <b>levenshtein_find_similar</b> (const char *unknown, const char
+    *const *candidates)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Levenshtein distance algorithm for fuzzy string matching.</p>
+<p class="Pp">MIT licensed. Copyright (c) 2015 Titus Wormer
+    tituswormer@gmail.com From: https://github.com/wooorm/levenshtein.c</p>
+<p class="Pp"></p>
+<p class="Pp">Modified for ascii-chat to use project memory macros and UTF-8
+    character support.</p>
+<p class="Pp">Definition in file <b>levenshtein.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_levenshtein_(const_char_*_a,_const_char_*_b)"><a class="permalink" href="#size_t_levenshtein_(const_char_*_a,_const_char_*_b)">size_t
+  levenshtein (const char * a, const char * b)</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>levenshtein.c</b>.</p>
+<pre>74                                                  {
+75   if (!a || !b) {
+76     return SIZE_MAX;
+77   }
+78 
+79   // Count UTF-8 characters instead of bytes
+80   size_t char_count_a = utf8_char_count(a);
+81   size_t char_count_b = utf8_char_count(b);
+82 
+83   if (char_count_a == SIZE_MAX || char_count_b == SIZE_MAX) {
+84     return SIZE_MAX; // Invalid UTF-8 in one of the strings
+85   }
+86 
+87   // Convert strings to codepoint arrays for UTF-8-aware comparison
+88   if (char_count_a == 0) {
+89     return char_count_b;
+90   }
+91   if (char_count_b == 0) {
+92     return char_count_a;
+93   }
+94 
+95   uint32_t *codepoints_a = SAFE_MALLOC(char_count_a * sizeof(uint32_t), uint32_t *);
+96   uint32_t *codepoints_b = SAFE_MALLOC(char_count_b * sizeof(uint32_t), uint32_t *);
+97 
+98   if (!codepoints_a || !codepoints_b) {
+99     SAFE_FREE(codepoints_a);
+100     SAFE_FREE(codepoints_b);
+101     return SIZE_MAX;
+102   }
+103 
+104   size_t decoded_a = utf8_to_codepoints(a, codepoints_a, char_count_a);
+105   size_t decoded_b = utf8_to_codepoints(b, codepoints_b, char_count_b);
+106 
+107   if (decoded_a == SIZE_MAX || decoded_b == SIZE_MAX) {
+108     SAFE_FREE(codepoints_a);
+109     SAFE_FREE(codepoints_b);
+110     return SIZE_MAX;
+111   }
+112 
+113   // Compute Levenshtein distance on codepoint arrays
+114   size_t *cache = SAFE_CALLOC(char_count_a * sizeof(size_t), 1, size_t *);
+115   if (!cache) {
+116     SAFE_FREE(codepoints_a);
+117     SAFE_FREE(codepoints_b);
+118     return SIZE_MAX;
+119   }
+120 
+121   // Initialize cache
+122   for (size_t i = 0; i &lt; char_count_a; i++) {
+123     cache[i] = i + 1;
+124   }
+125 
+126   size_t distance = 0;
+127   size_t result = 0;
+128   for (size_t b_idx = 0; b_idx &lt; char_count_b; b_idx++) {
+129     uint32_t b_code = codepoints_b[b_idx];
+130     result = distance = b_idx;
+131 
+132     for (size_t a_idx = 0; a_idx &lt; char_count_a; a_idx++) {
+133       uint32_t a_code = codepoints_a[a_idx];
+134       size_t b_distance = (a_code == b_code) ? distance : distance + 1;
+135       distance = cache[a_idx];
+136 
+137       cache[a_idx] = result = (distance &gt; result) ? ((b_distance &gt; result) ? result + 1 : b_distance)
+138                                                   : ((b_distance &gt; distance) ? distance + 1 : b_distance);
+139     }
+140   }
+141 
+142   SAFE_FREE(cache);
+143   SAFE_FREE(codepoints_a);
+144   SAFE_FREE(codepoints_b);
+145 
+146   return result;
+147 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_char_count()</b>, and
+    <b>utf8_to_codepoints()</b>.</p>
+<p class="Pp">Referenced by <b>find_similar_option()</b>,
+    <b>find_similar_option_with_mode()</b>, and
+    <b>levenshtein_find_similar()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_levenshtein_find_similar_(const_char_*_unknown,_const_char_*const_*_candidates)"><a class="permalink" href="#const_char_*_levenshtein_find_similar_(const_char_*_unknown,_const_char_*const_*_candidates)">const
+  char * levenshtein_find_similar (const char * unknown, const char *const *
+  candidates)</a></h2>
+<p class="Pp">Definition at line <b>149</b> of file <b>levenshtein.c</b>.</p>
+<pre>149                                                                                          {
+150   if (!unknown || !candidates) {
+151     return NULL;
+152   }
+153 
+154   const char *best_match = NULL;
+155   size_t best_distance = SIZE_MAX;
+156 
+157   for (int i = 0; candidates[i] != NULL; i++) {
+158     size_t dist = levenshtein(unknown, candidates[i]);
+159     if (dist &lt; best_distance) {
+160       best_distance = dist;
+161       best_match = candidates[i];
+162     }
+163   }
+164 
+165   // Only suggest if the distance is within our threshold
+166   if (best_distance &lt;= LEVENSHTEIN_SUGGESTION_THRESHOLD) {
+167     return best_match;
+168   }
+169 
+170   return NULL;
+171 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>levenshtein()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>, and
+    <b>asciichat_suggest_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_levenshtein_n_(const_char_*_a,_const_size_t_length,_const_char_*_b,_const_size_t_bLength)"><a class="permalink" href="#size_t_levenshtein_n_(const_char_*_a,_const_size_t_length,_const_char_*_b,_const_size_t_bLength)">size_t
+  levenshtein_n (const char * a, const size_t length, const char * b, const
+  size_t bLength)</a></h2>
+<p class="Pp">Definition at line <b>22</b> of file <b>levenshtein.c</b>.</p>
+<pre>22                                                                                               {
+23   // Shortcut optimizations / degenerate cases.
+24   if (a == b) {
+25     return 0;
+26   }
+27 
+28   if (length == 0) {
+29     return bLength;
+30   }
+31 
+32   if (bLength == 0) {
+33     return length;
+34   }
+35 
+36   size_t *cache = SAFE_CALLOC(length, sizeof(size_t), size_t *);
+37   if (!cache) {
+38     return SIZE_MAX; // Allocation failed
+39   }
+40 
+41   size_t index = 0;
+42   size_t bIndex = 0;
+43   size_t distance;
+44   size_t bDistance;
+45   size_t result = 0;
+46   char code;
+47 
+48   // initialize the vector.
+49   while (index &lt; length) {
+50     cache[index] = index + 1;
+51     index++;
+52   }
+53 
+54   // Loop.
+55   while (bIndex &lt; bLength) {
+56     code = b[bIndex];
+57     result = distance = bIndex++;
+58 
+59     for (index = 0; index &lt; length; index++) {
+60       bDistance = code == a[index] ? distance : distance + 1;
+61       distance = cache[index];
+62 
+63       cache[index] = result = distance &gt; result      ? bDistance &gt; result ? result + 1 : bDistance
+64                               : bDistance &gt; distance ? distance + 1
+65                                                      : bDistance;
+66     }
+67   }
+68 
+69   SAFE_FREE(cache);
+70 
+71   return result;
+72 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

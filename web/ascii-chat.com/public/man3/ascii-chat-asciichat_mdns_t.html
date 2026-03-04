@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>asciichat_mdns_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">asciichat_mdns_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">asciichat_mdns_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">asciichat_mdns_t - Internal mDNS context structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>socket_fd</b>
+  <br/>
+  asciichat_mdns_discovery_callback_fn <b>callback</b>
+  <br/>
+  void * <b>callback_data</b>
+  <br/>
+  uint8_t * <b>buffer</b>
+  <br/>
+  size_t <b>buffer_capacity</b>
+  <br/>
+  uint16_t <b>query_id</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal mDNS context structure.</p>
+<p class="Pp">Definition at line <b>24</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t*_asciichat_mdns_t::buffer"><a class="permalink" href="#uint8_t*_asciichat_mdns_t::buffer">uint8_t*
+  asciichat_mdns_t::buffer</a></h2>
+<p class="Pp">I/O buffer for mDNS packets</p>
+<p class="Pp">Definition at line <b>28</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mdns_destroy()</b>,
+    <b>asciichat_mdns_init()</b>, <b>asciichat_mdns_query()</b>, and
+    <b>asciichat_mdns_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_asciichat_mdns_t::buffer_capacity"><a class="permalink" href="#size_t_asciichat_mdns_t::buffer_capacity">size_t
+  asciichat_mdns_t::buffer_capacity</a></h2>
+<p class="Pp">Buffer capacity</p>
+<p class="Pp">Definition at line <b>29</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mdns_init()</b>,
+    <b>asciichat_mdns_query()</b>, and <b>asciichat_mdns_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_mdns_discovery_callback_fn_asciichat_mdns_t::callback"><a class="permalink" href="#asciichat_mdns_discovery_callback_fn_asciichat_mdns_t::callback">asciichat_mdns_discovery_callback_fn
+  asciichat_mdns_t::callback</a></h2>
+<p class="Pp">Discovery callback</p>
+<p class="Pp">Definition at line <b>26</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_asciichat_mdns_t::callback_data"><a class="permalink" href="#void*_asciichat_mdns_t::callback_data">void*
+  asciichat_mdns_t::callback_data</a></h2>
+<p class="Pp">User data for callback</p>
+<p class="Pp">Definition at line <b>27</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_asciichat_mdns_t::query_id"><a class="permalink" href="#uint16_t_asciichat_mdns_t::query_id">uint16_t
+  asciichat_mdns_t::query_id</a></h2>
+<p class="Pp">Current query ID</p>
+<p class="Pp">Definition at line <b>30</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mdns_query()</b>, and
+    <b>asciichat_mdns_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_asciichat_mdns_t::socket_fd"><a class="permalink" href="#int_asciichat_mdns_t::socket_fd">int
+  asciichat_mdns_t::socket_fd</a></h2>
+<p class="Pp">UDP socket for mDNS</p>
+<p class="Pp">Definition at line <b>25</b> of file
+  <b>network/mdns/mdns.c</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_mdns_destroy()</b>,
+    <b>asciichat_mdns_get_socket()</b>, <b>asciichat_mdns_init()</b>,
+    <b>asciichat_mdns_query()</b>, and <b>asciichat_mdns_update()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

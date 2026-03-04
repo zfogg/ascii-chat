@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query::HttpRequest(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query::HttpRequest(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query::HttpRequest(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query::HttpRequest - Parsed HTTP request.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/tooling/query/http_server.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Public_Member_Functions"><a class="permalink" href="#Public_Member_Functions">Public
+  Member Functions</a></h2>
+<br/>
+<p class="Pp">std::string <b>param</b> (const std::string &amp;name, const
+    std::string &amp;default_value='') const
+  <br/>
+  Get a query parameter value. <b>bool</b> <b>hasParam</b> (const std::string
+    &amp;name) const
+  <br/>
+  Check if a query parameter exists (flag-style, like &amp;break). int
+    <b>paramInt</b> (const std::string &amp;name, int default_value=0) const
+  <br/>
+  Get a query parameter as integer. std::string <b>header</b> (const std::string
+    &amp;name, const std::string &amp;default_value='') const
+  <br/>
+  Get a header value.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">std::string <b>method</b>
+  <br/>
+  GET, POST, etc. std::string <b>path</b>
+  <br/>
+  Request path (without query string). std::string <b>query_string</b>
+  <br/>
+  Query string (after ?). std::unordered_map&lt; std::string, std::string &gt;
+    <b>headers</b>
+  <br/>
+  Request headers. std::unordered_map&lt; std::string, std::string &gt;
+    <b>params</b>
+  <br/>
+  Parsed query parameters. std::string <b>body</b>
+  <br/>
+  Request body.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Parsed HTTP request.</p>
+<p class="Pp">Definition at line <b>37</b> of file <b>http_server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Member_Function_Documentation"><a class="permalink" href="#Member_Function_Documentation">Member
+  Function Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ascii_query::HttpRequest::hasParam (const std::string
+  &amp; name) const [inline], [nodiscard]</h2>
+<p class="Pp">Check if a query parameter exists (flag-style, like
+  &amp;break).</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Parameter name</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if parameter is present</div>
+<p class="Pp">Definition at line <b>61</b> of file <b>http_server.h</b>.</p>
+<pre>61                                                            {
+62     return params.find(name) != params.end();
+63   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>params</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::HttpRequest::header_(const_std::string_&amp;_name,_const_std::string_&amp;_default_value_=_"><a class="permalink" href="#std::string_ascii_query::HttpRequest::header_(const_std::string_&amp;_name,_const_std::string_&amp;_default_value_=_">std::string
+  ascii_query::HttpRequest::header (const std::string &amp; name, const
+  std::string &amp; default_value = '') const [nodiscard]</a></h2>
+<p class="Pp">Get a header value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Header name (case-insensitive)
+<br/>
+<i>default_value</i> Default if not found</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Header value or default</div>
+<p class="Pp">Definition at line <b>41</b> of file <b>http_server.cpp</b>.</p>
+<pre>41                                                                                          {
+42     // Case-insensitive header lookup
+43     std::string lower_name = name;
+44     std::transform(lower_name.begin(), lower_name.end(), lower_name.begin(),
+45                    [](unsigned char c) { return std::tolower(c); });
+46 
+47     for (const auto &amp;[key, value] : headers) {
+48         std::string lower_key = key;
+49         std::transform(lower_key.begin(), lower_key.end(), lower_key.begin(),
+50                        [](unsigned char c) { return std::tolower(c); });
+51         if (lower_key == lower_name) {
+52             return value;
+53         }
+54     }
+55     return default_value;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>headers</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::HttpRequest::param_(const_std::string_&amp;_name,_const_std::string_&amp;_default_value_=_"><a class="permalink" href="#std::string_ascii_query::HttpRequest::param_(const_std::string_&amp;_name,_const_std::string_&amp;_default_value_=_">std::string
+  ascii_query::HttpRequest::param (const std::string &amp; name, const
+  std::string &amp; default_value = '') const [inline], [nodiscard]</a></h2>
+<p class="Pp">Get a query parameter value.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Parameter name
+<br/>
+<i>default_value</i> Default if not found</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parameter value or default</div>
+<p class="Pp">Definition at line <b>51</b> of file <b>http_server.h</b>.</p>
+<pre>51                                                                                                 {
+52     auto it = params.find(name);
+53     return (it != params.end()) ? it-&gt;second : default_value;
+54   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>params</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ascii_query::HttpRequest::paramInt_(const_std::string_&amp;_name,_int_default_value_=_"><a class="permalink" href="#int_ascii_query::HttpRequest::paramInt_(const_std::string_&amp;_name,_int_default_value_=_">int
+  ascii_query::HttpRequest::paramInt (const std::string &amp; name, int
+  default_value = 0) const [inline], [nodiscard]</a></h2>
+<p class="Pp">Get a query parameter as integer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>name</i> Parameter name
+<br/>
+<i>default_value</i> Default if not found or not a number</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Parameter value or default</div>
+<p class="Pp">Definition at line <b>71</b> of file <b>http_server.h</b>.</p>
+<pre>71                                                                                {
+72     auto it = params.find(name);
+73     if (it == params.end())
+74       return default_value;
+75     try {
+76       return std::stoi(it-&gt;second);
+77     } catch (...) {
+78       return default_value;
+79     }
+80   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>params</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::HttpRequest::body"><a class="permalink" href="#std::string_ascii_query::HttpRequest::body">std::string
+  ascii_query::HttpRequest::body</a></h2>
+<p class="Pp">Request body.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>http_server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::unordered_map_std::string,_std::string__ascii_query::HttpRequest::headers"><a class="permalink" href="#std::unordered_map_std::string,_std::string__ascii_query::HttpRequest::headers">std::unordered_map&lt;std::string,
+  std::string&gt; ascii_query::HttpRequest::headers</a></h2>
+<p class="Pp">Request headers.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>http_server.h</b>.</p>
+<p class="Pp">Referenced by <b>header()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::HttpRequest::method"><a class="permalink" href="#std::string_ascii_query::HttpRequest::method">std::string
+  ascii_query::HttpRequest::method</a></h2>
+<p class="Pp">GET, POST, etc.</p>
+<p class="Pp">Definition at line <b>38</b> of file <b>http_server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::unordered_map_std::string,_std::string__ascii_query::HttpRequest::params"><a class="permalink" href="#std::unordered_map_std::string,_std::string__ascii_query::HttpRequest::params">std::unordered_map&lt;std::string,
+  std::string&gt; ascii_query::HttpRequest::params</a></h2>
+<p class="Pp">Parsed query parameters.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>http_server.h</b>.</p>
+<p class="Pp">Referenced by <b>hasParam()</b>, <b>param()</b>, and
+    <b>paramInt()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::HttpRequest::path"><a class="permalink" href="#std::string_ascii_query::HttpRequest::path">std::string
+  ascii_query::HttpRequest::path</a></h2>
+<p class="Pp">Request path (without query string).</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>http_server.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::HttpRequest::query_string"><a class="permalink" href="#std::string_ascii_query::HttpRequest::query_string">std::string
+  ascii_query::HttpRequest::query_string</a></h2>
+<p class="Pp">Query string (after ?).</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>http_server.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

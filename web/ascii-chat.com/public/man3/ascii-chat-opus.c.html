@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>opus.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">opus.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">opus.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">opus.c - Opus audio codec implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">opus_codec_t * <b>opus_codec_create_encoder</b>
+    (opus_application_t application, int sample_rate, int bitrate)
+  <br/>
+  opus_codec_t * <b>opus_codec_create_decoder</b> (int sample_rate)
+  <br/>
+  size_t <b>opus_codec_encode</b> (opus_codec_t *codec, const float *samples,
+    int num_samples, uint8_t *out_data, size_t out_size)
+  <br/>
+  int <b>opus_codec_decode</b> (opus_codec_t *codec, const uint8_t *data, size_t
+    data_len, float *out_samples, int out_num_samples)
+  <br/>
+  asciichat_error_t <b>opus_codec_set_bitrate</b> (opus_codec_t *codec, int
+    bitrate)
+  <br/>
+  int <b>opus_codec_get_bitrate</b> (opus_codec_t *codec)
+  <br/>
+  asciichat_error_t <b>opus_codec_set_dtx</b> (opus_codec_t *codec, int enable)
+  <br/>
+  void <b>opus_codec_destroy</b> (opus_codec_t *codec)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Opus audio codec implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>opus.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="opus_codec_t_*_opus_codec_create_decoder_(int_sample_rate)"><a class="permalink" href="#opus_codec_t_*_opus_codec_create_decoder_(int_sample_rate)">opus_codec_t
+  * opus_codec_create_decoder (int sample_rate)</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>opus.c</b>.</p>
+<pre>74                                                          {
+75   if (sample_rate &lt;= 0) {
+76     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid sample rate: %d&quot;, sample_rate);
+77     return NULL;
+78   }
+79 
+80   opus_codec_t *codec = SAFE_MALLOC(sizeof(opus_codec_t), opus_codec_t *);
+81   if (!codec) {
+82     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate opus codec context&quot;);
+83     return NULL;
+84   }
+85 
+86   // Create decoder
+87   int error = OPUS_OK;
+88   codec-&gt;decoder = opus_decoder_create(sample_rate, 1, &amp;error);
+89   if (error != OPUS_OK || !codec-&gt;decoder) {
+90     SET_ERRNO(ERROR_AUDIO, &quot;Failed to create Opus decoder: %s&quot;, opus_strerror(error));
+91     SAFE_FREE(codec);
+92     return NULL;
+93   }
+94 
+95   codec-&gt;encoder = NULL;
+96   codec-&gt;sample_rate = sample_rate;
+97   codec-&gt;bitrate = 0; // N/A for decoder
+98   codec-&gt;tmp_buffer = NULL;
+99 
+100   log_debug(&quot;Opus decoder created: sample_rate=%d&quot;, sample_rate);
+101 
+102   // Register Opus decoder for debugging
+103   NAMED_REGISTER_CONTEXT(codec, &quot;opus_decoder&quot;, &quot;opus_codec&quot;, NULL);
+104 
+105   return codec;
+106 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>handle_stream_start_packet()</b>, and
+    <b>session_host_start_render()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="opus_codec_t_*_opus_codec_create_encoder_(opus_application_t_application,_int_sample_rate,_int_bitrate)"><a class="permalink" href="#opus_codec_t_*_opus_codec_create_encoder_(opus_application_t_application,_int_sample_rate,_int_bitrate)">opus_codec_t
+  * opus_codec_create_encoder (opus_application_t application, int sample_rate,
+  int bitrate)</a></h2>
+<p class="Pp">Definition at line <b>19</b> of file <b>opus.c</b>.</p>
+<pre>19                                                                                                       {
+20   if (sample_rate &lt;= 0 || bitrate &lt;= 0) {
+21     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid codec parameters: sample_rate=%d, bitrate=%d&quot;, sample_rate, bitrate);
+22     return NULL;
+23   }
+24 
+25   opus_codec_t *codec = SAFE_MALLOC(sizeof(opus_codec_t), opus_codec_t *);
+26   if (!codec) {
+27     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate opus codec context&quot;);
+28     return NULL;
+29   }
+30 
+31   // Create encoder
+32   int error = OPUS_OK;
+33   codec-&gt;encoder = opus_encoder_create(sample_rate, 1, (int)application, &amp;error);
+34   if (error != OPUS_OK || !codec-&gt;encoder) {
+35     SET_ERRNO(ERROR_AUDIO, &quot;Failed to create Opus encoder: %s&quot;, opus_strerror(error));
+36     SAFE_FREE(codec);
+37     return NULL;
+38   }
+39 
+40   // Set bitrate
+41   error = opus_encoder_ctl(codec-&gt;encoder, OPUS_SET_BITRATE(bitrate));
+42   if (error != OPUS_OK) {
+43     SET_ERRNO(ERROR_AUDIO, &quot;Failed to set Opus bitrate: %s&quot;, opus_strerror(error));
+44     opus_encoder_destroy(codec-&gt;encoder);
+45     SAFE_FREE(codec);
+46     return NULL;
+47   }
+48 
+49   // Enable DTX (Discontinuous Transmission) for efficient silence frame encoding
+50   // DTX allows the encoder to produce very small packets (3-4 bytes) for silence,
+51   // reducing bandwidth usage while maintaining audio quality for voice/music
+52   error = opus_encoder_ctl(codec-&gt;encoder, OPUS_SET_DTX(1));
+53   if (error != OPUS_OK) {
+54     log_warn(&quot;Failed to enable Opus DTX: %s (continuing without DTX)&quot;, opus_strerror(error));
+55   }
+56 
+57   codec-&gt;decoder = NULL;
+58   codec-&gt;sample_rate = sample_rate;
+59   codec-&gt;bitrate = bitrate;
+60   codec-&gt;tmp_buffer = NULL;
+61 
+62   log_debug(&quot;Opus encoder created: sample_rate=%d, bitrate=%d bps, DTX enabled&quot;, sample_rate, bitrate);
+63 
+64   // Register Opus encoder for debugging
+65   NAMED_REGISTER_CONTEXT(codec, &quot;opus_encoder&quot;, &quot;opus_codec&quot;, NULL);
+66 
+67   return codec;
+68 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
+    <b>session_host_start_render()</b>, and
+    <b>session_participant_start_audio_capture()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_opus_codec_decode_(opus_codec_t_*_codec,_const_uint8_t_*_data,_size_t_data_len,_float_*_out_samples,_int_out_num_samples)"><a class="permalink" href="#int_opus_codec_decode_(opus_codec_t_*_codec,_const_uint8_t_*_data,_size_t_data_len,_float_*_out_samples,_int_out_num_samples)">int
+  opus_codec_decode (opus_codec_t * codec, const uint8_t * data, size_t
+  data_len, float * out_samples, int out_num_samples)</a></h2>
+<p class="Pp">Definition at line <b>143</b> of file <b>opus.c</b>.</p>
+<pre>144                                            {
+145   if (!codec || !codec-&gt;decoder || !out_samples || out_num_samples &lt;= 0) {
+146     SET_ERRNO(ERROR_INVALID_PARAM,
+147               &quot;Invalid decode parameters: codec=%p, decoder=%p, out_samples=%p, out_num_samples=%d&quot;, (void *)codec,
+148               (void *)(codec ? codec-&gt;decoder : NULL), (void *)out_samples, out_num_samples);
+149     return -1;
+150   }
+151 
+152   // If data is NULL, use PLC (Packet Loss Concealment)
+153   if (!data || data_len == 0) {
+154     log_debug_every(LOG_RATE_VERY_FAST, &quot;Opus PLC (Packet Loss Concealment)&quot;);
+155     int samples = opus_decode_float(codec-&gt;decoder, NULL, 0, out_samples, out_num_samples, 0);
+156     if (samples &lt; 0) {
+157       SET_ERRNO(ERROR_AUDIO, &quot;Opus PLC failed: %s&quot;, opus_strerror(samples));
+158       return -1;
+159     }
+160     return samples;
+161   }
+162 
+163   // Decode frame
+164   int samples = opus_decode_float(codec-&gt;decoder, data, (opus_int32)data_len, out_samples, out_num_samples, 0);
+165 
+166   if (samples &lt; 0) {
+167     SET_ERRNO(ERROR_AUDIO, &quot;Opus decoding failed: %s&quot;, opus_strerror(samples));
+168     return -1;
+169   }
+170 
+171   return samples;
+172 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>, and
+    <b>handle_audio_opus_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_opus_codec_destroy_(opus_codec_t_*_codec)"><a class="permalink" href="#void_opus_codec_destroy_(opus_codec_t_*_codec)">void
+  opus_codec_destroy (opus_codec_t * codec)</a></h2>
+<p class="Pp">Definition at line <b>230</b> of file <b>opus.c</b>.</p>
+<pre>230                                              {
+231   if (!codec) {
+232     return;
+233   }
+234 
+235   NAMED_UNREGISTER(codec);
+236 
+237   if (codec-&gt;encoder) {
+238     opus_encoder_destroy(codec-&gt;encoder);
+239     codec-&gt;encoder = NULL;
+240   }
+241 
+242   if (codec-&gt;decoder) {
+243     opus_decoder_destroy(codec-&gt;decoder);
+244     codec-&gt;decoder = NULL;
+245   }
+246 
+247   if (codec-&gt;tmp_buffer) {
+248     SAFE_FREE(codec-&gt;tmp_buffer);
+249     codec-&gt;tmp_buffer = NULL;
+250   }
+251 
+252   SAFE_FREE(codec);
+253 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>cleanup_client_media_buffers()</b>,
+    <b>client_audio_render_thread()</b>, <b>session_host_destroy()</b>,
+    <b>session_host_start_render()</b>, <b>session_host_stop_render()</b>, and
+    <b>session_participant_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_opus_codec_encode_(opus_codec_t_*_codec,_const_float_*_samples,_int_num_samples,_uint8_t_*_out_data,_size_t_out_size)"><a class="permalink" href="#size_t_opus_codec_encode_(opus_codec_t_*_codec,_const_float_*_samples,_int_num_samples,_uint8_t_*_out_data,_size_t_out_size)">size_t
+  opus_codec_encode (opus_codec_t * codec, const float * samples, int
+  num_samples, uint8_t * out_data, size_t out_size)</a></h2>
+<p class="Pp">Definition at line <b>112</b> of file <b>opus.c</b>.</p>
+<pre>113                                           {
+114   if (!codec || !codec-&gt;encoder || !samples || num_samples &lt;= 0 || !out_data || out_size == 0) {
+115     SET_ERRNO(ERROR_INVALID_PARAM,
+116               &quot;Invalid encode parameters: codec=%p, encoder=%p, samples=%p, num_samples=%d, out_data=%p, &quot;
+117               &quot;out_size=%zu&quot;,
+118               (void *)codec, (void *)(codec ? codec-&gt;encoder : NULL), (const void *)samples, num_samples,
+119               (void *)out_data, out_size);
+120     return 0;
+121   }
+122 
+123   // Encode frame
+124   opus_int32 encoded_bytes = opus_encode_float(codec-&gt;encoder, samples, num_samples, out_data, (opus_int32)out_size);
+125 
+126   if (encoded_bytes &lt; 0) {
+127     SET_ERRNO(ERROR_AUDIO, &quot;Opus encoding failed: %s&quot;, opus_strerror((int)encoded_bytes));
+128     return 0;
+129   }
+130 
+131   if (encoded_bytes == 0) {
+132     // DTX frame (silence) - encoder produced zero bytes
+133     log_debug_every(LOG_RATE_VERY_FAST, &quot;Opus DTX frame (silence detected)&quot;);
+134   }
+135 
+136   return (size_t)encoded_bytes;
+137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_audio_render_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_opus_codec_get_bitrate_(opus_codec_t_*_codec)"><a class="permalink" href="#int_opus_codec_get_bitrate_(opus_codec_t_*_codec)">int
+  opus_codec_get_bitrate (opus_codec_t * codec)</a></h2>
+<p class="Pp">Definition at line <b>195</b> of file <b>opus.c</b>.</p>
+<pre>195                                                 {
+196   if (!codec || !codec-&gt;encoder) {
+197     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid codec for bitrate query&quot;);
+198     return -1;
+199   }
+200 
+201   opus_int32 bitrate = 0;
+202   int error = opus_encoder_ctl(codec-&gt;encoder, OPUS_GET_BITRATE(&amp;bitrate));
+203   if (error != OPUS_OK) {
+204     SET_ERRNO(ERROR_AUDIO, &quot;Failed to get Opus bitrate: %s&quot;, opus_strerror(error));
+205     return -1;
+206   }
+207 
+208   return (int)bitrate;
+209 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_opus_codec_set_bitrate_(opus_codec_t_*_codec,_int_bitrate)"><a class="permalink" href="#asciichat_error_t_opus_codec_set_bitrate_(opus_codec_t_*_codec,_int_bitrate)">asciichat_error_t
+  opus_codec_set_bitrate (opus_codec_t * codec, int bitrate)</a></h2>
+<p class="Pp">Definition at line <b>178</b> of file <b>opus.c</b>.</p>
+<pre>178                                                                            {
+179   if (!codec || !codec-&gt;encoder || bitrate &lt;= 0) {
+180     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid bitrate parameters: codec=%p, encoder=%p, bitrate=%d&quot;, (void *)codec,
+181                      (void *)(codec ? codec-&gt;encoder : NULL), bitrate);
+182   }
+183 
+184   int error = opus_encoder_ctl(codec-&gt;encoder, OPUS_SET_BITRATE(bitrate));
+185   if (error != OPUS_OK) {
+186     return SET_ERRNO(ERROR_AUDIO, &quot;Failed to set Opus bitrate: %s&quot;, opus_strerror(error));
+187   }
+188 
+189   codec-&gt;bitrate = bitrate;
+190   log_debug(&quot;Opus bitrate changed to %d bps&quot;, bitrate);
+191 
+192   return ASCIICHAT_OK;
+193 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_opus_codec_set_dtx_(opus_codec_t_*_codec,_int_enable)"><a class="permalink" href="#asciichat_error_t_opus_codec_set_dtx_(opus_codec_t_*_codec,_int_enable)">asciichat_error_t
+  opus_codec_set_dtx (opus_codec_t * codec, int enable)</a></h2>
+<p class="Pp">Definition at line <b>211</b> of file <b>opus.c</b>.</p>
+<pre>211                                                                       {
+212   if (!codec || !codec-&gt;encoder) {
+213     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid codec for DTX configuration&quot;);
+214   }
+215 
+216   int error = opus_encoder_ctl(codec-&gt;encoder, OPUS_SET_DTX(enable ? 1 : 0));
+217   if (error != OPUS_OK) {
+218     return SET_ERRNO(ERROR_AUDIO, &quot;Failed to set Opus DTX: %s&quot;, opus_strerror(error));
+219   }
+220 
+221   log_debug(&quot;Opus DTX %s&quot;, enable ? &quot;enabled&quot; : &quot;disabled&quot;);
+222 
+223   return ASCIICHAT_OK;
+224 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

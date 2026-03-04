@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>json.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">json.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">json.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">json.c - &#x1F4DD; JSON structured logging output using yyjson</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>log_json_write</b> (int fd, <b>log_level_t</b> level,
+    uint64_t time_nanoseconds, const char *file, int line, const char *func,
+    const char *message)
+  <br/>
+  void <b>log_json_async_safe</b> (int fd, <b>log_level_t</b> level, const char
+    *file, int line, const char *func, const char *message)
+  <br/>
+  Async-safe JSON logging for signal handlers.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4DD; JSON structured logging output using yyjson</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>json.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_log_json_async_safe_(int_fd,_"><a class="permalink" href="#void_log_json_async_safe_(int_fd,_">void
+  log_json_async_safe (int fd, <b>log_level_t</b> level, const char * file, int
+  line, const char * func, const char * message)</a></h2>
+<p class="Pp">Async-safe JSON logging for signal handlers. This function formats
+    and writes JSON logs using ONLY async-safe operations:</p>
+<ul class="Bl-bullet">
+  <li>snprintf for string formatting</li>
+  <li>write() for output</li>
+  <li>No allocations, no locks, no library calls</li>
+</ul>
+<p class="Pp">Suitable for calling from signal handlers (SIGTERM, SIGINT,
+  etc.)</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>fd</i> File descriptor to write to (typically
+  STDOUT_FILENO or STDERR_FILENO)
+<br/>
+<i>level</i> Log level
+<br/>
+<i>file</i> Source file name (may be NULL)
+<br/>
+<i>line</i> Source line number
+<br/>
+<i>func</i> Function name (may be NULL)
+<br/>
+<i>message</i> Log message (must not be NULL)</div>
+<p class="Pp">Definition at line <b>250</b> of file <b>json.c</b>.</p>
+<pre>250                                                                                                                        {
+251   if (fd &lt; 0 || !message) {
+252     return;
+253   }
+254 
+255   /* Format JSON manually on stack using only async-safe operations */
+256   char json_buffer[2048];
+257   char escaped_message[512];
+258   char escaped_file[256];
+259   char escaped_func[128];
+260   char timestamp_buf[32];
+261 
+262   /* Escape the strings (normalize file path to project-relative) */
+263   json_escape_async_safe(message, escaped_message, sizeof(escaped_message));
+264   if (file) {
+265     const char *rel_file = extract_project_relative_path(file);
+266     json_escape_async_safe(rel_file, escaped_file, sizeof(escaped_file));
+267   } else {
+268     escaped_file[0] = '\0';
+269   }
+270   json_escape_async_safe(func ? func : &quot;&quot;, escaped_func, sizeof(escaped_func));
+271 
+272   /* Format timestamp using only async-safe operations */
+273   uint64_t time_ns = time_get_realtime_ns();
+274   format_timestamp_microseconds(time_ns, timestamp_buf, sizeof(timestamp_buf));
+275 
+276   /* Get thread ID (note: asciichat_thread_current_id is assumed to be async-safe) */
+277   uint64_t tid = (uint64_t)asciichat_thread_current_id();
+278 
+279   /* Format complete JSON object with timestamp */
+280   int written = snprintf(json_buffer, sizeof(json_buffer),
+281                          &quot;{\&quot;header\&quot;:{\&quot;timestamp\&quot;:\&quot;%s\&quot;,\&quot;level\&quot;:\&quot;%s\&quot;,\&quot;tid\&quot;:%lu,&quot;
+282                          &quot;\&quot;file\&quot;:\&quot;%s\&quot;,\&quot;line\&quot;:%d,\&quot;func\&quot;:\&quot;%s\&quot;},&quot;
+283                          &quot;\&quot;body\&quot;:{\&quot;message\&quot;:\&quot;%s\&quot;}}\n&quot;,
+284                          timestamp_buf, log_level_to_string(level), (unsigned long)tid, file ? escaped_file : &quot;&quot;, line,
+285                          func ? escaped_func : &quot;&quot;, escaped_message);
+286 
+287   /* Write to fd if successful */
+288   if (written &gt; 0 &amp;&amp; written &lt; (int)sizeof(json_buffer)) {
+289     platform_write_all(fd, (const uint8_t *)json_buffer, (size_t)written);
+290   }
+291 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>,
+    <b>extract_project_relative_path()</b>, <b>platform_write_all()</b>, and
+    <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">Referenced by <b>log_console_impl()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_json_write_(int_fd,_"><a class="permalink" href="#void_log_json_write_(int_fd,_">void
+  log_json_write (int fd, <b>log_level_t</b> level, uint64_t time_nanoseconds,
+  const char * file, int line, const char * func, const char * message)</a></h2>
+<p class="Pp">Definition at line <b>94</b> of file <b>json.c</b>.</p>
+<pre>95                                          {
+96   if (fd &lt; 0 || !message) {
+97     return;
+98   }
+99 
+100   /* Create root object */
+101   yyjson_mut_doc *doc = yyjson_mut_doc_new(NULL);
+102   if (!doc) {
+103     return;
+104   }
+105 
+106   yyjson_mut_val *root = yyjson_mut_obj(doc);
+107   if (!root) {
+108     yyjson_mut_doc_free(doc);
+109     return;
+110   }
+111   yyjson_mut_doc_set_root(doc, root);
+112 
+113   /* Create &quot;header&quot; object */
+114   yyjson_mut_val *header = yyjson_mut_obj(doc);
+115   if (header) {
+116     yyjson_mut_obj_add_val(doc, root, &quot;header&quot;, header);
+117 
+118     /* Add timestamp (HH:MM:SS.microseconds) */
+119     char timestamp_buf[32];
+120     size_t ts_len = format_timestamp_microseconds(time_nanoseconds, timestamp_buf, sizeof(timestamp_buf));
+121     if (ts_len &gt; 0) {
+122       yyjson_mut_obj_add_strncpy(doc, header, &quot;timestamp&quot;, timestamp_buf, ts_len);
+123     }
+124 
+125     /* Add level */
+126     yyjson_mut_obj_add_str(doc, header, &quot;level&quot;, log_level_to_string(level));
+127 
+128     /* Add thread ID */
+129     uint64_t tid = (uint64_t)asciichat_thread_current_id();
+130     yyjson_mut_obj_add_uint(doc, header, &quot;tid&quot;, tid);
+131 
+132     /* Add file (if not NULL) - normalize to project-relative path */
+133     if (file) {
+134       const char *rel_file = extract_project_relative_path(file);
+135       yyjson_mut_obj_add_str(doc, header, &quot;file&quot;, rel_file);
+136     }
+137 
+138     /* Add line (if &gt; 0) */
+139     if (line &gt; 0) {
+140       yyjson_mut_obj_add_int(doc, header, &quot;line&quot;, line);
+141     }
+142 
+143     /* Add func (if not NULL) */
+144     if (func) {
+145       yyjson_mut_obj_add_str(doc, header, &quot;func&quot;, func);
+146     }
+147   }
+148 
+149   /* Create &quot;body&quot; object with message */
+150   yyjson_mut_val *body = yyjson_mut_obj(doc);
+151   if (body) {
+152     yyjson_mut_obj_add_val(doc, root, &quot;body&quot;, body);
+153     yyjson_mut_obj_add_str(doc, body, &quot;message&quot;, message);
+154   }
+155 
+156   /* Serialize to compact JSON (single line, no pretty-printing) */
+157   size_t json_len = 0;
+158   char *json_str = yyjson_mut_write(doc, 0, &amp;json_len);
+159 
+160   if (json_str &amp;&amp; json_len &gt; 0) {
+161     /* Write JSON string */
+162     platform_write(fd, (const uint8_t *)json_str, json_len);
+163 
+164     /* Write newline for NDJSON format */
+165     platform_write(fd, (const uint8_t *)&quot;\n&quot;, 1);
+166 
+167     /* Free serialized JSON string */
+168     free(json_str);
+169   }
+170 
+171   /* Free document */
+172   yyjson_mut_doc_free(doc);
+173 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>,
+    <b>extract_project_relative_path()</b>, and <b>platform_write()</b>.</p>
+<p class="Pp">Referenced by <b>log_msg()</b>, and <b>log_plain_msg()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

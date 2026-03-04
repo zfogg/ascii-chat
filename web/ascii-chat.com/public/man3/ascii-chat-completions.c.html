@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>completions.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">completions.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">completions.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">completions.c - Implementation of shell completion generation from
+    options registry.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>completions_generate_bash</b> (FILE *output)
+  <br/>
+  asciichat_error_t <b>completions_generate_fish</b> (FILE *output)
+  <br/>
+  asciichat_error_t <b>completions_generate_zsh</b> (FILE *output)
+  <br/>
+  asciichat_error_t <b>completions_generate_powershell</b> (FILE *output)
+  <br/>
+  asciichat_error_t <b>completions_generate_for_shell</b> (completion_format_t
+    format, FILE *output)
+  <br/>
+  const char * <b>completions_get_shell_name</b> (completion_format_t format)
+  <br/>
+  completion_format_t <b>completions_parse_shell_name</b> (const char
+    *shell_name)
+  <br/>
+  option_descriptor_t * <b>completions_collect_all_modes_unique</b> (size_t
+    *count)
+  <br/>
+  Collect options from all modes with deduplication.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Implementation of shell completion generation from options
+    registry.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>completions.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="option_descriptor_t_*_completions_collect_all_modes_unique_(size_t_*_count)"><a class="permalink" href="#option_descriptor_t_*_completions_collect_all_modes_unique_(size_t_*_count)">option_descriptor_t
+  * completions_collect_all_modes_unique (size_t * count)</a></h2>
+<p class="Pp">Collect options from all modes with deduplication. Iterates
+    through all completion modes (MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT,
+    MODE_MIRROR, MODE_DISCOVERY_SERVICE) and collects unique options by
+    long_name. Useful for generators that need to show completions for options
+    across multiple modes.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>count</i> Pointer to receive the count of unique
+  options</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Dynamically allocated array of option_descriptor_t, must
+  be freed by caller. Returns NULL if no options found.</div>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">The caller must free the returned pointer with
+  SAFE_FREE()</div>
+<p class="Pp">Definition at line <b>96</b> of file <b>completions.c</b>.</p>
+<pre>96                                                                          {
+97   if (!count) {
+98     return NULL;
+99   }
+100 
+101   option_descriptor_t *combined_opts = NULL;
+102   size_t combined_count = 0;
+103 
+104   /* All completion modes to iterate through */
+105   asciichat_mode_t modes[] = {MODE_DISCOVERY, MODE_SERVER, MODE_CLIENT, MODE_MIRROR, MODE_DISCOVERY_SERVICE};
+106   const size_t modes_len = sizeof(modes) / sizeof(modes[0]);
+107 
+108   for (size_t m = 0; m &lt; modes_len; m++) {
+109     size_t mode_count = 0;
+110     const option_descriptor_t *mode_opts = options_registry_get_for_mode(modes[m], &amp;mode_count);
+111     if (mode_opts) {
+112       /* Collect unique options by long_name */
+113       for (size_t i = 0; i &lt; mode_count; i++) {
+114         bool already_has = false;
+115         for (size_t j = 0; j &lt; combined_count; j++) {
+116           if (strcmp(combined_opts[j].long_name, mode_opts[i].long_name) == 0) {
+117             already_has = true;
+118             break;
+119           }
+120         }
+121         if (!already_has) {
+122           combined_count++;
+123           option_descriptor_t *temp = (option_descriptor_t *)SAFE_REALLOC(
+124               combined_opts, combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
+125           if (temp) {
+126             combined_opts = temp;
+127             combined_opts[combined_count - 1] = mode_opts[i];
+128           }
+129         }
+130       }
+131       SAFE_FREE(mode_opts);
+132     }
+133   }
+134 
+135   *count = combined_count;
+136   return combined_opts;
+137 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_completions_generate_bash_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_bash_(FILE_*_output)">asciichat_error_t
+  completions_generate_bash (FILE * output)</a></h2>
+<p class="Pp">Definition at line <b>367</b> of file <b>bash.c</b>.</p>
+<pre>367                                                           {
+368   if (!output) {
+369     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+370   }
+371 
+372   bash_write_header(output);
+373   asciichat_error_t err = bash_write_all_options(output);
+374   if (err != ASCIICHAT_OK) {
+375     return err;
+376   }
+377   bash_write_completion_logic(output);
+378   bash_write_footer(output);
+379 
+380   return ASCIICHAT_OK;
+381 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_completions_generate_fish_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_fish_(FILE_*_output)">asciichat_error_t
+  completions_generate_fish (FILE * output)</a></h2>
+<p class="Pp">Definition at line <b>130</b> of file <b>fish.c</b>.</p>
+<pre>130                                                           {
+131   if (!output) {
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+133   }
+134 
+135   fprintf(output,
+136           &quot;# Fish completion script for ascii-chat\n&quot;
+137           &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
+138           &quot;\n&quot;
+139           &quot;complete -c ascii-chat -f\n&quot;
+140           &quot;\n&quot;
+141           &quot;function __fish_ascii_chat_using_mode\n&quot;
+142           &quot;    set -l cmd (commandline -opc)\n&quot;
+143           &quot;    for arg in $cmd\n&quot;
+144           &quot;        if contains -- $arg server client mirror\n&quot;
+145           &quot;            echo $arg\n&quot;
+146           &quot;            return 0\n&quot;
+147           &quot;        end\n&quot;
+148           &quot;    end\n&quot;
+149           &quot;    return 1\n&quot;
+150           &quot;end\n&quot;
+151           &quot;\n&quot;
+152           &quot;function __fish_ascii_chat_mode_is\n&quot;
+153           &quot;    test (string match -q $argv[1] (command __fish_ascii_chat_using_mode))\n&quot;
+154           &quot;end\n&quot;
+155           &quot;\n&quot;
+156           &quot;function __fish_ascii_chat_no_mode\n&quot;
+157           &quot;    not __fish_ascii_chat_using_mode &gt; /dev/null\n&quot;
+158           &quot;end\n&quot;
+159           &quot;\n&quot;
+160           &quot;# Modes\n&quot;
+161           &quot;complete -c ascii-chat -n __fish_ascii_chat_no_mode -a server -d 'Run a video chat server'\n&quot;
+162           &quot;complete -c ascii-chat -n __fish_ascii_chat_no_mode -a client -d 'Connect to a video chat server'\n&quot;
+163           &quot;complete -c ascii-chat -n __fish_ascii_chat_no_mode -a mirror -d 'View webcam locally without network'\n&quot;
+164           &quot;\n&quot;);
+165 
+166   /* Binary options - use unified display API matching help system */
+167   size_t binary_count = 0;
+168   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
+169 
+170   fprintf(output, &quot;# Binary-level options (same as 'ascii-chat --help')\n&quot;);
+171   if (binary_opts) {
+172     for (size_t i = 0; i &lt; binary_count; i++) {
+173       fish_write_option(output, &amp;binary_opts[i], &quot;&quot;);
+174     }
+175     SAFE_FREE(binary_opts);
+176   }
+177   fprintf(output, &quot;\n&quot;);
+178 
+179   /* Server options - use unified display API matching help system */
+180   size_t server_count = 0;
+181   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
+182 
+183   fprintf(output, &quot;# Server options (same as 'ascii-chat server --help')\n&quot;);
+184   if (server_opts) {
+185     for (size_t i = 0; i &lt; server_count; i++) {
+186       fish_write_option(output, &amp;server_opts[i], &quot;-n '__fish_seen_subcommand_from server'&quot;);
+187     }
+188     SAFE_FREE(server_opts);
+189   }
+190   fprintf(output, &quot;\n&quot;);
+191 
+192   /* Client options - use unified display API matching help system */
+193   size_t client_count = 0;
+194   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
+195 
+196   fprintf(output, &quot;# Client options (same as 'ascii-chat client --help')\n&quot;);
+197   if (client_opts) {
+198     for (size_t i = 0; i &lt; client_count; i++) {
+199       fish_write_option(output, &amp;client_opts[i], &quot;-n '__fish_seen_subcommand_from client'&quot;);
+200     }
+201     SAFE_FREE(client_opts);
+202   }
+203   fprintf(output, &quot;\n&quot;);
+204 
+205   /* Mirror options - use unified display API matching help system */
+206   size_t mirror_count = 0;
+207   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
+208 
+209   fprintf(output, &quot;# Mirror options (same as 'ascii-chat mirror --help')\n&quot;);
+210   if (mirror_opts) {
+211     for (size_t i = 0; i &lt; mirror_count; i++) {
+212       fish_write_option(output, &amp;mirror_opts[i], &quot;-n '__fish_seen_subcommand_from mirror'&quot;);
+213     }
+214     SAFE_FREE(mirror_opts);
+215   }
+216   fprintf(output, &quot;\n&quot;);
+217 
+218   /* Discovery-service options */
+219   size_t discovery_svc_count = 0;
+220   const option_descriptor_t *discovery_svc_opts =
+221       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
+222 
+223   fprintf(output, &quot;# Discovery-service options (same as 'ascii-chat discovery-service --help')\n&quot;);
+224   if (discovery_svc_opts) {
+225     for (size_t i = 0; i &lt; discovery_svc_count; i++) {
+226       fish_write_option(output, &amp;discovery_svc_opts[i], &quot;-n '__fish_seen_subcommand_from discovery-service'&quot;);
+227     }
+228     SAFE_FREE(discovery_svc_opts);
+229   }
+230 
+231   return ASCIICHAT_OK;
+232 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_completions_generate_for_shell_(completion_format_t_format,_FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_for_shell_(completion_format_t_format,_FILE_*_output)">asciichat_error_t
+  completions_generate_for_shell (completion_format_t format, FILE *
+  output)</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>completions.c</b>.</p>
+<pre>20                                                                                            {
+21   if (!output) {
+22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+23   }
+24 
+25   switch (format) {
+26   case COMPLETION_FORMAT_BASH:
+27     return completions_generate_bash(output);
+28   case COMPLETION_FORMAT_FISH:
+29     return completions_generate_fish(output);
+30   case COMPLETION_FORMAT_ZSH:
+31     return completions_generate_zsh(output);
+32   case COMPLETION_FORMAT_POWERSHELL:
+33     return completions_generate_powershell(output);
+34   default:
+35     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unknown completion format: %d&quot;, format);
+36   }
+37 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>completions_generate_bash()</b>,
+    <b>completions_generate_fish()</b>,
+    <b>completions_generate_powershell()</b>, and
+    <b>completions_generate_zsh()</b>.</p>
+<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_completions_generate_powershell_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_powershell_(FILE_*_output)">asciichat_error_t
+  completions_generate_powershell (FILE * output)</a></h2>
+<p class="Pp">Definition at line <b>130</b> of file <b>powershell.c</b>.</p>
+<pre>130                                                                 {
+131   if (!output) {
+132     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+133   }
+134 
+135   fprintf(output, &quot;# PowerShell completion script for ascii-chat\n&quot;
+136                   &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
+137                   &quot;# Usage: ascii-chat --completions powershell | Out-String | Invoke-Expression\n&quot;
+138                   &quot;\n&quot;
+139                   &quot;$script:AsciiChatCompleter = {\n&quot;
+140                   &quot;  param($wordToComplete, $commandAst, $cursorPosition)\n&quot;
+141                   &quot;\n&quot;
+142                   &quot;  $words = @($commandAst.CommandElements | ForEach-Object { $_.Value })\n&quot;
+143                   &quot;  $mode = $null\n&quot;
+144                   &quot;\n&quot;
+145                   &quot;  foreach ($word in $words) {\n&quot;
+146                   &quot;    if ($word -in @('server', 'client', 'mirror')) {\n&quot;
+147                   &quot;      $mode = $word\n&quot;
+148                   &quot;      break\n&quot;
+149                   &quot;    }\n&quot;
+150                   &quot;  }\n&quot;
+151                   &quot;\n&quot;
+152                   &quot;  $binaryOptions = @(\n&quot;);
+153 
+154   /* Binary options - use unified display API matching help system */
+155   size_t binary_count = 0;
+156   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
+157 
+158   if (binary_opts) {
+159     for (size_t i = 0; i &lt; binary_count; i++) {
+160       ps_write_option(output, &amp;binary_opts[i]);
+161     }
+162     SAFE_FREE(binary_opts);
+163   }
+164 
+165   fprintf(output, &quot;  )\n\n  $serverOptions = @(\n&quot;);
+166 
+167   /* Server options - use unified display API matching help system */
+168   size_t server_count = 0;
+169   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
+170 
+171   if (server_opts) {
+172     for (size_t i = 0; i &lt; server_count; i++) {
+173       ps_write_option(output, &amp;server_opts[i]);
+174     }
+175     SAFE_FREE(server_opts);
+176   }
+177 
+178   fprintf(output, &quot;  )\n\n  $clientOptions = @(\n&quot;);
+179 
+180   /* Client options - use unified display API matching help system */
+181   size_t client_count = 0;
+182   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
+183 
+184   if (client_opts) {
+185     for (size_t i = 0; i &lt; client_count; i++) {
+186       ps_write_option(output, &amp;client_opts[i]);
+187     }
+188     SAFE_FREE(client_opts);
+189   }
+190 
+191   fprintf(output, &quot;  )\n\n  $mirrorOptions = @(\n&quot;);
+192 
+193   /* Mirror options - use unified display API matching help system */
+194   size_t mirror_count = 0;
+195   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
+196 
+197   if (mirror_opts) {
+198     for (size_t i = 0; i &lt; mirror_count; i++) {
+199       ps_write_option(output, &amp;mirror_opts[i]);
+200     }
+201     SAFE_FREE(mirror_opts);
+202   }
+203 
+204   fprintf(output, &quot;  )\n\n  $discoverySvcOptions = @(\n&quot;);
+205 
+206   /* Discovery-service options */
+207   size_t discovery_svc_count = 0;
+208   const option_descriptor_t *discovery_svc_opts =
+209       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
+210 
+211   if (discovery_svc_opts) {
+212     for (size_t i = 0; i &lt; discovery_svc_count; i++) {
+213       ps_write_option(output, &amp;discovery_svc_opts[i]);
+214     }
+215     SAFE_FREE(discovery_svc_opts);
+216   }
+217 
+218   fprintf(output,
+219           &quot;  )\n&quot;
+220           &quot;\n&quot;
+221           &quot;  $options = $binaryOptions\n&quot;
+222           &quot;  \n&quot;
+223           &quot;  if ($mode -eq 'server') {\n&quot;
+224           &quot;    $options += $serverOptions\n&quot;
+225           &quot;  } elseif ($mode -eq 'client') {\n&quot;
+226           &quot;    $options += $clientOptions\n&quot;
+227           &quot;  } elseif ($mode -eq 'mirror') {\n&quot;
+228           &quot;    $options += $mirrorOptions\n&quot;
+229           &quot;  } elseif ($mode -eq 'discovery-service') {\n&quot;
+230           &quot;    $options += $discoverySvcOptions\n&quot;
+231           &quot;  }\n&quot;
+232           &quot;\n&quot;
+233           &quot;  if (-not $mode -and -not $wordToComplete.StartsWith('-')) {\n&quot;
+234           &quot;    @('server', 'client', 'mirror', 'discovery-service') | Where-Object { $_ -like \&quot;$wordToComplete*\&quot; } | &quot;
+235           &quot;ForEach-Object {\n&quot;
+236           &quot;      [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', \&quot;Mode: $_\&quot;)\n&quot;
+237           &quot;    }\n&quot;
+238           &quot;  } else {\n&quot;
+239           &quot;    $options | Where-Object { $_.Name -like \&quot;$wordToComplete*\&quot; } | ForEach-Object {\n&quot;
+240           &quot;      if ($_.Values) {\n&quot;
+241           &quot;        $_.Values | ForEach-Object {\n&quot;
+242           &quot;          [System.Management.Automation.CompletionResult]::new($_, $_, 'ParameterValue', $_.Description)\n&quot;
+243           &quot;        }\n&quot;
+244           &quot;      } else {\n&quot;
+245           &quot;        [System.Management.Automation.CompletionResult]::new($_.Name, $_.Name, 'ParameterValue', &quot;
+246           &quot;$_.Description)\n&quot;
+247           &quot;      }\n&quot;
+248           &quot;    }\n&quot;
+249           &quot;  }\n&quot;
+250           &quot;}\n&quot;
+251           &quot;\n&quot;
+252           &quot;Register-ArgumentCompleter -CommandName ascii-chat -ScriptBlock $script:AsciiChatCompleter\n&quot;);
+253 
+254   return ASCIICHAT_OK;
+255 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_completions_generate_zsh_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_zsh_(FILE_*_output)">asciichat_error_t
+  completions_generate_zsh (FILE * output)</a></h2>
+<p class="Pp">Definition at line <b>135</b> of file <b>zsh.c</b>.</p>
+<pre>135                                                          {
+136   if (!output) {
+137     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output stream cannot be NULL&quot;);
+138   }
+139 
+140   fprintf(output, &quot;#compdef _ascii_chat ascii-chat\n&quot;
+141 #ifndef NDEBUG
+142                   &quot;#compdef _ascii_chat build/bin/ascii-chat ./build/bin/ascii-chat\n&quot;
+143 #endif
+144                   &quot;# Zsh completion script for ascii-chat\n&quot;
+145                   &quot;# Generated from options registry - DO NOT EDIT MANUALLY\n&quot;
+146                   &quot;\n&quot;
+147                   &quot;_ascii_chat() {\n&quot;
+148                   &quot;  local curcontext=\&quot;$curcontext\&quot; state line modes\n&quot;
+149                   &quot;  _arguments \\\n&quot;
+150                   &quot;    '1:mode:-&gt;mode' \\\n&quot;
+151                   &quot;    '*::args:_ascii_chat_args'\n&quot;
+152                   &quot;  case $state in\n&quot;
+153                   &quot;    mode)\n&quot;
+154                   &quot;      local -a server_modes client_modes\n&quot;
+155                   &quot;      server_modes=(\n&quot;);
+156 
+157   /* Generate server-like modes from registry */
+158   size_t mode_server_count = 0;
+159   const mode_descriptor_t *mode_server_descs = get_modes_by_group(&quot;server-like&quot;, &amp;mode_server_count);
+160   if (mode_server_descs) {
+161     for (size_t i = 0; i &lt; mode_server_count; i++) {
+162       fprintf(output, &quot;        '%s:%s'\n&quot;, mode_server_descs[i].name, mode_server_descs[i].description);
+163     }
+164     SAFE_FREE(mode_server_descs);
+165   }
+166 
+167   fprintf(output, &quot;      )\n&quot;
+168                   &quot;      client_modes=(\n&quot;);
+169 
+170   /* Generate client-like modes from registry */
+171   size_t mode_client_count = 0;
+172   const mode_descriptor_t *mode_client_descs = get_modes_by_group(&quot;client-like&quot;, &amp;mode_client_count);
+173   if (mode_client_descs) {
+174     for (size_t i = 0; i &lt; mode_client_count; i++) {
+175       fprintf(output, &quot;        '%s:%s'\n&quot;, mode_client_descs[i].name, mode_client_descs[i].description);
+176     }
+177     SAFE_FREE(mode_client_descs);
+178   }
+179 
+180   fprintf(output, &quot;      )\n&quot;
+181                   &quot;      _describe -t server-modes 'server-like modes' server_modes\n&quot;
+182                   &quot;      _describe -t client-modes 'client-like modes' client_modes\n&quot;
+183                   &quot;      ;;\n&quot;
+184                   &quot;  esac\n&quot;
+185                   &quot;}\n&quot;
+186                   &quot;\n&quot;
+187                   &quot;_ascii_chat_args() {\n&quot;
+188                   &quot;  case $words[1] in\n&quot;
+189                   &quot;    # Server-like modes\n&quot;
+190                   &quot;    server)\n&quot;
+191                   &quot;      _ascii_chat_server\n&quot;
+192                   &quot;      ;;\n&quot;
+193                   &quot;    discovery-service)\n&quot;
+194                   &quot;      _ascii_chat_discovery_service\n&quot;
+195                   &quot;      ;;\n&quot;
+196                   &quot;\n&quot;
+197                   &quot;    # Client-like modes\n&quot;
+198                   &quot;    client)\n&quot;
+199                   &quot;      _ascii_chat_client\n&quot;
+200                   &quot;      ;;\n&quot;
+201                   &quot;    mirror)\n&quot;
+202                   &quot;      _ascii_chat_mirror\n&quot;
+203                   &quot;      ;;\n&quot;
+204                   &quot;\n&quot;
+205                   &quot;    *)\n&quot;
+206                   &quot;      # Binary-level options\n&quot;);
+207 
+208   /* Binary options - grouped by category */
+209   size_t binary_count = 0;
+210   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &amp;binary_count);
+211 
+212   if (binary_opts) {
+213     zsh_write_options_grouped(output, binary_opts, binary_count, &quot;binary&quot;);
+214     SAFE_FREE(binary_opts);
+215   }
+216 
+217   fprintf(output, &quot;      ;;\n&quot;
+218                   &quot;  esac\n&quot;
+219                   &quot;}\n&quot;
+220                   &quot;\n&quot;
+221                   &quot;# Server-like modes: handle incoming connections and stream management\n&quot;
+222                   &quot;_ascii_chat_server() {\n&quot;);
+223 
+224   /* Server options - grouped by category */
+225   size_t server_count = 0;
+226   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &amp;server_count);
+227 
+228   if (server_opts) {
+229     zsh_write_options_grouped(output, server_opts, server_count, &quot;server&quot;);
+230     SAFE_FREE(server_opts);
+231   }
+232 
+233   fprintf(output, &quot;}\n&quot;
+234                   &quot;\n&quot;
+235                   &quot;_ascii_chat_discovery_service() {\n&quot;);
+236 
+237   /* Discovery-service options - grouped by category */
+238   size_t discovery_svc_count = 0;
+239   const option_descriptor_t *discovery_svc_opts =
+240       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &amp;discovery_svc_count);
+241 
+242   if (discovery_svc_opts) {
+243     zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, &quot;discovery_service&quot;);
+244     SAFE_FREE(discovery_svc_opts);
+245   }
+246 
+247   fprintf(output, &quot;}\n&quot;
+248                   &quot;\n&quot;
+249                   &quot;# Client-like modes: connect to servers or render local media\n&quot;
+250                   &quot;_ascii_chat_client() {\n&quot;);
+251 
+252   /* Client options - grouped by category */
+253   size_t client_count = 0;
+254   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &amp;client_count);
+255 
+256   if (client_opts) {
+257     zsh_write_options_grouped(output, client_opts, client_count, &quot;client&quot;);
+258     SAFE_FREE(client_opts);
+259   }
+260 
+261   fprintf(output, &quot;}\n&quot;
+262                   &quot;\n&quot;
+263                   &quot;_ascii_chat_mirror() {\n&quot;);
+264 
+265   /* Mirror options - grouped by category */
+266   size_t mirror_count = 0;
+267   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &amp;mirror_count);
+268 
+269   if (mirror_opts) {
+270     zsh_write_options_grouped(output, mirror_opts, mirror_count, &quot;mirror&quot;);
+271     SAFE_FREE(mirror_opts);
+272   }
+273 
+274   fprintf(output, &quot;}\n&quot;
+275                   &quot;\n&quot;
+276                   &quot;_ascii_chat \&quot;$@\&quot;\n&quot;);
+277 
+278   return ASCIICHAT_OK;
+279 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_modes_by_group()</b>, and
+    <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_completions_get_shell_name_(completion_format_t_format)"><a class="permalink" href="#const_char_*_completions_get_shell_name_(completion_format_t_format)">const
+  char * completions_get_shell_name (completion_format_t format)</a></h2>
+<p class="Pp">Definition at line <b>39</b> of file <b>completions.c</b>.</p>
+<pre>39                                                                    {
+40   switch (format) {
+41   case COMPLETION_FORMAT_BASH:
+42     return &quot;bash&quot;;
+43   case COMPLETION_FORMAT_FISH:
+44     return &quot;fish&quot;;
+45   case COMPLETION_FORMAT_ZSH:
+46     return &quot;zsh&quot;;
+47   case COMPLETION_FORMAT_POWERSHELL:
+48     return &quot;powershell&quot;;
+49   default:
+50     return &quot;unknown&quot;;
+51   }
+52 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="completion_format_t_completions_parse_shell_name_(const_char_*_shell_name)"><a class="permalink" href="#completion_format_t_completions_parse_shell_name_(const_char_*_shell_name)">completion_format_t
+  completions_parse_shell_name (const char * shell_name)</a></h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>completions.c</b>.</p>
+<pre>54                                                                          {
+55   if (!shell_name) {
+56     return COMPLETION_FORMAT_UNKNOWN;
+57   }
+58 
+59   /* Convert to lowercase for case-insensitive matching */
+60   char lower[32] = {0};
+61   size_t len = strlen(shell_name);
+62   if (len &gt;= sizeof(lower)) {
+63     return COMPLETION_FORMAT_UNKNOWN;
+64   }
+65 
+66   for (size_t i = 0; i &lt; len; i++) {
+67     lower[i] = tolower((unsigned char)shell_name[i]);
+68   }
+69 
+70   if (strcmp(lower, &quot;bash&quot;) == 0) {
+71     return COMPLETION_FORMAT_BASH;
+72   } else if (strcmp(lower, &quot;fish&quot;) == 0) {
+73     return COMPLETION_FORMAT_FISH;
+74   } else if (strcmp(lower, &quot;zsh&quot;) == 0) {
+75     return COMPLETION_FORMAT_ZSH;
+76   } else if (strcmp(lower, &quot;powershell&quot;) == 0 || strcmp(lower, &quot;ps&quot;) == 0) {
+77     return COMPLETION_FORMAT_POWERSHELL;
+78   }
+79 
+80   return COMPLETION_FORMAT_UNKNOWN;
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>action_completions()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

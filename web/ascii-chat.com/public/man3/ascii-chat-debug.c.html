@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>debug.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">debug.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">debug.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">debug.c - Debug options registry (backtrace, sync-state).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_debug_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Debug options registry (backtrace, sync-state).</p>
+<p class="Pp">Debug-only options for development and troubleshooting.</p>
+<p class="Pp">Definition in file <b>debug.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_debug_entries__"><a class="permalink" href="#const_registry_entry_t_g_debug_entries__">const
+  registry_entry_t g_debug_entries[]</a></h2>
+<p class="Pp">Definition at line <b>14</b> of file <b>debug.c</b>.</p>
+<pre>14                                          {
+15     {&quot;sync-state&quot;,
+16      '\0',
+17      OPTION_TYPE_DOUBLE,
+18      offsetof(options_t, debug_sync_state_time),
+19      &amp;default_debug_sync_state_time_value,
+20      sizeof(double),
+21      &quot;Print synchronization primitive state with optional time offset (debug builds only).&quot;,
+22      &quot;DEBUG&quot;,
+23      &quot;TIME&quot;,
+24      false,  // required
+25      NULL,   // env_var_name
+26      NULL,   // validate_fn
+27      NULL,   // parse_fn
+28      false,  // owns_memory
+29      true,   // optional_arg
+30      OPTION_MODE_ALL,
+31      {0},    // metadata
+32      NULL},  // action_fn
+33     {&quot;backtrace&quot;,
+34      '\0',
+35      OPTION_TYPE_DOUBLE,
+36      offsetof(options_t, debug_backtrace_time),
+37      &amp;default_debug_backtrace_time_value,
+38      sizeof(double),
+39      &quot;Print backtrace with optional time offset (debug builds only).&quot;,
+40      &quot;DEBUG&quot;,
+41      &quot;TIME&quot;,
+42      false,  // required
+43      NULL,   // env_var_name
+44      NULL,   // validate_fn
+45      NULL,   // parse_fn
+46      false,  // owns_memory
+47      true,   // optional_arg
+48      OPTION_MODE_ALL,
+49      {0},    // metadata
+50      NULL},  // action_fn
+51     {&quot;memory-report&quot;,
+52      '\0',
+53      OPTION_TYPE_DOUBLE,
+54      offsetof(options_t, debug_memory_report_interval),
+55      &amp;default_debug_memory_report_interval_value,
+56      sizeof(double),
+57      &quot;Print memory report periodically at specified interval in seconds (debug builds only).&quot;,
+58      &quot;DEBUG&quot;,
+59      &quot;TIME&quot;,
+60      false,  // required
+61      NULL,   // env_var_name
+62      NULL,   // validate_fn
+63      NULL,   // parse_fn
+64      false,  // owns_memory
+65      true,   // optional_arg
+66      OPTION_MODE_ALL,
+67      {0},    // metadata
+68      NULL},  // action_fn
+69 
+70     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

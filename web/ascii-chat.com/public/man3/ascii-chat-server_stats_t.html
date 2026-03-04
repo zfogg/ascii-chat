@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>server_stats_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">server_stats_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">server_stats_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">server_stats_t - Server performance statistics structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/server/stats.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint64_t <b>frames_captured</b>
+  <br/>
+  uint64_t <b>frames_sent</b>
+  <br/>
+  uint64_t <b>frames_dropped</b>
+  <br/>
+  uint64_t <b>bytes_sent</b>
+  <br/>
+  double <b>avg_capture_fps</b>
+  <br/>
+  double <b>avg_send_fps</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Server performance statistics structure.</p>
+<p class="Pp">Tracks comprehensive performance metrics for the ascii-chat server
+    including frame processing rates, bandwidth usage, and performance
+  counters.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="STATISTICS_TRACKED:"><a class="permalink" href="#STATISTICS_TRACKED:">STATISTICS
+  TRACKED: </a></h1>
+<ul class="Bl-bullet">
+  <li>frames_captured: Total frames captured from webcam/sources</li>
+  <li>frames_sent: Total frames sent to all clients</li>
+  <li>frames_dropped: Total frames dropped (backpressure, timeout, etc.)</li>
+  <li>bytes_sent: Total bytes transmitted (network bandwidth)</li>
+  <li>avg_capture_fps: Average frame capture rate (frames per second)</li>
+  <li>avg_send_fps: Average frame send rate (frames per second)</li>
+</ul>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="PERFORMANCE_METRICS:"><a class="permalink" href="#PERFORMANCE_METRICS:">PERFORMANCE
+  METRICS: </a></h1>
+<p class="Pp">These statistics enable:</p>
+<ul class="Bl-bullet">
+  <li>Performance monitoring and analysis</li>
+  <li>Bottleneck identification</li>
+  <li>Capacity planning</li>
+  <li>Quality of service metrics</li>
+</ul>
+<p class="Pp"><b>Note</b></p>
+<div class="Bd-indent">Statistics are updated atomically for thread-safe access.
+<p class="Pp"></p>
+<p class="Pp">Rates (avg_capture_fps, avg_send_fps) are calculated over time
+    windows.</p>
+<p class="Pp"></p>
+<p class="Pp">Frame drop rate = frames_dropped / frames_captured (when
+    frames_captured &gt; 0)</p>
+</div>
+<p class="Pp">Definition at line <b>47</b> of file <b>stats.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="double_server_stats_t::avg_capture_fps"><a class="permalink" href="#double_server_stats_t::avg_capture_fps">double
+  server_stats_t::avg_capture_fps</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_server_stats_t::avg_send_fps"><a class="permalink" href="#double_server_stats_t::avg_send_fps">double
+  server_stats_t::avg_send_fps</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file <b>stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_server_stats_t::bytes_sent"><a class="permalink" href="#uint64_t_server_stats_t::bytes_sent">uint64_t
+  server_stats_t::bytes_sent</a></h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_server_stats_t::frames_captured"><a class="permalink" href="#uint64_t_server_stats_t::frames_captured">uint64_t
+  server_stats_t::frames_captured</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_server_stats_t::frames_dropped"><a class="permalink" href="#uint64_t_server_stats_t::frames_dropped">uint64_t
+  server_stats_t::frames_dropped</a></h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>stats.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_server_stats_t::frames_sent"><a class="permalink" href="#uint64_t_server_stats_t::frames_sent">uint64_t
+  server_stats_t::frames_sent</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>stats.h</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_consensus(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_consensus(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_consensus(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_consensus - Session consensus handle - wraps all consensus
+    modules.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp"><b>consensus_topology_t</b> * <b>topology</b>
+  <br/>
+  <b>consensus_coordinator_t</b> * <b>coordinator</b>
+  <br/>
+  <b>session_consensus_send_packet_fn</b> <b>send_packet</b>
+  <br/>
+  <b>session_consensus_on_election_fn</b> <b>on_election</b>
+  <br/>
+  <b>session_consensus_get_metrics_fn</b> <b>get_metrics</b>
+  <br/>
+  <b>session_consensus_election_fn</b> <b>election</b>
+  <br/>
+  void * <b>context</b>
+  <br/>
+  uint8_t <b>my_id</b> [16]
+  <br/>
+  <b>bool</b> <b>is_leader</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Session consensus handle - wraps all consensus modules.</p>
+<p class="Pp">Definition at line <b>21</b> of file <b>consensus.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_consensus::context"><a class="permalink" href="#void*_session_consensus::context">void*
+  session_consensus::context</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>, and
+    <b>session_consensus_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>consensus_coordinator_t</b>*
+  session_consensus::coordinator</h2>
+<p class="Pp">Definition at line <b>24</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>,
+    <b>session_consensus_destroy()</b>,
+    <b>session_consensus_get_elected_host()</b>,
+    <b>session_consensus_get_metrics_count()</b>,
+    <b>session_consensus_get_state()</b>, <b>session_consensus_is_ready()</b>,
+    <b>session_consensus_on_collection_start()</b>,
+    <b>session_consensus_on_election_result()</b>,
+    <b>session_consensus_on_stats_update()</b>,
+    <b>session_consensus_process()</b>, <b>session_consensus_set_topology()</b>,
+    and <b>session_consensus_time_until_next_round()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_consensus_election_fn</b>
+  session_consensus::election</h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_consensus_get_metrics_fn</b>
+  session_consensus::get_metrics</h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_consensus::is_leader</h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_session_consensus::my_id_16_"><a class="permalink" href="#uint8_t_session_consensus::my_id_16_">uint8_t
+  session_consensus::my_id[16]</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>, and
+    <b>session_consensus_set_topology()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_consensus_on_election_fn</b>
+  session_consensus::on_election</h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>, and
+    <b>session_consensus_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>session_consensus_send_packet_fn</b>
+  session_consensus::send_packet</h2>
+<p class="Pp">Definition at line <b>27</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>consensus_topology_t</b>* session_consensus::topology</h2>
+<p class="Pp">Definition at line <b>23</b> of file <b>consensus.c</b>.</p>
+<p class="Pp">Referenced by <b>session_consensus_create()</b>,
+    <b>session_consensus_destroy()</b>, and
+    <b>session_consensus_set_topology()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>public_api.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">public_api.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">public_api.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">public_api.c - Public API functions for the options registry.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>options_registry_add_all_to_builder</b>
+    (options_builder_t *builder)
+  <br/>
+  const registry_entry_t * <b>options_registry_get_raw</b> (void)
+  <br/>
+  Get raw access to registry for completions filtering. size_t
+    <b>options_registry_get_count</b> (void)
+  <br/>
+  Get total number of registry entries. const option_descriptor_t *
+    <b>options_registry_find_by_name</b> (const char *long_name)
+  <br/>
+  const option_descriptor_t * <b>options_registry_find_by_short</b> (char
+    short_name)
+  <br/>
+  const option_descriptor_t * <b>options_registry_get_for_mode</b>
+    (asciichat_mode_t mode, size_t *num_options)
+  <br/>
+  const option_descriptor_t * <b>options_registry_get_binary_options</b> (size_t
+    *num_options)
+  <br/>
+  const option_descriptor_t * <b>options_registry_get_for_display</b>
+    (asciichat_mode_t mode, <b>bool</b> for_binary_help, size_t *num_options)
+  <br/>
+  const option_metadata_t * <b>options_registry_get_metadata</b> (const char
+    *long_name)
+  <br/>
+  const char ** <b>options_registry_get_enum_values</b> (const char
+    *option_name, const char ***descriptions, size_t *count)
+  <br/>
+  <b>bool</b> <b>options_registry_get_numeric_range</b> (const char
+    *option_name, int *min_out, int *max_out, int *step_out)
+  <br/>
+  const char ** <b>options_registry_get_examples</b> (const char *option_name,
+    size_t *count)
+  <br/>
+  option_input_type_t <b>options_registry_get_input_type</b> (const char
+    *option_name)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Public API functions for the options registry.</p>
+<p class="Pp">This file contains all the public-facing functions that external
+    code uses to interact with the options registry. These functions are
+    declared in ascii-chat/options/registry.h.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>public_api.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_options_registry_add_all_to_builder_(options_builder_t_*_builder)"><a class="permalink" href="#asciichat_error_t_options_registry_add_all_to_builder_(options_builder_t_*_builder)">asciichat_error_t
+  options_registry_add_all_to_builder (options_builder_t * builder)</a></h2>
+<p class="Pp">Definition at line <b>20</b> of file <b>public_api.c</b>.</p>
+<pre>20                                                                                   {
+21   if (!builder) {
+22     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Builder is NULL&quot;);
+23   }
+24 
+25   registry_init_size();
+26 
+27   for (size_t i = 0; i &lt; g_registry_size; i++) {
+28     const registry_entry_t *entry = &amp;g_options_registry[i];
+29     if (!entry-&gt;long_name) {
+30       continue;
+31     }
+32     // Silent - no debug logging needed
+33 
+34     switch (entry-&gt;type) {
+35     case OPTION_TYPE_STRING:
+36       options_builder_add_string(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+37                                  entry-&gt;default_value ? (const char *)entry-&gt;default_value : &quot;&quot;, entry-&gt;help_text,
+38                                  entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name, entry-&gt;validate_fn);
+39       break;
+40     case OPTION_TYPE_INT:
+41       // Use metadata-aware function if metadata is present
+42       if (entry-&gt;metadata.numeric_range.max != 0 ||
+43           (entry-&gt;metadata.enum_values &amp;&amp; entry-&gt;metadata.enum_values[0] != NULL)) {
+44         options_builder_add_int_with_metadata(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+45                                               entry-&gt;default_value ? *(const int *)entry-&gt;default_value : 0,
+46                                               entry-&gt;help_text, entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name,
+47                                               entry-&gt;validate_fn, &amp;entry-&gt;metadata);
+48       } else {
+49         options_builder_add_int(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+50                                 entry-&gt;default_value ? *(const int *)entry-&gt;default_value : 0, entry-&gt;help_text,
+51                                 entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name, entry-&gt;validate_fn);
+52       }
+53       break;
+54     case OPTION_TYPE_BOOL:
+55       options_builder_add_bool(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+56                                entry-&gt;default_value ? *(const bool *)entry-&gt;default_value : false, entry-&gt;help_text,
+57                                entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name);
+58       break;
+59     case OPTION_TYPE_DOUBLE:
+60       // Use metadata-aware function if metadata is present (has numeric range)
+61       if (entry-&gt;metadata.numeric_range.max != 0) {
+62         options_builder_add_double_with_metadata(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+63                                                  entry-&gt;default_value ? *(const double *)entry-&gt;default_value : 0.0,
+64                                                  entry-&gt;help_text, entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name,
+65                                                  entry-&gt;validate_fn, &amp;entry-&gt;metadata, entry-&gt;optional_arg);
+66       } else {
+67         options_builder_add_double(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+68                                    entry-&gt;default_value ? *(const double *)entry-&gt;default_value : 0.0, entry-&gt;help_text,
+69                                    entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name, entry-&gt;validate_fn, entry-&gt;optional_arg);
+70       }
+71       break;
+72     case OPTION_TYPE_CALLBACK:
+73       // Always use metadata-aware function to preserve enum/metadata information
+74       options_builder_add_callback_with_metadata(builder, entry-&gt;long_name, entry-&gt;short_name, entry-&gt;offset,
+75                                                  entry-&gt;default_value, entry-&gt;default_value_size, entry-&gt;parse_fn,
+76                                                  entry-&gt;help_text, entry-&gt;group, entry-&gt;required, entry-&gt;env_var_name,
+77                                                  entry-&gt;optional_arg, &amp;entry-&gt;metadata);
+78       break;
+79     case OPTION_TYPE_ACTION:
+80       // Actions are now registered as options with help text
+81       // Look up the corresponding action function based on option name
+82       if (strcmp(entry-&gt;long_name, &quot;list-webcams&quot;) == 0) {
+83         options_builder_add_action(builder, entry-&gt;long_name, entry-&gt;short_name, action_list_webcams, entry-&gt;help_text,
+84                                    entry-&gt;group);
+85       } else if (strcmp(entry-&gt;long_name, &quot;list-microphones&quot;) == 0) {
+86         options_builder_add_action(builder, entry-&gt;long_name, entry-&gt;short_name, action_list_microphones,
+87                                    entry-&gt;help_text, entry-&gt;group);
+88       } else if (strcmp(entry-&gt;long_name, &quot;list-speakers&quot;) == 0) {
+89         options_builder_add_action(builder, entry-&gt;long_name, entry-&gt;short_name, action_list_speakers, entry-&gt;help_text,
+90                                    entry-&gt;group);
+91       } else if (strcmp(entry-&gt;long_name, &quot;show-capabilities&quot;) == 0) {
+92         options_builder_add_action(builder, entry-&gt;long_name, entry-&gt;short_name, action_show_capabilities,
+93                                    entry-&gt;help_text, entry-&gt;group);
+94       } else if (strcmp(entry-&gt;long_name, &quot;check-update&quot;) == 0) {
+95         options_builder_add_action(builder, entry-&gt;long_name, entry-&gt;short_name, action_check_update, entry-&gt;help_text,
+96                                    entry-&gt;group);
+97       } else if (strcmp(entry-&gt;long_name, &quot;help&quot;) == 0 || strcmp(entry-&gt;long_name, &quot;version&quot;) == 0) {
+98         // Help and version are handled specially in options.c, just add them for help display
+99         // They don't have actual action functions - pass a dummy one
+100         options_builder_add_action(builder, entry-&gt;long_name, entry-&gt;short_name, NULL, entry-&gt;help_text, entry-&gt;group);
+101       }
+102       break;
+103     }
+104 
+105     // Set mode bitmask on the last added descriptor
+106     options_builder_set_mode_bitmask(builder, entry-&gt;mode_bitmask);
+107 
+108     // Set custom arg_placeholder if defined
+109     if (entry-&gt;arg_placeholder) {
+110       options_builder_set_arg_placeholder(builder, entry-&gt;arg_placeholder);
+111     }
+112   }
+113 
+114   return ASCIICHAT_OK;
+115 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>action_check_update()</b>,
+    <b>action_list_microphones()</b>, <b>action_list_speakers()</b>,
+    <b>action_list_webcams()</b>, <b>action_show_capabilities()</b>,
+    <b>g_options_registry</b>, <b>g_registry_size</b>,
+    <b>options_builder_add_action()</b>, <b>options_builder_add_bool()</b>,
+    <b>options_builder_add_callback_with_metadata()</b>,
+    <b>options_builder_add_double()</b>,
+    <b>options_builder_add_double_with_metadata()</b>,
+    <b>options_builder_add_int()</b>,
+    <b>options_builder_add_int_with_metadata()</b>,
+    <b>options_builder_add_string()</b>,
+    <b>options_builder_set_arg_placeholder()</b>,
+    <b>options_builder_set_mode_bitmask()</b>, and
+  <b>registry_init_size()</b>.</p>
+<p class="Pp">Referenced by <b>options_preset_unified()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_find_by_name_(const_char_*_long_name)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_find_by_name_(const_char_*_long_name)">const
+  option_descriptor_t * options_registry_find_by_name (const char *
+  long_name)</a></h2>
+<p class="Pp">Definition at line <b>140</b> of file <b>public_api.c</b>.</p>
+<pre>140                                                                                 {
+141   if (!long_name) {
+142     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Long name is NULL&quot;);
+143     return NULL;
+144   }
+145 
+146   registry_init_size();
+147 
+148   const registry_entry_t *entry = registry_find_entry_by_name(long_name);
+149   if (!entry) {
+150     // Don't log error for binary-level options like &quot;config&quot; that aren't in registry
+151     if (strcmp(long_name, &quot;config&quot;) != 0) {
+152       SET_ERRNO(ERROR_NOT_FOUND, &quot;Option not found: %s&quot;, long_name);
+153     }
+154     return NULL;
+155   }
+156 
+157   /* Create descriptor from registry entry */
+158   static option_descriptor_t desc;
+159   desc.long_name = entry-&gt;long_name;
+160   desc.short_name = entry-&gt;short_name;
+161   desc.type = entry-&gt;type;
+162   desc.offset = entry-&gt;offset;
+163   desc.help_text = entry-&gt;help_text;
+164   desc.group = entry-&gt;group;
+165   desc.hide_from_mode_help = false;
+166   desc.hide_from_binary_help = false;
+167   desc.default_value = entry-&gt;default_value;
+168   desc.required = entry-&gt;required;
+169   desc.env_var_name = entry-&gt;env_var_name;
+170   desc.validate = entry-&gt;validate_fn;
+171   desc.parse_fn = entry-&gt;parse_fn;
+172   desc.action_fn = NULL;
+173   desc.owns_memory = entry-&gt;owns_memory;
+174   desc.optional_arg = entry-&gt;optional_arg;
+175   desc.mode_bitmask = entry-&gt;mode_bitmask;
+176 
+177   return &amp;desc;
+178 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>registry_find_entry_by_name()</b>, and
+    <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_find_by_short_(char_short_name)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_find_by_short_(char_short_name)">const
+  option_descriptor_t * options_registry_find_by_short (char
+  short_name)</a></h2>
+<p class="Pp">Definition at line <b>180</b> of file <b>public_api.c</b>.</p>
+<pre>180                                                                            {
+181   if (short_name == '\0') {
+182     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Short name is empty&quot;);
+183     return NULL;
+184   }
+185 
+186   registry_init_size();
+187 
+188   const registry_entry_t *entry = registry_find_entry_by_short(short_name);
+189   if (!entry) {
+190     SET_ERRNO(ERROR_NOT_FOUND, &quot;Option not found: -%c&quot;, short_name);
+191     return NULL;
+192   }
+193 
+194   /* Create descriptor from registry entry */
+195   static option_descriptor_t desc;
+196   desc.long_name = entry-&gt;long_name;
+197   desc.short_name = entry-&gt;short_name;
+198   desc.type = entry-&gt;type;
+199   desc.offset = entry-&gt;offset;
+200   desc.help_text = entry-&gt;help_text;
+201   desc.group = entry-&gt;group;
+202   desc.hide_from_mode_help = false;
+203   desc.hide_from_binary_help = false;
+204   desc.default_value = entry-&gt;default_value;
+205   desc.required = entry-&gt;required;
+206   desc.env_var_name = entry-&gt;env_var_name;
+207   desc.validate = entry-&gt;validate_fn;
+208   desc.parse_fn = entry-&gt;parse_fn;
+209   desc.action_fn = NULL;
+210   desc.owns_memory = entry-&gt;owns_memory;
+211   desc.optional_arg = entry-&gt;optional_arg;
+212   desc.mode_bitmask = entry-&gt;mode_bitmask;
+213 
+214   return &amp;desc;
+215 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>registry_find_entry_by_short()</b>, and
+    <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_get_binary_options_(size_t_*_num_options)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_get_binary_options_(size_t_*_num_options)">const
+  option_descriptor_t * options_registry_get_binary_options (size_t *
+  num_options)</a></h2>
+<p class="Pp">Definition at line <b>282</b> of file <b>public_api.c</b>.</p>
+<pre>282                                                                                     {
+283   if (!num_options) {
+284     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Number of options is NULL&quot;);
+285     return NULL;
+286   }
+287 
+288   registry_init_size();
+289 
+290   /* Count binary-level options */
+291   size_t count = 0;
+292   for (size_t i = 0; i &lt; g_registry_size; i++) {
+293     if (g_options_registry[i].mode_bitmask &amp; OPTION_MODE_BINARY) {
+294       count++;
+295     }
+296   }
+297 
+298   if (count == 0) {
+299     *num_options = 0;
+300     return NULL;
+301   }
+302 
+303   /* Allocate array for binary options */
+304   option_descriptor_t *binary_opts = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+305   if (!binary_opts) {
+306     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to allocate binary options array&quot;);
+307     *num_options = 0;
+308     return NULL;
+309   }
+310 
+311   /* Copy binary options */
+312   size_t idx = 0;
+313   for (size_t i = 0; i &lt; g_registry_size; i++) {
+314     if (g_options_registry[i].mode_bitmask &amp; OPTION_MODE_BINARY) {
+315       binary_opts[idx++] = registry_entry_to_descriptor(&amp;g_options_registry[i]);
+316     }
+317   }
+318 
+319   *num_options = count;
+320   return binary_opts;
+321 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>,
+    <b>registry_entry_to_descriptor()</b>, and <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_options_registry_get_count_(void_)"><a class="permalink" href="#size_t_options_registry_get_count_(void_)">size_t
+  options_registry_get_count (void )</a></h2>
+<p class="Pp">Get total number of registry entries.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of options in registry (not including NULL
+  terminator)</div>
+<p class="Pp">Definition at line <b>135</b> of file <b>public_api.c</b>.</p>
+<pre>135                                         {
+136   registry_init_size();
+137   return g_registry_size;
+138 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_registry_size</b>, and
+    <b>registry_init_size()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_**_options_registry_get_enum_values_(const_char_*_option_name,_const_char_***_descriptions,_size_t_*_count)"><a class="permalink" href="#const_char_**_options_registry_get_enum_values_(const_char_*_option_name,_const_char_***_descriptions,_size_t_*_count)">const
+  char ** options_registry_get_enum_values (const char * option_name, const char
+  *** descriptions, size_t * count)</a></h2>
+<p class="Pp">Definition at line <b>390</b> of file <b>public_api.c</b>.</p>
+<pre>390                                                                                                                   {
+391   if (!option_name || !count) {
+392     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option name is NULL or count is NULL&quot;);
+393     if (count)
+394       *count = 0;
+395     return NULL;
+396   }
+397 
+398   const option_metadata_t *meta = options_registry_get_metadata(option_name);
+399   if (!meta || meta-&gt;input_type != OPTION_INPUT_ENUM || !meta-&gt;enum_values || meta-&gt;enum_values[0] == NULL) {
+400     SET_ERRNO(ERROR_NOT_FOUND, &quot;Option '%s' not found&quot;, option_name);
+401     *count = 0;
+402     if (descriptions)
+403       *descriptions = NULL;
+404     return NULL;
+405   }
+406 
+407   // Count enum values (NULL-terminated array)
+408   size_t enum_count = 0;
+409   while (meta-&gt;enum_values[enum_count] != NULL) {
+410     enum_count++;
+411   }
+412 
+413   *count = enum_count;
+414   if (descriptions) {
+415     *descriptions = meta-&gt;enum_descriptions;
+416   }
+417   return meta-&gt;enum_values;
+418 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_**_options_registry_get_examples_(const_char_*_option_name,_size_t_*_count)"><a class="permalink" href="#const_char_**_options_registry_get_examples_(const_char_*_option_name,_size_t_*_count)">const
+  char ** options_registry_get_examples (const char * option_name, size_t *
+  count)</a></h2>
+<p class="Pp">Definition at line <b>440</b> of file <b>public_api.c</b>.</p>
+<pre>440                                                                                    {
+441   if (!option_name || !count) {
+442     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option name is NULL or count is NULL&quot;);
+443     if (count)
+444       *count = 0;
+445     return NULL;
+446   }
+447 
+448   const option_metadata_t *meta = options_registry_get_metadata(option_name);
+449   if (!meta || !meta-&gt;examples || meta-&gt;examples[0] == NULL) {
+450     *count = 0;
+451     return NULL;
+452   }
+453 
+454   // Count examples by finding NULL terminator
+455   size_t example_count = 0;
+456   for (size_t i = 0; meta-&gt;examples[i] != NULL; i++) {
+457     example_count++;
+458   }
+459 
+460   *count = example_count;
+461   return meta-&gt;examples;
+462 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_get_for_display_(asciichat_mode_t_mode,_"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_get_for_display_(asciichat_mode_t_mode,_">const
+  option_descriptor_t * options_registry_get_for_display (asciichat_mode_t mode,
+  <b>bool</b> for_binary_help, size_t * num_options)</a></h2>
+<p class="Pp">Definition at line <b>323</b> of file <b>public_api.c</b>.</p>
+<pre>324                                                                                  {
+325   if (!num_options) {
+326     SET_ERRNO(ERROR_INVALID_PARAM, &quot;num_options is NULL&quot;);
+327     return NULL;
+328   }
+329 
+330   registry_init_size();
+331 
+332   // Count matching options
+333   size_t count = 0;
+334   for (size_t i = 0; i &lt; g_registry_size; i++) {
+335     if (registry_entry_applies_to_mode(&amp;g_options_registry[i], mode, for_binary_help)) {
+336       count++;
+337     }
+338   }
+339 
+340   if (count == 0) {
+341     *num_options = 0;
+342     return NULL;
+343   }
+344 
+345   // Allocate array
+346   option_descriptor_t *descriptors = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+347   if (!descriptors) {
+348     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate descriptors array&quot;);
+349     *num_options = 0;
+350     return NULL;
+351   }
+352 
+353   // Copy matching options
+354   size_t idx = 0;
+355   for (size_t i = 0; i &lt; g_registry_size; i++) {
+356     if (registry_entry_applies_to_mode(&amp;g_options_registry[i], mode, for_binary_help)) {
+357       descriptors[idx++] = registry_entry_to_descriptor(&amp;g_options_registry[i]);
+358     }
+359   }
+360 
+361   *num_options = count;
+362   return descriptors;
+363 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>,
+    <b>registry_entry_applies_to_mode()</b>,
+    <b>registry_entry_to_descriptor()</b>, and <b>registry_init_size()</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_fish()</b>,
+    <b>completions_generate_powershell()</b>, and
+    <b>completions_generate_zsh()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_option_descriptor_t_*_options_registry_get_for_mode_(asciichat_mode_t_mode,_size_t_*_num_options)"><a class="permalink" href="#const_option_descriptor_t_*_options_registry_get_for_mode_(asciichat_mode_t_mode,_size_t_*_num_options)">const
+  option_descriptor_t * options_registry_get_for_mode (asciichat_mode_t mode,
+  size_t * num_options)</a></h2>
+<p class="Pp">Definition at line <b>217</b> of file <b>public_api.c</b>.</p>
+<pre>217                                                                                                      {
+218   if (!num_options) {
+219     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Number of options is NULL&quot;);
+220     return NULL;
+221   }
+222 
+223   registry_init_size();
+224 
+225   /* Convert mode to bitmask */
+226   option_mode_bitmask_t mode_bitmask = 0;
+227   switch (mode) {
+228   case MODE_SERVER:
+229     mode_bitmask = OPTION_MODE_SERVER;
+230     break;
+231   case MODE_CLIENT:
+232     mode_bitmask = OPTION_MODE_CLIENT;
+233     break;
+234   case MODE_MIRROR:
+235     mode_bitmask = OPTION_MODE_MIRROR;
+236     break;
+237   case MODE_DISCOVERY_SERVICE:
+238     mode_bitmask = OPTION_MODE_DISCOVERY_SVC;
+239     break;
+240   case MODE_DISCOVERY:
+241     mode_bitmask = OPTION_MODE_DISCOVERY;
+242     break;
+243   default:
+244     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid mode: %d&quot;, mode);
+245     *num_options = 0;
+246     return NULL;
+247   }
+248 
+249   /* Count matching options */
+250   size_t count = 0;
+251   for (size_t i = 0; i &lt; g_registry_size; i++) {
+252     if (g_options_registry[i].mode_bitmask &amp; mode_bitmask) {
+253       count++;
+254     }
+255   }
+256 
+257   if (count == 0) {
+258     *num_options = 0;
+259     return NULL;
+260   }
+261 
+262   /* Allocate array for matching options */
+263   option_descriptor_t *filtered = SAFE_MALLOC(count * sizeof(option_descriptor_t), option_descriptor_t *);
+264   if (!filtered) {
+265     SET_ERRNO(ERROR_INVALID_STATE, &quot;Failed to allocate filtered options array&quot;);
+266     *num_options = 0;
+267     return NULL;
+268   }
+269 
+270   /* Copy matching options */
+271   size_t idx = 0;
+272   for (size_t i = 0; i &lt; g_registry_size; i++) {
+273     if (g_options_registry[i].mode_bitmask &amp; mode_bitmask) {
+274       filtered[idx++] = registry_entry_to_descriptor(&amp;g_options_registry[i]);
+275     }
+276   }
+277 
+278   *num_options = count;
+279   return filtered;
+280 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>,
+    <b>registry_entry_to_descriptor()</b>, and <b>registry_init_size()</b>.</p>
+<p class="Pp">Referenced by <b>completions_collect_all_modes_unique()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="option_input_type_t_options_registry_get_input_type_(const_char_*_option_name)"><a class="permalink" href="#option_input_type_t_options_registry_get_input_type_(const_char_*_option_name)">option_input_type_t
+  options_registry_get_input_type (const char * option_name)</a></h2>
+<p class="Pp">Definition at line <b>464</b> of file <b>public_api.c</b>.</p>
+<pre>464                                                                              {
+465   if (!option_name) {
+466     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option name is NULL&quot;);
+467     return OPTION_INPUT_NONE;
+468   }
+469 
+470   const option_metadata_t *meta = options_registry_get_metadata(option_name);
+471   if (!meta) {
+472     SET_ERRNO(ERROR_NOT_FOUND, &quot;Option '%s' not found&quot;, option_name);
+473     return OPTION_INPUT_NONE;
+474   }
+475 
+476   return meta-&gt;input_type;
+477 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_option_metadata_t_*_options_registry_get_metadata_(const_char_*_long_name)"><a class="permalink" href="#const_option_metadata_t_*_options_registry_get_metadata_(const_char_*_long_name)">const
+  option_metadata_t * options_registry_get_metadata (const char *
+  long_name)</a></h2>
+<p class="Pp">Definition at line <b>369</b> of file <b>public_api.c</b>.</p>
+<pre>369                                                                               {
+370   if (!long_name) {
+371     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Long name is NULL&quot;);
+372     return NULL;
+373   }
+374 
+375   // Look up option in registry and return its metadata
+376   registry_init_size();
+377   for (size_t i = 0; i &lt; g_registry_size; i++) {
+378     const registry_entry_t *entry = &amp;g_options_registry[i];
+379     if (entry-&gt;long_name &amp;&amp; strcmp(entry-&gt;long_name, long_name) == 0) {
+380       // Return the metadata from the registry entry
+381       return &amp;entry-&gt;metadata;
+382     }
+383   }
+384 
+385   // If not found, return empty metadata
+386   static option_metadata_t empty_metadata = {0};
+387   return &amp;empty_metadata;
+388 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_options_registry</b>, <b>g_registry_size</b>, and
+    <b>registry_init_size()</b>.</p>
+<p class="Pp">Referenced by <b>options_registry_get_enum_values()</b>,
+    <b>options_registry_get_examples()</b>,
+    <b>options_registry_get_input_type()</b>, and
+    <b>options_registry_get_numeric_range()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> options_registry_get_numeric_range (const char *
+  option_name, int * min_out, int * max_out, int * step_out)</h2>
+<p class="Pp">Definition at line <b>420</b> of file <b>public_api.c</b>.</p>
+<pre>420                                                                                                             {
+421   if (!option_name || !min_out || !max_out || !step_out) {
+422     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Option name is NULL or min_out, max_out, or step_out is NULL&quot;);
+423     return false;
+424   }
+425 
+426   const option_metadata_t *meta = options_registry_get_metadata(option_name);
+427   if (!meta || meta-&gt;input_type != OPTION_INPUT_NUMERIC) {
+428     *min_out = 0;
+429     *max_out = 0;
+430     *step_out = 0;
+431     return false;
+432   }
+433 
+434   *min_out = meta-&gt;numeric_range.min;
+435   *max_out = meta-&gt;numeric_range.max;
+436   *step_out = meta-&gt;numeric_range.step;
+437   return true;
+438 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_registry_get_metadata()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_*_options_registry_get_raw_(void_)"><a class="permalink" href="#const_registry_entry_t_*_options_registry_get_raw_(void_)">const
+  registry_entry_t * options_registry_get_raw (void )</a></h2>
+<p class="Pp">Get raw access to registry for completions filtering. Returns a
+    pointer to the internal registry array. The array is NULL-terminated (final
+    entry has long_name == NULL). Used by completions generators.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to registry array (read-only), or NULL on
+  error</div>
+<p class="Pp">Definition at line <b>125</b> of file <b>public_api.c</b>.</p>
+<pre>125                                                        {
+126   registry_init_size();
+127   return g_options_registry;
+128 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>g_options_registry</b>, and
+    <b>registry_init_size()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

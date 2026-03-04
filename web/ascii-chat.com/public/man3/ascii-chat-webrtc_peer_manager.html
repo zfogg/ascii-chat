@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>webrtc_peer_manager(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">webrtc_peer_manager(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">webrtc_peer_manager(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">webrtc_peer_manager - WebRTC peer manager structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">webrtc_peer_role_t <b>role</b>
+  <br/>
+  Session role. webrtc_peer_manager_config_t <b>config</b>
+  <br/>
+  Manager configuration. webrtc_signaling_callbacks_t <b>signaling</b>
+  <br/>
+  Signaling callbacks. <b>peer_entry_t</b> * <b>peers</b>
+  <br/>
+  Hash table of peer connections. mutex_t <b>peers_mutex</b>
+  <br/>
+  Protect peers hash table.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WebRTC peer manager structure.</p>
+<p class="Pp">Definition at line <b>39</b> of file <b>peer_manager.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_peer_manager_config_t_webrtc_peer_manager::config"><a class="permalink" href="#webrtc_peer_manager_config_t_webrtc_peer_manager::config">webrtc_peer_manager_config_t
+  webrtc_peer_manager::config</a></h2>
+<p class="Pp">Manager configuration.</p>
+<p class="Pp">Definition at line <b>41</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>, and
+    <b>webrtc_peer_manager_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>peer_entry_t</b>* webrtc_peer_manager::peers</h2>
+<p class="Pp">Hash table of peer connections.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+    <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
+    and <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_webrtc_peer_manager::peers_mutex"><a class="permalink" href="#mutex_t_webrtc_peer_manager::peers_mutex">mutex_t
+  webrtc_peer_manager::peers_mutex</a></h2>
+<p class="Pp">Protect peers hash table.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by
+    <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
+    <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_create()</b>,
+    <b>webrtc_peer_manager_destroy()</b>,
+    <b>webrtc_peer_manager_handle_ice()</b>, and
+    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_peer_role_t_webrtc_peer_manager::role"><a class="permalink" href="#webrtc_peer_role_t_webrtc_peer_manager::role">webrtc_peer_role_t
+  webrtc_peer_manager::role</a></h2>
+<p class="Pp">Session role.</p>
+<p class="Pp">Definition at line <b>40</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_connect()</b>,
+    <b>webrtc_peer_manager_create()</b>, and
+    <b>webrtc_peer_manager_handle_sdp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="webrtc_signaling_callbacks_t_webrtc_peer_manager::signaling"><a class="permalink" href="#webrtc_signaling_callbacks_t_webrtc_peer_manager::signaling">webrtc_signaling_callbacks_t
+  webrtc_peer_manager::signaling</a></h2>
+<p class="Pp">Signaling callbacks.</p>
+<p class="Pp">Definition at line <b>42</b> of file <b>peer_manager.c</b>.</p>
+<p class="Pp">Referenced by <b>webrtc_peer_manager_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

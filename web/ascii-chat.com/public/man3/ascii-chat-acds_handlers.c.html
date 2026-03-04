@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>acds_handlers.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">acds_handlers.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">acds_handlers.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">acds_handlers.c - ACIP Discovery Server (ACDS) packet handlers
+    with O(1) dispatch.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>acds_hash_entry_t</b>
+  <br/>
+  Hash table entry for ACDS packet type to handler mapping.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>ACDS_HASH_SIZE</b> 32
+  <br/>
+  #define <b>ACDS_HANDLER_COUNT</b> 11
+  <br/>
+  #define <b>ACDS_HASH</b>(type)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef asciichat_error_t(* <b>acip_acds_handler_func_t</b>)
+    (const void *payload, size_t payload_len, int client_socket, const char
+    *client_ip, const acip_acds_callbacks_t *callbacks)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>acip_handle_acds_packet</b>
+    (<b>acip_transport_t</b> *transport, packet_type_t type, const void
+    *payload, size_t payload_len, int client_socket, const char *client_ip,
+    const acip_acds_callbacks_t *callbacks)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ACIP Discovery Server (ACDS) packet handlers with O(1)
+  dispatch.</p>
+<p class="Pp">Implements O(1) array-based packet dispatching for ascii-chat
+    Discovery Server. Handles ACIP packets 100-150: session management, WebRTC
+    signaling, discovery.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>acds_handlers.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACDS_HANDLER_COUNT___11"><a class="permalink" href="#_define_ACDS_HANDLER_COUNT___11">#define
+  ACDS_HANDLER_COUNT 11</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>acds_handlers.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACDS_HASH(_type)"><a class="permalink" href="#_define_ACDS_HASH(_type)">#define
+  ACDS_HASH( type)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((type) % ACDS_HASH_SIZE)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>41</b> of file <b>acds_handlers.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACDS_HASH_SIZE___32"><a class="permalink" href="#_define_ACDS_HASH_SIZE___32">#define
+  ACDS_HASH_SIZE 32</a></h2>
+<p class="Pp">Definition at line <b>30</b> of file <b>acds_handlers.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_asciichat_error_t(*_acip_acds_handler_func_t)_(const_void_*payload,_size_t_payload_len,_int_client_socket,_const_char_*client_ip,_const_acip_acds_callbacks_t_*callbacks)"><a class="permalink" href="#typedef_asciichat_error_t(*_acip_acds_handler_func_t)_(const_void_*payload,_size_t_payload_len,_int_client_socket,_const_char_*client_ip,_const_acip_acds_callbacks_t_*callbacks)">typedef
+  asciichat_error_t(* acip_acds_handler_func_t) (const void *payload, size_t
+  payload_len, int client_socket, const char *client_ip, const
+  acip_acds_callbacks_t *callbacks)</a></h2>
+<p class="Pp">Definition at line <b>26</b> of file <b>acds_handlers.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_acip_handle_acds_packet_("><a class="permalink" href="#asciichat_error_t_acip_handle_acds_packet_(">asciichat_error_t
+  acip_handle_acds_packet (<b>acip_transport_t</b> * transport, packet_type_t
+  type, const void * payload, size_t payload_len, int client_socket, const char
+  * client_ip, const acip_acds_callbacks_t * callbacks)</a></h2>
+<p class="Pp">Definition at line <b>118</b> of file <b>acds_handlers.c</b>.</p>
+<pre>120                                                                                   {
+121   if (!callbacks) {
+122     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
+123   }
+124   (void)transport;
+125 
+126   // O(1) dispatch via hash table lookup
+127   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
+128   if (idx &lt; 0) {
+129     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
+130   }
+131 
+132   return g_acds_handlers[idx](payload, payload_len, client_socket, client_ip, callbacks);
+133 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

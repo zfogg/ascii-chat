@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>display.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">display.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">display.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">display.c - Display layout and rendering options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_display_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Display layout and rendering options.</p>
+<p class="Pp">Options for controlling rendering modes, palettes, color filters,
+    framerate, and snapshot mode.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>lib/options/registry/display.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_display_entries__"><a class="permalink" href="#const_registry_entry_t_g_display_entries__">const
+  registry_entry_t g_display_entries[]</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file
+    <b>lib/options/registry/display.c</b>.</p>
+<pre>21                                            {
+22     // DISPLAY GROUP (client, mirror, discovery)
+23     {&quot;color-filter&quot;,
+24      '\0',
+25      OPTION_TYPE_CALLBACK,
+26      offsetof(options_t, color_filter),
+27      &amp;default_color_filter_value,
+28      sizeof(color_filter_t),
+29      &quot;Apply a monochromatic color tint to grayscale video. Values: none, black, white, green, magenta, fuchsia, &quot;
+30      &quot;orange, teal, cyan, pink, red, yellow, rainbow. Using --color-filter automatically sets --color-mode to mono.&quot;,
+31      &quot;DISPLAY&quot;,
+32      NULL,
+33      false,
+34      &quot;ASCII_CHAT_COLOR_FILTER&quot;,
+35      NULL,
+36      parse_color_filter,
+37      false,
+38      false,
+39      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+40      {.enum_values = g_color_filter_values,
+41       .enum_descriptions = g_color_filter_descs,
+42       .enum_integer_values = g_color_filter_integers,
+43       .input_type = OPTION_INPUT_ENUM},
+44      NULL},
+45     {&quot;render-mode&quot;,
+46      'M',
+47      OPTION_TYPE_CALLBACK,
+48      offsetof(options_t, render_mode),
+49      &amp;default_render_mode_value,
+50      sizeof(render_mode_t),
+51      &quot;Render mode of text for your client to display. Values: foreground, background, half-block. Press 'r' during &quot;
+52      &quot;rendering to cycle.&quot;,
+53      &quot;DISPLAY&quot;,
+54      NULL,
+55      false,
+56      &quot;ASCII_CHAT_RENDER_MODE&quot;,
+57      NULL,
+58      parse_render_mode,
+59      false,
+60      false,
+61      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+62      {.enum_values = g_render_values,
+63       .enum_descriptions = g_render_descs,
+64       .enum_integer_values = g_render_integers,
+65       .input_type = OPTION_INPUT_ENUM},
+66      NULL},
+67     {&quot;palette&quot;,
+68      'P',
+69      OPTION_TYPE_CALLBACK,
+70      offsetof(options_t, palette_type),
+71      &amp;default_palette_type_value,
+72      sizeof(palette_type_t),
+73      &quot;Palette type with which to render images to text art. Values: standard, blocks, digital, minimal, cool, &quot;
+74      &quot;custom. All but \&quot;custom\&quot; are built-in presets that all look different and nice. Try them out!&quot;,
+75      &quot;DISPLAY&quot;,
+76      NULL,
+77      false,
+78      &quot;ASCII_CHAT_PALETTE&quot;,
+79      NULL,
+80      parse_palette_type,
+81      false,
+82      false,
+83      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+84      {.enum_values = g_palette_values,
+85       .enum_descriptions = g_palette_descs,
+86       .enum_integer_values = g_palette_integers,
+87       .input_type = OPTION_INPUT_ENUM},
+88      NULL},
+89     {&quot;palette-chars&quot;,
+90      'C',
+91      OPTION_TYPE_CALLBACK,
+92      offsetof(options_t, palette_custom),
+93      &quot;&quot;,
+94      0,
+95      &quot;Ordered sequence of characters from darkest to brightest to use with custom palette (--palette=custom) for &quot;
+96      &quot;rendering images to text art for your client. These characters only will be used to create the rendered output. &quot;
+97      &quot;Can be UTF-8 content (see --utf8).&quot;,
+98      &quot;DISPLAY&quot;,
+99      &quot;STRING&quot;,
+100      false,
+101      &quot;ASCII_CHAT_PALETTE_CHARS&quot;,
+102      NULL,
+103      parse_palette_chars,
+104      false,
+105      false,
+106      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+107      {0},
+108      NULL},
+109     {&quot;stretch&quot;,
+110      '\0',
+111      OPTION_TYPE_BOOL,
+112      offsetof(options_t, stretch),
+113      &amp;default_stretch_value,
+114      sizeof(bool),
+115      &quot;Allow aspect ratio distortion of image for rendering ascii output. This can allow the rendered ascii to fill &quot;
+116      &quot;your terminal.&quot;,
+117      &quot;DISPLAY&quot;,
+118      NULL,
+119      false,
+120      &quot;ASCII_CHAT_STRETCH&quot;,
+121      NULL,
+122      NULL,
+123      false,
+124      false,
+125      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+126      {0},
+127      NULL},
+128     {&quot;fps&quot;,
+129      '\0',
+130      OPTION_TYPE_INT,
+131      offsetof(options_t, fps),
+132      &amp;default_fps_value,
+133      sizeof(int),
+134      &quot;Target framerate for rendering (1-144).&quot;,
+135      &quot;DISPLAY&quot;,
+136      NULL,
+137      false,
+138      &quot;ASCII_CHAT_FPS&quot;,
+139      NULL,
+140      NULL,
+141      false,
+142      false,
+143      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+144      {.numeric_range = {1, 144, 1}, .examples = g_fps_examples, .input_type = OPTION_INPUT_NUMERIC},
+145      NULL},
+146     {&quot;snapshot&quot;,
+147      'S',
+148      OPTION_TYPE_BOOL,
+149      offsetof(options_t, snapshot_mode),
+150      &amp;default_snapshot_mode_value,
+151      sizeof(bool),
+152      &quot;Snapshot mode (one frame and exit).&quot;,
+153      &quot;DISPLAY&quot;,
+154      NULL,
+155      false,
+156      &quot;ASCII_CHAT_SNAPSHOT&quot;,
+157      NULL,
+158      NULL,
+159      false,
+160      false,
+161      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+162      {0},
+163      NULL},
+164     {&quot;snapshot-delay&quot;,
+165      'D',
+166      OPTION_TYPE_DOUBLE,
+167      offsetof(options_t, snapshot_delay),
+168      &amp;default_snapshot_delay_value,
+169      sizeof(double),
+170      &quot;Snapshot delay in seconds. The timer starts right before the client-side program prints the first frame. &quot;
+171      &quot;--snapshot --snapshot-delay=0 will print the first frame and exit.&quot;,
+172      &quot;DISPLAY&quot;,
+173      &quot;SECONDS&quot;,
+174      false,
+175      &quot;ASCII_CHAT_SNAPSHOT_DELAY&quot;,
+176      NULL,
+177      NULL,
+178      false,
+179      false,
+180      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+181      {.numeric_range = {0, 3600, 0}, .input_type = OPTION_INPUT_NUMERIC},
+182      NULL},
+183     {&quot;matrix&quot;,
+184      '\0',
+185      OPTION_TYPE_BOOL,
+186      offsetof(options_t, matrix_rain),
+187      &amp;default_matrix_rain_value,
+188      sizeof(bool),
+189      &quot;Enable Matrix-style digital rain effect. Works with --render-mode truecolor|256 and --color-filter [color].&quot;,
+190      &quot;DISPLAY&quot;,
+191      NULL,
+192      false,
+193      &quot;ASCII_CHAT_MATRIX&quot;,
+194      NULL,
+195      NULL,
+196      false,
+197      false,
+198      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+199      {0},
+200      NULL},
+201     {&quot;fps-counter&quot;,
+202      '\0',
+203      OPTION_TYPE_BOOL,
+204      offsetof(options_t, fps_counter),
+205      &amp;default_fps_counter_value,
+206      sizeof(bool),
+207      &quot;Show FPS counter overlay in top-right corner. Press '-' to toggle.&quot;,
+208      &quot;DISPLAY&quot;,
+209      NULL,
+210      false,
+211      &quot;ASCII_CHAT_FPS_COUNTER&quot;,
+212      NULL,
+213      NULL,
+214      false,
+215      false,
+216      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+217      {0},
+218      NULL},
+219     {&quot;flip-x&quot;,
+220      '\0',
+221      OPTION_TYPE_BOOL,
+222      offsetof(options_t, flip_x),
+223      &amp;default_flip_x_value,
+224      sizeof(bool),
+225      &quot;Flip video horizontally (X-axis). Works with webcam, files, and streams. Note: Ignored for webcam on macOS &quot;
+226      &quot;(respects platform default like FaceTime).&quot;,
+227      &quot;DISPLAY&quot;,
+228      NULL,
+229      false,
+230      &quot;ASCII_CHAT_FLIP_X&quot;,
+231      NULL,
+232      NULL,
+233      false,
+234      false,
+235      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+236      {0},
+237      NULL},
+238     {&quot;flip-y&quot;,
+239      '\0',
+240      OPTION_TYPE_BOOL,
+241      offsetof(options_t, flip_y),
+242      &amp;default_flip_y_value,
+243      sizeof(bool),
+244      &quot;Flip video vertically (Y-axis). Works with webcam, files, and streams.&quot;,
+245      &quot;DISPLAY&quot;,
+246      NULL,
+247      false,
+248      &quot;ASCII_CHAT_FLIP_Y&quot;,
+249      NULL,
+250      NULL,
+251      false,
+252      false,
+253      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+254      {0},
+255      NULL},
+256 
+257     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>general.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">general.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">general.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">general.c - General options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_general_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">General options.</p>
+<p class="Pp">General-purpose options including help, version, splash screen
+    controls, status screen controls, and keepawake settings.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>general.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_general_entries__"><a class="permalink" href="#const_registry_entry_t_g_general_entries__">const
+  registry_entry_t g_general_entries[]</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>general.c</b>.</p>
+<pre>18                                            {
+19     // GENERAL GROUP (binary-level + all modes)
+20     {&quot;help&quot;,
+21      'h',
+22      OPTION_TYPE_ACTION,
+23      0,
+24      NULL,
+25      0,
+26      &quot;Show this help message and exit.&quot;,
+27      &quot;GENERAL&quot;,
+28      NULL,
+29      false,
+30      NULL,
+31      NULL,
+32      NULL,
+33      false,
+34      false,
+35      OPTION_MODE_BINARY | OPTION_MODE_SERVER | OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY_SVC |
+36          OPTION_MODE_DISCOVERY,
+37      {0},
+38      NULL},
+39     {&quot;version&quot;,
+40      'v',
+41      OPTION_TYPE_ACTION,
+42      0,
+43      NULL,
+44      0,
+45      &quot;Show version information and exit.&quot;,
+46      &quot;GENERAL&quot;,
+47      NULL,
+48      false,
+49      NULL,
+50      NULL,
+51      NULL,
+52      false,
+53      false,
+54      OPTION_MODE_BINARY,
+55      {0},
+56      NULL},
+57     {&quot;splash-screen&quot;,
+58      '\0',
+59      OPTION_TYPE_BOOL,
+60      offsetof(options_t, splash_screen),
+61      &amp;default_splash_value,
+62      sizeof(bool),
+63      &quot;Enable or disable splash screen with ASCII art. Overrides CLAUDECODE environment variable.&quot;,
+64      &quot;GENERAL&quot;,
+65      NULL,
+66      false,
+67      &quot;ASCII_CHAT_SPLASH_SCREEN&quot;,
+68      NULL,
+69      NULL,
+70      false,
+71      true, // optional_arg: allows --splash-screen to toggle or --splash-screen=true/false
+72      OPTION_MODE_CLIENT | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY,
+73      {0},
+74      NULL},
+75     {&quot;status-screen&quot;,
+76      '\0',
+77      OPTION_TYPE_BOOL,
+78      offsetof(options_t, status_screen),
+79      &amp;default_status_screen_value,
+80      sizeof(bool),
+81      &quot;Enable or disable live status screen display. Overrides non-interactive terminal checks.&quot;,
+82      &quot;GENERAL&quot;,
+83      NULL,
+84      false,
+85      &quot;ASCII_CHAT_STATUS_SCREEN&quot;,
+86      NULL,
+87      NULL,
+88      false,
+89      true, // optional_arg: allows --status-screen to toggle or --status-screen=true/false
+90      OPTION_MODE_SERVER | OPTION_MODE_DISCOVERY_SVC,
+91      {0},
+92      NULL},
+93     {&quot;keepawake&quot;,
+94      '\0',
+95      OPTION_TYPE_BOOL,
+96      offsetof(options_t, enable_keepawake),
+97      &amp;default_enable_keepawake_value,
+98      sizeof(bool),
+99      &quot;Explicitly enable system sleep prevention (keepawake mode).&quot;,
+100      &quot;GENERAL&quot;,
+101      NULL,
+102      false,
+103      &quot;ASCII_CHAT_KEEPAWAKE&quot;,
+104      NULL,
+105      NULL,
+106      false,
+107      false,
+108      OPTION_MODE_BINARY,
+109      {0},
+110      NULL},
+111     {&quot;no-keepawake&quot;,
+112      '\0',
+113      OPTION_TYPE_BOOL,
+114      offsetof(options_t, disable_keepawake),
+115      &amp;default_disable_keepawake_value,
+116      sizeof(bool),
+117      &quot;Disable system sleep prevention (allow OS to sleep).&quot;,
+118      &quot;GENERAL&quot;,
+119      NULL,
+120      false,
+121      &quot;ASCII_CHAT_NO_KEEPAWAKE&quot;,
+122      NULL,
+123      NULL,
+124      false,
+125      false,
+126      OPTION_MODE_BINARY,
+127      {0},
+128      NULL},
+129     {&quot;check-update&quot;,
+130      '\0',
+131      OPTION_TYPE_ACTION,
+132      0,
+133      NULL,
+134      0,
+135      &quot;Check for updates from GitHub releases and exit.&quot;,
+136      &quot;GENERAL&quot;,
+137      NULL,
+138      false,
+139      NULL,
+140      NULL,
+141      NULL,
+142      false,
+143      false,
+144      OPTION_MODE_BINARY,
+145      {0},
+146      NULL},
+147     {&quot;no-check-update&quot;,
+148      '\0',
+149      OPTION_TYPE_BOOL,
+150      offsetof(options_t, no_check_update),
+151      &amp;default_no_check_update_value,
+152      sizeof(bool),
+153      &quot;Disable automatic update checks at startup.&quot;,
+154      &quot;GENERAL&quot;,
+155      NULL,
+156      false,
+157      &quot;ASCII_CHAT_NO_CHECK_UPDATE&quot;,
+158      NULL,
+159      NULL,
+160      false,
+161      false,
+162      OPTION_MODE_ALL,
+163      {0},
+164      NULL},
+165 
+166     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

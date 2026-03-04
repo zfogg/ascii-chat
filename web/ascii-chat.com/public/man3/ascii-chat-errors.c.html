@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>errors.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">errors.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">errors.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">errors.c - Network error handling utilities implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>send_error_packet</b> (<b>socket_t</b>
+    sockfd, asciichat_error_t <b>error_code</b>)
+  <br/>
+  asciichat_error_t <b>send_error_packet_message</b> (<b>socket_t</b> sockfd,
+    asciichat_error_t <b>error_code</b>, const char *message)
+  <br/>
+  <b>bool</b> <b>check_and_record_rate_limit</b> (rate_limiter_t *rate_limiter,
+    const char *client_ip, rate_event_type_t event_type, <b>socket_t</b>
+    client_socket, const char *operation_name)
+  <br/>
+  <b>bool</b> <b>check_and_record_packet_rate_limit</b> (rate_limiter_t
+    *rate_limiter, const char *client_ip, <b>socket_t</b> client_socket,
+    packet_type_t packet_type)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Network error handling utilities implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>errors.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> check_and_record_packet_rate_limit (rate_limiter_t *
+  rate_limiter, const char * client_ip, <b>socket_t</b> client_socket,
+  packet_type_t packet_type)</h2>
+<p class="Pp">Definition at line <b>54</b> of file <b>errors.c</b>.</p>
+<pre>55                                                                    {
+56   // Map packet type to rate event type
+57   rate_event_type_t event_type;
+58   const char *packet_name;
+59 
+60   switch (packet_type) {
+61   case PACKET_TYPE_IMAGE_FRAME:
+62     event_type = RATE_EVENT_IMAGE_FRAME;
+63     packet_name = &quot;IMAGE_FRAME&quot;;
+64     break;
+65 
+66   case PACKET_TYPE_AUDIO_BATCH:
+67   case PACKET_TYPE_AUDIO_OPUS_BATCH:
+68     event_type = RATE_EVENT_AUDIO;
+69     packet_name = &quot;AUDIO&quot;;
+70     break;
+71 
+72   case PACKET_TYPE_PING:
+73   case PACKET_TYPE_PONG:
+74     event_type = RATE_EVENT_PING;
+75     packet_name = &quot;PING&quot;;
+76     break;
+77 
+78   case PACKET_TYPE_CLIENT_JOIN:
+79     event_type = RATE_EVENT_CLIENT_JOIN;
+80     packet_name = &quot;CLIENT_JOIN&quot;;
+81     break;
+82 
+83   case PACKET_TYPE_CLIENT_CAPABILITIES:
+84   case PACKET_TYPE_STREAM_START:
+85   case PACKET_TYPE_STREAM_STOP:
+86   case PACKET_TYPE_CLIENT_LEAVE:
+87     event_type = RATE_EVENT_CONTROL;
+88     packet_name = &quot;CONTROL&quot;;
+89     break;
+90 
+91   default:
+92     // No rate limiting for other packet types
+93     return true;
+94   }
+95 
+96   // Use the existing check_and_record_rate_limit function
+97   return check_and_record_rate_limit(rate_limiter, client_ip, event_type, client_socket, packet_name);
+98 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>check_and_record_rate_limit()</b>.</p>
+<p class="Pp">Referenced by <b>process_decrypted_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> check_and_record_rate_limit (rate_limiter_t *
+  rate_limiter, const char * client_ip, rate_event_type_t event_type,
+  <b>socket_t</b> client_socket, const char * operation_name)</h2>
+<p class="Pp">Definition at line <b>38</b> of file <b>errors.c</b>.</p>
+<pre>39                                                                                      {
+40   bool allowed = false;
+41   asciichat_error_t rate_check = rate_limiter_check(rate_limiter, client_ip, event_type, NULL, &amp;allowed);
+42 
+43   if (rate_check != ASCIICHAT_OK || !allowed) {
+44     send_error_packet_message(client_socket, ERROR_RATE_LIMITED, &quot;Rate limit exceeded. Please try again later.&quot;);
+45     log_warn(&quot;Rate limit exceeded for %s from %s&quot;, operation_name, client_ip);
+46     return false;
+47   }
+48 
+49   // Record the rate limit event
+50   rate_limiter_record(rate_limiter, client_ip, event_type);
+51   return true;
+52 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>rate_limiter_check()</b>,
+    <b>rate_limiter_record()</b>, and <b>send_error_packet_message()</b>.</p>
+<p class="Pp">Referenced by <b>check_and_record_packet_rate_limit()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_send_error_packet_("><a class="permalink" href="#asciichat_error_t_send_error_packet_(">asciichat_error_t
+  send_error_packet (<b>socket_t</b> sockfd, asciichat_error_t
+  error_code)</a></h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>errors.c</b>.</p>
+<pre>11                                                                                    {
+12   return send_error_packet_message(sockfd, error_code, asciichat_error_string(error_code));
+13 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_code</b>, and
+    <b>send_error_packet_message()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_send_error_packet_message_("><a class="permalink" href="#asciichat_error_t_send_error_packet_message_(">asciichat_error_t
+  send_error_packet_message (<b>socket_t</b> sockfd, asciichat_error_t
+  error_code, const char * message)</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>errors.c</b>.</p>
+<pre>15                                                                                                                 {
+16   if (sockfd == INVALID_SOCKET_VALUE) {
+17     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket&quot;);
+18   }
+19 
+20   if (!message) {
+21     message = asciichat_error_string(error_code);
+22   }
+23 
+24   // Construct ACIP error packet
+25   acip_error_t error = {0};
+26   error.error_code = (uint8_t)error_code;
+27   SAFE_STRNCPY(error.error_message, message, sizeof(error.error_message));
+28 
+29   // Send error packet
+30   int result = send_packet(sockfd, PACKET_TYPE_ACIP_ERROR, &amp;error, sizeof(error));
+31   if (result &lt; 0) {
+32     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to send error packet&quot;);
+33   }
+34 
+35   return ASCIICHAT_OK;
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_code</b>, and <b>send_packet()</b>.</p>
+<p class="Pp">Referenced by <b>check_and_record_rate_limit()</b>, and
+    <b>send_error_packet()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

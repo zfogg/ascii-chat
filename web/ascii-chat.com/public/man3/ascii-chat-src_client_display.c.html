@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>display.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">display.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">display.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">display.c - &#x1F4BB; Client terminal display: TTY detection,
+    frame rendering, and interactive/stdout output routing</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>display_set_context</b> (<b>session_display_ctx_t</b>
+    *display_ctx)
+  <br/>
+  Set the display context created by session_client_like framework. int
+    <b>display_init</b> ()
+  <br/>
+  Initialize what is necessary to display ascii frames. <b>bool</b>
+    <b>display_has_tty</b> ()
+  <br/>
+  Check if display has TTY capability. void <b>display_full_reset</b> ()
+  <br/>
+  Perform full display reset. void <b>display_reset_for_new_connection</b> ()
+  <br/>
+  Reset display state for new connection. void
+    <b>display_disable_logging_for_first_frame</b> ()
+  <br/>
+  Disable terminal logging for first frame. void <b>display_render_frame</b>
+    (const char *frame_data)
+  <br/>
+  Render ASCII frame to display. void <b>display_cleanup</b> ()
+  <br/>
+  Cleanup display subsystem.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4BB; Client terminal display: TTY detection, frame rendering,
+    and interactive/stdout output routing</p>
+<p class="Pp">The display system supports dual output modes:</p>
+<ul class="Bl-bullet">
+  <li><b>Interactive TTY Mode</b>: Direct terminal control with cursor
+      positioning</li>
+  <li><b>Redirect Mode</b>: Plain text output for pipes and file
+    redirection</li>
+  <li><b>Snapshot Mode</b>: Single frame capture with minimal terminal
+    control</li>
+</ul>
+<section class="Ss">
+<h2 class="Ss" id="TTY_Detection_and_Management"><a class="permalink" href="#TTY_Detection_and_Management">TTY
+  Detection and Management</a></h2>
+<p class="Pp">Implements robust TTY detection across platforms:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Environment Variables</b>: Check $TTY for explicit terminal path</dd>
+  <dt>2.</dt>
+  <dd><b>Standard Streams</b>: Test stdin/stdout/stderr for TTY status</dd>
+  <dt>3.</dt>
+  <dd><b>Controlling Terminal</b>: Fall back to /dev/tty (Unix) or CON
+    (Windows)</dd>
+  <dt>4.</dt>
+  <dd><b>Validation</b>: Verify TTY path accessibility and permissions</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Terminal_Control_Sequences"><a class="permalink" href="#Terminal_Control_Sequences">Terminal
+  Control Sequences</a></h2>
+<p class="Pp">Uses platform abstraction layer for terminal operations:</p>
+<ul class="Bl-bullet">
+  <li><b>Initialization</b>: Set terminal to optimal display mode</li>
+  <li><b>Cursor Management</b>: Hide cursor and position for frame updates</li>
+  <li><b>Screen Control</b>: Clear screen and scrollback buffer</li>
+  <li><b>Reset Operations</b>: Restore terminal to original state</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Frame_Rendering_Pipeline"><a class="permalink" href="#Frame_Rendering_Pipeline">Frame
+  Rendering Pipeline</a></h2>
+<p class="Pp">Frame display follows a structured pipeline:</p>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Mode Detection</b>: Determine output mode (TTY vs redirect)</dd>
+  <dt>2.</dt>
+  <dd><b>Cursor Positioning</b>: Position cursor for frame update (TTY
+    mode)</dd>
+  <dt>3.</dt>
+  <dd><b>Data Writing</b>: Write frame data to appropriate file descriptor</dd>
+  <dt>4.</dt>
+  <dd><b>Synchronization</b>: Ensure data reaches terminal (fsync for
+    redirect)</dd>
+  <dt>5.</dt>
+  <dd><b>State Updates</b>: Track frame dimensions and display state</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Snapshot_Mode_Support"><a class="permalink" href="#Snapshot_Mode_Support">Snapshot
+  Mode Support</a></h2>
+<p class="Pp">Special handling for single-frame capture:</p>
+<ul class="Bl-bullet">
+  <li><b>Timing Control</b>: Coordinate with protocol for snapshot timing</li>
+  <li><b>Output Routing</b>: Final frame written to both TTY and stdout</li>
+  <li><b>Format Control</b>: Skip terminal control sequences in snapshot
+    output</li>
+  <li><b>Cleanup</b>: Add newline terminator for proper file formatting</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Platform_Compatibility"><a class="permalink" href="#Platform_Compatibility">Platform
+  Compatibility</a></h2>
+<p class="Pp">Cross-platform terminal support:</p>
+<ul class="Bl-bullet">
+  <li><b>Unix/Linux</b>: Uses /dev/tty and POSIX terminal I/O</li>
+  <li><b>macOS</b>: Enhanced TTY detection with $TTY environment variable</li>
+  <li><b>Windows</b>: CON device for console output with Windows Console
+    API</li>
+  <li><b>Error Handling</b>: Graceful fallback for unsupported operations</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Integration_Points"><a class="permalink" href="#Integration_Points">Integration
+  Points</a></h2>
+<ul class="Bl-bullet">
+  <li><b>main.c</b>: Display subsystem initialization and lifecycle
+    management</li>
+  <li><b>protocol.c</b>: Frame data reception and rendering requests</li>
+  <li><b>server.c</b>: Terminal capability reporting and resize handling</li>
+  <li><b>options.c</b>: Display mode configuration from command line</li>
+</ul>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Handling"><a class="permalink" href="#Error_Handling">Error
+  Handling</a></h2>
+<p class="Pp">Display errors handled with graceful degradation:</p>
+<ul class="Bl-bullet">
+  <li><b>TTY Access Errors</b>: Fall back to stdout redirection mode</li>
+  <li><b>Write Errors</b>: Log errors but continue processing</li>
+  <li><b>Terminal Control Errors</b>: Skip control sequences, continue with
+    data</li>
+  <li><b>Permission Errors</b>: Try alternative TTY paths before failing</li>
+</ul>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">September 2025</div>
+<p class="Pp"><b>Version</b></p>
+<div class="Bd-indent">2.0</div>
+<p class="Pp">Definition in file <b>src/client/display.c</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_display_cleanup_()"><a class="permalink" href="#void_display_cleanup_()">void
+  display_cleanup ()</a></h2>
+<p class="Pp">Cleanup display subsystem. Destroys session display context and
+    releases all resources including keyboard input handling.</p>
+<p class="Pp">Definition at line <b>363</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>363                        {
+364   // Cleanup keyboard input if it was initialized
+365   if (g_keyboard_enabled) {
+366     keyboard_destroy();
+367     g_keyboard_enabled = false;
+368   }
+369 
+370   // Cleanup optional local media capture context if it was created
+371   if (g_display_capture_ctx) {
+372     session_capture_destroy(g_display_capture_ctx);
+373     g_display_capture_ctx = NULL;
+374   }
+375 
+376   // Display context is now managed by session_client_like framework
+377   // Do not destroy it here - the framework will handle cleanup
+378   g_display_ctx = NULL;
+379 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_capture_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_display_disable_logging_for_first_frame_()"><a class="permalink" href="#void_display_disable_logging_for_first_frame_()">void
+  display_disable_logging_for_first_frame ()</a></h2>
+<p class="Pp">Disable terminal logging for first frame. Disables terminal
+    logging before clearing the display for the first frame to prevent log
+    output from interfering with ASCII display.</p>
+<p class="Pp">Definition at line <b>290</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>290                                                {
+291   // Atomically check if this is the first frame and mark as not-first
+292   // Avoids TOCTOU race where multiple threads could both think they're first
+293   bool was_first_frame = atomic_exchange_bool(&amp;g_is_first_frame_of_connection, false);
+294 
+295   if (was_first_frame) {
+296     // Disable terminal logging before clearing display and rendering first frame
+297     log_set_terminal_output(false);
+298 
+299     // Signal the intro splash screen to stop - first frame is ready to render
+300     splash_intro_done();
+301   }
+302 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_exchange_bool()</b>,
+    <b>log_set_terminal_output()</b>, and <b>splash_intro_done()</b>.</p>
+<p class="Pp">Referenced by <b>display_render_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_display_full_reset_()"><a class="permalink" href="#void_display_full_reset_()">void
+  display_full_reset ()</a></h2>
+<p class="Pp">Perform full display reset. Executes complete terminal reset
+    sequence for clean display state. Safe to call multiple times and handles
+    mode-specific behavior.</p>
+<p class="Pp">Definition at line <b>264</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>264                           {
+265   if (g_display_ctx &amp;&amp; !should_exit()) {
+266     session_display_reset(g_display_ctx);
+267   }
+268 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_display_reset()</b>, and
+    <b>should_exit()</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> display_has_tty ()</h2>
+<p class="Pp">Check if display has TTY capability.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if TTY is available for interactive output, false
+  otherwise</div>
+<p class="Pp">Definition at line <b>252</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>252                        {
+253   return session_display_has_tty(g_display_ctx);
+254 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_display_has_tty()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_display_init_()"><a class="permalink" href="#int_display_init_()">int
+  display_init ()</a></h2>
+<p class="Pp">Initialize what is necessary to display ascii frames. Initialize
+    display subsystem.</p>
+<p class="Pp"></p>
+<p class="Pp">Creates session display context for TTY management and frame
+    rendering. Must be called once during client startup.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>180</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>180                    {
+181   // Build display configuration from options
+182   session_display_config_t config = {
+183       .snapshot_mode = GET_OPTION(snapshot_mode),
+184       .palette_type = GET_OPTION(palette_type),
+185       .custom_palette = GET_OPTION(palette_custom_set) ? GET_OPTION(palette_custom) : NULL,
+186       .color_mode = TERM_COLOR_AUTO // Will be overridden by command-line options
+187   };
+188 
+189   // Create display context using session library
+190   g_display_ctx = session_display_create(&amp;config);
+191   if (!g_display_ctx) {
+192     SET_ERRNO(ERROR_DISPLAY, &quot;Failed to initialize display&quot;);
+193     return -1;
+194   }
+195 
+196   // Check if client mode should load local media (--file or --url)
+197   const char *media_url = GET_OPTION(media_url);
+198   const char *media_file = GET_OPTION(media_file);
+199 
+200   if ((media_url &amp;&amp; strlen(media_url) &gt; 0) || (media_file &amp;&amp; strlen(media_file) &gt; 0)) {
+201     // Client mode with local media file/URL - create capture context for keyboard controls
+202     session_capture_config_t capture_config = {0};
+203     capture_config.target_fps = 60;
+204     capture_config.resize_for_network = false;
+205     capture_config.should_exit_callback = NULL;
+206     capture_config.callback_data = NULL;
+207 
+208     if (media_url &amp;&amp; strlen(media_url) &gt; 0) {
+209       capture_config.type = MEDIA_SOURCE_FILE;
+210       capture_config.path = media_url;
+211     } else {
+212       if (strcmp(media_file, &quot;-&quot;) == 0) {
+213         capture_config.type = MEDIA_SOURCE_STDIN;
+214         capture_config.path = NULL;
+215       } else {
+216         capture_config.type = MEDIA_SOURCE_FILE;
+217         capture_config.path = media_file;
+218       }
+219     }
+220 
+221     capture_config.loop = GET_OPTION(media_loop);
+222     capture_config.initial_seek_timestamp = GET_OPTION(media_seek_timestamp);
+223 
+224     g_display_capture_ctx = session_capture_create(&amp;capture_config);
+225     if (!g_display_capture_ctx) {
+226       log_warn(&quot;Failed to create capture context for local media - keyboard seek/pause disabled&quot;);
+227       g_display_capture_ctx = NULL;
+228     }
+229   }
+230 
+231   // Keyboard is pre-initialized from asciichat_shared_init()
+232   // Only enable keyboard input if stdin is a TTY (avoid interfering with piped/redirected I/O)
+233   g_keyboard_enabled = terminal_is_stdin_tty();
+234 
+235   // Register display atomics with named debug registry
+236   static bool display_atomics_registered = false;
+237   if (!display_atomics_registered) {
+238     NAMED_REGISTER_ATOMIC(&amp;g_is_first_frame_of_connection, &quot;first_frame_of_display_connection&quot;, NULL);
+239     display_atomics_registered = true;
+240   }
+241 
+242   return 0;
+243 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>session_capture_config_t::callback_data</b>,
+    <b>session_capture_config_t::initial_seek_timestamp</b>,
+    <b>session_capture_config_t::loop</b>,
+    <b>session_capture_config_t::path</b>,
+    <b>session_capture_config_t::resize_for_network</b>,
+    <b>session_capture_create()</b>, <b>session_display_create()</b>,
+    <b>session_capture_config_t::should_exit_callback</b>,
+    <b>session_capture_config_t::target_fps</b>, <b>terminal_is_stdin_tty()</b>,
+    and <b>session_capture_config_t::type</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_display_render_frame_(const_char_*_frame_data)"><a class="permalink" href="#void_display_render_frame_(const_char_*_frame_data)">void
+  display_render_frame (const char * frame_data)</a></h2>
+<p class="Pp">Render ASCII frame to display. Render ASCII frame to display</p>
+<p class="Pp"></p>
+<p class="Pp">Uses session display library for frame output routing based on
+    display mode and snapshot requirements. Also polls for keyboard input for
+    interactive controls (volume, color mode, flip).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>frame_data</i> ASCII frame data to render
+<br/>
+<i>is_snapshot_frame</i> Whether this is the final snapshot frame</div>
+<p class="Pp">Definition at line <b>316</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>316                                                   {
+317   if (!frame_data) {
+318     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Attempted to render NULL frame data&quot;);
+319     return;
+320   }
+321 
+322   // Stop splash screen animation on first frame
+323   // This must be called BEFORE any frame rendering to prevent splash/frame flickering
+324   display_disable_logging_for_first_frame();
+325 
+326   // Render help screen if active (suppresses frame rendering)
+327   if (keyboard_help_is_active(g_display_ctx)) {
+328     keyboard_help_render(g_display_ctx);
+329 
+330     // Still poll keyboard for interactive controls while help is visible
+331     if (g_keyboard_enabled) {
+332       keyboard_key_t key = keyboard_read_nonblocking();
+333       if (key != KEY_NONE) {
+334         session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
+335       }
+336     }
+337     return; // Skip normal frame rendering
+338   }
+339 
+340   // Use session display library for frame rendering
+341   session_display_render_frame(g_display_ctx, frame_data);
+342 
+343   // Poll for keyboard input and handle interactive controls
+344   // - If client mode has local media (--file/--url), pass capture context for full controls
+345   //   (seek, pause, play, volume, color mode, flip)
+346   // - If client mode is network-only, pass NULL (volume, color mode, flip work; seek/pause ignored)
+347   if (g_keyboard_enabled) {
+348     keyboard_key_t key = keyboard_read_nonblocking();
+349     if (key != KEY_NONE) {
+350       session_handle_keyboard_input(g_display_capture_ctx, g_display_ctx, key);
+351     }
+352   }
+353 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>display_disable_logging_for_first_frame()</b>,
+    <b>keyboard_help_is_active()</b>, <b>keyboard_help_render()</b>,
+    <b>session_display_render_frame()</b>, and
+    <b>session_handle_keyboard_input()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_display_reset_for_new_connection_()"><a class="permalink" href="#void_display_reset_for_new_connection_()">void
+  display_reset_for_new_connection ()</a></h2>
+<p class="Pp">Reset display state for new connection. Resets the first frame
+    tracking flag to prepare for a new connection. Call this when starting a new
+    connection to reset first frame tracking.</p>
+<p class="Pp">Definition at line <b>278</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>278                                         {
+279   atomic_store_bool(&amp;g_is_first_frame_of_connection, true);
+280 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_display_set_context_("><a class="permalink" href="#void_display_set_context_(">void
+  display_set_context (<b>session_display_ctx_t</b> * display_ctx)</a></h2>
+<p class="Pp">Set the display context created by session_client_like framework.
+    Set the display context (framework integration).</p>
+<p class="Pp"></p>
+<p class="Pp">Client mode doesn't create its own display context anymore.
+    Instead, <b>session_client_like_run()</b> creates it and passes it to
+    client_run(). This setter allows client_run() to make the framework-created
+    context available to protocol threads that need to render frames.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>display_ctx</i> Display context created by framework
+  (may be NULL)</div>
+<p class="Pp">Definition at line <b>162</b> of file
+  <b>src/client/display.c</b>.</p>
+<pre>162                                                              {
+163   g_display_ctx = display_ctx;
+164 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

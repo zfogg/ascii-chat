@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ice_selected_pair.cpp(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ice_selected_pair.cpp(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ice_selected_pair.cpp(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ice_selected_pair.cpp - C++ implementation for retrieving selected
+    ICE candidate pair.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>ice_get_selected_pair_impl</b>
+    (webrtc_peer_connection_t *pc, ice_candidate_t *local_candidate,
+    ice_candidate_t *remote_candidate)
+  <br/>
+  Get selected ICE candidate pair (C++ implementation).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">C++ implementation for retrieving selected ICE candidate pair.</p>
+<p class="Pp">Uses libdatachannel's C++ API to access selected candidate pair
+    information which is not exposed in the C API.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>ice_selected_pair.cpp</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_ice_get_selected_pair_impl_(webrtc_peer_connection_t_*_pc,_ice_candidate_t_*_local_candidate,_ice_candidate_t_*_remote_candidate)"><a class="permalink" href="#asciichat_error_t_ice_get_selected_pair_impl_(webrtc_peer_connection_t_*_pc,_ice_candidate_t_*_local_candidate,_ice_candidate_t_*_remote_candidate)">asciichat_error_t
+  ice_get_selected_pair_impl (webrtc_peer_connection_t * pc, ice_candidate_t *
+  local_candidate, ice_candidate_t * remote_candidate)</a></h2>
+<p class="Pp">Get selected ICE candidate pair (C++ implementation). This
+    function uses libdatachannel's C++ API to retrieve the selected candidate
+    pair, which is not available in the C API.</p>
+<p class="Pp">Definition at line <b>58</b> of file
+  <b>ice_selected_pair.cpp</b>.</p>
+<pre>59                                                                                 {
+60   if (!pc) {
+61     return ERROR_INVALID_PARAM;
+62   }
+63 
+64   try {
+65     // Get the libdatachannel peer connection ID using helper function
+66     int rtc_id = webrtc_get_rtc_id(pc);
+67     if (rtc_id &lt; 0) {
+68       return ERROR_INVALID_PARAM;
+69     }
+70 
+71     // Query selected candidate pair from libdatachannel
+72     // Note: This requires libdatachannel to have the selected candidate pair available
+73     char local_buf[512];
+74     char remote_buf[512];
+75 
+76     // Try to get the selected local candidate
+77     if (rtcGetSelectedCandidatePair(rtc_id, local_buf, sizeof(local_buf), remote_buf, sizeof(remote_buf)) &lt; 0) {
+78       // No pair selected yet, or error accessing it
+79       return ERROR_INVALID_STATE;
+80     }
+81 
+82     // Parse local candidate if requested
+83     if (local_candidate) {
+84       std::string local_str(local_buf);
+85       asciichat_error_t err = parse_datachannel_candidate(local_str, local_candidate);
+86       if (err != ASCIICHAT_OK) {
+87         return err;
+88       }
+89     }
+90 
+91     // Parse remote candidate if requested
+92     if (remote_candidate) {
+93       std::string remote_str(remote_buf);
+94       asciichat_error_t err = parse_datachannel_candidate(remote_str, remote_candidate);
+95       if (err != ASCIICHAT_OK) {
+96         return err;
+97       }
+98     }
+99 
+100     return ASCIICHAT_OK;
+101 
+102   } catch (const std::exception &amp;e) {
+103     return ERROR_NETWORK;
+104   } catch (...) {
+105     return ERROR_NETWORK;
+106   }
+107 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>webrtc_get_rtc_id()</b>.</p>
+<p class="Pp">Referenced by <b>ice_get_selected_pair()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query::json(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query::json(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query::json(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query::json</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">class <b>JsonValue</b>
+  <br/>
+  JSON value wrapper (can hold any JSON type). class <b>JsonArray</b>
+  <br/>
+  JSON array builder. class <b>JsonObject</b>
+  <br/>
+  JSON object builder.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">std::string <b>escape</b> (const std::string &amp;str)
+  <br/>
+  Escape a string for JSON output.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="std::string_ascii_query::json::escape_(const_std::string_&amp;_str)"><a class="permalink" href="#std::string_ascii_query::json::escape_(const_std::string_&amp;_str)">std::string
+  ascii_query::json::escape (const std::string &amp; str) [inline]</a></h2>
+<p class="Pp">Escape a string for JSON output.</p>
+<p class="Pp">Definition at line <b>30</b> of file <b>json.h</b>.</p>
+<pre>30                                               {
+31   std::string result;
+32   result.reserve(str.size() + 16);
+33 
+34   for (char c : str) {
+35     switch (c) {
+36     case '&quot;':
+37       result += &quot;\\\&quot;&quot;;
+38       break;
+39     case '\\':
+40       result += &quot;\\\\&quot;;
+41       break;
+42     case '\b':
+43       result += &quot;\\b&quot;;
+44       break;
+45     case '\f':
+46       result += &quot;\\f&quot;;
+47       break;
+48     case '\n':
+49       result += &quot;\\n&quot;;
+50       break;
+51     case '\r':
+52       result += &quot;\\r&quot;;
+53       break;
+54     case '\t':
+55       result += &quot;\\t&quot;;
+56       break;
+57     default:
+58       if (static_cast&lt;unsigned char&gt;(c) &lt; 0x20) {
+59         // Control character - escape as \uXXXX
+60         char buf[8];
+61         snprintf(buf, sizeof(buf), &quot;\\u%04x&quot;, static_cast&lt;unsigned char&gt;(c));
+62         result += buf;
+63       } else {
+64         result += c;
+65       }
+66       break;
+67     }
+68   }
+69 
+70   return result;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>ascii_query::HttpResponse::badRequest()</b>,
+    <b>ascii_query::HttpResponse::notFound()</b>,
+    <b>ascii_query::HttpResponse::serverError()</b>,
+    <b>ascii_query::json::JsonObject::toString()</b>, and
+    <b>ascii_query::json::JsonValue::toString()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

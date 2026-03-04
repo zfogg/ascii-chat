@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mutex.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mutex.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mutex.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mutex.c - Platform-agnostic mutex hooks and utilities.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>mutex_on_lock</b> (mutex_t *<b>mutex</b>)
+  <br/>
+  Hook called when a mutex is successfully locked. void <b>mutex_on_unlock</b>
+    (mutex_t *<b>mutex</b>)
+  <br/>
+  Hook called when a mutex is unlocked. void <b>mutex_on_trylock</b> (mutex_t
+    *<b>mutex</b>, <b>bool</b> success)
+  <br/>
+  Hook called when a mutex trylock is attempted. int <b>mutex_format_state</b>
+    (const mutex_t *<b>mutex</b>, char *buffer, size_t size)
+  <br/>
+  Format mutex timing and state info into buffer. void <b>mutex_log_state</b>
+    (const mutex_t *<b>mutex</b>, const char *file, int line, const char *func)
+  <br/>
+  Log the state of a mutex.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Platform-agnostic mutex hooks and utilities.</p>
+<p class="Pp">This file provides hook functions that can be called from
+    platform-specific mutex implementations to record events and debug
+    information. All hooks are debug-only and disabled in release builds.</p>
+<p class="Pp">Definition in file <b>platform/mutex.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_mutex_format_state_(const_mutex_t_*_mutex,_char_*_buffer,_size_t_size)"><a class="permalink" href="#int_mutex_format_state_(const_mutex_t_*_mutex,_char_*_buffer,_size_t_size)">int
+  mutex_format_state (const mutex_t * mutex, char * buffer, size_t
+  size)</a></h2>
+<p class="Pp">Format mutex timing and state info into buffer.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>mutex</b><i></i><b> Pointer to the mutex</b>
+<br/>
+<i>buffer</i> Output buffer
+<br/>
+<i>size</i> Buffer size</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes written</div>
+<p class="Pp">Formats timing (lock/unlock), held-by info, and operation counts.
+    Called by <b>mutex_log_state()</b> and --sync-state display code.</p>
+<p class="Pp">Definition at line <b>86</b> of file <b>platform/mutex.c</b>.</p>
+<pre>86                                                                         {
+87   if (!mutex || !buffer || size == 0) return 0;
+88 
+89   int offset = 0;
+90   uint64_t now_ns = time_get_ns();
+91 
+92   // Format timing information
+93   char lock_str[64] = &quot;&quot;;
+94   char unlock_str[64] = &quot;&quot;;
+95   char held_str[64] = &quot;&quot;;
+96   char count_str[256] = &quot;&quot;;
+97 
+98   if (mutex-&gt;last_lock_time_ns &gt; 0 &amp;&amp; mutex-&gt;last_lock_time_ns &lt;= now_ns) {
+99     char elapsed_str[64];
+100     time_pretty(now_ns - mutex-&gt;last_lock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+101     snprintf(lock_str, sizeof(lock_str), &quot;lock=%s&quot;, elapsed_str);
+102   }
+103 
+104   if (mutex-&gt;last_unlock_time_ns &gt; 0 &amp;&amp; mutex-&gt;last_unlock_time_ns &lt;= now_ns) {
+105     char elapsed_str[64];
+106     time_pretty(now_ns - mutex-&gt;last_unlock_time_ns, -1, elapsed_str, sizeof(elapsed_str));
+107     snprintf(unlock_str, sizeof(unlock_str), &quot;unlock=%s&quot;, elapsed_str);
+108   }
+109 
+110   if (mutex-&gt;currently_held_by_key != 0) {
+111     snprintf(held_str, sizeof(held_str), &quot;[LOCKED_BY=thread.%lu]&quot;, (unsigned long)mutex-&gt;currently_held_by_key);
+112   }
+113 
+114   if (mutex-&gt;lock_count &gt; 0 || mutex-&gt;unlock_count &gt; 0 || mutex-&gt;trylock_count &gt; 0) {
+115     snprintf(count_str, sizeof(count_str), &quot;[ops: lock=%lu unlock=%lu trylock=%lu/%lu]&quot;,
+116              mutex-&gt;lock_count, mutex-&gt;unlock_count, mutex-&gt;trylock_success_count, mutex-&gt;trylock_count);
+117   }
+118 
+119   offset += snprintf(buffer + offset, size - offset, &quot;%s %s %s %s&quot;, lock_str, unlock_str, held_str, count_str);
+120   return offset;
+121 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex</b>, <b>time_get_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>mutex_log_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_log_state_(const_mutex_t_*_mutex,_const_char_*_file,_int_line,_const_char_*_func)"><a class="permalink" href="#void_mutex_log_state_(const_mutex_t_*_mutex,_const_char_*_file,_int_line,_const_char_*_func)">void
+  mutex_log_state (const mutex_t * mutex, const char * file, int line, const
+  char * func)</a></h2>
+<p class="Pp">Log the state of a mutex.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>mutex</b><i></i><b> Pointer to the mutex</b>
+<br/>
+<i>file</i> Source file of the caller
+<br/>
+<i>line</i> Source line of the caller
+<br/>
+<i>func</i> Source function of the caller</div>
+<p class="Pp">Formats and logs detailed state information about the mutex.</p>
+<p class="Pp">Definition at line <b>134</b> of file <b>platform/mutex.c</b>.</p>
+<pre>134                                                                                          {
+135   if (!mutex) return;
+136   char buf[512];
+137   mutex_format_state(mutex, buf, sizeof(buf));
+138   log_msg(LOG_DEBUG, file, line, func, &quot;mutex/state %p: %s&quot;, (const void *)mutex, buf);
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_msg()</b>, <b>mutex</b>, and
+    <b>mutex_format_state()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_on_lock_(mutex_t_*_mutex)"><a class="permalink" href="#void_mutex_on_lock_(mutex_t_*_mutex)">void
+  mutex_on_lock (mutex_t * mutex)</a></h2>
+<p class="Pp">Hook called when a mutex is successfully locked.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>mutex</b><i></i><b> Pointer to the mutex that
+  was locked</b></div>
+<p class="Pp">Called by platform-specific <b>mutex_lock_impl()</b> after the
+    lock is acquired. Records timing, held-by thread, and increments lock
+  count.</p>
+<p class="Pp">Definition at line <b>29</b> of file <b>platform/mutex.c</b>.</p>
+<pre>29                                    {
+30   if (!mutex) return;
+31   mutex-&gt;last_lock_time_ns = time_get_ns();
+32   asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+33   mutex-&gt;currently_held_by_key = asciichat_thread_to_key(current_thread);
+34   mutex-&gt;lock_count++;
+35 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>, <b>mutex</b>, and
+    <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_on_trylock_(mutex_t_*_mutex,_"><a class="permalink" href="#void_mutex_on_trylock_(mutex_t_*_mutex,_">void
+  mutex_on_trylock (mutex_t * mutex, <b>bool</b> success)</a></h2>
+<p class="Pp">Hook called when a mutex trylock is attempted.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>mutex</b><i></i><b> Pointer to the mutex</b>
+<br/>
+<i>success</i> Whether the trylock succeeded</div>
+<p class="Pp">Called by platform-specific <b>mutex_trylock_impl()</b> after the
+    attempt. Records timing and success/failure statistics.</p>
+<p class="Pp">Definition at line <b>63</b> of file <b>platform/mutex.c</b>.</p>
+<pre>63                                                     {
+64   if (!mutex) return;
+65   mutex-&gt;trylock_count++;
+66   if (success) {
+67     mutex-&gt;trylock_success_count++;
+68     mutex-&gt;last_lock_time_ns = time_get_ns();
+69     asciichat_thread_t current_thread = (asciichat_thread_t)asciichat_thread_current_id();
+70     mutex-&gt;currently_held_by_key = asciichat_thread_to_key(current_thread);
+71   }
+72 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_thread_current_id()</b>, <b>mutex</b>, and
+    <b>time_get_ns()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_mutex_on_unlock_(mutex_t_*_mutex)"><a class="permalink" href="#void_mutex_on_unlock_(mutex_t_*_mutex)">void
+  mutex_on_unlock (mutex_t * mutex)</a></h2>
+<p class="Pp">Hook called when a mutex is unlocked.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>mutex</b><i></i><b> Pointer to the mutex that
+  was unlocked</b></div>
+<p class="Pp">Called by platform-specific <b>mutex_unlock_impl()</b> before
+    releasing the lock. Records timing and increments unlock count.</p>
+<p class="Pp">Definition at line <b>46</b> of file <b>platform/mutex.c</b>.</p>
+<pre>46                                      {
+47   if (!mutex) return;
+48   mutex-&gt;last_unlock_time_ns = time_get_ns();
+49   mutex-&gt;currently_held_by_key = 0;
+50   mutex-&gt;unlock_count++;
+51 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mutex</b>, and <b>time_get_ns()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

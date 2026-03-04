@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>pem.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">pem.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">pem.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">pem.c - &#x1F4C4; PEM format encoding/decoding utilities for
+    certificates and keys (adapted from BearSSL)</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>bvector</b>
+  <br/>
+  Dynamic byte vector for PEM decoding. struct <b>pem_object_t</b>
+  <br/>
+  Parsed PEM object with name and data.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>VECTOR</b>(type)
+  <br/>
+  #define <b>VEC_INIT</b> {0, 0, 0}
+  <br/>
+  #define <b>VEC_CLEAR</b>(vec)
+  <br/>
+  #define <b>VEC_CLEAREXT</b>(vec, fun)
+  <br/>
+  #define <b>VEC_ADD</b>(vec, x)
+  <br/>
+  #define <b>VEC_ADDMANY</b>(vec, xp, num)
+  <br/>
+  #define <b>VEC_ELT</b>(vec, idx)
+  <br/>
+  #define <b>VEC_LEN</b>(vec)
+  <br/>
+  #define <b>VEC_TOARRAY</b>(vec)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>free_ta_contents</b> (br_x509_trust_anchor *ta)
+  <br/>
+  size_t <b>read_trust_anchors_from_memory</b> (anchor_list *dst, const unsigned
+    char *pem_data, size_t pem_len)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F4C4; PEM format encoding/decoding utilities for certificates
+    and keys (adapted from BearSSL)</p>
+<p class="Pp">Copyright (c) 2016 Thomas Pornin pornin@bolet.org Adapted for
+    ascii-chat by Zachary Fogg me@zfo.gg</p>
+<p class="Pp"></p>
+<p class="Pp">Permission is hereby granted, free of charge, to any person
+    obtaining a copy of this software and associated documentation files (the
+    &quot;Software&quot;), to deal in the Software without restriction,
+    including without limitation the rights to use, copy, modify, merge,
+    publish, distribute, sublicense, and/or sell copies of the Software, and to
+    permit persons to whom the Software is furnished to do so, subject to the
+    following conditions:</p>
+<p class="Pp"></p>
+<p class="Pp">The above copyright notice and this permission notice shall be
+    included in all copies or substantial portions of the Software.</p>
+<p class="Pp"></p>
+<p class="Pp">THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF
+    ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+    MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO
+    EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+    DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+    OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
+    USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+<p class="Pp">Definition in file <b>pem.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_ADD(_vec,__x)"><a class="permalink" href="#_define_VEC_ADD(_vec,__x)">#define
+  VEC_ADD( vec, x)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, 1);                              \
+<br/>
+  (vec).buf[(vec).ptr++] = (x);                                                                                      \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>68</b> of file <b>pem.c</b>.</p>
+<pre>68 #define VEC_ADD(vec, x)                                                                                                \
+69   do {                                                                                                                 \
+70     (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, 1);                              \
+71     (vec).buf[(vec).ptr++] = (x);                                                                                      \
+72   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_ADDMANY(_vec,__xp,__num)"><a class="permalink" href="#_define_VEC_ADDMANY(_vec,__xp,__num)">#define
+  VEC_ADDMANY( vec, xp, num)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  size_t vec_num = (num);                                                                                            \
+<br/>
+  (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, vec_num);                        \
+<br/>
+  memcpy((vec).buf + (vec).ptr, (xp), vec_num * sizeof *((vec).buf));                                                \
+<br/>
+  (vec).ptr += vec_num;                                                                                              \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>74</b> of file <b>pem.c</b>.</p>
+<pre>74 #define VEC_ADDMANY(vec, xp, num)                                                                                      \
+75   do {                                                                                                                 \
+76     size_t vec_num = (num);                                                                                            \
+77     (vec).buf = vector_expand((vec).buf, sizeof *((vec).buf), &amp;(vec).ptr, &amp;(vec).len, vec_num);                        \
+78     memcpy((vec).buf + (vec).ptr, (xp), vec_num * sizeof *((vec).buf));                                                \
+79     (vec).ptr += vec_num;                                                                                              \
+80   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_CLEAR(_vec)"><a class="permalink" href="#_define_VEC_CLEAR(_vec)">#define
+  VEC_CLEAR( vec)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  SAFE_FREE((vec).buf);                                                                                              \
+<br/>
+  (vec).buf = NULL;                                                                                                  \
+<br/>
+  (vec).ptr = 0;                                                                                                     \
+<br/>
+  (vec).len = 0;                                                                                                     \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>51</b> of file <b>pem.c</b>.</p>
+<pre>51 #define VEC_CLEAR(vec)                                                                                                 \
+52   do {                                                                                                                 \
+53     SAFE_FREE((vec).buf);                                                                                              \
+54     (vec).buf = NULL;                                                                                                  \
+55     (vec).ptr = 0;                                                                                                     \
+56     (vec).len = 0;                                                                                                     \
+57   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_CLEAREXT(_vec,__fun)"><a class="permalink" href="#_define_VEC_CLEAREXT(_vec,__fun)">#define
+  VEC_CLEAREXT( vec, fun)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>do {                                                                                                                 \
+<br/>
+  size_t vec_tmp;                                                                                                    \
+<br/>
+  for (vec_tmp = 0; vec_tmp &lt; (vec).ptr; vec_tmp++) {                                                                \
+<br/>
+    (fun)(&amp;(vec).buf[vec_tmp]);                                                                                      \
+<br/>
+  }                                                                                                                  \
+<br/>
+  VEC_CLEAR(vec);                                                                                                    \
+} while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>59</b> of file <b>pem.c</b>.</p>
+<pre>59 #define VEC_CLEAREXT(vec, fun)                                                                                         \
+60   do {                                                                                                                 \
+61     size_t vec_tmp;                                                                                                    \
+62     for (vec_tmp = 0; vec_tmp &lt; (vec).ptr; vec_tmp++) {                                                                \
+63       (fun)(&amp;(vec).buf[vec_tmp]);                                                                                      \
+64     }                                                                                                                  \
+65     VEC_CLEAR(vec);                                                                                                    \
+66   } while (0)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_ELT(_vec,__idx)"><a class="permalink" href="#_define_VEC_ELT(_vec,__idx)">#define
+  VEC_ELT( vec, idx)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((vec).buf[idx])</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>82</b> of file <b>pem.c</b>.</p>
+<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_INIT____0,_0,_0_"><a class="permalink" href="#_define_VEC_INIT____0,_0,_0_">#define
+  VEC_INIT {0, 0, 0}</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>pem.c</b>.</p>
+<p class="Pp">Referenced by <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_LEN(_vec)"><a class="permalink" href="#_define_VEC_LEN(_vec)">#define
+  VEC_LEN( vec)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>((vec).ptr)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>83</b> of file <b>pem.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VEC_TOARRAY(_vec)"><a class="permalink" href="#_define_VEC_TOARRAY(_vec)">#define
+  VEC_TOARRAY( vec)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>xblobdup((vec).buf, sizeof *((vec).buf) * (vec).ptr)</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>84</b> of file <b>pem.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_VECTOR(_type)"><a class="permalink" href="#_define_VECTOR(_type)">#define
+  VECTOR( type)</a></h2>
+<p class="Pp"><b>Value:</b></p>
+<pre>struct {                                                                                                             \
+<br/>
+  type *buf;                                                                                                         \
+<br/>
+  size_t ptr, len;                                                                                                   \
+}</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Definition at line <b>41</b> of file <b>pem.c</b>.</p>
+<pre>41 #define VECTOR(type)                                                                                                   \
+42   struct {                                                                                                             \
+43     type *buf;                                                                                                         \
+44     size_t ptr, len;                                                                                                   \
+45   }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_free_ta_contents_(br_x509_trust_anchor_*_ta)"><a class="permalink" href="#void_free_ta_contents_(br_x509_trust_anchor_*_ta)">void
+  free_ta_contents (br_x509_trust_anchor * ta)</a></h2>
+<p class="Pp">Definition at line <b>428</b> of file <b>pem.c</b>.</p>
+<pre>428                                                 {
+429   if (!ta) {
+430     return;
+431   }
+432   xfree(ta-&gt;dn.data);
+433   switch (ta-&gt;pkey.key_type) {
+434   case BR_KEYTYPE_RSA:
+435     xfree((void *)ta-&gt;pkey.key.rsa.n);
+436     xfree((void *)ta-&gt;pkey.key.rsa.e);
+437     break;
+438   case BR_KEYTYPE_EC:
+439     xfree((void *)ta-&gt;pkey.key.ec.q);
+440     break;
+441   default:
+442     SET_ERRNO(ERROR_CRYPTO, &quot;Unknown public key type in CA&quot;);
+443     break;
+444   }
+445 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>https_get()</b>, and
+    <b>read_trust_anchors_from_memory()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_read_trust_anchors_from_memory_(anchor_list_*_dst,_const_unsigned_char_*_pem_data,_size_t_pem_len)"><a class="permalink" href="#size_t_read_trust_anchors_from_memory_(anchor_list_*_dst,_const_unsigned_char_*_pem_data,_size_t_pem_len)">size_t
+  read_trust_anchors_from_memory (anchor_list * dst, const unsigned char *
+  pem_data, size_t pem_len)</a></h2>
+<p class="Pp">Definition at line <b>449</b> of file <b>pem.c</b>.</p>
+<pre>449                                                                                                        {
+450   br_x509_certificate *xcs;
+451   anchor_list tas = VEC_INIT;
+452   size_t u, num;
+453 
+454   xcs = read_certificates_from_memory(pem_data, pem_len, &amp;num);
+455   if (xcs == NULL) {
+456     return 0;
+457   }
+458 
+459   for (u = 0; u &lt; num; u++) {
+460     br_x509_trust_anchor ta;
+461 
+462     if (certificate_to_trust_anchor_inner(&amp;ta, &amp;xcs[u]) != ASCIICHAT_OK) {
+463       VEC_CLEAREXT(tas, free_ta_contents);
+464       free_certificates(xcs, num);
+465       return 0;
+466     }
+467     VEC_ADD(tas, ta);
+468   }
+469 
+470   VEC_ADDMANY(*dst, &amp;VEC_ELT(tas, 0), num);
+471   VEC_CLEAR(tas);
+472   free_certificates(xcs, num);
+473   return num;
+474 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>free_ta_contents()</b>, <b>VEC_ADD</b>,
+    <b>VEC_ADDMANY</b>, <b>VEC_CLEAR</b>, <b>VEC_CLEAREXT</b>, <b>VEC_ELT</b>,
+    and <b>VEC_INIT</b>.</p>
+<p class="Pp">Referenced by <b>https_get()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

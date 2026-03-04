@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>http_client.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">http_client.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">http_client.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">http_client.c - &#x1F310; HTTPS client with BearSSL for fetching
+    public keys from GitHub/GitLab with CA validation</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">char * <b>https_get</b> (const char *hostname, const char *path)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F310; HTTPS client with BearSSL for fetching public keys from
+    GitHub/GitLab with CA validation</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>http_client.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char_*_https_get_(const_char_*_hostname,_const_char_*_path)"><a class="permalink" href="#char_*_https_get_(const_char_*_hostname,_const_char_*_path)">char
+  * https_get (const char * hostname, const char * path)</a></h2>
+<p class="Pp">Definition at line <b>109</b> of file <b>http_client.c</b>.</p>
+<pre>109                                                         {
+110   if (!hostname || !path) {
+111     log_error(&quot;Invalid arguments to https_get&quot;);
+112     return NULL;
+113   }
+114 
+115   log_info(&quot;HTTPS GET https://%s%s&quot;, hostname, path);
+116 
+117   // Load system CA certificates
+118   char *pem_data = NULL;
+119   size_t pem_size = 0;
+120   if (platform_load_system_ca_certs(&amp;pem_data, &amp;pem_size) != 0) {
+121     log_error(&quot;Failed to load system CA certificates&quot;);
+122     return NULL;
+123   }
+124 
+125   // Parse PEM certificates into BearSSL trust anchors
+126   anchor_list anchors = ANCHOR_LIST_INIT;
+127   size_t num_anchors = read_trust_anchors_from_memory(&amp;anchors, (unsigned char *)pem_data, pem_size);
+128   SAFE_FREE(pem_data);
+129 
+130   if (num_anchors == 0) {
+131     log_error(&quot;No trust anchors loaded&quot;);
+132     // Free anchors before returning to prevent leak
+133     goto cleanup_anchors;
+134   }
+135   log_info(&quot;Loaded %zu trust anchors&quot;, num_anchors);
+136 
+137   // Resolve hostname using getaddrinfo (modern, non-deprecated API)
+138   struct addrinfo hints, *result;
+139   memset(&amp;hints, 0, sizeof(hints));
+140   hints.ai_family = AF_INET; // IPv4
+141   hints.ai_socktype = SOCK_STREAM;
+142   hints.ai_protocol = IPPROTO_TCP;
+143 
+144   if (getaddrinfo(hostname, &quot;443&quot;, &amp;hints, &amp;result) != 0) {
+145     log_error(&quot;Failed to resolve hostname: %s&quot;, hostname);
+146     goto cleanup_anchors;
+147   }
+148 
+149   // Create TCP socket
+150   socket_t sock = socket(result-&gt;ai_family, result-&gt;ai_socktype, result-&gt;ai_protocol);
+151   if (sock == INVALID_SOCKET_VALUE) {
+152     log_error(&quot;Failed to create socket&quot;);
+153     freeaddrinfo(result);
+154     goto cleanup_anchors;
+155   }
+156 
+157   // Connect to server
+158   if (connect(sock, result-&gt;ai_addr, (int)result-&gt;ai_addrlen) != 0) {
+159     log_error(&quot;Failed to connect to %s:443&quot;, hostname);
+160     socket_close(sock);
+161     freeaddrinfo(result);
+162     goto cleanup_anchors;
+163   }
+164 
+165   freeaddrinfo(result);
+166 
+167   log_info(&quot;Connected to %s:443&quot;, hostname);
+168 
+169   // Initialize BearSSL X.509 minimal validator
+170   br_x509_minimal_context xc;
+171   br_x509_minimal_init(&amp;xc, &amp;br_sha256_vtable, anchors.buf, anchors.ptr);
+172 
+173   // Initialize BearSSL client context
+174   br_ssl_client_context sc;
+175   br_ssl_client_init_full(&amp;sc, &amp;xc, anchors.buf, anchors.ptr);
+176 
+177   // Set I/O buffer
+178   unsigned char *iobuf;
+179   iobuf = SAFE_MALLOC(BR_SSL_BUFSIZE_BIDI, unsigned char *);
+180   br_ssl_engine_set_buffer(&amp;sc.eng, iobuf, BR_SSL_BUFSIZE_BIDI, 1);
+181 
+182   // Initialize I/O context
+183   br_sslio_context ioc;
+184   br_sslio_init(&amp;ioc, &amp;sc.eng, sock_read, &amp;sock, sock_write, &amp;sock);
+185 
+186   // Start TLS handshake
+187   br_ssl_client_reset(&amp;sc, hostname, 0);
+188 
+189   log_info(&quot;Starting TLS handshake with %s&quot;, hostname);
+190 
+191   // Build HTTP request
+192   char request[BUFFER_SIZE_LARGE];
+193   int request_len = safe_snprintf(request, sizeof(request),
+194                                   &quot;GET %s HTTP/1.1\r\n&quot;
+195                                   &quot;Host: %s\r\n&quot;
+196                                   &quot;Connection: close\r\n&quot;
+197                                   &quot;User-Agent: ascii-chat/&quot; ASCII_CHAT_VERSION_STRING &quot;\r\n&quot;
+198                                   &quot;\r\n&quot;,
+199                                   path, hostname);
+200 
+201   // Send HTTP request over TLS
+202   if (br_sslio_write_all(&amp;ioc, request, (size_t)request_len) != 0) {
+203     log_error(&quot;Failed to send HTTP request&quot;);
+204     SAFE_FREE(iobuf);
+205     socket_close(sock);
+206     goto cleanup_anchors;
+207   }
+208 
+209   br_sslio_flush(&amp;ioc);
+210   log_info(&quot;Sent HTTP request&quot;);
+211 
+212   // Read HTTP response
+213   char *response_buf = NULL;
+214   size_t response_capacity = 8192;
+215   size_t response_len = 0;
+216   response_buf = SAFE_MALLOC(response_capacity, char *);
+217 
+218   while (1) {
+219     // Ensure we have space to read
+220     if (response_len + 1024 &gt; response_capacity) {
+221       response_capacity *= 2;
+222       response_buf = SAFE_REALLOC(response_buf, response_capacity, char *);
+223     }
+224 
+225     // Read data
+226     int n = br_sslio_read(&amp;ioc, response_buf + response_len, response_capacity - response_len);
+227     if (n &lt; 0) {
+228       // Check for TLS errors
+229       int err = br_ssl_engine_last_error(&amp;sc.eng);
+230       if (err != BR_ERR_OK) {
+231         log_error(&quot;TLS error: %d&quot;, err);
+232         SAFE_FREE(response_buf);
+233         SAFE_FREE(iobuf);
+234         socket_close(sock);
+235         goto cleanup_anchors;
+236       }
+237       // EOF or connection closed
+238       break;
+239     }
+240     if (n == 0) {
+241       break; // EOF
+242     }
+243 
+244     response_len += (size_t)n;
+245   }
+246 
+247   response_buf[response_len] = '\0';
+248   log_info(&quot;Received %zu bytes&quot;, response_len);
+249 
+250   // Close connection
+251   br_sslio_close(&amp;ioc);
+252   socket_close(sock);
+253 
+254   // Parse HTTP response
+255   asciichat_error_t status = check_http_status(response_buf);
+256   if (status != ASCIICHAT_OK) {
+257     SAFE_FREE(response_buf);
+258     SAFE_FREE(iobuf);
+259     goto cleanup_anchors;
+260   }
+261 
+262   char *body = extract_http_body(response_buf, response_len);
+263   SAFE_FREE(response_buf);
+264   SAFE_FREE(iobuf);
+265 
+266   // Cleanup trust anchors
+267   for (size_t i = 0; i &lt; anchors.ptr; i++) {
+268     free_ta_contents(&amp;anchors.buf[i]);
+269   }
+270   SAFE_FREE(anchors.buf);
+271 
+272   return body;
+273 
+274 cleanup_anchors:
+275   for (size_t i = 0; i &lt; anchors.ptr; i++) {
+276     free_ta_contents(&amp;anchors.buf[i]);
+277   }
+278   SAFE_FREE(anchors.buf);
+279   return NULL;
+280 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>free_ta_contents()</b>,
+    <b>read_trust_anchors_from_memory()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by <b>parse_public_key()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

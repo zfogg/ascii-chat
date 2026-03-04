@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>mode_defaults.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">mode_defaults.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">mode_defaults.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">mode_defaults.c - Mode-aware default value getters for
+  options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>mode_descriptor_t</b>
+  <br/>
+  Metadata for a mode.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const <b>mode_descriptor_t</b> * <b>get_mode_descriptor</b>
+    (asciichat_mode_t mode)
+  <br/>
+  Get mode descriptor by mode. const <b>mode_descriptor_t</b> *
+    <b>get_modes_by_group</b> (const char *group, size_t *out_count)
+  <br/>
+  Get all mode descriptors grouped by category. const void *
+    <b>get_default_log_file</b> (asciichat_mode_t mode)
+  <br/>
+  Get mode-specific default value for --log-file. const void *
+    <b>get_default_port</b> (asciichat_mode_t mode)
+  <br/>
+  Get mode-specific default value for --port. const void *
+    <b>get_default_websocket_port</b> (asciichat_mode_t mode)
+  <br/>
+  Get mode-specific default value for --websocket-port. void
+    <b>apply_mode_specific_defaults</b> (options_t *opts)
+  <br/>
+  Apply mode-specific defaults to an options struct after mode detection.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Mode-aware default value getters for options.</p>
+<p class="Pp">Provides mode-specific default values for options that vary by
+    mode, and mode metadata (names, descriptions, groups) for UI generation.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">February 2026</div>
+<p class="Pp">Definition in file <b>options/registry/mode_defaults.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_apply_mode_specific_defaults_(options_t_*_opts)"><a class="permalink" href="#void_apply_mode_specific_defaults_(options_t_*_opts)">void
+  apply_mode_specific_defaults (options_t * opts)</a></h2>
+<p class="Pp">Apply mode-specific defaults to an options struct after mode
+    detection. This function updates options that have mode-dependent defaults
+    (port and websocket_port) based on the detected mode. Log file paths are
+    handled separately by options_get_log_filepath().</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opts</i> Options struct to update (must have
+  detected_mode already set)</div>
+<p class="Pp">Definition at line <b>192</b> of file
+    <b>options/registry/mode_defaults.c</b>.</p>
+<pre>192                                                    {
+193   if (!opts) {
+194     return;
+195   }
+196 
+197   // Apply port default based on mode
+198   const int *mode_port = (const int *)get_default_port(opts-&gt;detected_mode);
+199   if (mode_port) {
+200     // Only update if still at a generic default (27224 or 27225)
+201     if (opts-&gt;port == OPT_PORT_INT_DEFAULT || opts-&gt;port == OPT_ACDS_PORT_INT_DEFAULT) {
+202       opts-&gt;port = *mode_port;
+203     }
+204   }
+205 
+206   // Apply websocket-port default based on mode
+207   const int *mode_websocket_port = (const int *)get_default_websocket_port(opts-&gt;detected_mode);
+208   if (mode_websocket_port) {
+209     // Only update if still at a generic default (27226 or 27227)
+210     if (opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_SERVER_DEFAULT ||
+211         opts-&gt;websocket_port == OPT_WEBSOCKET_PORT_ACDS_DEFAULT) {
+212       opts-&gt;websocket_port = *mode_websocket_port;
+213     }
+214   }
+215 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_default_port()</b>, and
+    <b>get_default_websocket_port()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_void_*_get_default_log_file_(asciichat_mode_t_mode)"><a class="permalink" href="#const_void_*_get_default_log_file_(asciichat_mode_t_mode)">const
+  void * get_default_log_file (asciichat_mode_t mode)</a></h2>
+<p class="Pp">Get mode-specific default value for --log-file. Returns empty
+    string - the actual log file path is determined by
+    options_get_log_filepath() which properly handles debug vs release builds
+    and platform-specific temp directories.</p>
+<p class="Pp"></p>
+<p class="Pp">Debug builds: Uses current working directory (server.log,
+    client.log, etc.) Release builds: Uses $TMPDIR/ascii-chat/server.log,
+  etc.</p>
+<p class="Pp">Definition at line <b>117</b> of file
+    <b>options/registry/mode_defaults.c</b>.</p>
+<pre>117                                                         {
+118   (void)mode; // Unused
+119   // Return empty string - let options_get_log_filepath() handle the defaults
+120   return &quot;&quot;;
+121 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_void_*_get_default_port_(asciichat_mode_t_mode)"><a class="permalink" href="#const_void_*_get_default_port_(asciichat_mode_t_mode)">const
+  void * get_default_port (asciichat_mode_t mode)</a></h2>
+<p class="Pp">Get mode-specific default value for --port.</p>
+<p class="Pp">Definition at line <b>135</b> of file
+    <b>options/registry/mode_defaults.c</b>.</p>
+<pre>135                                                     {
+136   switch (mode) {
+137   case MODE_SERVER:
+138     return &amp;g_port_server;
+139   case MODE_CLIENT:
+140     return &amp;g_port_client;
+141   case MODE_DISCOVERY_SERVICE:
+142     return &amp;g_port_discovery_service;
+143   case MODE_DISCOVERY:
+144     return &amp;g_port_discovery;
+145   case MODE_MIRROR:
+146   case MODE_INVALID:
+147   default:
+148     // Fallback
+149     return &amp;g_port_server;
+150   }
+151 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_void_*_get_default_websocket_port_(asciichat_mode_t_mode)"><a class="permalink" href="#const_void_*_get_default_websocket_port_(asciichat_mode_t_mode)">const
+  void * get_default_websocket_port (asciichat_mode_t mode)</a></h2>
+<p class="Pp">Get mode-specific default value for --websocket-port.</p>
+<p class="Pp">Definition at line <b>163</b> of file
+    <b>options/registry/mode_defaults.c</b>.</p>
+<pre>163                                                               {
+164   switch (mode) {
+165   case MODE_SERVER:
+166     return &amp;g_websocket_port_server;
+167   case MODE_DISCOVERY_SERVICE:
+168     return &amp;g_websocket_port_discovery_service;
+169   case MODE_CLIENT:
+170   case MODE_MIRROR:
+171   case MODE_DISCOVERY:
+172   case MODE_INVALID:
+173   default:
+174     // Fallback (should not be used for client/mirror/discovery)
+175     return &amp;g_websocket_port_server;
+176   }
+177 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>apply_mode_specific_defaults()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>mode_descriptor_t</b> * get_mode_descriptor
+  (asciichat_mode_t mode)</h2>
+<p class="Pp">Get mode descriptor by mode.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mode</i> Mode to look up</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Pointer to mode descriptor, or NULL if not found</div>
+<p class="Pp">Definition at line <b>49</b> of file
+    <b>options/registry/mode_defaults.c</b>.</p>
+<pre>49                                                                     {
+50   for (size_t i = 0; g_mode_descriptors[i].name; i++) {
+51     if (g_mode_descriptors[i].mode == mode) {
+52       return &amp;g_mode_descriptors[i];
+53     }
+54   }
+55   return NULL;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss">const <b>mode_descriptor_t</b> * get_modes_by_group (const char *
+  group, size_t * out_count)</h2>
+<p class="Pp">Get all mode descriptors grouped by category.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>group</i> Group name (&quot;server-like&quot; or
+  &quot;client-like&quot;)
+<br/>
+<i>out_count</i> OUTPUT: Number of modes in this group</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of mode descriptors, or NULL if group not
+  found</div>
+<p class="Pp">Definition at line <b>64</b> of file
+    <b>options/registry/mode_defaults.c</b>.</p>
+<pre>64                                                                                   {
+65   if (!group || !out_count) {
+66     return NULL;
+67   }
+68 
+69   // Count matching modes
+70   size_t count = 0;
+71   for (size_t i = 0; g_mode_descriptors[i].name; i++) {
+72     if (strcmp(g_mode_descriptors[i].group, group) == 0) {
+73       count++;
+74     }
+75   }
+76 
+77   if (count == 0) {
+78     *out_count = 0;
+79     return NULL;
+80   }
+81 
+82   // Allocate result array
+83   mode_descriptor_t *result = SAFE_MALLOC((count + 1) * sizeof(mode_descriptor_t), mode_descriptor_t *);
+84   size_t idx = 0;
+85 
+86   // Fill result array
+87   for (size_t i = 0; g_mode_descriptors[i].name &amp;&amp; idx &lt; count; i++) {
+88     if (strcmp(g_mode_descriptors[i].group, group) == 0) {
+89       result[idx++] = g_mode_descriptors[i];
+90     }
+91   }
+92 
+93   // Add terminator
+94   result[idx].mode = MODE_INVALID;
+95   result[idx].name = NULL;
+96   result[idx].description = NULL;
+97   result[idx].group = NULL;
+98 
+99   *out_count = count;
+100   return result;
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>mode_descriptor_t::description</b>,
+    <b>mode_descriptor_t::group</b>, <b>mode_descriptor_t::mode</b>, and
+    <b>mode_descriptor_t::name</b>.</p>
+<p class="Pp">Referenced by <b>completions_generate_zsh()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

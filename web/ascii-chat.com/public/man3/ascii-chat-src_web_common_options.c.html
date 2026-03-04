@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>options.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">options.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">options.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">options.c - WASM shared option setters and getters.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">EMSCRIPTEN_KEEPALIVE int <b>set_width</b> (int value)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_width</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_height</b> (int value)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_height</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_color_mode</b> (int mode)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_color_mode</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_color_filter</b> (int filter)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_color_filter</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_palette</b> (const char *palette_name)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_palette</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_palette_chars</b> (const char *chars)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE const char * <b>get_palette_chars</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_matrix_rain</b> (int <b>enabled</b>)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_matrix_rain</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_flip_x</b> (int <b>enabled</b>)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_flip_x</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_render_mode</b> (int mode)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_render_mode</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>set_target_fps</b> (int fps)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE int <b>get_target_fps</b> (void)
+  <br/>
+  EMSCRIPTEN_KEEPALIVE const char * <b>get_help_text</b> (int mode, const char
+    *option_name)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">WASM shared option setters and getters.</p>
+<p class="Pp">Provides unified option access for all WASM modes. These functions
+    are compiled into both mirror.wasm and client.wasm.</p>
+<p class="Pp">Definition in file <b>src/web/common/options.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_color_filter_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_color_filter_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_color_filter (void )</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>74                            {
+75   return GET_OPTION(color_filter);
+76 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_color_mode_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_color_mode_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_color_mode (void )</a></h2>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>59                          {
+60   return GET_OPTION(color_mode);
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_flip_x_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_flip_x_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_flip_x (void )</a></h2>
+<p class="Pp">Definition at line <b>146</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>146                      {
+147   return GET_OPTION(flip_x) ? 1 : 0;
+148 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_height_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_height_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_height (void )</a></h2>
+<p class="Pp">Definition at line <b>44</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>44                      {
+45   return GET_OPTION(height);
+46 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_const_char_*_get_help_text_(int_mode,_const_char_*_option_name)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_const_char_*_get_help_text_(int_mode,_const_char_*_option_name)">EMSCRIPTEN_KEEPALIVE
+  const char * get_help_text (int mode, const char * option_name)</a></h2>
+<p class="Pp">Get help text for a CLI option in a specific mode Exported to WASM
+    for JavaScript access via FFI</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>mode</i> The mode (asciichat_mode_t as int)
+<br/>
+<i>option_name</i> The long name of the option</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Help text string or NULL if not applicable</div>
+<p class="Pp">Definition at line <b>195</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>195                                                              {
+196   if (!option_name || !option_name[0])
+197     return NULL;
+198   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
+199   return options_get_help_text(mode_enum, option_name);
+200 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_get_help_text()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_matrix_rain_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_matrix_rain_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_matrix_rain (void )</a></h2>
+<p class="Pp">Definition at line <b>131</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>131                           {
+132   return GET_OPTION(matrix_rain) ? 1 : 0;
+133 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_palette_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_palette_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_palette (void )</a></h2>
+<p class="Pp">Definition at line <b>103</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>103                       {
+104   return GET_OPTION(palette_type);
+105 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_const_char_*_get_palette_chars_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_const_char_*_get_palette_chars_(void_)">EMSCRIPTEN_KEEPALIVE
+  const char * get_palette_chars (void )</a></h2>
+<p class="Pp">Definition at line <b>116</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>116                                     {
+117   return GET_OPTION(palette_custom);
+118 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_render_mode_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_render_mode_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_render_mode (void )</a></h2>
+<p class="Pp">Definition at line <b>161</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>161                           {
+162   return GET_OPTION(render_mode);
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_target_fps_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_target_fps_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_target_fps (void )</a></h2>
+<p class="Pp">Definition at line <b>178</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>178                          {
+179   return GET_OPTION(fps);
+180 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_width_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_width_(void_)">EMSCRIPTEN_KEEPALIVE
+  int get_width (void )</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>31                     {
+32   return GET_OPTION(width);
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_color_filter_(int_filter)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_color_filter_(int_filter)">EMSCRIPTEN_KEEPALIVE
+  int set_color_filter (int filter)</a></h2>
+<p class="Pp">Definition at line <b>68</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>68                                  {
+69   asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
+70   return (err == ASCIICHAT_OK) ? 0 : -1;
+71 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_color_mode_(int_mode)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_color_mode_(int_mode)">EMSCRIPTEN_KEEPALIVE
+  int set_color_mode (int mode)</a></h2>
+<p class="Pp">Definition at line <b>53</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>53                              {
+54   asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
+55   return (err == ASCIICHAT_OK) ? 0 : -1;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_flip_x_(int_enabled)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_flip_x_(int_enabled)">EMSCRIPTEN_KEEPALIVE
+  int set_flip_x (int enabled)</a></h2>
+<p class="Pp">Definition at line <b>140</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>140                             {
+141   asciichat_error_t err = options_set_bool(&quot;flip_x&quot;, enabled != 0);
+142   return (err == ASCIICHAT_OK) ? 0 : -1;
+143 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>enabled</b>, and <b>options_set_bool()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_height_(int_value)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_height_(int_value)">EMSCRIPTEN_KEEPALIVE
+  int set_height (int value)</a></h2>
+<p class="Pp">Definition at line <b>36</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>36                           {
+37   if (value &lt;= 0 || value &gt; 1000)
+38     return -1;
+39   asciichat_error_t err = options_set_int(&quot;height&quot;, value);
+40   return (err == ASCIICHAT_OK) ? 0 : -1;
+41 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_matrix_rain_(int_enabled)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_matrix_rain_(int_enabled)">EMSCRIPTEN_KEEPALIVE
+  int set_matrix_rain (int enabled)</a></h2>
+<p class="Pp">Definition at line <b>125</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>125                                  {
+126   asciichat_error_t err = options_set_bool(&quot;matrix_rain&quot;, enabled != 0);
+127   return (err == ASCIICHAT_OK) ? 0 : -1;
+128 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>enabled</b>, and <b>options_set_bool()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_palette_(const_char_*_palette_name)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_palette_(const_char_*_palette_name)">EMSCRIPTEN_KEEPALIVE
+  int set_palette (const char * palette_name)</a></h2>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>83                                           {
+84   if (!palette_name)
+85     return -1;
+86 
+87   palette_type_t palette_value;
+88   char *error_msg = NULL;
+89 
+90   if (!parse_palette_type(palette_name, &amp;palette_value, &amp;error_msg)) {
+91     if (error_msg) {
+92       log_error(&quot;Failed to parse palette '%s': %s&quot;, palette_name, error_msg);
+93       free(error_msg);
+94     }
+95     return -1;
+96   }
+97 
+98   asciichat_error_t err = options_set_int(&quot;palette_type&quot;, (int)palette_value);
+99   return (err == ASCIICHAT_OK) ? 0 : -1;
+100 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>, and
+    <b>parse_palette_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_palette_chars_(const_char_*_chars)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_palette_chars_(const_char_*_chars)">EMSCRIPTEN_KEEPALIVE
+  int set_palette_chars (const char * chars)</a></h2>
+<p class="Pp">Definition at line <b>108</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>108                                          {
+109   if (!chars)
+110     return -1;
+111   asciichat_error_t err = options_set_string(&quot;palette_custom&quot;, chars);
+112   return (err == ASCIICHAT_OK) ? 0 : -1;
+113 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_render_mode_(int_mode)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_render_mode_(int_mode)">EMSCRIPTEN_KEEPALIVE
+  int set_render_mode (int mode)</a></h2>
+<p class="Pp">Definition at line <b>155</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>155                               {
+156   asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
+157   return (err == ASCIICHAT_OK) ? 0 : -1;
+158 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_target_fps_(int_fps)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_target_fps_(int_fps)">EMSCRIPTEN_KEEPALIVE
+  int set_target_fps (int fps)</a></h2>
+<p class="Pp">Definition at line <b>170</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>170                             {
+171   if (fps &lt; 15 || fps &gt; 60)
+172     return -1;
+173   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
+174   return (err == ASCIICHAT_OK) ? 0 : -1;
+175 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_width_(int_value)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_width_(int_value)">EMSCRIPTEN_KEEPALIVE
+  int set_width (int value)</a></h2>
+<p class="Pp">Definition at line <b>23</b> of file
+    <b>src/web/common/options.c</b>.</p>
+<pre>23                          {
+24   if (value &lt;= 0 || value &gt; 1000)
+25     return -1;
+26   asciichat_error_t err = options_set_int(&quot;width&quot;, value);
+27   return (err == ASCIICHAT_OK) ? 0 : -1;
+28 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>options_set_int()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

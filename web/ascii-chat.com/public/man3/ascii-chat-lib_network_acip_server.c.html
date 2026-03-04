@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>server.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">server.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">server.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">server.c - ACIP server-side protocol implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>acip_server_receive_and_dispatch</b>
+    (<b>acip_transport_t</b> *transport, void *client_ctx, const
+    acip_server_callbacks_t *callbacks)
+  <br/>
+  asciichat_error_t <b>acip_send_ascii_frame</b> (<b>acip_transport_t</b>
+    *transport, const char *frame_data, size_t frame_size, uint32_t width,
+    uint32_t height, const char *client_id)
+  <br/>
+  asciichat_error_t <b>acip_send_clear_console</b> (<b>acip_transport_t</b>
+    *transport)
+  <br/>
+  asciichat_error_t <b>acip_send_server_state</b> (<b>acip_transport_t</b>
+    *transport, const server_state_packet_t *state)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ACIP server-side protocol implementation.</p>
+<p class="Pp">Provides server-side ACIP protocol utilities for:</p>
+<ul class="Bl-bullet">
+  <li>Packet validation</li>
+  <li>Error response generation</li>
+  <li>Protocol compliance checking</li>
+</ul>
+<p class="Pp">ACIP (ascii-chat IP Protocol) is the wire protocol for session
+    discovery and WebRTC signaling. This module provides reusable server-side
+    utilities for any ACIP server implementation.</p>
+<p class="Pp"></p>
+<p class="Pp">Server-side packet sending and receiving for ascii-chat protocol.
+    Handles server&#x2192;client communication (ASCII frames, state updates,
+    console control).</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>lib/network/acip/server.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_acip_send_ascii_frame_("><a class="permalink" href="#asciichat_error_t_acip_send_ascii_frame_(">asciichat_error_t
+  acip_send_ascii_frame (<b>acip_transport_t</b> * transport, const char *
+  frame_data, size_t frame_size, uint32_t width, uint32_t height, const char *
+  client_id)</a></h2>
+<p class="Pp">Definition at line <b>190</b> of file
+    <b>lib/network/acip/server.c</b>.</p>
+<pre>191                                                                                                 {
+192   if (!transport || !frame_data) {
+193     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or frame_data&quot;);
+194   }
+195 
+196   if (frame_size == 0) {
+197     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty frame data&quot;);
+198   }
+199 
+200   log_info(&quot;&#x2605; SEND_ASCII_FRAME START: client_id=%s, width=%u, height=%u, frame_size=%zu bytes&quot;, client_id, width,
+201            height, frame_size);
+202 
+203   // Calculate CRC32 checksum of frame data for integrity verification
+204   uint32_t checksum_value = asciichat_crc32(frame_data, frame_size);
+205   log_debug(&quot;&#x2605; SEND_ASCII_FRAME: CRC32 checksum calculated: 0x%08x for %zu bytes&quot;, checksum_value, frame_size);
+206 
+207   // Create ASCII frame packet header
+208   ascii_frame_packet_t header;
+209   header.width = HOST_TO_NET_U32(width);
+210   header.height = HOST_TO_NET_U32(height);
+211   header.original_size = HOST_TO_NET_U32((uint32_t)frame_size);
+212   header.compressed_size = 0;
+213   header.checksum = HOST_TO_NET_U32(checksum_value);
+214   header.flags = 0;
+215 
+216   // Calculate total packet size
+217   size_t total_size;
+218   if (checked_size_add(sizeof(header), frame_size, &amp;total_size) != ASCIICHAT_OK) {
+219     log_error(&quot;&#x2605; SEND_ASCII_FRAME: Packet size overflow when adding header (%zu) + frame (%zu)&quot;, sizeof(header),
+220               frame_size);
+221     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Packet size overflow&quot;);
+222   }
+223 
+224   log_debug(&quot;&#x2605; SEND_ASCII_FRAME: Building packet - header=%zu bytes, frame=%zu bytes, total=%zu bytes&quot;, sizeof(header),
+225             frame_size, total_size);
+226 
+227   // Allocate buffer
+228   uint8_t *buffer = buffer_pool_alloc(NULL, total_size);
+229   if (!buffer) {
+230     log_error(&quot;&#x2605; SEND_ASCII_FRAME: Memory allocation FAILED for %zu bytes&quot;, total_size);
+231     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer: %zu bytes&quot;, total_size);
+232   }
+233 
+234   log_debug(&quot;&#x2605; SEND_ASCII_FRAME: Buffer allocated at %p&quot;, (void *)buffer);
+235 
+236   // Build packet: header + data
+237   memcpy(buffer, &amp;header, sizeof(header));
+238   memcpy(buffer + sizeof(header), frame_data, frame_size);
+239 
+240   // Send via transport with client_id for logging
+241   log_info(&quot;&#x2605; SEND_ASCII_FRAME: Calling packet_send_via_transport with PACKET_TYPE_ASCII_FRAME&quot;);
+242   asciichat_error_t result = packet_send_via_transport(transport, PACKET_TYPE_ASCII_FRAME, buffer, total_size, 0);
+243 
+244   if (result == ASCIICHAT_OK) {
+245     log_info(&quot;&#x2605; SEND_ASCII_FRAME COMPLETE: SUCCESS for client_id=%s, sent %zu bytes total&quot;, client_id, total_size);
+246   } else {
+247     log_error(&quot;&#x2605; SEND_ASCII_FRAME FAILED: Error code %d (%s) for client_id=%s&quot;, result, asciichat_error_string(result),
+248               client_id);
+249   }
+250 
+251   buffer_pool_free(NULL, buffer, total_size);
+252   return result;
+253 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
+    and <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">Referenced by <b>client_send_thread_func()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_acip_send_clear_console_("><a class="permalink" href="#asciichat_error_t_acip_send_clear_console_(">asciichat_error_t
+  acip_send_clear_console (<b>acip_transport_t</b> * transport)</a></h2>
+<p class="Pp">Definition at line <b>255</b> of file
+    <b>lib/network/acip/server.c</b>.</p>
+<pre>255                                                                        {
+256   if (!transport) {
+257     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport&quot;);
+258   }
+259 
+260   return packet_send_via_transport(transport, PACKET_TYPE_CLEAR_CONSOLE, NULL, 0, 0);
+261 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">Referenced by <b>client_send_thread_func()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_acip_send_server_state_("><a class="permalink" href="#asciichat_error_t_acip_send_server_state_(">asciichat_error_t
+  acip_send_server_state (<b>acip_transport_t</b> * transport, const
+  server_state_packet_t * state)</a></h2>
+<p class="Pp">Definition at line <b>263</b> of file
+    <b>lib/network/acip/server.c</b>.</p>
+<pre>263                                                                                                           {
+264   if (!transport || !state) {
+265     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport or state&quot;);
+266   }
+267 
+268   return packet_send_via_transport(transport, PACKET_TYPE_SERVER_STATE, state, sizeof(*state), 0);
+269 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">Referenced by <b>add_webrtc_client()</b>,
+    <b>broadcast_server_state_to_all_clients()</b>, and
+    <b>send_server_state_to_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_acip_server_receive_and_dispatch_("><a class="permalink" href="#asciichat_error_t_acip_server_receive_and_dispatch_(">asciichat_error_t
+  acip_server_receive_and_dispatch (<b>acip_transport_t</b> * transport, void *
+  client_ctx, const acip_server_callbacks_t * callbacks)</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>lib/network/acip/server.c</b>.</p>
+<pre>32                                                                                              {
+33   uint64_t dispatch_start_ns = time_get_ns();
+34   log_dev_every(4500 * US_PER_MS_INT,
+35                 &quot;ACIP_SERVER_DISPATCH: Entry, transport=%p, client_ctx=%p, callbacks=%p, timestamp=%llu&quot;,
+36                 (void *)transport, client_ctx, (const void *)callbacks, (unsigned long long)dispatch_start_ns);
+37 
+38   if (!transport) {
+39     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid transport (NULL)&quot;);
+40   }
+41   if (!callbacks) {
+42     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks (NULL)&quot;);
+43   }
+44 
+45   // Check if transport is connected
+46   if (!transport-&gt;methods-&gt;is_connected(transport)) {
+47     return SET_ERRNO(ERROR_NETWORK, &quot;Transport not connected&quot;);
+48   }
+49 
+50   packet_envelope_t envelope;
+51   bool enforce_encryption = (transport-&gt;crypto_ctx != NULL);
+52 
+53   // Try to get socket from transport
+54   socket_t sock = transport-&gt;methods-&gt;get_socket(transport);
+55   log_dev_every(4500 * US_PER_MS_INT, &quot;ACIP_SERVER_DISPATCH: Socket=%d (INVALID=%d)&quot;, sock, INVALID_SOCKET_VALUE);
+56 
+57   if (sock != INVALID_SOCKET_VALUE) {
+58     // Socket-based transport (TCP): use receive_packet_secure() for socket I/O + parsing
+59     packet_recv_result_t result = receive_packet_secure(sock, transport-&gt;crypto_ctx, enforce_encryption, &amp;envelope);
+60 
+61     // Handle receive errors
+62     if (result != PACKET_RECV_SUCCESS) {
+63       if (result == PACKET_RECV_EOF) {
+64         return SET_ERRNO(ERROR_NETWORK, &quot;Connection closed (EOF)&quot;);
+65       } else if (result == PACKET_RECV_SECURITY_VIOLATION) {
+66         return SET_ERRNO(ERROR_CRYPTO, &quot;Security violation: unencrypted packet when encryption required&quot;);
+67       } else {
+68         return SET_ERRNO(ERROR_NETWORK, &quot;Failed to receive packet&quot;);
+69       }
+70     }
+71   } else {
+72     // Non-socket transport (WebRTC): use transport's recv() method to get complete packet
+73     void *packet_data = NULL;
+74     void *allocated_buffer = NULL;
+75     size_t packet_len = 0;
+76 
+77     uint64_t recv_start_ns = time_get_ns();
+78     asciichat_error_t recv_result = transport-&gt;methods-&gt;recv(transport, &amp;packet_data, &amp;packet_len, &amp;allocated_buffer);
+79     uint64_t recv_end_ns = time_get_ns();
+80 
+81     if (recv_result != ASCIICHAT_OK) {
+82       char recv_duration_str[32];
+83       time_pretty((uint64_t)(recv_end_ns - recv_start_ns), -1, recv_duration_str, sizeof(recv_duration_str));
+84       log_warn(&quot;[ACIP_RECV_ERROR] recv() failed after %s (result=%d)&quot;, recv_duration_str, recv_result);
+85       return SET_ERRNO(ERROR_NETWORK, &quot;Transport recv() failed&quot;);
+86     }
+87 
+88     char recv_duration_str[32];
+89     time_pretty((uint64_t)(recv_end_ns - recv_start_ns), -1, recv_duration_str, sizeof(recv_duration_str));
+90     log_info(&quot;[ACIP_RECV_SUCCESS] Received %zu bytes in %s&quot;, packet_len, recv_duration_str);
+91 
+92     // Parse packet header
+93     if (packet_len &lt; sizeof(packet_header_t)) {
+94       buffer_pool_free(NULL, allocated_buffer, packet_len);
+95       return SET_ERRNO(ERROR_NETWORK, &quot;Packet too small: %zu &lt; %zu&quot;, packet_len, sizeof(packet_header_t));
+96     }
+97 
+98     const packet_header_t *header = (const packet_header_t *)packet_data;
+99     envelope.type = NET_TO_HOST_U16(header-&gt;type);
+100     envelope.len = NET_TO_HOST_U32(header-&gt;length);
+101     envelope.data = (uint8_t *)packet_data + sizeof(packet_header_t);
+102     envelope.allocated_buffer = allocated_buffer;
+103     envelope.allocated_size = packet_len;
+104 
+105     log_dev_every(4500 * US_PER_MS_INT, &quot;ACIP_SERVER_DISPATCH: WebRTC packet parsed: type=%d, len=%u&quot;, envelope.type,
+106                   envelope.len);
+107 
+108     // Handle PACKET_TYPE_ENCRYPTED from WebSocket clients that encrypt at application layer
+109     if (envelope.type == PACKET_TYPE_ENCRYPTED &amp;&amp; transport-&gt;crypto_ctx) {
+110       uint64_t decrypt_start_ns = time_get_ns();
+111       uint8_t *ciphertext = (uint8_t *)envelope.data;
+112       size_t ciphertext_len = envelope.len;
+113 
+114       // Decrypt to get inner plaintext packet (header + payload)
+115       size_t plaintext_size = ciphertext_len + 1024;
+116       uint8_t *plaintext = buffer_pool_alloc(NULL, plaintext_size);
+117       if (!plaintext) {
+118         buffer_pool_free(NULL, allocated_buffer, packet_len);
+119         return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate plaintext buffer for decryption&quot;);
+120       }
+121 
+122       size_t plaintext_len;
+123       crypto_result_t crypto_result =
+124           crypto_decrypt(transport-&gt;crypto_ctx, ciphertext, ciphertext_len, plaintext, plaintext_size, &amp;plaintext_len);
+125 
+126       // Free the original encrypted buffer
+127       buffer_pool_free(NULL, allocated_buffer, packet_len);
+128 
+129       if (crypto_result != CRYPTO_OK) {
+130         buffer_pool_free(NULL, plaintext, plaintext_size);
+131         return SET_ERRNO(ERROR_CRYPTO, &quot;Failed to decrypt WebSocket packet: %s&quot;,
+132                          crypto_result_to_string(crypto_result));
+133       }
+134 
+135       if (plaintext_len &lt; sizeof(packet_header_t)) {
+136         buffer_pool_free(NULL, plaintext, plaintext_size);
+137         return SET_ERRNO(ERROR_CRYPTO, &quot;Decrypted packet too small: %zu &lt; %zu&quot;, plaintext_len, sizeof(packet_header_t));
+138       }
+139 
+140       // Parse the inner (decrypted) header
+141       const packet_header_t *inner_header = (const packet_header_t *)plaintext;
+142       envelope.type = NET_TO_HOST_U16(inner_header-&gt;type);
+143       envelope.len = NET_TO_HOST_U32(inner_header-&gt;length);
+144       envelope.data = plaintext + sizeof(packet_header_t);
+145       envelope.allocated_buffer = plaintext;
+146       envelope.allocated_size = plaintext_size;
+147 
+148       uint64_t decrypt_end_ns = time_get_ns();
+149       char decrypt_duration_str[32];
+150       time_pretty((uint64_t)(decrypt_end_ns - decrypt_start_ns), -1, decrypt_duration_str,
+151                   sizeof(decrypt_duration_str));
+152       log_info(&quot;[WS_TIMING] Decrypt %zu bytes &#x2192; %zu bytes in %s (inner_type=%d)&quot;, ciphertext_len, plaintext_len,
+153                decrypt_duration_str, envelope.type);
+154     }
+155   }
+156 
+157   // Dispatch packet to appropriate ACIP handler
+158   // Server receives packets FROM clients, so use server packet handler
+159   log_info(&quot;ACIP_DISPATCH_PKT: type=%d, len=%zu, client_ctx=%p&quot;, envelope.type, envelope.len, client_ctx);
+160   log_info(&quot;&#x1F4E4; [FRAME_DISPATCH] Starting handler dispatch for packet type=%d (0x%04x), payload=%zu bytes&quot;,
+161            envelope.type, envelope.type, envelope.len);
+162   uint64_t dispatch_handler_start_ns = time_get_ns();
+163   asciichat_error_t dispatch_result =
+164       acip_handle_server_packet(transport, envelope.type, envelope.data, envelope.len, client_ctx, callbacks);
+165   uint64_t dispatch_handler_end_ns = time_get_ns();
+166   char handler_duration_str[32];
+167   time_pretty((uint64_t)(dispatch_handler_end_ns - dispatch_handler_start_ns), -1, handler_duration_str,
+168               sizeof(handler_duration_str));
+169   log_info(&quot;[WS_TIMING] Handler for type=%d took %s (result=%d)&quot;, envelope.type, handler_duration_str, dispatch_result);
+170 
+171   if (dispatch_result != ASCIICHAT_OK) {
+172     log_error(&quot;&#x274C; [FRAME_DISPATCH_FAILED] Handler returned error for type=%d: %d&quot;, envelope.type, dispatch_result);
+173   } else {
+174     log_info(&quot;&#x2705; [FRAME_DISPATCH_SUCCESS] Handler completed successfully for type=%d&quot;, envelope.type);
+175   }
+176 
+177   // Always free the allocated buffer (even if handler failed)
+178   if (envelope.allocated_buffer) {
+179     buffer_pool_free(NULL, envelope.allocated_buffer, envelope.allocated_size);
+180   }
+181 
+182   // Return handler result
+183   return dispatch_result;
+184 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_handle_server_packet()</b>,
+    <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
+    <b>crypto_decrypt()</b>, <b>crypto_result_to_string()</b>,
+    <b>receive_packet_secure()</b>, <b>time_get_ns()</b>, and
+    <b>time_pretty()</b>.</p>
+<p class="Pp">Referenced by <b>client_receive_thread()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

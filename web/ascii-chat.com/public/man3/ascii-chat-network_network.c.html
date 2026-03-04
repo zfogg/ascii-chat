@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>network.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">network.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">network.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">network.c - &#x1F310; Cross-platform socket I/O with timeout
+    management and connection handling</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">ssize_t <b>send_with_timeout</b> (<b>socket_t</b> sockfd, const
+    void *data, size_t len, uint64_t timeout_ns)
+  <br/>
+  Send data with timeout using chunked transmission. ssize_t
+    <b>recv_with_timeout</b> (<b>socket_t</b> sockfd, void *buf, size_t len,
+    uint64_t timeout_ns)
+  <br/>
+  Receive data with timeout. int <b>accept_with_timeout</b> (<b>socket_t</b>
+    listenfd, struct sockaddr *addr, socklen_t *addrlen, uint64_t timeout_ns)
+  <br/>
+  Accept connection with timeout. asciichat_error_t <b>set_socket_timeout</b>
+    (<b>socket_t</b> sockfd, uint64_t timeout_ns)
+  <br/>
+  Set socket timeout. asciichat_error_t <b>set_socket_keepalive</b>
+    (<b>socket_t</b> sockfd)
+  <br/>
+  Set socket keepalive. asciichat_error_t <b>set_socket_nonblocking</b>
+    (<b>socket_t</b> sockfd)
+  <br/>
+  Set socket non-blocking. asciichat_error_t <b>socket_configure_buffers</b>
+    (<b>socket_t</b> sockfd)
+  <br/>
+  Configure socket buffers and TCP_NODELAY for optimal performance. const char *
+    <b>network_error_string</b> ()
+  <br/>
+  Get human-readable error string for network errors. <b>bool</b>
+    <b>connect_with_timeout</b> (<b>socket_t</b> sockfd, const struct sockaddr
+    *addr, socklen_t addrlen, int timeout_seconds)
+  <br/>
+  Connect with timeout.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F310; Cross-platform socket I/O with timeout management and
+    connection handling</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>network/network.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_accept_with_timeout_("><a class="permalink" href="#int_accept_with_timeout_(">int
+  accept_with_timeout (<b>socket_t</b> listenfd, struct sockaddr * addr,
+  socklen_t * addrlen, uint64_t timeout_ns)</a></h2>
+<p class="Pp">Accept connection with timeout.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>listenfd</i> Listening socket
+<br/>
+<i>addr</i> Client address structure
+<br/>
+<i>addrlen</i> Length of address structure
+<br/>
+<i>timeout_seconds</i> Timeout in seconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Client socket, or -1 on error</div>
+<p class="Pp">Definition at line <b>251</b> of file
+  <b>network/network.c</b>.</p>
+<pre>251                                                                                                            {
+252   // Set up poll for accept timeout (in nanoseconds)
+253   struct pollfd pfd;
+254   pfd.fd = listenfd;
+255   pfd.events = POLLIN;
+256   pfd.revents = 0;
+257 
+258   int result = socket_poll(&amp;pfd, 1, (int64_t)timeout_ns);
+259 
+260   if (result &lt;= 0) {
+261     if (result == 0) {
+262       // Timeout is expected behavior for server waiting for connections
+263       asciichat_errno = ERROR_NETWORK_TIMEOUT;
+264       asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
+265       asciichat_errno_context.has_system_error = true;
+266       asciichat_errno_context.system_errno = ETIMEDOUT;
+267       return -1;
+268     }
+269 
+270     if (network_handle_select_error(result)) {
+271       return -1; // Don't retry for accept
+272     }
+273     return -1;
+274   }
+275 
+276   // Check if socket is ready
+277   if (!(pfd.revents &amp; POLLIN)) {
+278     asciichat_errno = ERROR_NETWORK_TIMEOUT;
+279     asciichat_errno_context.code = ERROR_NETWORK_TIMEOUT;
+280     asciichat_errno_context.has_system_error = true;
+281     asciichat_errno_context.system_errno = ETIMEDOUT;
+282     return -1;
+283   }
+284 
+285   // Check if socket is still valid before attempting accept
+286   if (listenfd == INVALID_SOCKET_VALUE) {
+287     SET_ERRNO(ERROR_NETWORK, &quot;accept_with_timeout: listening socket is closed&quot;);
+288     return -1;
+289   }
+290 
+291   socket_t accept_result = socket_accept(listenfd, addr, addrlen, &quot;connection&quot;);
+292 
+293   if (accept_result == INVALID_SOCKET_VALUE) {
+294     // Check if this is a socket closed error (common during shutdown)
+295     int error_code = socket_get_last_error();
+296 
+297     if (socket_is_invalid_socket_error(error_code)) {
+298       // During shutdown, don't log this as an error since it's expected behavior
+299       asciichat_errno = ERROR_NETWORK;
+300       asciichat_errno_context.code = ERROR_NETWORK;
+301       asciichat_errno_context.has_system_error = false;
+302     } else {
+303       SET_ERRNO_SYS(ERROR_NETWORK_BIND, &quot;accept_with_timeout accept failed: %s&quot;, socket_get_error_string());
+304     }
+305     return -1;
+306   }
+307 
+308   return (int)accept_result;
+309 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>asciichat_errno</b>, <b>asciichat_errno_context</b>,
+    and <b>error_code</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> connect_with_timeout (<b>socket_t</b> sockfd, const
+  struct sockaddr * addr, socklen_t addrlen, int timeout_seconds)</h2>
+<p class="Pp">Connect with timeout.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor
+<br/>
+<i>addr</i> Address to connect to
+<br/>
+<i>addrlen</i> Address length
+<br/>
+<i>timeout_seconds</i> Timeout in seconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true on success, false on failure</div>
+<p class="Pp">Definition at line <b>442</b> of file
+  <b>network/network.c</b>.</p>
+<pre>442                                                                                                                 {
+443   if (sockfd == INVALID_SOCKET_VALUE) {
+444     errno = EBADF;
+445     return false;
+446   }
+447 
+448   // Set socket to non-blocking for timeout control
+449   if (set_socket_nonblocking(sockfd) != ASCIICHAT_OK) {
+450     return false;
+451   }
+452 
+453   // Attempt connection
+454   int result = connect(sockfd, addr, addrlen);
+455 
+456   if (result == 0) {
+457     // Connected immediately
+458     return true;
+459   }
+460 
+461   // Check if connection is in progress (expected for non-blocking sockets)
+462   int error = socket_get_last_error();
+463   if (!socket_is_in_progress_error(error) &amp;&amp; !socket_is_would_block_error(error)) {
+464     return false;
+465   }
+466 
+467   // Use select to wait for connection with timeout
+468   fd_set write_fds;
+469   struct timeval timeout;
+470 
+471   socket_fd_zero(&amp;write_fds);
+472   socket_fd_set(sockfd, &amp;write_fds);
+473 
+474   timeout.tv_sec = timeout_seconds;
+475   timeout.tv_usec = 0;
+476 
+477   result = socket_select(sockfd, NULL, &amp;write_fds, NULL, &amp;timeout);
+478 
+479   if (result &lt;= 0) {
+480     return false; // Timeout or error
+481   }
+482 
+483   if (!socket_fd_isset(sockfd, &amp;write_fds)) {
+484     return false; // Socket not ready
+485   }
+486 
+487   // Check if connection was successful
+488   int error_code = 0;
+489   socklen_t error_len = sizeof(error_code);
+490 
+491   if (socket_getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &amp;error_code, &amp;error_len) != 0) {
+492     return false;
+493   }
+494 
+495   if (error_code != 0) {
+496     return false;
+497   }
+498 
+499   // Connection successful - restore blocking mode
+500   if (socket_set_blocking(sockfd) != 0) {
+501     log_warn(&quot;Failed to restore socket to blocking mode after connect&quot;);
+502     // Continue anyway - non-blocking mode works but may cause issues with send/recv
+503   }
+504 
+505   return true;
+506 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>error_code</b>, and
+  <b>set_socket_nonblocking()</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
+    <b>tcp_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_network_error_string_()"><a class="permalink" href="#const_char_*_network_error_string_()">const
+  char * network_error_string ()</a></h2>
+<p class="Pp">Get human-readable error string for network errors.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i></i><b>error_code</b><i></i><b> Error code</b></div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Error string</div>
+<p class="Pp">Definition at line <b>430</b> of file
+  <b>network/network.c</b>.</p>
+<pre>430                                    {
+431   return socket_get_error_string();
+432 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>add_client()</b>,
+    <b>server_connection_establish()</b>, <b>socket_configure_buffers()</b>, and
+    <b>tcp_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ssize_t_recv_with_timeout_("><a class="permalink" href="#ssize_t_recv_with_timeout_(">ssize_t
+  recv_with_timeout (<b>socket_t</b> sockfd, void * buf, size_t len, uint64_t
+  timeout_ns)</a></h2>
+<p class="Pp">Receive data with timeout.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor
+<br/>
+<i>buf</i> Buffer to receive data
+<br/>
+<i>len</i> Length of buffer
+<br/>
+<i>timeout_seconds</i> Timeout in seconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes received, or -1 on error</div>
+<p class="Pp">Definition at line <b>182</b> of file
+  <b>network/network.c</b>.</p>
+<pre>182                                                                                        {
+183   if (sockfd == INVALID_SOCKET_VALUE) {
+184     errno = EBADF;
+185     return -1;
+186   }
+187 
+188   ssize_t total_received = 0;
+189   char *data = (char *)buf;
+190 
+191   while (total_received &lt; (ssize_t)len) {
+192     // Set up poll for read timeout (in nanoseconds)
+193     struct pollfd pfd;
+194     pfd.fd = sockfd;
+195     pfd.events = POLLIN;
+196     pfd.revents = 0;
+197 
+198     // Use provided timeout for recv() calls - don't artificially limit data packets in test mode
+199     // Timeouts should only apply to initial handshake, not to receiving data on active connections
+200     int result = socket_poll(&amp;pfd, 1, (int64_t)timeout_ns);
+201     if (result &lt;= 0) {
+202       if (result == 0) {
+203         SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, &quot;recv_with_timeout timed out after %llu nanoseconds&quot;,
+204                       (unsigned long long)timeout_ns);
+205         return -1;
+206       }
+207       if (network_handle_select_error(result)) {
+208         continue; // Retry
+209       }
+210       return -1; // Fatal error
+211     }
+212 
+213     // Check if socket is ready
+214     if (!(pfd.revents &amp; POLLIN)) {
+215       SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, &quot;recv_with_timeout socket not ready after poll&quot;);
+216       return -1;
+217     }
+218 
+219     // Calculate how much we still need to receive
+220     size_t bytes_to_recv = len - (size_t)total_received;
+221     ssize_t received = socket_recv(sockfd, data + total_received, bytes_to_recv, 0);
+222 
+223     if (received &lt; 0) {
+224       int error = errno;
+225       if (network_handle_recv_error(error)) {
+226         continue; // Retry
+227       }
+228       return -1; // Fatal error
+229     }
+230 
+231     if (received == 0) {
+232       // Connection closed by peer
+233       log_debug(&quot;Connection closed by peer during recv&quot;);
+234       return total_received; // Return what we got so far
+235     }
+236 
+237     total_received += received;
+238   }
+239 
+240   return total_received;
+241 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>packet_receive()</b>, and
+    <b>receive_packet_secure()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="ssize_t_send_with_timeout_("><a class="permalink" href="#ssize_t_send_with_timeout_(">ssize_t
+  send_with_timeout (<b>socket_t</b> sockfd, const void * data, size_t len,
+  uint64_t timeout_ns)</a></h2>
+<p class="Pp">Send data with timeout using chunked transmission.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor
+<br/>
+<i>data</i> Data to send
+<br/>
+<i>len</i> Length of data
+<br/>
+<i>timeout_seconds</i> Timeout in seconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Number of bytes sent, or -1 on error</div>
+<p class="Pp">Definition at line <b>112</b> of file
+  <b>network/network.c</b>.</p>
+<pre>112                                                                                               {
+113   if (sockfd == INVALID_SOCKET_VALUE) {
+114     errno = EBADF;
+115     return -1;
+116   }
+117 
+118   size_t total_sent = 0;
+119   const char *data_ptr = (const char *)data;
+120 
+121   while (total_sent &lt; len) {
+122     // Calculate chunk size
+123     size_t bytes_to_send = len - total_sent;
+124     const size_t MAX_CHUNK_SIZE = 65536; // 64KB chunks for reliable TCP transmission
+125     if (bytes_to_send &gt; MAX_CHUNK_SIZE) {
+126       bytes_to_send = MAX_CHUNK_SIZE;
+127     }
+128 
+129     // Set up poll for write timeout (in nanoseconds)
+130     struct pollfd pfd;
+131     pfd.fd = sockfd;
+132     pfd.events = POLLOUT;
+133     pfd.revents = 0;
+134 
+135     int64_t effective_timeout_ns = network_is_test_environment() ? (100LL * NS_PER_MS_INT) : (int64_t)timeout_ns;
+136     int result = socket_poll(&amp;pfd, 1, effective_timeout_ns);
+137     if (result &lt;= 0) {
+138       if (result == 0) {
+139         SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, &quot;send_with_timeout timed out after %llu nanoseconds&quot;,
+140                       (unsigned long long)timeout_ns);
+141         return -1;
+142       }
+143       if (network_handle_select_error(result)) {
+144         continue; // Retry
+145       }
+146       return -1; // Fatal error
+147     }
+148 
+149     // Check if socket is ready for writing
+150     if (!(pfd.revents &amp; POLLOUT)) {
+151       SET_ERRNO_SYS(ERROR_NETWORK_TIMEOUT, &quot;send_with_timeout socket not ready for writing after poll&quot;);
+152       return -1;
+153     }
+154 
+155     // Use platform-specific send
+156     ssize_t sent = socket_send(sockfd, data_ptr + total_sent, bytes_to_send, 0);
+157 
+158     if (sent &lt; 0) {
+159       int error = errno;
+160       if (network_handle_send_error(error)) {
+161         continue; // Retry
+162       }
+163       return -1; // Fatal error
+164     }
+165 
+166     if (sent &gt; 0) {
+167       total_sent += (size_t)sent;
+168     }
+169   }
+170 
+171   return (ssize_t)total_sent;
+172 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>packet_send()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_set_socket_keepalive_("><a class="permalink" href="#asciichat_error_t_set_socket_keepalive_(">asciichat_error_t
+  set_socket_keepalive (<b>socket_t</b> sockfd)</a></h2>
+<p class="Pp">Set socket keepalive.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>356</b> of file
+  <b>network/network.c</b>.</p>
+<pre>356                                                         {
+357   if (sockfd == INVALID_SOCKET_VALUE) {
+358     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket file descriptor&quot;);
+359   }
+360   int result = socket_set_keepalive_params(sockfd, true, KEEPALIVE_IDLE, KEEPALIVE_INTERVAL, KEEPALIVE_COUNT);
+361   if (result != 0) {
+362     return SET_ERRNO_SYS(ERROR_NETWORK, &quot;Failed to set socket keepalive parameters&quot;);
+363   }
+364   return ASCIICHAT_OK;
+365 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_set_socket_nonblocking_("><a class="permalink" href="#asciichat_error_t_set_socket_nonblocking_(">asciichat_error_t
+  set_socket_nonblocking (<b>socket_t</b> sockfd)</a></h2>
+<p class="Pp">Set socket non-blocking.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>372</b> of file
+  <b>network/network.c</b>.</p>
+<pre>372                                                           {
+373   if (sockfd == INVALID_SOCKET_VALUE) {
+374     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket file descriptor&quot;);
+375   }
+376   int result = socket_set_nonblocking(sockfd, true);
+377   if (result != 0) {
+378     return SET_ERRNO_SYS(ERROR_NETWORK, &quot;Failed to set socket non-blocking mode&quot;);
+379   }
+380   return ASCIICHAT_OK;
+381 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>connect_with_timeout()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_set_socket_timeout_("><a class="permalink" href="#asciichat_error_t_set_socket_timeout_(">asciichat_error_t
+  set_socket_timeout (<b>socket_t</b> sockfd, uint64_t timeout_ns)</a></h2>
+<p class="Pp">Set socket timeout.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor
+<br/>
+<i>timeout_ns</i> Timeout in nanoseconds (converted to milliseconds for socket
+  level)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Sets socket-level timeouts (SO_RCVTIMEO/SO_SNDTIMEO) as a safety
+    net fallback. Actual precision depends on platform: milliseconds on most
+    systems, microseconds on some. Works in conjunction with application-level
+    timeouts via socket_poll.</p>
+<p class="Pp">Definition at line <b>321</b> of file
+  <b>network/network.c</b>.</p>
+<pre>321                                                                            {
+322   if (sockfd == INVALID_SOCKET_VALUE) {
+323     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket file descriptor&quot;);
+324   }
+325 
+326   // Convert nanoseconds to milliseconds for socket-level timeout
+327   // Note: socket-level timeouts have ~millisecond granularity on most platforms
+328   uint64_t timeout_ms = timeout_ns / (1000 * 1000);
+329   if (timeout_ms == 0 &amp;&amp; timeout_ns &gt; 0) {
+330     timeout_ms = 1; // Ensure at least 1ms for non-zero timeouts
+331   }
+332 
+333   // Set both receive and send timeouts using struct timeval
+334   struct timeval tv;
+335   tv.tv_sec = (time_t)(timeout_ms / 1000);
+336   tv.tv_usec = (long)((timeout_ms % 1000) * 1000);
+337 
+338   // Set receive timeout
+339   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &amp;tv, sizeof(tv)) != 0) {
+340     return SET_ERRNO_SYS(ERROR_NETWORK, &quot;Failed to set socket receive timeout&quot;);
+341   }
+342 
+343   // Set send timeout
+344   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &amp;tv, sizeof(tv)) != 0) {
+345     return SET_ERRNO_SYS(ERROR_NETWORK, &quot;Failed to set socket send timeout&quot;);
+346   }
+347 
+348   return ASCIICHAT_OK;
+349 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>add_client()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_socket_configure_buffers_("><a class="permalink" href="#asciichat_error_t_socket_configure_buffers_(">asciichat_error_t
+  socket_configure_buffers (<b>socket_t</b> sockfd)</a></h2>
+<p class="Pp">Configure socket buffers and TCP_NODELAY for optimal
+  performance.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>sockfd</i> Socket file descriptor</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, ERROR_NETWORK_CONFIG on
+  failure</div>
+<p class="Pp">Definition at line <b>388</b> of file
+  <b>network/network.c</b>.</p>
+<pre>388                                                             {
+389   if (sockfd == INVALID_SOCKET_VALUE) {
+390     return SET_ERRNO_SYS(ERROR_NETWORK, &quot;Invalid socket file descriptor&quot;);
+391   }
+392 
+393   int failed_options = 0;
+394 
+395   // Attempt to configure 1MB send buffer for optimal frame transmission
+396   int send_buffer_size = 1024 * 1024;
+397   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_SNDBUF, &amp;send_buffer_size, sizeof(send_buffer_size)) &lt; 0) {
+398     log_warn(&quot;Failed to set send buffer size to 1MB: %s&quot;, network_error_string());
+399     failed_options++;
+400   }
+401 
+402   // Attempt to configure 1MB receive buffer for optimal frame reception
+403   int recv_buffer_size = 1024 * 1024;
+404   if (socket_setsockopt(sockfd, SOL_SOCKET, SO_RCVBUF, &amp;recv_buffer_size, sizeof(recv_buffer_size)) &lt; 0) {
+405     log_warn(&quot;Failed to set receive buffer size to 1MB: %s&quot;, network_error_string());
+406     failed_options++;
+407   }
+408 
+409   // Attempt to enable TCP_NODELAY to disable Nagle's algorithm for low-latency transmission
+410   // This must be set even if buffer configuration fails, as it's essential for real-time video.
+411   int tcp_nodelay = 1;
+412   if (socket_setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, &amp;tcp_nodelay, sizeof(tcp_nodelay)) &lt; 0) {
+413     log_warn(&quot;Failed to set TCP_NODELAY: %s&quot;, network_error_string());
+414     failed_options++;
+415   }
+416 
+417   // Return error only if ALL options failed
+418   if (failed_options &gt;= 3) {
+419     return SET_ERRNO_SYS(ERROR_NETWORK, &quot;Failed to configure all socket options&quot;);
+420   }
+421 
+422   return ASCIICHAT_OK;
+423 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>network_error_string()</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_establish()</b>, and
+    <b>tcp_client_connect()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

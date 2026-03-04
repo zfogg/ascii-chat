@@ -1,0 +1,484 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ffmpeg_decoder_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ffmpeg_decoder_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ffmpeg_decoder_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ffmpeg_decoder_t - FFmpeg decoder state for video and audio
+    decoding.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">AVFormatContext * <b>format_ctx</b>
+  <br/>
+  FFmpeg format/container context. AVCodecContext * <b>video_codec_ctx</b>
+  <br/>
+  Video codec context. int <b>video_stream_idx</b>
+  <br/>
+  Video stream index (-1 if none). struct SwsContext * <b>sws_ctx</b>
+  <br/>
+  Software scaler for format conversion. AVCodecContext * <b>audio_codec_ctx</b>
+  <br/>
+  Audio codec context. int <b>audio_stream_idx</b>
+  <br/>
+  Audio stream index (-1 if none). struct SwrContext * <b>swr_ctx</b>
+  <br/>
+  Software resampler for format conversion. AVFrame * <b>frame</b>
+  <br/>
+  Reusable frame for decoding. AVPacket * <b>packet</b>
+  <br/>
+  Reusable packet for reading. image_t * <b>current_image</b>
+  <br/>
+  Working buffer for decoding. float * <b>audio_buffer</b>
+  <br/>
+  Buffer for partial audio frames. size_t <b>audio_buffer_size</b>
+  <br/>
+  Total size of audio buffer. size_t <b>audio_buffer_offset</b>
+  <br/>
+  Current offset in audio buffer. asciichat_thread_t <b>prefetch_thread</b>
+  <br/>
+  Prefetch thread handle. image_t * <b>prefetch_image_a</b>
+  <br/>
+  First prefetch buffer. image_t * <b>prefetch_image_b</b>
+  <br/>
+  Second prefetch buffer. image_t * <b>current_prefetch_image</b>
+  <br/>
+  Currently available prefetched frame. <b>bool</b> <b>prefetch_frame_ready</b>
+  <br/>
+  Whether current_prefetch_image has valid data. <b>bool</b>
+    <b>prefetch_thread_running</b>
+  <br/>
+  Whether prefetch thread is active. <b>bool</b> <b>prefetch_should_stop</b>
+  <br/>
+  Signal to stop prefetch thread. <b>bool</b> <b>seeking_in_progress</b>
+  <br/>
+  Signal to pause prefetch thread during seek. cond_t <b>prefetch_cond</b>
+  <br/>
+  Condition variable for pausing during seek. mutex_t <b>prefetch_mutex</b>
+  <br/>
+  Protect prefetch state and FFmpeg decoder access. mutex_t
+    <b>read_frame_mutex</b>
+  <br/>
+  Protect av_read_frame() calls from video and audio threads. image_t *
+    <b>current_read_buffer</b>
+  <br/>
+  Buffer main thread is currently reading/rendering. <b>bool</b>
+    <b>buffer_a_in_use</b>
+  <br/>
+  Whether prefetch_image_a is being read by main thread. <b>bool</b>
+    <b>buffer_b_in_use</b>
+  <br/>
+  Whether prefetch_image_b is being read by main thread. <b>bool</b>
+    <b>eof_reached</b>
+  <br/>
+  Whether end of file was reached. <b>bool</b> <b>is_stdin</b>
+  <br/>
+  Whether reading from stdin. AVIOContext * <b>avio_ctx</b>
+  <br/>
+  Custom I/O context for stdin. unsigned char * <b>avio_buffer</b>
+  <br/>
+  Buffer for custom I/O. double <b>last_video_pts</b>
+  <br/>
+  Last video presentation timestamp. double <b>last_audio_pts</b>
+  <br/>
+  Last audio presentation timestamp. uint64_t <b>audio_samples_read</b>
+  <br/>
+  Total audio samples decoded and output. int <b>audio_sample_rate</b>
+  <br/>
+  Audio sample rate (Hz). <b>bool</b>(* <b>should_exit_callback</b> )(void
+    *user_data)
+  <br/>
+  Callback to check if app should exit. void * <b>exit_callback_user_data</b>
+  <br/>
+  User data for exit callback.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">FFmpeg decoder state for video and audio decoding.</p>
+<p class="Pp">Handles video/audio decoding from files, stdin, and URLs using
+    FFmpeg. Supports double-buffered prefetching for smooth playback.</p>
+<p class="Pp">Definition at line <b>68</b> of file <b>ffmpeg_decoder.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="float*_ffmpeg_decoder_t::audio_buffer"><a class="permalink" href="#float*_ffmpeg_decoder_t::audio_buffer">float*
+  ffmpeg_decoder_t::audio_buffer</a></h2>
+<p class="Pp">Buffer for partial audio frames.</p>
+<p class="Pp">Definition at line <b>90</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ffmpeg_decoder_t::audio_buffer_offset"><a class="permalink" href="#size_t_ffmpeg_decoder_t::audio_buffer_offset">size_t
+  ffmpeg_decoder_t::audio_buffer_offset</a></h2>
+<p class="Pp">Current offset in audio buffer.</p>
+<p class="Pp">Definition at line <b>92</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_read_audio_samples()</b>,
+    <b>ffmpeg_decoder_rewind()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_ffmpeg_decoder_t::audio_buffer_size"><a class="permalink" href="#size_t_ffmpeg_decoder_t::audio_buffer_size">size_t
+  ffmpeg_decoder_t::audio_buffer_size</a></h2>
+<p class="Pp">Total size of audio buffer.</p>
+<p class="Pp">Definition at line <b>91</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVCodecContext*_ffmpeg_decoder_t::audio_codec_ctx"><a class="permalink" href="#AVCodecContext*_ffmpeg_decoder_t::audio_codec_ctx">AVCodecContext*
+  ffmpeg_decoder_t::audio_codec_ctx</a></h2>
+<p class="Pp">Audio codec context.</p>
+<p class="Pp">Definition at line <b>78</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>ffmpeg_decoder_rewind()</b>,
+    and <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_decoder_t::audio_sample_rate"><a class="permalink" href="#int_ffmpeg_decoder_t::audio_sample_rate">int
+  ffmpeg_decoder_t::audio_sample_rate</a></h2>
+<p class="Pp">Audio sample rate (Hz).</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_get_position()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ffmpeg_decoder_t::audio_samples_read"><a class="permalink" href="#uint64_t_ffmpeg_decoder_t::audio_samples_read">uint64_t
+  ffmpeg_decoder_t::audio_samples_read</a></h2>
+<p class="Pp">Total audio samples decoded and output.</p>
+<p class="Pp">Definition at line <b>125</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_get_position()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>ffmpeg_decoder_rewind()</b>,
+    and <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_decoder_t::audio_stream_idx"><a class="permalink" href="#int_ffmpeg_decoder_t::audio_stream_idx">int
+  ffmpeg_decoder_t::audio_stream_idx</a></h2>
+<p class="Pp">Audio stream index (-1 if none).</p>
+<p class="Pp">Definition at line <b>79</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_has_audio()</b>, and
+    <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_char*_ffmpeg_decoder_t::avio_buffer"><a class="permalink" href="#unsigned_char*_ffmpeg_decoder_t::avio_buffer">unsigned
+  char* ffmpeg_decoder_t::avio_buffer</a></h2>
+<p class="Pp">Buffer for custom I/O.</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVIOContext*_ffmpeg_decoder_t::avio_ctx"><a class="permalink" href="#AVIOContext*_ffmpeg_decoder_t::avio_ctx">AVIOContext*
+  ffmpeg_decoder_t::avio_ctx</a></h2>
+<p class="Pp">Custom I/O context for stdin.</p>
+<p class="Pp">Definition at line <b>117</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>, and
+    <b>ffmpeg_decoder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::buffer_a_in_use</h2>
+<p class="Pp">Whether prefetch_image_a is being read by main thread.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::buffer_b_in_use</h2>
+<p class="Pp">Whether prefetch_image_b is being read by main thread.</p>
+<p class="Pp">Definition at line <b>110</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::current_image"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::current_image">image_t*
+  ffmpeg_decoder_t::current_image</a></h2>
+<p class="Pp">Working buffer for decoding.</p>
+<p class="Pp">Definition at line <b>87</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_destroy()</b>, and
+    <b>ffmpeg_decoder_read_video_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::current_prefetch_image"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::current_prefetch_image">image_t*
+  ffmpeg_decoder_t::current_prefetch_image</a></h2>
+<p class="Pp">Currently available prefetched frame.</p>
+<p class="Pp">Definition at line <b>98</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, and
+    <b>ffmpeg_decoder_read_video_frame()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::current_read_buffer"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::current_read_buffer">image_t*
+  ffmpeg_decoder_t::current_read_buffer</a></h2>
+<p class="Pp">Buffer main thread is currently reading/rendering.</p>
+<p class="Pp">Definition at line <b>108</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::eof_reached</h2>
+<p class="Pp">Whether end of file was reached.</p>
+<p class="Pp">Definition at line <b>113</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_at_end()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>ffmpeg_decoder_rewind()</b>,
+    and <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_ffmpeg_decoder_t::exit_callback_user_data"><a class="permalink" href="#void*_ffmpeg_decoder_t::exit_callback_user_data">void*
+  ffmpeg_decoder_t::exit_callback_user_data</a></h2>
+<p class="Pp">User data for exit callback.</p>
+<p class="Pp">Definition at line <b>130</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_set_exit_callback()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVFormatContext*_ffmpeg_decoder_t::format_ctx"><a class="permalink" href="#AVFormatContext*_ffmpeg_decoder_t::format_ctx">AVFormatContext*
+  ffmpeg_decoder_t::format_ctx</a></h2>
+<p class="Pp">FFmpeg format/container context.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_get_duration()</b>, <b>ffmpeg_decoder_get_video_fps()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>ffmpeg_decoder_rewind()</b>,
+    and <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVFrame*_ffmpeg_decoder_t::frame"><a class="permalink" href="#AVFrame*_ffmpeg_decoder_t::frame">AVFrame*
+  ffmpeg_decoder_t::frame</a></h2>
+<p class="Pp">Reusable frame for decoding.</p>
+<p class="Pp">Definition at line <b>83</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>, and
+    <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::is_stdin</h2>
+<p class="Pp">Whether reading from stdin.</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create_stdin()</b>,
+    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_rewind()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_ffmpeg_decoder_t::last_audio_pts"><a class="permalink" href="#double_ffmpeg_decoder_t::last_audio_pts">double
+  ffmpeg_decoder_t::last_audio_pts</a></h2>
+<p class="Pp">Last audio presentation timestamp.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_get_position()</b>,
+    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>ffmpeg_decoder_rewind()</b>,
+    and <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="double_ffmpeg_decoder_t::last_video_pts"><a class="permalink" href="#double_ffmpeg_decoder_t::last_video_pts">double
+  ffmpeg_decoder_t::last_video_pts</a></h2>
+<p class="Pp">Last video presentation timestamp.</p>
+<p class="Pp">Definition at line <b>121</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_get_position()</b>,
+    <b>ffmpeg_decoder_rewind()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVPacket*_ffmpeg_decoder_t::packet"><a class="permalink" href="#AVPacket*_ffmpeg_decoder_t::packet">AVPacket*
+  ffmpeg_decoder_t::packet</a></h2>
+<p class="Pp">Reusable packet for reading.</p>
+<p class="Pp">Definition at line <b>84</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>, and
+    <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="cond_t_ffmpeg_decoder_t::prefetch_cond"><a class="permalink" href="#cond_t_ffmpeg_decoder_t::prefetch_cond">cond_t
+  ffmpeg_decoder_t::prefetch_cond</a></h2>
+<p class="Pp">Condition variable for pausing during seek.</p>
+<p class="Pp">Definition at line <b>103</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::prefetch_frame_ready</h2>
+<p class="Pp">Whether current_prefetch_image has valid data.</p>
+<p class="Pp">Definition at line <b>99</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::prefetch_image_a"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::prefetch_image_a">image_t*
+  ffmpeg_decoder_t::prefetch_image_a</a></h2>
+<p class="Pp">First prefetch buffer.</p>
+<p class="Pp">Definition at line <b>96</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_start_prefetch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="image_t*_ffmpeg_decoder_t::prefetch_image_b"><a class="permalink" href="#image_t*_ffmpeg_decoder_t::prefetch_image_b">image_t*
+  ffmpeg_decoder_t::prefetch_image_b</a></h2>
+<p class="Pp">Second prefetch buffer.</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_start_prefetch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_ffmpeg_decoder_t::prefetch_mutex"><a class="permalink" href="#mutex_t_ffmpeg_decoder_t::prefetch_mutex">mutex_t
+  ffmpeg_decoder_t::prefetch_mutex</a></h2>
+<p class="Pp">Protect prefetch state and FFmpeg decoder access.</p>
+<p class="Pp">Definition at line <b>104</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::prefetch_should_stop</h2>
+<p class="Pp">Signal to stop prefetch thread.</p>
+<p class="Pp">Definition at line <b>101</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_decoder_start_prefetch()</b>, and
+    <b>ffmpeg_decoder_stop_prefetch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_thread_t_ffmpeg_decoder_t::prefetch_thread"><a class="permalink" href="#asciichat_thread_t_ffmpeg_decoder_t::prefetch_thread">asciichat_thread_t
+  ffmpeg_decoder_t::prefetch_thread</a></h2>
+<p class="Pp">Prefetch thread handle.</p>
+<p class="Pp">Definition at line <b>95</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, and
+    <b>ffmpeg_decoder_stop_prefetch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::prefetch_thread_running</h2>
+<p class="Pp">Whether prefetch thread is active.</p>
+<p class="Pp">Definition at line <b>100</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_is_prefetch_running()</b>,
+    <b>ffmpeg_decoder_start_prefetch()</b>, and
+    <b>ffmpeg_decoder_stop_prefetch()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="mutex_t_ffmpeg_decoder_t::read_frame_mutex"><a class="permalink" href="#mutex_t_ffmpeg_decoder_t::read_frame_mutex">mutex_t
+  ffmpeg_decoder_t::read_frame_mutex</a></h2>
+<p class="Pp">Protect av_read_frame() calls from video and audio threads.</p>
+<p class="Pp">Definition at line <b>105</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>, and
+    <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ffmpeg_decoder_t::seeking_in_progress</h2>
+<p class="Pp">Signal to pause prefetch thread during seek.</p>
+<p class="Pp">Definition at line <b>102</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b>(* ffmpeg_decoder_t::should_exit_callback) (void
+  *user_data)</h2>
+<p class="Pp">Callback to check if app should exit.</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_set_exit_callback()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_SwrContext*_ffmpeg_decoder_t::swr_ctx"><a class="permalink" href="#struct_SwrContext*_ffmpeg_decoder_t::swr_ctx">struct
+  SwrContext* ffmpeg_decoder_t::swr_ctx</a></h2>
+<p class="Pp">Software resampler for format conversion.</p>
+<p class="Pp">Definition at line <b>80</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>, and
+    <b>ffmpeg_decoder_read_audio_samples()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_SwsContext*_ffmpeg_decoder_t::sws_ctx"><a class="permalink" href="#struct_SwsContext*_ffmpeg_decoder_t::sws_ctx">struct
+  SwsContext* ffmpeg_decoder_t::sws_ctx</a></h2>
+<p class="Pp">Software scaler for format conversion.</p>
+<p class="Pp">Definition at line <b>75</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, and
+  <b>ffmpeg_decoder_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="AVCodecContext*_ffmpeg_decoder_t::video_codec_ctx"><a class="permalink" href="#AVCodecContext*_ffmpeg_decoder_t::video_codec_ctx">AVCodecContext*
+  ffmpeg_decoder_t::video_codec_ctx</a></h2>
+<p class="Pp">Video codec context.</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
+    <b>ffmpeg_decoder_get_video_dimensions()</b>,
+    <b>ffmpeg_decoder_rewind()</b>, and
+    <b>ffmpeg_decoder_seek_to_timestamp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ffmpeg_decoder_t::video_stream_idx"><a class="permalink" href="#int_ffmpeg_decoder_t::video_stream_idx">int
+  ffmpeg_decoder_t::video_stream_idx</a></h2>
+<p class="Pp">Video stream index (-1 if none).</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>ffmpeg_decoder.c</b>.</p>
+<p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
+    <b>ffmpeg_decoder_create_stdin()</b>,
+    <b>ffmpeg_decoder_get_video_dimensions()</b>,
+    <b>ffmpeg_decoder_get_video_fps()</b>, <b>ffmpeg_decoder_has_video()</b>,
+    <b>ffmpeg_decoder_read_video_frame()</b>, and
+    <b>ffmpeg_decoder_start_prefetch()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

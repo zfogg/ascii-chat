@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>version.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">version.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">version.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">version.c - &#x1F3F7;&#xFE0F; Binary-embedded version information
+    in custom ELF/Mach-O sections for runtime inspection</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">semantic_version_t <b>version_parse</b> (const char
+    *version_string)
+  <br/>
+  int <b>version_compare</b> (semantic_version_t a, semantic_version_t b)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F3F7;&#xFE0F; Binary-embedded version information in custom
+    ELF/Mach-O sections for runtime inspection</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>version.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_version_compare_(semantic_version_t_a,_semantic_version_t_b)"><a class="permalink" href="#int_version_compare_(semantic_version_t_a,_semantic_version_t_b)">int
+  version_compare (semantic_version_t a, semantic_version_t b)</a></h2>
+<p class="Pp">Definition at line <b>112</b> of file <b>version.c</b>.</p>
+<pre>112                                                                 {
+113   // Compare major version
+114   if (a.major &lt; b.major) {
+115     return -1;
+116   }
+117   if (a.major &gt; b.major) {
+118     return 1;
+119   }
+120 
+121   // Major versions equal, compare minor
+122   if (a.minor &lt; b.minor) {
+123     return -1;
+124   }
+125   if (a.minor &gt; b.minor) {
+126     return 1;
+127   }
+128 
+129   // Minor versions equal, compare patch
+130   if (a.patch &lt; b.patch) {
+131     return -1;
+132   }
+133   if (a.patch &gt; b.patch) {
+134     return 1;
+135   }
+136 
+137   // All components equal
+138   return 0;
+139 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="semantic_version_t_version_parse_(const_char_*_version_string)"><a class="permalink" href="#semantic_version_t_version_parse_(const_char_*_version_string)">semantic_version_t
+  version_parse (const char * version_string)</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>version.c</b>.</p>
+<pre>49                                                              {
+50   semantic_version_t result = {0, 0, 0, false};
+51 
+52   if (!version_string || version_string[0] == '\0') {
+53     return result;
+54   }
+55 
+56   const char *p = version_string;
+57 
+58   // Optionally skip 'v' prefix if present
+59   if (p[0] == 'v' || p[0] == 'V') {
+60     p++; // Skip 'v'
+61   }
+62 
+63   // Parse major version
+64   char *endptr = NULL;
+65   errno = 0; // Reset errno before strtol
+66   long major = strtol(p, &amp;endptr, 10);
+67   if (errno == ERANGE || endptr == p || major &lt; 0 || major &gt; INT_MAX) {
+68     return result; // Invalid major version or overflow
+69   }
+70   result.major = (int)major;
+71   p = endptr;
+72 
+73   // Version must have all three components (major.minor.patch)
+74   if (*p != '.') {
+75     return result; // Invalid: missing minor version
+76   }
+77   p++; // Skip dot
+78 
+79   // Parse minor version
+80   errno = 0; // Reset errno before strtol
+81   long minor = strtol(p, &amp;endptr, 10);
+82   if (errno == ERANGE || endptr == p || minor &lt; 0 || minor &gt; INT_MAX) {
+83     return result; // Invalid minor version or overflow
+84   }
+85   result.minor = (int)minor;
+86   p = endptr;
+87 
+88   // Version must have patch component
+89   if (*p != '.') {
+90     return result; // Invalid: missing patch version
+91   }
+92   p++; // Skip dot
+93 
+94   // Parse patch version
+95   errno = 0; // Reset errno before strtol
+96   long patch = strtol(p, &amp;endptr, 10);
+97   if (errno == ERANGE || endptr == p || patch &lt; 0 || patch &gt; INT_MAX) {
+98     return result; // Invalid patch version or overflow
+99   }
+100   result.patch = (int)patch;
+101   p = endptr;
+102 
+103   // Reject prerelease tags (e.g., &quot;v1.2.3-beta&quot;) - must end after patch number
+104   if (*p != '\0') {
+105     return result; // Invalid: has extra characters after version
+106   }
+107 
+108   result.valid = true;
+109   return result;
+110 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>update_check_load_cache()</b>, and
+    <b>update_check_perform()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_display_ctx(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_display_ctx(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_display_ctx(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_display_ctx - Internal session display context
+  structure.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">tty_info_t <b>tty_info</b>
+  <br/>
+  TTY information (file descriptor, path, ownership). <b>bool</b> <b>has_tty</b>
+  <br/>
+  True if we have a valid TTY for interactive output. terminal_capabilities_t
+    <b>caps</b>
+  <br/>
+  Detected terminal capabilities. char <b>palette_chars</b> [256]
+  <br/>
+  Palette character string for rendering. size_t <b>palette_len</b>
+  <br/>
+  Number of characters in palette. char <b>luminance_palette</b> [256]
+  <br/>
+  Luminance-to-character mapping table (256 entries). palette_type_t
+    <b>palette_type</b>
+  <br/>
+  Configured palette type. <b>bool</b> <b>snapshot_mode</b>
+  <br/>
+  Snapshot mode enabled. atomic_t <b>first_frame</b>
+  <br/>
+  First frame flag for logging control. <b>bool</b> <b>initialized</b>
+  <br/>
+  Context is fully initialized. <b>bool</b> <b>audio_playback_enabled</b>
+  <br/>
+  Audio playback is enabled. void * <b>audio_ctx</b>
+  <br/>
+  Audio context for playback (borrowed, not owned). atomic_t
+    <b>keyboard_help_active</b>
+  <br/>
+  Keyboard help active flag (toggled with '?') - atomic for thread-safe access.
+    digital_rain_t * <b>digital_rain</b>
+  <br/>
+  Digital rain effect context (NULL if disabled). uint64_t
+    <b>last_frame_time_ns</b>
+  <br/>
+  Last frame timestamp for digital rain delta time calculation. fps_counter_t *
+    <b>fps_counter</b>
+  <br/>
+  FPS counter for measuring output throughput. uint32_t <b>render_fps</b>
+  <br/>
+  Video FPS for render-file encoding. render_file_ctx_t * <b>render_file</b>
+  <br/>
+  Render-to-file context (NULL if disabled). <b>terminal_fd_reader_t</b> *
+    <b>stdin_reader</b>
+  <br/>
+  Stdin frame reader for ASCII-to-video rendering (borrowed ref, not owned).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Internal session display context structure.</p>
+<p class="Pp">Contains all state for terminal display including TTY info,
+    capabilities, palette, and rendering state.</p>
+<p class="Pp">Definition at line <b>54</b> of file
+    <b>src/common/session/display.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_display_ctx::audio_ctx"><a class="permalink" href="#void*_session_display_ctx::audio_ctx">void*
+  session_display_ctx::audio_ctx</a></h2>
+<p class="Pp">Audio context for playback (borrowed, not owned).</p>
+<p class="Pp">Definition at line <b>89</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>, and
+    <b>session_display_write_audio()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_display_ctx::audio_playback_enabled</h2>
+<p class="Pp">Audio playback is enabled.</p>
+<p class="Pp">Definition at line <b>86</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>,
+    <b>session_display_has_audio_playback()</b>, and
+    <b>session_display_write_audio()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="terminal_capabilities_t_session_display_ctx::caps"><a class="permalink" href="#terminal_capabilities_t_session_display_ctx::caps">terminal_capabilities_t
+  session_display_ctx::caps</a></h2>
+<p class="Pp">Detected terminal capabilities.</p>
+<p class="Pp">Definition at line <b>62</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_create()</b>, <b>session_display_get_caps()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="digital_rain_t*_session_display_ctx::digital_rain"><a class="permalink" href="#digital_rain_t*_session_display_ctx::digital_rain">digital_rain_t*
+  session_display_ctx::digital_rain</a></h2>
+<p class="Pp">Digital rain effect context (NULL if disabled).</p>
+<p class="Pp">Definition at line <b>95</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_create()</b>, <b>session_display_destroy()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_session_display_ctx::first_frame"><a class="permalink" href="#atomic_t_session_display_ctx::first_frame">atomic_t
+  session_display_ctx::first_frame</a></h2>
+<p class="Pp">First frame flag for logging control.</p>
+<p class="Pp">Definition at line <b>80</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>,
+    <b>session_display_has_first_frame()</b>,
+    <b>session_display_reset_first_frame()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="fps_counter_t*_session_display_ctx::fps_counter"><a class="permalink" href="#fps_counter_t*_session_display_ctx::fps_counter">fps_counter_t*
+  session_display_ctx::fps_counter</a></h2>
+<p class="Pp">FPS counter for measuring output throughput.</p>
+<p class="Pp">Definition at line <b>101</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>,
+    <b>session_display_destroy()</b>,
+    <b>session_display_render_fps_overlay()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_display_ctx::has_tty</h2>
+<p class="Pp">True if we have a valid TTY for interactive output.</p>
+<p class="Pp">Definition at line <b>59</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_clear()</b>,
+    <b>session_display_create()</b>, <b>session_display_cursor_home()</b>,
+    <b>session_display_destroy()</b>, <b>session_display_has_tty()</b>,
+    <b>session_display_render_fps_overlay()</b>, <b>session_display_reset()</b>,
+    <b>session_display_write_ascii()</b>, and
+    <b>session_display_write_raw()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_display_ctx::initialized</h2>
+<p class="Pp">Context is fully initialized.</p>
+<p class="Pp">Definition at line <b>83</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_clear()</b>,
+    <b>session_display_convert_to_ascii()</b>, <b>session_display_create()</b>,
+    <b>session_display_cursor_home()</b>, <b>session_display_destroy()</b>,
+    <b>session_display_encode_frame()</b>, <b>session_display_get_caps()</b>,
+    <b>session_display_get_luminance_palette()</b>,
+    <b>session_display_get_palette_chars()</b>,
+    <b>session_display_get_palette_len()</b>,
+    <b>session_display_get_stdin_reader()</b>,
+    <b>session_display_get_tty_fd()</b>,
+    <b>session_display_has_audio_playback()</b>,
+    <b>session_display_has_tty()</b>,
+    <b>session_display_render_fps_overlay()</b>, <b>session_display_reset()</b>,
+    <b>session_display_write_ascii()</b>, <b>session_display_write_audio()</b>,
+    and <b>session_display_write_raw()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="atomic_t_session_display_ctx::keyboard_help_active"><a class="permalink" href="#atomic_t_session_display_ctx::keyboard_help_active">atomic_t
+  session_display_ctx::keyboard_help_active</a></h2>
+<p class="Pp">Keyboard help active flag (toggled with '?') - atomic for
+    thread-safe access.</p>
+<p class="Pp">Definition at line <b>92</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>keyboard_help_is_active()</b>,
+    <b>keyboard_help_toggle()</b>, <b>session_display_create()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_session_display_ctx::last_frame_time_ns"><a class="permalink" href="#uint64_t_session_display_ctx::last_frame_time_ns">uint64_t
+  session_display_ctx::last_frame_time_ns</a></h2>
+<p class="Pp">Last frame timestamp for digital rain delta time calculation.</p>
+<p class="Pp">Definition at line <b>98</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_create()</b>, and
+  <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_session_display_ctx::luminance_palette_256_"><a class="permalink" href="#char_session_display_ctx::luminance_palette_256_">char
+  session_display_ctx::luminance_palette[256]</a></h2>
+<p class="Pp">Luminance-to-character mapping table (256 entries).</p>
+<p class="Pp">Definition at line <b>71</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>, and
+    <b>session_display_get_luminance_palette()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_session_display_ctx::palette_chars_256_"><a class="permalink" href="#char_session_display_ctx::palette_chars_256_">char
+  session_display_ctx::palette_chars[256]</a></h2>
+<p class="Pp">Palette character string for rendering.</p>
+<p class="Pp">Definition at line <b>65</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_convert_to_ascii()</b>,
+    <b>session_display_create()</b>, and
+    <b>session_display_get_palette_chars()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_session_display_ctx::palette_len"><a class="permalink" href="#size_t_session_display_ctx::palette_len">size_t
+  session_display_ctx::palette_len</a></h2>
+<p class="Pp">Number of characters in palette.</p>
+<p class="Pp">Definition at line <b>68</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>, and
+    <b>session_display_get_palette_len()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="palette_type_t_session_display_ctx::palette_type"><a class="permalink" href="#palette_type_t_session_display_ctx::palette_type">palette_type_t
+  session_display_ctx::palette_type</a></h2>
+<p class="Pp">Configured palette type.</p>
+<p class="Pp">Definition at line <b>74</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="render_file_ctx_t*_session_display_ctx::render_file"><a class="permalink" href="#render_file_ctx_t*_session_display_ctx::render_file">render_file_ctx_t*
+  session_display_ctx::render_file</a></h2>
+<p class="Pp">Render-to-file context (NULL if disabled).</p>
+<p class="Pp">Definition at line <b>108</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>,
+    <b>session_display_destroy()</b>, <b>session_display_encode_frame()</b>,
+    <b>session_display_has_render_file()</b>,
+    <b>session_display_set_snapshot_actual_duration()</b>, and
+    <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_session_display_ctx::render_fps"><a class="permalink" href="#uint32_t_session_display_ctx::render_fps">uint32_t
+  session_display_ctx::render_fps</a></h2>
+<p class="Pp">Video FPS for render-file encoding.</p>
+<p class="Pp">Definition at line <b>104</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>,
+    <b>session_display_get_render_fps()</b>, and
+    <b>session_display_set_render_fps()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_display_ctx::snapshot_mode</h2>
+<p class="Pp">Snapshot mode enabled.</p>
+<p class="Pp">Definition at line <b>77</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_clear()</b>,
+    <b>session_display_create()</b>, <b>session_display_destroy()</b>,
+    <b>session_display_reset()</b>, and
+  <b>session_display_write_ascii()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>terminal_fd_reader_t</b>*
+  session_display_ctx::stdin_reader</h2>
+<p class="Pp">Stdin frame reader for ASCII-to-video rendering (borrowed ref, not
+    owned).</p>
+<p class="Pp">Definition at line <b>111</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_get_stdin_reader()</b>, and
+    <b>session_display_set_stdin_reader()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="tty_info_t_session_display_ctx::tty_info"><a class="permalink" href="#tty_info_t_session_display_ctx::tty_info">tty_info_t
+  session_display_ctx::tty_info</a></h2>
+<p class="Pp">TTY information (file descriptor, path, ownership).</p>
+<p class="Pp">Definition at line <b>56</b> of file
+    <b>src/common/session/display.c</b>.</p>
+<p class="Pp">Referenced by <b>session_display_clear()</b>,
+    <b>session_display_create()</b>, <b>session_display_cursor_home()</b>,
+    <b>session_display_destroy()</b>, <b>session_display_get_tty_fd()</b>,
+    <b>session_display_render_fps_overlay()</b>, <b>session_display_reset()</b>,
+    <b>session_display_write_ascii()</b>, and
+    <b>session_display_write_raw()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

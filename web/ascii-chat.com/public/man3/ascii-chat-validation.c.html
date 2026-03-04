@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>validation.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">validation.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">validation.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">validation.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>validate_opt_port</b> (const char *value_str, char
+    *error_msg, size_t error_msg_size)
+  <br/>
+  <b>bool</b> <b>validate_port_callback</b> (const void *options_struct, char
+    **error_msg)
+  <br/>
+  int <b>validate_opt_positive_int</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_non_negative_int</b> (const char *value_str, char
+    *error_msg, size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_color_mode</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_render_mode</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_palette</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_log_level</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_ip_address</b> (const char *value_str, char
+    *parsed_address, size_t address_size, <b>bool</b> is_client, char
+    *error_msg, size_t error_msg_size)
+  <br/>
+  float <b>validate_opt_float_non_negative</b> (const char *value_str, char
+    *error_msg, size_t error_msg_size)
+  <br/>
+  float <b>validate_opt_volume</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_max_clients</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_compression_level</b> (const char *value_str, char
+    *error_msg, size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_fps</b> (const char *value_str, char *error_msg, size_t
+    error_msg_size)
+  <br/>
+  int <b>validate_opt_reconnect</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_device_index</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>validate_opt_password</b> (const char *value_str, char *error_msg,
+    size_t error_msg_size)
+  <br/>
+  int <b>options_collect_identity_keys</b> (options_t *opts, int argc, char
+    *argv[])
+  <br/>
+  <b>bool</b> <b>is_remote_key_path</b> (const char *key_path)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> is_remote_key_path (const char * key_path)</h2>
+<p class="Pp">Definition at line <b>595</b> of file <b>validation.c</b>.</p>
+<pre>595                                               {
+596   if (!key_path || key_path[0] == '\0') {
+597     return false;
+598   }
+599   return (strncmp(key_path, &quot;github:&quot;, 7) == 0 || strncmp(key_path, &quot;gitlab:&quot;, 7) == 0 ||
+600           strncmp(key_path, &quot;gpg:&quot;, 4) == 0 || strncmp(key_path, &quot;http://&quot;, 7) == 0 ||
+601           strncmp(key_path, &quot;https://&quot;, 8) == 0);
+602 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>options_collect_identity_keys()</b>, and
+    <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_options_collect_identity_keys_(options_t_*_opts,_int_argc,_char_*_argv__)"><a class="permalink" href="#int_options_collect_identity_keys_(options_t_*_opts,_int_argc,_char_*_argv__)">int
+  options_collect_identity_keys (options_t * opts, int argc, char *
+  argv[])</a></h2>
+<p class="Pp">Collect multiple --key flags into identity_keys array</p>
+<p class="Pp"></p>
+<p class="Pp">Scans argv for all --key or -K flags and populates:</p>
+<ul class="Bl-bullet">
+  <li>opts-&gt;encrypt_key with the first key (backward compatibility)</li>
+  <li>opts-&gt;identity_keys[] with all keys</li>
+  <li>opts-&gt;num_identity_keys with count</li>
+</ul>
+<p class="Pp">This enables multi-key support for servers/ACDS that need to
+    present different identity keys (SSH, GPG) based on client expectations.</p>
+<p class="Pp">Definition at line <b>527</b> of file <b>validation.c</b>.</p>
+<pre>527                                                                            {
+528   if (!opts || !argv) {
+529     log_error(&quot;options_collect_identity_keys: Invalid arguments&quot;);
+530     return -1;
+531   }
+532 
+533   size_t key_count = 0;
+534 
+535   // Scan argv for all --key or -K flags
+536   for (int i = 1; i &lt; argc &amp;&amp; key_count &lt; MAX_IDENTITY_KEYS; i++) {
+537     const char *arg = argv[i];
+538 
+539     // Check if this is a --key or -K flag
+540     bool is_key_flag = false;
+541     const char *key_value = NULL;
+542 
+543     if (strcmp(arg, &quot;--key&quot;) == 0 || strcmp(arg, &quot;-K&quot;) == 0) {
+544       // Next argument is the key path
+545       if (i + 1 &lt; argc) {
+546         key_value = argv[i + 1];
+547         is_key_flag = true;
+548         i++; // Skip the value argument
+549       }
+550     } else if (strncmp(arg, &quot;--key=&quot;, 6) == 0) {
+551       // --key=value format
+552       key_value = arg + 6;
+553       is_key_flag = true;
+554     }
+555 
+556     if (is_key_flag &amp;&amp; key_value &amp;&amp; strlen(key_value) &gt; 0) {
+557       // Validate that local key files exist (skip for remote/virtual keys)
+558       if (!is_remote_key_path(key_value)) {
+559         struct stat st;
+560         if (stat(key_value, &amp;st) != 0) {
+561           log_error(&quot;Key file not found: %s&quot;, key_value);
+562           SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key file not found: %s&quot;, key_value);
+563           return -1;
+564         }
+565         // Check if it's a regular file (S_IFREG) - works on both Windows and Unix
+566         if ((st.st_mode &amp; S_IFMT) != S_IFREG) {
+567           log_error(&quot;Key path is not a regular file: %s&quot;, key_value);
+568           SET_ERRNO(ERROR_CRYPTO_KEY, &quot;Key path is not a regular file: %s&quot;, key_value);
+569           return -1;
+570         }
+571       }
+572 
+573       // Store in identity_keys array
+574       SAFE_STRNCPY(opts-&gt;identity_keys[key_count], key_value, OPTIONS_BUFF_SIZE);
+575 
+576       // First key also goes into encrypt_key for backward compatibility
+577       if (key_count == 0) {
+578         SAFE_STRNCPY(opts-&gt;encrypt_key, key_value, OPTIONS_BUFF_SIZE);
+579       }
+580 
+581       key_count++;
+582       log_debug(&quot;Collected identity key #%zu: %s&quot;, key_count, key_value);
+583     }
+584   }
+585 
+586   opts-&gt;num_identity_keys = key_count;
+587 
+588   if (key_count &gt; 0) {
+589     log_info(&quot;Collected %zu identity key(s) for multi-key support&quot;, key_count);
+590   }
+591 
+592   return (int)key_count;
+593 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_remote_key_path()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_color_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_color_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_color_mode (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate color mode string Returns parsed color mode on success,
+    -1 on error</p>
+<p class="Pp">Definition at line <b>138</b> of file <b>validation.c</b>.</p>
+<pre>138                                                                                            {
+139   if (!value_str) {
+140     if (error_msg) {
+141       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Color mode value is required&quot;);
+142     }
+143     return -1;
+144   }
+145 
+146   if (strcmp(value_str, &quot;auto&quot;) == 0) {
+147     return COLOR_MODE_AUTO;
+148   }
+149   if (strcmp(value_str, &quot;none&quot;) == 0 || strcmp(value_str, &quot;mono&quot;) == 0) {
+150     return COLOR_MODE_NONE;
+151   }
+152   if (strcmp(value_str, &quot;16&quot;) == 0 || strcmp(value_str, &quot;16color&quot;) == 0) {
+153     return COLOR_MODE_16_COLOR;
+154   }
+155   if (strcmp(value_str, &quot;256&quot;) == 0 || strcmp(value_str, &quot;256color&quot;) == 0) {
+156     return COLOR_MODE_256_COLOR;
+157   }
+158   if (strcmp(value_str, &quot;truecolor&quot;) == 0 || strcmp(value_str, &quot;24bit&quot;) == 0) {
+159     return COLOR_MODE_TRUECOLOR;
+160   }
+161   if (error_msg) {
+162     SAFE_SNPRINTF(error_msg, error_msg_size,
+163                   &quot;Invalid color mode '%s'. Valid modes: auto, none, mono, 16, 256, truecolor&quot;, value_str);
+164   }
+165   return -1;
+166 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_compression_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_compression_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_compression_level (const char * value_str, char * error_msg,
+  size_t error_msg_size)</a></h2>
+<p class="Pp">Validate compression level (1-9) Returns parsed value on success,
+    -1 on error</p>
+<p class="Pp">Definition at line <b>387</b> of file <b>validation.c</b>.</p>
+<pre>387                                                                                                   {
+388   int result = validate_int_range(value_str, 1, 9, &quot;Compression level&quot;, error_msg, error_msg_size);
+389   return (result == INT_MIN) ? -1 : result;
+390 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_device_index_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_device_index_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_device_index (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate device index (-1 for default, or 0+ for specific device)
+    Returns parsed value on success, INT_MIN on error</p>
+<p class="Pp">Definition at line <b>456</b> of file <b>validation.c</b>.</p>
+<pre>456                                                                                              {
+457   if (!value_str || strlen(value_str) == 0) {
+458     if (error_msg) {
+459       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Device index value is required&quot;);
+460     }
+461     return INT_MIN;
+462   }
+463 
+464   int index = strtoint_safe(value_str);
+465   if (index == INT_MIN) {
+466     if (error_msg) {
+467       SAFE_SNPRINTF(error_msg, error_msg_size,
+468                     &quot;Invalid device index '%s'. Must be -1 (default) or a non-negative integer.&quot;, value_str);
+469     }
+470     return INT_MIN;
+471   }
+472 
+473   // -1 is valid (system default), otherwise must be &gt;= 0
+474   if (index &lt; -1) {
+475     if (error_msg) {
+476       SAFE_SNPRINTF(error_msg, error_msg_size,
+477                     &quot;Invalid device index '%d'. Must be -1 (default) or a non-negative integer.&quot;, index);
+478     }
+479     return INT_MIN;
+480   }
+481   return index;
+482 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>strtoint_safe()</b>.</p>
+<p class="Pp">Referenced by <b>validate_webcam_index()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_validate_opt_float_non_negative_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#float_validate_opt_float_non_negative_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">float
+  validate_opt_float_non_negative (const char * value_str, char * error_msg,
+  size_t error_msg_size)</a></h2>
+<p class="Pp">Validate float value (non-negative) Returns parsed value on
+    success, returns -1.0f on error (caller must check)</p>
+<p class="Pp">Definition at line <b>320</b> of file <b>validation.c</b>.</p>
+<pre>320                                                                                                      {
+321   if (!value_str || strlen(value_str) == 0) {
+322     if (error_msg) {
+323       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Value is required&quot;);
+324     }
+325     return -1.0f;
+326   }
+327 
+328   char *endptr;
+329   float val = strtof(value_str, &amp;endptr);
+330   if (*endptr != '\0' || value_str == endptr) {
+331     if (error_msg) {
+332       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid float value '%s'. Must be a number.&quot;, value_str);
+333     }
+334     return -1.0f;
+335   }
+336   if (val &lt; 0.0f) {
+337     if (error_msg) {
+338       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Value must be non-negative (got %.2f)&quot;, val);
+339     }
+340     return -1.0f;
+341   }
+342   return val;
+343 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_fps_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_fps_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_fps (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate FPS value (1-144) Returns parsed value on success, -1 on
+    error</p>
+<p class="Pp">Definition at line <b>396</b> of file <b>validation.c</b>.</p>
+<pre>396                                                                                     {
+397   int result = validate_int_range(value_str, 1, 144, &quot;FPS&quot;, error_msg, error_msg_size);
+398   return (result == INT_MIN) ? -1 : result;
+399 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_ip_address_(const_char_*_value_str,_char_*_parsed_address,_size_t_address_size,_"><a class="permalink" href="#int_validate_opt_ip_address_(const_char_*_value_str,_char_*_parsed_address,_size_t_address_size,_">int
+  validate_opt_ip_address (const char * value_str, char * parsed_address, size_t
+  address_size, <b>bool</b> is_client, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate IP address or hostname Returns 0 on success, -1 on error
+    Sets parsed_address on success (resolved if hostname)</p>
+<p class="Pp">Definition at line <b>268</b> of file <b>validation.c</b>.</p>
+<pre>269                                                                     {
+270   (void)is_client; // Parameter not used but kept for API consistency
+271   if (!value_str || strlen(value_str) == 0) {
+272     if (error_msg) {
+273       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Address value is required&quot;);
+274     }
+275     return -1;
+276   }
+277 
+278   // Parse IPv6 address (remove brackets if present)
+279   char parsed_addr[OPTIONS_BUFF_SIZE];
+280   if (parse_ipv6_address(value_str, parsed_addr, sizeof(parsed_addr)) == 0) {
+281     value_str = parsed_addr;
+282   }
+283 
+284   // Check if it's a valid IPv4 address
+285   if (is_valid_ipv4(value_str)) {
+286     SAFE_SNPRINTF(parsed_address, address_size, &quot;%s&quot;, value_str);
+287     return 0;
+288   }
+289   // Check if it's a valid IPv6 address
+290   if (is_valid_ipv6(value_str)) {
+291     SAFE_SNPRINTF(parsed_address, address_size, &quot;%s&quot;, value_str);
+292     return 0;
+293   }
+294   // Check if it looks like an invalid IP (has dots but not valid IPv4 format)
+295   if (strchr(value_str, '.') != NULL) {
+296     if (error_msg) {
+297       SAFE_SNPRINTF(error_msg, error_msg_size,
+298                     &quot;Invalid IP address format '%s'. IPv4 addresses must have exactly 4 octets.&quot;, value_str);
+299     }
+300     return -1;
+301   }
+302 
+303   // Otherwise, try to resolve as hostname
+304   char resolved_ip[OPTIONS_BUFF_SIZE];
+305   if (platform_resolve_hostname_to_ipv4(value_str, resolved_ip, sizeof(resolved_ip)) == 0) {
+306     SAFE_SNPRINTF(parsed_address, address_size, &quot;%s&quot;, resolved_ip);
+307     return 0;
+308   } else {
+309     if (error_msg) {
+310       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Failed to resolve hostname '%s' to IP address.&quot;, value_str);
+311     }
+312     return -1;
+313   }
+314 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_log_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_log_level_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_log_level (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate log level string Returns parsed log level on success, -1
+    on error</p>
+<p class="Pp">Definition at line <b>234</b> of file <b>validation.c</b>.</p>
+<pre>234                                                                                           {
+235   if (!value_str) {
+236     if (error_msg) {
+237       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Log level value is required&quot;);
+238     }
+239     return -1;
+240   }
+241 
+242   if (platform_strcasecmp(value_str, &quot;dev&quot;) == 0) {
+243     return LOG_DEV;
+244   } else if (platform_strcasecmp(value_str, &quot;debug&quot;) == 0) {
+245     return LOG_DEBUG;
+246   } else if (platform_strcasecmp(value_str, &quot;info&quot;) == 0) {
+247     return LOG_INFO;
+248   } else if (platform_strcasecmp(value_str, &quot;warn&quot;) == 0) {
+249     return LOG_WARN;
+250   } else if (platform_strcasecmp(value_str, &quot;error&quot;) == 0) {
+251     return LOG_ERROR;
+252   } else if (platform_strcasecmp(value_str, &quot;fatal&quot;) == 0) {
+253     return LOG_FATAL;
+254   } else {
+255     if (error_msg) {
+256       SAFE_SNPRINTF(error_msg, error_msg_size,
+257                     &quot;Invalid log level '%s'. Valid levels: dev, debug, info, warn, error, fatal&quot;, value_str);
+258     }
+259     return -1;
+260   }
+261 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_strcasecmp()</b>.</p>
+<p class="Pp">Referenced by <b>parse_log_level_option()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_max_clients_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_max_clients_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_max_clients (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate max clients (1-32) Returns parsed value on success, -1 on
+    error</p>
+<p class="Pp">Definition at line <b>378</b> of file <b>validation.c</b>.</p>
+<pre>378                                                                                             {
+379   int result = validate_int_range(value_str, 1, 32, &quot;Max clients&quot;, error_msg, error_msg_size);
+380   return (result == INT_MIN) ? -1 : result;
+381 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_non_negative_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_non_negative_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_non_negative_int (const char * value_str, char * error_msg,
+  size_t error_msg_size)</a></h2>
+<p class="Pp">Validate non-negative integer Returns parsed value on success, -1
+    on error</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>validation.c</b>.</p>
+<pre>129                                                                                                  {
+130   int result = validate_int_range(value_str, 0, INT_MAX, &quot;Value&quot;, error_msg, error_msg_size);
+131   return (result == INT_MIN) ? -1 : result;
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_palette_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_palette_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_palette (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate palette type string Returns parsed palette type on
+    success, -1 on error</p>
+<p class="Pp">Definition at line <b>200</b> of file <b>validation.c</b>.</p>
+<pre>200                                                                                         {
+201   if (!value_str) {
+202     if (error_msg) {
+203       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Palette value is required&quot;);
+204     }
+205     return -1;
+206   }
+207 
+208   if (strcmp(value_str, &quot;standard&quot;) == 0) {
+209     return PALETTE_STANDARD;
+210   } else if (strcmp(value_str, &quot;blocks&quot;) == 0) {
+211     return PALETTE_BLOCKS;
+212   } else if (strcmp(value_str, &quot;digital&quot;) == 0) {
+213     return PALETTE_DIGITAL;
+214   } else if (strcmp(value_str, &quot;minimal&quot;) == 0) {
+215     return PALETTE_MINIMAL;
+216   } else if (strcmp(value_str, &quot;cool&quot;) == 0) {
+217     return PALETTE_COOL;
+218   } else if (strcmp(value_str, &quot;custom&quot;) == 0) {
+219     return PALETTE_CUSTOM;
+220   } else {
+221     if (error_msg) {
+222       SAFE_SNPRINTF(error_msg, error_msg_size,
+223                     &quot;Invalid palette '%s'. Valid palettes: standard, blocks, digital, minimal, cool, custom&quot;,
+224                     value_str);
+225     }
+226     return -1;
+227   }
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_password_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_password_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_password (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate password (8-256 characters, no null bytes) Returns 0 on
+    success, -1 on error</p>
+<p class="Pp">Definition at line <b>488</b> of file <b>validation.c</b>.</p>
+<pre>488                                                                                          {
+489   if (!value_str) {
+490     if (error_msg) {
+491       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Password value is required&quot;);
+492     }
+493     return -1;
+494   }
+495 
+496   size_t len = strlen(value_str);
+497   if (len &lt; 8) {
+498     if (error_msg) {
+499       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Password too short (%zu chars). Must be at least 8 characters.&quot;, len);
+500     }
+501     return -1;
+502   }
+503   if (len &gt; 256) {
+504     if (error_msg) {
+505       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Password too long (%zu chars). Must be at most 256 characters.&quot;, len);
+506     }
+507     return -1;
+508   }
+509 
+510   // Note: No need to check for embedded null bytes - strlen() already stopped at the first null,
+511   // so by definition there are no null bytes within [0, len).
+512 
+513   return 0;
+514 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_port_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_port_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_port (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate port number (1-65535) Returns 0 on success, non-zero on
+    error</p>
+<p class="Pp">Definition at line <b>73</b> of file <b>validation.c</b>.</p>
+<pre>73                                                                                      {
+74   if (!value_str || strlen(value_str) == 0) {
+75     if (error_msg) {
+76       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Port value is required&quot;);
+77     }
+78     return -1;
+79   }
+80 
+81   // Use safe integer parsing with range validation
+82   uint16_t port_num;
+83   if (parse_port(value_str, &amp;port_num) != ASCIICHAT_OK) {
+84     if (error_msg) {
+85       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid port value '%s'. Port must be a number between 1 and 65535.&quot;,
+86                     value_str);
+87     }
+88     return -1;
+89   }
+90   return 0;
+91 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_port()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_positive_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_positive_int_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_positive_int (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate positive integer Returns parsed value on success, -1 on
+    error</p>
+<p class="Pp">Definition at line <b>120</b> of file <b>validation.c</b>.</p>
+<pre>120                                                                                              {
+121   int result = validate_int_range(value_str, 1, INT_MAX, &quot;Value&quot;, error_msg, error_msg_size);
+122   return (result == INT_MIN) ? -1 : result;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_reconnect_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_reconnect_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_reconnect (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate reconnect value (off, auto, 0, -1, or 1-999) Returns: 0
+    for &quot;off&quot; (no retries) -1 for &quot;auto&quot; (unlimited retries)
+    1-999 for specific retry count INT_MIN on parse error</p>
+<p class="Pp">Definition at line <b>409</b> of file <b>validation.c</b>.</p>
+<pre>409                                                                                           {
+410   if (!value_str || strlen(value_str) == 0) {
+411     if (error_msg) {
+412       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Reconnect value is required&quot;);
+413     }
+414     return INT_MIN;
+415   }
+416 
+417   // Check for string values first
+418   if (platform_strcasecmp(value_str, &quot;off&quot;) == 0) {
+419     return 0; // No retries
+420   }
+421   if (platform_strcasecmp(value_str, &quot;auto&quot;) == 0) {
+422     return -1; // Unlimited retries
+423   }
+424 
+425   // Parse as integer
+426   int val = strtoint_safe(value_str);
+427   if (val == INT_MIN) {
+428     if (error_msg) {
+429       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid reconnect value '%s'. Use 'off', 'auto', or a number 0-999.&quot;,
+430                     value_str);
+431     }
+432     return INT_MIN;
+433   }
+434 
+435   // 0 means off, -1 means auto, 1-999 is valid range
+436   if (val == 0) {
+437     return 0; // No retries
+438   }
+439   if (val == -1) {
+440     return -1; // Unlimited retries
+441   }
+442   if (val &lt; 1 || val &gt; 999) {
+443     if (error_msg) {
+444       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid reconnect count '%s'. Must be 'off', 'auto', or 1-999.&quot;,
+445                     value_str);
+446     }
+447     return INT_MIN;
+448   }
+449   return val;
+450 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_strcasecmp()</b>, and
+    <b>strtoint_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_validate_opt_render_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#int_validate_opt_render_mode_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">int
+  validate_opt_render_mode (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate render mode string Returns parsed render mode on success,
+    -1 on error</p>
+<p class="Pp">Definition at line <b>172</b> of file <b>validation.c</b>.</p>
+<pre>172                                                                                             {
+173   if (!value_str) {
+174     if (error_msg) {
+175       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Render mode value is required&quot;);
+176     }
+177     return -1;
+178   }
+179 
+180   if (strcmp(value_str, &quot;foreground&quot;) == 0 || strcmp(value_str, &quot;fg&quot;) == 0) {
+181     return RENDER_MODE_FOREGROUND;
+182   }
+183   if (strcmp(value_str, &quot;background&quot;) == 0 || strcmp(value_str, &quot;bg&quot;) == 0) {
+184     return RENDER_MODE_BACKGROUND;
+185   }
+186   if (strcmp(value_str, &quot;half-block&quot;) == 0 || strcmp(value_str, &quot;halfblock&quot;) == 0) {
+187     return RENDER_MODE_HALF_BLOCK;
+188   }
+189   if (error_msg) {
+190     SAFE_SNPRINTF(error_msg, error_msg_size,
+191                   &quot;Invalid render mode '%s'. Valid modes: foreground, background, half-block&quot;, value_str);
+192   }
+193   return -1;
+194 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="float_validate_opt_volume_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)"><a class="permalink" href="#float_validate_opt_volume_(const_char_*_value_str,_char_*_error_msg,_size_t_error_msg_size)">float
+  validate_opt_volume (const char * value_str, char * error_msg, size_t
+  error_msg_size)</a></h2>
+<p class="Pp">Validate volume value (0.0-1.0) Returns parsed value on success,
+    -1.0f on error</p>
+<p class="Pp">Definition at line <b>349</b> of file <b>validation.c</b>.</p>
+<pre>349                                                                                          {
+350   if (!value_str || strlen(value_str) == 0) {
+351     if (error_msg) {
+352       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Volume value is required&quot;);
+353     }
+354     return -1.0f;
+355   }
+356 
+357   char *endptr;
+358   float val = strtof(value_str, &amp;endptr);
+359   if (*endptr != '\0' || value_str == endptr) {
+360     if (error_msg) {
+361       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Invalid volume value '%s'. Must be a number.&quot;, value_str);
+362     }
+363     return -1.0f;
+364   }
+365   if (val &lt; 0.0f || val &gt; 1.0f) {
+366     if (error_msg) {
+367       SAFE_SNPRINTF(error_msg, error_msg_size, &quot;Volume must be between 0.0 and 1.0 (got %.2f)&quot;, val);
+368     }
+369     return -1.0f;
+370   }
+371   return val;
+372 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> validate_port_callback (const void * options_struct,
+  char ** error_msg)</h2>
+<p class="Pp">Validate port option callback (matches option_descriptor validate
+    signature) Used during options parsing to validate port values with
+  PCRE2</p>
+<p class="Pp">Definition at line <b>97</b> of file <b>validation.c</b>.</p>
+<pre>97                                                                           {
+98   const options_t *opts = (const options_t *)options_struct;
+99 
+100   // Port is stored as an int, but we need to validate it as a string
+101   // The issue is that strtol() already accepted invalid formats like &quot; 80&quot;, &quot;+80&quot;, &quot;0123&quot;
+102   // So we can't validate after parsing - we need to prevent the parse in the first place
+103   // This callback runs AFTER parsing, so it's too late
+104 
+105   // Instead, check if the port value is in range (this will catch the range but not format issues)
+106   if (opts-&gt;port &lt; 1 || opts-&gt;port &gt; 65535) {
+107     if (error_msg) {
+108       *error_msg = platform_strdup(&quot;Port must be between 1 and 65535&quot;);
+109     }
+110     return false;
+111   }
+112 
+113   return true;
+114 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>platform_strdup()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

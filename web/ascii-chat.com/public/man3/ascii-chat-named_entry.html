@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>named_entry(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">named_entry(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">named_entry(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">named_entry - Registry entry for uthash.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uintptr_t <b>key</b>
+  <br/>
+  char * <b>name</b>
+  <br/>
+  char * <b>type</b>
+  <br/>
+  char * <b>format_spec</b>
+  <br/>
+  char * <b>file</b>
+  <br/>
+  int <b>line</b>
+  <br/>
+  char * <b>func</b>
+  <br/>
+  UT_hash_handle <b>hh</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Registry entry for uthash.</p>
+<p class="Pp">Definition at line <b>44</b> of file <b>debug/named.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="char*_named_entry::file"><a class="permalink" href="#char*_named_entry::file">char*
+  named_entry::file</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_describe()</b>, and
+    <b>named_unregister()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_named_entry::format_spec"><a class="permalink" href="#char*_named_entry::format_spec">char*
+  named_entry::format_spec</a></h2>
+<p class="Pp">Definition at line <b>48</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_get_fd_format_spec()</b>,
+    <b>named_get_format_spec()</b>, <b>named_get_packet_type_format_spec()</b>,
+    and <b>named_unregister()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_named_entry::func"><a class="permalink" href="#char*_named_entry::func">char*
+  named_entry::func</a></h2>
+<p class="Pp">Definition at line <b>51</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_describe()</b>, and
+    <b>named_unregister()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="UT_hash_handle_named_entry::hh"><a class="permalink" href="#UT_hash_handle_named_entry::hh">UT_hash_handle
+  named_entry::hh</a></h2>
+<p class="Pp">Definition at line <b>52</b> of file <b>debug/named.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uintptr_t_named_entry::key"><a class="permalink" href="#uintptr_t_named_entry::key">uintptr_t
+  named_entry::key</a></h2>
+<p class="Pp">Definition at line <b>45</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_register()</b>, <b>named_register_fd()</b>,
+    <b>named_register_fmt()</b>, and <b>named_register_packet_type()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_named_entry::line"><a class="permalink" href="#int_named_entry::line">int
+  named_entry::line</a></h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_describe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_named_entry::name"><a class="permalink" href="#char*_named_entry::name">char*
+  named_entry::name</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_describe()</b>, <b>named_get()</b>,
+    <b>named_get_fd()</b>, <b>named_get_packet_type()</b>,
+    <b>named_register()</b>, <b>named_register_fd()</b>,
+    <b>named_register_fmt()</b>, <b>named_register_packet_type()</b>, and
+    <b>named_unregister()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char*_named_entry::type"><a class="permalink" href="#char*_named_entry::type">char*
+  named_entry::type</a></h2>
+<p class="Pp">Definition at line <b>47</b> of file <b>debug/named.c</b>.</p>
+<p class="Pp">Referenced by <b>named_describe()</b>, <b>named_get_type()</b>,
+    and <b>named_unregister()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

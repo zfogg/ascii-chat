@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>dns.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">dns.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">dns.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">dns.c - DNS resolution utilities implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>dns_test_connectivity</b> (const char *hostname)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">DNS resolution utilities implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>dns.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> dns_test_connectivity (const char * hostname)</h2>
+<p class="Pp">Definition at line <b>11</b> of file <b>dns.c</b>.</p>
+<pre>11                                                  {
+12   if (!hostname) {
+13     log_warn(&quot;NULL hostname provided to DNS connectivity test&quot;);
+14     return false;
+15   }
+16 
+17   struct addrinfo hints, *result = NULL;
+18   memset(&amp;hints, 0, sizeof(hints));
+19   hints.ai_family = AF_INET; // IPv4
+20   hints.ai_socktype = SOCK_STREAM;
+21 
+22   log_debug(&quot;Testing DNS connectivity to %s...&quot;, hostname);
+23 
+24   int ret = getaddrinfo(hostname, &quot;443&quot;, &amp;hints, &amp;result);
+25   if (ret != 0) {
+26     log_warn(&quot;DNS resolution failed for %s: %s&quot;, hostname, gai_strerror(ret));
+27     return false;
+28   }
+29 
+30   if (result) {
+31     freeaddrinfo(result);
+32   }
+33 
+34   log_debug(&quot;DNS connectivity test succeeded for %s&quot;, hostname);
+35   return true;
+36 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

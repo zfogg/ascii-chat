@@ -1,0 +1,1928 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>server.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">server.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">server.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">server.h - ascii-chat Client Server Connection Management
+    Interface</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum <b>connection_error_t</b> { <b>CONNECTION_SUCCESS</b> = 0,
+    <b>CONNECTION_WARNING_NO_CLIENT_AUTH</b> = 1,
+    <b>CONNECTION_ERROR_GENERIC</b> = -1, <b>CONNECTION_ERROR_AUTH_FAILED</b> =
+    -2, <b>CONNECTION_ERROR_HOST_KEY_FAILED</b> = -3 }
+  <br/>
+  Connection establishment error codes.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>server_connection_init</b> ()
+  <br/>
+  Initialize server connection management subsystem. int
+    <b>server_connection_establish</b> (const char *address, int port, int
+    reconnect_attempt, <b>bool</b> first_connection, <b>bool</b>
+    has_ever_connected)
+  <br/>
+  Establish connection to ascii-chat server. <b>bool</b>
+    <b>server_connection_is_active</b> ()
+  <br/>
+  Check if server connection is currently active. <b>socket_t</b>
+    <b>server_connection_get_socket</b> ()
+  <br/>
+  Get current socket file descriptor. struct acip_transport *
+    <b>server_connection_get_transport</b> (void)
+  <br/>
+  Get ACIP transport instance. void <b>server_connection_set_transport</b>
+    (struct acip_transport *transport)
+  <br/>
+  Set ACIP transport instance from connection fallback. uint32_t
+    <b>server_connection_get_client_id</b> ()
+  <br/>
+  Get client ID assigned by server. const char * <b>server_connection_get_ip</b>
+    ()
+  <br/>
+  Get resolved server IP address. void <b>server_connection_set_ip</b> (const
+    char *ip)
+  <br/>
+  Set the server IP address. void <b>server_connection_set_port</b> (int port)
+  <br/>
+  Set the server port. int <b>server_connection_get_port</b> (void)
+  <br/>
+  Get the server port. void <b>server_connection_close</b> ()
+  <br/>
+  Close server connection gracefully. void <b>server_connection_shutdown</b> ()
+  <br/>
+  Emergency shutdown for signal handlers. void <b>server_connection_lost</b> ()
+  <br/>
+  Signal that connection has been lost. <b>bool</b>
+    <b>server_connection_is_lost</b> ()
+  <br/>
+  Check if connection loss was detected. void <b>server_connection_cleanup</b>
+    ()
+  <br/>
+  Cleanup connection management subsystem. asciichat_error_t
+    <b>threaded_send_packet</b> (packet_type_t type, const void *data, size_t
+    len)
+  <br/>
+  Thread-safe packet transmission. int <b>threaded_send_audio_batch_packet</b>
+    (const float *samples, int num_samples, int batch_count)
+  <br/>
+  Thread-safe batched audio packet transmission. asciichat_error_t
+    <b>threaded_send_audio_opus</b> (const uint8_t *opus_data, size_t opus_size,
+    int sample_rate, int frame_duration)
+  <br/>
+  Thread-safe Opus audio frame transmission. asciichat_error_t
+    <b>threaded_send_audio_opus_batch</b> (const uint8_t *opus_data, size_t
+    opus_size, const uint16_t *frame_sizes, int frame_count)
+  <br/>
+  Thread-safe Opus audio batch packet transmission. asciichat_error_t
+    <b>threaded_send_image_frame</b> (const void *pixel_data, uint32_t width,
+    uint32_t height, uint32_t pixel_format)
+  <br/>
+  Thread-safe image frame transmission. asciichat_error_t
+    <b>threaded_send_image_frame_h265</b> (const void *pixel_data, uint32_t
+    width, uint32_t height)
+  <br/>
+  Send H.265-encoded video frame to server (thread-safe). int
+    <b>threaded_send_ping_packet</b> (void)
+  <br/>
+  Thread-safe ping packet transmission. int <b>threaded_send_pong_packet</b>
+    (void)
+  <br/>
+  Thread-safe pong packet transmission. asciichat_error_t
+    <b>threaded_send_stream_start_packet</b> (uint32_t stream_type)
+  <br/>
+  Thread-safe stream start packet transmission. asciichat_error_t
+    <b>threaded_send_terminal_size_with_auto_detect</b> (unsigned short width,
+    unsigned short height)
+  <br/>
+  Thread-safe terminal size packet transmission with auto-detection. int
+    <b>threaded_send_client_join_packet</b> (const char *display_name, uint32_t
+    capabilities)
+  <br/>
+  Thread-safe client join packet transmission. int <b>server_send_packet</b>
+    (packet_type_t type, const void *data, size_t len)
+  <br/>
+  Send general packet to server. int <b>server_send_audio</b> (const float
+    *samples, int num_samples)
+  <br/>
+  Send audio data to server. int <b>server_send_audio_batch</b> (const float
+    *samples, int num_samples, int batch_count)
+  <br/>
+  Send batched audio data to server. int
+    <b>server_send_terminal_capabilities</b> (unsigned short width, unsigned
+    short height)
+  <br/>
+  Send terminal capabilities to server. int <b>server_send_ping</b> ()
+  <br/>
+  Send ping keepalive packet. int <b>server_send_pong</b> ()
+  <br/>
+  Send pong response packet. int <b>server_send_stream_start</b> (uint32_t
+    stream_type)
+  <br/>
+  Send stream start notification. int <b>server_send_stream_stop</b> (uint32_t
+    stream_type)
+  <br/>
+  Send stream stop notification.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">ascii-chat Client Server Connection Management Interface</p>
+<p class="Pp">Provides connection establishment, management, and thread-safe
+    packet transmission functions for communicating with ascii-chat servers.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">2025</div>
+<p class="Pp">Definition in file <b>client/server.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_"><a class="permalink" href="#enum_">enum
+  <b>connection_error_t</b></a></h2>
+<p class="Pp">Connection establishment error codes. These codes are returned by
+    <b>server_connection_establish()</b> to indicate different failure modes.
+    Zero indicates success.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="CONNECTION_SUCCESS"><a class="permalink" href="#CONNECTION_SUCCESS"><b><i>CONNECTION_SUCCESS
+    </i></b></a></dt>
+  <dd>Connection established successfully.</dd>
+  <dt id="CONNECTION_WARNING_NO_CLIENT_AUTH"><a class="permalink" href="#CONNECTION_WARNING_NO_CLIENT_AUTH"><b><i>CONNECTION_WARNING_NO_CLIENT_AUTH
+    </i></b></a></dt>
+  <dd>Server not using client verification (warning).</dd>
+  <dt id="CONNECTION_ERROR_GENERIC"><a class="permalink" href="#CONNECTION_ERROR_GENERIC"><b><i>CONNECTION_ERROR_GENERIC
+    </i></b></a></dt>
+  <dd>Generic error (retry allowed).</dd>
+  <dt id="CONNECTION_ERROR_AUTH_FAILED"><a class="permalink" href="#CONNECTION_ERROR_AUTH_FAILED"><b><i>CONNECTION_ERROR_AUTH_FAILED
+    </i></b></a></dt>
+  <dd>Authentication failure (no retry).</dd>
+  <dt id="CONNECTION_ERROR_HOST_KEY_FAILED"><a class="permalink" href="#CONNECTION_ERROR_HOST_KEY_FAILED"><b><i>CONNECTION_ERROR_HOST_KEY_FAILED
+    </i></b></a></dt>
+  <dd>Host key verification failed (no retry).</dd>
+</dl>
+<p class="Pp">Definition at line <b>31</b> of file <b>client/server.h</b>.</p>
+<pre>31              {
+32   CONNECTION_SUCCESS = 0,                
+33   CONNECTION_WARNING_NO_CLIENT_AUTH = 1, 
+34   CONNECTION_ERROR_GENERIC = -1,         
+35   CONNECTION_ERROR_AUTH_FAILED = -2,     
+36   CONNECTION_ERROR_HOST_KEY_FAILED = -3  
+37 } connection_error_t;</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_cleanup_()"><a class="permalink" href="#void_server_connection_cleanup_()">void
+  server_connection_cleanup ()</a></h2>
+<p class="Pp">Cleanup connection management subsystem. Closes any active
+    connection and destroys synchronization objects. Called during client
+    shutdown.</p>
+<p class="Pp">Definition at line <b>1082</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1082                                  {
+1083   if (!GET_OPTION(quiet)) {
+1084     log_set_terminal_output(true);
+1085   }
+1086   server_connection_close();
+1087   mutex_destroy(&amp;g_send_mutex);
+1088 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>log_set_terminal_output()</b>,
+    <b>mutex_destroy()</b>, and <b>server_connection_close()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_close_()"><a class="permalink" href="#void_server_connection_close_()">void
+  server_connection_close ()</a></h2>
+<p class="Pp">Close server connection gracefully. Close server connection
+    gracefully.</p>
+<p class="Pp"></p>
+<p class="Pp">Marks connection as inactive and closes the socket. This function
+    is safe to call multiple times and from multiple threads.</p>
+<p class="Pp">Definition at line <b>931</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>931                                {
+932   log_debug(&quot;[TRANSPORT_LIFECYCLE] server_connection_close() called&quot;);
+933 
+934   // Acquire send mutex to prevent race with threaded_send_image_frame()
+935   // This ensures any in-flight sends complete before we destroy the transport
+936   mutex_lock(&amp;g_send_mutex);
+937   atomic_store_bool(&amp;g_connection_active, false);
+938 
+939   // Destroy ACIP transport before closing socket
+940   if (g_client_transport) {
+941     log_debug(&quot;[TRANSPORT_LIFECYCLE] Destroying transport=%p (is_connected=%s) before closing socket&quot;,
+942               (void *)g_client_transport, acip_transport_is_connected(g_client_transport) ? &quot;true&quot; : &quot;false&quot;);
+943     acip_transport_destroy(g_client_transport);
+944     g_client_transport = NULL;
+945     log_debug(&quot;[TRANSPORT_LIFECYCLE] Transport destroyed, g_client_transport set to NULL&quot;);
+946   }
+947 
+948   mutex_unlock(&amp;g_send_mutex);
+949 
+950   if (g_sockfd != INVALID_SOCKET_VALUE) {
+951     log_debug(&quot;[TRANSPORT_LIFECYCLE] Closing socket: %d&quot;, (int)g_sockfd);
+952     close_socket(g_sockfd);
+953     g_sockfd = INVALID_SOCKET_VALUE;
+954     log_debug(&quot;[TRANSPORT_LIFECYCLE] Socket closed&quot;);
+955   }
+956 
+957   g_my_client_id = 0;
+958 
+959   // Cleanup crypto context if encryption was enabled
+960   if (g_encryption_enabled) {
+961     log_debug(&quot;[TRANSPORT_LIFECYCLE] Cleaning up crypto context&quot;);
+962     crypto_handshake_destroy(&amp;g_crypto_ctx);
+963     g_encryption_enabled = false;
+964   }
+965 
+966   // Turn ON terminal logging when connection is closed (unless it was disabled with --quiet)
+967   if (!GET_OPTION(quiet)) {
+968     log_set_terminal_output(true);
+969   }
+970   log_debug(&quot;[TRANSPORT_LIFECYCLE] server_connection_close() completed&quot;);
+971 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_transport_destroy()</b>,
+    <b>atomic_store_bool()</b>, <b>close_socket</b>,
+    <b>crypto_handshake_destroy()</b>, <b>g_crypto_ctx</b>, and
+    <b>log_set_terminal_output()</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_cleanup()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_connection_establish_(const_char_*_address,_int_port,_int_reconnect_attempt,_"><a class="permalink" href="#int_server_connection_establish_(const_char_*_address,_int_port,_int_reconnect_attempt,_">int
+  server_connection_establish (const char * address, int port, int
+  reconnect_attempt, <b>bool</b> first_connection, <b>bool</b>
+  has_ever_connected)</a></h2>
+<p class="Pp">Establish connection to ascii-chat server. Establishes a TCP
+    connection to the server and performs the cryptographic handshake. This
+    function handles DNS resolution, socket creation, connection establishment,
+    and authentication. It is designed for use in a reconnection loop with
+    exponential backoff.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>address</i> Server IP address, hostname, or ACDS
+  session string (e.g., &quot;localhost&quot;, &quot;192.168.1.100&quot;, or
+  &quot;blue-mountain-tiger&quot;)
+<br/>
+<i>port</i> Server port number (typically 27224)
+<br/>
+<i>reconnect_attempt</i> Current reconnection attempt number (0 for first
+  attempt). Used to track retry count for logging and backoff calculation.
+<br/>
+<i>first_connection</i> Whether this is the client's first attempt to connect.
+  If true, displays more informative messages. If false, this is a reconnection
+  attempt after previous connection loss.
+<br/>
+<i>has_ever_connected</i> Whether the client has EVER successfully connected in
+  this session. Used to distinguish &quot;first attempt ever&quot; from
+  &quot;reconnection attempt&quot;.</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Connection establishment status:
+<ul class="Bl-bullet">
+  <li>CONNECTION_SUCCESS (0): Connection established and authenticated
+      successfully</li>
+  <li>CONNECTION_WARNING_NO_CLIENT_AUTH (1): Connected but server is not
+      verifying client identity</li>
+  <li>CONNECTION_ERROR_GENERIC (-1): Network error (resolve failed, connect
+      refused, timeout). Caller should retry with exponential backoff.</li>
+  <li>CONNECTION_ERROR_AUTH_FAILED (-2): Authentication failed (wrong password,
+      bad SSH key). Caller should NOT retry - user intervention required.</li>
+  <li>CONNECTION_ERROR_HOST_KEY_FAILED (-3): Server host key verification
+      failed. Caller should NOT retry - user must update known_hosts.</li>
+</ul>
+</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Connection_Lifecycle"><a class="permalink" href="#Connection_Lifecycle">Connection
+  Lifecycle</a></h2>
+<dl class="Bl-tag">
+  <dt>1.</dt>
+  <dd><b>Resolution</b>: Resolves hostname/IP to socket address (supports IPv4
+      and IPv6)</dd>
+  <dt>2.</dt>
+  <dd><b>Socket Creation</b>: Creates TCP socket with appropriate options</dd>
+  <dt>3.</dt>
+  <dd><b>Connection</b>: Attempts TCP connect with timeout</dd>
+  <dt>4.</dt>
+  <dd><b>Handshake</b>: Performs cryptographic handshake (X25519 key exchange,
+      Ed25519 auth)</dd>
+  <dt>5.</dt>
+  <dd><b>Initialization</b>: Sends client capabilities and client join
+    packet</dd>
+  <dt>6.</dt>
+  <dd><b>State Update</b>: Updates global connection state atomically</dd>
+</dl>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Error_Recovery"><a class="permalink" href="#Error_Recovery">Error
+  Recovery</a></h2>
+<p class="Pp"><b>Retryable (CONNECTION_ERROR_GENERIC)</b>:</p>
+<ul class="Bl-bullet">
+  <li>Connection refused: Server not listening yet</li>
+  <li>Connection timeout: Network slow or firewall blocking</li>
+  <li>DNS resolution failure: Temporary DNS issue</li>
+  <li>Socket creation failure: System resource exhaustion</li>
+</ul>
+<p class="Pp">Caller should implement exponential backoff:</p>
+<p class="Pp"></p>
+<pre>int result = server_connection_establish(address, port, attempt, first, ever_connected);
+if (result == CONNECTION_ERROR_GENERIC) {
+<br/>
+  // Exponential backoff: 10ms, 210ms, 410ms, 610ms, ..., capped at 5 seconds
+<br/>
+  int delay_ms = 10 + (200 * attempt);
+<br/>
+  if (delay_ms &gt; 5000) delay_ms = 5000;
+<br/>
+  sleep_ms(delay_ms);
+<br/>
+  attempt++;
+<br/>
+  continue;  // Retry
+}
+</pre>
+<p class="Pp"><b>Non-Retryable (AUTH or HOST_KEY failures)</b>:</p>
+<ul class="Bl-bullet">
+  <li><b>CONNECTION_ERROR_AUTH_FAILED</b><b>: Password or SSH key doesn't match
+      server's expectations</b></li>
+  <li><b>CONNECTION_ERROR_HOST_KEY_FAILED</b><b>: Server's public key not in
+      client's known_hosts</b></li>
+</ul>
+<p class="Pp">These indicate configuration problems that won't be fixed by
+    waiting or retrying.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>See also</b></p>
+<div class="Bd-indent"><b>server_connection_is_active</b> &quot;Check connection
+  status&quot;
+<p class="Pp"></p>
+<p class="Pp"><b>server_connection_close</b> &quot;Close connection
+    gracefully&quot;</p>
+<p class="Pp"></p>
+<p class="Pp"><b>server_connection_lost</b> &quot;Signal connection loss (called
+    by other threads)&quot;</p>
+<p class="Pp"></p>
+<p class="Pp">topic_client_connection &quot;Connection Management
+    Architecture&quot;</p>
+</div>
+<p class="Pp">Attempts to connect to the specified server with full capability
+    negotiation. Implements reconnection logic with exponential backoff for
+    failed attempts. On successful connection, performs initial handshake
+    including terminal capabilities and client join protocol.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>address</i> Server IP address or hostname
+<br/>
+<i>port</i> Server port number
+<br/>
+<i>reconnect_attempt</i> Current reconnection attempt number (0 for first)
+<br/>
+<i>first_connection</i> True if this is the initial connection attempt
+<br/>
+<i>has_ever_connected</i> True if a connection was ever successfully
+  established</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>353</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>354                                                          {
+355   (void)first_connection; // Currently unused
+356   if (!address || port &lt;= 0) {
+357     log_error(&quot;Invalid address or port parameters&quot;);
+358     return -1;
+359   }
+360 
+361   // Close any existing connection
+362   if (g_sockfd != INVALID_SOCKET_VALUE) {
+363     close_socket(g_sockfd);
+364     g_sockfd = INVALID_SOCKET_VALUE;
+365   }
+366 
+367   // Apply reconnection delay if this is a retry
+368   if (reconnect_attempt &gt; 0) {
+369     unsigned int delay_us = get_reconnect_delay(reconnect_attempt);
+370     // Reconnection attempt logged only to file
+371     platform_sleep_us(delay_us);
+372 
+373     // Check if user requested exit during reconnection delay
+374     if (should_exit()) {
+375       log_debug(&quot;Exit requested during reconnection delay&quot;);
+376       return -1;
+377     }
+378   } else {
+379     // Initial connection logged only to file
+380   }
+381 
+382   // Check for WebSocket URL - handle separately from TCP
+383   if (url_is_websocket(address)) {
+384     // WebSocket connection - bypass TCP socket creation
+385     // Use the original address (URL already contains port if specified)
+386     const char *ws_url = address;
+387 
+388     // Parse for debug logging
+389     url_parts_t url_parts = {0};
+390     if (url_parse(address, &amp;url_parts) == ASCIICHAT_OK) {
+391       log_info(&quot;Connecting via WebSocket: %s (scheme=%s, host=%s, port=%d)&quot;, ws_url, url_parts.scheme, url_parts.host,
+392                url_parts.port);
+393 
+394       // Set server IP and port for crypto handshake
+395       // This ensures the crypto context has proper server address info for known_hosts verification
+396       server_connection_set_ip(url_parts.host);
+397       log_debug(&quot;CLIENT_CONNECT: Set server IP to %s from WebSocket URL&quot;, url_parts.host);
+398     } else {
+399       log_info(&quot;Connecting via WebSocket: %s&quot;, ws_url);
+400     }
+401 
+402     // Initialize crypto if encryption is enabled
+403     log_debug(&quot;CLIENT_CONNECT: Calling client_crypto_init()&quot;);
+404     if (client_crypto_init() != 0) {
+405       log_error(&quot;Failed to initialize crypto (password required or incorrect)&quot;);
+406       log_debug(&quot;CLIENT_CONNECT: client_crypto_init() failed&quot;);
+407       url_parts_destroy(&amp;url_parts);
+408       return CONNECTION_ERROR_AUTH_FAILED;
+409     }
+410 
+411     // Get crypto context for transport
+412     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+413 
+414     // Create WebSocket transport (handles connection internally)
+415     g_client_transport = acip_websocket_client_transport_create(&quot;client&quot;, ws_url, (crypto_context_t *)crypto_ctx);
+416     if (!g_client_transport) {
+417       log_error(&quot;Failed to create WebSocket ACIP transport&quot;);
+418       url_parts_destroy(&amp;url_parts);
+419       return -1;
+420     }
+421     log_debug(&quot;CLIENT_CONNECT: Created WebSocket ACIP transport with crypto context&quot;);
+422 
+423     // Set connection as active
+424     atomic_store_bool(&amp;g_connection_active, true);
+425     atomic_store_bool(&amp;g_connection_lost, false);
+426 
+427     // Send initial terminal capabilities to server
+428     int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+429                                                               (int)terminal_get_effective_height());
+430     if (result &lt; 0) {
+431       log_error(&quot;Failed to send initial capabilities to server: %s&quot;, network_error_string());
+432       acip_transport_destroy(g_client_transport);
+433       g_client_transport = NULL;
+434       url_parts_destroy(&amp;url_parts);
+435       return -1;
+436     }
+437 
+438     // Disable terminal logging after initial setup (for non-snapshot mode)
+439     if (!GET_OPTION(snapshot_mode) &amp;&amp; has_ever_connected) {
+440       log_set_terminal_output(false);
+441     }
+442 
+443     // Build capabilities flags
+444     uint32_t my_capabilities = CLIENT_CAP_VIDEO;
+445     log_debug(&quot;GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)&quot;, GET_OPTION(audio_enabled));
+446     if (GET_OPTION(audio_enabled)) {
+447       log_debug(&quot;Adding CLIENT_CAP_AUDIO to capabilities&quot;);
+448       my_capabilities |= CLIENT_CAP_AUDIO;
+449     }
+450     if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
+451       my_capabilities |= CLIENT_CAP_COLOR;
+452     }
+453     if (GET_OPTION(stretch)) {
+454       my_capabilities |= CLIENT_CAP_STRETCH;
+455     }
+456 
+457     // Generate display name from username + PID
+458     const char *display_name = platform_get_username();
+459     char my_display_name[MAX_DISPLAY_NAME_LEN];
+460     int pid = getpid();
+461     SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), &quot;%s-%d&quot;, display_name, pid);
+462     if (threaded_send_client_join_packet(my_display_name, my_capabilities) &lt; 0) {
+463       log_error(&quot;Failed to send client join packet: %s&quot;, network_error_string());
+464       acip_transport_destroy(g_client_transport);
+465       g_client_transport = NULL;
+466       url_parts_destroy(&amp;url_parts);
+467       return -1;
+468     }
+469 
+470     log_info(&quot;WebSocket connection established successfully&quot;);
+471     url_parts_destroy(&amp;url_parts);
+472     return 0;
+473   }
+474 
+475   // Resolve server address using getaddrinfo() for IPv4/IPv6 support
+476   // Special handling for localhost: ensure we try both IPv6 (::1) and IPv4 (127.0.0.1)
+477   // Many systems only map &quot;localhost&quot; to 127.0.0.1 in /etc/hosts
+478   bool is_localhost = (strcmp(address, &quot;localhost&quot;) == 0 || is_localhost_ipv4(address) || is_localhost_ipv6(address));
+479 
+480   struct addrinfo hints, *res = NULL, *addr_iter;
+481   memset(&amp;hints, 0, sizeof(hints));
+482   hints.ai_family = AF_UNSPEC; // Allow IPv4 or IPv6
+483   hints.ai_socktype = SOCK_STREAM;
+484   if (is_localhost) {
+485     hints.ai_flags = AI_NUMERICSERV; // Optimize for localhost
+486   }
+487 
+488   char port_str[16];
+489   SAFE_SNPRINTF(port_str, sizeof(port_str), &quot;%d&quot;, port);
+490 
+491   // For localhost, try IPv6 loopback (::1) first, then fall back to DNS resolution
+492   if (is_localhost) {
+493     log_debug(&quot;Localhost detected - trying IPv6 loopback [::1]:%s first...&quot;, port_str);
+494     hints.ai_family = AF_INET6;
+495     hints.ai_flags = AI_NUMERICHOST | AI_NUMERICSERV;
+496 
+497     int ipv6_result = getaddrinfo(&quot;::1&quot;, port_str, &amp;hints, &amp;res);
+498     if (ipv6_result == 0 &amp;&amp; res != NULL) {
+499       // Try IPv6 loopback connection
+500       g_sockfd = socket_create(&quot;ipv6&quot;, res-&gt;ai_family, res-&gt;ai_socktype, res-&gt;ai_protocol);
+501       if (g_sockfd != INVALID_SOCKET_VALUE) {
+502         log_debug(&quot;Trying IPv6 loopback connection to [::1]:%s...&quot;, port_str);
+503         if (connect_with_timeout(g_sockfd, res-&gt;ai_addr, res-&gt;ai_addrlen, CONNECT_TIMEOUT)) {
+504           log_debug(&quot;Connection successful using IPv6 loopback&quot;);
+505           SAFE_STRNCPY(g_server_ip, &quot;::1&quot;, sizeof(g_server_ip));
+506           freeaddrinfo(res);
+507           res = NULL; // Prevent double-free at connection_success label
+508           goto connection_success;
+509         }
+510         if (socket_get_error(g_sockfd) != 0) {
+511           log_debug(&quot;NETWORK_ERROR: %d&quot;, (int)socket_get_error(g_sockfd));
+512         } else {
+513           // log_debug(&quot;IPv6 loopback connection failed: %s&quot;, network_error_string());
+514         }
+515         close_socket(g_sockfd);
+516         g_sockfd = INVALID_SOCKET_VALUE;
+517       }
+518       freeaddrinfo(res);
+519       res = NULL;
+520     }
+521 
+522     // Check if user requested exit (Ctrl-C) before trying IPv4
+523     if (should_exit()) {
+524       log_debug(&quot;Exit requested during connection attempt&quot;);
+525       return -1;
+526     }
+527 
+528     // IPv6 failed, try IPv4 loopback (127.0.0.1)
+529     log_debug(&quot;IPv6 failed, trying IPv4 loopback 127.0.0.1:%s...&quot;, port_str);
+530     hints.ai_family = AF_INET;
+531 
+532     int ipv4_result = getaddrinfo(&quot;127.0.0.1&quot;, port_str, &amp;hints, &amp;res);
+533     if (ipv4_result == 0 &amp;&amp; res != NULL) {
+534       g_sockfd = socket_create(&quot;ipv4&quot;, res-&gt;ai_family, res-&gt;ai_socktype, res-&gt;ai_protocol);
+535       if (g_sockfd != INVALID_SOCKET_VALUE) {
+536         log_debug(&quot;Trying IPv4 loopback connection to 127.0.0.1:%s...&quot;, port_str);
+537         if (connect_with_timeout(g_sockfd, res-&gt;ai_addr, res-&gt;ai_addrlen, CONNECT_TIMEOUT)) {
+538           log_debug(&quot;Connection successful using IPv4 loopback&quot;);
+539           SAFE_STRNCPY(g_server_ip, &quot;127.0.0.1&quot;, sizeof(g_server_ip));
+540           freeaddrinfo(res);
+541           res = NULL; // Prevent double-free at connection_success label
+542           goto connection_success;
+543         }
+544         if (socket_get_error(g_sockfd) != 0) {
+545           log_debug(&quot;NETWORK_ERROR: %d&quot;, (int)socket_get_error(g_sockfd));
+546         } else {
+547           // log_debug(&quot;IPv4 loopback connection failed: %s&quot;, network_error_string());
+548         }
+549         close_socket(g_sockfd);
+550         g_sockfd = INVALID_SOCKET_VALUE;
+551       }
+552       freeaddrinfo(res);
+553       res = NULL;
+554     }
+555 
+556     // Both IPv6 and IPv4 loopback failed for localhost
+557     log_warn(&quot;Could not connect to localhost using either IPv6 or IPv4 loopback&quot;);
+558     return -1;
+559   }
+560 
+561   // For non-localhost addresses, use standard resolution
+562   log_debug(&quot;Resolving server address '%s' port %s...&quot;, address, port_str);
+563   hints.ai_family = AF_UNSPEC;
+564   hints.ai_flags = 0;
+565   int getaddr_result = getaddrinfo(address, port_str, &amp;hints, &amp;res);
+566   if (getaddr_result != 0) {
+567     log_error(&quot;Failed to resolve server address '%s': %s&quot;, address, gai_strerror(getaddr_result));
+568     return -1;
+569   }
+570 
+571   // Try each address returned by getaddrinfo() until one succeeds
+572   // Prefer IPv6 over IPv4: try IPv6 addresses first, then fall back to IPv4
+573   for (int address_family = AF_INET6; address_family &gt;= AF_INET; address_family -= (AF_INET6 - AF_INET)) {
+574     for (addr_iter = res; addr_iter != NULL; addr_iter = addr_iter-&gt;ai_next) {
+575       // Skip addresses that don't match current pass (IPv6 first, then IPv4)
+576       if (addr_iter-&gt;ai_family != address_family) {
+577         continue;
+578       }
+579 
+580       // Create socket with appropriate address family
+581       const char *socket_name =
+582           (addr_iter-&gt;ai_family == AF_INET6) ? &quot;client_socket_server_ipv6&quot; : &quot;client_socket_server_ipv4&quot;;
+583       g_sockfd = socket_create(socket_name, addr_iter-&gt;ai_family, addr_iter-&gt;ai_socktype, addr_iter-&gt;ai_protocol);
+584       if (g_sockfd == INVALID_SOCKET_VALUE) {
+585         log_debug(&quot;Could not create socket for address family %d: %s&quot;, addr_iter-&gt;ai_family, network_error_string());
+586         continue; // Try next address
+587       }
+588 
+589       // Log which address family we're trying
+590       if (addr_iter-&gt;ai_family == AF_INET) {
+591         log_debug(&quot;Trying IPv4 connection...&quot;);
+592       } else if (addr_iter-&gt;ai_family == AF_INET6) {
+593         log_debug(&quot;Trying IPv6 connection...&quot;);
+594       }
+595 
+596       // Attempt connection with timeout
+597       if (connect_with_timeout(g_sockfd, addr_iter-&gt;ai_addr, addr_iter-&gt;ai_addrlen, CONNECT_TIMEOUT)) {
+598         // Connection successful!
+599         log_debug(&quot;Connection successful using %s&quot;, addr_iter-&gt;ai_family == AF_INET    ? &quot;IPv4&quot;
+600                                                     : addr_iter-&gt;ai_family == AF_INET6 ? &quot;IPv6&quot;
+601                                                                                        : &quot;unknown protocol&quot;);
+602 
+603         // Extract server IP address for known_hosts
+604         if (format_ip_address(addr_iter-&gt;ai_family, addr_iter-&gt;ai_addr, g_server_ip, sizeof(g_server_ip)) ==
+605             ASCIICHAT_OK) {
+606           log_debug(&quot;Resolved server IP: %s&quot;, g_server_ip);
+607         } else {
+608           log_warn(&quot;Failed to format server IP address&quot;);
+609         }
+610 
+611         goto connection_success; // Break out of both loops
+612       }
+613 
+614       // Connection failed - close socket and try next address
+615       if (socket_get_error(g_sockfd) != 0) {
+616         log_debug(&quot;NETWORK_ERROR: %d&quot;, (int)socket_get_error(g_sockfd));
+617       } else {
+618         // log_debug(&quot;Connection failed: %s&quot;, network_error_string());
+619       }
+620       close_socket(g_sockfd);
+621       g_sockfd = INVALID_SOCKET_VALUE;
+622     }
+623   }
+624 
+625 connection_success:
+626 
+627   if (res) {
+628     freeaddrinfo(res);
+629   }
+630 
+631   // If we exhausted all addresses without success, fail
+632   if (g_sockfd == INVALID_SOCKET_VALUE) {
+633     log_warn(&quot;Could not connect to server %s:%d (tried all addresses)&quot;, address, port);
+634     return -1;
+635   }
+636 
+637   // Connection successful - extract local port for client ID
+638   struct sockaddr_storage local_addr = {0};
+639   socklen_t addr_len = sizeof(local_addr);
+640   if (getsockname(g_sockfd, (struct sockaddr *)&amp;local_addr, &amp;addr_len) == -1) {
+641     log_error(&quot;Failed to get local socket address: %s&quot;, network_error_string());
+642     close_socket(g_sockfd);
+643     g_sockfd = INVALID_SOCKET_VALUE;
+644     return -1;
+645   }
+646 
+647   // Extract port from either IPv4 or IPv6 address
+648   int local_port = 0;
+649   if (((struct sockaddr *)&amp;local_addr)-&gt;sa_family == AF_INET) {
+650     local_port = NET_TO_HOST_U16(((struct sockaddr_in *)&amp;local_addr)-&gt;sin_port);
+651   } else if (((struct sockaddr *)&amp;local_addr)-&gt;sa_family == AF_INET6) {
+652     local_port = NET_TO_HOST_U16(((struct sockaddr_in6 *)&amp;local_addr)-&gt;sin6_port);
+653   }
+654   g_my_client_id = (uint32_t)local_port;
+655 
+656   // Mark connection as active immediately after successful socket connection
+657   atomic_store_bool(&amp;g_connection_active, true);
+658   atomic_store_bool(&amp;g_connection_lost, false);
+659   atomic_store_bool(&amp;g_should_reconnect, false);
+660 
+661   // Initialize crypto BEFORE starting protocol handshake
+662   // Note: server IP is already set above in the connection loop
+663   log_debug(&quot;CLIENT_CONNECT: Calling client_crypto_init()&quot;);
+664   if (client_crypto_init() != 0) {
+665     log_error(&quot;Failed to initialize crypto (password required or incorrect)&quot;);
+666     log_debug(&quot;CLIENT_CONNECT: client_crypto_init() failed&quot;);
+667     close_socket(g_sockfd);
+668     g_sockfd = INVALID_SOCKET_VALUE;
+669     return CONNECTION_ERROR_AUTH_FAILED; // SSH key password was wrong - no retry
+670   }
+671 
+672   // Perform crypto handshake if encryption is enabled
+673   log_debug(&quot;CLIENT_CONNECT: Calling client_crypto_handshake()&quot;);
+674   int handshake_result = client_crypto_handshake(g_sockfd);
+675   if (handshake_result != 0) {
+676     log_error(&quot;Crypto handshake failed&quot;);
+677     log_debug(&quot;CLIENT_CONNECT: client_crypto_handshake() failed with code %d&quot;, handshake_result);
+678     close_socket(g_sockfd);
+679     g_sockfd = INVALID_SOCKET_VALUE;
+680     FATAL(ERROR_CRYPTO_HANDSHAKE,
+681           &quot;Crypto handshake failed with server - this usually indicates a protocol mismatch or network issue&quot;);
+682   }
+683   log_debug(&quot;CLIENT_CONNECT: client_crypto_handshake() succeeded&quot;);
+684 
+685   // Create ACIP transport for protocol-agnostic packet sending
+686   // The transport wraps the socket with encryption context from the handshake
+687   const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+688 
+689   // Create TCP transport (WebSocket is handled earlier in the function)
+690   g_client_transport = acip_tcp_transport_create(&quot;client&quot;, g_sockfd, (crypto_context_t *)crypto_ctx);
+691   if (!g_client_transport) {
+692     log_error(&quot;Failed to create TCP ACIP transport&quot;);
+693     close_socket(g_sockfd);
+694     g_sockfd = INVALID_SOCKET_VALUE;
+695     return -1;
+696   }
+697   log_debug(&quot;CLIENT_CONNECT: Created TCP ACIP transport with crypto context&quot;);
+698 
+699   // Turn OFF terminal logging when successfully connected to server
+700   // First connection - we'll disable logging after main.c shows the &quot;Connected successfully&quot; message
+701   if (!GET_OPTION(snapshot_mode)) {
+702     log_debug(&quot;Connected to server - terminal logging will be disabled after initial setup&quot;);
+703   } else {
+704     log_debug(&quot;Connected to server - terminal logging kept enabled for snapshot mode&quot;);
+705   }
+706 
+707   // Configure socket options for optimal performance
+708   if (socket_set_keepalive(g_sockfd, true) &lt; 0) {
+709     log_warn(&quot;Failed to set socket keepalive: %s&quot;, network_error_string());
+710   }
+711 
+712   // Configure socket buffers and TCP_NODELAY for optimal performance
+713   asciichat_error_t sock_config_result = socket_configure_buffers(g_sockfd);
+714   if (sock_config_result != ASCIICHAT_OK) {
+715     log_warn(&quot;Failed to configure socket: %s&quot;, network_error_string());
+716   }
+717 
+718   // Send initial terminal capabilities to server (this may generate debug logs)
+719   int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
+720                                                             (int)terminal_get_effective_height());
+721   if (result &lt; 0) {
+722     log_error(&quot;Failed to send initial capabilities to server: %s&quot;, network_error_string());
+723     close_socket(g_sockfd);
+724     g_sockfd = INVALID_SOCKET_VALUE;
+725     return -1;
+726   }
+727 
+728   // Now disable terminal logging after capabilities are sent (for reconnections)
+729   if (!GET_OPTION(snapshot_mode) &amp;&amp; has_ever_connected) {
+730     log_set_terminal_output(false);
+731     log_debug(&quot;Reconnected to server - terminal logging disabled to prevent interference with ASCII display&quot;);
+732   }
+733 
+734   // Send client join packet for multi-user support
+735   uint32_t my_capabilities = CLIENT_CAP_VIDEO; // Basic video capability
+736   log_debug(&quot;GET_OPTION(audio_enabled) = %d (sending CLIENT_JOIN)&quot;, GET_OPTION(audio_enabled));
+737   if (GET_OPTION(audio_enabled)) {
+738     log_debug(&quot;Adding CLIENT_CAP_AUDIO to capabilities&quot;);
+739     my_capabilities |= CLIENT_CAP_AUDIO;
+740   }
+741   if (GET_OPTION(color_mode) != COLOR_MODE_NONE) {
+742     my_capabilities |= CLIENT_CAP_COLOR;
+743   }
+744   if (GET_OPTION(stretch)) {
+745     my_capabilities |= CLIENT_CAP_STRETCH;
+746   }
+747 
+748   // Generate display name from username + PID
+749   const char *display_name = platform_get_username();
+750 
+751   char my_display_name[MAX_DISPLAY_NAME_LEN];
+752   int pid = getpid();
+753   SAFE_SNPRINTF(my_display_name, sizeof(my_display_name), &quot;%s-%d&quot;, display_name, pid);
+754 
+755   if (threaded_send_client_join_packet(my_display_name, my_capabilities) &lt; 0) {
+756     log_error(&quot;Failed to send client join packet: %s&quot;, network_error_string());
+757     close_socket(g_sockfd);
+758     g_sockfd = INVALID_SOCKET_VALUE;
+759     return -1;
+760   }
+761 
+762   // Connection already marked as active after socket creation
+763 
+764   return 0;
+765 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_tcp_transport_create()</b>,
+    <b>acip_transport_destroy()</b>,
+    <b>acip_websocket_client_transport_create()</b>, <b>atomic_store_bool()</b>,
+    <b>client_crypto_handshake()</b>, <b>client_crypto_init()</b>,
+    <b>close_socket</b>, <b>connect_with_timeout()</b>,
+    <b>CONNECTION_ERROR_AUTH_FAILED</b>, <b>crypto_client_get_context()</b>,
+    <b>crypto_client_is_ready()</b>, <b>format_ip_address()</b>,
+    <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
+    <b>log_set_terminal_output()</b>, <b>network_error_string()</b>,
+    <b>platform_sleep_us()</b>, <b>server_connection_set_ip()</b>,
+    <b>should_exit()</b>, <b>socket_configure_buffers()</b>,
+    <b>terminal_get_effective_height()</b>,
+    <b>terminal_get_effective_width()</b>,
+    <b>threaded_send_client_join_packet()</b>,
+    <b>threaded_send_terminal_size_with_auto_detect()</b>,
+    <b>url_is_websocket()</b>, <b>url_parse()</b>, and
+    <b>url_parts_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint32_t_server_connection_get_client_id_()"><a class="permalink" href="#uint32_t_server_connection_get_client_id_()">uint32_t
+  server_connection_get_client_id ()</a></h2>
+<p class="Pp">Get client ID assigned by server.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Client ID or 0 if not connected
+<p class="Pp"></p>
+<p class="Pp">Client ID (based on local port) or 0 if not connected</p>
+</div>
+<p class="Pp">Definition at line <b>857</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>857                                            {
+858   return g_my_client_id;
+859 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_server_connection_get_ip_()"><a class="permalink" href="#const_char_*_server_connection_get_ip_()">const
+  char * server_connection_get_ip ()</a></h2>
+<p class="Pp">Get resolved server IP address.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Server IP address string (IPv4 or IPv6)</div>
+<p class="Pp">Returns the server's IP address that was resolved during
+    connection establishment. Used for known_hosts verification and logging.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Server IP address string (IPv4 or IPv6), or empty string
+  if not connected</div>
+<p class="Pp">Definition at line <b>871</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>871                                        {
+872   return g_server_ip;
+873 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_connection_get_port_(void_)"><a class="permalink" href="#int_server_connection_get_port_(void_)">int
+  server_connection_get_port (void )</a></h2>
+<p class="Pp">Get the server port.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Server port number</div>
+<p class="Pp">Returns the currently configured server port.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Server port number (0 if not set)</div>
+<p class="Pp">Definition at line <b>919</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>919                                      {
+920   return g_server_port;
+921 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>socket_t</b> server_connection_get_socket ()</h2>
+<p class="Pp">Get current socket file descriptor.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Socket FD or INVALID_SOCKET_VALUE if disconnected
+<p class="Pp"></p>
+<p class="Pp">Socket file descriptor or INVALID_SOCKET_VALUE if disconnected</p>
+</div>
+<p class="Pp">Definition at line <b>787</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>787                                         {
+788   return g_sockfd;
+789 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>crypto_client_initiate_rekey()</b>,
+    <b>crypto_client_send_rekey_complete()</b>, and
+    <b>crypto_client_send_rekey_response()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="struct_acip_transport_*_server_connection_get_transport_(void_)"><a class="permalink" href="#struct_acip_transport_*_server_connection_get_transport_(void_)">struct
+  acip_transport * server_connection_get_transport (void )</a></h2>
+<p class="Pp">Get ACIP transport instance.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Transport instance or NULL if not connected</div>
+<p class="Pp">Definition at line <b>798</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>798                                                         {
+799   return g_client_transport;
+800 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>protocol_stop_connection()</b>,
+    <b>threaded_send_image_frame()</b>, and
+    <b>threaded_send_image_frame_h265()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_connection_init_()"><a class="permalink" href="#int_server_connection_init_()">int
+  server_connection_init ()</a></h2>
+<p class="Pp">Initialize server connection management subsystem.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Initialize server connection management subsystem.</p>
+<p class="Pp"></p>
+<p class="Pp">Sets up the send mutex and initializes connection state variables.
+    Must be called once during client startup before any connection
+  attempts.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, non-zero on failure</div>
+<p class="Pp">Definition at line <b>309</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>309                              {
+310   // Initialize mutex for thread-safe packet sending
+311   if (mutex_init(&amp;g_send_mutex, &quot;send&quot;) != 0) {
+312     log_error(&quot;Failed to initialize send mutex&quot;);
+313     return -1;
+314   }
+315 
+316   // Register connection atomics for debug sync state monitoring (one-time registration)
+317   static bool connection_atomics_registered = false;
+318   if (!connection_atomics_registered) {
+319     NAMED_REGISTER_ATOMIC(&amp;g_connection_active, &quot;server_connection_active_flag&quot;, NULL);
+320     NAMED_REGISTER_ATOMIC(&amp;g_connection_lost, &quot;server_connection_lost_flag&quot;, NULL);
+321     NAMED_REGISTER_ATOMIC(&amp;g_should_reconnect, &quot;should_attempt_reconnection_flag&quot;, NULL);
+322     connection_atomics_registered = true;
+323   }
+324 
+325   // Initialize connection state
+326   g_sockfd = INVALID_SOCKET_VALUE;
+327   g_client_transport = NULL;
+328   atomic_store_bool(&amp;g_connection_active, false);
+329   atomic_store_bool(&amp;g_connection_lost, false);
+330   atomic_store_bool(&amp;g_should_reconnect, false);
+331   g_my_client_id = 0;
+332 
+333   return 0;
+334 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+  <b>mutex_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> server_connection_is_active ()</h2>
+<p class="Pp">Check if server connection is currently active.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if connection is active, false otherwise</div>
+<p class="Pp">Definition at line <b>774</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>774                                    {
+775   // For TCP: check socket validity
+776   // For WebRTC: socket is INVALID_SOCKET_VALUE but transport exists
+777   return atomic_load_bool(&amp;g_connection_active) &amp;&amp; (g_sockfd != INVALID_SOCKET_VALUE || g_client_transport != NULL);
+778 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_stop_connection()</b>,
+    <b>threaded_send_image_frame()</b>, and
+    <b>threaded_send_image_frame_h265()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> server_connection_is_lost ()</h2>
+<p class="Pp">Check if connection loss was detected.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if connection lost, false otherwise</div>
+<p class="Pp">Check if connection loss was detected.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if connection loss was flagged, false
+  otherwise</div>
+<p class="Pp">Definition at line <b>1070</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1070                                  {
+1071   return atomic_load_bool(&amp;g_connection_lost);
+1072 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_lost_()"><a class="permalink" href="#void_server_connection_lost_()">void
+  server_connection_lost ()</a></h2>
+<p class="Pp">Signal that connection has been lost. Called by other modules
+    (typically protocol handlers) when they detect connection failure. Triggers
+    reconnection logic in main loop.</p>
+<p class="Pp">Definition at line <b>1054</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1054                               {
+1055   atomic_store_bool(&amp;g_connection_lost, true);
+1056   atomic_store_bool(&amp;g_connection_active, false);
+1057 
+1058   // Don't re-enable terminal logging here - let the splash screen handle it
+1059   // The reconnection splash will capture and display logs properly
+1060   display_full_reset();
+1061 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+    <b>display_full_reset()</b>.</p>
+<p class="Pp">Referenced by <b>threaded_send_audio_batch_packet()</b>,
+    <b>threaded_send_audio_opus()</b>, <b>threaded_send_audio_opus_batch()</b>,
+    <b>threaded_send_image_frame()</b>, <b>threaded_send_image_frame_h265()</b>,
+    and <b>threaded_send_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_set_ip_(const_char_*_ip)"><a class="permalink" href="#void_server_connection_set_ip_(const_char_*_ip)">void
+  server_connection_set_ip (const char * ip)</a></h2>
+<p class="Pp">Set the server IP address.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ip</i> Server IP address string</div>
+<p class="Pp">Updates the global server IP address. Used by new connection code
+    paths that don't use the legacy server_connect() function.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>ip</i> Server IP address string</div>
+<p class="Pp">Definition at line <b>885</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>885                                               {
+886   if (ip) {
+887     SAFE_STRNCPY(g_server_ip, ip, sizeof(g_server_ip));
+888     log_debug(&quot;Server IP set to: %s&quot;, g_server_ip);
+889   } else {
+890     g_server_ip[0] = '\0';
+891     log_debug(&quot;Server IP cleared&quot;);
+892   }
+893 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_main()</b>,
+    <b>connection_attempt_tcp()</b>, and
+  <b>server_connection_establish()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_set_port_(int_port)"><a class="permalink" href="#void_server_connection_set_port_(int_port)">void
+  server_connection_set_port (int port)</a></h2>
+<p class="Pp">Set the server port.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>port</i> Server port number</div>
+<p class="Pp">Updates the global server port. Used by new connection code paths
+    that don't use the legacy server_connect() function.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>port</i> Server port number</div>
+<p class="Pp">Definition at line <b>905</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>905                                           {
+906   g_server_port = port;
+907   log_debug(&quot;Server port set to: %d&quot;, g_server_port);
+908 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>client_main()</b>, and
+    <b>connection_attempt_tcp()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_set_transport_(struct_acip_transport_*_transport)"><a class="permalink" href="#void_server_connection_set_transport_(struct_acip_transport_*_transport)">void
+  server_connection_set_transport (struct acip_transport * transport)</a></h2>
+<p class="Pp">Set ACIP transport instance from connection fallback.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>transport</i> Transport instance created by
+  connection_attempt_with_fallback()</div>
+<p class="Pp">Used to integrate the transport from the 3-stage connection
+    fallback orchestrator (TCP &#x2192; STUN &#x2192; TURN) into the server
+    connection management layer.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_server_connection_shutdown_()"><a class="permalink" href="#void_server_connection_shutdown_()">void
+  server_connection_shutdown ()</a></h2>
+<p class="Pp">Emergency shutdown for signal handlers. Emergency shutdown for
+    signal handlers.</p>
+<p class="Pp"></p>
+<p class="Pp">Performs immediate connection shutdown without waiting for
+    graceful close procedures. Uses socket shutdown to interrupt any blocking
+    recv() operations in other threads.</p>
+<p class="Pp">Definition at line <b>1018</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1018                                   {
+1019   // NOTE: This function may be called from:
+1020   //   - Signal handlers on Unix (async-signal-safe context)
+1021   //   - SetConsoleCtrlHandler callback thread on Windows (separate thread context)
+1022   // Only use atomic operations and simple system calls - NO mutex locks, NO malloc, NO logging.
+1023 
+1024   atomic_store_bool(&amp;g_connection_active, false);
+1025   atomic_store_bool(&amp;g_connection_lost, true);
+1026 
+1027   if (g_sockfd != INVALID_SOCKET_VALUE) {
+1028     // Only shutdown() the socket to interrupt blocking recv()/send() operations.
+1029     // Do NOT close() here - on Windows, closing the socket while another thread
+1030     // is using it is undefined behavior and can cause STATUS_STACK_BUFFER_OVERRUN.
+1031     // The actual socket close happens in server_connection_close() which is called
+1032     // from the main thread after worker threads have been joined.
+1033     socket_shutdown(g_sockfd, SHUT_RDWR);
+1034   }
+1035 
+1036   // For WebSocket transport: interrupt blocking recv() calls
+1037   // The recv() checks is_connected before waiting for data. Setting this to false
+1038   // will cause any blocked recv() to return immediately with CONNECTION_CLOSED.
+1039   // We use a function that's async-signal-safe (no mutexes) to do this.
+1040   server_connection_interrupt_websocket_recv();
+1041 
+1042   // DO NOT call log_set_terminal_output() here - it uses mutex which is NOT async-signal-safe.
+1043   // The normal cleanup path in shutdown_client() will handle logging state.
+1044 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_bool()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>, and
+    <b>protocol_stop_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_audio_(const_float_*_samples,_int_num_samples)"><a class="permalink" href="#int_server_send_audio_(const_float_*_samples,_int_num_samples)">int
+  server_send_audio (const float * samples, int num_samples)</a></h2>
+<p class="Pp">Send audio data to server.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>samples</i> Audio sample buffer
+<br/>
+<i>num_samples</i> Number of samples</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_audio_batch_(const_float_*_samples,_int_num_samples,_int_batch_count)"><a class="permalink" href="#int_server_send_audio_batch_(const_float_*_samples,_int_num_samples,_int_batch_count)">int
+  server_send_audio_batch (const float * samples, int num_samples, int
+  batch_count)</a></h2>
+<p class="Pp">Send batched audio data to server.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>samples</i> Batched audio samples
+<br/>
+<i>num_samples</i> Total sample count
+<br/>
+<i>batch_count</i> Number of packets in batch</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)"><a class="permalink" href="#int_server_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)">int
+  server_send_packet (packet_type_t type, const void * data, size_t
+  len)</a></h2>
+<p class="Pp">Send general packet to server.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type</i> Packet type identifier
+<br/>
+<i>data</i> Packet payload
+<br/>
+<i>len</i> Payload length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_ping_()"><a class="permalink" href="#int_server_send_ping_()">int
+  server_send_ping ()</a></h2>
+<p class="Pp">Send ping keepalive packet.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_pong_()"><a class="permalink" href="#int_server_send_pong_()">int
+  server_send_pong ()</a></h2>
+<p class="Pp">Send pong response packet.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_stream_start_(uint32_t_stream_type)"><a class="permalink" href="#int_server_send_stream_start_(uint32_t_stream_type)">int
+  server_send_stream_start (uint32_t stream_type)</a></h2>
+<p class="Pp">Send stream start notification.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>stream_type</i> Type of stream (audio/video)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_stream_stop_(uint32_t_stream_type)"><a class="permalink" href="#int_server_send_stream_stop_(uint32_t_stream_type)">int
+  server_send_stream_stop (uint32_t stream_type)</a></h2>
+<p class="Pp">Send stream stop notification.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>stream_type</i> Type of stream (audio/video)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_server_send_terminal_capabilities_(unsigned_short_width,_unsigned_short_height)"><a class="permalink" href="#int_server_send_terminal_capabilities_(unsigned_short_width,_unsigned_short_height)">int
+  server_send_terminal_capabilities (unsigned short width, unsigned short
+  height)</a></h2>
+<p class="Pp">Send terminal capabilities to server.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Terminal width in characters
+<br/>
+<i>height</i> Terminal height in characters</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_threaded_send_audio_batch_packet_(const_float_*_samples,_int_num_samples,_int_batch_count)"><a class="permalink" href="#int_threaded_send_audio_batch_packet_(const_float_*_samples,_int_num_samples,_int_batch_count)">int
+  threaded_send_audio_batch_packet (const float * samples, int num_samples, int
+  batch_count)</a></h2>
+<p class="Pp">Thread-safe batched audio packet transmission.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>samples</i> Audio sample buffer containing batched
+  samples
+<br/>
+<i>num_samples</i> Total number of samples in the batch
+<br/>
+<i>batch_count</i> Number of audio chunks in this batch</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Sends a batched audio packet to the server with proper mutex
+    protection and connection state checking. Automatically handles encryption
+    if crypto is ready.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>samples</i> Audio sample buffer containing batched
+  samples
+<br/>
+<i>num_samples</i> Total number of samples in the batch
+<br/>
+<i>batch_count</i> Number of audio chunks in this batch</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1158</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1158                                                                                              {
+1159   // Lock mutex for entire send operation to prevent concurrent socket writes
+1160   mutex_lock(&amp;g_send_mutex);
+1161 
+1162   // Check connection status and get transport reference
+1163   if (!atomic_load_bool(&amp;g_connection_active) || !g_client_transport) {
+1164     mutex_unlock(&amp;g_send_mutex);
+1165     return -1;
+1166   }
+1167 
+1168   // Get transport reference - transport has its own internal synchronization
+1169   acip_transport_t *transport = g_client_transport;
+1170 
+1171   // Network I/O happens while holding mutex to prevent concurrent socket writes
+1172   asciichat_error_t result = acip_send_audio_batch(transport, samples, (uint32_t)num_samples, (uint32_t)batch_count);
+1173 
+1174   // Unlock after send completes
+1175   mutex_unlock(&amp;g_send_mutex);
+1176 
+1177   // If send failed due to network error, signal connection loss
+1178   if (result != ASCIICHAT_OK) {
+1179     server_connection_lost();
+1180     return -1;
+1181   }
+1182 
+1183   return 0;
+1184 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_audio_batch()</b>,
+    <b>atomic_load_bool()</b>, and <b>server_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_audio_opus_(const_uint8_t_*_opus_data,_size_t_opus_size,_int_sample_rate,_int_frame_duration)"><a class="permalink" href="#asciichat_error_t_threaded_send_audio_opus_(const_uint8_t_*_opus_data,_size_t_opus_size,_int_sample_rate,_int_frame_duration)">asciichat_error_t
+  threaded_send_audio_opus (const uint8_t * opus_data, size_t opus_size, int
+  sample_rate, int frame_duration)</a></h2>
+<p class="Pp">Thread-safe Opus audio frame transmission. Sends a single
+    Opus-encoded audio frame to the server with proper synchronization and
+    encryption support.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opus_data</i> Opus-encoded audio data
+<br/>
+<i>opus_size</i> Size of encoded frame
+<br/>
+<i>sample_rate</i> Sample rate in Hz
+<br/>
+<i>frame_duration</i> Frame duration in milliseconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Sends a single Opus-encoded audio frame to the server with proper
+    synchronization and encryption support.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opus_data</i> Opus-encoded audio data
+<br/>
+<i>opus_size</i> Size of encoded frame
+<br/>
+<i>sample_rate</i> Sample rate in Hz
+<br/>
+<i>frame_duration</i> Frame duration in milliseconds</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1200</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1201                                                                {
+1202   // Get transport reference while holding mutex (brief lock)
+1203   mutex_lock(&amp;g_send_mutex);
+1204 
+1205   // Check connection status and get transport reference
+1206   if (!atomic_load_bool(&amp;g_connection_active) || !g_client_transport) {
+1207     mutex_unlock(&amp;g_send_mutex);
+1208     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active or transport unavailable&quot;);
+1209   }
+1210 
+1211   // Get transport reference - transport has its own internal synchronization
+1212   acip_transport_t *transport = g_client_transport;
+1213   mutex_unlock(&amp;g_send_mutex);
+1214 
+1215   // Build Opus packet with header (outside mutex - no blocking I/O yet)
+1216   size_t header_size = 16; // sample_rate (4), frame_duration (4), reserved (8)
+1217   size_t total_size = header_size + opus_size;
+1218   void *packet_data = buffer_pool_alloc(NULL, total_size);
+1219   if (!packet_data) {
+1220     return SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate buffer for Opus packet: %zu bytes&quot;, total_size);
+1221   }
+1222 
+1223   // Write header in network byte order
+1224   uint8_t *buf = (uint8_t *)packet_data;
+1225   uint32_t sr = HOST_TO_NET_U32((uint32_t)sample_rate);
+1226   uint32_t fd = HOST_TO_NET_U32((uint32_t)frame_duration);
+1227   memcpy(buf, &amp;sr, 4);
+1228   memcpy(buf + 4, &amp;fd, 4);
+1229   memset(buf + 8, 0, 8); // Reserved
+1230 
+1231   // Copy Opus data
+1232   memcpy(buf + header_size, opus_data, opus_size);
+1233 
+1234   // Network I/O happens OUTSIDE the mutex to prevent deadlock on TCP buffer full
+1235   asciichat_error_t result =
+1236       packet_send_via_transport(transport, PACKET_TYPE_AUDIO_OPUS_BATCH, packet_data, total_size, 0);
+1237 
+1238   // Clean up
+1239   buffer_pool_free(NULL, packet_data, total_size);
+1240 
+1241   // If send failed due to network error, signal connection loss
+1242   if (result != ASCIICHAT_OK) {
+1243     server_connection_lost();
+1244     return result;
+1245   }
+1246 
+1247   return ASCIICHAT_OK;
+1248 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>, <b>buffer_pool_alloc()</b>,
+    <b>buffer_pool_free()</b>, <b>packet_send_via_transport()</b>, and
+    <b>server_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_audio_opus_batch_(const_uint8_t_*_opus_data,_size_t_opus_size,_const_uint16_t_*_frame_sizes,_int_frame_count)"><a class="permalink" href="#asciichat_error_t_threaded_send_audio_opus_batch_(const_uint8_t_*_opus_data,_size_t_opus_size,_const_uint16_t_*_frame_sizes,_int_frame_count)">asciichat_error_t
+  threaded_send_audio_opus_batch (const uint8_t * opus_data, size_t opus_size,
+  const uint16_t * frame_sizes, int frame_count)</a></h2>
+<p class="Pp">Thread-safe Opus audio batch packet transmission. Sends a batch of
+    Opus-encoded audio frames to the server with proper synchronization and
+    encryption support.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opus_data</i> Opus-encoded audio data (multiple frames
+  concatenated)
+<br/>
+<i>opus_size</i> Total size of Opus data in bytes
+<br/>
+<i>frame_sizes</i> Array of individual frame sizes (variable-length frames)
+<br/>
+<i>frame_count</i> Number of Opus frames in the batch</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Sends a batch of Opus-encoded audio frames to the server with
+    proper synchronization and encryption support.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>opus_data</i> Opus-encoded audio data (multiple frames
+  concatenated)
+<br/>
+<i>opus_size</i> Total size of Opus data in bytes
+<br/>
+<i>frame_sizes</i> Array of individual frame sizes (variable-length frames)
+<br/>
+<i>frame_count</i> Number of Opus frames in the batch</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1264</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1265                                                                                                {
+1266   // Lock mutex for entire send operation to prevent concurrent socket writes
+1267   mutex_lock(&amp;g_send_mutex);
+1268 
+1269   // Check connection status and get transport reference
+1270   if (!atomic_load_bool(&amp;g_connection_active) || !g_client_transport) {
+1271     mutex_unlock(&amp;g_send_mutex);
+1272     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active or transport unavailable&quot;);
+1273   }
+1274 
+1275   // Get transport reference - transport has its own internal synchronization
+1276   acip_transport_t *transport = g_client_transport;
+1277 
+1278   // Network I/O happens while holding mutex to prevent concurrent socket writes
+1279   // Opus uses 20ms frames at 48kHz (960 samples = 20ms)
+1280   asciichat_error_t result =
+1281       acip_send_audio_opus_batch(transport, opus_data, opus_size, frame_sizes, frame_count, 48000, 20);
+1282 
+1283   // Unlock after send completes
+1284   mutex_unlock(&amp;g_send_mutex);
+1285 
+1286   // If send failed due to network error, signal connection loss
+1287   if (result != ASCIICHAT_OK) {
+1288     server_connection_lost();
+1289     return result;
+1290   }
+1291 
+1292   return ASCIICHAT_OK;
+1293 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_audio_opus_batch()</b>,
+    <b>atomic_load_bool()</b>, and <b>server_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_threaded_send_client_join_packet_(const_char_*_display_name,_uint32_t_capabilities)"><a class="permalink" href="#int_threaded_send_client_join_packet_(const_char_*_display_name,_uint32_t_capabilities)">int
+  threaded_send_client_join_packet (const char * display_name, uint32_t
+  capabilities)</a></h2>
+<p class="Pp">Thread-safe client join packet transmission.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>display_name</i> Client display name
+<br/>
+<i>capabilities</i> Client capability flags</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Sends client join packet with display name and capabilities to the
+    server.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>display_name</i> Client display name
+<br/>
+<i>capabilities</i> Client capability flags</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1547</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1547                                                                                       {
+1548   // Connection and transport availability is checked by threaded_send_packet()
+1549 
+1550   // Build CLIENT_JOIN packet locally
+1551   client_info_packet_t join_packet;
+1552   SAFE_MEMSET(&amp;join_packet, sizeof(join_packet), 0, sizeof(join_packet));
+1553   join_packet.client_id = HOST_TO_NET_U32(0); // Will be assigned by server
+1554   SAFE_SNPRINTF(join_packet.display_name, MAX_DISPLAY_NAME_LEN, &quot;%s&quot;, display_name ? display_name : &quot;Unknown&quot;);
+1555   join_packet.capabilities = HOST_TO_NET_U32(capabilities);
+1556 
+1557   // Use threaded_send_packet() which handles encryption
+1558   int send_result = threaded_send_packet(PACKET_TYPE_CLIENT_JOIN, &amp;join_packet, sizeof(join_packet));
+1559   if (send_result == 0) {
+1560     mutex_lock(&amp;g_send_mutex);
+1561     bool active = atomic_load_u64(&amp;g_connection_active);
+1562     socket_t socket_snapshot = g_sockfd;
+1563     const crypto_context_t *crypto_ctx = crypto_client_is_ready() ? crypto_client_get_context() : NULL;
+1564     if (active &amp;&amp; socket_snapshot != INVALID_SOCKET_VALUE) {
+1565       (void)log_network_message(
+1566           socket_snapshot, (const struct crypto_context_t *)crypto_ctx, LOG_INFO, REMOTE_LOG_DIRECTION_CLIENT_TO_SERVER,
+1567           &quot;CLIENT_JOIN sent (display=\&quot;%s\&quot;, capabilities=0x%x)&quot;, join_packet.display_name, capabilities);
+1568     }
+1569     mutex_unlock(&amp;g_send_mutex);
+1570   }
+1571   return send_result;
+1572 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>,
+    <b>crypto_client_get_context()</b>, <b>crypto_client_is_ready()</b>,
+    <b>log_network_message()</b>, and <b>threaded_send_packet()</b>.</p>
+<p class="Pp">Referenced by <b>server_connection_establish()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_image_frame_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height,_uint32_t_pixel_format)"><a class="permalink" href="#asciichat_error_t_threaded_send_image_frame_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height,_uint32_t_pixel_format)">asciichat_error_t
+  threaded_send_image_frame (const void * pixel_data, uint32_t width, uint32_t
+  height, uint32_t pixel_format)</a></h2>
+<p class="Pp">Thread-safe image frame transmission. Sends image frames with
+    serialization via mutex to prevent race conditions when multiple threads
+    write to the same TCP socket.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pixel_data</i> Pixel data buffer (RGB24 format)
+<br/>
+<i>width</i> Frame width in pixels
+<br/>
+<i>height</i> Frame height in pixels
+<br/>
+<i>pixel_format</i> Pixel format (1=RGB24)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Sends image frames with serialization via g_send_mutex to prevent
+    race conditions when multiple threads write to the same TCP socket.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pixel_data</i> Pixel data buffer
+<br/>
+<i>width</i> Frame width in pixels
+<br/>
+<i>height</i> Frame height in pixels
+<br/>
+<i>pixel_format</i> Pixel format (1=RGB24)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>1309</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1310                                                                    {
+1311   if (!pixel_data) {
+1312     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pixel data is NULL&quot;);
+1313   }
+1314 
+1315   mutex_lock(&amp;g_send_mutex);
+1316 
+1317   // Get transport reference - may be NULL if connection was lost
+1318   acip_transport_t *transport = server_connection_get_transport();
+1319   if (!transport || !server_connection_is_active()) {
+1320     mutex_unlock(&amp;g_send_mutex);
+1321     return SET_ERRNO(ERROR_NETWORK, &quot;Transport unavailable&quot;);
+1322   }
+1323 
+1324   // Send image frame with socket lock held
+1325   asciichat_error_t result = acip_send_image_frame(transport, pixel_data, width, height, pixel_format);
+1326 
+1327   // Unlock after send completes
+1328   mutex_unlock(&amp;g_send_mutex);
+1329 
+1330   // If send failed due to network error, signal connection loss
+1331   if (result != ASCIICHAT_OK) {
+1332     server_connection_lost();
+1333     return result;
+1334   }
+1335 
+1336   return ASCIICHAT_OK;
+1337 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_image_frame()</b>,
+    <b>server_connection_get_transport()</b>,
+    <b>server_connection_is_active()</b>, and
+  <b>server_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_image_frame_h265_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height)"><a class="permalink" href="#asciichat_error_t_threaded_send_image_frame_h265_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height)">asciichat_error_t
+  threaded_send_image_frame_h265 (const void * pixel_data, uint32_t width,
+  uint32_t height)</a></h2>
+<p class="Pp">Send H.265-encoded video frame to server (thread-safe). Encodes
+    RGB frame using H.265 codec before transmission. Much more
+    bandwidth-efficient than raw pixel transmission. Uses mutex to prevent
+    interleaving with other packet sends.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>pixel_data</i> RGB pixel data from camera
+<br/>
+<i>width</i> Frame width in pixels
+<br/>
+<i>height</i> Frame height in pixels</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Definition at line <b>1353</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1353                                                                                                           {
+1354   if (!pixel_data) {
+1355     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Pixel data is NULL&quot;);
+1356   }
+1357 
+1358   // Get encoder - may be NULL if not initialized
+1359   h265_encoder_t *encoder = g_h265_encoder;
+1360   if (!encoder) {
+1361     return SET_ERRNO(ERROR_INVALID_STATE, &quot;H.265 encoder not initialized&quot;);
+1362   }
+1363 
+1364   mutex_lock(&amp;g_send_mutex);
+1365 
+1366   // Get transport reference - may be NULL if connection was lost
+1367   acip_transport_t *transport = server_connection_get_transport();
+1368   if (!transport || !server_connection_is_active()) {
+1369     mutex_unlock(&amp;g_send_mutex);
+1370     return SET_ERRNO(ERROR_NETWORK, &quot;Transport unavailable&quot;);
+1371   }
+1372 
+1373   // Send H.265 frame with socket lock held
+1374   asciichat_error_t result = acip_send_image_frame_h265(transport, encoder, pixel_data, width, height);
+1375 
+1376   // Unlock after send completes
+1377   mutex_unlock(&amp;g_send_mutex);
+1378 
+1379   // If send failed due to network error, signal connection loss
+1380   if (result != ASCIICHAT_OK) {
+1381     server_connection_lost();
+1382     return result;
+1383   }
+1384 
+1385   return ASCIICHAT_OK;
+1386 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acip_send_image_frame_h265()</b>,
+    <b>g_h265_encoder</b>, <b>server_connection_get_transport()</b>,
+    <b>server_connection_is_active()</b>, and
+  <b>server_connection_lost()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)"><a class="permalink" href="#asciichat_error_t_threaded_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)">asciichat_error_t
+  threaded_send_packet (packet_type_t type, const void * data, size_t
+  len)</a></h2>
+<p class="Pp">Thread-safe packet transmission. Sends a packet to the server with
+    proper mutex protection and connection state checking. Automatically handles
+    encryption if crypto is ready.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type</i> Packet type identifier
+<br/>
+<i>data</i> Packet payload
+<br/>
+<i>len</i> Payload length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">ASCIICHAT_OK on success, error code on failure</div>
+<p class="Pp">Sends a packet to the server with proper mutex protection and
+    connection state checking. Automatically handles encryption if crypto is
+    ready.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>type</i> Packet type identifier
+<br/>
+<i>data</i> Packet payload
+<br/>
+<i>len</i> Payload length</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1111</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1111                                                                                          {
+1112   // Lock mutex for entire send operation to prevent concurrent socket writes
+1113   mutex_lock(&amp;g_send_mutex);
+1114 
+1115   // Check connection status and get transport reference
+1116   if (!atomic_load_bool(&amp;g_connection_active) || !g_client_transport) {
+1117     log_debug(&quot;[TRANSPORT_LIFECYCLE] threaded_send_packet() check failed: active=%s, transport=%p&quot;,
+1118               atomic_load_bool(&amp;g_connection_active) ? &quot;true&quot; : &quot;false&quot;, (void *)g_client_transport);
+1119     mutex_unlock(&amp;g_send_mutex);
+1120     return SET_ERRNO(ERROR_NETWORK, &quot;Connection not active or transport unavailable&quot;);
+1121   }
+1122 
+1123   // Get transport reference - transport has its own internal synchronization
+1124   acip_transport_t *transport = g_client_transport;
+1125   log_debug_every(LOG_RATE_SLOW, &quot;[TRANSPORT_LIFECYCLE] threaded_send_packet() using transport=%p, is_connected=%s&quot;,
+1126                   (void *)transport, acip_transport_is_connected(transport) ? &quot;true&quot; : &quot;false&quot;);
+1127 
+1128   // Network I/O happens while holding mutex to prevent concurrent socket writes
+1129   asciichat_error_t result = packet_send_via_transport(transport, type, data, len, 0);
+1130 
+1131   // Unlock after send completes
+1132   mutex_unlock(&amp;g_send_mutex);
+1133 
+1134   // If send failed due to network error, signal connection loss
+1135   if (result != ASCIICHAT_OK) {
+1136     log_debug(&quot;[TRANSPORT_LIFECYCLE] threaded_send_packet() send failed, calling server_connection_lost()&quot;);
+1137     server_connection_lost();
+1138     return result;
+1139   }
+1140 
+1141   return ASCIICHAT_OK;
+1142 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_bool()</b>,
+    <b>packet_send_via_transport()</b>, and <b>server_connection_lost()</b>.</p>
+<p class="Pp">Referenced by <b>threaded_send_client_join_packet()</b>,
+    <b>threaded_send_ping_packet()</b>, <b>threaded_send_pong_packet()</b>,
+    <b>threaded_send_stream_start_packet()</b>, and
+    <b>threaded_send_terminal_size_with_auto_detect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_threaded_send_ping_packet_(void_)"><a class="permalink" href="#int_threaded_send_ping_packet_(void_)">int
+  threaded_send_ping_packet (void )</a></h2>
+<p class="Pp">Thread-safe ping packet transmission.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1395</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1395                                     {
+1396   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
+1397   return threaded_send_packet(PACKET_TYPE_PING, NULL, 0);
+1398 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>threaded_send_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_threaded_send_pong_packet_(void_)"><a class="permalink" href="#int_threaded_send_pong_packet_(void_)">int
+  threaded_send_pong_packet (void )</a></h2>
+<p class="Pp">Thread-safe pong packet transmission.</p>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1407</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1407                                     {
+1408   // Use threaded_send_packet which handles encryption, mutex locking, and connection state
+1409   return threaded_send_packet(PACKET_TYPE_PONG, NULL, 0);
+1410 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>threaded_send_packet()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_stream_start_packet_(uint32_t_stream_type)"><a class="permalink" href="#asciichat_error_t_threaded_send_stream_start_packet_(uint32_t_stream_type)">asciichat_error_t
+  threaded_send_stream_start_packet (uint32_t stream_type)</a></h2>
+<p class="Pp">Thread-safe stream start packet transmission.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>stream_type</i> Type of stream (audio/video)</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1420</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1420                                                                           {
+1421   // Connection and transport availability is checked by threaded_send_packet()
+1422 
+1423   // Build STREAM_START packet locally
+1424   uint32_t type_data = HOST_TO_NET_U32(stream_type);
+1425 
+1426   // Use threaded_send_packet() which handles encryption
+1427   return threaded_send_packet(PACKET_TYPE_STREAM_START, &amp;type_data, sizeof(type_data));
+1428 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>threaded_send_packet()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_threaded_send_terminal_size_with_auto_detect_(unsigned_short_width,_unsigned_short_height)"><a class="permalink" href="#asciichat_error_t_threaded_send_terminal_size_with_auto_detect_(unsigned_short_width,_unsigned_short_height)">asciichat_error_t
+  threaded_send_terminal_size_with_auto_detect (unsigned short width, unsigned
+  short height)</a></h2>
+<p class="Pp">Thread-safe terminal size packet transmission with
+  auto-detection.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Terminal width in characters
+<br/>
+<i>height</i> Terminal height in characters</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Sends terminal capabilities packet to the server including
+    terminal size, color capabilities, and rendering preferences. Auto-detects
+    terminal capabilities if not explicitly specified.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>width</i> Terminal width in characters
+<br/>
+<i>height</i> Terminal height in characters</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">0 on success, negative on error</div>
+<p class="Pp">Definition at line <b>1443</b> of file
+  <b>src/client/server.c</b>.</p>
+<pre>1443                                                                                                             {
+1444   // Log the dimensions being sent to server (helps debug dimension mismatch issues)
+1445   log_debug(&quot;Sending terminal size to server: %ux%u (auto_width=%d, auto_height=%d)&quot;, width, height,
+1446             GET_OPTION(auto_width), GET_OPTION(auto_height));
+1447 
+1448   // Connection and transport availability is checked by threaded_send_packet()
+1449 
+1450   // Build terminal capabilities packet locally
+1451   // Detect terminal capabilities automatically
+1452   terminal_capabilities_t caps = detect_terminal_capabilities();
+1453 
+1454   // Set wants_padding based on snapshot mode and TTY status
+1455   // Disable padding when:
+1456   // - In snapshot mode (one frame and exit)
+1457   // - When stdout is not a TTY (piped/redirected output)
+1458   // Enable padding for interactive terminal sessions
+1459   bool is_snapshot_mode = GET_OPTION(snapshot_mode);
+1460   bool is_interactive = terminal_is_interactive();
+1461   caps.wants_padding = is_interactive &amp;&amp; !is_snapshot_mode;
+1462 
+1463   log_debug(&quot;Client capabilities: wants_padding=%d (snapshot=%d, interactive=%d, stdin_tty=%d, stdout_tty=%d)&quot;,
+1464             caps.wants_padding, is_snapshot_mode, is_interactive, terminal_is_stdin_tty(), terminal_is_stdout_tty());
+1465 
+1466   // Apply user's color mode override
+1467   caps = apply_color_mode_override(caps);
+1468 
+1469   // Check if detection was reliable, use fallback only for auto-detection
+1470   if (!caps.detection_reliable &amp;&amp; GET_OPTION(color_mode) == COLOR_MODE_AUTO) {
+1471     log_warn(&quot;Terminal capability detection not reliable, using fallback&quot;);
+1472     SAFE_MEMSET(&amp;caps, sizeof(caps), 0, sizeof(caps));
+1473     caps.color_level = TERM_COLOR_NONE;
+1474     caps.color_count = 2;
+1475     caps.capabilities = 0;
+1476     SAFE_STRNCPY(caps.term_type, &quot;unknown&quot;, sizeof(caps.term_type));
+1477     SAFE_STRNCPY(caps.colorterm, &quot;&quot;, sizeof(caps.colorterm));
+1478     caps.detection_reliable = 0;
+1479     // Preserve wants_padding even in fallback mode
+1480     caps.wants_padding = is_interactive &amp;&amp; !is_snapshot_mode;
+1481   }
+1482 
+1483   // Convert to network packet format with proper byte order
+1484   terminal_capabilities_packet_t net_packet;
+1485   net_packet.capabilities = HOST_TO_NET_U32(caps.capabilities);
+1486   net_packet.color_level = HOST_TO_NET_U32(caps.color_level);
+1487   net_packet.color_count = HOST_TO_NET_U32(caps.color_count);
+1488   net_packet.render_mode = HOST_TO_NET_U32(caps.render_mode);
+1489   net_packet.width = HOST_TO_NET_U16(width);
+1490   net_packet.height = HOST_TO_NET_U16(height);
+1491   net_packet.palette_type = HOST_TO_NET_U32(GET_OPTION(palette_type));
+1492   net_packet.utf8_support = HOST_TO_NET_U32(caps.utf8_support ? 1 : 0);
+1493 
+1494   const options_t *opts = options_get();
+1495   if (GET_OPTION(palette_type) == PALETTE_CUSTOM &amp;&amp; GET_OPTION(palette_custom_set)) {
+1496     const char *palette_custom = opts &amp;&amp; opts-&gt;palette_custom_set ? opts-&gt;palette_custom : &quot;&quot;;
+1497     SAFE_STRNCPY(net_packet.palette_custom, palette_custom, sizeof(net_packet.palette_custom));
+1498     net_packet.palette_custom[sizeof(net_packet.palette_custom) - 1] = '\0';
+1499   } else {
+1500     SAFE_MEMSET(net_packet.palette_custom, sizeof(net_packet.palette_custom), 0, sizeof(net_packet.palette_custom));
+1501   }
+1502 
+1503   // Set desired FPS
+1504   int fps = GET_OPTION(fps);
+1505   if (fps &gt; 0) {
+1506     net_packet.desired_fps = (uint8_t)(fps &gt; 144 ? 144 : fps);
+1507   } else {
+1508     net_packet.desired_fps = caps.desired_fps;
+1509   }
+1510 
+1511   if (net_packet.desired_fps == 0) {
+1512     net_packet.desired_fps = DEFAULT_MAX_FPS;
+1513   }
+1514 
+1515   SAFE_STRNCPY(net_packet.term_type, caps.term_type, sizeof(net_packet.term_type));
+1516   net_packet.term_type[sizeof(net_packet.term_type) - 1] = '\0';
+1517 
+1518   SAFE_STRNCPY(net_packet.colorterm, caps.colorterm, sizeof(net_packet.colorterm));
+1519   net_packet.colorterm[sizeof(net_packet.colorterm) - 1] = '\0';
+1520 
+1521   net_packet.detection_reliable = caps.detection_reliable;
+1522   // Send UTF-8 support flag: true for AUTO (default) and TRUE settings, false for FALSE setting
+1523   net_packet.utf8_support = (GET_OPTION(force_utf8) != UTF8_SETTING_FALSE) ? 1 : 0;
+1524 
+1525   // Set wants_padding flag (1=padding enabled, 0=no padding for snapshot/piped modes)
+1526   net_packet.wants_padding = caps.wants_padding ? 1 : 0;
+1527 
+1528   // Set codec capabilities (client supports all codecs by default)
+1529   net_packet.codec_capabilities_video = HOST_TO_NET_U32(VIDEO_CODEC_CAP_ALL);
+1530   net_packet.codec_capabilities_audio = HOST_TO_NET_U32(AUDIO_CODEC_CAP_ALL);
+1531 
+1532   // Use threaded_send_packet() which handles encryption
+1533   return threaded_send_packet(PACKET_TYPE_CLIENT_CAPABILITIES, &amp;net_packet, sizeof(net_packet));
+1534 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>auto_height</b>, <b>auto_width</b>,
+    <b>detect_terminal_capabilities()</b>, <b>options_get()</b>,
+    <b>terminal_is_interactive()</b>, <b>terminal_is_stdin_tty()</b>,
+    <b>terminal_is_stdout_tty()</b>, and <b>threaded_send_packet()</b>.</p>
+<p class="Pp">Referenced by <b>protocol_start_connection()</b>, and
+    <b>server_connection_establish()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

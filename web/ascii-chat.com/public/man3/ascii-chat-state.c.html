@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>state.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">state.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">state.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">state.c - Ring consensus state machine implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>election_result_t</b>
+  <br/>
+  Election result storage. struct <b>consensus_state</b>
+  <br/>
+  State machine instance.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">typedef struct <b>consensus_state</b> <b>consensus_state_t</b>
+  <br/>
+  State machine instance.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>consensus_state_create</b> (const uint8_t
+    my_id[16], const <b>consensus_topology_t</b> *topology,
+    <b>consensus_state_t</b> **out_state)
+  <br/>
+  void <b>consensus_state_destroy</b> (<b>consensus_state_t</b> *state)
+  <br/>
+  asciichat_error_t <b>consensus_state_start_collection</b>
+    (<b>consensus_state_t</b> *state)
+  <br/>
+  asciichat_error_t <b>consensus_state_add_metrics</b> (<b>consensus_state_t</b>
+    *state, const participant_metrics_t *metrics)
+  <br/>
+  asciichat_error_t <b>consensus_state_collection_complete</b>
+    (<b>consensus_state_t</b> *state)
+  <br/>
+  asciichat_error_t <b>consensus_state_compute_election</b>
+    (<b>consensus_state_t</b> *state)
+  <br/>
+  asciichat_error_t <b>consensus_state_reset_to_idle</b>
+    (<b>consensus_state_t</b> *state)
+  <br/>
+  consensus_state_machine_t <b>consensus_state_get_current_state</b> (const
+    <b>consensus_state_t</b> *state)
+  <br/>
+  asciichat_error_t <b>consensus_state_get_elected_host</b> (const
+    <b>consensus_state_t</b> *state, uint8_t out_host_id[16])
+  <br/>
+  asciichat_error_t <b>consensus_state_get_elected_backup</b> (const
+    <b>consensus_state_t</b> *state, uint8_t out_backup_id[16])
+  <br/>
+  <b>bool</b> <b>consensus_state_is_leader</b> (const <b>consensus_state_t</b>
+    *state)
+  <br/>
+  int <b>consensus_state_get_metrics_count</b> (const <b>consensus_state_t</b>
+    *state)
+  <br/>
+  asciichat_error_t <b>consensus_state_get_metric_at</b> (const
+    <b>consensus_state_t</b> *state, int index, participant_metrics_t
+    *out_metrics)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Ring consensus state machine implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>state.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="typedef_struct_"><a class="permalink" href="#typedef_struct_">typedef
+  struct <b>consensus_state</b> <b>consensus_state_t</b></a></h2>
+<p class="Pp">State machine instance.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_add_metrics_("><a class="permalink" href="#asciichat_error_t_consensus_state_add_metrics_(">asciichat_error_t
+  consensus_state_add_metrics (<b>consensus_state_t</b> * state, const
+  participant_metrics_t * metrics)</a></h2>
+<p class="Pp">Definition at line <b>100</b> of file <b>state.c</b>.</p>
+<pre>100                                                                                                               {
+101   if (!state || !metrics) {
+102     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+103   }
+104 
+105   if (state-&gt;current_state != CONSENSUS_STATE_COLLECTING) {
+106     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid state for adding metrics: %d&quot;, state-&gt;current_state);
+107   }
+108 
+109   /* Grow array if needed */
+110   if (state-&gt;metrics_count &gt;= state-&gt;metrics_capacity) {
+111     int new_capacity = state-&gt;metrics_capacity * 2;
+112     participant_metrics_t *new_metrics =
+113         SAFE_REALLOC(state-&gt;metrics, new_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+114     state-&gt;metrics = new_metrics;
+115     state-&gt;metrics_capacity = new_capacity;
+116   }
+117 
+118   /* Copy metrics into array */
+119   memcpy(&amp;state-&gt;metrics[state-&gt;metrics_count], metrics, sizeof(participant_metrics_t));
+120   state-&gt;metrics_count++;
+121 
+122   return ASCIICHAT_OK;
+123 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>,
+    <b>consensus_state::metrics</b>, <b>consensus_state::metrics_capacity</b>,
+    and <b>consensus_state::metrics_count</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_on_stats_update()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_collection_complete_("><a class="permalink" href="#asciichat_error_t_consensus_state_collection_complete_(">asciichat_error_t
+  consensus_state_collection_complete (<b>consensus_state_t</b> *
+  state)</a></h2>
+<p class="Pp">Definition at line <b>125</b> of file <b>state.c</b>.</p>
+<pre>125                                                                                 {
+126   if (!state) {
+127     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+128   }
+129 
+130   if (state-&gt;current_state != CONSENSUS_STATE_COLLECTING) {
+131     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+132   }
+133 
+134   /* Transition: if we're leader, go to ELECTION_START; otherwise go to IDLE */
+135   if (consensus_topology_am_leader(state-&gt;topology)) {
+136     state-&gt;current_state = CONSENSUS_STATE_ELECTION_START;
+137   } else {
+138     state-&gt;current_state = CONSENSUS_STATE_IDLE;
+139   }
+140 
+141   return ASCIICHAT_OK;
+142 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_topology_am_leader()</b>,
+    <b>consensus_state::current_state</b>, and
+  <b>consensus_state::topology</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_compute_election_("><a class="permalink" href="#asciichat_error_t_consensus_state_compute_election_(">asciichat_error_t
+  consensus_state_compute_election (<b>consensus_state_t</b> * state)</a></h2>
+<p class="Pp">Definition at line <b>144</b> of file <b>state.c</b>.</p>
+<pre>144                                                                              {
+145   if (!state) {
+146     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+147   }
+148 
+149   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_START) {
+150     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+151   }
+152 
+153   if (state-&gt;metrics_count &lt; 2) {
+154     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Need at least 2 metrics for election, have %d&quot;, state-&gt;metrics_count);
+155   }
+156 
+157   /* Find best and second-best metrics */
+158   int best_idx = 0;
+159   int backup_idx = 1;
+160 
+161   double best_score = compute_metric_score(&amp;state-&gt;metrics[0]);
+162   double backup_score = compute_metric_score(&amp;state-&gt;metrics[1]);
+163 
+164   /* Ensure best_idx has lower score */
+165   if (best_score &gt; backup_score) {
+166     int tmp = best_idx;
+167     best_idx = backup_idx;
+168     backup_idx = tmp;
+169     double tmp_score = best_score;
+170     best_score = backup_score;
+171     backup_score = tmp_score;
+172   }
+173 
+174   /* Find best and second-best */
+175   for (int i = 2; i &lt; state-&gt;metrics_count; i++) {
+176     double score = compute_metric_score(&amp;state-&gt;metrics[i]);
+177     if (score &lt; best_score) {
+178       backup_idx = best_idx;
+179       backup_score = best_score;
+180       best_idx = i;
+181       best_score = score;
+182     } else if (score &lt; backup_score) {
+183       backup_idx = i;
+184       backup_score = score;
+185     }
+186   }
+187 
+188   /* Store election result */
+189   memcpy(state-&gt;election_result.host_id, state-&gt;metrics[best_idx].participant_id, 16);
+190   memcpy(state-&gt;election_result.backup_id, state-&gt;metrics[backup_idx].participant_id, 16);
+191   state-&gt;election_result.timestamp_ns = time_get_realtime_ns();
+192 
+193   state-&gt;current_state = CONSENSUS_STATE_ELECTION_COMPLETE;
+194   return ASCIICHAT_OK;
+195 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>election_result_t::backup_id</b>,
+    <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>election_result_t::host_id</b>,
+    <b>consensus_state::metrics</b>, <b>consensus_state::metrics_count</b>,
+    <b>time_get_realtime_ns()</b>, and
+  <b>election_result_t::timestamp_ns</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_create_(const_uint8_t_my_id_16_,_const_"><a class="permalink" href="#asciichat_error_t_consensus_state_create_(const_uint8_t_my_id_16_,_const_">asciichat_error_t
+  consensus_state_create (const uint8_t my_id[16], const
+  <b>consensus_topology_t</b> * topology, <b>consensus_state_t</b> **
+  out_state)</a></h2>
+<p class="Pp">Definition at line <b>50</b> of file <b>state.c</b>.</p>
+<pre>51                                                                         {
+52   if (!my_id || !topology || !out_state) {
+53     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid state creation parameters&quot;);
+54   }
+55 
+56   consensus_state_t *state = SAFE_MALLOC(sizeof(*state), consensus_state_t *);
+57   memset(state, 0, sizeof(*state));
+58 
+59   state-&gt;current_state = CONSENSUS_STATE_IDLE;
+60   state-&gt;topology = (consensus_topology_t *)topology; /* Cast away const for storage */
+61   memcpy(state-&gt;my_id, my_id, 16);
+62 
+63   /* Initialize metrics array with initial capacity of 10 */
+64   state-&gt;metrics_capacity = 10;
+65   state-&gt;metrics_count = 0;
+66   state-&gt;metrics = SAFE_MALLOC(state-&gt;metrics_capacity * sizeof(participant_metrics_t), participant_metrics_t *);
+67 
+68   memset(&amp;state-&gt;election_result, 0, sizeof(election_result_t));
+69 
+70   *out_state = state;
+71   return ASCIICHAT_OK;
+72 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, <b>consensus_state::metrics</b>,
+    <b>consensus_state::metrics_capacity</b>,
+    <b>consensus_state::metrics_count</b>, <b>consensus_state::my_id</b>, and
+    <b>consensus_state::topology</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_create()</b>, and
+    <b>consensus_coordinator_on_ring_members()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_consensus_state_destroy_("><a class="permalink" href="#void_consensus_state_destroy_(">void
+  consensus_state_destroy (<b>consensus_state_t</b> * state)</a></h2>
+<p class="Pp">Definition at line <b>74</b> of file <b>state.c</b>.</p>
+<pre>74                                                        {
+75   if (state) {
+76     if (state-&gt;metrics) {
+77       SAFE_FREE(state-&gt;metrics);
+78     }
+79     SAFE_FREE(state);
+80   }
+81 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::metrics</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_destroy()</b>, and
+    <b>consensus_coordinator_on_ring_members()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="consensus_state_machine_t_consensus_state_get_current_state_(const_"><a class="permalink" href="#consensus_state_machine_t_consensus_state_get_current_state_(const_">consensus_state_machine_t
+  consensus_state_get_current_state (const <b>consensus_state_t</b> *
+  state)</a></h2>
+<p class="Pp">Definition at line <b>210</b> of file <b>state.c</b>.</p>
+<pre>210                                                                                             {
+211   if (!state) {
+212     return CONSENSUS_STATE_FAILED;
+213   }
+214   return state-&gt;current_state;
+215 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>,
+    <b>consensus_coordinator_get_state()</b>,
+    <b>consensus_coordinator_on_collection_start()</b>,
+    <b>consensus_coordinator_on_election_result()</b>,
+    <b>consensus_coordinator_on_ring_members()</b>,
+    <b>consensus_coordinator_on_stats_update()</b>, and
+    <b>consensus_coordinator_process()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_get_elected_backup_(const_"><a class="permalink" href="#asciichat_error_t_consensus_state_get_elected_backup_(const_">asciichat_error_t
+  consensus_state_get_elected_backup (const <b>consensus_state_t</b> * state,
+  uint8_t out_backup_id[16])</a></h2>
+<p class="Pp">Definition at line <b>230</b> of file <b>state.c</b>.</p>
+<pre>230                                                                                                                 {
+231   if (!state || !out_backup_id) {
+232     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+233   }
+234 
+235   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+236     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Election not complete, current state: %d&quot;, state-&gt;current_state);
+237   }
+238 
+239   memcpy(out_backup_id, state-&gt;election_result.backup_id, 16);
+240   return ASCIICHAT_OK;
+241 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>election_result_t::backup_id</b>,
+    <b>consensus_state::current_state</b>, and
+    <b>consensus_state::election_result</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_get_elected_host_(const_"><a class="permalink" href="#asciichat_error_t_consensus_state_get_elected_host_(const_">asciichat_error_t
+  consensus_state_get_elected_host (const <b>consensus_state_t</b> * state,
+  uint8_t out_host_id[16])</a></h2>
+<p class="Pp">Definition at line <b>217</b> of file <b>state.c</b>.</p>
+<pre>217                                                                                                             {
+218   if (!state || !out_host_id) {
+219     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+220   }
+221 
+222   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+223     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Election not complete, current state: %d&quot;, state-&gt;current_state);
+224   }
+225 
+226   memcpy(out_host_id, state-&gt;election_result.host_id, 16);
+227   return ASCIICHAT_OK;
+228 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, and
+    <b>election_result_t::host_id</b>.</p>
+<p class="Pp">Referenced by <b>consensus_coordinator_get_current_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_get_metric_at_(const_"><a class="permalink" href="#asciichat_error_t_consensus_state_get_metric_at_(const_">asciichat_error_t
+  consensus_state_get_metric_at (const <b>consensus_state_t</b> * state, int
+  index, participant_metrics_t * out_metrics)</a></h2>
+<p class="Pp">Definition at line <b>257</b> of file <b>state.c</b>.</p>
+<pre>258                                                                                     {
+259   if (!state || !out_metrics || index &lt; 0) {
+260     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid parameters&quot;);
+261   }
+262 
+263   if (index &gt;= state-&gt;metrics_count) {
+264     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Index %d out of bounds (count: %d)&quot;, index, state-&gt;metrics_count);
+265   }
+266 
+267   /* Valid to retrieve metrics in COLLECTING, COLLECTION_COMPLETE, or ELECTION states */
+268   if (state-&gt;current_state != CONSENSUS_STATE_COLLECTING &amp;&amp;
+269       state-&gt;current_state != CONSENSUS_STATE_COLLECTION_COMPLETE &amp;&amp;
+270       state-&gt;current_state != CONSENSUS_STATE_ELECTION_START &amp;&amp; state-&gt;current_state != CONSENSUS_STATE_ELECTING &amp;&amp;
+271       state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+272     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Cannot retrieve metrics in state %d&quot;, state-&gt;current_state);
+273   }
+274 
+275   memcpy(out_metrics, &amp;state-&gt;metrics[index], sizeof(participant_metrics_t));
+276   return ASCIICHAT_OK;
+277 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>,
+    <b>consensus_state::metrics</b>, and
+  <b>consensus_state::metrics_count</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_consensus_state_get_metrics_count_(const_"><a class="permalink" href="#int_consensus_state_get_metrics_count_(const_">int
+  consensus_state_get_metrics_count (const <b>consensus_state_t</b> *
+  state)</a></h2>
+<p class="Pp">Definition at line <b>250</b> of file <b>state.c</b>.</p>
+<pre>250                                                                       {
+251   if (!state) {
+252     return -1;
+253   }
+254   return state-&gt;metrics_count;
+255 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::metrics_count</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_get_metrics_count()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> consensus_state_is_leader (const
+  <b>consensus_state_t</b> * state)</h2>
+<p class="Pp">Definition at line <b>243</b> of file <b>state.c</b>.</p>
+<pre>243                                                                {
+244   if (!state) {
+245     return false;
+246   }
+247   return consensus_topology_am_leader(state-&gt;topology);
+248 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_topology_am_leader()</b>, and
+    <b>consensus_state::topology</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_reset_to_idle_("><a class="permalink" href="#asciichat_error_t_consensus_state_reset_to_idle_(">asciichat_error_t
+  consensus_state_reset_to_idle (<b>consensus_state_t</b> * state)</a></h2>
+<p class="Pp">Definition at line <b>197</b> of file <b>state.c</b>.</p>
+<pre>197                                                                           {
+198   if (!state) {
+199     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+200   }
+201 
+202   if (state-&gt;current_state != CONSENSUS_STATE_ELECTION_COMPLETE) {
+203     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+204   }
+205 
+206   state-&gt;current_state = CONSENSUS_STATE_IDLE;
+207   return ASCIICHAT_OK;
+208 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_on_election_result()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_consensus_state_start_collection_("><a class="permalink" href="#asciichat_error_t_consensus_state_start_collection_(">asciichat_error_t
+  consensus_state_start_collection (<b>consensus_state_t</b> * state)</a></h2>
+<p class="Pp">Definition at line <b>83</b> of file <b>state.c</b>.</p>
+<pre>83                                                                              {
+84   if (!state) {
+85     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;State is NULL&quot;);
+86   }
+87 
+88   if (state-&gt;current_state != CONSENSUS_STATE_IDLE) {
+89     return SET_ERRNO(ERROR_INVALID_STATE, &quot;Invalid transition from state %d&quot;, state-&gt;current_state);
+90   }
+91 
+92   /* Reset metrics from previous round */
+93   state-&gt;metrics_count = 0;
+94   memset(&amp;state-&gt;election_result, 0, sizeof(election_result_t));
+95 
+96   state-&gt;current_state = CONSENSUS_STATE_COLLECTING;
+97   return ASCIICHAT_OK;
+98 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>consensus_state::current_state</b>,
+    <b>consensus_state::election_result</b>, and
+    <b>consensus_state::metrics_count</b>.</p>
+<p class="Pp">Referenced by
+  <b>consensus_coordinator_on_collection_start()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

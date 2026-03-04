@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>session_host_config_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">session_host_config_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">session_host_config_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">session_host_config_t - Configuration for session host.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/common/session/host.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">int <b>port</b>
+  <br/>
+  Port to listen on (default: 27224). const char * <b>ipv4_address</b>
+  <br/>
+  IPv4 address to bind to (NULL for any). const char * <b>ipv6_address</b>
+  <br/>
+  IPv6 address to bind to (NULL for any). int <b>max_clients</b>
+  <br/>
+  Maximum number of clients. <b>bool</b> <b>encryption_enabled</b>
+  <br/>
+  Enable encryption (default: true). const char * <b>key_path</b>
+  <br/>
+  Path to server identity key. const char * <b>password</b>
+  <br/>
+  Password for client authentication (optional). <b>session_host_callbacks_t</b>
+    <b>callbacks</b>
+  <br/>
+  Event callbacks. void * <b>user_data</b>
+  <br/>
+  User-provided context pointer passed to callbacks.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration for session host.</p>
+<p class="Pp">Definition at line <b>154</b> of file <b>host.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>session_host_callbacks_t</b>
+  session_host_config_t::callbacks</h2>
+<p class="Pp">Event callbacks.</p>
+<p class="Pp">Definition at line <b>177</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> session_host_config_t::encryption_enabled</h2>
+<p class="Pp">Enable encryption (default: true).</p>
+<p class="Pp">Definition at line <b>168</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_host_config_t::ipv4_address"><a class="permalink" href="#const_char*_session_host_config_t::ipv4_address">const
+  char* session_host_config_t::ipv4_address</a></h2>
+<p class="Pp">IPv4 address to bind to (NULL for any).</p>
+<p class="Pp">Definition at line <b>159</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_host_config_t::ipv6_address"><a class="permalink" href="#const_char*_session_host_config_t::ipv6_address">const
+  char* session_host_config_t::ipv6_address</a></h2>
+<p class="Pp">IPv6 address to bind to (NULL for any).</p>
+<p class="Pp">Definition at line <b>162</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_host_config_t::key_path"><a class="permalink" href="#const_char*_session_host_config_t::key_path">const
+  char* session_host_config_t::key_path</a></h2>
+<p class="Pp">Path to server identity key.</p>
+<p class="Pp">Definition at line <b>171</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_session_host_config_t::max_clients"><a class="permalink" href="#int_session_host_config_t::max_clients">int
+  session_host_config_t::max_clients</a></h2>
+<p class="Pp">Maximum number of clients.</p>
+<p class="Pp">Definition at line <b>165</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_session_host_config_t::password"><a class="permalink" href="#const_char*_session_host_config_t::password">const
+  char* session_host_config_t::password</a></h2>
+<p class="Pp">Password for client authentication (optional).</p>
+<p class="Pp">Definition at line <b>174</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_session_host_config_t::port"><a class="permalink" href="#int_session_host_config_t::port">int
+  session_host_config_t::port</a></h2>
+<p class="Pp">Port to listen on (default: 27224).</p>
+<p class="Pp">Definition at line <b>156</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void*_session_host_config_t::user_data"><a class="permalink" href="#void*_session_host_config_t::user_data">void*
+  session_host_config_t::user_data</a></h2>
+<p class="Pp">User-provided context pointer passed to callbacks.</p>
+<p class="Pp">Definition at line <b>180</b> of file <b>host.h</b>.</p>
+<p class="Pp">Referenced by <b>session_host_create()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

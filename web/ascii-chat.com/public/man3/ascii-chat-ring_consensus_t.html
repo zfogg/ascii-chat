@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ring_consensus_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ring_consensus_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ring_consensus_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ring_consensus_t - Ring consensus state (Host-Mediated Proactive
+    Election).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<p class="Pp">#include &lt;src/discovery/session.h&gt;</p>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">uint8_t <b>future_host_id</b> [16]
+  <br/>
+  Who will host if current host dies. char <b>future_host_address</b> [64]
+  <br/>
+  Where to connect. uint16_t <b>future_host_port</b>
+  <br/>
+  Port number. uint8_t <b>future_host_connection_type</b>
+  <br/>
+  acip_connection_type_t (DIRECT, UPNP, STUN, TURN) <b>bool</b>
+    <b>am_future_host</b>
+  <br/>
+  Am I the elected future host? uint64_t <b>future_host_elected_round</b>
+  <br/>
+  Which 5-minute round this was elected in. uint64_t <b>last_ring_round_ms</b>
+  <br/>
+  When host last ran election (for 5-min timer).
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Ring consensus state (Host-Mediated Proactive Election).</p>
+<p class="Pp"><b>NEW SIMPLIFIED DESIGN</b>:</p>
+<ul class="Bl-bullet">
+  <li>Host (not quorum leader) collects NETWORK_QUALITY from all participants
+      every 5 minutes</li>
+  <li>Participants send metrics TO HOST (not peer-to-peer)</li>
+  <li>Host elects future host and broadcasts FUTURE_HOST_ELECTED</li>
+  <li>All participants store future host info locally</li>
+  <li>When current host dies: instant failover to pre-elected host (no
+      re-election!)</li>
+</ul>
+<p class="Pp">Participants just need to store the pre-elected future host info.
+    No ring topology, no quorum leader rotation, no P2P collection.</p>
+<p class="Pp">Definition at line <b>49</b> of file <b>session.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> ring_consensus_t::am_future_host</h2>
+<p class="Pp">Am I the elected future host?</p>
+<p class="Pp">Definition at line <b>55</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_handle_host_disconnect()</b>,
+    <b>discovery_session_init_ring()</b>, and
+    <b>discovery_session_is_future_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_ring_consensus_t::future_host_address_64_"><a class="permalink" href="#char_ring_consensus_t::future_host_address_64_">char
+  ring_consensus_t::future_host_address[64]</a></h2>
+<p class="Pp">Where to connect.</p>
+<p class="Pp">Definition at line <b>52</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
+    <b>discovery_session_get_future_host()</b>, and
+    <b>discovery_session_handle_host_disconnect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_ring_consensus_t::future_host_connection_type"><a class="permalink" href="#uint8_t_ring_consensus_t::future_host_connection_type">uint8_t
+  ring_consensus_t::future_host_connection_type</a></h2>
+<p class="Pp">acip_connection_type_t (DIRECT, UPNP, STUN, TURN)</p>
+<p class="Pp">Definition at line <b>54</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
+    and <b>discovery_session_get_future_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ring_consensus_t::future_host_elected_round"><a class="permalink" href="#uint64_t_ring_consensus_t::future_host_elected_round">uint64_t
+  ring_consensus_t::future_host_elected_round</a></h2>
+<p class="Pp">Which 5-minute round this was elected in.</p>
+<p class="Pp">Definition at line <b>56</b> of file <b>session.h</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint8_t_ring_consensus_t::future_host_id_16_"><a class="permalink" href="#uint8_t_ring_consensus_t::future_host_id_16_">uint8_t
+  ring_consensus_t::future_host_id[16]</a></h2>
+<p class="Pp">Who will host if current host dies.</p>
+<p class="Pp">Definition at line <b>51</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
+    <b>discovery_session_get_future_host()</b>,
+    <b>discovery_session_handle_host_disconnect()</b>, and
+    <b>discovery_session_init_ring()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint16_t_ring_consensus_t::future_host_port"><a class="permalink" href="#uint16_t_ring_consensus_t::future_host_port">uint16_t
+  ring_consensus_t::future_host_port</a></h2>
+<p class="Pp">Port number.</p>
+<p class="Pp">Definition at line <b>53</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
+    <b>discovery_session_get_future_host()</b>, and
+    <b>discovery_session_handle_host_disconnect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="uint64_t_ring_consensus_t::last_ring_round_ms"><a class="permalink" href="#uint64_t_ring_consensus_t::last_ring_round_ms">uint64_t
+  ring_consensus_t::last_ring_round_ms</a></h2>
+<p class="Pp">When host last ran election (for 5-min timer).</p>
+<p class="Pp">Definition at line <b>59</b> of file <b>session.h</b>.</p>
+<p class="Pp">Referenced by <b>discovery_session_init_ring()</b>, and
+    <b>discovery_session_start_ring_round()</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

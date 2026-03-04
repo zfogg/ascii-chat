@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>json.h(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">json.h(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">json.h(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">json.h - Minimal JSON serialization helpers (header-only).</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">class <b>ascii_query::json::JsonValue</b>
+  <br/>
+  JSON value wrapper (can hold any JSON type). class
+    <b>ascii_query::json::JsonArray</b>
+  <br/>
+  JSON array builder. class <b>ascii_query::json::JsonObject</b>
+  <br/>
+  JSON object builder.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Namespaces"><a class="permalink" href="#Namespaces">Namespaces</a></h2>
+<br/>
+<p class="Pp">namespace <b>ascii_query</b>
+  <br/>
+  namespace <b>ascii_query::json</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">std::string <b>ascii_query::json::escape</b> (const std::string
+    &amp;str)
+  <br/>
+  Escape a string for JSON output.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Minimal JSON serialization helpers (header-only).</p>
+<p class="Pp">This provides a simple, dependency-free JSON builder for the query
+    tool. It only supports serialization (writing), not parsing.</p>
+<p class="Pp"></p>
+<p class="Pp">Example: JsonObject obj; obj.set(&quot;name&quot;,
+    &quot;test&quot;); obj.set(&quot;count&quot;, 42);
+    obj.set(&quot;active&quot;, true); std::string json = obj.toString(); //
+    {&quot;name&quot;:&quot;test&quot;,&quot;count&quot;:42,&quot;active&quot;:true}</p>
+<p class="Pp">Definition in file <b>json.h</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

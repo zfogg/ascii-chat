@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>utf8.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">utf8.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">utf8.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">utf8.c - &#x1F524; UTF-8 encoding and decoding with multi-byte
+    character support</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>utf8_decode</b> (const uint8_t *s, uint32_t *codepoint)
+  <br/>
+  int <b>utf8_display_width</b> (const char *str)
+  <br/>
+  int <b>utf8_display_width_n</b> (const char *str, size_t max_bytes)
+  <br/>
+  size_t <b>utf8_char_count</b> (const char *str)
+  <br/>
+  <b>bool</b> <b>utf8_is_valid</b> (const char *str)
+  <br/>
+  <b>bool</b> <b>utf8_is_ascii_only</b> (const char *str)
+  <br/>
+  size_t <b>utf8_to_codepoints</b> (const char *str, uint32_t *out_codepoints,
+    size_t max_codepoints)
+  <br/>
+  int <b>utf8_next_char_bytes</b> (const char *str, size_t max_bytes)
+  <br/>
+  int <b>utf8_continuation_bytes_needed</b> (unsigned char first_byte)
+  <br/>
+  int <b>utf8_read_and_insert_continuation_bytes</b> (char *buffer, size_t
+    *cursor, size_t *len, size_t max_len, int continuation_bytes,
+    int(*read_byte_fn)(void))
+  <br/>
+  const char * <b>utf8_strcasestr</b> (const char *haystack, const char *needle)
+  <br/>
+  Case-insensitive substring search with full Unicode support. void
+    <b>utf8_write_lowercase</b> (FILE *output, const char *text)
+  <br/>
+  Write UTF-8 string to file with ASCII lowercase conversion.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F524; UTF-8 encoding and decoding with multi-byte character
+    support</p>
+<p class="Pp">Uses utf8proc Unicode library for accurate character-width
+    computation and UTF-8 handling.</p>
+<p class="Pp">Definition in file <b>utf8.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="size_t_utf8_char_count_(const_char_*_str)"><a class="permalink" href="#size_t_utf8_char_count_(const_char_*_str)">size_t
+  utf8_char_count (const char * str)</a></h2>
+<p class="Pp">Definition at line <b>136</b> of file <b>utf8.c</b>.</p>
+<pre>136                                         {
+137   if (!str) {
+138     SET_ERRNO(ERROR_INVALID_PARAM, &quot;str is NULL&quot;);
+139     return -1; // SIZE_MAX
+140   }
+141 
+142   size_t count = 0;
+143   const uint8_t *p = (const uint8_t *)str;
+144   while (*p) {
+145     uint32_t codepoint;
+146     int decode_len = utf8_decode(p, &amp;codepoint);
+147     if (decode_len &lt; 0) {
+148       return -1; // SIZE_MAX - Invalid UTF-8
+149     }
+150     count++;
+151     p += decode_len;
+152   }
+153   return count;
+154 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_decode()</b>.</p>
+<p class="Pp">Referenced by <b>levenshtein()</b>, and
+  <b>utf8_is_valid()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_utf8_continuation_bytes_needed_(unsigned_char_first_byte)"><a class="permalink" href="#int_utf8_continuation_bytes_needed_(unsigned_char_first_byte)">int
+  utf8_continuation_bytes_needed (unsigned char first_byte)</a></h2>
+<p class="Pp">Definition at line <b>222</b> of file <b>utf8.c</b>.</p>
+<pre>222                                                              {
+223   if ((first_byte &amp; 0x80) == 0) {
+224     return 0; // ASCII (0xxxxxxx) - single byte, no continuation needed
+225   }
+226   if ((first_byte &amp; 0xE0) == 0xC0) {
+227     return 1; // 110xxxxx - 2 byte sequence, 1 continuation byte needed
+228   }
+229   if ((first_byte &amp; 0xF0) == 0xE0) {
+230     return 2; // 1110xxxx - 3 byte sequence, 2 continuation bytes needed
+231   }
+232   if ((first_byte &amp; 0xF8) == 0xF0) {
+233     return 3; // 11110xxx - 4 byte sequence, 3 continuation bytes needed
+234   }
+235   return -1; // Invalid UTF-8 start byte
+236 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_utf8_decode_(const_uint8_t_*_s,_uint32_t_*_codepoint)"><a class="permalink" href="#int_utf8_decode_(const_uint8_t_*_s,_uint32_t_*_codepoint)">int
+  utf8_decode (const uint8_t * s, uint32_t * codepoint)</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>utf8.c</b>.</p>
+<pre>18                                                        {
+19   if (s[0] &lt; 0x80) {
+20     *codepoint = s[0];
+21     return 1;
+22   }
+23   if ((s[0] &amp; 0xE0) == 0xC0) {
+24     // Validate continuation byte
+25     if ((s[1] &amp; 0xC0) != 0x80)
+26       return -1;
+27     *codepoint = (((uint32_t)(s[0] &amp; 0x1F) &lt;&lt; 6) | (uint32_t)(s[1] &amp; 0x3F));
+28     return 2;
+29   } else if ((s[0] &amp; 0xF0) == 0xE0) {
+30     // Validate continuation bytes
+31     if ((s[1] &amp; 0xC0) != 0x80 || (s[2] &amp; 0xC0) != 0x80)
+32       return -1;
+33     *codepoint = (((uint32_t)(s[0] &amp; 0x0F) &lt;&lt; 12) | ((uint32_t)(s[1] &amp; 0x3F) &lt;&lt; 6) | (uint32_t)(s[2] &amp; 0x3F));
+34     return 3;
+35   } else if ((s[0] &amp; 0xF8) == 0xF0) {
+36     // Validate continuation bytes
+37     if ((s[1] &amp; 0xC0) != 0x80 || (s[2] &amp; 0xC0) != 0x80 || (s[3] &amp; 0xC0) != 0x80)
+38       return -1;
+39     *codepoint = (((uint32_t)(s[0] &amp; 0x07) &lt;&lt; 18) | ((uint32_t)(s[1] &amp; 0x3F) &lt;&lt; 12) | ((uint32_t)(s[2] &amp; 0x3F) &lt;&lt; 6) |
+40                   (uint32_t)(s[3] &amp; 0x3F));
+41     return 4;
+42   }
+43   return -1; // Invalid
+44 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>digital_rain_apply()</b>,
+    <b>log_search_get_match_info()</b>, <b>utf8_char_count()</b>,
+    <b>utf8_to_codepoints()</b>, and <b>validate_shell_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_utf8_display_width_(const_char_*_str)"><a class="permalink" href="#int_utf8_display_width_(const_char_*_str)">int
+  utf8_display_width (const char * str)</a></h2>
+<p class="Pp">Definition at line <b>46</b> of file <b>utf8.c</b>.</p>
+<pre>46                                         {
+47   if (!str || !*str) {
+48     return 0;
+49   }
+50 
+51   int width = 0;
+52   const utf8proc_uint8_t *p = (const utf8proc_uint8_t *)str;
+53 
+54   while (*p) {
+55     // Skip ANSI escape sequences (ESC [ ... m)
+56     // Pattern: \x1b [ [0-9;]* m
+57     if (p[0] == 0x1b &amp;&amp; p[1] == '[') {
+58       // Found ANSI escape sequence start
+59       p += 2; // Skip ESC[
+60       // Skip digits and semicolons until we find 'm'
+61       while (*p &amp;&amp; *p != 'm') {
+62         p++;
+63       }
+64       if (*p == 'm') {
+65         p++; // Skip the 'm'
+66       }
+67       continue;
+68     }
+69 
+70     utf8proc_int32_t codepoint;
+71     utf8proc_ssize_t len = utf8proc_iterate(p, -1, &amp;codepoint);
+72 
+73     if (len &lt;= 0) {
+74       // End of string or invalid UTF-8 sequence, stop processing
+75       break;
+76     }
+77 
+78     // Get display width of this codepoint
+79     int char_width = utf8proc_charwidth(codepoint);
+80     if (char_width &lt; 0) {
+81       // Control character or unprintable - treat as 0 width
+82       char_width = 0;
+83     }
+84     width += char_width;
+85     p += len;
+86   }
+87 
+88   return width;
+89 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>display_height()</b>, <b>display_width()</b>,
+    <b>layout_print_two_column_row()</b>,
+    <b>options_config_calculate_max_col_width()</b>, <b>prompt_password()</b>,
+    <b>truncate_utf8_with_ellipsis()</b>, and
+  <b>validate_palette_chars()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_utf8_display_width_n_(const_char_*_str,_size_t_max_bytes)"><a class="permalink" href="#int_utf8_display_width_n_(const_char_*_str,_size_t_max_bytes)">int
+  utf8_display_width_n (const char * str, size_t max_bytes)</a></h2>
+<p class="Pp">Definition at line <b>91</b> of file <b>utf8.c</b>.</p>
+<pre>91                                                             {
+92   if (!str || max_bytes == 0) {
+93     return 0;
+94   }
+95 
+96   int width = 0;
+97   const utf8proc_uint8_t *p = (const utf8proc_uint8_t *)str;
+98   const utf8proc_uint8_t *end = p + max_bytes;
+99 
+100   while (p &lt; end &amp;&amp; *p) {
+101     // Skip ANSI escape sequences (ESC [ ... m)
+102     if (p + 1 &lt; end &amp;&amp; p[0] == 0x1b &amp;&amp; p[1] == '[') {
+103       // Found ANSI escape sequence start
+104       p += 2; // Skip ESC[
+105       // Skip digits and semicolons until we find 'm'
+106       while (p &lt; end &amp;&amp; *p &amp;&amp; *p != 'm') {
+107         p++;
+108       }
+109       if (p &lt; end &amp;&amp; *p == 'm') {
+110         p++; // Skip the 'm'
+111       }
+112       continue;
+113     }
+114 
+115     utf8proc_int32_t codepoint;
+116     utf8proc_ssize_t len = utf8proc_iterate(p, end - p, &amp;codepoint);
+117 
+118     if (len &lt;= 0) {
+119       // End of string or invalid UTF-8 sequence
+120       break;
+121     }
+122 
+123     // Get display width of this codepoint
+124     int char_width = utf8proc_charwidth(codepoint);
+125     if (char_width &lt; 0) {
+126       // Control character or unprintable - treat as 0 width
+127       char_width = 0;
+128     }
+129     width += char_width;
+130     p += len;
+131   }
+132 
+133   return width;
+134 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>utf8_palette_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> utf8_is_ascii_only (const char * str)</h2>
+<p class="Pp">Definition at line <b>165</b> of file <b>utf8.c</b>.</p>
+<pre>165                                          {
+166   if (!str) {
+167     SET_ERRNO(ERROR_INVALID_PARAM, &quot;str is NULL&quot;);
+168     return false;
+169   }
+170 
+171   // Fast path: Check if all bytes are in ASCII range (0x00-0x7F)
+172   // ASCII characters are 0x00-0x7F (single byte, high bit clear)
+173   // Multi-byte UTF-8 has continuation bytes with high bit set (10xxxxxx pattern)
+174   // So if all bytes have high bit clear, it's guaranteed ASCII-only
+175   const unsigned char *p = (const unsigned char *)str;
+176   while (*p) {
+177     if ((*p &amp; ~0x7F) != 0) {
+178       return false; // Non-ASCII byte found (high bit set)
+179     }
+180     p++;
+181   }
+182   return true;
+183 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>is_session_string()</b>, and
+    <b>options_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> utf8_is_valid (const char * str)</h2>
+<p class="Pp">Definition at line <b>156</b> of file <b>utf8.c</b>.</p>
+<pre>156                                     {
+157   if (!str) {
+158     SET_ERRNO(ERROR_INVALID_PARAM, &quot;str is NULL&quot;);
+159     return false;
+160   }
+161   // Reuse utf8_char_count to validate without duplicating loop
+162   return utf8_char_count(str) != (size_t)-1;
+163 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_char_count()</b>.</p>
+<p class="Pp">Referenced by <b>options_init()</b>, <b>prompt_password()</b>,
+    <b>prompt_password_simple()</b>, <b>validate_private_key()</b>,
+    <b>validate_public_key()</b>, and <b>validate_shell_safe()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_utf8_next_char_bytes_(const_char_*_str,_size_t_max_bytes)"><a class="permalink" href="#int_utf8_next_char_bytes_(const_char_*_str,_size_t_max_bytes)">int
+  utf8_next_char_bytes (const char * str, size_t max_bytes)</a></h2>
+<p class="Pp">Definition at line <b>205</b> of file <b>utf8.c</b>.</p>
+<pre>205                                                             {
+206   if (!str || max_bytes == 0) {
+207     SET_ERRNO(ERROR_INVALID_PARAM, &quot;str is NULL or max_bytes is 0&quot;);
+208     return -1;
+209   }
+210 
+211   // Use utf8proc_iterate to get byte length of next character
+212   utf8proc_int32_t codepoint;
+213   utf8proc_ssize_t len = utf8proc_iterate((const utf8proc_uint8_t *)str, (utf8proc_ssize_t)max_bytes, &amp;codepoint);
+214 
+215   if (len &lt;= 0) {
+216     return -1; // Invalid UTF-8 or end of string
+217   }
+218 
+219   return (int)len;
+220 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>layout_print_wrapped_description()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_utf8_read_and_insert_continuation_bytes_(char_*_buffer,_size_t_*_cursor,_size_t_*_len,_size_t_max_len,_int_continuation_bytes,_int(*_read_byte_fn_)(void))"><a class="permalink" href="#int_utf8_read_and_insert_continuation_bytes_(char_*_buffer,_size_t_*_cursor,_size_t_*_len,_size_t_max_len,_int_continuation_bytes,_int(*_read_byte_fn_)(void))">int
+  utf8_read_and_insert_continuation_bytes (char * buffer, size_t * cursor,
+  size_t * len, size_t max_len, int continuation_bytes, int(* read_byte_fn
+  )(void))</a></h2>
+<p class="Pp">Definition at line <b>238</b> of file <b>utf8.c</b>.</p>
+<pre>239                                                                                                {
+240   if (!buffer || !cursor || !len || continuation_bytes &lt;= 0 || !read_byte_fn) {
+241     SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid params&quot;);
+242     return -1;
+243   }
+244 
+245   for (int i = 0; i &lt; continuation_bytes &amp;&amp; *len &lt; max_len - 1; i++) {
+246     int next_byte = read_byte_fn();
+247     if (next_byte == EOF) {
+248       return -1; // EOF reached
+249     }
+250 
+251     // Shift characters right to make room
+252     memmove(&amp;buffer[*cursor + 1], &amp;buffer[*cursor], *len - *cursor);
+253     buffer[*cursor] = (char)next_byte;
+254     (*len)++;
+255     (*cursor)++;
+256   }
+257 
+258   return 0;
+259 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_utf8_strcasestr_(const_char_*_haystack,_const_char_*_needle)"><a class="permalink" href="#const_char_*_utf8_strcasestr_(const_char_*_haystack,_const_char_*_needle)">const
+  char * utf8_strcasestr (const char * haystack, const char * needle)</a></h2>
+<p class="Pp">Case-insensitive substring search with full Unicode support. Uses
+    utf8proc for Unicode case folding according to Unicode standard. This
+    properly handles all Unicode scripts including Greek, Cyrillic, accented
+    characters, and more.</p>
+<p class="Pp">Definition at line <b>272</b> of file <b>utf8.c</b>.</p>
+<pre>272                                                                       {
+273   if (!haystack || !needle) {
+274     SET_ERRNO(ERROR_INVALID_PARAM, &quot;invalid params&quot;);
+275     return NULL;
+276   }
+277 
+278   // Empty needle matches at start of haystack
+279   if (needle[0] == '\0') {
+280     return haystack;
+281   }
+282 
+283   // Get lengths
+284   size_t haystack_len = strlen(haystack);
+285   size_t needle_len = strlen(needle);
+286 
+287   if (needle_len &gt; haystack_len) {
+288     return NULL;
+289   }
+290 
+291   // Case-fold both strings using utf8proc
+292   // UTF8PROC_CASEFOLD performs Unicode case folding
+293   // UTF8PROC_STABLE ensures stable output
+294   // UTF8PROC_COMPOSE normalizes composed characters
+295   utf8proc_option_t options = UTF8PROC_CASEFOLD | UTF8PROC_STABLE | UTF8PROC_COMPOSE;
+296 
+297   // Case-fold the needle (pattern to search for)
+298   utf8proc_uint8_t *needle_folded = NULL;
+299   utf8proc_ssize_t needle_folded_len =
+300       utf8proc_map((const utf8proc_uint8_t *)needle, (utf8proc_ssize_t)needle_len, &amp;needle_folded, options);
+301 
+302   if (needle_folded_len &lt; 0 || !needle_folded) {
+303     // Invalid UTF-8 in needle
+304     if (needle_folded) {
+305       free(needle_folded);
+306     }
+307     return NULL;
+308   }
+309 
+310   // Try each position in haystack
+311   const char *haystack_pos = haystack;
+312   while (*haystack_pos != '\0') {
+313     // Calculate remaining haystack length
+314     size_t remaining = haystack_len - (size_t)(haystack_pos - haystack);
+315 
+316     if (remaining &lt; needle_len) {
+317       // Not enough characters left to match
+318       break;
+319     }
+320 
+321     // Case-fold the current haystack window
+322     utf8proc_uint8_t *haystack_folded = NULL;
+323     utf8proc_ssize_t haystack_folded_len =
+324         utf8proc_map((const utf8proc_uint8_t *)haystack_pos, (utf8proc_ssize_t)needle_len, &amp;haystack_folded, options);
+325 
+326     if (haystack_folded_len &gt;= 0 &amp;&amp; haystack_folded) {
+327       // Compare case-folded strings
+328       if ((size_t)haystack_folded_len == (size_t)needle_folded_len &amp;&amp;
+329           memcmp(haystack_folded, needle_folded, (size_t)needle_folded_len) == 0) {
+330         // Match found!
+331         free(haystack_folded);
+332         free(needle_folded);
+333         return haystack_pos;
+334       }
+335       free(haystack_folded);
+336     }
+337 
+338     // Move to next UTF-8 character in haystack
+339     utf8proc_int32_t codepoint;
+340     utf8proc_ssize_t bytes = utf8proc_iterate((const utf8proc_uint8_t *)haystack_pos, -1, &amp;codepoint);
+341     if (bytes &lt;= 0) {
+342       // Invalid UTF-8, move by one byte
+343       haystack_pos++;
+344     } else {
+345       haystack_pos += bytes;
+346     }
+347   }
+348 
+349   free(needle_folded);
+350   return NULL;
+351 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>grep_highlight_colored()</b>,
+    <b>grep_should_output()</b>, <b>log_search_gather_and_filter_logs()</b>, and
+    <b>log_search_get_match_info()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="size_t_utf8_to_codepoints_(const_char_*_str,_uint32_t_*_out_codepoints,_size_t_max_codepoints)"><a class="permalink" href="#size_t_utf8_to_codepoints_(const_char_*_str,_uint32_t_*_out_codepoints,_size_t_max_codepoints)">size_t
+  utf8_to_codepoints (const char * str, uint32_t * out_codepoints, size_t
+  max_codepoints)</a></h2>
+<p class="Pp">Definition at line <b>185</b> of file <b>utf8.c</b>.</p>
+<pre>185                                                                                             {
+186   if (!str || !out_codepoints || max_codepoints == 0) {
+187     SET_ERRNO(ERROR_INVALID_PARAM, &quot;str is NULL or out_codepoints is NULL or max_codepoints is 0&quot;);
+188     return 0;
+189   }
+190 
+191   size_t count = 0;
+192   const uint8_t *p = (const uint8_t *)str;
+193   while (*p &amp;&amp; count &lt; max_codepoints) {
+194     uint32_t codepoint;
+195     int decode_len = utf8_decode(p, &amp;codepoint);
+196     if (decode_len &lt; 0) {
+197       return -1; // SIZE_MAX - Invalid UTF-8
+198     }
+199     out_codepoints[count++] = codepoint;
+200     p += decode_len;
+201   }
+202   return count;
+203 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_decode()</b>.</p>
+<p class="Pp">Referenced by <b>levenshtein()</b>, and
+    <b>validate_palette_chars()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_utf8_write_lowercase_(FILE_*_output,_const_char_*_text)"><a class="permalink" href="#void_utf8_write_lowercase_(FILE_*_output,_const_char_*_text)">void
+  utf8_write_lowercase (FILE * output, const char * text)</a></h2>
+<p class="Pp">Write UTF-8 string to file with ASCII lowercase conversion.
+    Converts ASCII uppercase to lowercase while preserving all UTF-8 multi-byte
+    sequences unchanged. This ensures proper handling of emoji and non-ASCII
+    characters while still performing ASCII case conversion.</p>
+<p class="Pp">Definition at line <b>360</b> of file <b>utf8.c</b>.</p>
+<pre>360                                                           {
+361   if (!text) {
+362     return;
+363   }
+364 
+365   for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+366     // Check if this is the start of a multi-byte UTF-8 sequence
+367     if (*p &gt;= 0xC0) {
+368       // Multi-byte UTF-8 character - copy as-is without modification
+369       fputc(*p, output);
+370       // Copy continuation bytes (0x80-0xBF)
+371       while (p[1] &gt;= 0x80 &amp;&amp; p[1] &lt; 0xC0) {
+372         fputc(*++p, output);
+373       }
+374     } else if (*p &gt;= 'A' &amp;&amp; *p &lt;= 'Z') {
+375       // ASCII uppercase - convert to lowercase
+376       fputc(*p + 32, output);
+377     } else {
+378       // ASCII lowercase or control character - copy as-is
+379       fputc(*p, output);
+380     }
+381   }
+382 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

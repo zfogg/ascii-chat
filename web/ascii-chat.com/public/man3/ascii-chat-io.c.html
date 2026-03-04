@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>io.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">io.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">io.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">io.c - IO capture implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>LOG_IO_BUFFER_SIZE</b> 8192
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">log_io_t <b>log_io_start</b> (void)
+  <br/>
+  void <b>log_io_stop</b> (log_io_t capture, const char *prefix)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">IO capture implementation.</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>io.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_LOG_IO_BUFFER_SIZE___8192"><a class="permalink" href="#_define_LOG_IO_BUFFER_SIZE___8192">#define
+  LOG_IO_BUFFER_SIZE 8192</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>io.c</b>.</p>
+<p class="Pp">Referenced by <b>log_io_stop()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="log_io_t_log_io_start_(void_)"><a class="permalink" href="#log_io_t_log_io_start_(void_)">log_io_t
+  log_io_start (void )</a></h2>
+<p class="Pp">Definition at line <b>15</b> of file <b>io.c</b>.</p>
+<pre>15                             {
+16   log_io_t capture = {.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+17 
+18   // Save original stdout and stderr
+19   capture.saved_stdout_fd = dup(STDOUT_FILENO);
+20   capture.saved_stderr_fd = dup(STDERR_FILENO);
+21 
+22   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
+23     if (capture.saved_stdout_fd &gt;= 0)
+24       close(capture.saved_stdout_fd);
+25     if (capture.saved_stderr_fd &gt;= 0)
+26       close(capture.saved_stderr_fd);
+27     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+28   }
+29 
+30   // Create a pipe for capturing output
+31   int pipefd[2];
+32   if (pipe(pipefd) &lt; 0) {
+33     close(capture.saved_stdout_fd);
+34     close(capture.saved_stderr_fd);
+35     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+36   }
+37 
+38   // pipefd[0] is read end, pipefd[1] is write end
+39   int write_fd = pipefd[1];
+40   capture.pipe_fd = pipefd[0];
+41 
+42   // Make the read end non-blocking so we can read without hanging
+43   int flags = fcntl(capture.pipe_fd, F_GETFL, 0);
+44   if (flags &gt;= 0) {
+45     fcntl(capture.pipe_fd, F_SETFL, flags | O_NONBLOCK);
+46   }
+47 
+48   // Redirect both stdout and stderr to the pipe
+49   if (dup2(write_fd, STDOUT_FILENO) &lt; 0 || dup2(write_fd, STDERR_FILENO) &lt; 0) {
+50     close(write_fd);
+51     close(capture.pipe_fd);
+52     close(capture.saved_stdout_fd);
+53     close(capture.saved_stderr_fd);
+54     return (log_io_t){.saved_stdout_fd = -1, .saved_stderr_fd = -1, .pipe_fd = -1};
+55   }
+56 
+57   // Close the write end in the parent process (we only need it in redirected streams)
+58   close(write_fd);
+59 
+60   return capture;
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_log_io_stop_(log_io_t_capture,_const_char_*_prefix)"><a class="permalink" href="#void_log_io_stop_(log_io_t_capture,_const_char_*_prefix)">void
+  log_io_stop (log_io_t capture, const char * prefix)</a></h2>
+<p class="Pp">Definition at line <b>63</b> of file <b>io.c</b>.</p>
+<pre>63                                                        {
+64   if (capture.saved_stdout_fd &lt; 0 || capture.saved_stderr_fd &lt; 0) {
+65     return;  // Capture was not started successfully
+66   }
+67 
+68   // Flush stdout/stderr BEFORE restoring to ensure all output is in the pipe
+69   fflush(stdout);
+70   fflush(stderr);
+71 
+72   // Restore stdout and stderr
+73   dup2(capture.saved_stdout_fd, STDOUT_FILENO);
+74   dup2(capture.saved_stderr_fd, STDERR_FILENO);
+75   close(capture.saved_stdout_fd);
+76   close(capture.saved_stderr_fd);
+77 
+78   // Read and log the captured output
+79   if (capture.pipe_fd &gt;= 0) {
+80     char buffer[LOG_IO_BUFFER_SIZE];
+81     ssize_t bytes_read;
+82 
+83     // Read all available data from the pipe
+84     while ((bytes_read = read(capture.pipe_fd, buffer, sizeof(buffer) - 1)) &gt; 0) {
+85       buffer[bytes_read] = '\0';
+86 
+87       // Split by lines and log each line
+88       char *line_start = buffer;
+89       char *line_end;
+90 
+91       while ((line_end = strchr(line_start, '\n')) != NULL) {
+92         // Null-terminate the line (overwriting the newline)
+93         *line_end = '\0';
+94 
+95         // Log the line if it's not empty
+96         if (line_start[0] != '\0') {
+97           if (prefix) {
+98             log_info(&quot;[%s] %s&quot;, prefix, line_start);
+99           } else {
+100             log_info(&quot;%s&quot;, line_start);
+101           }
+102         }
+103 
+104         // Move to the next line
+105         line_start = line_end + 1;
+106       }
+107 
+108       // Log any remaining partial line
+109       if (line_start[0] != '\0') {
+110         if (prefix) {
+111           log_info(&quot;[%s] %s&quot;, prefix, line_start);
+112         } else {
+113           log_info(&quot;%s&quot;, line_start);
+114         }
+115       }
+116     }
+117 
+118     close(capture.pipe_fd);
+119   }
+120 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>LOG_IO_BUFFER_SIZE</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

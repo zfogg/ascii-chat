@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>transport.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">transport.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">transport.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">transport.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>tcp_transport_data_t</b>
+  <br/>
+  TCP transport implementation data.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>acip_transport_t</b> * <b>acip_tcp_transport_create</b> (const
+    char *name, <b>socket_t</b> sockfd, crypto_context_t *crypto_ctx)
+  <br/>
+  void <b>acip_transport_destroy</b> (<b>acip_transport_t</b> *transport)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss"><b>acip_transport_t</b> * acip_tcp_transport_create (const char *
+  name, <b>socket_t</b> sockfd, crypto_context_t * crypto_ctx)</h2>
+<p class="Pp">Definition at line <b>344</b> of file <b>tcp/transport.c</b>.</p>
+<pre>344                                                                                                              {
+345   if (!name) {
+346     SET_ERRNO(ERROR_INVALID_STATE, &quot;Transport name is required&quot;);
+347     return NULL;
+348   }
+349 
+350   if (sockfd == INVALID_SOCKET_VALUE) {
+351     log_error(&quot;[TCP_CREATE_STATE] &#x274C; INVALID_SOCKET: sockfd=%d&quot;, sockfd);
+352     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid socket descriptor&quot;);
+353     return NULL;
+354   }
+355 
+356   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; CREATE_START: sockfd=%d, crypto=%s&quot;, sockfd, crypto_ctx ? &quot;yes&quot; : &quot;no&quot;);
+357 
+358   // Allocate transport structure
+359   acip_transport_t *transport = SAFE_MALLOC(sizeof(acip_transport_t), acip_transport_t *);
+360   if (!transport) {
+361     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TRANSPORT_FAILED: size=%zu&quot;, sizeof(acip_transport_t));
+362     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport&quot;);
+363     return NULL;
+364   }
+365 
+366   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TRANSPORT_ALLOCATED: transport=%p&quot;, (void *)transport);
+367 
+368   // Allocate TCP-specific data
+369   tcp_transport_data_t *tcp_data = SAFE_MALLOC(sizeof(tcp_transport_data_t), tcp_transport_data_t *);
+370   if (!tcp_data) {
+371     log_error(&quot;[TCP_CREATE_STATE] &#x274C; ALLOC_TCP_DATA_FAILED: size=%zu&quot;, sizeof(tcp_transport_data_t));
+372     SAFE_FREE(transport);
+373     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate TCP transport data&quot;);
+374     return NULL;
+375   }
+376 
+377   log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_ALLOCATED: tcp_data=%p&quot;, (void *)tcp_data);
+378 
+379   // Initialize TCP data
+380   tcp_data-&gt;sockfd = sockfd;
+381   tcp_data-&gt;is_connected = true;
+382 
+383   // Initialize send mutex to protect concurrent sends from multiple threads
+384   int mutex_result = mutex_init(&amp;tcp_data-&gt;send_mutex, &quot;tcp_send&quot;);
+385   if (mutex_result != 0) {
+386     log_error(&quot;[TCP_CREATE_STATE] &#x274C; MUTEX_INIT_FAILED: result=%d&quot;, mutex_result);
+387     SAFE_FREE(tcp_data);
+388     SAFE_FREE(transport);
+389     SET_ERRNO(ERROR_MEMORY, &quot;Failed to initialize send mutex&quot;);
+390     return NULL;
+391   }
+392 
+393   log_info(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_DATA_INITIALIZED: sockfd=%d, is_connected=true, send_mutex=initialized&quot;, sockfd);
+394 
+395   // Enable TCP_NODELAY to disable Nagle's algorithm
+396   // This ensures small packets are sent immediately instead of being buffered
+397   int nodelay = 1;
+398   if (setsockopt(sockfd, IPPROTO_TCP, TCP_NODELAY, (const char *)&amp;nodelay, sizeof(nodelay)) &lt; 0) {
+399     log_warn(&quot;[TCP_CREATE_STATE] &#x26A0;&#xFE0F;  TCP_NODELAY_FAILED: sockfd=%d, %s&quot;, sockfd, SAFE_STRERROR(errno));
+400     // Continue anyway - this is not fatal
+401   } else {
+402     log_debug(&quot;[TCP_CREATE_STATE] &#x1F7E2; TCP_NODELAY_SET: sockfd=%d&quot;, sockfd);
+403   }
+404 
+405   // Initialize transport
+406   transport-&gt;methods = &amp;tcp_methods;
+407   transport-&gt;crypto_ctx = crypto_ctx;
+408   transport-&gt;impl_data = tcp_data;
+409 
+410   log_info(&quot;[TCP_CREATE_STATE] &#x2705; CREATE_COMPLETE: transport=%p, sockfd=%d, is_connected=true, crypto=%s&quot;,
+411            (void *)transport, sockfd, crypto_ctx ? &quot;enabled&quot; : &quot;disabled&quot;);
+412 
+413   // Register transport
+414   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
+415 
+416   // Register impl_data with transport as parent
+417   NAMED_REGISTER(tcp_data, &quot;impl&quot;, &quot;tcp_impl&quot;, &quot;0x%tx&quot;, (uintptr_t)(const void *)(transport));
+418 
+419   return transport;
+420 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>tcp_transport_data_t::is_connected</b>,
+    <b>mutex_init()</b>, <b>tcp_transport_data_t::send_mutex</b>, and
+    <b>tcp_transport_data_t::sockfd</b>.</p>
+<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>add_client()</b>,
+    <b>connection_attempt_tcp()</b>,
+    <b>crypto_handshake_client_auth_response_socket()</b>,
+    <b>crypto_handshake_client_complete_socket()</b>,
+    <b>crypto_handshake_client_key_exchange_socket()</b>,
+    <b>crypto_handshake_server_auth_challenge_socket()</b>,
+    <b>crypto_handshake_server_complete_socket()</b>,
+    <b>crypto_handshake_server_start_socket()</b>,
+    <b>server_connection_establish()</b>, and <b>server_main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_acip_transport_destroy_("><a class="permalink" href="#void_acip_transport_destroy_(">void
+  acip_transport_destroy (<b>acip_transport_t</b> * transport)</a></h2>
+<p class="Pp">Definition at line <b>426</b> of file <b>tcp/transport.c</b>.</p>
+<pre>426                                                          {
+427   if (!transport) {
+428     log_debug(&quot;[TRANSPORT_DESTROY] &#x26A0;&#xFE0F;  NULL_TRANSPORT: nothing to destroy&quot;);
+429     return;
+430   }
+431 
+432   log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; DESTROY_START: transport=%p, impl_data=%p&quot;, (void *)transport, transport-&gt;impl_data);
+433 
+434   // Get type before we destroy for logging
+435   acip_transport_type_t type = 0;
+436   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;get_type) {
+437     type = transport-&gt;methods-&gt;get_type(transport);
+438     log_info(&quot;[TRANSPORT_DESTROY] &#x1F4CB; TRANSPORT_TYPE: type=%d (1=TCP, 2=WebSocket, 3=WebRTC, ...)&quot;, type);
+439   }
+440 
+441   // Close if still connected
+442   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;close &amp;&amp; transport-&gt;methods-&gt;is_connected &amp;&amp;
+443       transport-&gt;methods-&gt;is_connected(transport)) {
+444     log_warn(&quot;[TRANSPORT_DESTROY] &#x1F534; STILL_CONNECTED: calling close() first (type=%d)&quot;, type);
+445     asciichat_error_t close_result = transport-&gt;methods-&gt;close(transport);
+446     log_info(&quot;[TRANSPORT_DESTROY] &#x1F534; CLOSE_CALLED: result=%d&quot;, close_result != ASCIICHAT_OK ? -1 : 0);
+447   } else {
+448     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; ALREADY_CLOSED: skipping close (type=%d)&quot;, type);
+449   }
+450 
+451   // Call custom destroy implementation if provided
+452   if (transport-&gt;methods &amp;&amp; transport-&gt;methods-&gt;destroy_impl) {
+453     log_info(&quot;[TRANSPORT_DESTROY] &#x1F527; CALLING_DESTROY_IMPL: type=%d&quot;, type);
+454     transport-&gt;methods-&gt;destroy_impl(transport);
+455     log_info(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_IMPL_COMPLETE: type=%d&quot;, type);
+456   } else {
+457     log_debug(&quot;[TRANSPORT_DESTROY] &#x23ED;&#xFE0F;  NO_CUSTOM_DESTROY: type=%d (using generic cleanup)&quot;, type);
+458   }
+459 
+460   // Free implementation data
+461   if (transport-&gt;impl_data) {
+462     log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_IMPL_DATA: %p&quot;, transport-&gt;impl_data);
+463     NAMED_UNREGISTER(transport-&gt;impl_data);
+464     SAFE_FREE(transport-&gt;impl_data);
+465     log_debug(&quot;[TRANSPORT_DESTROY] &#x2705; IMPL_DATA_FREED&quot;);
+466   }
+467 
+468   // Free transport structure
+469   log_debug(&quot;[TRANSPORT_DESTROY] &#x1F5D1;&#xFE0F;  FREEING_TRANSPORT: %p&quot;, (void *)transport);
+470   SAFE_FREE(transport);
+471 
+472   log_warn(&quot;[TRANSPORT_DESTROY] &#x2705; DESTROY_COMPLETE: type=%d&quot;, type);
+473 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>connection_context_cleanup()</b>,
+    <b>crypto_handshake_client_auth_response_socket()</b>,
+    <b>crypto_handshake_client_complete_socket()</b>,
+    <b>crypto_handshake_client_key_exchange_socket()</b>,
+    <b>crypto_handshake_server_auth_challenge_socket()</b>,
+    <b>crypto_handshake_server_complete_socket()</b>,
+    <b>crypto_handshake_server_start_socket()</b>, <b>remove_client()</b>,
+    <b>server_connection_close()</b>, <b>server_connection_establish()</b>,
+    <b>server_connection_set_transport()</b>, and <b>server_main()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

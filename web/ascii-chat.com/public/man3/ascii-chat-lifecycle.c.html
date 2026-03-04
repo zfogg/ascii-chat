@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>lifecycle.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">lifecycle.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">lifecycle.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">lifecycle.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp"><b>bool</b> <b>lifecycle_init</b> (lifecycle_t *lc, const char
+    *name)
+  <br/>
+  <b>bool</b> <b>lifecycle_init_once</b> (lifecycle_t *lc)
+  <br/>
+  void <b>lifecycle_init_commit</b> (lifecycle_t *lc)
+  <br/>
+  void <b>lifecycle_init_abort</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_shutdown</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_shutdown_forever</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_is_initialized</b> (const lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_is_dead</b> (const lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_reset</b> (lifecycle_t *lc)
+  <br/>
+  <b>bool</b> <b>lifecycle_destroy_once</b> (lifecycle_t *lc)
+  <br/>
+  void <b>lifecycle_destroy_commit</b> (lifecycle_t *lc)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_lifecycle_destroy_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_destroy_commit_(lifecycle_t_*_lc)">void
+  lifecycle_destroy_commit (lifecycle_t * lc)</a></h2>
+<p class="Pp">Definition at line <b>215</b> of file <b>lifecycle.c</b>.</p>
+<pre>215                                                {
+216   if (lc == NULL) {
+217     log_dev(&quot;[lifecycle] destroy_commit: NULL lifecycle pointer&quot;);
+218     return;
+219   }
+220   log_dev(&quot;[lifecycle] destroy_commit: transitioning DESTROYING &#x2192; UNINITIALIZED&quot;);
+221   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+222 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>audio_stop_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_destroy_once (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>172</b> of file <b>lifecycle.c</b>.</p>
+<pre>172                                              {
+173   if (lc == NULL) {
+174     log_dev(&quot;[lifecycle] destroy_once: NULL lifecycle pointer&quot;);
+175     return false;
+176   }
+177 
+178   uint64_t expected = LIFECYCLE_INITIALIZED;
+179   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_DESTROYING)) {
+180     // If not initialized, nothing to destroy
+181     if (expected == LIFECYCLE_UNINITIALIZED) {
+182       log_dev(&quot;[lifecycle] destroy_once: already uninitialized, nothing to destroy&quot;);
+183       return false;
+184     }
+185 
+186     // If dead, never allow destruction (already permanently shut down)
+187     if (expected == LIFECYCLE_DEAD) {
+188       log_dev(&quot;[lifecycle] destroy_once: module is dead, no destruction allowed&quot;);
+189       return false;
+190     }
+191 
+192     // If already destroying, don't duplicate work (return false, let first destroyer finish)
+193     if (expected == LIFECYCLE_DESTROYING) {
+194       log_dev(&quot;[lifecycle] destroy_once: already destroying, skipping (first destroyer has priority)&quot;);
+195       return false;
+196     }
+197 
+198     // If initializing, skip destruction (init may still be in progress)
+199     if (expected == LIFECYCLE_INITIALIZING) {
+200       log_dev(&quot;[lifecycle] destroy_once: still initializing, skipping destruction&quot;);
+201       return false;
+202     }
+203 
+204     // Unexpected state
+205     log_dev(&quot;[lifecycle] destroy_once: unexpected state: %d&quot;, expected);
+206     return false;
+207   }
+208 
+209   // Winner: state is now LIFECYCLE_DESTROYING
+210   // Caller must call lifecycle_destroy_commit()
+211   log_dev(&quot;[lifecycle] destroy_once: won CAS, transitioned to DESTROYING&quot;);
+212   return true;
+213 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>.</p>
+<p class="Pp">Referenced by <b>audio_stop_thread()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_init (lifecycle_t * lc, const char *
+  name)</h2>
+<p class="Pp">Definition at line <b>6</b> of file <b>lifecycle.c</b>.</p>
+<pre>6                                                        {
+7   if (lc == NULL) {
+8     log_dev(&quot;[lifecycle] init: NULL lifecycle pointer&quot;);
+9     return false;
+10   }
+11   uint64_t expected = LIFECYCLE_UNINITIALIZED;
+12   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED)) {
+13     log_dev(&quot;[lifecycle] init: %s already initialized (current state: %llu)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;, expected);
+14     return false; // Already initialized or in INITIALIZING/DEAD state
+15   }
+16 
+17   /* Winner: initialize sync primitive if configured */
+18   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+19     log_dev(&quot;[lifecycle] init: %s initializing mutex&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+20     mutex_init(lc-&gt;sync.mutex, name);
+21   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+22     log_dev(&quot;[lifecycle] init: %s initializing rwlock&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+23     rwlock_init(lc-&gt;sync.rwlock, name);
+24   } else {
+25     log_dev(&quot;[lifecycle] init: %s initialized (no sync primitive)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+26   }
+27 
+28   return true;
+29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, <b>mutex_init()</b>, and
+    <b>rwlock_init()</b>.</p>
+<p class="Pp">Referenced by <b>ansi_fast_init_16color()</b>,
+    <b>ansi_fast_init_256color()</b>, <b>asciichat_error_stats_get()</b>,
+    <b>asciichat_error_stats_init()</b>, <b>asciichat_error_stats_record()</b>,
+    <b>asciichat_pcre2_singleton_compile()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>, <b>audio_sender_init()</b>,
+    <b>audio_stop_thread()</b>, <b>buffer_pool_init_global()</b>,
+    <b>client_crypto_init()</b>, <b>colorscheme_init()</b>,
+    <b>init_default_luminance_palette()</b>, <b>log_init()</b>,
+    <b>log_search_init()</b>, <b>named_init()</b>, <b>options_state_init()</b>,
+    <b>server_main()</b>, <b>stats_init()</b>, <b>symbol_cache_init()</b>, and
+    <b>timer_system_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lifecycle_init_abort_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_abort_(lifecycle_t_*_lc)">void
+  lifecycle_init_abort (lifecycle_t * lc)</a></h2>
+<p class="Pp">Definition at line <b>78</b> of file <b>lifecycle.c</b>.</p>
+<pre>78                                            {
+79   if (lc == NULL) {
+80     log_dev(&quot;[lifecycle] init_abort: NULL lifecycle pointer&quot;);
+81     return;
+82   }
+83   log_dev(&quot;[lifecycle] init_abort: transitioning INITIALIZING &#x2192; UNINITIALIZED (retry allowed)&quot;);
+84   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+85 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>audio_client_init()</b>, and
+    <b>symbol_cache_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_lifecycle_init_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_commit_(lifecycle_t_*_lc)">void
+  lifecycle_init_commit (lifecycle_t * lc)</a></h2>
+<p class="Pp">Definition at line <b>69</b> of file <b>lifecycle.c</b>.</p>
+<pre>69                                             {
+70   if (lc == NULL) {
+71     log_dev(&quot;[lifecycle] init_commit: NULL lifecycle pointer&quot;);
+72     return;
+73   }
+74   log_dev(&quot;[lifecycle] init_commit: transitioning INITIALIZING &#x2192; INITIALIZED&quot;);
+75   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+76 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>,
+    <b>asciichat_instr_runtime_get()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>, <b>audio_client_init()</b>,
+    <b>log_search_init()</b>, <b>named_init()</b>, and
+    <b>splash_set_update_notification()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_init_once (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>31</b> of file <b>lifecycle.c</b>.</p>
+<pre>31                                           {
+32   if (lc == NULL) {
+33     log_dev(&quot;[lifecycle] init_once: NULL lifecycle pointer&quot;);
+34     return false;
+35   }
+36 
+37   uint64_t expected = LIFECYCLE_UNINITIALIZED;
+38   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING)) {
+39     // If already initialized, just return false (no work needed)
+40     if (expected == LIFECYCLE_INITIALIZED) {
+41       log_dev(&quot;[lifecycle] init_once: already initialized&quot;);
+42       return false;
+43     }
+44 
+45     // If dead, never allow re-init
+46     if (expected == LIFECYCLE_DEAD) {
+47       log_dev(&quot;[lifecycle] init_once: module is dead, no re-init allowed&quot;);
+48       return false;
+49     }
+50 
+51     // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
+52     // Just return false to indicate this thread doesn't need to do init work
+53     if (expected == LIFECYCLE_INITIALIZING) {
+54       log_dev(&quot;[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)&quot;);
+55       return false;
+56     }
+57 
+58     // Unexpected state
+59     log_dev(&quot;[lifecycle] init_once: unexpected state: %d&quot;, expected);
+60     return false;
+61   }
+62 
+63   // Winner: state is now LIFECYCLE_INITIALIZING
+64   // Caller must call lifecycle_init_commit() or lifecycle_init_abort()
+65   log_dev(&quot;[lifecycle] init_once: won CAS, transitioned to INITIALIZING&quot;);
+66   return true;
+67 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_instr_coverage_enabled()</b>,
+    <b>asciichat_instr_runtime_get()</b>, <b>audio_client_init()</b>,
+    <b>log_search_init()</b>, and <b>splash_set_update_notification()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_is_dead (const lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>140</b> of file <b>lifecycle.c</b>.</p>
+<pre>140                                               {
+141   if (lc == NULL)
+142     return false;
+143   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_DEAD;
+144 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const lifecycle_t *
+  lc)</h2>
+<p class="Pp">Definition at line <b>134</b> of file <b>lifecycle.c</b>.</p>
+<pre>134                                                      {
+135   if (lc == NULL)
+136     return false;
+137   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
+138 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_error_stats_get()</b>,
+    <b>asciichat_error_stats_print()</b>, <b>asciichat_error_stats_record()</b>,
+    <b>asciichat_error_stats_reset()</b>,
+    <b>asciichat_instr_coverage_enabled()</b>,
+    <b>asciichat_instr_runtime_get()</b>,
+    <b>asciichat_pcre2_singleton_get_code()</b>, <b>audio_client_init()</b>,
+    <b>audio_sender_cleanup()</b>, <b>audio_stop_thread()</b>,
+    <b>client_crypto_handshake()</b>, <b>colorscheme_destroy()</b>,
+    <b>colorscheme_get_active_scheme()</b>, <b>colorscheme_init()</b>,
+    <b>colorscheme_set_active_scheme()</b>,
+    <b>crypto_client_initiate_rekey()</b>, <b>crypto_client_is_ready()</b>,
+    <b>crypto_client_process_rekey_request()</b>,
+    <b>crypto_client_process_rekey_response()</b>,
+    <b>crypto_client_send_rekey_complete()</b>,
+    <b>crypto_client_send_rekey_response()</b>,
+    <b>crypto_client_should_rekey()</b>, <b>log_file_msg()</b>,
+    <b>log_init()</b>, <b>log_init_colors()</b>, <b>log_msg()</b>,
+    <b>log_plain_msg()</b>, <b>log_plain_stderr_msg()</b>,
+    <b>log_plain_stderr_nonewline_msg()</b>, <b>log_server_stats()</b>,
+    <b>log_terminal_msg()</b>, <b>named_describe()</b>, <b>named_get()</b>,
+    <b>named_get_fd()</b>, <b>named_get_fd_format_spec()</b>,
+    <b>named_get_format_spec()</b>, <b>named_get_packet_type()</b>,
+    <b>named_get_packet_type_format_spec()</b>, <b>named_get_type()</b>,
+    <b>named_init()</b>, <b>named_register()</b>, <b>named_register_fd()</b>,
+    <b>named_register_fmt()</b>, <b>named_register_packet_type()</b>,
+    <b>named_registry_for_each()</b>, <b>named_unregister()</b>,
+    <b>options_state_destroy()</b>, <b>options_state_init()</b>,
+    <b>options_state_set()</b>, <b>platform_is_binary_in_path()</b>,
+    <b>simd_caches_destroy_all()</b>, <b>symbol_cache_insert()</b>,
+    <b>symbol_cache_lookup()</b>, <b>symbol_cache_resolve_batch()</b>,
+    <b>timer_is_initialized()</b>, <b>timer_start()</b>, <b>timer_stop()</b>,
+    <b>timer_system_destroy()</b>, <b>timer_system_init()</b>, and
+    <b>webrtc_create_peer_connection()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_reset (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>146</b> of file <b>lifecycle.c</b>.</p>
+<pre>146                                       {
+147   if (lc == NULL) {
+148     log_dev(&quot;[lifecycle] reset: NULL lifecycle pointer&quot;);
+149     return false;
+150   }
+151 
+152   uint64_t expected = LIFECYCLE_INITIALIZED;
+153   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
+154     log_dev(&quot;[lifecycle] reset: not in INITIALIZED state (current: %d)&quot;, expected);
+155     return false; // Not in INITIALIZED state
+156   }
+157 
+158   /* Winner: destroy sync primitive if configured (reset keeps same primitive) */
+159   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+160     log_dev(&quot;[lifecycle] reset: destroying and resetting mutex&quot;);
+161     mutex_destroy(lc-&gt;sync.mutex);
+162   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+163     log_dev(&quot;[lifecycle] reset: destroying and resetting rwlock&quot;);
+164     rwlock_destroy(lc-&gt;sync.rwlock);
+165   } else {
+166     log_dev(&quot;[lifecycle] reset: completed (no sync primitive, allows reinit)&quot;);
+167   }
+168 
+169   return true;
+170 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, and
+  <b>mutex_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>87</b> of file <b>lifecycle.c</b>.</p>
+<pre>87                                          {
+88   if (lc == NULL) {
+89     log_dev(&quot;[lifecycle] shutdown: NULL lifecycle pointer&quot;);
+90     return false;
+91   }
+92   uint64_t expected = LIFECYCLE_INITIALIZED;
+93   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
+94     log_dev(&quot;[lifecycle] shutdown: not in INITIALIZED state (current: %d)&quot;, expected);
+95     return false; // Not initialized or in unexpected state
+96   }
+97 
+98   /* Winner: destroy sync primitive if configured */
+99   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+100     log_dev(&quot;[lifecycle] shutdown: destroying mutex&quot;);
+101     mutex_destroy(lc-&gt;sync.mutex);
+102   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+103     log_dev(&quot;[lifecycle] shutdown: destroying rwlock&quot;);
+104     rwlock_destroy(lc-&gt;sync.rwlock);
+105   } else {
+106     log_dev(&quot;[lifecycle] shutdown: completed (no sync primitive)&quot;);
+107   }
+108 
+109   return true;
+110 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, and
+  <b>mutex_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>acds_strings_destroy()</b>,
+    <b>asciichat_instr_runtime_global_destroy()</b>,
+    <b>asciichat_pcre2_cleanup_all()</b>, <b>audio_sender_cleanup()</b>,
+    <b>audio_terminate_portaudio_final()</b>,
+    <b>buffer_pool_cleanup_global()</b>, <b>colorscheme_destroy()</b>,
+    <b>crypto_client_cleanup()</b>, <b>log_destroy()</b>,
+    <b>log_search_destroy()</b>, <b>named_destroy()</b>, <b>named_init()</b>,
+    <b>options_state_destroy()</b>, <b>options_state_init()</b>,
+    <b>platform_cleanup_binary_path_cache()</b>,
+    <b>simd_caches_destroy_all()</b>, <b>stats_cleanup()</b>,
+    <b>symbol_cache_destroy()</b>, and <b>timer_system_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (lifecycle_t * lc)</h2>
+<p class="Pp">Definition at line <b>112</b> of file <b>lifecycle.c</b>.</p>
+<pre>112                                                  {
+113   if (lc == NULL) {
+114     log_dev(&quot;[lifecycle] shutdown_forever: NULL lifecycle pointer&quot;);
+115     return false;
+116   }
+117 
+118   uint64_t current;
+119   do {
+120     current = atomic_load_u64(&amp;lc-&gt;state);
+121     if (current == LIFECYCLE_DEAD) {
+122       log_dev(&quot;[lifecycle] shutdown_forever: already DEAD&quot;);
+123       return false;
+124     }
+125     if (current == LIFECYCLE_INITIALIZING) {
+126       log_dev(&quot;[lifecycle] shutdown_forever: spinning on INITIALIZING&quot;);
+127     }
+128   } while (current == LIFECYCLE_INITIALIZING || !atomic_cas_u64(&amp;lc-&gt;state, &amp;current, LIFECYCLE_DEAD));
+129 
+130   log_dev(&quot;[lifecycle] shutdown_forever: transitioned to DEAD (was in state: %d)&quot;, current);
+131   return current == LIFECYCLE_INITIALIZED;
+132 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>atomic_cas_u64()</b>, and
+  <b>atomic_load_u64()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

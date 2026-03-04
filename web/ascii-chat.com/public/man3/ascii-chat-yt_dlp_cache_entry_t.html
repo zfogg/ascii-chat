@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>yt_dlp_cache_entry_t(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">yt_dlp_cache_entry_t(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">yt_dlp_cache_entry_t(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">yt_dlp_cache_entry_t - Cache entry for extracted stream URLs.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
+  Fields</a></h2>
+<br/>
+<p class="Pp">char <b>url</b> [2048]
+  <br/>
+  char <b>stream_url</b> [8192]
+  <br/>
+  char <b>yt_dlp_options</b> [512]
+  <br/>
+  time_t <b>extracted_time</b>
+  <br/>
+  <b>bool</b> <b>valid</b>
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Cache entry for extracted stream URLs.</p>
+<p class="Pp">Avoids calling yt-dlp multiple times for the same URL during
+    initialization (FPS detection, audio probing, playback setup).</p>
+<p class="Pp"></p>
+<p class="Pp">Cache entry is valid for 30 seconds (typical stream URL
+  duration).</p>
+<p class="Pp">Definition at line <b>31</b> of file <b>yt_dlp.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="time_t_yt_dlp_cache_entry_t::extracted_time"><a class="permalink" href="#time_t_yt_dlp_cache_entry_t::extracted_time">time_t
+  yt_dlp_cache_entry_t::extracted_time</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>yt_dlp.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_yt_dlp_cache_entry_t::stream_url_8192_"><a class="permalink" href="#char_yt_dlp_cache_entry_t::stream_url_8192_">char
+  yt_dlp_cache_entry_t::stream_url[8192]</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>yt_dlp.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_yt_dlp_cache_entry_t::url_2048_"><a class="permalink" href="#char_yt_dlp_cache_entry_t::url_2048_">char
+  yt_dlp_cache_entry_t::url[2048]</a></h2>
+<p class="Pp">Definition at line <b>32</b> of file <b>yt_dlp.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss"><b>bool</b> yt_dlp_cache_entry_t::valid</h2>
+<p class="Pp">Definition at line <b>36</b> of file <b>yt_dlp.c</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="char_yt_dlp_cache_entry_t::yt_dlp_options_512_"><a class="permalink" href="#char_yt_dlp_cache_entry_t::yt_dlp_options_512_">char
+  yt_dlp_cache_entry_t::yt_dlp_options[512]</a></h2>
+<p class="Pp">Definition at line <b>34</b> of file <b>yt_dlp.c</b>.</p>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

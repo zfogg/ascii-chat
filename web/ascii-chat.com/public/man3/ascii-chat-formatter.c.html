@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>formatter.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">formatter.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">formatter.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">formatter.c - Groff/troff formatting utilities for man page
+    generation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">const char * <b>manpage_fmt_escape_groff</b> (const char *str)
+  <br/>
+  void <b>manpage_fmt_write_section</b> (FILE *f, const char *section_name)
+  <br/>
+  void <b>manpage_fmt_write_blank_line</b> (FILE *f)
+  <br/>
+  void <b>manpage_fmt_write_bold</b> (FILE *f, const char *text)
+  <br/>
+  void <b>manpage_fmt_write_italic</b> (FILE *f, const char *text)
+  <br/>
+  void <b>manpage_fmt_write_tagged_paragraph</b> (FILE *f)
+  <br/>
+  void <b>manpage_fmt_write_text</b> (FILE *f, const char *text)
+  <br/>
+  void <b>manpage_fmt_write_title</b> (FILE *f, const char *program_name, const
+    char *mode_name, const char *brief_description)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Groff/troff formatting utilities for man page generation.</p>
+<p class="Pp">Provides utilities for generating properly formatted groff/troff
+    output for man pages.</p>
+<p class="Pp">Definition in file <b>formatter.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_manpage_fmt_escape_groff_(const_char_*_str)"><a class="permalink" href="#const_char_*_manpage_fmt_escape_groff_(const_char_*_str)">const
+  char * manpage_fmt_escape_groff (const char * str)</a></h2>
+<p class="Pp">Definition at line <b>21</b> of file <b>formatter.c</b>.</p>
+<pre>21                                                       {
+22   // For simplicity, we'll just return the string as-is
+23   // In a more robust implementation, we'd escape special characters
+24   // But for man page content, most strings don't have problematic characters
+25   return str ? str : &quot;&quot;;
+26 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>manpage_fmt_write_title()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_blank_line_(FILE_*_f)"><a class="permalink" href="#void_manpage_fmt_write_blank_line_(FILE_*_f)">void
+  manpage_fmt_write_blank_line (FILE * f)</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file <b>formatter.c</b>.</p>
+<pre>35                                            {
+36   if (!f) {
+37     return;
+38   }
+39   fprintf(f, &quot;\n&quot;);
+40 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by
+  <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_bold_(FILE_*_f,_const_char_*_text)">void
+  manpage_fmt_write_bold (FILE * f, const char * text)</a></h2>
+<p class="Pp">Definition at line <b>42</b> of file <b>formatter.c</b>.</p>
+<pre>42                                                        {
+43   if (!f || !text) {
+44     return;
+45   }
+46   fprintf(f, &quot;.B %s\n&quot;, text);
+47 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_italic_(FILE_*_f,_const_char_*_text)">void
+  manpage_fmt_write_italic (FILE * f, const char * text)</a></h2>
+<p class="Pp">Definition at line <b>49</b> of file <b>formatter.c</b>.</p>
+<pre>49                                                          {
+50   if (!f || !text) {
+51     return;
+52   }
+53   fprintf(f, &quot;.I %s\n&quot;, text);
+54 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)"><a class="permalink" href="#void_manpage_fmt_write_section_(FILE_*_f,_const_char_*_section_name)">void
+  manpage_fmt_write_section (FILE * f, const char * section_name)</a></h2>
+<p class="Pp">Definition at line <b>28</b> of file <b>formatter.c</b>.</p>
+<pre>28                                                                   {
+29   if (!f || !section_name) {
+30     return;
+31   }
+32   fprintf(f, &quot;.SH %s\n&quot;, section_name);
+33 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by
+  <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)"><a class="permalink" href="#void_manpage_fmt_write_tagged_paragraph_(FILE_*_f)">void
+  manpage_fmt_write_tagged_paragraph (FILE * f)</a></h2>
+<p class="Pp">Definition at line <b>56</b> of file <b>formatter.c</b>.</p>
+<pre>56                                                  {
+57   if (!f) {
+58     return;
+59   }
+60   fprintf(f, &quot;.TP\n&quot;);
+61 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)"><a class="permalink" href="#void_manpage_fmt_write_text_(FILE_*_f,_const_char_*_text)">void
+  manpage_fmt_write_text (FILE * f, const char * text)</a></h2>
+<p class="Pp">Definition at line <b>63</b> of file <b>formatter.c</b>.</p>
+<pre>63                                                        {
+64   if (!f) {
+65     return;
+66   }
+67 
+68   if (text) {
+69     fprintf(f, &quot;%s\n&quot;, text);
+70   } else {
+71     fprintf(f, &quot;\n&quot;);
+72   }
+73 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)"><a class="permalink" href="#void_manpage_fmt_write_title_(FILE_*_f,_const_char_*_program_name,_const_char_*_mode_name,_const_char_*_brief_description)">void
+  manpage_fmt_write_title (FILE * f, const char * program_name, const char *
+  mode_name, const char * brief_description)</a></h2>
+<p class="Pp">Definition at line <b>75</b> of file <b>formatter.c</b>.</p>
+<pre>75                                                                                                                       {
+76   if (!f || !program_name || !brief_description) {
+77     return;
+78   }
+79 
+80   time_t now = time(NULL);
+81   struct tm tm_buf;
+82   platform_localtime(&amp;now, &amp;tm_buf);
+83   char date_str[32];
+84   strftime(date_str, sizeof(date_str), &quot;%B %Y&quot;, &amp;tm_buf);
+85 
+86   // Build full program name (e.g., &quot;ascii-chat-server&quot; or just &quot;ascii-chat&quot;)
+87   char full_name[256];
+88   if (mode_name) {
+89     safe_snprintf(full_name, sizeof(full_name), &quot;%s-%s&quot;, program_name, mode_name);
+90   } else {
+91     safe_snprintf(full_name, sizeof(full_name), &quot;%s&quot;, program_name);
+92   }
+93 
+94   // .TH NAME SECTION DATE SOURCE MANUAL
+95   // Section 1 = user commands, 5 = file formats
+96   fprintf(f, &quot;.TH %s 1 \&quot;%s\&quot; \&quot;%s\&quot; \&quot;User Commands\&quot;\n&quot;, full_name, date_str, program_name);
+97   fprintf(f, &quot;.SH NAME\n&quot;);
+98   fprintf(f, &quot;.B %s\n&quot;, full_name);
+99   fprintf(f, &quot;\\- %s\n&quot;, manpage_fmt_escape_groff(brief_description));
+100   fprintf(f, &quot;\n&quot;);
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>manpage_fmt_escape_groff()</b>,
+    <b>platform_localtime()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">Referenced by
+  <b>options_config_generate_manpage_template()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

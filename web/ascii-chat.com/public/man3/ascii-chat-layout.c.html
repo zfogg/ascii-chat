@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>layout.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">layout.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">layout.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">layout.c - Two-column layout implementation.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>layout_print_wrapped_description</b> (FILE *stream, const
+    char *text, int indent_width, int term_width, int continuation_indent_extra)
+  <br/>
+  void <b>layout_print_two_column_row</b> (FILE *stream, const char
+    *first_column, const char *second_column, int first_col_len, int term_width,
+    int continuation_indent_extra)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Two-column layout implementation.</p>
+<p class="Pp">Implements reusable layout functions for two-column formatting
+    with text wrapping. Uses utf8proc library for accurate UTF-8 display width
+    calculation.</p>
+<p class="Pp">Definition in file <b>layout.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="void_layout_print_two_column_row_(FILE_*_stream,_const_char_*_first_column,_const_char_*_second_column,_int_first_col_len,_int_term_width,_int_continuation_indent_extra)"><a class="permalink" href="#void_layout_print_two_column_row_(FILE_*_stream,_const_char_*_first_column,_const_char_*_second_column,_int_first_col_len,_int_term_width,_int_continuation_indent_extra)">void
+  layout_print_two_column_row (FILE * stream, const char * first_column, const
+  char * second_column, int first_col_len, int term_width, int
+  continuation_indent_extra)</a></h2>
+<p class="Pp">Definition at line <b>224</b> of file <b>layout.c</b>.</p>
+<pre>225                                                                                 {
+226   if (!stream || !first_column || !second_column)
+227     return;
+228 
+229   // Strip ANSI escape codes before calculating display width
+230   char *stripped = ansi_strip_escapes(first_column, strlen(first_column));
+231 
+232   // Calculate actual display width of first column (accounts for UTF-8, excluding ANSI codes)
+233   int display_width = utf8_display_width(stripped ? stripped : first_column);
+234   if (display_width &lt; 0)
+235     display_width = first_col_len; // Fallback to provided value if available
+236 
+237   SAFE_FREE(stripped);
+238 
+239   // Use calculated first_col_len if provided (accounts for UTF-8 and ANSI codes),
+240   // otherwise default to 35. The provided width respects both colored text and UTF-8 characters.
+241   // Allow the first column to expand up to 60% of terminal width, but leave room for description.
+242   int fixed_first_col_width = (first_col_len &gt; 0) ? first_col_len : 35;
+243   int max_first_col_width = (term_width * 6) / 10;
+244   if (max_first_col_width &lt; 40)
+245     max_first_col_width = 40;
+246   if (fixed_first_col_width &gt; max_first_col_width) {
+247     fixed_first_col_width = max_first_col_width;
+248   }
+249 
+250   // Second column starts after first column (with 2 spaces padding)
+251   // This allows descriptions to be quite wide for wrapping
+252   int second_col_start = 2 + fixed_first_col_width + 2;
+253 
+254   // At narrow terminal widths, force single-column layout
+255   bool force_single_column = (term_width &lt;= 90);
+256 
+257   // Position where first column ends (including leading spaces)
+258   int first_col_end = 2 + display_width;
+259 
+260   // Check if first column fits within the fixed width
+261   bool fits_in_first_column_width = (display_width &lt;= fixed_first_col_width);
+262 
+263   // If first column fits within its width and we're not forcing single column, try same-line layout
+264   if (fits_in_first_column_width &amp;&amp; !force_single_column) {
+265     // Print first column
+266     fprintf(stream, &quot;  %s&quot;, first_column);
+267 
+268     // Pad to second column start position
+269     int padding = second_col_start - first_col_end;
+270     if (padding &gt; 0) {
+271       fprintf(stream, &quot;%*s&quot;, padding, &quot;&quot;);
+272     } else {
+273       fprintf(stream, &quot; &quot;);
+274     }
+275 
+276     // Print description with wrapping at second column position
+277     layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
+278     fprintf(stream, &quot;\n&quot;);
+279   } else if (force_single_column) {
+280     // Terminal too narrow, put description on next line with indent
+281     fprintf(stream, &quot;  %s\n&quot;, first_column);
+282 
+283     // Only print description if it exists
+284     if (second_column &amp;&amp; second_column[0] != '\0') {
+285       int description_indent = 4;
+286       for (int i = 0; i &lt; description_indent; i++)
+287         fprintf(stream, &quot; &quot;);
+288 
+289       layout_print_wrapped_description(stream, second_column, description_indent, term_width,
+290                                        continuation_indent_extra);
+291       fprintf(stream, &quot;\n&quot;);
+292     }
+293   } else {
+294     // First column overflows its fixed width - bump description to next line
+295     // Print first column as-is (it will overflow)
+296     fprintf(stream, &quot;  %s\n&quot;, first_column);
+297 
+298     // Only print description if it exists
+299     if (second_column &amp;&amp; second_column[0] != '\0') {
+300       // Print description on next line at second column position, with wide wrapping
+301       for (int i = 0; i &lt; second_col_start; i++)
+302         fprintf(stream, &quot; &quot;);
+303       layout_print_wrapped_description(stream, second_column, second_col_start, term_width, continuation_indent_extra);
+304       fprintf(stream, &quot;\n&quot;);
+305     }
+306   }
+307 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ansi_strip_escapes()</b>, <b>display_width()</b>,
+    <b>layout_print_wrapped_description()</b>, and
+  <b>utf8_display_width()</b>.</p>
+<p class="Pp">Referenced by
+    <b>options_config_print_options_sections_with_width()</b>,
+    <b>options_config_print_usage()</b>, and
+    <b>options_print_help_for_mode()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)"><a class="permalink" href="#void_layout_print_wrapped_description_(FILE_*_stream,_const_char_*_text,_int_indent_width,_int_term_width,_int_continuation_indent_extra)">void
+  layout_print_wrapped_description (FILE * stream, const char * text, int
+  indent_width, int term_width, int continuation_indent_extra)</a></h2>
+<p class="Pp">Definition at line <b>98</b> of file <b>layout.c</b>.</p>
+<pre>99                                                                      {
+100   if (!text || !stream)
+101     return;
+102 
+103   // Default terminal width if not specified
+104   if (term_width &lt;= 0)
+105     term_width = 80;
+106 
+107   // Available width for text after indentation, capped at 130 for readability
+108   // Account for continuation lines having extra indent, so reduce available width accordingly
+109   // This allows the description column itself to be up to 130 chars wide,
+110   // starting from indent_width, for a max total line of indent_width + 130 (first line)
+111   // or indent_width + continuation_indent_extra + 130 (continuation lines)
+112   int available_width = term_width - indent_width - continuation_indent_extra;
+113   if (available_width &gt; 130)
+114     available_width = 130;
+115   if (available_width &lt; 20)
+116     available_width = 20;
+117 
+118   const char *line_start = text;
+119   const char *last_space = NULL;
+120   const char *p = text;
+121   bool inside_metadata = false;
+122 
+123   while (*p) {
+124     // Check for explicit newline
+125     if (*p == '\n') {
+126       // Print everything up to the newline
+127       int text_len = p - line_start;
+128       if (text_len &gt; 0) {
+129         char seg[BUFFER_SIZE_MEDIUM];
+130         SAFE_STRNCPY(seg, line_start, text_len + 1);
+131         layout_print_colored_segment(stream, seg);
+132       }
+133 
+134       fprintf(stream, &quot;\n&quot;);
+135       if (*(p + 1)) {
+136         // Continuation lines get extra indent if specified
+137         int continuation_indent = indent_width + continuation_indent_extra;
+138         for (int i = 0; i &lt; continuation_indent; i++)
+139           fprintf(stream, &quot; &quot;);
+140       }
+141       p++;
+142       line_start = p;
+143       last_space = NULL;
+144       inside_metadata = false;
+145       continue;
+146     }
+147 
+148     // Check for start of metadata blocks (must check before space tracking)
+149     // Use helper that accounts for ANSI codes in the metadata
+150     if (!inside_metadata &amp;&amp; is_metadata_start(p)) {
+151       inside_metadata = true;
+152     }
+153 
+154     // Check for end of metadata blocks - always exit on )
+155     // We'll re-enter when we see the next metadata marker
+156     if (inside_metadata &amp;&amp; *p == ')') {
+157       inside_metadata = false;
+158     }
+159 
+160     // Track spaces for word wrapping, including inside metadata blocks
+161     // Prefer breaks before metadata blocks by updating last_space even if we already have one
+162     if (*p == ' ') {
+163       const char *next = p + 1;
+164       while (*next == ' ')
+165         next++;
+166       // Check if next is a metadata marker - this is a good break point to prefer
+167       if (is_metadata_start(next)) {
+168         // Update last_space to this position (prefer breaking before metadata)
+169         last_space = p;
+170       } else if (!last_space || *next != '(') {
+171         // Otherwise track normal spaces, but skip spaces before non-short parentheticals
+172         last_space = p;
+173       }
+174     }
+175 
+176     // Decode UTF-8 character length
+177     int char_bytes = utf8_next_char_bytes(p, strlen(p));
+178 
+179     if (char_bytes &lt;= 0) {
+180       // Invalid UTF-8 or end of string, stop
+181       break;
+182     }
+183 
+184     // Advance to next character first
+185     p += char_bytes;
+186 
+187     // Calculate actual display width from line_start to current position (excluding ANSI codes)
+188     int actual_width = calculate_segment_display_width(line_start, p - line_start);
+189 
+190     // Check if we need to wrap
+191     if (actual_width &gt;= available_width &amp;&amp; last_space &amp;&amp; last_space &gt; line_start) {
+192       // Print text up to break point with colors applied
+193       int text_len = last_space - line_start;
+194       char seg[BUFFER_SIZE_MEDIUM];
+195       SAFE_STRNCPY(seg, line_start, text_len + 1);
+196       layout_print_colored_segment(stream, seg);
+197 
+198       fprintf(stream, &quot;\n&quot;);
+199       // Continuation lines get extra indent if specified
+200       int continuation_indent = indent_width + continuation_indent_extra;
+201       for (int i = 0; i &lt; continuation_indent; i++)
+202         fprintf(stream, &quot; &quot;);
+203 
+204       p = last_space + 1;
+205       line_start = p;
+206       last_space = NULL;
+207       continue;
+208     }
+209   }
+210 
+211   // Print remaining text
+212   if (p &gt; line_start) {
+213     char seg[BUFFER_SIZE_MEDIUM];
+214     int text_len = p - line_start;
+215     SAFE_STRNCPY(seg, line_start, text_len + 1);
+216     layout_print_colored_segment(stream, seg);
+217   }
+218 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>utf8_next_char_bytes()</b>.</p>
+<p class="Pp">Referenced by <b>layout_print_two_column_row()</b>, and
+    <b>options_print_help_for_mode()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

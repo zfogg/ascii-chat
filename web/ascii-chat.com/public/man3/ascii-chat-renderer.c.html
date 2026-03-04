@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>renderer.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">renderer.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">renderer.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">renderer.c - render_file_* &#x2014; ties together font resolution,
+    platform renderer, FFmpeg encoder</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>render_file_ctx_s</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">asciichat_error_t <b>render_file_create</b> (const char
+    *output_path, int cols, int rows, int fps, int theme, render_file_ctx_t
+    **out)
+  <br/>
+  void <b>render_file_set_audio_source</b> (render_file_ctx_t *ctx, void
+    *audio_media_source, void *audio_capture_rb)
+  <br/>
+  asciichat_error_t <b>render_file_write_frame</b> (render_file_ctx_t *ctx,
+    const char *ansi_frame, uint64_t captured_ns)
+  <br/>
+  void <b>render_file_set_snapshot_actual_duration</b> (render_file_ctx_t *ctx,
+    double actual_duration_sec)
+  <br/>
+  asciichat_error_t <b>render_file_destroy</b> (render_file_ctx_t *ctx)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">render_file_* &#x2014; ties together font resolution, platform
+    renderer, FFmpeg encoder</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>renderer.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_render_file_create_(const_char_*_output_path,_int_cols,_int_rows,_int_fps,_int_theme,_render_file_ctx_t_**_out)"><a class="permalink" href="#asciichat_error_t_render_file_create_(const_char_*_output_path,_int_cols,_int_rows,_int_fps,_int_theme,_render_file_ctx_t_**_out)">asciichat_error_t
+  render_file_create (const char * output_path, int cols, int rows, int fps, int
+  theme, render_file_ctx_t ** out)</a></h2>
+<p class="Pp">Definition at line <b>29</b> of file <b>renderer.c</b>.</p>
+<pre>30                                                               {
+31   log_info(&quot;[RENDER_FILE_CREATE] CALLED with output_path=%s, cols=%d, rows=%d, fps=%d, theme=%d, out=%p&quot;,
+32            output_path ? output_path : &quot;(null)&quot;, cols, rows, fps, theme, (void *)out);
+33   render_file_ctx_t *ctx = SAFE_CALLOC(1, sizeof(*ctx), render_file_ctx_t *);
+34 
+35   // Resolve font spec &#x2192; platform-appropriate file path, family name, or bundled data.
+36   char font_spec[512] = {0};
+37   bool font_is_path = false;
+38   const uint8_t *font_data = NULL;
+39   size_t font_data_size = 0;
+40   const char *raw_font = GET_OPTION(render_font);
+41 
+42   // Auto-select matrix font when --matrix flag is set, unless user explicitly overrides with --render-font
+43   if ((!raw_font || raw_font[0] == '\0') &amp;&amp; GET_OPTION(matrix_rain)) {
+44     raw_font = &quot;matrix&quot;;
+45     log_debug(&quot;render_file_create: [MATRIX] Using matrix font (enabled by --matrix flag)&quot;);
+46   }
+47 
+48   // BEFORE resolving fonts, check if matrix font and disable it for render-file (causes glyph height=0)
+49   if (raw_font &amp;&amp; strcmp(raw_font, &quot;matrix&quot;) == 0) {
+50     log_warn(&quot;render_file_create: [MATRIX] Matrix font not supported for render-file output, using system font instead&quot;);
+51     raw_font = NULL;  // Force fallback to system font
+52   }
+53 
+54   asciichat_error_t fe =
+55       platform_font_resolve(raw_font, font_spec, sizeof(font_spec), &amp;font_is_path, &amp;font_data, &amp;font_data_size);
+56   if (fe != ASCIICHAT_OK) {
+57     log_warn(&quot;renderer: font resolution failed for '%s' &#x2014; using system default&quot;, raw_font ? raw_font : &quot;(explicit system)&quot;);
+58   }
+59 
+60   log_debug(&quot;render_file_create: Font resolved: font_spec='%s', font_is_path=%d, font_data=%p (size=%zu)&quot;, font_spec,
+61             font_is_path, (void *)font_data, font_data_size);
+62 
+63   // Use reasonable default font size for render-file quality
+64   double font_size_pt = GET_OPTION(render_font_size);
+65 
+66   term_renderer_config_t tr_cfg = {
+67       .cols = cols,
+68       .rows = rows,
+69       .font_size_pt = font_size_pt,
+70       .theme = (term_renderer_theme_t)theme,
+71       .font_is_path = font_is_path,
+72       .font_data = font_data,
+73       .font_data_size = font_data_size,
+74   };
+75   strncpy(tr_cfg.font_spec, font_spec, sizeof(tr_cfg.font_spec) - 1);
+76 
+77   asciichat_error_t err = term_renderer_create(&amp;tr_cfg, &amp;ctx-&gt;renderer);
+78   if (err != ASCIICHAT_OK) {
+79     log_error(&quot;render_file_create: term_renderer_create failed: %s&quot;, asciichat_error_string(err));
+80     SAFE_FREE(ctx);
+81     return err;
+82   }
+83   int actual_width_px = term_renderer_width_px(ctx-&gt;renderer);
+84   int actual_height_px = term_renderer_height_px(ctx-&gt;renderer);
+85   log_info(&quot;render_file_create: GRID DIMENSIONS: %ux%u cells -&gt; PIXEL DIMENSIONS: %dx%d px&quot;, cols, rows,
+86            actual_width_px, actual_height_px);
+87   log_debug(&quot;render_file_create: term_renderer created (%dx%d cells, %dx%d px)&quot;, cols, rows, actual_width_px,
+88             actual_height_px);
+89 
+90   err = ffmpeg_encoder_create(output_path, actual_width_px, actual_height_px, fps, &amp;ctx-&gt;encoder);
+91   if (err != ASCIICHAT_OK) {
+92     log_error(&quot;render_file_create: ffmpeg_encoder_create failed: %s&quot;, asciichat_error_string(err));
+93     term_renderer_destroy(ctx-&gt;renderer);
+94     SAFE_FREE(ctx);
+95     return err;
+96   }
+97   log_debug(&quot;render_file_create: ffmpeg_encoder created successfully&quot;);
+98 
+99   // Initialize audio fields
+100   ctx-&gt;audio_sample_rate = 48000;  // Audio pipeline is 48kHz
+101   ctx-&gt;audio_buf_size = 1024;      // Temporary buffer for reading audio (in floats)
+102   ctx-&gt;audio_read_buf = SAFE_MALLOC(ctx-&gt;audio_buf_size * sizeof(float), float *);
+103   ctx-&gt;audio_media_source = NULL;
+104   ctx-&gt;audio_capture_rb = NULL;
+105 
+106   log_info(&quot;renderer: initialized encoder for %s&quot;, output_path);
+107 
+108   // Register render file context for debugging
+109   NAMED_REGISTER_CONTEXT(ctx, &quot;render_file_ctx&quot;, output_path, NULL);
+110 
+111   *out = ctx;
+112   return ASCIICHAT_OK;
+113 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ffmpeg_encoder_create()</b>,
+    <b>term_renderer_create()</b>, <b>term_renderer_destroy()</b>,
+    <b>term_renderer_height_px()</b>, and <b>term_renderer_width_px()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_render_file_destroy_(render_file_ctx_t_*_ctx)"><a class="permalink" href="#asciichat_error_t_render_file_destroy_(render_file_ctx_t_*_ctx)">asciichat_error_t
+  render_file_destroy (render_file_ctx_t * ctx)</a></h2>
+<p class="Pp">Definition at line <b>276</b> of file <b>renderer.c</b>.</p>
+<pre>276                                                               {
+277   if (!ctx)
+278     return ASCIICHAT_OK;
+279   asciichat_error_t err = ffmpeg_encoder_destroy(ctx-&gt;encoder);
+280   term_renderer_destroy(ctx-&gt;renderer);
+281   SAFE_FREE(ctx-&gt;audio_read_buf);
+282   SAFE_FREE(ctx);
+283   return err;
+284 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ffmpeg_encoder_destroy()</b>, and
+    <b>term_renderer_destroy()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_file_set_audio_source_(render_file_ctx_t_*_ctx,_void_*_audio_media_source,_void_*_audio_capture_rb)"><a class="permalink" href="#void_render_file_set_audio_source_(render_file_ctx_t_*_ctx,_void_*_audio_media_source,_void_*_audio_capture_rb)">void
+  render_file_set_audio_source (render_file_ctx_t * ctx, void *
+  audio_media_source, void * audio_capture_rb)</a></h2>
+<p class="Pp">Definition at line <b>115</b> of file <b>renderer.c</b>.</p>
+<pre>115                                                                                                             {
+116   if (!ctx) return;
+117   ctx-&gt;audio_media_source = (media_source_t *)audio_media_source;
+118   ctx-&gt;audio_capture_rb = (audio_ring_buffer_t *)audio_capture_rb;
+119   log_debug(&quot;render_file_set_audio_source: media_source=%p, capture_rb=%p&quot;, audio_media_source, audio_capture_rb);
+120 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>session_display_create()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_render_file_set_snapshot_actual_duration_(render_file_ctx_t_*_ctx,_double_actual_duration_sec)"><a class="permalink" href="#void_render_file_set_snapshot_actual_duration_(render_file_ctx_t_*_ctx,_double_actual_duration_sec)">void
+  render_file_set_snapshot_actual_duration (render_file_ctx_t * ctx, double
+  actual_duration_sec)</a></h2>
+<p class="Pp">Definition at line <b>270</b> of file <b>renderer.c</b>.</p>
+<pre>270                                                                                                   {
+271   if (!ctx || !ctx-&gt;encoder)
+272     return;
+273   ffmpeg_encoder_set_snapshot_actual_duration(ctx-&gt;encoder, actual_duration_sec);
+274 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References
+  <b>ffmpeg_encoder_set_snapshot_actual_duration()</b>.</p>
+<p class="Pp">Referenced by
+    <b>session_display_set_snapshot_actual_duration()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_render_file_write_frame_(render_file_ctx_t_*_ctx,_const_char_*_ansi_frame,_uint64_t_captured_ns)"><a class="permalink" href="#asciichat_error_t_render_file_write_frame_(render_file_ctx_t_*_ctx,_const_char_*_ansi_frame,_uint64_t_captured_ns)">asciichat_error_t
+  render_file_write_frame (render_file_ctx_t * ctx, const char * ansi_frame,
+  uint64_t captured_ns)</a></h2>
+<p class="Pp">Definition at line <b>122</b> of file <b>renderer.c</b>.</p>
+<pre>122                                                                                                                 {
+123   // Write to debug file directly to bypass logging system
+124   FILE *dbg = fopen(&quot;/tmp/render-debug.txt&quot;, &quot;a&quot;);
+125   if (dbg) {
+126     fprintf(dbg, &quot;[RENDER_WRITE_FRAME] Called with ctx=%p, frame_len=%zu, captured_ns=%llu\n&quot;, (void *)ctx,
+127             ansi_frame ? strlen(ansi_frame) : 0, (unsigned long long)captured_ns);
+128     fclose(dbg);
+129   }
+130   log_info(&quot;render_file_write_frame: CALLED - ctx=%p, captured_ns=%llu&quot;, (void *)ctx, (unsigned long long)captured_ns);
+131 
+132   if (!ctx) {
+133     log_warn(&quot;render_file_write_frame: ctx is NULL&quot;);
+134     return ASCIICHAT_OK;
+135   }
+136 
+137   if (!ansi_frame) {
+138     log_warn(&quot;render_file_write_frame: ansi_frame is NULL&quot;);
+139     return ASCIICHAT_OK;
+140   }
+141 
+142   size_t frame_len = strlen(ansi_frame);
+143   log_info(&quot;render_file_write_frame: processing frame (len=%zu)&quot;, frame_len);
+144   if (frame_len &gt; 0) {
+145     log_info(&quot;  first 100 chars: %.100s&quot;, ansi_frame);
+146   }
+147 
+148   asciichat_error_t err = term_renderer_feed(ctx-&gt;renderer, ansi_frame, frame_len);
+149   if (err != ASCIICHAT_OK) {
+150     log_warn(&quot;render_file_write_frame: term_renderer_feed failed: %s&quot;, asciichat_error_string(err));
+151     return err;
+152   }
+153 
+154   const uint8_t *pixels = term_renderer_pixels(ctx-&gt;renderer);
+155   int pitch = term_renderer_pitch(ctx-&gt;renderer);
+156   int width_px = term_renderer_width_px(ctx-&gt;renderer);
+157   int height_px = term_renderer_height_px(ctx-&gt;renderer);
+158 
+159   log_info(&quot;render_file_write_frame: pixels=%p pitch=%d dims=%dx%d&quot;, (void *)pixels, pitch, width_px, height_px);
+160 
+161   // Check pixels in multiple locations to verify content
+162   if (pixels) {
+163     // Check pixel at (0,0) - top left corner
+164     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2];
+165 
+166     // Check pixel at (500, 100) where we injected a test red stripe
+167     size_t test_offset = 100 * pitch + 500 * 3;
+168     uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2];
+169 
+170     // Check pixel at middle of screen
+171     uint8_t sample_r_mid = pixels[(height_px / 2) * pitch], sample_g_mid = pixels[(height_px / 2) * pitch + 1],
+172             sample_b_mid = pixels[(height_px / 2) * pitch + 2];
+173 
+174     log_info(&quot;  pixel[0,0]: RGB(%u,%u,%u), test_stripe[500,100]: RGB(%u,%u,%u), pixel[0,%d]: RGB(%u,%u,%u)&quot;,
+175              sample_r, sample_g, sample_b, test_r, test_g, test_b, height_px/2, sample_r_mid, sample_g_mid, sample_b_mid);
+176   }
+177 
+178   // CRITICAL: Copy pixel buffer before encoding
+179   // term_renderer_pixels() returns a pointer to the renderer's internal buffer which gets
+180   // overwritten on the next frame. We must copy the data before passing to the encoder.
+181   uint8_t *pixels_copy = NULL;
+182   if (pixels) {
+183     size_t pixel_buffer_size = (size_t)pitch * (size_t)height_px;
+184     pixels_copy = SAFE_MALLOC(pixel_buffer_size, uint8_t *);
+185     memcpy(pixels_copy, pixels, pixel_buffer_size);
+186     log_info(&quot;render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)&quot;,
+187              pixel_buffer_size, (void *)pixels, (void *)pixels_copy);
+188 
+189     // DEBUG: Inject test red stripe to verify encoder is working
+190     static int frame_num = 0;
+191     if (frame_num++ &lt; 1) {
+192       log_info(&quot;DEBUG: Injecting test RED vertical stripe into pixel buffer for verification&quot;);
+193       // Fill a 100-pixel-wide vertical stripe with bright red at x=500
+194       for (int y = 0; y &lt; height_px; y++) {
+195         for (int x = 500; x &lt; 600 &amp;&amp; x &lt; width_px; x++) {
+196           uint8_t *pixel = pixels_copy + y * pitch + x * 3;
+197           pixel[0] = 255;  // R
+198           pixel[1] = 0;    // G
+199           pixel[2] = 0;    // B
+200         }
+201       }
+202     }
+203   }
+204 
+205   err = ffmpeg_encoder_write_frame(ctx-&gt;encoder, pixels_copy, pitch, captured_ns);
+206   if (err != ASCIICHAT_OK) {
+207     log_warn(&quot;render_file_write_frame: ffmpeg_encoder_write_frame failed: %s&quot;, asciichat_error_string(err));
+208   }
+209 
+210   // Free the pixel copy (ffmpeg_encoder_write_frame reads and converts it immediately)
+211   SAFE_FREE(pixels_copy);
+212 
+213   // Write synchronized audio for this frame if available
+214   // Calculate how many samples correspond to one video frame
+215   // Note: Audio samples per frame = 48000 Hz / FPS  (e.g., 1600 samples @ 30fps)
+216   if (ctx &amp;&amp; ctx-&gt;audio_read_buf &amp;&amp; ctx-&gt;encoder) {
+217     // Assume default 60 FPS if we can't determine it (typically matches capture rate)
+218     int fps = 60;
+219     int samples_per_frame = ctx-&gt;audio_sample_rate / fps;
+220     if (samples_per_frame &gt; ctx-&gt;audio_buf_size) {
+221       samples_per_frame = ctx-&gt;audio_buf_size;
+222     }
+223 
+224     int samples_read = 0;
+225     static int audio_debug_once = 0;
+226 
+227     // Read from whichever audio source is available (prefer media source, fallback to capture)
+228     if (ctx-&gt;audio_media_source) {
+229       // Read from media source (file/URL audio)
+230       samples_read = media_source_read_audio(ctx-&gt;audio_media_source, ctx-&gt;audio_read_buf, samples_per_frame);
+231       if (samples_read &lt; 0) {
+232         samples_read = 0;  // On error, write silence
+233       }
+234       if (!audio_debug_once++) {
+235         log_debug(&quot;render_file_write_frame: reading audio from media_source (samples_per_frame=%d, read=%d)&quot;,
+236                   samples_per_frame, samples_read);
+237       }
+238     } else if (ctx-&gt;audio_capture_rb) {
+239       // Read from ring buffer (live mic capture)
+240       samples_read =
+241           audio_ring_buffer_read(ctx-&gt;audio_capture_rb, ctx-&gt;audio_read_buf, samples_per_frame);
+242       if (samples_read &lt; 0) {
+243         samples_read = 0;  // On error, write silence
+244       }
+245       if (!audio_debug_once++) {
+246         log_debug(&quot;render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)&quot;,
+247                   samples_per_frame, samples_read);
+248       }
+249     } else {
+250       if (!audio_debug_once++) {
+251         log_debug(&quot;render_file_write_frame: no audio source available (media=%p, capture=%p)&quot;,
+252                   ctx-&gt;audio_media_source, ctx-&gt;audio_capture_rb);
+253       }
+254     }
+255 
+256     // Write audio samples if any were read
+257     if (samples_read &gt; 0) {
+258       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_read);
+259     } else if (samples_read == 0 &amp;&amp; (ctx-&gt;audio_media_source || ctx-&gt;audio_capture_rb)) {
+260       // Source exists but no samples available - still need to write something for sync
+261       // Zero-fill the buffer (silence) to maintain timing
+262       memset(ctx-&gt;audio_read_buf, 0, samples_per_frame * sizeof(float));
+263       ffmpeg_encoder_write_audio(ctx-&gt;encoder, ctx-&gt;audio_read_buf, samples_per_frame);
+264     }
+265   }
+266 
+267   return err;
+268 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>audio_ring_buffer_read()</b>,
+    <b>ffmpeg_encoder_write_audio()</b>, <b>ffmpeg_encoder_write_frame()</b>,
+    <b>media_source_read_audio()</b>, <b>term_renderer_feed()</b>,
+    <b>term_renderer_height_px()</b>, <b>term_renderer_pitch()</b>,
+    <b>term_renderer_pixels()</b>, and <b>term_renderer_width_px()</b>.</p>
+<p class="Pp">Referenced by <b>session_display_encode_frame()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

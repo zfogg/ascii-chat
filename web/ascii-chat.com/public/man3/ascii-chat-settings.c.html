@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>settings.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">settings.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">settings.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">settings.c - &#x2699;&#xFE0F; Session settings serialization
+    implementation</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">void <b>session_settings_init</b> (<b>session_settings_t</b>
+    *settings)
+  <br/>
+  Initialize session settings to defaults. asciichat_error_t
+    <b>session_settings_serialize</b> (const <b>session_settings_t</b>
+    *settings, uint8_t *buffer, size_t *len)
+  <br/>
+  Serialize session settings to binary buffer. asciichat_error_t
+    <b>session_settings_deserialize</b> (const uint8_t *buffer, size_t len,
+    <b>session_settings_t</b> *settings)
+  <br/>
+  Deserialize session settings from binary buffer. asciichat_error_t
+    <b>session_settings_from_options</b> (<b>session_settings_t</b> *settings)
+  <br/>
+  Populate settings from current global options. asciichat_error_t
+    <b>session_settings_apply_to_options</b> (const <b>session_settings_t</b>
+    *settings)
+  <br/>
+  Apply settings to global options. <b>bool</b>
+    <b>session_settings_needs_update</b> (uint32_t local_version, uint32_t
+    remote_version)
+  <br/>
+  Check if settings need update based on versions. <b>bool</b>
+    <b>session_settings_equal</b> (const <b>session_settings_t</b> *a, const
+    <b>session_settings_t</b> *b)
+  <br/>
+  Compare two settings structures for equality.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x2699;&#xFE0F; Session settings serialization implementation</p>
+<p class="Pp">Implements session settings serialization, deserialization, and
+    synchronization with the global options system.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>settings.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

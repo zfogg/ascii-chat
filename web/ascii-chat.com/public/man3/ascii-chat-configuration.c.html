@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>configuration.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">configuration.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">configuration.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">configuration.c - Configuration file options.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Variables"><a class="permalink" href="#Variables">Variables</a></h2>
+<br/>
+<p class="Pp">const registry_entry_t <b>g_configuration_entries</b> []
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">Configuration file options.</p>
+<p class="Pp">Options for loading configuration from TOML files and creating
+    default configuration templates.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Author</b></p>
+<div class="Bd-indent">Zachary Fogg me@zfo.gg</div>
+<p class="Pp"><b>Date</b></p>
+<div class="Bd-indent">January 2026</div>
+<p class="Pp">Definition in file <b>configuration.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Variable_Documentation"><a class="permalink" href="#Variable_Documentation">Variable
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_registry_entry_t_g_configuration_entries__"><a class="permalink" href="#const_registry_entry_t_g_configuration_entries__">const
+  registry_entry_t g_configuration_entries[]</a></h2>
+<p class="Pp">Definition at line <b>18</b> of file <b>configuration.c</b>.</p>
+<pre>18                                                  {
+19     // CONFIGURATION GROUP (binary-level)
+20     {&quot;config&quot;,
+21      '\0',
+22      OPTION_TYPE_STRING,
+23      offsetof(options_t, config_file),
+24      &quot;&quot;,
+25      0,
+26      &quot;Load configuration from toml FILE.&quot;,
+27      &quot;CONFIGURATION&quot;,
+28      &quot;FILE&quot;,
+29      false,
+30      NULL,
+31      NULL,
+32      NULL,
+33      false,
+34      false,
+35      OPTION_MODE_BINARY,
+36      {0},
+37      NULL},
+38     {&quot;config-create&quot;,
+39      '\0',
+40      OPTION_TYPE_STRING,
+41      0,
+42      NULL,
+43      0,
+44      &quot;Create default config file and write to FILE or stdout if not specified.&quot;,
+45      &quot;CONFIGURATION&quot;,
+46      &quot;[FILE]&quot;,
+47      false,
+48      NULL,
+49      NULL,
+50      NULL,
+51      false,
+52      false,
+53      OPTION_MODE_BINARY,
+54      {0},
+55      NULL},
+56     {&quot;completions&quot;,
+57      '\0',
+58      OPTION_TYPE_STRING,
+59      0,
+60      NULL,
+61      0,
+62      &quot;Generate shell completions (bash, fish, zsh, powershell) and output to stdout (or optional file path).&quot;,
+63      &quot;CONFIGURATION&quot;,
+64      &quot;SHELL [FILE]&quot;,
+65      false,
+66      NULL,
+67      NULL,
+68      NULL,
+69      false,
+70      false,
+71      OPTION_MODE_BINARY,
+72      {0},
+73      NULL},
+74     {&quot;man-page-create&quot;,
+75      '\0',
+76      OPTION_TYPE_STRING,
+77      0,
+78      NULL,
+79      0,
+80      &quot;Generate man page and write to FILE or stdout if not specified.&quot;,
+81      &quot;CONFIGURATION&quot;,
+82      &quot;[FILE]&quot;,
+83      false,
+84      NULL,
+85      NULL,
+86      NULL,
+87      false,
+88      false,
+89      OPTION_MODE_BINARY,
+90      {0},
+91      NULL},
+92 
+93     REGISTRY_TERMINATOR()};</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

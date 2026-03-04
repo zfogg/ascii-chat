@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ascii_query(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ascii_query(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ascii_query(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ascii_query</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Namespaces"><a class="permalink" href="#Namespaces">Namespaces</a></h2>
+<br/>
+<p class="Pp">namespace <b>json</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>HttpRequest</b>
+  <br/>
+  Parsed HTTP request. struct <b>HttpResponse</b>
+  <br/>
+  HTTP response builder. class <b>HttpServer</b>
+  <br/>
+  Simple single-threaded HTTP server. struct <b>ThreadInfo</b>
+  <br/>
+  Thread information. struct <b>FrameInfo</b>
+  <br/>
+  Stack frame information. struct <b>VariableInfo</b>
+  <br/>
+  Variable information (from LLDB SBValue). struct <b>BreakpointInfo</b>
+  <br/>
+  Breakpoint information. class <b>LLDBController</b>
+  <br/>
+  LLDB process controller.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Typedefs"><a class="permalink" href="#Typedefs">Typedefs</a></h2>
+<br/>
+<p class="Pp">using <b>RouteHandler</b> =
+    std::function&lt;<b>HttpResponse</b>(const <b>HttpRequest</b> &amp;)&gt;
+  <br/>
+  Route handler function type.
+  <br/>
+</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="Enumerations"><a class="permalink" href="#Enumerations">Enumerations</a></h2>
+<br/>
+<p class="Pp">enum class <b>ProcessState</b> { <b>Invalid</b>, <b>Running</b>,
+    <b>Stopped</b>, <b>Exited</b>, <b>Crashed</b>, <b>Detached</b> }
+  <br/>
+  Process state enumeration.
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="using_"><a class="permalink" href="#using_">using
+  <b>ascii_query::RouteHandler</b> = std::function&lt;<b>HttpResponse</b>(const
+  <b>HttpRequest</b> &amp;)&gt;</a></h2>
+<p class="Pp">Route handler function type.</p>
+<p class="Pp">Definition at line <b>157</b> of file <b>http_server.h</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Enumeration_Type_Documentation"><a class="permalink" href="#Enumeration_Type_Documentation">Enumeration
+  Type Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="enum_class_"><a class="permalink" href="#enum_class_">enum
+  class <b>ascii_query::ProcessState</b> [strong]</a></h2>
+<p class="Pp">Process state enumeration.</p>
+<p class="Pp"><b>Enumerator</b>
+  <br/>
+</p>
+<dl class="Bl-tag">
+  <dt id="Invalid"><a class="permalink" href="#Invalid"><b><i>Invalid
+    </i></b></a></dt>
+  <dd>No valid process attached.</dd>
+  <dt id="Running"><a class="permalink" href="#Running"><b><i>Running
+    </i></b></a></dt>
+  <dd>Process is running normally.</dd>
+  <dt id="Stopped"><a class="permalink" href="#Stopped"><b><i>Stopped
+    </i></b></a></dt>
+  <dd>Process is stopped (breakpoint, signal, etc.).</dd>
+  <dt id="Exited"><a class="permalink" href="#Exited"><b><i>Exited
+    </i></b></a></dt>
+  <dd>Process has exited.</dd>
+  <dt id="Crashed"><a class="permalink" href="#Crashed"><b><i>Crashed
+    </i></b></a></dt>
+  <dd>Process crashed.</dd>
+  <dt id="Detached"><a class="permalink" href="#Detached"><b><i>Detached
+    </i></b></a></dt>
+  <dd>Detached from process.</dd>
+</dl>
+<p class="Pp">Definition at line <b>35</b> of file <b>lldb_controller.h</b>.</p>
+<pre>35                         {
+36   Invalid,  
+37   Running,  
+38   Stopped,  
+39   Exited,   
+40   Crashed,  
+41   Detached, 
+42 };</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

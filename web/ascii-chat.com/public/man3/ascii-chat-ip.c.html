@@ -1,0 +1,1866 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>ip.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">ip.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">ip.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">ip.c - &#x1F30D; IPv4/IPv6 address parsing, validation, and
+    formatting utilities</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>is_valid_ipv4</b> (const char *ip)
+  <br/>
+  int <b>is_valid_ipv6</b> (const char *ip)
+  <br/>
+  int <b>parse_ipv6_address</b> (const char *input, char *output, size_t
+    output_size)
+  <br/>
+  asciichat_error_t <b>format_ip_address</b> (int family, const struct sockaddr
+    *addr, char *output, size_t output_size)
+  <br/>
+  asciichat_error_t <b>format_ip_with_port</b> (const char *ip, uint16_t port,
+    char *output, size_t output_size)
+  <br/>
+  int <b>parse_ip_with_port</b> (const char *input, char *ip_output, size_t
+    ip_output_size, uint16_t *port_output)
+  <br/>
+  int <b>parse_address_with_optional_port</b> (const char *input, char
+    *address_output, size_t address_output_size, uint16_t *port_output, uint16_t
+    default_port)
+  <br/>
+  int <b>get_ip_version</b> (const char *ip)
+  <br/>
+  int <b>is_valid_ip</b> (const char *ip)
+  <br/>
+  int <b>ip_equals</b> (const char *ip1, const char *ip2)
+  <br/>
+  int <b>ip_compare</b> (const char *ip1, const char *ip2)
+  <br/>
+  int <b>parse_cidr</b> (const char *cidr, char *ip_out, size_t ip_out_size, int
+    *prefix_out)
+  <br/>
+  int <b>ip_in_cidr_parsed</b> (const char *ip, const char *network, int
+    prefix_len)
+  <br/>
+  int <b>ip_in_cidr</b> (const char *ip, const char *cidr)
+  <br/>
+  asciichat_error_t <b>ipv4_to_ipv6_mapped</b> (const char *ipv4, char
+    *ipv6_out, size_t out_size)
+  <br/>
+  int <b>is_ipv4_mapped_ipv6</b> (const char *ipv6)
+  <br/>
+  asciichat_error_t <b>extract_ipv4_from_mapped_ipv6</b> (const char *ipv6, char
+    *ipv4_out, size_t out_size)
+  <br/>
+  asciichat_error_t <b>expand_ipv6</b> (const char *ipv6, char *expanded_out,
+    size_t out_size)
+  <br/>
+  asciichat_error_t <b>canonicalize_ipv6</b> (const char *ipv6, char
+    *canonical_out, size_t out_size)
+  <br/>
+  asciichat_error_t <b>compact_ipv6</b> (const char *ipv6, char *compact_out,
+    size_t out_size)
+  <br/>
+  int <b>is_anycast_ipv6</b> (const char *ipv6)
+  <br/>
+  int <b>extract_ip_from_address</b> (const char *addr_with_port, char *ip_out,
+    size_t ip_out_size)
+  <br/>
+  const char * <b>get_ip_type_string</b> (const char *ip)
+  <br/>
+  int <b>compare_ip_port_strings</b> (const char *ip_port1, const char
+    *ip_port2)
+  <br/>
+  int <b>is_lan_ipv4</b> (const char *ip)
+  <br/>
+  int <b>is_lan_ipv6</b> (const char *ip)
+  <br/>
+  int <b>is_broadcast_ipv4</b> (const char *ip)
+  <br/>
+  int <b>is_broadcast_ipv6</b> (const char *ip)
+  <br/>
+  int <b>is_localhost_ipv4</b> (const char *ip)
+  <br/>
+  int <b>is_localhost_ipv6</b> (const char *ip)
+  <br/>
+  int <b>is_link_local_ipv4</b> (const char *ip)
+  <br/>
+  int <b>is_link_local_ipv6</b> (const char *ip)
+  <br/>
+  int <b>is_internet_ipv4</b> (const char *ip)
+  <br/>
+  int <b>is_internet_ipv6</b> (const char *ip)
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">&#x1F30D; IPv4/IPv6 address parsing, validation, and formatting
+    utilities</p>
+<p class="Pp"></p>
+<p class="Pp"></p>
+<p class="Pp">Definition in file <b>ip.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_canonicalize_ipv6_(const_char_*_ipv6,_char_*_canonical_out,_size_t_out_size)"><a class="permalink" href="#asciichat_error_t_canonicalize_ipv6_(const_char_*_ipv6,_char_*_canonical_out,_size_t_out_size)">asciichat_error_t
+  canonicalize_ipv6 (const char * ipv6, char * canonical_out, size_t
+  out_size)</a></h2>
+<p class="Pp">Definition at line <b>969</b> of file <b>ip.c</b>.</p>
+<pre>969                                                                                             {
+970   if (!ipv6 || !canonical_out || out_size == 0) {
+971     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments to canonicalize_ipv6&quot;);
+972   }
+973 
+974   // Normalize (remove brackets)
+975   char normalized[INET6_ADDRSTRLEN];
+976   if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+977     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to parse IPv6 address&quot;);
+978   }
+979 
+980   // Validate
+981   if (!is_valid_ipv6(normalized)) {
+982     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IPv6 address: %s&quot;, ipv6);
+983   }
+984 
+985   struct in6_addr addr;
+986   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+987     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to convert IPv6 address&quot;);
+988   }
+989 
+990   // Use inet_ntop which produces canonical form
+991   if (inet_ntop(AF_INET6, &amp;addr, canonical_out, (socklen_t)out_size) == NULL) {
+992     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to format IPv6 address&quot;);
+993   }
+994 
+995   return ASCIICHAT_OK;
+996 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>compact_ipv6()</b>, and
+    <b>compare_ip_port_strings()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_compact_ipv6_(const_char_*_ipv6,_char_*_compact_out,_size_t_out_size)"><a class="permalink" href="#asciichat_error_t_compact_ipv6_(const_char_*_ipv6,_char_*_compact_out,_size_t_out_size)">asciichat_error_t
+  compact_ipv6 (const char * ipv6, char * compact_out, size_t out_size)</a></h2>
+<p class="Pp">Definition at line <b>999</b> of file <b>ip.c</b>.</p>
+<pre>999                                                                                      {
+1000   return canonicalize_ipv6(ipv6, compact_out, out_size);
+1001 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>canonicalize_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_compare_ip_port_strings_(const_char_*_ip_port1,_const_char_*_ip_port2)"><a class="permalink" href="#int_compare_ip_port_strings_(const_char_*_ip_port1,_const_char_*_ip_port2)">int
+  compare_ip_port_strings (const char * ip_port1, const char *
+  ip_port2)</a></h2>
+<p class="Pp">Definition at line <b>1133</b> of file <b>ip.c</b>.</p>
+<pre>1133                                                                         {
+1134   if (!ip_port1 || !ip_port2) {
+1135     return 0; // Not equal
+1136   }
+1137 
+1138   // Fast path: if strings are identical, no parsing needed
+1139   if (strcmp(ip_port1, ip_port2) == 0) {
+1140     return 1; // Equal
+1141   }
+1142 
+1143   // Parse both IP:port strings
+1144   char ip1[64], ip2[64];
+1145   uint16_t port1 = 0, port2 = 0;
+1146 
+1147   if (parse_ip_with_port(ip_port1, ip1, sizeof(ip1), &amp;port1) != 0) {
+1148     return 0; // Invalid format - not equal
+1149   }
+1150   if (parse_ip_with_port(ip_port2, ip2, sizeof(ip2), &amp;port2) != 0) {
+1151     return 0; // Invalid format - not equal
+1152   }
+1153 
+1154   // Ports must match exactly
+1155   if (port1 != port2) {
+1156     return 0; // Not equal
+1157   }
+1158 
+1159   // For IPv6, normalize both addresses before comparison
+1160   int version1 = get_ip_version(ip1);
+1161   int version2 = get_ip_version(ip2);
+1162 
+1163   // IP versions must match
+1164   if (version1 != version2 || version1 == 0) {
+1165     return 0; // Not equal
+1166   }
+1167 
+1168   if (version1 == 6) {
+1169     // Normalize both IPv6 addresses
+1170     char canonical1[INET6_ADDRSTRLEN], canonical2[INET6_ADDRSTRLEN];
+1171     if (canonicalize_ipv6(ip1, canonical1, sizeof(canonical1)) != ASCIICHAT_OK) {
+1172       return 0; // Failed to normalize - not equal
+1173     }
+1174     if (canonicalize_ipv6(ip2, canonical2, sizeof(canonical2)) != ASCIICHAT_OK) {
+1175       return 0; // Failed to normalize - not equal
+1176     }
+1177     return (strcmp(canonical1, canonical2) == 0) ? 1 : 0;
+1178   } else {
+1179     // IPv4: use ip_equals for robust comparison
+1180     return ip_equals(ip1, ip2) ? 1 : 0;
+1181   }
+1182 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>canonicalize_ipv6()</b>, <b>get_ip_version()</b>,
+    <b>ip_equals()</b>, and <b>parse_ip_with_port()</b>.</p>
+<p class="Pp">Referenced by <b>check_known_host()</b>, and
+    <b>check_known_host_no_identity()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_expand_ipv6_(const_char_*_ipv6,_char_*_expanded_out,_size_t_out_size)"><a class="permalink" href="#asciichat_error_t_expand_ipv6_(const_char_*_ipv6,_char_*_expanded_out,_size_t_out_size)">asciichat_error_t
+  expand_ipv6 (const char * ipv6, char * expanded_out, size_t out_size)</a></h2>
+<p class="Pp">Definition at line <b>932</b> of file <b>ip.c</b>.</p>
+<pre>932                                                                                      {
+933   if (!ipv6 || !expanded_out || out_size == 0) {
+934     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments to expand_ipv6&quot;);
+935   }
+936 
+937   // Normalize (remove brackets)
+938   char normalized[INET6_ADDRSTRLEN];
+939   if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+940     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to parse IPv6 address&quot;);
+941   }
+942 
+943   // Validate
+944   if (!is_valid_ipv6(normalized)) {
+945     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IPv6 address: %s&quot;, ipv6);
+946   }
+947 
+948   struct in6_addr addr;
+949   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+950     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to convert IPv6 address&quot;);
+951   }
+952 
+953   // Format as full expanded form: xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx:xxxx
+954   size_t written =
+955       SAFE_SNPRINTF(expanded_out, out_size, &quot;%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x&quot;,
+956                     (addr.s6_addr[0] &lt;&lt; 8) | addr.s6_addr[1], (addr.s6_addr[2] &lt;&lt; 8) | addr.s6_addr[3],
+957                     (addr.s6_addr[4] &lt;&lt; 8) | addr.s6_addr[5], (addr.s6_addr[6] &lt;&lt; 8) | addr.s6_addr[7],
+958                     (addr.s6_addr[8] &lt;&lt; 8) | addr.s6_addr[9], (addr.s6_addr[10] &lt;&lt; 8) | addr.s6_addr[11],
+959                     (addr.s6_addr[12] &lt;&lt; 8) | addr.s6_addr[13], (addr.s6_addr[14] &lt;&lt; 8) | addr.s6_addr[15]);
+960 
+961   if (written &gt;= out_size) {
+962     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output buffer too small&quot;);
+963   }
+964 
+965   return ASCIICHAT_OK;
+966 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_extract_ip_from_address_(const_char_*_addr_with_port,_char_*_ip_out,_size_t_ip_out_size)"><a class="permalink" href="#int_extract_ip_from_address_(const_char_*_addr_with_port,_char_*_ip_out,_size_t_ip_out_size)">int
+  extract_ip_from_address (const char * addr_with_port, char * ip_out, size_t
+  ip_out_size)</a></h2>
+<p class="Pp">Definition at line <b>1053</b> of file <b>ip.c</b>.</p>
+<pre>1053                                                                                           {
+1054   if (!addr_with_port || !ip_out || ip_out_size == 0) {
+1055     return -1;
+1056   }
+1057 
+1058   // Check for IPv6 bracket notation: [2001:db8::1]:27224
+1059   if (addr_with_port[0] == '[') {
+1060     const char *bracket_end = strchr(addr_with_port, ']');
+1061     if (!bracket_end) {
+1062       return -1;
+1063     }
+1064     size_t ip_len = (size_t)(bracket_end - addr_with_port - 1);
+1065     if (ip_len &gt;= ip_out_size) {
+1066       return -1;
+1067     }
+1068     memcpy(ip_out, addr_with_port + 1, ip_len);
+1069     ip_out[ip_len] = '\0';
+1070     return 0;
+1071   }
+1072 
+1073   // IPv4: Find last colon and extract IP part
+1074   const char *colon = strrchr(addr_with_port, ':');
+1075   if (!colon) {
+1076     // No port, just copy the whole thing
+1077     SAFE_STRNCPY(ip_out, addr_with_port, ip_out_size);
+1078     return 0;
+1079   }
+1080 
+1081   size_t ip_len = (size_t)(colon - addr_with_port);
+1082   if (ip_len &gt;= ip_out_size) {
+1083     return -1;
+1084   }
+1085   memcpy(ip_out, addr_with_port, ip_len);
+1086   ip_out[ip_len] = '\0';
+1087   return 0;
+1088 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_extract_ipv4_from_mapped_ipv6_(const_char_*_ipv6,_char_*_ipv4_out,_size_t_out_size)"><a class="permalink" href="#asciichat_error_t_extract_ipv4_from_mapped_ipv6_(const_char_*_ipv6,_char_*_ipv4_out,_size_t_out_size)">asciichat_error_t
+  extract_ipv4_from_mapped_ipv6 (const char * ipv6, char * ipv4_out, size_t
+  out_size)</a></h2>
+<p class="Pp">Definition at line <b>896</b> of file <b>ip.c</b>.</p>
+<pre>896                                                                                                    {
+897   if (!ipv6 || !ipv4_out || out_size == 0) {
+898     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments to extract_ipv4_from_mapped_ipv6&quot;);
+899   }
+900 
+901   if (!is_ipv4_mapped_ipv6(ipv6)) {
+902     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Not an IPv4-mapped IPv6 address: %s&quot;, ipv6);
+903   }
+904 
+905   // Normalize
+906   char normalized[INET6_ADDRSTRLEN];
+907   if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+908     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to parse IPv6 address&quot;);
+909   }
+910 
+911   struct in6_addr addr;
+912   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+913     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to convert IPv6 address&quot;);
+914   }
+915 
+916   // Extract last 4 bytes and format as IPv4
+917   struct in_addr ipv4_addr;
+918   memcpy(&amp;ipv4_addr.s_addr, &amp;addr.s6_addr[12], 4);
+919 
+920   if (inet_ntop(AF_INET, &amp;ipv4_addr, ipv4_out, (socklen_t)out_size) == NULL) {
+921     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to format IPv4 address&quot;);
+922   }
+923 
+924   return ASCIICHAT_OK;
+925 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_ipv4_mapped_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_format_ip_address_(int_family,_const_struct_sockaddr_*_addr,_char_*_output,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_format_ip_address_(int_family,_const_struct_sockaddr_*_addr,_char_*_output,_size_t_output_size)">asciichat_error_t
+  format_ip_address (int family, const struct sockaddr * addr, char * output,
+  size_t output_size)</a></h2>
+<p class="Pp">Definition at line <b>196</b> of file <b>ip.c</b>.</p>
+<pre>196                                                                                                                {
+197   if (!addr || !output || output_size == 0) {
+198     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments to format_ip_address&quot;);
+199   }
+200 
+201   const void *ip_ptr = NULL;
+202 
+203   if (family == AF_INET) {
+204     const struct sockaddr_in *addr_in = (const struct sockaddr_in *)addr;
+205     ip_ptr = &amp;addr_in-&gt;sin_addr;
+206   } else if (family == AF_INET6) {
+207     const struct sockaddr_in6 *addr_in6 = (const struct sockaddr_in6 *)addr;
+208     ip_ptr = &amp;addr_in6-&gt;sin6_addr;
+209   } else {
+210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unsupported address family: %d&quot;, family);
+211   }
+212 
+213   if (inet_ntop(family, ip_ptr, output, (socklen_t)output_size) == NULL) {
+214     return SET_ERRNO(ERROR_NETWORK, &quot;Failed to format IP address&quot;);
+215   }
+216 
+217   return ASCIICHAT_OK;
+218 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>server_connection_establish()</b>,
+    <b>tcp_client_connect()</b>, <b>tcp_client_context_get_ip()</b>, and
+    <b>tcp_server_run()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_format_ip_with_port_(const_char_*_ip,_uint16_t_port,_char_*_output,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_format_ip_with_port_(const_char_*_ip,_uint16_t_port,_char_*_output,_size_t_output_size)">asciichat_error_t
+  format_ip_with_port (const char * ip, uint16_t port, char * output, size_t
+  output_size)</a></h2>
+<p class="Pp">Definition at line <b>221</b> of file <b>ip.c</b>.</p>
+<pre>221                                                                                                        {
+222   if (!ip || !output || output_size == 0) {
+223     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, ip);
+224   }
+225 
+226   if (strlen(ip) == 0) {
+227     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, ip);
+228   }
+229 
+230   if (strlen(ip) &gt; 256) {
+231     char ip_buffer[BUFFER_SIZE_SMALL];
+232     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
+233     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Suspiciously long ip: %s&quot;, ip_buffer);
+234   }
+235 
+236   // Check if it's IPv6 (contains ':')
+237   if (strchr(ip, ':') != NULL) {
+238     // IPv6 - use bracket notation
+239     size_t written = SAFE_SNPRINTF(output, output_size, &quot;[%s]:%u&quot;, ip, port);
+240     if (written &gt;= output_size) {
+241       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ip=%s or port=%u&quot;, ip, port);
+242     }
+243   } else {
+244     // IPv4 - no brackets
+245     size_t written = SAFE_SNPRINTF(output, output_size, &quot;%s:%u&quot;, ip, port);
+246     if (written &gt;= output_size) {
+247       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid ip=%s or port=%u&quot;, ip, port);
+248     }
+249   }
+250 
+251   return ASCIICHAT_OK;
+252 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>add_known_host()</b>, <b>check_known_host()</b>,
+    <b>check_known_host_no_identity()</b>, <b>display_mitm_warning()</b>,
+    <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>, and
+    <b>remove_known_host()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="const_char_*_get_ip_type_string_(const_char_*_ip)"><a class="permalink" href="#const_char_*_get_ip_type_string_(const_char_*_ip)">const
+  char * get_ip_type_string (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1091</b> of file <b>ip.c</b>.</p>
+<pre>1091                                                {
+1092   if (!ip || ip[0] == '\0') {
+1093     return &quot;&quot;;
+1094   }
+1095 
+1096   // Check for wildcard &quot;bind to all interfaces&quot; addresses
+1097   // IPv4: 0.0.0.0
+1098   if (strcmp(ip, &quot;0.0.0.0&quot;) == 0) {
+1099     return &quot;All Interfaces&quot;;
+1100   }
+1101 
+1102   // IPv6: :: (unspecified address)
+1103   if (strcmp(ip, &quot;::&quot;) == 0) {
+1104     return &quot;All Interfaces&quot;;
+1105   }
+1106 
+1107   // Check IPv4
+1108   if (is_localhost_ipv4(ip)) {
+1109     return &quot;Localhost&quot;;
+1110   }
+1111   if (is_lan_ipv4(ip)) {
+1112     return &quot;LAN&quot;;
+1113   }
+1114   if (is_internet_ipv4(ip)) {
+1115     return &quot;Internet&quot;;
+1116   }
+1117 
+1118   // Check IPv6
+1119   if (is_localhost_ipv6(ip)) {
+1120     return &quot;Localhost&quot;;
+1121   }
+1122   if (is_lan_ipv6(ip)) {
+1123     return &quot;LAN&quot;;
+1124   }
+1125   if (is_internet_ipv6(ip)) {
+1126     return &quot;Internet&quot;;
+1127   }
+1128 
+1129   return &quot;Unknown&quot;;
+1130 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_internet_ipv4()</b>, <b>is_internet_ipv6()</b>,
+    <b>is_lan_ipv4()</b>, <b>is_lan_ipv6()</b>, <b>is_localhost_ipv4()</b>, and
+    <b>is_localhost_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_get_ip_version_(const_char_*_ip)"><a class="permalink" href="#int_get_ip_version_(const_char_*_ip)">int
+  get_ip_version (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>510</b> of file <b>ip.c</b>.</p>
+<pre>510                                    {
+511   if (!ip || strlen(ip) == 0) {
+512     return 0;
+513   }
+514 
+515   // Quick heuristic: if it contains a colon, it's likely IPv6
+516   // (unless it's a port separator, but we're just checking the IP part)
+517   if (strchr(ip, ':') != NULL) {
+518     // Could be IPv6 or bracketed IPv6
+519     if (is_valid_ipv6(ip)) {
+520       return 6;
+521     }
+522     return 0; // Has colon but not valid IPv6
+523   }
+524 
+525   // No colon, check if it's IPv4
+526   if (is_valid_ipv4(ip)) {
+527     return 4;
+528   }
+529 
+530   return 0; // Not valid IPv4 or IPv6
+531 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>, and <b>is_valid_ipv6()</b>.</p>
+<p class="Pp">Referenced by <b>compare_ip_port_strings()</b>,
+    <b>ip_compare()</b>, <b>ip_equals()</b>, <b>ip_in_cidr_parsed()</b>, and
+    <b>parse_cidr()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ip_compare_(const_char_*_ip1,_const_char_*_ip2)"><a class="permalink" href="#int_ip_compare_(const_char_*_ip1,_const_char_*_ip2)">int
+  ip_compare (const char * ip1, const char * ip2)</a></h2>
+<p class="Pp">Definition at line <b>601</b> of file <b>ip.c</b>.</p>
+<pre>601                                                  {
+602   if (!ip1 || !ip2) {
+603     return -2; // Error
+604   }
+605 
+606   int v1 = get_ip_version(ip1);
+607   int v2 = get_ip_version(ip2);
+608 
+609   // Invalid addresses sort last
+610   if (v1 == 0 &amp;&amp; v2 == 0) {
+611     return 0; // Both invalid, consider equal
+612   }
+613   if (v1 == 0) {
+614     return 1; // ip1 invalid, sorts after ip2
+615   }
+616   if (v2 == 0) {
+617     return -1; // ip2 invalid, sorts after ip1
+618   }
+619 
+620   // IPv4 sorts before IPv6
+621   if (v1 != v2) {
+622     return (v1 &lt; v2) ? -1 : 1;
+623   }
+624 
+625   if (v1 == 4) {
+626     // IPv4: compare numerically
+627     struct in_addr addr1, addr2;
+628     if (inet_pton(AF_INET, ip1, &amp;addr1) != 1 || inet_pton(AF_INET, ip2, &amp;addr2) != 1) {
+629       return -2; // Error
+630     }
+631 
+632     uint32_t val1 = ntohl(addr1.s_addr);
+633     uint32_t val2 = ntohl(addr2.s_addr);
+634 
+635     if (val1 &lt; val2)
+636       return -1;
+637     if (val1 &gt; val2)
+638       return 1;
+639     return 0;
+640   } else {
+641     // IPv6: compare byte by byte
+642     char norm1[INET6_ADDRSTRLEN], norm2[INET6_ADDRSTRLEN];
+643 
+644     if (parse_ipv6_address(ip1, norm1, sizeof(norm1)) != 0) {
+645       return -2;
+646     }
+647     if (parse_ipv6_address(ip2, norm2, sizeof(norm2)) != 0) {
+648       return -2;
+649     }
+650 
+651     struct in6_addr addr1, addr2;
+652     if (inet_pton(AF_INET6, norm1, &amp;addr1) != 1 || inet_pton(AF_INET6, norm2, &amp;addr2) != 1) {
+653       return -2;
+654     }
+655 
+656     return memcmp(&amp;addr1, &amp;addr2, sizeof(addr1));
+657   }
+658 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_ip_version()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ip_equals_(const_char_*_ip1,_const_char_*_ip2)"><a class="permalink" href="#int_ip_equals_(const_char_*_ip1,_const_char_*_ip2)">int
+  ip_equals (const char * ip1, const char * ip2)</a></h2>
+<p class="Pp">Definition at line <b>557</b> of file <b>ip.c</b>.</p>
+<pre>557                                                 {
+558   if (!ip1 || !ip2) {
+559     return 0;
+560   }
+561 
+562   // Get versions
+563   int v1 = get_ip_version(ip1);
+564   int v2 = get_ip_version(ip2);
+565 
+566   // If different versions or either invalid, not equal
+567   if (v1 != v2 || v1 == 0) {
+568     return 0;
+569   }
+570 
+571   if (v1 == 4) {
+572     // IPv4: direct string comparison after validation
+573     struct in_addr addr1, addr2;
+574     if (inet_pton(AF_INET, ip1, &amp;addr1) != 1 || inet_pton(AF_INET, ip2, &amp;addr2) != 1) {
+575       return 0;
+576     }
+577     return addr1.s_addr == addr2.s_addr;
+578   } else {
+579     // IPv6: normalize then compare
+580     char norm1[INET6_ADDRSTRLEN], norm2[INET6_ADDRSTRLEN];
+581 
+582     // Remove brackets if present
+583     if (parse_ipv6_address(ip1, norm1, sizeof(norm1)) != 0) {
+584       return 0;
+585     }
+586     if (parse_ipv6_address(ip2, norm2, sizeof(norm2)) != 0) {
+587       return 0;
+588     }
+589 
+590     // Parse to binary and compare
+591     struct in6_addr addr1, addr2;
+592     if (inet_pton(AF_INET6, norm1, &amp;addr1) != 1 || inet_pton(AF_INET6, norm2, &amp;addr2) != 1) {
+593       return 0;
+594     }
+595 
+596     return memcmp(&amp;addr1, &amp;addr2, sizeof(addr1)) == 0;
+597   }
+598 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_ip_version()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>compare_ip_port_strings()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ip_in_cidr_(const_char_*_ip,_const_char_*_cidr)"><a class="permalink" href="#int_ip_in_cidr_(const_char_*_ip,_const_char_*_cidr)">int
+  ip_in_cidr (const char * ip, const char * cidr)</a></h2>
+<p class="Pp">Definition at line <b>820</b> of file <b>ip.c</b>.</p>
+<pre>820                                                  {
+821   if (!ip || !cidr) {
+822     return 0;
+823   }
+824 
+825   char network[64];
+826   int prefix;
+827 
+828   if (parse_cidr(cidr, network, sizeof(network), &amp;prefix) != 0) {
+829     return 0; // Invalid CIDR
+830   }
+831 
+832   return ip_in_cidr_parsed(ip, network, prefix);
+833 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>ip_in_cidr_parsed()</b>, and
+  <b>parse_cidr()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_ip_in_cidr_parsed_(const_char_*_ip,_const_char_*_network,_int_prefix_len)"><a class="permalink" href="#int_ip_in_cidr_parsed_(const_char_*_ip,_const_char_*_network,_int_prefix_len)">int
+  ip_in_cidr_parsed (const char * ip, const char * network, int
+  prefix_len)</a></h2>
+<p class="Pp">Definition at line <b>766</b> of file <b>ip.c</b>.</p>
+<pre>766                                                                            {
+767   if (!ip || !network) {
+768     return 0;
+769   }
+770 
+771   int ip_version = get_ip_version(ip);
+772   int net_version = get_ip_version(network);
+773 
+774   // Must be same version
+775   if (ip_version != net_version || ip_version == 0) {
+776     return 0;
+777   }
+778 
+779   if (ip_version == 4) {
+780     // IPv4 comparison
+781     struct in_addr ip_addr, net_addr;
+782     if (inet_pton(AF_INET, ip, &amp;ip_addr) != 1 || inet_pton(AF_INET, network, &amp;net_addr) != 1) {
+783       return 0;
+784     }
+785 
+786     uint32_t ip_val = ntohl(ip_addr.s_addr);
+787     uint32_t net_val = ntohl(net_addr.s_addr);
+788 
+789     uint32_t ip_masked = apply_ipv4_mask(ip_val, prefix_len);
+790     uint32_t net_masked = apply_ipv4_mask(net_val, prefix_len);
+791 
+792     return ip_masked == net_masked;
+793   } else {
+794     // IPv6 comparison
+795     char ip_norm[INET6_ADDRSTRLEN], net_norm[INET6_ADDRSTRLEN];
+796 
+797     if (parse_ipv6_address(ip, ip_norm, sizeof(ip_norm)) != 0) {
+798       return 0;
+799     }
+800     if (parse_ipv6_address(network, net_norm, sizeof(net_norm)) != 0) {
+801       return 0;
+802     }
+803 
+804     struct in6_addr ip_addr, net_addr;
+805     if (inet_pton(AF_INET6, ip_norm, &amp;ip_addr) != 1 || inet_pton(AF_INET6, net_norm, &amp;net_addr) != 1) {
+806       return 0;
+807     }
+808 
+809     // Apply mask to both addresses
+810     struct in6_addr ip_masked = ip_addr;
+811     struct in6_addr net_masked = net_addr;
+812     apply_ipv6_mask(&amp;ip_masked, prefix_len);
+813     apply_ipv6_mask(&amp;net_masked, prefix_len);
+814 
+815     return memcmp(&amp;ip_masked, &amp;net_masked, sizeof(ip_masked)) == 0;
+816   }
+817 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_ip_version()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>ip_in_cidr()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="asciichat_error_t_ipv4_to_ipv6_mapped_(const_char_*_ipv4,_char_*_ipv6_out,_size_t_out_size)"><a class="permalink" href="#asciichat_error_t_ipv4_to_ipv6_mapped_(const_char_*_ipv4,_char_*_ipv6_out,_size_t_out_size)">asciichat_error_t
+  ipv4_to_ipv6_mapped (const char * ipv4, char * ipv6_out, size_t
+  out_size)</a></h2>
+<p class="Pp">Definition at line <b>840</b> of file <b>ip.c</b>.</p>
+<pre>840                                                                                          {
+841   if (!ipv4 || !ipv6_out || out_size == 0) {
+842     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments to ipv4_to_ipv6_mapped&quot;);
+843   }
+844 
+845   // Validate IPv4
+846   if (!is_valid_ipv4(ipv4)) {
+847     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IPv4 address: %s&quot;, ipv4);
+848   }
+849 
+850   // Format as ::ffff:x.x.x.x
+851   size_t written = SAFE_SNPRINTF(ipv6_out, out_size, &quot;::ffff:%s&quot;, ipv4);
+852   if (written &gt;= out_size) {
+853     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Output buffer too small&quot;);
+854   }
+855 
+856   return ASCIICHAT_OK;
+857 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_anycast_ipv6_(const_char_*_ipv6)"><a class="permalink" href="#int_is_anycast_ipv6_(const_char_*_ipv6)">int
+  is_anycast_ipv6 (const char * ipv6)</a></h2>
+<p class="Pp">Definition at line <b>1004</b> of file <b>ip.c</b>.</p>
+<pre>1004                                       {
+1005   if (!ipv6) {
+1006     return 0;
+1007   }
+1008 
+1009   // Normalize
+1010   char normalized[INET6_ADDRSTRLEN];
+1011   if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+1012     return 0;
+1013   }
+1014 
+1015   // Validate
+1016   if (!is_valid_ipv6(normalized)) {
+1017     return 0;
+1018   }
+1019 
+1020   struct in6_addr addr;
+1021   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+1022     return 0;
+1023   }
+1024 
+1025   // 6to4 relay anycast: 192.88.99.0/24 (mapped to 2002:c058:6301::)
+1026   // Check if it matches 2002:c058:6301::
+1027   if (addr.s6_addr[0] == 0x20 &amp;&amp; addr.s6_addr[1] == 0x02 &amp;&amp; addr.s6_addr[2] == 0xc0 &amp;&amp; addr.s6_addr[3] == 0x58 &amp;&amp;
+1028       addr.s6_addr[4] == 0x63 &amp;&amp; addr.s6_addr[5] == 0x01) {
+1029     // Check if remaining bytes are zero (anycast)
+1030     int is_zero = 1;
+1031     for (int i = 6; i &lt; 16; i++) {
+1032       if (addr.s6_addr[i] != 0) {
+1033         is_zero = 0;
+1034         break;
+1035       }
+1036     }
+1037     if (is_zero) {
+1038       return 1;
+1039     }
+1040   }
+1041 
+1042   // Subnet-router anycast: would need subnet context to determine
+1043   // We can't detect this without knowing the subnet
+1044 
+1045   return 0;
+1046 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_broadcast_ipv4_(const_char_*_ip)"><a class="permalink" href="#int_is_broadcast_ipv4_(const_char_*_ip)">int
+  is_broadcast_ipv4 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1247</b> of file <b>ip.c</b>.</p>
+<pre>1247                                       {
+1248   if (!is_valid_ipv4(ip)) {
+1249     return 0;
+1250   }
+1251 
+1252   struct in_addr addr;
+1253   if (inet_pton(AF_INET, ip, &amp;addr) != 1) {
+1254     return 0;
+1255   }
+1256 
+1257   uint32_t ip_val = ntohl(addr.s_addr);
+1258 
+1259   // Limited broadcast: 255.255.255.255
+1260   if (ip_val == 0xFFFFFFFF) {
+1261     return 1;
+1262   }
+1263 
+1264   return 0;
+1265 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>.</p>
+<p class="Pp">Referenced by <b>is_internet_ipv4()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_broadcast_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_broadcast_ipv6_(const_char_*_ip)">int
+  is_broadcast_ipv6 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1268</b> of file <b>ip.c</b>.</p>
+<pre>1268                                       {
+1269   if (!ip) {
+1270     return 0;
+1271   }
+1272 
+1273   // Remove brackets if present
+1274   char normalized[INET6_ADDRSTRLEN];
+1275   if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+1276     return 0;
+1277   }
+1278 
+1279   // Validate the normalized address
+1280   if (!is_valid_ipv6(normalized)) {
+1281     return 0;
+1282   }
+1283 
+1284   struct in6_addr addr;
+1285   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+1286     return 0;
+1287   }
+1288 
+1289   // ff00::/8: Multicast addresses
+1290   // First byte should be 0xff
+1291   if (addr.s6_addr[0] == 0xFF) {
+1292     return 1;
+1293   }
+1294 
+1295   return 0;
+1296 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>is_internet_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_internet_ipv4_(const_char_*_ip)"><a class="permalink" href="#int_is_internet_ipv4_(const_char_*_ip)">int
+  is_internet_ipv4 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1408</b> of file <b>ip.c</b>.</p>
+<pre>1408                                      {
+1409   if (!is_valid_ipv4(ip)) {
+1410     return 0;
+1411   }
+1412 
+1413   struct in_addr addr;
+1414   if (inet_pton(AF_INET, ip, &amp;addr) != 1) {
+1415     return 0;
+1416   }
+1417 
+1418   uint32_t ip_val = ntohl(addr.s_addr);
+1419 
+1420   // Exclude private/LAN addresses
+1421   if (is_lan_ipv4(ip)) {
+1422     return 0;
+1423   }
+1424 
+1425   // Exclude loopback
+1426   if (is_localhost_ipv4(ip)) {
+1427     return 0;
+1428   }
+1429 
+1430   // Exclude link-local
+1431   if (is_link_local_ipv4(ip)) {
+1432     return 0;
+1433   }
+1434 
+1435   // Exclude broadcast
+1436   if (is_broadcast_ipv4(ip)) {
+1437     return 0;
+1438   }
+1439 
+1440   // Exclude multicast: 224.0.0.0/4
+1441   if ((ip_val &amp; 0xF0000000) == 0xE0000000) {
+1442     return 0;
+1443   }
+1444 
+1445   // Exclude 0.0.0.0/8: &quot;This network&quot;
+1446   if ((ip_val &amp; 0xFF000000) == 0x00000000) {
+1447     return 0;
+1448   }
+1449 
+1450   // Exclude 100.64.0.0/10: Shared Address Space (RFC 6598)
+1451   if ((ip_val &amp; 0xFFC00000) == 0x64400000) {
+1452     return 0;
+1453   }
+1454 
+1455   // Exclude 192.0.0.0/24: IETF Protocol Assignments
+1456   if ((ip_val &amp; 0xFFFFFF00) == 0xC0000000) {
+1457     return 0;
+1458   }
+1459 
+1460   // Exclude 192.0.2.0/24: TEST-NET-1
+1461   if ((ip_val &amp; 0xFFFFFF00) == 0xC0000200) {
+1462     return 0;
+1463   }
+1464 
+1465   // Exclude 198.18.0.0/15: Benchmarking
+1466   if ((ip_val &amp; 0xFFFE0000) == 0xC6120000) {
+1467     return 0;
+1468   }
+1469 
+1470   // Exclude 198.51.100.0/24: TEST-NET-2
+1471   if ((ip_val &amp; 0xFFFFFF00) == 0xC6336400) {
+1472     return 0;
+1473   }
+1474 
+1475   // Exclude 203.0.113.0/24: TEST-NET-3
+1476   if ((ip_val &amp; 0xFFFFFF00) == 0xCB007100) {
+1477     return 0;
+1478   }
+1479 
+1480   // Exclude 240.0.0.0/4: Reserved for future use
+1481   if ((ip_val &amp; 0xF0000000) == 0xF0000000) {
+1482     return 0;
+1483   }
+1484 
+1485   // If none of the exclusions matched, it's a public internet address
+1486   return 1;
+1487 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_broadcast_ipv4()</b>, <b>is_lan_ipv4()</b>,
+    <b>is_link_local_ipv4()</b>, <b>is_localhost_ipv4()</b>, and
+    <b>is_valid_ipv4()</b>.</p>
+<p class="Pp">Referenced by <b>get_ip_type_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_internet_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_internet_ipv6_(const_char_*_ip)">int
+  is_internet_ipv6 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1490</b> of file <b>ip.c</b>.</p>
+<pre>1490                                      {
+1491   if (!ip) {
+1492     return 0;
+1493   }
+1494 
+1495   // Remove brackets if present
+1496   char normalized[INET6_ADDRSTRLEN];
+1497   if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+1498     return 0;
+1499   }
+1500 
+1501   // Validate the normalized address
+1502   if (!is_valid_ipv6(normalized)) {
+1503     return 0;
+1504   }
+1505 
+1506   struct in6_addr addr;
+1507   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+1508     return 0;
+1509   }
+1510 
+1511   // Exclude loopback
+1512   if (is_localhost_ipv6(ip)) {
+1513     return 0;
+1514   }
+1515 
+1516   // Exclude link-local
+1517   if (is_link_local_ipv6(ip)) {
+1518     return 0;
+1519   }
+1520 
+1521   // Exclude ULA
+1522   if (is_lan_ipv6(ip)) {
+1523     return 0;
+1524   }
+1525 
+1526   // Exclude multicast
+1527   if (is_broadcast_ipv6(ip)) {
+1528     return 0;
+1529   }
+1530 
+1531   // Exclude unspecified address: ::
+1532   int is_unspecified = 1;
+1533   for (int i = 0; i &lt; 16; i++) {
+1534     if (addr.s6_addr[i] != 0) {
+1535       is_unspecified = 0;
+1536       break;
+1537     }
+1538   }
+1539   if (is_unspecified) {
+1540     return 0;
+1541   }
+1542 
+1543   // Exclude IPv4-mapped IPv6: ::ffff:0:0/96
+1544   if (addr.s6_addr[0] == 0 &amp;&amp; addr.s6_addr[1] == 0 &amp;&amp; addr.s6_addr[2] == 0 &amp;&amp; addr.s6_addr[3] == 0 &amp;&amp;
+1545       addr.s6_addr[4] == 0 &amp;&amp; addr.s6_addr[5] == 0 &amp;&amp; addr.s6_addr[6] == 0 &amp;&amp; addr.s6_addr[7] == 0 &amp;&amp;
+1546       addr.s6_addr[8] == 0 &amp;&amp; addr.s6_addr[9] == 0 &amp;&amp; addr.s6_addr[10] == 0xFF &amp;&amp; addr.s6_addr[11] == 0xFF) {
+1547     return 0;
+1548   }
+1549 
+1550   // Exclude IPv4-compatible IPv6: ::/96 (deprecated)
+1551   if (addr.s6_addr[0] == 0 &amp;&amp; addr.s6_addr[1] == 0 &amp;&amp; addr.s6_addr[2] == 0 &amp;&amp; addr.s6_addr[3] == 0 &amp;&amp;
+1552       addr.s6_addr[4] == 0 &amp;&amp; addr.s6_addr[5] == 0 &amp;&amp; addr.s6_addr[6] == 0 &amp;&amp; addr.s6_addr[7] == 0 &amp;&amp;
+1553       addr.s6_addr[8] == 0 &amp;&amp; addr.s6_addr[9] == 0 &amp;&amp; addr.s6_addr[10] == 0 &amp;&amp; addr.s6_addr[11] == 0) {
+1554     // But not ::, which we already excluded above
+1555     if (addr.s6_addr[12] != 0 || addr.s6_addr[13] != 0 || addr.s6_addr[14] != 0 || addr.s6_addr[15] != 0) {
+1556       return 0;
+1557     }
+1558   }
+1559 
+1560   // Exclude documentation prefix: 2001:db8::/32
+1561   if (addr.s6_addr[0] == 0x20 &amp;&amp; addr.s6_addr[1] == 0x01 &amp;&amp; addr.s6_addr[2] == 0x0D &amp;&amp; addr.s6_addr[3] == 0xB8) {
+1562     return 0;
+1563   }
+1564 
+1565   // Exclude 6to4: 2002::/16
+1566   if (addr.s6_addr[0] == 0x20 &amp;&amp; addr.s6_addr[1] == 0x02) {
+1567     return 0;
+1568   }
+1569 
+1570   // If none of the exclusions matched, it's likely a global unicast address
+1571   // Global unicast is typically 2000::/3, but let's accept anything that's not excluded
+1572   return 1;
+1573 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_broadcast_ipv6()</b>, <b>is_lan_ipv6()</b>,
+    <b>is_link_local_ipv6()</b>, <b>is_localhost_ipv6()</b>,
+    <b>is_valid_ipv6()</b>, and <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>get_ip_type_string()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_ipv4_mapped_ipv6_(const_char_*_ipv6)"><a class="permalink" href="#int_is_ipv4_mapped_ipv6_(const_char_*_ipv6)">int
+  is_ipv4_mapped_ipv6 (const char * ipv6)</a></h2>
+<p class="Pp">Definition at line <b>860</b> of file <b>ip.c</b>.</p>
+<pre>860                                           {
+861   if (!ipv6) {
+862     return 0;
+863   }
+864 
+865   // Normalize (remove brackets)
+866   char normalized[INET6_ADDRSTRLEN];
+867   if (parse_ipv6_address(ipv6, normalized, sizeof(normalized)) != 0) {
+868     return 0;
+869   }
+870 
+871   // Validate IPv6
+872   if (!is_valid_ipv6(normalized)) {
+873     return 0;
+874   }
+875 
+876   struct in6_addr addr;
+877   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+878     return 0;
+879   }
+880 
+881   // Check for ::ffff:0:0/96 prefix
+882   // First 10 bytes should be 0, next 2 should be 0xff
+883   for (int i = 0; i &lt; 10; i++) {
+884     if (addr.s6_addr[i] != 0) {
+885       return 0;
+886     }
+887   }
+888   if (addr.s6_addr[10] != 0xFF || addr.s6_addr[11] != 0xFF) {
+889     return 0;
+890   }
+891 
+892   return 1;
+893 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>extract_ipv4_from_mapped_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_lan_ipv4_(const_char_*_ip)"><a class="permalink" href="#int_is_lan_ipv4_(const_char_*_ip)">int
+  is_lan_ipv4 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1185</b> of file <b>ip.c</b>.</p>
+<pre>1185                                 {
+1186   if (!is_valid_ipv4(ip)) {
+1187     return 0;
+1188   }
+1189 
+1190   struct in_addr addr;
+1191   if (inet_pton(AF_INET, ip, &amp;addr) != 1) {
+1192     return 0;
+1193   }
+1194 
+1195   uint32_t ip_val = ntohl(addr.s_addr);
+1196 
+1197   // 10.0.0.0/8: 10.0.0.0 - 10.255.255.255
+1198   if ((ip_val &amp; 0xFF000000) == 0x0A000000) {
+1199     return 1;
+1200   }
+1201 
+1202   // 172.16.0.0/12: 172.16.0.0 - 172.31.255.255
+1203   if ((ip_val &amp; 0xFFF00000) == 0xAC100000) {
+1204     return 1;
+1205   }
+1206 
+1207   // 192.168.0.0/16: 192.168.0.0 - 192.168.255.255
+1208   if ((ip_val &amp; 0xFFFF0000) == 0xC0A80000) {
+1209     return 1;
+1210   }
+1211 
+1212   return 0;
+1213 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>.</p>
+<p class="Pp">Referenced by <b>get_ip_type_string()</b>, and
+    <b>is_internet_ipv4()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_lan_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_lan_ipv6_(const_char_*_ip)">int
+  is_lan_ipv6 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1216</b> of file <b>ip.c</b>.</p>
+<pre>1216                                 {
+1217   if (!ip) {
+1218     return 0;
+1219   }
+1220 
+1221   // Remove brackets if present
+1222   char normalized[INET6_ADDRSTRLEN];
+1223   if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+1224     return 0;
+1225   }
+1226 
+1227   // Validate the normalized address
+1228   if (!is_valid_ipv6(normalized)) {
+1229     return 0;
+1230   }
+1231 
+1232   struct in6_addr addr;
+1233   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+1234     return 0;
+1235   }
+1236 
+1237   // fc00::/7: Unique Local Addresses (ULA)
+1238   // First byte should be 0xfc or 0xfd
+1239   if ((addr.s6_addr[0] &amp; 0xFE) == 0xFC) {
+1240     return 1;
+1241   }
+1242 
+1243   return 0;
+1244 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>get_ip_type_string()</b>, and
+    <b>is_internet_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_link_local_ipv4_(const_char_*_ip)"><a class="permalink" href="#int_is_link_local_ipv4_(const_char_*_ip)">int
+  is_link_local_ipv4 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1356</b> of file <b>ip.c</b>.</p>
+<pre>1356                                        {
+1357   if (!is_valid_ipv4(ip)) {
+1358     return 0;
+1359   }
+1360 
+1361   struct in_addr addr;
+1362   if (inet_pton(AF_INET, ip, &amp;addr) != 1) {
+1363     return 0;
+1364   }
+1365 
+1366   uint32_t ip_val = ntohl(addr.s_addr);
+1367 
+1368   // 169.254.0.0/16: Link-local addresses (APIPA)
+1369   if ((ip_val &amp; 0xFFFF0000) == 0xA9FE0000) {
+1370     return 1;
+1371   }
+1372 
+1373   return 0;
+1374 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>.</p>
+<p class="Pp">Referenced by <b>is_internet_ipv4()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_link_local_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_link_local_ipv6_(const_char_*_ip)">int
+  is_link_local_ipv6 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1377</b> of file <b>ip.c</b>.</p>
+<pre>1377                                        {
+1378   if (!ip) {
+1379     return 0;
+1380   }
+1381 
+1382   // Remove brackets if present
+1383   char normalized[INET6_ADDRSTRLEN];
+1384   if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+1385     return 0;
+1386   }
+1387 
+1388   // Validate the normalized address
+1389   if (!is_valid_ipv6(normalized)) {
+1390     return 0;
+1391   }
+1392 
+1393   struct in6_addr addr;
+1394   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+1395     return 0;
+1396   }
+1397 
+1398   // fe80::/10: Link-local addresses
+1399   // First byte should be 0xfe, second byte &amp; 0xc0 should be 0x80
+1400   if (addr.s6_addr[0] == 0xFE &amp;&amp; (addr.s6_addr[1] &amp; 0xC0) == 0x80) {
+1401     return 1;
+1402   }
+1403 
+1404   return 0;
+1405 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>is_internet_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_localhost_ipv4_(const_char_*_ip)"><a class="permalink" href="#int_is_localhost_ipv4_(const_char_*_ip)">int
+  is_localhost_ipv4 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1299</b> of file <b>ip.c</b>.</p>
+<pre>1299                                       {
+1300   if (!is_valid_ipv4(ip)) {
+1301     return 0;
+1302   }
+1303 
+1304   struct in_addr addr;
+1305   if (inet_pton(AF_INET, ip, &amp;addr) != 1) {
+1306     return 0;
+1307   }
+1308 
+1309   uint32_t ip_val = ntohl(addr.s_addr);
+1310 
+1311   // 127.0.0.0/8: Loopback addresses
+1312   if ((ip_val &amp; 0xFF000000) == 0x7F000000) {
+1313     return 1;
+1314   }
+1315 
+1316   return 0;
+1317 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>.</p>
+<p class="Pp">Referenced by <b>client_main()</b>, <b>get_ip_type_string()</b>,
+    <b>is_internet_ipv4()</b>, <b>parse_server_bind_address()</b>,
+    <b>server_connection_establish()</b>, <b>server_main()</b>, and
+    <b>tcp_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_localhost_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_localhost_ipv6_(const_char_*_ip)">int
+  is_localhost_ipv6 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>1320</b> of file <b>ip.c</b>.</p>
+<pre>1320                                       {
+1321   if (!ip) {
+1322     return 0;
+1323   }
+1324 
+1325   // Remove brackets if present
+1326   char normalized[INET6_ADDRSTRLEN];
+1327   if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+1328     return 0;
+1329   }
+1330 
+1331   // Validate the normalized address
+1332   if (!is_valid_ipv6(normalized)) {
+1333     return 0;
+1334   }
+1335 
+1336   struct in6_addr addr;
+1337   if (inet_pton(AF_INET6, normalized, &amp;addr) != 1) {
+1338     return 0;
+1339   }
+1340 
+1341   // ::1: Loopback address
+1342   // All bytes should be 0 except the last byte which should be 1
+1343   for (int i = 0; i &lt; 15; i++) {
+1344     if (addr.s6_addr[i] != 0) {
+1345       return 0;
+1346     }
+1347   }
+1348   if (addr.s6_addr[15] != 1) {
+1349     return 0;
+1350   }
+1351 
+1352   return 1;
+1353 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv6()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>get_ip_type_string()</b>,
+    <b>is_internet_ipv6()</b>, <b>parse_server_bind_address()</b>,
+    <b>server_connection_establish()</b>, <b>server_main()</b>, and
+    <b>tcp_client_connect()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_valid_ip_(const_char_*_ip)"><a class="permalink" href="#int_is_valid_ip_(const_char_*_ip)">int
+  is_valid_ip (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>534</b> of file <b>ip.c</b>.</p>
+<pre>534                                 {
+535   if (!ip) {
+536     return 0;
+537   }
+538 
+539   // Try IPv4 first (faster check)
+540   if (is_valid_ipv4(ip)) {
+541     return 1;
+542   }
+543 
+544   // Try IPv6
+545   if (is_valid_ipv6(ip)) {
+546     return 1;
+547   }
+548 
+549   return 0;
+550 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>, and <b>is_valid_ipv6()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_valid_ipv4_(const_char_*_ip)"><a class="permalink" href="#int_is_valid_ipv4_(const_char_*_ip)">int
+  is_valid_ipv4 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>58</b> of file <b>ip.c</b>.</p>
+<pre>58                                   {
+59   if (!ip) {
+60     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: NULL&quot;);
+61     return 0; // Invalid
+62   }
+63 
+64   size_t ip_len = strlen(ip);
+65   if (ip_len == 0) {
+66     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: empty string&quot;);
+67     return 0; // Invalid
+68   }
+69 
+70   if (ip_len &gt; 256) {
+71     char ip_buffer[BUFFER_SIZE_SMALL];
+72     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
+73     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Suspiciously long ip: %s&quot;, ip_buffer);
+74     return 0; // Invalid
+75   }
+76 
+77   // Get compiled IPv4 regex
+78   pcre2_code *regex = ipv4_regex_get();
+79   if (!regex) {
+80     log_error(&quot;IPv4 validator not initialized&quot;);
+81     return 0;
+82   }
+83 
+84   // Create match data for regex matching
+85   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+86   if (!match_data) {
+87     log_error(&quot;Failed to allocate match data for IPv4 regex&quot;);
+88     return 0;
+89   }
+90 
+91   // Validate format using PCRE2 regex
+92   int match_result = pcre2_match(regex, (PCRE2_SPTR8)ip, ip_len, 0, 0, match_data, NULL);
+93 
+94   pcre2_match_data_free(match_data);
+95 
+96   if (match_result &lt; 0) {
+97     return 0; // Format validation failed
+98   }
+99 
+100   return 1; // Valid IPv4 format
+101 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>get_ip_version()</b>,
+    <b>ipv4_to_ipv6_mapped()</b>, <b>is_broadcast_ipv4()</b>,
+    <b>is_internet_ipv4()</b>, <b>is_lan_ipv4()</b>,
+    <b>is_link_local_ipv4()</b>, <b>is_localhost_ipv4()</b>,
+    <b>is_valid_ip()</b>, <b>parse_address_with_optional_port()</b>,
+    <b>parse_client_address()</b>, <b>parse_server_bind_address()</b>, and
+    <b>validate_opt_ip_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_is_valid_ipv6_(const_char_*_ip)"><a class="permalink" href="#int_is_valid_ipv6_(const_char_*_ip)">int
+  is_valid_ipv6 (const char * ip)</a></h2>
+<p class="Pp">Definition at line <b>105</b> of file <b>ip.c</b>.</p>
+<pre>105                                   {
+106   if (!ip) {
+107     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: NULL&quot;);
+108     return 0; // Invalid
+109   }
+110 
+111   size_t ip_len = strlen(ip);
+112   if (ip_len == 0) {
+113     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: empty string&quot;);
+114     return 0; // Invalid
+115   }
+116 
+117   if (ip_len &gt; 256) {
+118     char ip_buffer[BUFFER_SIZE_SMALL];
+119     SAFE_STRNCPY(ip_buffer, ip, sizeof(ip_buffer));
+120     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Suspiciously long ip: %s&quot;, ip_buffer);
+121     return 0; // Invalid
+122   }
+123 
+124   // Remove brackets if present (IPv6 addresses can be bracketed)
+125   char normalized[INET6_ADDRSTRLEN];
+126   const char *ip_to_validate = ip;
+127 
+128   if (ip[0] == '[') {
+129     // Has brackets, need to remove them
+130     if (parse_ipv6_address(ip, normalized, sizeof(normalized)) != 0) {
+131       return 0; // Failed to parse (malformed brackets)
+132     }
+133     ip_to_validate = normalized;
+134   }
+135 
+136   // Use POSIX inet_pton() for robust IPv6 validation
+137   // It handles all RFC 5952 compliant formats:
+138   // - Full format: 2001:0db8:85a3:0000:0000:8a2e:0370:7334
+139   // - Compressed: 2001:db8:85a3::8a2e:370:7334
+140   // - Loopback: ::1
+141   // - All zeros: ::
+142   // - IPv4-mapped: ::ffff:192.0.2.1
+143   struct in6_addr addr;
+144   int result = inet_pton(AF_INET6, ip_to_validate, &amp;addr);
+145 
+146   if (result == 1) {
+147     return 1; // Valid IPv6
+148   } else if (result == 0) {
+149     return 0; // Not a valid IPv6 address
+150   } else {
+151     // result &lt; 0 means system error (e.g., unsupported address family)
+152     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to validate IPv6 address&quot;);
+153     return 0;
+154   }
+155 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>canonicalize_ipv6()</b>, <b>expand_ipv6()</b>,
+    <b>get_ip_version()</b>, <b>is_anycast_ipv6()</b>,
+    <b>is_broadcast_ipv6()</b>, <b>is_internet_ipv6()</b>,
+    <b>is_ipv4_mapped_ipv6()</b>, <b>is_lan_ipv6()</b>,
+    <b>is_link_local_ipv6()</b>, <b>is_localhost_ipv6()</b>,
+    <b>is_valid_ip()</b>, <b>parse_address_with_optional_port()</b>,
+    <b>parse_client_address()</b>, <b>parse_server_bind_address()</b>, and
+    <b>validate_opt_ip_address()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_address_with_optional_port_(const_char_*_input,_char_*_address_output,_size_t_address_output_size,_uint16_t_*_port_output,_uint16_t_default_port)"><a class="permalink" href="#int_parse_address_with_optional_port_(const_char_*_input,_char_*_address_output,_size_t_address_output_size,_uint16_t_*_port_output,_uint16_t_default_port)">int
+  parse_address_with_optional_port (const char * input, char * address_output,
+  size_t address_output_size, uint16_t * port_output, uint16_t
+  default_port)</a></h2>
+<p class="Pp">Definition at line <b>370</b> of file <b>ip.c</b>.</p>
+<pre>371                                                                                    {
+372   if (!input || !address_output || !port_output || address_output_size == 0) {
+373     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid arguments to parse_address_with_optional_port&quot;);
+374     return -1;
+375   }
+376 
+377   size_t input_len = strlen(input);
+378   if (input_len == 0) {
+379     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty address string&quot;);
+380     return -1;
+381   }
+382 
+383   if (input_len &gt; 256) {
+384     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Address string too long&quot;);
+385     return -1;
+386   }
+387 
+388   // Case 1: Bracketed IPv6 address with or without port
+389   // Examples: &quot;[::1]&quot; or &quot;[::1]:8080&quot; or &quot;[2001:db8::1]:443&quot;
+390   if (input[0] == '[') {
+391     const char *bracket_end = strchr(input, ']');
+392     if (!bracket_end) {
+393       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Malformed bracketed address (missing ']'): %s&quot;, input);
+394       return -1;
+395     }
+396 
+397     // Extract address without brackets
+398     size_t addr_len = (size_t)(bracket_end - input - 1);
+399     if (addr_len == 0) {
+400       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty bracketed address: %s&quot;, input);
+401       return -1;
+402     }
+403     if (addr_len &gt;= address_output_size) {
+404       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Address too long for buffer&quot;);
+405       return -1;
+406     }
+407 
+408     memcpy(address_output, input + 1, addr_len);
+409     address_output[addr_len] = '\0';
+410 
+411     // Validate it's a valid IPv6 address
+412     if (!is_valid_ipv6(address_output)) {
+413       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IPv6 address: %s&quot;, address_output);
+414       return -1;
+415     }
+416 
+417     // Check for port after closing bracket
+418     if (bracket_end[1] == '\0') {
+419       // No port specified, use default
+420       *port_output = default_port;
+421     } else if (bracket_end[1] == ':') {
+422       // Port specified
+423       if (parse_port(bracket_end + 2, port_output) != ASCIICHAT_OK) {
+424         SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port in: %s&quot;, input);
+425         return -1;
+426       }
+427     } else {
+428       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid format after ']' (expected ':' or end): %s&quot;, input);
+429       return -1;
+430     }
+431     return 0;
+432   }
+433 
+434   // Case 2: Check if it's a valid IPv6 address without brackets (no port allowed in this case)
+435   // Examples: &quot;::1&quot; or &quot;2001:db8::1&quot; or &quot;fe80::1&quot;
+436   // Note: IPv6 addresses contain colons, so we can't use ':' as port separator without brackets
+437   if (is_valid_ipv6(input)) {
+438     if (strlen(input) &gt;= address_output_size) {
+439       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Address too long for buffer&quot;);
+440       return -1;
+441     }
+442     SAFE_STRNCPY(address_output, input, address_output_size);
+443     *port_output = default_port;
+444     return 0;
+445   }
+446 
+447   // Case 3: IPv4 or hostname, possibly with port
+448   // Examples: &quot;192.168.1.1&quot; or &quot;192.168.1.1:8080&quot; or &quot;localhost&quot; or &quot;example.com:443&quot;
+449   const char *last_colon = strrchr(input, ':');
+450 
+451   if (last_colon == NULL) {
+452     // No colon - just address/hostname, no port
+453     if (strlen(input) &gt;= address_output_size) {
+454       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Address too long for buffer&quot;);
+455       return -1;
+456     }
+457 
+458     // Validate it's a valid IPv4 or hostname
+459     if (!is_valid_ipv4(input) &amp;&amp; !is_valid_hostname(input)) {
+460       SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid address format: %s&quot;, input);
+461       return -1;
+462     }
+463 
+464     SAFE_STRNCPY(address_output, input, address_output_size);
+465     *port_output = default_port;
+466     return 0;
+467   }
+468 
+469   // Has colon - extract address and port
+470   size_t addr_len = (size_t)(last_colon - input);
+471   if (addr_len == 0) {
+472     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Empty address before port: %s&quot;, input);
+473     return -1;
+474   }
+475   if (addr_len &gt;= address_output_size) {
+476     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Address too long for buffer&quot;);
+477     return -1;
+478   }
+479 
+480   memcpy(address_output, input, addr_len);
+481   address_output[addr_len] = '\0';
+482 
+483   // Check if extracted address contains ':' - that would be IPv6 without brackets (invalid with port)
+484   if (strchr(address_output, ':') != NULL) {
+485     SET_ERRNO(ERROR_INVALID_PARAM, &quot;IPv6 addresses must use brackets when specifying port: [%s]:%s instead of %s&quot;,
+486               address_output, last_colon + 1, input);
+487     return -1;
+488   }
+489 
+490   // Validate address part is valid IPv4 or hostname
+491   if (!is_valid_ipv4(address_output) &amp;&amp; !is_valid_hostname(address_output)) {
+492     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid address format: %s&quot;, address_output);
+493     return -1;
+494   }
+495 
+496   // Parse port
+497   if (parse_port(last_colon + 1, port_output) != ASCIICHAT_OK) {
+498     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid port in: %s&quot;, input);
+499     return -1;
+500   }
+501 
+502   return 0;
+503 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>, and
+    <b>parse_port()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_cidr_(const_char_*_cidr,_char_*_ip_out,_size_t_ip_out_size,_int_*_prefix_out)"><a class="permalink" href="#int_parse_cidr_(const_char_*_cidr,_char_*_ip_out,_size_t_ip_out_size,_int_*_prefix_out)">int
+  parse_cidr (const char * cidr, char * ip_out, size_t ip_out_size, int *
+  prefix_out)</a></h2>
+<p class="Pp">Definition at line <b>665</b> of file <b>ip.c</b>.</p>
+<pre>665                                                                                     {
+666   if (!cidr || !ip_out || !prefix_out || ip_out_size == 0) {
+667     return -1;
+668   }
+669 
+670   // Find the '/' separator
+671   const char *slash = strchr(cidr, '/');
+672   if (!slash) {
+673     return -1; // No slash found
+674   }
+675 
+676   // Extract IP part
+677   size_t ip_len = (size_t)(slash - cidr);
+678   if (ip_len == 0 || ip_len &gt;= ip_out_size) {
+679     return -1;
+680   }
+681 
+682   char ip_temp[256];
+683   if (ip_len &gt;= sizeof(ip_temp)) {
+684     return -1;
+685   }
+686 
+687   memcpy(ip_temp, cidr, ip_len);
+688   ip_temp[ip_len] = '\0';
+689 
+690   // Remove brackets if IPv6
+691   if (ip_temp[0] == '[') {
+692     if (parse_ipv6_address(ip_temp, ip_out, ip_out_size) != 0) {
+693       return -1;
+694     }
+695   } else {
+696     if (ip_len &gt;= ip_out_size) {
+697       return -1;
+698     }
+699     memcpy(ip_out, ip_temp, ip_len + 1);
+700   }
+701 
+702   // Validate IP
+703   int version = get_ip_version(ip_out);
+704   if (version == 0) {
+705     return -1; // Invalid IP
+706   }
+707 
+708   // Parse prefix length
+709   const char *prefix_str = slash + 1;
+710   if (strlen(prefix_str) == 0) {
+711     return -1;
+712   }
+713 
+714   char *endptr;
+715   long prefix = strtol(prefix_str, &amp;endptr, 10);
+716   if (*endptr != '\0' || prefix &lt; 0) {
+717     return -1; // Invalid prefix
+718   }
+719 
+720   // Validate prefix range based on IP version
+721   if (version == 4 &amp;&amp; (prefix &gt; 32)) {
+722     return -1;
+723   }
+724   if (version == 6 &amp;&amp; (prefix &gt; 128)) {
+725     return -1;
+726   }
+727 
+728   *prefix_out = (int)prefix;
+729   return 0;
+730 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>get_ip_version()</b>, and
+    <b>parse_ipv6_address()</b>.</p>
+<p class="Pp">Referenced by <b>ip_in_cidr()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_ip_with_port_(const_char_*_input,_char_*_ip_output,_size_t_ip_output_size,_uint16_t_*_port_output)"><a class="permalink" href="#int_parse_ip_with_port_(const_char_*_input,_char_*_ip_output,_size_t_ip_output_size,_uint16_t_*_port_output)">int
+  parse_ip_with_port (const char * input, char * ip_output, size_t
+  ip_output_size, uint16_t * port_output)</a></h2>
+<p class="Pp">Definition at line <b>296</b> of file <b>ip.c</b>.</p>
+<pre>296                                                                                                          {
+297   if (!input || !ip_output || !port_output || ip_output_size == 0) {
+298     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, input);
+299     return -1;
+300   }
+301 
+302   if (strlen(input) == 0) {
+303     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid IP format: %s&quot;, input);
+304     return -1;
+305   }
+306 
+307   if (strlen(input) &gt; 256) {
+308     char input_buffer[BUFFER_SIZE_SMALL];
+309     SAFE_STRNCPY(input_buffer, input, sizeof(input_buffer));
+310     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Suspiciously long ip: %s&quot;, input_buffer);
+311     return -1;
+312   }
+313 
+314   // Check for IPv6 bracket notation: [2001:db8::1]:8080
+315   if (input[0] == '[') {
+316     // Find closing bracket
+317     const char *bracket_end = strchr(input, ']');
+318     if (!bracket_end)
+319       return -1; // Malformed - opening bracket but no closing bracket
+320 
+321     // Extract IP address (without brackets)
+322     size_t ip_len = (size_t)(bracket_end - input - 1);
+323     if (ip_len &gt;= ip_output_size)
+324       return -1; // IP too long
+325 
+326     memcpy(ip_output, input + 1, ip_len);
+327     ip_output[ip_len] = '\0';
+328 
+329     // Check for port after closing bracket
+330     if (bracket_end[1] == ':') {
+331       // Parse port using safe integer parsing
+332       if (parse_port(bracket_end + 2, port_output) != ASCIICHAT_OK) {
+333         return -1; // Invalid port
+334       }
+335     } else {
+336       return -1; // Expected ':' after closing bracket
+337     }
+338   } else {
+339     // IPv4 or hostname: &quot;192.0.2.1:8080&quot; or &quot;example.com:8080&quot;
+340     // Find last ':' for port separation
+341     const char *colon = strrchr(input, ':');
+342     if (!colon)
+343       return -1; // No port separator
+344 
+345     // Extract IP/hostname
+346     size_t ip_len = (size_t)(colon - input);
+347     if (ip_len &gt;= ip_output_size)
+348       return -1; // IP too long
+349 
+350     memcpy(ip_output, input, ip_len);
+351     ip_output[ip_len] = '\0';
+352 
+353     // Reject IPv6 without brackets (check if extracted IP contains ':')
+354     // This catches cases like &quot;::1:8080&quot; which should be &quot;[::1]:8080&quot;
+355     if (strchr(ip_output, ':') != NULL)
+356       return -1; // IPv6 address without brackets - invalid format
+357 
+358     // Parse port using safe integer parsing
+359     if (parse_port(colon + 1, port_output) != ASCIICHAT_OK) {
+360       return -1; // Invalid port
+361     }
+362   }
+363 
+364   return 0;
+365 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>parse_port()</b>.</p>
+<p class="Pp">Referenced by <b>compare_ip_port_strings()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="int_parse_ipv6_address_(const_char_*_input,_char_*_output,_size_t_output_size)"><a class="permalink" href="#int_parse_ipv6_address_(const_char_*_input,_char_*_output,_size_t_output_size)">int
+  parse_ipv6_address (const char * input, char * output, size_t
+  output_size)</a></h2>
+<p class="Pp">Definition at line <b>158</b> of file <b>ip.c</b>.</p>
+<pre>158                                                                             {
+159   if (!input || !output || output_size == 0)
+160     return -1;
+161 
+162   size_t input_len = strlen(input);
+163   if (input_len == 0)
+164     return -1; // Empty string
+165 
+166   const char *start = input;
+167   const char *end = input + input_len;
+168 
+169   // Remove brackets if present - but brackets must be matched
+170   if (*start == '[') {
+171     if (input_len &lt; 2 || *(end - 1) != ']')
+172       return -1; // Malformed brackets
+173     start++;
+174     end--;
+175 
+176     // Check for double brackets [[...]]
+177     if (start &lt; end &amp;&amp; *start == '[')
+178       return -1; // Double opening bracket
+179   } else if (*(end - 1) == ']') {
+180     // Closing bracket without opening bracket
+181     return -1;
+182   }
+183 
+184   size_t len = (size_t)(end - start);
+185   if (len == 0)
+186     return -1; // Empty content after removing brackets
+187   if (len &gt;= output_size)
+188     return -1; // Buffer too small
+189 
+190   memcpy(output, start, len);
+191   output[len] = '\0';
+192   return 0;
+193 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">Referenced by <b>canonicalize_ipv6()</b>, <b>expand_ipv6()</b>,
+    <b>extract_ipv4_from_mapped_ipv6()</b>, <b>ip_compare()</b>,
+    <b>ip_equals()</b>, <b>ip_in_cidr_parsed()</b>, <b>is_anycast_ipv6()</b>,
+    <b>is_broadcast_ipv6()</b>, <b>is_internet_ipv6()</b>,
+    <b>is_ipv4_mapped_ipv6()</b>, <b>is_lan_ipv6()</b>,
+    <b>is_link_local_ipv6()</b>, <b>is_localhost_ipv6()</b>,
+    <b>is_valid_ipv6()</b>, <b>parse_cidr()</b>,
+    <b>parse_server_bind_address()</b>, and
+  <b>validate_opt_ip_address()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>
