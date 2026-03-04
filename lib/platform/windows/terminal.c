@@ -19,6 +19,28 @@
 #include <string.h>
 #include <ascii-chat/atomic.h>
 
+/**
+ * @brief Check if file descriptor is a TTY
+ * @param fd File descriptor to check
+ * @return 1 if TTY, 0 if not
+ */
+int platform_isatty(int fd) {
+  return _isatty(fd);
+}
+
+/**
+ * @brief Get TTY name for a file descriptor
+ * @param fd File descriptor
+ * @return TTY name or NULL if not a TTY
+ */
+const char *platform_ttyname(int fd) {
+  // Windows doesn't have ttyname, return "CON" for console
+  if (platform_isatty(fd)) {
+    return "CON";
+  }
+  return NULL;
+}
+
 /* ============================================================================
  * Windows Console Resize Detection
  * ============================================================================ */
@@ -431,7 +453,8 @@ asciichat_error_t terminal_move_cursor_relative(int offset) {
   newCoord.X = newX;
   newCoord.Y = csbi.dwCursorPosition.Y;
 
-  return SetConsoleCursorPosition(hConsole, newCoord) ? ASCIICHAT_OK : SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor");
+  return SetConsoleCursorPosition(hConsole, newCoord) ? ASCIICHAT_OK
+                                                      : SET_ERRNO_SYS(ERROR_TERMINAL, "Failed to move cursor");
 }
 
 /**

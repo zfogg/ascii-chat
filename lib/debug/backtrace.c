@@ -6,8 +6,6 @@
 
 #include <ascii-chat/debug/backtrace.h>
 #include <ascii-chat/platform/system.h>
-#include <ascii-chat/platform/backtrace.h>
-#include <ascii-chat/platform/symbols.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
@@ -381,14 +379,16 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
 
   return offset;
 }
+void platform_print_backtrace(int skip_frames) {
+  void *buffer[32];
+  int size = platform_backtrace(buffer, 32);
 
-/* Platform-specific implementations are in:
- * - lib/platform/posix/backtrace.c (POSIX: Linux, macOS)
- * - lib/platform/windows/backtrace.c (Windows)
- * - lib/platform/wasm/backtrace.c (WASM)
- *
- * These files implement:
- * - int platform_backtrace(void **buffer, int size)
- * - char **platform_backtrace_symbols(void *const *buffer, int size)
- * - void platform_backtrace_symbols_destroy(char **strings)
- */
+  if (size > 0) {
+    char **symbols = platform_backtrace_symbols(buffer, size);
+
+    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
+    platform_print_backtrace_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
+
+    platform_backtrace_symbols_destroy(symbols);
+  }
+}

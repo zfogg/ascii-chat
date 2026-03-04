@@ -31,6 +31,24 @@
 #endif
 
 /**
+ * @brief Check if file descriptor is a TTY
+ * @param fd File descriptor to check
+ * @return 1 if TTY, 0 if not
+ */
+int platform_isatty(int fd) {
+  return isatty(fd);
+}
+
+/**
+ * @brief Get TTY name for a file descriptor
+ * @param fd File descriptor
+ * @return TTY name or NULL if not a TTY
+ */
+const char *platform_ttyname(int fd) {
+  return ttyname(fd);
+}
+
+/**
  * @brief Get terminal size
  * @param size Pointer to terminal_size_t structure to fill
  * @return 0 on success, -1 on failure
@@ -852,7 +870,8 @@ bool terminal_has_dark_background(void) {
   }
 
   // Don't query terminal during interactive grep mode (avoids PTY state issues causing spurious ESC bytes in stdin)
-  // Use forward declaration since we can't include log_search.h here (circular dependency through session/session_log_buffer.h)
+  // Use forward declaration since we can't include log_search.h here (circular dependency through
+  // session/session_log_buffer.h)
   extern bool log_search_is_active(void);
 
   // Try to query actual terminal background color via OSC 11

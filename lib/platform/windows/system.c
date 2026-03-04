@@ -369,38 +369,6 @@ int platform_setenv(const char *name, const char *value) {
   return _putenv_s(name, value);
 }
 
-/**
- * @brief Check if file descriptor is a TTY
- * @param fd File descriptor to check
- * @return 1 if TTY, 0 if not
- */
-int platform_isatty(int fd) {
-  return _isatty(fd);
-}
-
-/**
- * @brief Get TTY name for a file descriptor
- * @param fd File descriptor
- * @return TTY name or NULL if not a TTY
- */
-const char *platform_ttyname(int fd) {
-  // Windows doesn't have ttyname, return "CON" for console
-  if (platform_isatty(fd)) {
-    return "CON";
-  }
-  return NULL;
-}
-
-/**
- * @brief Synchronize file descriptor to disk
- * @param fd File descriptor to sync
- * @return 0 on success, -1 on failure
- */
-int platform_fsync(int fd) {
-  // Windows uses _commit for file sync
-  return _commit(fd);
-}
-
 
 // ============================================================================
 // Crash Handling

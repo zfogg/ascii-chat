@@ -792,4 +792,14 @@ bool check_binary_in_path_uncached(const char *bin_name) {
   return found;
 }
 
+/**
+ * @brief Synchronize file descriptor to disk
+ * @param fd File descriptor to sync
+ * @return fsync() return result
+ */
+int platform_fsync(int fd) {
+  // Windows uses _commit for file sync
+  return fsync(fd);
+}
+
 #endif

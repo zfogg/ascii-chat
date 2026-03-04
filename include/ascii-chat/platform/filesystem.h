@@ -1075,6 +1075,32 @@ bool platform_is_binary_in_path(const char *bin_name);
  */
 void platform_cleanup_binary_path_cache(void);
 
+/**
+ * @brief Synchronize a file descriptor to disk
+ * @param fd File descriptor to sync
+ * @return 0 on success, non-zero on error
+ *
+ * Forces all buffered data for the file descriptor to be written to disk.
+ *
+ * @ingroup platform
+ */
+int platform_fsync(int fd);
+
+/* ============================================================================
+ * Platform-Specific Internal Functions (not part of public API)
+ * ============================================================================ */
+
+/**
+ * @brief Check if a binary is in PATH (uncached, platform-specific implementation)
+ *
+ * Internal function called by platform_is_binary_in_path().
+ * Defined in posix/filesystem.c (Unix/Linux/macOS) or windows/filesystem.c (Windows).
+ *
+ * @param bin_name Base name of the binary to search for
+ * @return true if binary found and executable, false otherwise
+ */
+bool check_binary_in_path_uncached(const char *bin_name);
+
 #ifdef __cplusplus
 }
 #endif

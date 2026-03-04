@@ -79,12 +79,6 @@ static rwlock_t g_cache_rwlock;
 static lifecycle_t g_cache_lc = LIFECYCLE_INIT;
 
 /**
- * @brief Check if binary is in PATH (no caching)
- * Implemented in posix/filesystem.c and windows/filesystem.c
- */
-extern bool check_binary_in_path_uncached(const char *bin_name);
-
-/**
  * @brief Initialize the binary PATH cache
  */
 static void init_cache_once(void) {
@@ -180,4 +174,61 @@ bool platform_is_binary_in_path(const char *bin_name) {
   log_dev("Binary '%s' %s in PATH", bin_name, found_notfound_str);
 
   return found;
+}
+
+/**
+ * @brief Get the path to the current executable
+ * @param exe_path Buffer to store the executable path
+ * @param path_size Size of the buffer
+ * @return true on success, false on failure
+ */
+bool platform_get_executable_path(char *exe_path, size_t path_size) {
+  if (!exe_path || path_size == 0) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: exe_path=%p, path_size=%zu", (void *)exe_path, path_size);
+    return false;
+  }
+
+#ifdef _WIN32
+  DWORD len = GetModuleFileNameA(NULL, exe_path, (DWORD)path_size);
+  if (len == 0) {
+    SET_ERRNO_SYS(ERROR_INVALID_STATE, "GetModuleFileNameA failed: error code %lu", GetLastError());
+    return false;
+  }
+  if (len >= path_size) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW,
+              "Executable path exceeds buffer size (path length >= %zu bytes, buffer size = %zu bytes)", (size_t)len,
+              path_size);
+    return false;
+  }
+  return true;
+
+#elif defined(__linux__)
+  ssize_t len = readlink("/proc/self/exe", exe_path, path_size - 1);
+  if (len < 0) {
+    SET_ERRNO_SYS(ERROR_INVALID_STATE, "readlink(\"/proc/self/exe\") failed: %s", SAFE_STRERROR(errno));
+    return false;
+  }
+  if ((size_t)len >= path_size - 1) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW,
+              "Executable path exceeds buffer size (path length >= %zu bytes, buffer size = %zu bytes)", (size_t)len,
+              path_size);
+    return false;
+  }
+  exe_path[len] = '\0';
+  return true;
+
+#elif defined(__APPLE__)
+  uint32_t bufsize = (uint32_t)path_size;
+  int result = _NSGetExecutablePath(exe_path, &bufsize);
+  if (result != 0) {
+    SET_ERRNO(ERROR_BUFFER_OVERFLOW, "_NSGetExecutablePath failed: path requires %u bytes, buffer size = %zu bytes",
+              bufsize, path_size);
+    return false;
+  }
+  return true;
+
+#else
+  SET_ERRNO(ERROR_GENERAL, "Unsupported platform - cannot get executable path");
+  return false;
+#endif
 }

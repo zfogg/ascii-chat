@@ -36,6 +36,7 @@
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/network/packet/packet.h>
 #include <ascii-chat/video/ascii/ansi.h>
+#include <ascii-chat/platform/backtrace.h>
 
 /* Platform-specific log hook (weak, can be overridden by platform implementations) */
 __attribute__((weak)) void platform_log_hook(log_level_t level, const char *message) {
@@ -61,18 +62,18 @@ __attribute__((weak)) void platform_log_hook(log_level_t level, const char *mess
 #pragma GCC diagnostic ignored "-Wmissing-field-initializers"
 static struct log_system_t {
   /* Core logging I/O and state */
-  atomic_t file;                       /* File descriptor (atomic for safe access) */
-  atomic_t json_file;                  /* JSON output file descriptor (-1 = disabled) */
-  atomic_t level;                      /* Log level as int for atomic ops */
-  lifecycle_t lifecycle;               /* Initialization state machine */
-  char filename[LOG_MSG_BUFFER_SIZE];  /* Store filename (set once at init) */
-  atomic_t current_size;               /* Track current file size */
+  atomic_t file;                      /* File descriptor (atomic for safe access) */
+  atomic_t json_file;                 /* JSON output file descriptor (-1 = disabled) */
+  atomic_t level;                     /* Log level as int for atomic ops */
+  lifecycle_t lifecycle;              /* Initialization state machine */
+  char filename[LOG_MSG_BUFFER_SIZE]; /* Store filename (set once at init) */
+  atomic_t current_size;              /* Track current file size */
 
   /* Terminal output control */
-  atomic_t terminal_output_enabled;    /* Control stderr output to terminal */
-  atomic_t force_stderr;               /* Force all terminal logs to stderr (client mode) */
-  atomic_t terminal_locked;            /* True when a thread has exclusive terminal access */
-  atomic_t terminal_owner_thread;      /* Thread that owns terminal output (stored as uint64) */
+  atomic_t terminal_output_enabled; /* Control stderr output to terminal */
+  atomic_t force_stderr;            /* Force all terminal logs to stderr (client mode) */
+  atomic_t terminal_locked;         /* True when a thread has exclusive terminal access */
+  atomic_t terminal_owner_thread;   /* Thread that owns terminal output (stored as uint64) */
 
   /* Log level and formatting */
   atomic_t level_manually_set;         /* Track if level was set manually */
@@ -82,32 +83,32 @@ static struct log_system_t {
   atomic_t has_custom_format;          /* True if format was customized */
 
   /* Terminal capability detection and color scheme */
-  terminal_capabilities_t terminal_caps;     /* Detected terminal capabilities */
-  bool terminal_caps_initialized;            /* Whether terminal caps were detected */
-  bool terminal_caps_detecting;              /* Guard against recursion during detection */
-  compiled_color_scheme_t compiled_colors;   /* Compiled color scheme for this session */
-  bool log_colorscheme_initialized;          /* Whether color scheme was initialized */
+  terminal_capabilities_t terminal_caps;   /* Detected terminal capabilities */
+  bool terminal_caps_initialized;          /* Whether terminal caps were detected */
+  bool terminal_caps_detecting;            /* Guard against recursion during detection */
+  compiled_color_scheme_t compiled_colors; /* Compiled color scheme for this session */
+  bool log_colorscheme_initialized;        /* Whether color scheme was initialized */
 
   /* Shutdown state management */
   bool shutdown_saved_terminal_output; /* Saved state for log_shutdown_begin/end */
   bool shutdown_in_progress;           /* Track if shutdown phase is active */
 
   /* Log rotation */
-  mutex_t rotation_mutex;              /* Mutex for log rotation only (not for logging!) */
+  mutex_t rotation_mutex;               /* Mutex for log rotation only (not for logging!) */
   lifecycle_t rotation_mutex_lifecycle; /* Rotation mutex initialization state machine */
 
   /* Session-specific logging (splash/status screens) */
-  atomic_ptr_t session_log_buffer;     /* Pointer to registered session log buffer (can be NULL) */
+  atomic_ptr_t session_log_buffer; /* Pointer to registered session log buffer (can be NULL) */
 } g_log = {
-    .file = {0}, /* STDERR_FILENO (fd 2) - fd 0 is STDIN (read-only!) */
+    .file = {0},                         /* STDERR_FILENO (fd 2) - fd 0 is STDIN (read-only!) */
     .json_file = {.impl = (uint64_t)-1}, /* -1 = disabled (atomic_t initialized as uint64_t -1) */
-    .level = {0}, /* DEFAULT_LOG_LEVEL */
+    .level = {0},                        /* DEFAULT_LOG_LEVEL */
     .lifecycle = LIFECYCLE_INIT,
     .filename = {0},
     .current_size = {0},
     .terminal_output_enabled = {0}, /* true */
-    .force_stderr = {0}, /* false */
-    .terminal_locked = {0}, /* false */
+    .force_stderr = {0},            /* false */
+    .terminal_locked = {0},         /* false */
     .terminal_owner_thread = {0},
     .level_manually_set = {0}, /* false */
     .flush_delay_ms = {0},
@@ -911,16 +912,16 @@ static void write_to_terminal_atomic(log_level_t level, const char *timestamp, c
    * thread frees the format between our check and use. */
   const log_template_t *format = g_log.format;
   int plain_len = 0;
-  if (format && lifecycle_is_initialized(&g_log.lifecycle)) {  /* Double-check lifecycle is still active */
-    plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line,
-                                   func, asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
+  if (format && lifecycle_is_initialized(&g_log.lifecycle)) { /* Double-check lifecycle is still active */
+    plain_len = log_template_apply(format, plain_log_line, sizeof(plain_log_line), level, timestamp, file, line, func,
+                                   asciichat_thread_current_id(), clean_msg, false, time_nanoseconds);
   }
 
   /* For colored output, apply format with colors enabled */
   int colored_len = 0;
   if (use_colors && plain_len > 0) {
     const log_template_t *format_check = g_log.format;
-    if (format_check && lifecycle_is_initialized(&g_log.lifecycle)) {  /* Re-verify lifecycle before use */
+    if (format_check && lifecycle_is_initialized(&g_log.lifecycle)) { /* Re-verify lifecycle before use */
       colored_len = log_template_apply(format_check, colored_log_line, sizeof(colored_log_line), level, timestamp, file,
                                        line, func, asciichat_thread_current_id(), clean_msg, true, time_nanoseconds);
     }
@@ -1537,8 +1538,9 @@ void log_redetect_terminal_capabilities(void) {
     g_log.terminal_caps_initialized = true;
 
     // Now log the capabilities AFTER colors are set, so this log uses the correct colors
-    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d", g_log.terminal_caps.color_level,
-              g_log.terminal_caps.capabilities, g_log.terminal_caps.utf8_support ? "yes" : "no", g_log.terminal_caps.desired_fps);
+    log_debug("Terminal capabilities: color_level=%d, capabilities=0x%x, utf8=%s, fps=%d",
+              g_log.terminal_caps.color_level, g_log.terminal_caps.capabilities,
+              g_log.terminal_caps.utf8_support ? "yes" : "no", g_log.terminal_caps.desired_fps);
 
     // Now that we've detected once with reliable results, keep these colors consistent for all future logs
   }

@@ -6,6 +6,8 @@
 
 #include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/platform/symbols.h>
+#include <ascii-chat/util/string.h>
+#include <ascii-chat/util/path.h>
 #include <execinfo.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -78,6 +80,7 @@ char **platform_backtrace_symbols(void *const *buffer, int size) {
 
 void platform_backtrace_symbols_destroy(char **strings) {
   if (!strings) {
+    SET_ERRNO(ERROR_INVALID_PARAM, "Invalid parameters: strings=%p", (void *)strings);
     return;
   }
   symbol_cache_free_symbols(strings);
