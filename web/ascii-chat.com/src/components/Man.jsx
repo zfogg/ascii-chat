@@ -89,7 +89,9 @@ export default function Man({ html, isSourcePage = false }) {
 
           let codeContent = preMatch[2];
           codeContent = decodeHtmlEntities(codeContent);
-          if (codeContent.trim()) {
+          // Remove leading/trailing whitespace from entire code block
+          codeContent = codeContent.trim();
+          if (codeContent) {
             const lines = codeContent.split("\n");
             const hasExistingLineNumbers = codeHasLineNumbers(lines);
             const maxLineNum = lines.length.toString().length;
@@ -146,7 +148,11 @@ export default function Man({ html, isSourcePage = false }) {
                   if (hasExistingLineNumbers) {
                     return text;
                   }
-                  return `    ${paddedNum}  ${text}`;
+                  // Keep content aligned at same column regardless of line number width
+                  const leadingSpace = " ".repeat(
+                    Math.max(0, 4 - (maxLineNum - 1)),
+                  );
+                  return `${leadingSpace}${paddedNum}  ${text}`;
                 })
                 .join("\n");
 
@@ -253,10 +259,14 @@ export default function Man({ html, isSourcePage = false }) {
                   return line.text;
                 }
 
+                // Keep content aligned at same column regardless of line number width
+                const leadingSpace = " ".repeat(
+                  Math.max(0, 4 - (maxLineNum - 1)),
+                );
                 if (isTarget) {
-                  return `⟹ ${paddedNum}  ${line.text} ⟸`;
+                  return `⟹ ${leadingSpace}${paddedNum}  ${line.text} ⟸`;
                 }
-                return `    ${paddedNum}  ${line.text}`;
+                return `${leadingSpace}${paddedNum}  ${line.text}`;
               })
               .join("\n");
 
