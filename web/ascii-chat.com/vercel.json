@@ -46,6 +46,10 @@
     {
       "source": "/man5",
       "destination": "/index.html"
+    },
+    {
+      "source": "/man3",
+      "destination": "/index.html"
     }
   ],
   "headers": [

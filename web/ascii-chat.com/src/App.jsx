@@ -6,6 +6,7 @@ import Home from "./pages/Home";
 import Crypto from "./pages/docs/Crypto";
 import Man1 from "./pages/Man1";
 import Man5 from "./pages/Man5";
+import Man3 from "./pages/Man3";
 import NotFound from "./pages/NotFound";
 import DocsHub from "./pages/docs/DocsHub";
 import Configuration from "./pages/docs/Configuration";
@@ -35,6 +36,7 @@ export default function App() {
               <Route path="/docs/crypto" element={<Crypto />} />
               <Route path="/man1" element={<Man1 />} />
               <Route path="/man5" element={<Man5 />} />
+              <Route path="/man3" element={<Man3 />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

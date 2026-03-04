@@ -63,6 +63,94 @@ add_custom_target(man1 ALL
 
 message(STATUS "Man1 target ${BoldCyan}'man1'${ColorReset} is available (no Doxygen required). Build with: ${BoldYellow}cmake --build build --target man1${ColorReset}")
 
+# =============================================================================
+# Man3 Target (API Reference - Doxygen-generated man pages only)
+# =============================================================================
+# Lightweight target that generates only man(3) pages without HTML docs
+# This is much faster than the full `docs` target and is used for web builds
+if(ASCIICHAT_DOXYGEN_EXECUTABLE)
+    # Create man3 directory
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
+
+    # Configure Doxyfile for man3 generation (no HTML)
+    set(DOXYFILE_MAN3_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
+    set(DOXYFILE_MAN3_OUT "${CMAKE_BINARY_DIR}/Doxyfile.man3")
+
+    # Read the Doxyfile template and customize for man3-only output
+    file(READ ${DOXYFILE_MAN3_IN} DOXYFILE_CONTENT)
+    # Set GENERATE_HTML to NO and keep GENERATE_MAN to YES
+    string(REPLACE "GENERATE_HTML" "GENERATE_HTML_DISABLED" DOXYFILE_CONTENT "${DOXYFILE_CONTENT}")
+    string(REPLACE "GENERATE_HTML_DISABLED" "GENERATE_HTML" DOXYFILE_CONTENT "${DOXYFILE_CONTENT}")
+
+    # Write custom Doxyfile for man3 that will be processed with CMake variables
+    file(WRITE "${CMAKE_BINARY_DIR}/Doxyfile.man3.in" "${DOXYFILE_CONTENT}")
+
+    # Configure the file with CMake variables
+    configure_file(
+        "${CMAKE_BINARY_DIR}/Doxyfile.man3.in"
+        "${DOXYFILE_MAN3_OUT}"
+        @ONLY
+    )
+
+    # Post-process to disable HTML generation
+    file(READ "${DOXYFILE_MAN3_OUT}" DOXYFILE_CONTENT)
+    string(REPLACE "GENERATE_HTML          = YES" "GENERATE_HTML          = NO" DOXYFILE_CONTENT "${DOXYFILE_CONTENT}")
+    file(WRITE "${DOXYFILE_MAN3_OUT}" "${DOXYFILE_CONTENT}")
+
+    # Generate manpage renaming script at configure time
+    file(WRITE "${CMAKE_BINARY_DIR}/RenameManpages.cmake" "
+# Rename manpages with ascii-chat- prefix and filter out path-based entries
+file(TO_CMAKE_PATH \"\${MAN_DIR}\" MAN_DIR)
+
+# Find all .3 manpages in the directory
+file(GLOB MANPAGES \"\${MAN_DIR}/*.3\")
+if(NOT MANPAGES)
+    message(STATUS \"No manpages found in \${MAN_DIR}, skipping\")
+    return()
+endif()
+
+set(RENAMED_COUNT 0)
+set(SKIPPED_COUNT 0)
+set(DELETED_COUNT 0)
+
+foreach(MANPAGE \${MANPAGES})
+    get_filename_component(FILENAME \"\${MANPAGE}\" NAME)
+
+    # Skip/delete path-based entries (Doxygen directory documentation)
+    if(FILENAME MATCHES \"_home_|_usr_|_opt_|_var_\")
+        file(REMOVE \"\${MANPAGE}\")
+        math(EXPR DELETED_COUNT \"\${DELETED_COUNT} + 1\")
+        continue()
+    endif()
+
+    if(FILENAME MATCHES \"^ascii-chat-\")
+        math(EXPR SKIPPED_COUNT \"\${SKIPPED_COUNT} + 1\")
+        continue()
+    endif()
+
+    set(NEW_FILENAME \"ascii-chat-\${FILENAME}\")
+    get_filename_component(DIR \"\${MANPAGE}\" DIRECTORY)
+    set(NEW_PATH \"\${DIR}/\${NEW_FILENAME}\")
+    file(RENAME \"\${MANPAGE}\" \"\${NEW_PATH}\")
+    math(EXPR RENAMED_COUNT \"\${RENAMED_COUNT} + 1\")
+endforeach()
+
+message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} already prefixed, \${DELETED_COUNT} path entries deleted\")
+")
+
+    # Create man3 target (fast, man pages only)
+    add_custom_target(man3
+        COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN3_OUT}
+        COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
+        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating man(3) API reference pages"
+        VERBATIM
+    )
+
+    message(STATUS "Man3 target ${BoldGreen}'man3'${ColorReset} is available (man pages only, no HTML). Build with: ${BoldYellow}cmake --build build --target man3${ColorReset}")
+endif()
+
 # Use centralized ASCIICHAT_DOXYGEN_EXECUTABLE from FindPrograms.cmake
 if(ASCIICHAT_DOXYGEN_EXECUTABLE)
     message(STATUS "Found ${BoldGreen}Doxygen${ColorReset}: ${ASCIICHAT_DOXYGEN_EXECUTABLE}")
@@ -88,38 +176,6 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
 
     # Create docs directory if it doesn't exist
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/docs")
-
-    # Generate manpage renaming script at configure time
-    file(WRITE "${CMAKE_BINARY_DIR}/RenameManpages.cmake" "
-# Rename manpages with ascii-chat- prefix
-file(TO_CMAKE_PATH \"\${MAN_DIR}\" MAN_DIR)
-
-# Find all .3 manpages in the directory
-file(GLOB MANPAGES \"\${MAN_DIR}/*.3\")
-if(NOT MANPAGES)
-    message(STATUS \"No manpages found in \${MAN_DIR}, skipping\")
-    return()
-endif()
-
-set(RENAMED_COUNT 0)
-set(SKIPPED_COUNT 0)
-
-foreach(MANPAGE \${MANPAGES})
-    get_filename_component(FILENAME \"\${MANPAGE}\" NAME)
-    if(FILENAME MATCHES \"^ascii-chat-\")
-        math(EXPR SKIPPED_COUNT \"\${SKIPPED_COUNT} + 1\")
-        continue()
-    endif()
-
-    set(NEW_FILENAME \"ascii-chat-\${FILENAME}\")
-    get_filename_component(DIR \"\${MANPAGE}\" DIRECTORY)
-    set(NEW_PATH \"\${DIR}/\${NEW_FILENAME}\")
-    file(RENAME \"\${MANPAGE}\" \"\${NEW_PATH}\")
-    math(EXPR RENAMED_COUNT \"\${RENAMED_COUNT} + 1\")
-endforeach()
-
-message(STATUS \"Manpage renaming: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT} already prefixed\")
-")
 
     # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
     add_custom_target(docs
