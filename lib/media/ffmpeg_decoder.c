@@ -245,7 +245,12 @@ static stdin_buffer_t *stdin_buffer_read_all(void) {
     sb->size += bytes_read;
   }
 
-  log_debug("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
+  log_info("Buffered stdin: %zu bytes in %d chunks (capacity: %zu)", sb->size, chunk_count, total_capacity);
+  if (sb->size > 0) {
+    log_info("  First 16 bytes of stdin: %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x %02x",
+             sb->data[0], sb->data[1], sb->data[2], sb->data[3], sb->data[4], sb->data[5], sb->data[6], sb->data[7],
+             sb->data[8], sb->data[9], sb->data[10], sb->data[11], sb->data[12], sb->data[13], sb->data[14], sb->data[15]);
+  }
   return sb;
 }
 
@@ -417,24 +422,76 @@ static void *ffmpeg_decoder_prefetch_thread_func(void *arg) {
       uint8_t *dst_data[1] = {(uint8_t *)decode_buffer->pixels};
       int dst_linesize[1] = {width * 3};
 
+      static int decode_count = 0;
+      if (++decode_count <= 3) {
+        log_info("[FRAME_DECODE] Frame %d: width=%d, height=%d, codec_pix_fmt=%d, frame_pix_fmt=%d (is_stdin=%d)",
+                 decode_count, width, height, decoder->video_codec_ctx->pix_fmt, decoder->frame->format, decoder->is_stdin);
+      }
+
+      // For fragmented MP4 from stdin, pixel format might not be set - default to YUV420p
+      // which is standard for H.264/H.265 video codecs
+      int pix_fmt_to_use = decoder->video_codec_ctx->pix_fmt;
+      if (pix_fmt_to_use == AV_PIX_FMT_NONE) {
+        if (decoder->frame->format != AV_PIX_FMT_NONE) {
+          pix_fmt_to_use = decoder->frame->format;
+          log_debug("[SWSCALE_FIX] Using frame->format=%d instead of codec pix_fmt (was NONE)", decoder->frame->format);
+        } else {
+          // Fragmented MP4: Default to YUV420p (standard for H.264/H.265)
+          pix_fmt_to_use = AV_PIX_FMT_YUV420P;
+          log_debug("[SWSCALE_FIX] Fragmented format: Using hardcoded YUV420p (frame->format was also NONE)");
+        }
+      }
+
       // Lazy initialize swscale context if not done at startup (happens with HTTP/stdin streams)
       if (!decoder->sws_ctx) {
-        if (width > 0 && height > 0 && decoder->video_codec_ctx->pix_fmt != AV_PIX_FMT_NONE) {
-          decoder->sws_ctx = sws_getContext(width, height, decoder->video_codec_ctx->pix_fmt, width, height,
+        log_debug("Lazy init swscale: width=%d, height=%d, pix_fmt=%d", width, height, pix_fmt_to_use);
+        if (width > 0 && height > 0 && pix_fmt_to_use != AV_PIX_FMT_NONE) {
+          decoder->sws_ctx = sws_getContext(width, height, pix_fmt_to_use, width, height,
                                             AV_PIX_FMT_RGB24, SWS_BILINEAR, NULL, NULL, NULL);
           if (!decoder->sws_ctx) {
-            log_error("Failed to create swscale context on first frame");
+            log_error("Failed to create swscale context: pix_fmt=%d (might be unsupported for conversion)",
+                      pix_fmt_to_use);
             break;
           }
-          log_debug("Lazy initialized swscale context with %dx%d", width, height);
+
+          // Set proper colorspace for H.264 video (BT.709)
+          // sws_setColorspaceDetails(ctx, inv_table, srcRange, table, dstRange, brightness, contrast, saturation)
+          const int *inv_table = sws_getCoefficients(SWS_CS_ITU709);
+          const int *table = sws_getCoefficients(SWS_CS_ITU709);
+          int ret_cs = sws_setColorspaceDetails(decoder->sws_ctx, inv_table, 0, table, 0, 0, 1 << 16, 1 << 16);
+          if (ret_cs < 0) {
+            log_warn("Failed to set BT.709 colorspace details (code=%d), continuing with defaults", ret_cs);
+          } else {
+            log_debug("Set BT.709 colorspace for H.264 YUV->RGB conversion");
+          }
+
+          log_debug("Lazy initialized swscale context with %dx%d from pix_fmt=%d", width, height, pix_fmt_to_use);
         } else {
-          log_error("Cannot initialize swscale: invalid dimensions or pixel format");
+          log_error("Cannot initialize swscale: width=%d, height=%d, pix_fmt=%d (AV_PIX_FMT_NONE=%d)", width,
+                    height, pix_fmt_to_use, AV_PIX_FMT_NONE);
           break;
         }
       }
 
-      sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
-                dst_data, dst_linesize);
+      if (decode_count <= 3) {
+        // Log input YUV data
+        uint8_t *y_data = decoder->frame->data[0];
+        uint8_t *u_data = decoder->frame->data[1];
+        uint8_t *v_data = decoder->frame->data[2];
+        log_info("[YUV_INPUT] Frame %d: Y[0]=%u, U[0]=%u, V[0]=%u (linesize=%d,%d,%d)",
+                 decode_count,
+                 y_data ? y_data[0] : 255, u_data ? u_data[0] : 255, v_data ? v_data[0] : 255,
+                 decoder->frame->linesize[0], decoder->frame->linesize[1], decoder->frame->linesize[2]);
+      }
+
+      int ret_scale = sws_scale(decoder->sws_ctx, (const uint8_t *const *)decoder->frame->data, decoder->frame->linesize, 0, height,
+                                dst_data, dst_linesize);
+      if (decode_count <= 3) {
+        log_info("[SWS_SCALE] Frame %d: returned %d", decode_count, ret_scale);
+        rgb_pixel_t *test_px = (rgb_pixel_t *)decode_buffer->pixels;
+        log_info("[SWS_RESULT] Frame %d: RGB[0]=(%u,%u,%u), RGB[100]=(%u,%u,%u)",
+                 decode_count, test_px[0].r, test_px[0].g, test_px[0].b, test_px[100].r, test_px[100].g, test_px[100].b);
+      }
 
       frame_decoded = true;
       break; // Exit while loop
