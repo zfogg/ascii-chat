@@ -163,3 +163,7 @@
   font-size: 1rem;
   overflow-x: auto;
 }
+
+.man-page-content pre > code > .token:nth-child(1) {
+  margin-left: -6px;
+}

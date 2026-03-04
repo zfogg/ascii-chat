@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { AsciiChatHead } from "../components/AsciiChatHead";
+import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Man3() {
   const [manPages, setManPages] = useState([]);
@@ -239,6 +240,33 @@ export default function Man3() {
     }
   }, [targetLineNumber]);
 
+  // Convert HTML with pre blocks into JSX with CodeBlock components
+  const renderContentWithCodeBlocks = (html) => {
+    // Split by pre tags while preserving surrounding HTML
+    const parts = html.split(/(<pre>.*?<\/pre>)/s);
+    const elements = [];
+
+    parts.forEach((part, idx) => {
+      if (part.match(/^<pre>.*<\/pre>$/s)) {
+        // Extract code content from pre tag
+        const codeMatch = part.match(/<pre>([\s\S]*)<\/pre>/);
+        const codeContent = codeMatch ? codeMatch[1] : '';
+        elements.push(
+          <CodeBlock key={`code-${idx}`} language="c">
+            {codeContent}
+          </CodeBlock>
+        );
+      } else if (part.trim()) {
+        // Regular HTML content
+        elements.push(
+          <div key={`html-${idx}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: part }} />
+        );
+      }
+    });
+
+    return elements.length > 0 ? elements : <div dangerouslySetInnerHTML={{ __html: html }} />;
+  };
+
   return (
     <>
       <AsciiChatHead
@@ -403,10 +431,9 @@ export default function Man3() {
                       ✕
                     </button>
                   </div>
-                  <div
-                    className="man-page-content"
-                    dangerouslySetInnerHTML={{ __html: selectedPageContent }}
-                  />
+                  <div className="man-page-content">
+                    {renderContentWithCodeBlocks(selectedPageContent)}
+                  </div>
                 </div>
               ) : (
                 <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center min-h-96 text-center">
