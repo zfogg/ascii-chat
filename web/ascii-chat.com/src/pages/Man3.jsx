@@ -448,30 +448,38 @@ export default function Man3() {
     const temp = document.createElement("div");
     temp.innerHTML = fragmentHtml;
 
-    // Remove all line number spans and anchors from the clone
-    temp
-      .querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]')
-      .forEach((el) => el.remove());
-
-    // Unwrap fold open/close divs (keep their contents)
-    temp.querySelectorAll("div.foldopen, div.foldclose").forEach((el) => {
-      const parent = el.parentNode;
-      while (el.firstChild) {
-        parent.insertBefore(el.firstChild, el);
-      }
-      parent.removeChild(el);
-    });
-
-    // Get all line divs and extract their text
+    // Extract line numbers and code together
     const lines = [];
     temp.querySelectorAll("div.line").forEach((lineDiv) => {
-      const lineText = lineDiv.textContent.trimEnd();
+      // Get the anchor ID if present (e.g., "l00044")
+      const anchor = lineDiv.querySelector('a[id^="l"]');
+      let lineNum = null;
+      if (anchor) {
+        const id = anchor.id;
+        // Convert "l00044" to "44"
+        lineNum = parseInt(id.substring(1), 10);
+      }
+
+      // Clone the line and remove anchors/line numbers for text extraction
+      const lineClone = lineDiv.cloneNode(true);
+      lineClone.querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]').forEach((el) => el.remove());
+
+      // Unwrap fold divs in the clone
+      lineClone.querySelectorAll("div.foldopen, div.foldclose").forEach((el) => {
+        const parent = el.parentNode;
+        while (el.firstChild) {
+          parent.insertBefore(el.firstChild, el);
+        }
+        parent.removeChild(el);
+      });
+
+      const lineText = lineClone.textContent.trimEnd();
       if (lineText) {
-        lines.push(lineText);
+        lines.push({ text: lineText, number: lineNum });
       }
     });
 
-    return lines.join("\n").trimEnd();
+    return lines;
   };
 
   const renderContentWithCodeBlocks = (html) => {
@@ -494,13 +502,35 @@ export default function Man3() {
           );
         }
 
-        // Add code block
+        // Add code block with line numbers
         let codeContent = preMatch[2];
         codeContent = decodeHtmlEntities(codeContent);
         if (codeContent.trim()) {
+          const lines = codeContent.split("\n");
+          const maxLineNum = lines.length.toString().length;
+
+          // Extract target line number from hash if present
+          const hash = window.location.hash;
+          let targetLineNum = null;
+          if (hash.match(/^#l\d+$/)) {
+            targetLineNum = parseInt(hash.substring(2), 10);
+          }
+
+          const codeWithLineNumbers = lines
+            .map((text, idx) => {
+              const lineNum = idx + 1;
+              const paddedNum = String(lineNum).padStart(maxLineNum, " ");
+              const isTarget = lineNum === targetLineNum;
+
+              if (isTarget) {
+                return `>>> ${paddedNum}  ${text} <<<`;
+              }
+              return `    ${paddedNum}  ${text}`;
+            })
+            .join("\n");
           elements.push(
             <CodeBlock key={`code-${elements.length}`} language="c">
-              {codeContent}
+              {codeWithLineNumbers}
             </CodeBlock>,
           );
         }
@@ -555,12 +585,37 @@ export default function Man3() {
         // Extract fragment and preserve anchors separately for scrolling
         const fragmentHtml = remaining.substring(fragmentStart, fragmentEnd);
 
-        // Render the code block (without anchors for clean display)
-        const codeContent = extractCodeFromFragment(fragmentHtml);
-        if (codeContent.trim()) {
+        // Render the code block with line numbers
+        const codeLines = extractCodeFromFragment(fragmentHtml);
+        if (codeLines.length > 0) {
+          // Calculate max line number width for alignment
+          const maxLineNum = codeLines.length > 0
+            ? Math.max(...codeLines.map((line) => (line.number || 0).toString().length))
+            : 1;
+
+          // Extract target line number from hash if present
+          const hash = window.location.hash;
+          let targetLineNum = null;
+          if (hash.match(/^#l\d+$/)) {
+            targetLineNum = parseInt(hash.substring(2), 10);
+          }
+
+          const codeWithLineNumbers = codeLines
+            .map((line) => {
+              const lineNum = line.number || "";
+              const paddedNum = String(lineNum).padStart(maxLineNum, " ");
+              const isTarget = line.number === targetLineNum;
+
+              // Wrap target line in special marker for highlighting
+              if (isTarget) {
+                return `>>> ${paddedNum}  ${line.text} <<<`;
+              }
+              return `    ${paddedNum}  ${line.text}`;
+            })
+            .join("\n");
           elements.push(
             <CodeBlock key={`code-${elements.length}`} language="c">
-              {codeContent}
+              {codeWithLineNumbers}
             </CodeBlock>,
           );
         }
