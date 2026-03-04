@@ -208,16 +208,30 @@ export default function Man3() {
                         {/* Snippets in nested boxes */}
                         {page.snippets && page.snippets.length > 0 && (
                           <div className="px-4 pb-3 space-y-2">
-                            {page.snippets.map((snippet, idx) => (
-                              <div
-                                key={idx}
-                                className="bg-gray-950/80 border border-gray-700/50 rounded px-3 py-2 text-xs text-gray-300 font-mono overflow-hidden"
-                              >
-                                <div className="line-clamp-3 whitespace-pre-wrap break-words">
-                                  {highlightMatches(snippet, searchQuery)}
+                            {page.snippets.map((snippet, idx) => {
+                              const snippetLines = snippet.split("\n");
+                              return (
+                                <div
+                                  key={idx}
+                                  className="bg-gray-950/80 border border-gray-700/50 rounded px-3 py-2 text-xs text-gray-300 font-mono overflow-hidden"
+                                >
+                                  <div className="whitespace-pre-wrap break-words">
+                                    {snippetLines.map((line, lineIdx) => (
+                                      <div
+                                        key={lineIdx}
+                                        className={
+                                          lineIdx === Math.floor(snippetLines.length / 2)
+                                            ? "bg-gray-800/50 px-1 -mx-1"
+                                            : ""
+                                        }
+                                      >
+                                        {highlightMatches(line, searchQuery)}
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                       </div>

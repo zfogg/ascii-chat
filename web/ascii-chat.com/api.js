@@ -57,13 +57,16 @@ function extractTextContent(html) {
   return html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "") // Remove scripts
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "") // Remove styles
-    .replace(/<[^>]+>/g, "") // Remove HTML tags
+    .replace(/<[^>]+>/g, "\n") // Replace HTML tags with newlines
     .replace(/&nbsp;/g, " ")
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&")
-    .replace(/\s+/g, " ") // Collapse whitespace
-    .trim();
+    .replace(/\n\s*\n/g, "\n") // Remove multiple blank lines
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .join("\n");
 }
 
 // Get file text content (from cache or disk)
@@ -89,27 +92,34 @@ function getFileContent(pageName) {
   return "";
 }
 
-// Find snippets around matches
+// Find snippets around matches (centered on match)
 function findSnippets(text, query, maxSnippets = 3) {
   const lines = text.split("\n").filter((l) => l.trim());
   const snippets = [];
-  const snippetSet = new Set();
+  const usedLines = new Set(); // Track which lines we've already used
 
   try {
     const regex = new RegExp(query, "i");
 
-    for (let i = 0; i < lines.length; i++) {
-      if (snippets.length >= maxSnippets) break;
+    for (let i = 0; i < lines.length && snippets.length < maxSnippets; i++) {
+      // Skip if we already used this line in a previous snippet
+      if (usedLines.has(i)) continue;
 
       if (regex.test(lines[i])) {
-        const start = Math.max(0, i - 1);
-        const end = Math.min(lines.length - 1, i + 1);
-        const snippet = lines.slice(start, end + 1).join("\n").trim();
+        // Always show exactly 3 lines with match in the middle
+        const before = i > 0 ? lines[i - 1] : "";
+        const match = lines[i];
+        const after = i < lines.length - 1 ? lines[i + 1] : "";
 
-        if (!snippetSet.has(snippet) && snippet.length > 10) {
-          snippetSet.add(snippet);
-          snippets.push(snippet);
-        }
+        // Build snippet: exactly 3 lines with match in middle
+        const snippet = [before, match, after].join("\n");
+
+        // Track which lines are used in this snippet to avoid overlaps
+        if (i > 0) usedLines.add(i - 1);
+        usedLines.add(i);
+        if (i < lines.length - 1) usedLines.add(i + 1);
+
+        snippets.push(snippet);
       }
     }
   } catch (e) {
@@ -175,7 +185,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
 
     res.json({
       query: query,
-      results: results.slice(0, 100), // Limit to 100 results
+      results: results.slice(0, 10), // Limit to 10 results
     });
   } catch (e) {
     res.status(400).json({ error: "Invalid regex pattern" });
