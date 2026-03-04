@@ -27,9 +27,11 @@ const registry_entry_t g_logging_entries[] = {
      NULL, // Use mode_default_getter instead
      0,
 #ifndef NDEBUG
-     "Set FILE as path for log file (default: current directory; filenames: server.log, client.log, mirror.log, acds.log, discovery.log).",
+     "Set FILE as path for log file (default: current directory; filenames: server.log, client.log, mirror.log, "
+     "acds.log, discovery.log).",
 #else
-     "Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or %TEMP%\\ascii-chat\\; filenames: server.log, client.log, mirror.log, acds.log, discovery.log).",
+     "Set FILE as path for log file (default: $TMPDIR/ascii-chat/ or %TEMP%\\ascii-chat\\; filenames: server.log, "
+     "client.log, mirror.log, acds.log, discovery.log).",
 #endif
      "LOGGING",
      "FILE",
@@ -39,7 +41,11 @@ const registry_entry_t g_logging_entries[] = {
      parse_log_file,
      false,
      false,
-     OPTION_MODE_BINARY,
+#ifndef NDEBUG
+     OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
+#else
+     OPTIONS_MODE_BINARY,
+#endif
      {0},
      get_default_log_file},
     {"log-level",
