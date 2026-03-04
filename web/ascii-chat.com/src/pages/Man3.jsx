@@ -929,9 +929,14 @@ export default function Man3() {
                 </p>
               )}
               {!regexError && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Regex search (default case-insensitive). Examples: <code className="bg-gray-800 px-1 rounded">socket</code>, <code className="bg-gray-800 px-1 rounded">error|crypto</code>, or <code className="bg-gray-800 px-1 rounded">/^socket$/gi</code> for flags
-                </p>
+                <div className="flex items-center justify-between gap-4 mt-2">
+                  <p className="text-xs text-gray-500">
+                    Regex search (default case-insensitive). Examples: <code className="bg-gray-800 px-1 rounded">socket</code>, <code className="bg-gray-800 px-1 rounded">error|crypto</code>, or <code className="bg-gray-800 px-1 rounded">/^socket$/gi</code> for flags
+                  </p>
+                  <p className="text-xs text-gray-500 whitespace-nowrap">
+                    📖 <a href="https://zfogg.github.io/ascii-chat/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 transition-colors">View original Doxygen documentation</a>
+                  </p>
+                </div>
               )}
             </div>
             <p className="text-sm text-gray-400 mt-3 text-center">
@@ -940,9 +945,6 @@ export default function Man3() {
                 : filesMatched > 0
                   ? `${filesMatched} file${filesMatched !== 1 ? "s" : ""} matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
                   : "No results"}
-            </p>
-            <p className="text-sm text-gray-400 mt-6 text-center">
-              📖 <a href="https://zfogg.github.io/ascii-chat/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 transition-colors">View original Doxygen documentation on GitHub Pages</a>
             </p>
           </header>
 
