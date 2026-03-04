@@ -336,7 +336,20 @@ export default function Man3() {
       const href = link.getAttribute("href");
       if (!href) return;
 
-      // Match Doxygen source file links: /man3/filename.html#l00123
+      // Match new converted format: /man3?page=filename[#l00123 or %23l00123]
+      const newMatch = href.match(/^\/man3\?page=([^&#%]+)(?:%23|#)?(l\d+(?:-\d+)?)?/);
+      if (newMatch) {
+        e.preventDefault();
+        const pageName = decodeURIComponent(newMatch[1]);
+        let lineNumber = null;
+        if (newMatch[2]) {
+          lineNumber = parseInt(newMatch[2], 10);
+        }
+        loadPageContent(pageName, lineNumber);
+        return;
+      }
+
+      // Also match old Doxygen source file links for backward compatibility: /man3/filename.html#l00123
       const doxygenMatch = href.match(
         /\/man3\/(.+?)\.html(#l\d+)?$/,
       );
