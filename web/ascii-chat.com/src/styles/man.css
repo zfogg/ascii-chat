@@ -204,11 +204,14 @@
 
 .man-page-content .memberdecls,
 #header-doc-func-members {
+  font-size: 2rem;
   margin-top: 3rem;
+  margin-bottom: 1rem;
 }
 
 .man-page-content .code-with-highlight + div + .man-page-html > .memtitle {
   margin-top: 3rem;
+  font-size: 1.5rem;
 }
 
 .man-page-html #nav-path {
