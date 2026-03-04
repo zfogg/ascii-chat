@@ -1273,7 +1273,4 @@ asciichat_error_t platform_restore_timer_resolution(void) {
   return ASCIICHAT_OK;
 }
 
-// Include shared system functions (safe_snprintf, safe_vsnprintf, etc.)
-#include "../system.c"
-
 #endif // !_WIN32

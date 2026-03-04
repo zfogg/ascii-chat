@@ -8,6 +8,7 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rwlock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cond.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/system.c
 )
 
 if(WIN32)

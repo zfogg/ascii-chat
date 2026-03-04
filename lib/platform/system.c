@@ -1,15 +1,13 @@
 /**
  * @file platform/system.c
  * @ingroup platform
- * @brief 🔧 Shared cross-platform system utilities (included by posix/system.c and windows/system.c)
+ * @brief 🔧 Shared cross-platform system utilities (safe string functions, etc.)
  */
-
-// NOTE: This file is #included by windows/system.c and posix/system.c
-// All necessary headers are already included by the parent files
 
 #include <ascii-chat/atomic.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/uthash.h> // UBSan-safe uthash wrapper
 #include <ascii-chat/log/log.h>
@@ -187,85 +185,6 @@ static bool convert_unix_path_to_windows(const char *unix_path, char *win_path, 
   return false;
 }
 #endif
-
-/**
- * @brief Check if binary is in PATH (no caching)
- */
-static bool check_binary_in_path_uncached(const char *bin_name) {
-  char bin_with_suffix[512];
-  char full_path[PLATFORM_MAX_PATH_LENGTH];
-
-  // On Windows, add .exe suffix if not present
-#ifdef _WIN32
-  if (strstr(bin_name, ".exe") == NULL) {
-    safe_snprintf(bin_with_suffix, sizeof(bin_with_suffix), "%s%s", bin_name, BIN_SUFFIX);
-  } else {
-    SAFE_STRNCPY(bin_with_suffix, bin_name, sizeof(bin_with_suffix));
-  }
-#else
-  SAFE_STRNCPY(bin_with_suffix, bin_name, sizeof(bin_with_suffix));
-#endif
-
-  // Get PATH environment variable
-  const char *path_env = SAFE_GETENV("PATH");
-  if (!path_env) {
-    return false;
-  }
-
-  // Make a copy we can modify
-  size_t path_len = strlen(path_env);
-  char *path_copy = SAFE_MALLOC(path_len + 1, char *);
-  if (!path_copy) {
-    return false;
-  }
-  SAFE_STRNCPY(path_copy, path_env, path_len + 1);
-
-  // Search each directory in PATH
-  // On Windows, try both ';' (native) and ':' (Git Bash) as separators
-  bool found = false;
-  char *saveptr = NULL;
-
-#ifdef _WIN32
-  // Detect separator: Git Bash uses ':' with Unix-style paths (/c/foo)
-  // Native Windows uses ';' with Windows paths (C:\foo)
-  const char *separator = (strchr(path_copy, ';') != NULL) ? ";" : ":";
-#else
-  const char *separator = PATH_ENV_SEPARATOR;
-#endif
-
-  char *dir = platform_strtok_r(path_copy, separator, &saveptr);
-
-  while (dir != NULL) {
-    // Skip empty directory entries
-    if (dir[0] == '\0') {
-      dir = platform_strtok_r(NULL, separator, &saveptr);
-      continue;
-    }
-
-#ifdef _WIN32
-    // Convert Unix-style paths from Git Bash to Windows paths
-    char win_dir[PLATFORM_MAX_PATH_LENGTH];
-    convert_unix_path_to_windows(dir, win_dir, sizeof(win_dir));
-
-    // Build full path to binary (use backslash for Windows)
-    safe_snprintf(full_path, sizeof(full_path), "%s\\%s", win_dir, bin_with_suffix);
-#else
-    // Build full path to binary
-    safe_snprintf(full_path, sizeof(full_path), "%s%c%s", dir, PATH_DELIM, bin_with_suffix);
-#endif
-
-    // Check if file exists and is executable
-    if (is_executable_file(full_path)) {
-      found = true;
-      break;
-    }
-
-    dir = platform_strtok_r(NULL, separator, &saveptr);
-  }
-
-  SAFE_FREE(path_copy);
-  return found;
-}
 
 /**
  * @brief Initialize the binary PATH cache

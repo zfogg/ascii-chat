@@ -1399,8 +1399,4 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
   return count;
 }
 
-// Include cross-platform system utilities (binary PATH detection)
-// Note: Uses uthash for binary PATH cache (included via system.c)
-#include "../system.c"
-
 #endif // !!_WIN32
