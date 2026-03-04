@@ -64,8 +64,8 @@ function initializeCache() {
     try {
       indexCache = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
       logger.info(`Index loaded successfully with ${indexCache.length} entries`);
-    } catch (e) {
-      logger.error(`Failed to parse index.json: ${e.message}`);
+    } catch (err) {
+      logger.error(`Failed to parse index.json: ${err.message}`);
     }
   } else {
     logger.error(`Index file not found at ${indexPath}`);
@@ -80,8 +80,8 @@ function initializeCache() {
         try {
           const content = fs.readFileSync(filePath, "utf-8");
           fileCache[page.name] = extractTextContent(content);
-        } catch (e) {
-          logger.error(`Failed to cache ${page.name}: ${e.message}`);
+        } catch (err) {
+          logger.error(`Failed to cache ${page.name}: ${err.message}`);
         }
       }
     }
@@ -253,7 +253,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
       totalMatches: totalMatches,
       results: results.slice(0, 10), // Limit to 10 results
     });
-  } catch (e) {
+  } catch (_e) {
     res.status(400).json({ error: "Invalid regex pattern" });
   }
 });

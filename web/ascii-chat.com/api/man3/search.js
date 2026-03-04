@@ -30,14 +30,14 @@ export default async function handler(req, res) {
     if (regexMatch) {
       try {
         regex = new RegExp(regexMatch[1], regexMatch[2] || flags);
-      } catch (e) {
+      } catch (_e) {
         return res.status(400).json({ error: "Invalid regex pattern" });
       }
     } else {
       // Escape special regex chars and search as literal string
       try {
         regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), flags);
-      } catch (e) {
+      } catch (_e) {
         return res.status(400).json({ error: "Invalid search query" });
       }
     }
