@@ -94,7 +94,17 @@ function getFileContent(pageName) {
 
 // Find snippets around matches (centered on match)
 function findSnippets(text, query, maxSnippets = 3) {
-  const lines = text.split("\n").filter((l) => l.trim());
+  const allLines = text.split("\n");
+  // Map filtered lines to their original line numbers
+  const lines = [];
+  const lineNumbers = [];
+  for (let i = 0; i < allLines.length; i++) {
+    if (allLines[i].trim()) {
+      lines.push(allLines[i]);
+      lineNumbers.push(i + 1); // 1-indexed line numbers
+    }
+  }
+
   const snippets = [];
   const usedLines = new Set(); // Track which lines we've already used
 
@@ -119,7 +129,10 @@ function findSnippets(text, query, maxSnippets = 3) {
         usedLines.add(i);
         if (i < lines.length - 1) usedLines.add(i + 1);
 
-        snippets.push(snippet);
+        snippets.push({
+          text: snippet,
+          lineNumber: lineNumbers[i], // The line number of the matching line
+        });
       }
     }
   } catch (e) {

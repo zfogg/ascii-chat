@@ -225,12 +225,14 @@ export default function Man3() {
                         {page.snippets && page.snippets.length > 0 && (
                           <div className="px-4 pb-3 space-y-2">
                             {page.snippets.map((snippet, idx) => {
-                              const snippetLines = snippet.split("\n");
+                              const snippetLines = snippet.text.split("\n");
+                              const startLine = snippet.lineNumber - 1; // First line before match
                               return (
                                 <div
                                   key={idx}
                                   className="bg-gray-950/80 border border-gray-700/50 rounded px-3 py-2 text-xs text-gray-300 font-mono overflow-hidden"
                                 >
+                                  <div className="text-gray-500 text-xs mb-1 opacity-75">Line {snippet.lineNumber}</div>
                                   <div className="whitespace-pre-wrap break-words">
                                     {snippetLines.map((line, lineIdx) => (
                                       <div
