@@ -43,6 +43,17 @@ export default function Man3() {
           const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
           const content = bodyMatch ? bodyMatch[1] : html;
           setSelectedPageContent(content);
+
+          // Scroll to hash if present
+          const hash = window.location.hash;
+          if (hash) {
+            setTimeout(() => {
+              const element = document.querySelector(hash);
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+              }
+            }, 100);
+          }
         })
         .catch((e) => console.error("Failed to load page:", e));
     }
@@ -243,6 +254,24 @@ export default function Man3() {
       setTargetSnippetIndex(null);
     }
   }, [targetLineNumber]);
+
+  // Scroll to hash fragment when URL changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash && contentViewerRef.current) {
+        setTimeout(() => {
+          const element = contentViewerRef.current.querySelector(hash);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 50);
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
   // Convert HTML with pre blocks into JSX with CodeBlock components
   const decodeHtmlEntities = (text) => {
