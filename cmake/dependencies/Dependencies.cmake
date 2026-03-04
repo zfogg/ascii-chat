@@ -54,6 +54,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Zstd.cmake)
 # libsodium - Cryptography library for encryption
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libsodium.cmake)
 
+# ALSA - Advanced Linux Sound Architecture (Linux only, needed by PortAudio especially for musl)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/ALSA.cmake)
+
 # PortAudio - Audio I/O library for capture/playback
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Portaudio.cmake)
 
@@ -72,7 +75,10 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
 
-# libwebsockets - WebSocket transport for browser clients (uses mbedTLS for WSS)
+# Zlib - Compression library (required by libwebsockets, especially for musl builds)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Zlib.cmake)
+
+# libwebsockets - WebSocket transport for browser clients (uses zlib for compression and mbedTLS for WSS)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libwebsockets.cmake)
 
 # miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
@@ -94,9 +100,6 @@ configure_yyjson()
 
 # FFmpeg - Media file decoding (includes HEVC codec support)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
-
-# ALSA - Advanced Linux Sound Architecture (Linux only)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/ALSA.cmake)
 
 # libexecinfo - Backtrace support (musl only)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libexecinfo.cmake)
