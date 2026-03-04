@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Footer from "../components/Footer";
+import Man from "../components/Man";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
 import { AsciiChatHead } from "../components/AsciiChatHead";
@@ -51,10 +52,9 @@ export default function Man1() {
           </header>
 
           {/* Man page content */}
-          <div
-            className="man-page-content"
-            dangerouslySetInnerHTML={{ __html: manHtml }}
-          />
+          <div className="man-page-content">
+            <Man html={manHtml} isSourcePage={false} />
+          </div>
 
           {/* Footer */}
           <div className="mt-8">
