@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { AsciiChatHead } from "../components/AsciiChatHead";
@@ -281,6 +281,20 @@ export default function Man3() {
       return text;
     }
   };
+
+  // Memoize highlighted search results to avoid expensive rendering during typing
+  const highlightedResults = useMemo(
+    () =>
+      searchResults.map((page) => ({
+        ...page,
+        highlightedName: highlightMatches(page.name, searchQuery),
+        highlightedTitle: highlightMatches(
+          page.title || page.name,
+          searchQuery,
+        ),
+      })),
+    [searchResults, searchQuery],
+  );
 
   const highlightMatchesInHTML = (html, query) => {
     if (!query.trim()) return html;
@@ -880,7 +894,7 @@ export default function Man3() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-800">
-                    {searchResults.map((page) => (
+                    {highlightedResults.map((page) => (
                       <div
                         key={page.name}
                         className={`border-l-4 transition-colors ${
@@ -894,13 +908,10 @@ export default function Man3() {
                           className="w-full text-left px-4 py-3 block cursor-pointer hover:text-purple-200 transition-colors"
                         >
                           <div className="font-mono text-sm font-semibold truncate text-purple-300">
-                            {highlightMatches(page.name, searchQuery)}
+                            {page.highlightedName}
                           </div>
                           <div className="text-xs text-gray-400 mt-1 line-clamp-2">
-                            {highlightMatches(
-                              page.title || page.name,
-                              searchQuery,
-                            )}
+                            {page.highlightedTitle}
                           </div>
                         </button>
 
