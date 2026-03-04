@@ -1034,6 +1034,12 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     av_write_trailer(enc->fmt_ctx);
   });
 
+  // Flush output buffer for stdout/pipes before closing
+  if (enc->fmt_ctx && enc->fmt_ctx->pb) {
+    avio_flush(enc->fmt_ctx->pb);
+    log_debug("ffmpeg_encoder_destroy: Flushed output buffer");
+  }
+
   // Close output file
   if (enc->fmt_ctx && !(enc->fmt_ctx->oformat->flags & AVFMT_NOFILE))
     avio_closep(&enc->fmt_ctx->pb);
