@@ -1,0 +1,37 @@
+var sync_8c =
+[
+    [ "sync_buffer_t", "structsync__buffer__t.html", "structsync__buffer__t" ],
+    [ "debug_state_request_t", "structdebug__state__request__t.html", "structdebug__state__request__t" ],
+    [ "SYNC_BUFFER_SIZE", "sync_8c.html#a040b949c3e6337aa69ac26b4d8cb8f30", null ],
+    [ "debug_request_type_t", "sync_8c.html#a2bc3caf583dadf7c65898e45dfbe4c18", [
+      [ "DEBUG_REQUEST_STATE", "sync_8c.html#a2bc3caf583dadf7c65898e45dfbe4c18a51cd6ee24af3195ce552303093bb769a", null ],
+      [ "DEBUG_REQUEST_BACKTRACE", "sync_8c.html#a2bc3caf583dadf7c65898e45dfbe4c18abe41acaeab1da84279a42cb024c91331", null ],
+      [ "DEBUG_REQUEST_MEMORY_REPORT", "sync_8c.html#a2bc3caf583dadf7c65898e45dfbe4c18a59edb278eafdd540e50fae4f4f425e2e", null ]
+    ] ],
+    [ "debug_sync_cleanup_thread", "sync_8c.html#ad7765e712e2b821c8d955c5a953e16ec", null ],
+    [ "debug_sync_cond_broadcast", "sync_8c.html#a9cd2ed5ae5fbb00b450d2b58f0b147a0", null ],
+    [ "debug_sync_cond_signal", "sync_8c.html#a78d0593d699065b5251928ac64e80991", null ],
+    [ "debug_sync_cond_timedwait", "sync_8c.html#ad4d8e733ad0141c5ebc7056649d2cfb7", null ],
+    [ "debug_sync_cond_wait", "sync_8c.html#a1e6ccd6ba63ed22e76088a9074aae6b7", null ],
+    [ "debug_sync_destroy", "sync_8c.html#a9dfd33f5547d412dae7b84826921ee82", null ],
+    [ "debug_sync_final_cleanup", "sync_8c.html#ac97b931a3aa91fc18b953901472d95ce", null ],
+    [ "debug_sync_get_main_thread_id", "sync_8c.html#aaf39973648048e2ab601d36efe585da2", null ],
+    [ "debug_sync_get_stats", "sync_8c.html#adf2bc8b48527f9264e3d2ce26822d7ec", null ],
+    [ "debug_sync_init", "sync_8c.html#a76b5450dd2160c5e7dd6d040b46c80a4", null ],
+    [ "debug_sync_is_cleanup_in_progress", "sync_8c.html#a2b9037d8fd681ffb189fe326568794f7", null ],
+    [ "debug_sync_is_initialized", "sync_8c.html#aa17090f3c0584b5b82df0b535be7495a", null ],
+    [ "debug_sync_mutex_lock", "sync_8c.html#a0922b0baaaa1cf07677d5e769c6ce2c9", null ],
+    [ "debug_sync_mutex_trylock", "sync_8c.html#a6d763ade2157c25f6b78aa5835576ca8", null ],
+    [ "debug_sync_mutex_unlock", "sync_8c.html#aab938bce79bdae2f0f49f263b6b504ad", null ],
+    [ "debug_sync_print_backtrace_delayed", "sync_8c.html#a520d6beda8db314a1b86bd14a4392a37", null ],
+    [ "debug_sync_print_state", "sync_8c.html#a6241ee7b667724ecb4bf1906c9d7d96a", null ],
+    [ "debug_sync_print_state_delayed", "sync_8c.html#a04437333def3b0472f9e4769686bb17a", null ],
+    [ "debug_sync_rwlock_rdlock", "sync_8c.html#ac366c9343ebc23d823219bc5491ab080", null ],
+    [ "debug_sync_rwlock_rdunlock", "sync_8c.html#aa8ddc3a73b09c2da3d14f16c91986b94", null ],
+    [ "debug_sync_rwlock_wrlock", "sync_8c.html#a2bc91a00b5d9ab390a8181998e45f57e", null ],
+    [ "debug_sync_rwlock_wrunlock", "sync_8c.html#a99a454d7283973c251ddbf1dbfec9151", null ],
+    [ "debug_sync_set_main_thread_id", "sync_8c.html#a40064934c28c98b11ed818108a18e11c", null ],
+    [ "debug_sync_set_memory_report_interval", "sync_8c.html#a3b7416f86dd83a9c5d241b1b2f15f7bb", null ],
+    [ "debug_sync_start_thread", "sync_8c.html#aba4218249de8f96bd62e82bcaa07e174", null ],
+    [ "debug_sync_trigger_print", "sync_8c.html#a98caafdf0d2c49198c5dcad0bfaa9e5d", null ]
+];

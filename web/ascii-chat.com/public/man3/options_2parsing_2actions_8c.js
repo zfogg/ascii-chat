@@ -1,0 +1,26 @@
+var options_2parsing_2actions_8c =
+[
+    [ "action_check_update", "options_2parsing_2actions_8c.html#a54fb388172fea4812430d128579c80ec", null ],
+    [ "action_check_update_immediate", "options_2parsing_2actions_8c.html#a1edeb954a17c4f2ca610b447a211fa62", null ],
+    [ "action_completions", "options_2parsing_2actions_8c.html#a948202b456a10fda3cf7031a48bf8aeb", null ],
+    [ "action_create_config", "options_2parsing_2actions_8c.html#ab01bd6c470f438c88ef40313a9bdc20a", null ],
+    [ "action_create_manpage", "options_2parsing_2actions_8c.html#a93341b201c71b97669672eb176aac31f", null ],
+    [ "action_help_acds", "options_2parsing_2actions_8c.html#a68c2de748dc8cfe10595077c5254f9fd", null ],
+    [ "action_help_client", "options_2parsing_2actions_8c.html#acdc944a7ca9f8ef373b1278280cb5287", null ],
+    [ "action_help_discovery", "options_2parsing_2actions_8c.html#a760c77f594bf690482f6079386a9a56b", null ],
+    [ "action_help_mirror", "options_2parsing_2actions_8c.html#aab3bac20d6ece502d9c6a49d07c97445", null ],
+    [ "action_help_server", "options_2parsing_2actions_8c.html#a72e701fae5afc234c732dc7840df7849", null ],
+    [ "action_list_microphones", "options_2parsing_2actions_8c.html#aa3110b79dade55f1335cccdb516a47c5", null ],
+    [ "action_list_speakers", "options_2parsing_2actions_8c.html#ac433c6c3caaaba9edc7402013fc60e29", null ],
+    [ "action_list_webcams", "options_2parsing_2actions_8c.html#ab6804fe32940d066a2ca84b2f52e79d0", null ],
+    [ "action_show_capabilities", "options_2parsing_2actions_8c.html#a6d1e8b00763c9eb1f085db7bb172a200", null ],
+    [ "action_show_capabilities_immediate", "options_2parsing_2actions_8c.html#adcb72a75091968fb8e51feb75706696d", null ],
+    [ "action_show_version", "options_2parsing_2actions_8c.html#aa95fd46e3f5657e2396e0e262c020251", null ],
+    [ "actions_defer", "options_2parsing_2actions_8c.html#a59e30b568af75c5321e95a1512b0a4fc", null ],
+    [ "actions_execute_deferred", "options_2parsing_2actions_8c.html#ad4c029f88f5dec3c114c41fea19874ad", null ],
+    [ "actions_get_args", "options_2parsing_2actions_8c.html#a4c00d3c401e0c61fc8a55406a429219b", null ],
+    [ "actions_get_deferred", "options_2parsing_2actions_8c.html#a5548cb4d5d30475742bef333d4707ba4", null ],
+    [ "action", "options_2parsing_2actions_8c.html#a982752334ba93ad1afc99d1dffa287bf", null ],
+    [ "args", "options_2parsing_2actions_8c.html#a7c2494dd1cbbce35d38eb23cc330b4b7", null ],
+    [ "has_action", "options_2parsing_2actions_8c.html#a5c6ada10d3ac87c7b273a5e1eaec8b1c", null ]
+];

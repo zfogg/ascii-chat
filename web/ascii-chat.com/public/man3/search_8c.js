@@ -1,0 +1,28 @@
+var search_8c =
+[
+    [ "log_search_state_t", "structlog__search__state__t.html", "structlog__search__state__t" ],
+    [ "LOG_SEARCH_INPUT_BUFFER_SIZE", "search_8c.html#aff911dd228545fe4fb18f509632b38d9", null ],
+    [ "MAX_LOG_SEARCH_PATTERNS", "search_8c.html#a474cd7dc2bf20bd616e962251d88ebc3", null ],
+    [ "log_search_check_signal_cancel", "search_8c.html#a2af2cbfa9372698aa17b0a48516574d9", null ],
+    [ "log_search_destroy", "search_8c.html#ad75212f474db3456b8e764afb95ba031", null ],
+    [ "log_search_enter_mode", "search_8c.html#a5bdcbb18fd159abada912ba2bae1a3bb", null ],
+    [ "log_search_exit_mode", "search_8c.html#a8b1ccfa280ed846cd960838f898f462c", null ],
+    [ "log_search_gather_and_filter_logs", "search_8c.html#af9312f842f792aa188981bf4b28cb24c", null ],
+    [ "log_search_get_case_insensitive", "search_8c.html#a7ec69b5439638ef5ead7501aa613d358", null ],
+    [ "log_search_get_cursor_position", "search_8c.html#ade00cf796513d9944bfa3102dc864292", null ],
+    [ "log_search_get_global_highlight", "search_8c.html#a4dc508e08bdfb7262c84175d4378a4c0", null ],
+    [ "log_search_get_input_buffer", "search_8c.html#a6b15ad89f2c6e662bb72f0db7f04185c", null ],
+    [ "log_search_get_input_len", "search_8c.html#a5289a59de1ae931f17f57978a1dd2b7e", null ],
+    [ "log_search_get_match_info", "search_8c.html#ab4ce3ce33ef7e2dac2fb2ddbfc0d9898", null ],
+    [ "log_search_get_mutex", "search_8c.html#a1bf3d5dbdd26ea4c72a569e4639138ea", null ],
+    [ "log_search_get_pattern_singleton", "search_8c.html#aa17e45c89d8f01cc9cc916079897b18d", null ],
+    [ "log_search_handle_key", "search_8c.html#ae5dae2f75ae50befeeae13769b2627cf", null ],
+    [ "log_search_init", "search_8c.html#a072f33916c60aca948b2f7322ee17149", null ],
+    [ "log_search_is_active", "search_8c.html#a6df5763205443f2e89c5c82c4ba50ec0", null ],
+    [ "log_search_is_entering", "search_8c.html#a2c3548d8b0f461d7bd160d88cc38a509", null ],
+    [ "log_search_is_entering_atomic", "search_8c.html#af83dc50e3f0041e44b2084298345ca28", null ],
+    [ "log_search_needs_rerender", "search_8c.html#a2a15aea62f8f15673fbf1988ee4bbc0c", null ],
+    [ "log_search_render_input_line", "search_8c.html#aec73c6c9fcf0c8e561d1e2dbe1e1c11d", null ],
+    [ "log_search_should_handle", "search_8c.html#abd923c4d5a7d1d2f8120d222ba816254", null ],
+    [ "log_search_signal_cancel", "search_8c.html#a2b4d42fe6385a77dc4231f5886911ff0", null ]
+];

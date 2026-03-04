@@ -1,0 +1,25 @@
+var splash_8c =
+[
+    [ "splash_header_ctx_t", "structsplash__header__ctx__t.html", "structsplash__header__ctx__t" ],
+    [ "ASCII_LOGO_LINES", "splash_8c.html#a205d4ec2c4c60f6fe80775cd287a3122", null ],
+    [ "ASCII_LOGO_WIDTH", "splash_8c.html#a9ecfa45854b795b890986b9a1096fa5a", null ],
+    [ "RAINBOW_COLOR_COUNT", "splash_8c.html#a61df63b81b14faad385565eb855bfa62", null ],
+    [ "splash_clear_display_context", "splash_8c.html#aacafbdd5298cfb5b6a4dfd9e3a41a5e2", null ],
+    [ "splash_intro_done", "splash_8c.html#a2f38172578aada5d9fb9c08d04e94794", null ],
+    [ "splash_intro_start", "splash_8c.html#a5844a131a82b15d9d6e3651a39c20cde", null ],
+    [ "splash_is_running", "splash_8c.html#a1cc031cdafcd7a301491ac559f3c18c0", null ],
+    [ "splash_log_clear", "splash_8c.html#a5fe6a8932368bb0b56548b6b870a568b", null ],
+    [ "splash_log_destroy", "splash_8c.html#abba5cadff3ba4e23341c959d60afb510", null ],
+    [ "splash_log_init", "splash_8c.html#a5a3763de496ac449b51c5ee08c0ff72a", null ],
+    [ "splash_restore_stderr", "splash_8c.html#a431b75042ba1ae0ee57acdf312f1c6b5", null ],
+    [ "splash_set_update_notification", "splash_8c.html#a88e58c72c1fe7fc943c31ad8884aa1af", null ],
+    [ "splash_should_display", "splash_8c.html#aa0addd1b296f891cae05229ae7e7e28a", null ],
+    [ "splash_wait_for_animation", "splash_8c.html#acb4078f35868c264a787bf6e4939c223", null ],
+    [ "anim_thread", "splash_8c.html#a91f5ee469195f945bbc71d8bdae954f0", null ],
+    [ "frame", "splash_8c.html#ad30f972f2e6e3e5ecab0dee38ae6cdb8", null ],
+    [ "intro_done_time_ns", "splash_8c.html#a2af1353309f307e69d97ae7b0a3d45ed", null ],
+    [ "is_running", "splash_8c.html#a8b80153a1b0661e7612efa8469e55f11", null ],
+    [ "should_stop", "splash_8c.html#a4e6237bdb652cabbf54eec75fe1f7e0d", null ],
+    [ "start_time_ns", "splash_8c.html#a3cd10008346adebe8e22ec2ac8a46eba", null ],
+    [ "thread_created", "splash_8c.html#a2ca8be76f69a53cfddd96febc432ee20", null ]
+];

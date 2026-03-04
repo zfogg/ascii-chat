@@ -1,0 +1,27 @@
+var structsession__participant =
+[
+    [ "address", "structsession__participant.html#a79068a3dbe9791c0f431639b52960fc9", null ],
+    [ "audio_active", "structsession__participant.html#a1b591a60461c9a6582588acbc2bd6d3f", null ],
+    [ "audio_capture", "structsession__participant.html#ac70ac772229359c7eb0597e93af11910", null ],
+    [ "audio_capture_running", "structsession__participant.html#aa5d8b288915f2cd64acc809d50ad2c21", null ],
+    [ "audio_capture_thread", "structsession__participant.html#a83b484b1a7eebc746f71dba752097a33", null ],
+    [ "callbacks", "structsession__participant.html#ab3cad8aab28e6b8277dc2e91bbf3e7ab", null ],
+    [ "client_id", "structsession__participant.html#ac73b58d548c9eb21e7d69c47b8008ae3", null ],
+    [ "connected", "structsession__participant.html#a0b33fae0e7d98a8825f572b1b9f6e3dc", null ],
+    [ "enable_audio", "structsession__participant.html#a5be67245d1638a66a33f3a10ab8a45f7", null ],
+    [ "enable_video", "structsession__participant.html#aa72f9089a6e9054216668d768e55d0bd", null ],
+    [ "encryption_enabled", "structsession__participant.html#a398c5e3ca23d79d2018d8128a7132bbd", null ],
+    [ "initialized", "structsession__participant.html#a972332e62a2dcda7603ca533bd63ebf0", null ],
+    [ "opus_encoder", "structsession__participant.html#a32b5fc85265ea358ae23f5c399a9cf04", null ],
+    [ "password", "structsession__participant.html#a3b4740ef88cc8394d181c92472f6a161", null ],
+    [ "port", "structsession__participant.html#a520497ebc4dd18ce7814dd8cc7d27cf2", null ],
+    [ "server_key", "structsession__participant.html#a8e13a011c4125f6c44c3decef91c7e7d", null ],
+    [ "settings", "structsession__participant.html#a020f89c2406c221daecb39e23c5da485", null ],
+    [ "socket", "structsession__participant.html#a3b74c8f18cb98d8d5f0b456e8c39de8f", null ],
+    [ "transport", "structsession__participant.html#a1686da4bda8540da352b1e48484fb681", null ],
+    [ "user_data", "structsession__participant.html#abd25d2ed90db93dbe3993483e5e4bfc9", null ],
+    [ "video_active", "structsession__participant.html#a971be338d207b9806900692de0e48e06", null ],
+    [ "video_capture", "structsession__participant.html#a9149210274410566c035f5e043e6928d", null ],
+    [ "video_capture_running", "structsession__participant.html#a9a95733d0a4b4d99a4c7527b4c0eb353", null ],
+    [ "video_capture_thread", "structsession__participant.html#a177f3f89c2d89219fa1d048f436eefe7", null ]
+];

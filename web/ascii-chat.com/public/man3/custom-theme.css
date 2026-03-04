@@ -1,0 +1,6 @@
+/* Custom pink theme for ascii-chat documentation */
+html {
+    --primary-color: #e91e8c;
+    --primary-dark-color: #b3176d;
+    --primary-light-color: #f06db3;
+}

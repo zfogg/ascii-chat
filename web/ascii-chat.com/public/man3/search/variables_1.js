@@ -1,0 +1,24 @@
+var searchData=
+[
+  ['backend_5fdata_0',['backend_data',['../structrate__limiter__s.html#a9602df573fac5e4be04b728b6f35bdc8',1,'rate_limiter_s']]],
+  ['backup_5fid_1',['backup_id',['../structelection__result__t.html#a148a7f7af95e30720aa73c8276abf414',1,'election_result_t']]],
+  ['baseline_2',['baseline',['../structterminal__renderer__s.html#a67e2e5a47cba78726523ecf10cf2da2e',1,'terminal_renderer_s']]],
+  ['batch_5fcount_3',['batch_count',['../structaudio__batch__info__t.html#a2f5cc331a4e09faa9d91a54e16008cfb',1,'audio_batch_info_t']]],
+  ['bin_5fname_4',['bin_name',['../structbin__cache__entry__t.html#a6dab9390f0d71a652de4b8c118d6e19f',1,'bin_cache_entry_t']]],
+  ['bit_5',['bit',['../structmode__bit__name__t.html#ab461a5759e3fb4d6302f02c1b776b1ed',1,'mode_bit_name_t']]],
+  ['bits_5fper_5fsample_6',['bits_per_sample',['../structwav__fmt__chunk__t.html#aa1da027f6e535a76c509bfda02cbe260',1,'wav_fmt_chunk_t']]],
+  ['block_5falign_7',['block_align',['../structwav__fmt__chunk__t.html#adb03f167a8eef109a71e0ebbe014f7b2',1,'wav_fmt_chunk_t']]],
+  ['blue_8',['BLUE',['../options_2common_8c.html#aa5c65e6079b2af0f7fce09a2c493a2ec',1,'common.c']]],
+  ['body_9',['body',['../structascii__query_1_1HttpRequest.html#a509ab54811e9bdf8977b679d0f2f4b98',1,'ascii_query::HttpRequest::body'],['../structascii__query_1_1HttpResponse.html#a266241b64e6936f24cd89b3b0c773892',1,'ascii_query::HttpResponse::body']]],
+  ['bool_5fvalue_10',['bool_value',['../unionoption__parsed__value__t.html#a571d33d478acb251c91bc696fb5e0c0f',1,'option_parsed_value_t']]],
+  ['buf_11',['buf',['../structbvector.html#a01ff860dd2f39921c68e81f40aaa73b9',1,'bvector']]],
+  ['buffer_12',['buffer',['../structsync__buffer__t.html#a202fb1023f623e49c93cb158bc628a69',1,'sync_buffer_t::buffer'],['../structstdin__buffer__reader__t.html#a2768e2f101ce9199667bbc64d6cfb8d4',1,'stdin_buffer_reader_t::buffer'],['../structasciichat__mdns__t.html#aa89a6dff30bfcfd43ead292b9a5a3046',1,'asciichat_mdns_t::buffer'],['../structconfig__builder__t.html#a17ac35cb0a28c47f4d1faafc4bb779c9',1,'config_builder_t::buffer'],['../structsession__audio__source__t.html#a198fe5b50fbae67996588547f3ad92d1',1,'session_audio_source_t::buffer']]],
+  ['buffer_5fa_5fin_5fuse_13',['buffer_a_in_use',['../structffmpeg__decoder__t.html#ab103371ef2ba8bc8afac11044d06fb5f',1,'ffmpeg_decoder_t']]],
+  ['buffer_5fb_5fin_5fuse_14',['buffer_b_in_use',['../structffmpeg__decoder__t.html#a3e408af16b830d812d5e711c19c4748d',1,'ffmpeg_decoder_t']]],
+  ['buffer_5fcapacity_15',['buffer_capacity',['../structasciichat__mdns__t.html#a29d500f6ec6bf8835967f18e3d4a9a61',1,'asciichat_mdns_t']]],
+  ['buffer_5fpos_16',['buffer_pos',['../grep_8c.html#a8a37d41b7b076eced766d7418450477d',1,'grep.c']]],
+  ['buffer_5fsize_17',['buffer_size',['../structsync__buffer__t.html#a6e5b8674f5ad1e4d36f091307da07b3c',1,'sync_buffer_t::buffer_size'],['../grep_8c.html#af22ff4ab7a026e6c3b4b08eafb2df027',1,'buffer_size:&#160;grep.c']]],
+  ['byte_5frate_18',['byte_rate',['../structwav__fmt__chunk__t.html#a4432da1d8fa3284ffafe3aa79d462e81',1,'wav_fmt_chunk_t']]],
+  ['bytes_5fsent_19',['bytes_sent',['../structserver__stats__t.html#a5150a8ccd232ee16b191b22b9229e794',1,'server_stats_t']]],
+  ['bytes_5fwritten_20',['bytes_written',['../mmap_8c.html#a24695eec2c078d1702858b21979f0339',1,'mmap.c']]]
+];
