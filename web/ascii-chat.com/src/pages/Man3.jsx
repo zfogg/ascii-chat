@@ -298,7 +298,7 @@ export default function Man3() {
                               );
                             })}
                             {page.totalMatchesInFile > page.snippets.length && (
-                              <div className="text-gray-500 text-xs px-2 py-1">
+                              <div className="bg-yellow-900/30 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-300">
                                 ... {page.totalMatchesInFile - page.snippets.length} more matching result{page.totalMatchesInFile - page.snippets.length !== 1 ? "s" : ""} for this file
                               </div>
                             )}
