@@ -127,7 +127,7 @@ export default function Man3() {
         url="https://ascii-chat.com/man3"
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col max-w-6xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
+        <div className="flex-1 flex flex-col max-w-7xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
           {/* Header */}
           <header className="mb-8 sm:mb-12">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
@@ -138,7 +138,7 @@ export default function Man3() {
             </p>
 
             {/* Search Box */}
-            <div className="relative">
+            <div className="relative max-w-2xl">
               <input
                 type="text"
                 placeholder="Search by name or regex (e.g., 'socket', '^asciichat_.*', 'error|crypto')..."
@@ -169,7 +169,7 @@ export default function Man3() {
           {/* Main content area */}
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Results list */}
-            <div className="lg:w-96 flex-shrink-0">
+            <div className="lg:w-2/5 flex-shrink-0">
               <div className="bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto max-h-[calc(100vh-300px)] sticky top-20">
                 {loading ? (
                   <div className="p-4 text-center text-gray-400">
