@@ -15,15 +15,15 @@ if [ -d "$REPO_ROOT" ]; then
     echo "TOUCHING options.c"
     touch "$REPO_ROOT/lib/options/options.c"
   fi
-  cmake --build "$REPO_ROOT/build_release" --target man1 man5
+  cmake --build "$REPO_ROOT/build_release" --target man1 man5 || true
 
   # Generate man(1) page from troff format and convert to HTML
   #$REPO_ROOT/build_release/bin/ascii-chat --man-page-create | mandoc -Thtml > public/ascii-chat-man1.html
-  mandoc -Thtml "$REPO_ROOT/build_release/share/man/man1/ascii-chat.1" > public/ascii-chat-man1.html
+  mandoc -Thtml "$REPO_ROOT/build_release/share/man/man1/ascii-chat.1" > public/ascii-chat-man1.html || true
   echo "📜 man(1) page updated"
 
   # Generate man(5) page from built manpage and convert to HTML
-  mandoc -Thtml "$REPO_ROOT/build_release/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html
+  mandoc -Thtml "$REPO_ROOT/build_release/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html || true
   echo "📜 man(5) page updated"
 
   # Generate man(3) pages from Doxygen (man pages only, no HTML)
@@ -45,6 +45,36 @@ if [ -d "$REPO_ROOT" ]; then
         mandoc -Thtml "$manfile" > "public/man3/${basename}.html"
       fi
     done
+
+    # Generate pages.json index from converted HTML files
+    python3 << 'PYSCRIPT'
+import json
+from pathlib import Path
+
+man3_dir = Path("public/man3")
+pages = []
+
+# Get all HTML files except pages.json
+for html_file in sorted(man3_dir.glob("*.html")):
+    filename = html_file.name
+    # Extract the base name without .html
+    basename = filename[:-5]  # Remove .html
+
+    # Create title from filename (convert underscores to spaces, etc.)
+    title = basename.replace("_", " ").replace("-", " ")
+
+    pages.append({
+        "name": basename,
+        "title": title,
+        "file": filename
+    })
+
+# Write pages.json
+with open("public/man3/pages.json", "w") as f:
+    json.dump(pages, f, indent=2)
+
+print(f"Generated pages.json with {len(pages)} entries")
+PYSCRIPT
 
     echo "📜 man(3) pages generated ($(ls public/man3/*.html 2>/dev/null | wc -l) pages)"
   else
