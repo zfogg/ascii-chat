@@ -147,9 +147,15 @@ endif()
 # EXCEPTION: ASCIICHAT_SHARED_DEPS builds need rpath to find Homebrew LLVM's libc++ and libunwind
 if((APPLE OR UNIX) AND NOT CMAKE_BUILD_TYPE STREQUAL "Release")
     # Put our build/lib directory FIRST in the RPATH so it's searched before system paths
-    # This ensures ghostty library is found before any system conflicts
-    # Use CMAKE_BUILD_RPATH but prepend our path to it
-    set(_rpath_list "${CMAKE_LIBRARY_OUTPUT_DIRECTORY}")
+    # Use $ORIGIN for relative paths to maintain portability
+    if(APPLE)
+        # macOS: Use @loader_path (relative to binary) for build directory
+        set(_rpath_list "@loader_path/../lib")
+    else()
+        # Linux: Use $ORIGIN (relative to binary) for build directory
+        set(_rpath_list "$ORIGIN/../lib")
+    endif()
+
     # Add ghostty library path for runtime dependency resolution
     list(APPEND _rpath_list "${ASCIICHAT_DEPS_CACHE_DIR}/ghostty/lib")
     if(CMAKE_BUILD_RPATH)
