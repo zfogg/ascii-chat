@@ -367,17 +367,17 @@ export default function Man3() {
     const hash = window.location.hash;
     if (!hash) return;
 
-    // Try to find and scroll to the line with the arrow marker
+    // Try to find and scroll to the first line with the arrow marker
     const scrollToHash = () => {
       const container = contentViewerRef.current;
 
-      // Look for the arrow marker (⟹) in visible code blocks
+      // Look for the first arrow marker (⟹) in visible code blocks
       const codeBlocks = container.querySelectorAll("pre code");
       for (const block of codeBlocks) {
         const spans = block.querySelectorAll("span");
         for (const span of spans) {
           if (span.textContent.includes("⟹")) {
-            // Found the arrow, scroll it to the center of the viewport
+            // Found the first arrow, scroll it to the center of the viewport
             span.scrollIntoView({ block: "center" });
             return true;
           }
@@ -475,20 +475,27 @@ export default function Man3() {
           const lines = codeContent.split("\n");
           const maxLineNum = lines.length.toString().length;
 
-          // Extract target line number from hash if present
+          // Extract target line number(s) from hash if present
           const hash = window.location.hash;
-          let targetLineNum = null;
-          if (hash.match(/^#l\d+$/)) {
-            targetLineNum = parseInt(hash.substring(2), 10);
+          let targetLineStart = null;
+          let targetLineEnd = null;
+
+          if (isSourcePage) {
+            // Match both single line (#l00423) and range (#l00423-00458)
+            const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
+            if (rangeMatch) {
+              targetLineStart = parseInt(rangeMatch[1], 10);
+              targetLineEnd = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : targetLineStart;
+            }
           }
 
-          // If target line exists on source pages, render with yellow background and nice arrows
-          if (targetLineNum && isSourcePage) {
+          // If target line(s) exist on source pages, render with yellow background and nice arrows
+          if (targetLineStart !== null && isSourcePage) {
             const highlightedHtml = lines
               .map((text, idx) => {
                 const lineNum = idx + 1;
                 const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                const isTarget = lineNum === targetLineNum;
+                const isTarget = lineNum >= targetLineStart && lineNum <= targetLineEnd;
 
                 if (isTarget) {
                   return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${text} ⟸</span></div>`;
@@ -588,14 +595,26 @@ export default function Man3() {
             ? Math.max(...codeLines.map((line) => (line.number || 0).toString().length))
             : 1;
 
-          // Extract target line number from hash if present
+          // Extract target line number(s) from hash if present
           const hash = window.location.hash;
-          let targetLineNum = null;
-          if (hash.match(/^#l\d+$/) && isSourcePage) {
-            const lineNum = parseInt(hash.substring(2), 10);
-            // Only set targetLineNum if this line actually exists in the code
-            if (codeLines.some((line) => line.number === lineNum)) {
-              targetLineNum = lineNum;
+          let targetLineStart = null;
+          let targetLineEnd = null;
+
+          if (isSourcePage) {
+            // Match both single line (#l00423) and range (#l00423-00458)
+            const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
+            if (rangeMatch) {
+              targetLineStart = parseInt(rangeMatch[1], 10);
+              targetLineEnd = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : targetLineStart;
+
+              // Only set if at least one line exists in the code
+              if (!codeLines.some((line) => {
+                const lineNum = line.number;
+                return lineNum >= targetLineStart && lineNum <= targetLineEnd;
+              })) {
+                targetLineStart = null;
+                targetLineEnd = null;
+              }
             }
           }
 
@@ -604,7 +623,9 @@ export default function Man3() {
             .map((line) => {
               const lineNum = line.number || "";
               const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-              const isTarget = targetLineNum !== null && line.number === targetLineNum;
+              const isTarget = targetLineStart !== null &&
+                               line.number >= targetLineStart &&
+                               line.number <= targetLineEnd;
 
               if (isTarget) {
                 return `⟹ ${paddedNum}  ${line.text} ⟸`;
@@ -634,29 +655,30 @@ export default function Man3() {
             </div>,
           );
 
-          // Add JavaScript to highlight the line with arrow after CodeBlock renders
-          if (targetLineNum && isSourcePage) {
+          // Add JavaScript to highlight the lines with arrows after CodeBlock renders
+          if (targetLineStart !== null && isSourcePage) {
             setTimeout(() => {
               const codeBlocks = document.querySelectorAll(".code-with-highlight pre code");
               codeBlocks.forEach((block) => {
-                let arrowSpan = null;
+                const arrowSpans = [];
                 block.querySelectorAll("span").forEach((span) => {
                   if (span.textContent.includes("⟹")) {
-                    arrowSpan = span;
+                    arrowSpans.push(span);
                   }
                 });
 
-                if (arrowSpan) {
+                // Highlight all lines that have arrow markers
+                arrowSpans.forEach((arrowSpan) => {
                   const arrowY = arrowSpan.offsetTop;
 
-                  // Find all spans and only highlight those on the same Y row
+                  // Find all spans on this Y row and highlight them
                   block.querySelectorAll("span").forEach((span) => {
                     if (span.offsetTop === arrowY) {
                       span.style.backgroundColor = "#fbbf24";
                       span.style.color = "#000";
                     }
                   });
-                }
+                });
               });
             }, 0);
           }
