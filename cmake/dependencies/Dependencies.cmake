@@ -112,8 +112,8 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FreeType2.cmake)
 # Fontconfig - Font configuration for render-file
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Fontconfig.cmake)
 
-# VTerm - Terminal emulation for render-file (depends on FreeType2/Fontconfig)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/VTerm.cmake)
+# Libvterm - Terminal emulation for render-file (depends on FreeType2/Fontconfig)
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libvterm.cmake)
 
 # =============================================================================
 # Test Dependencies
