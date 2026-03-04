@@ -84,35 +84,71 @@ export default function Man3() {
       const pageName = decodeURIComponent(pageParam);
       setSelectedPageName(pageName);
 
-      fetch(`/man3/${pageName}.html`)
-        .then((r) => r.text())
-        .then((html) => {
-          // Extract stylesheets from head
-          const stylesheets = [];
-          const styleMatches = html.matchAll(
-            /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
-          );
-          for (const match of styleMatches) {
-            const href = match[1];
-            if (!href.startsWith("/") && !href.startsWith("http")) {
-              stylesheets.push(
-                `<link rel="stylesheet" href="/man3/${href}" />`,
-              );
-            } else {
-              stylesheets.push(match[0]);
+      // If manPages is loaded, use it to find the actual filename
+      // Otherwise, fetch pages.json first
+      if (manPages.length > 0) {
+        const page = manPages.find((p) => p.name === pageName);
+        const filename = page ? page.file : `${pageName}.html`;
+
+        fetch(`/man3/${filename}`)
+          .then((r) => r.text())
+          .then((html) => {
+            // Extract stylesheets from head
+            const stylesheets = [];
+            const styleMatches = html.matchAll(
+              /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
+            );
+            for (const match of styleMatches) {
+              const href = match[1];
+              if (!href.startsWith("/") && !href.startsWith("http")) {
+                stylesheets.push(
+                  `<link rel="stylesheet" href="/man3/${href}" />`,
+                );
+              } else {
+                stylesheets.push(match[0]);
+              }
             }
-          }
 
-          // Process content (URLs and highlighting)
-          const processedContent = processPageContent(html, "");
+            // Process content (URLs and highlighting)
+            const processedContent = processPageContent(html, "");
 
-          // Prepend stylesheets
-          const content = stylesheets.join("\n") + processedContent;
-          setSelectedPageContent(content);
-        })
-        .catch((e) => console.error("Failed to load page:", e));
+            // Prepend stylesheets
+            const content = stylesheets.join("\n") + processedContent;
+            setSelectedPageContent(content);
+          })
+          .catch((e) => console.error("Failed to load page:", e));
+      } else {
+        // manPages not loaded yet, try default filename
+        fetch(`/man3/${pageName}.html`)
+          .then((r) => r.text())
+          .then((html) => {
+            // Extract stylesheets from head
+            const stylesheets = [];
+            const styleMatches = html.matchAll(
+              /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
+            );
+            for (const match of styleMatches) {
+              const href = match[1];
+              if (!href.startsWith("/") && !href.startsWith("http")) {
+                stylesheets.push(
+                  `<link rel="stylesheet" href="/man3/${href}" />`,
+                );
+              } else {
+                stylesheets.push(match[0]);
+              }
+            }
+
+            // Process content (URLs and highlighting)
+            const processedContent = processPageContent(html, "");
+
+            // Prepend stylesheets
+            const content = stylesheets.join("\n") + processedContent;
+            setSelectedPageContent(content);
+          })
+          .catch((e) => console.error("Failed to load page:", e));
+      }
     }
-  }, [processPageContent]);
+  }, [processPageContent, manPages]);
 
   // Load man3 index
   useEffect(() => {
@@ -131,77 +167,82 @@ export default function Man3() {
   }, []);
 
   // Debounced search function
-  const performSearch = useCallback(async (query) => {
-    if (!query.trim()) {
-      setSearchResults(manPages);
-      setFilesMatched(0);
-      setTotalMatches(0);
-      setMoreFilesCount(0);
-      setSearching(false);
-      setRegexError(null);
-      // Clear search param but preserve page param if present
-      const params = new URLSearchParams(window.location.search);
-      params.delete("q");
-      const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
-      window.history.replaceState({}, "", newUrl + window.location.hash);
-      return;
-    }
-
-    // Validate regex syntax
-    try {
-      const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
-      if (regexMatch) {
-        new RegExp(regexMatch[1], regexMatch[2] || "i");
-      } else {
-        // Try as literal string with i flag
-        new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+  const performSearch = useCallback(
+    async (query) => {
+      if (!query.trim()) {
+        setSearchResults(manPages);
+        setFilesMatched(0);
+        setTotalMatches(0);
+        setMoreFilesCount(0);
+        setSearching(false);
+        setRegexError(null);
+        // Clear search param but preserve page param if present
+        const params = new URLSearchParams(window.location.search);
+        params.delete("q");
+        const newUrl = params.toString()
+          ? `/man3?${params.toString()}`
+          : "/man3";
+        window.history.replaceState({}, "", newUrl + window.location.hash);
+        return;
       }
-      setRegexError(null);
-    } catch (e) {
-      setRegexError(e.message);
-      setSearchResults([]);
-      setFilesMatched(0);
-      setTotalMatches(0);
-      setMoreFilesCount(0);
-      return;
-    }
 
-    try {
-      const response = await fetch(
-        `/api/man3/search?q=${encodeURIComponent(query)}`,
-      );
-      const data = await response.json();
-
-      if (data.error) {
+      // Validate regex syntax
+      try {
+        const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
+        if (regexMatch) {
+          new RegExp(regexMatch[1], regexMatch[2] || "i");
+        } else {
+          // Try as literal string with i flag
+          new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+        }
+        setRegexError(null);
+      } catch (e) {
+        setRegexError(e.message);
         setSearchResults([]);
         setFilesMatched(0);
         setTotalMatches(0);
         setMoreFilesCount(0);
-      } else {
-        setSearchResults(data.results || []);
-        setFilesMatched(data.filesMatched || 0);
-        setTotalMatches(data.totalMatches || 0);
-        setMoreFilesCount(data.moreFilesCount || 0);
+        return;
       }
 
-      // Update URL with search query (preserve page param if present)
-      const params = new URLSearchParams(window.location.search);
-      params.set("q", query);
-      window.history.replaceState(
-        {},
-        "",
-        `/man3?${params.toString()}` + window.location.hash,
-      );
-    } catch (e) {
-      console.error("Search error:", e);
-      setSearchResults([]);
-      setFilesMatched(0);
-      setTotalMatches(0);
-      setMoreFilesCount(0);
-    } finally {
-      setSearching(false);
-    }
-  }, [manPages]);
+      try {
+        const response = await fetch(
+          `/api/man3/search?q=${encodeURIComponent(query)}`,
+        );
+        const data = await response.json();
+
+        if (data.error) {
+          setSearchResults([]);
+          setFilesMatched(0);
+          setTotalMatches(0);
+          setMoreFilesCount(0);
+        } else {
+          setSearchResults(data.results || []);
+          setFilesMatched(data.filesMatched || 0);
+          setTotalMatches(data.totalMatches || 0);
+          setMoreFilesCount(data.moreFilesCount || 0);
+        }
+
+        // Update URL with search query (preserve page param if present)
+        const params = new URLSearchParams(window.location.search);
+        params.set("q", query);
+        window.history.replaceState(
+          {},
+          "",
+          `/man3?${params.toString()}` + window.location.hash,
+        );
+      } catch (e) {
+        console.error("Search error:", e);
+        setSearchResults([]);
+        setFilesMatched(0);
+        setTotalMatches(0);
+        setMoreFilesCount(0);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [manPages],
+  );
 
   // Debounce the API call when search query changes
   useEffect(() => {
@@ -226,59 +267,66 @@ export default function Man3() {
     };
   }, [searchQuery, manPages, performSearch]);
 
-  const loadPageContent = useCallback((
-    pageName,
-    lineNumber = null,
-    snippetIndex = null,
-    skipHistoryPush = false,
-  ) => {
-    // If clicking a line number on the same page, just update the hash without fetching
-    if (selectedPageName === pageName && lineNumber !== null) {
-      setTargetLineNumber(lineNumber);
-      const hash = "#l" + lineNumber.toString().padStart(5, "0");
-      window.history.replaceState(
-        {},
-        "",
-        window.location.pathname + window.location.search + hash,
-      );
-      return;
-    }
+  const loadPageContent = useCallback(
+    (
+      pageName,
+      lineNumber = null,
+      snippetIndex = null,
+      skipHistoryPush = false,
+    ) => {
+      // If clicking a line number on the same page, just update the hash without fetching
+      if (selectedPageName === pageName && lineNumber !== null) {
+        setTargetLineNumber(lineNumber);
+        const hash = "#l" + lineNumber.toString().padStart(5, "0");
+        window.history.replaceState(
+          {},
+          "",
+          window.location.pathname + window.location.search + hash,
+        );
+        return;
+      }
 
-    fetch(`/man3/${pageName}.html`)
-      .then((r) => r.text())
-      .then((html) => {
-        // Scroll to top before loading new content
-        if (contentViewerRef.current) {
-          contentViewerRef.current.scrollTop = 0;
-        }
-        const processedContent = processPageContent(html, searchQuery);
-        setSelectedPageContent(processedContent);
-        setSelectedPageName(pageName);
-        if (lineNumber) {
-          setTargetLineNumber(lineNumber);
-          setTargetSnippetIndex(snippetIndex);
-        }
-        // Update URL with selected page param
-        const params = new URLSearchParams(window.location.search);
-        params.set("page", pageName);
-        // Set hash based on lineNumber: if provided, use it; if not, preserve existing hash (unless it's a line number hash)
-        let hash = "";
-        if (lineNumber) {
-          hash = "#l" + lineNumber.toString().padStart(5, "0");
-        } else {
-          // Only remove line number hashes (#l0000 or #l0000-00000) when not targeting a line
-          // Preserve any other hashes
-          const currentHash = window.location.hash;
-          if (currentHash && !/#l\d+(?:-\d+)?$/.test(currentHash)) {
-            hash = currentHash;
+      fetch(`/man3/${pageName}.html`)
+        .then((r) => r.text())
+        .then((html) => {
+          // Scroll to top before loading new content
+          if (contentViewerRef.current) {
+            contentViewerRef.current.scrollTop = 0;
           }
-        }
-        if (!skipHistoryPush) {
-          window.history.pushState({}, "", `/man3?${params.toString()}` + hash);
-        }
-      })
-      .catch((e) => console.error("Failed to load page:", e));
-  }, [processPageContent, searchQuery, selectedPageName]);
+          const processedContent = processPageContent(html, searchQuery);
+          setSelectedPageContent(processedContent);
+          setSelectedPageName(pageName);
+          if (lineNumber) {
+            setTargetLineNumber(lineNumber);
+            setTargetSnippetIndex(snippetIndex);
+          }
+          // Update URL with selected page param
+          const params = new URLSearchParams(window.location.search);
+          params.set("page", pageName);
+          // Set hash based on lineNumber: if provided, use it; if not, preserve existing hash (unless it's a line number hash)
+          let hash = "";
+          if (lineNumber) {
+            hash = "#l" + lineNumber.toString().padStart(5, "0");
+          } else {
+            // Only remove line number hashes (#l0000 or #l0000-00000) when not targeting a line
+            // Preserve any other hashes
+            const currentHash = window.location.hash;
+            if (currentHash && !/#l\d+(?:-\d+)?$/.test(currentHash)) {
+              hash = currentHash;
+            }
+          }
+          if (!skipHistoryPush) {
+            window.history.pushState(
+              {},
+              "",
+              `/man3?${params.toString()}` + hash,
+            );
+          }
+        })
+        .catch((e) => console.error("Failed to load page:", e));
+    },
+    [processPageContent, searchQuery, selectedPageName],
+  );
 
   const highlightMatches = (text, query) => {
     if (!query.trim()) return text;
@@ -923,10 +971,27 @@ export default function Man3() {
               {!regexError && (
                 <div className="flex items-center justify-between gap-4 mt-2">
                   <p className="text-xs text-gray-500">
-                    Regex search (default case-insensitive). Examples: <code className="bg-gray-800 px-1 rounded">socket</code>, <code className="bg-gray-800 px-1 rounded">error|crypto</code>, or <code className="bg-gray-800 px-1 rounded">/^socket$/gi</code> for flags
+                    Regex search (default case-insensitive). Examples:{" "}
+                    <code className="bg-gray-800 px-1 rounded">socket</code>,{" "}
+                    <code className="bg-gray-800 px-1 rounded">
+                      error|crypto
+                    </code>
+                    , or{" "}
+                    <code className="bg-gray-800 px-1 rounded">
+                      /^socket$/gi
+                    </code>{" "}
+                    for flags
                   </p>
                   <p className="text-xs text-gray-500 whitespace-nowrap">
-                    📖 <a href="https://zfogg.github.io/ascii-chat/" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 transition-colors">View original Doxygen documentation</a>
+                    📖{" "}
+                    <a
+                      href="https://zfogg.github.io/ascii-chat/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                    >
+                      View original Doxygen documentation
+                    </a>
                   </p>
                 </div>
               )}

@@ -50,6 +50,7 @@ if [ -d "$REPO_ROOT" ]; then
     python3 << 'PYSCRIPT'
 import json
 from pathlib import Path
+import re
 
 man3_dir = Path("public/man3")
 pages = []
@@ -60,11 +61,20 @@ for html_file in sorted(man3_dir.glob("*.html")):
     # Extract the base name without .html
     basename = filename[:-5]  # Remove .html
 
-    # Create title from filename (convert underscores to spaces, etc.)
-    title = basename.replace("_", " ").replace("-", " ")
+    # Remove "ascii-chat-" prefix to get the original doxygen name
+    if basename.startswith("ascii-chat-"):
+        doxygen_name = basename[11:]  # Remove "ascii-chat-" prefix
+    else:
+        doxygen_name = basename
+
+    # Create a readable title from the filename
+    # Replace underscores and hyphens with spaces, but keep structure
+    title = doxygen_name.replace("_8c", ".c").replace("_8h", ".h")
+    title = re.sub(r'_(\d+)', lambda m: '', title)  # Remove numeric suffixes like _source
+    title = title.replace("_", " ").replace("-", " ")
 
     pages.append({
-        "name": basename,
+        "name": doxygen_name,
         "title": title,
         "file": filename
     })
