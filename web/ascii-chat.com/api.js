@@ -208,7 +208,7 @@ function findSnippets(text, query, maxSnippets = 3) {
 app.get("/api/man3/search", limiter, (req, res) => {
   const query = req.query.q || "";
 
-  if (!query || query.length < 2) {
+  if (!query || query.trim().length === 0) {
     return res.json({ results: [] });
   }
 
@@ -294,7 +294,10 @@ export default app;
 
 // Start server if running as standalone (not as Vercel Function)
 // Check both VERCEL env var and if this file was imported as a module
-if (process.env.VERCEL !== "1" && import.meta.url === `file://${process.argv[1]}`) {
+if (
+  process.env.VERCEL !== "1" &&
+  import.meta.url === `file://${process.argv[1]}`
+) {
   app.listen(PORT, () => {
     logger.info(`Man3 search API running on http://localhost:${PORT}`);
     logger.info(`Environment: ${NODE_ENV}`);
