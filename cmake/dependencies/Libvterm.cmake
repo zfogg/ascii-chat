@@ -18,42 +18,51 @@
 
 # All builds: Try to find libvterm
 
-# musl builds: Build vterm from source using Makefile
+# musl builds: Build from source
 if(USE_MUSL)
-    include(FetchContent)
-    FetchContent_Declare(
-        libvterm
-        URL "https://github.com/neovim/libvterm/archive/refs/tags/v0.3.3.tar.gz"
-    )
+    message(STATUS "Configuring ${BoldBlue}libvterm${ColorReset} from source (musl)...")
 
-    FetchContent_GetProperties(libvterm)
-    if(NOT libvterm_POPULATED)
-        FetchContent_Populate(libvterm)
+    include(ExternalProject)
+
+    set(VTERM_PREFIX "${MUSL_DEPS_DIR_STATIC}/libvterm")
+    set(VTERM_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/libvterm-build")
+
+    if(NOT EXISTS "${VTERM_PREFIX}/lib/libvterm.a")
+        message(STATUS "  libvterm library not found in cache, will build from source")
+
+        ExternalProject_Add(libvterm-musl
+            GIT_REPOSITORY https://github.com/neovim/libvterm.git
+            GIT_TAG v0.3.3
+            UPDATE_DISCONNECTED 1
+            PREFIX ${VTERM_BUILD_DIR}
+            STAMP_DIR ${VTERM_BUILD_DIR}/stamps
+            SOURCE_DIR ${VTERM_BUILD_DIR}/src/libvterm-musl
+            BINARY_DIR ${VTERM_BUILD_DIR}/src/libvterm-musl
+            BUILD_ALWAYS 0
+            DEPENDS freetype-musl fontconfig
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND bash -c "cd <SOURCE_DIR> && make CC=${MUSL_GCC} CFLAGS='-O2 -fPIC -Wno-error -isystem ${KERNEL_HEADERS_DIR}' LDFLAGS='-static' ARFLAGS=rcs"
+            INSTALL_COMMAND bash -c "cd <SOURCE_DIR> && make install PREFIX=${VTERM_PREFIX}"
+            BUILD_BYPRODUCTS ${VTERM_PREFIX}/lib/libvterm.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}libvterm${ColorReset} library found in cache: ${BoldMagenta}${VTERM_PREFIX}/lib/libvterm.a${ColorReset}")
+        add_custom_target(libvterm-musl)
     endif()
 
-    # Build vterm using its Makefile
-    add_custom_target(vterm_build ALL
-        COMMAND make libvterm.la
-        WORKING_DIRECTORY "${libvterm_SOURCE_DIR}"
-    )
-
-    # Create imported library target
-    add_library(vterm STATIC IMPORTED)
-    set_target_properties(vterm PROPERTIES
-        IMPORTED_LOCATION "${libvterm_SOURCE_DIR}/.libs/libvterm.a"
-        INTERFACE_INCLUDE_DIRECTORIES "${libvterm_SOURCE_DIR}/include"
-    )
-    add_dependencies(vterm vterm_build)
-
-    set(VTERM_LDFLAGS vterm)
-    set(VTERM_INCLUDE_DIRS "${libvterm_SOURCE_DIR}/include")
-
-    set(RENDER_FILE_LIBS vterm ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
+    set(VTERM_LDFLAGS "${VTERM_PREFIX}/lib/libvterm.a")
+    set(VTERM_INCLUDE_DIRS "${VTERM_PREFIX}/include")
+    set(RENDER_FILE_LIBS ${VTERM_LDFLAGS} ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
     set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
 
-    message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm (built from source) + FreeType2 + fontconfig${ColorReset}")
+    message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm + FreeType2 + fontconfig${ColorReset}")
 
-# Non-musl builds: Use system package manager
+# Unix builds (Linux/BSD, non-musl): Use system package manager
 elseif(UNIX AND NOT APPLE)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)

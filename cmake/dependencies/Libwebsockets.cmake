@@ -59,7 +59,7 @@ if(USE_MUSL)
             STAMP_DIR ${LWS_BUILD_DIR}/stamps
             UPDATE_DISCONNECTED 1
             BUILD_ALWAYS 0
-            DEPENDS zlib-musl
+            DEPENDS zlib-musl openssl-musl
             CMAKE_ARGS
                 -DCMAKE_TOOLCHAIN_FILE=${MUSL_TOOLCHAIN_FILE}
                 -DMUSL_GCC_PATH=${MUSL_GCC}
@@ -75,6 +75,10 @@ if(USE_MUSL)
                 -DLWS_WITHOUT_TEST_PING=ON
                 -DLWS_WITHOUT_TEST_CLIENT=ON
                 -DLWS_WITH_SSL=ON
+                -DOPENSSL_ROOT_DIR=${OPENSSL_PREFIX}
+                -DOPENSSL_INCLUDE_DIR=${OPENSSL_INCLUDE_DIR}
+                -DOPENSSL_CRYPTO_LIBRARY=${OPENSSL_CRYPTO_LIBRARY}
+                -DOPENSSL_SSL_LIBRARY=${OPENSSL_SSL_LIBRARY}
                 -DLWS_WITH_LIBEV=OFF
                 -DLWS_WITH_LIBUV=OFF
                 -DLWS_WITH_LIBEVENT=OFF

@@ -79,4 +79,33 @@ void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double act
 // Flush encoder and close file.  Always frees *ctx regardless of error.
 asciichat_error_t render_file_destroy(render_file_ctx_t *ctx);
 
+#else  // _WIN32 (no render-file support on Windows)
+
+// Stub functions for Windows builds (render-file not available)
+typedef struct render_file_ctx_s { int dummy; } render_file_ctx_t;
+
+static inline asciichat_error_t render_file_create(const char *output_path, int cols, int rows, int fps, int theme,
+                                     render_file_ctx_t **out) {
+  *out = NULL;
+  return ASCIICHAT_OK;  // No-op for Windows
+}
+
+static inline void render_file_set_audio_source(render_file_ctx_t *ctx, void *audio_media_source, void *audio_capture_rb) {
+  (void)ctx; (void)audio_media_source; (void)audio_capture_rb;  // No-op
+}
+
+static inline asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *ansi_frame, uint64_t captured_ns) {
+  (void)ctx; (void)ansi_frame; (void)captured_ns;  // No-op
+  return ASCIICHAT_OK;
+}
+
+static inline void render_file_set_snapshot_actual_duration(render_file_ctx_t *ctx, double actual_duration_sec) {
+  (void)ctx; (void)actual_duration_sec;  // No-op
+}
+
+static inline asciichat_error_t render_file_destroy(render_file_ctx_t *ctx) {
+  (void)ctx;  // No-op
+  return ASCIICHAT_OK;
+}
+
 #endif // _WIN32
