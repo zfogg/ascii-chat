@@ -90,6 +90,10 @@ export default function Man3() {
             },
           );
 
+          // Preserve empty anchor tags by adding zero-width space
+          // This prevents browsers from stripping them
+          content = content.replace(/<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g, '<a id="$1">\u200B</a>');
+
           // Prepend stylesheets
           content = stylesheets.join("\n") + content;
           setSelectedPageContent(content);
@@ -363,23 +367,73 @@ export default function Man3() {
     const scrollToAnchor = () => {
       const element = contentViewerRef.current.querySelector(hash);
       if (element) {
-        element.scrollIntoView({ behavior: "smooth" });
+        // If anchor is hidden (offsetTop: 0), find the visible equivalent
+        let scrollTarget = element;
+        if (element.offsetTop === 0 && hash.match(/^#l\d+$/)) {
+          // Extract line number from anchor ID (e.g., "l00044" -> "44")
+          const lineNum = hash.substring(2).replace(/^0+/, '') || '0';
+
+          // Find the visible CodeBlock and scroll to that line
+          // CodeBlocks render as pre > code, find the first one
+          const codeBlocks = contentViewerRef.current.querySelectorAll('pre code');
+          if (codeBlocks.length > 0) {
+            const codeBlock = codeBlocks[0];
+            const lines = codeBlock.querySelectorAll('[data-line-number="' + lineNum + '"]');
+            if (lines.length > 0) {
+              scrollTarget = lines[0];
+            } else {
+              // If no data-line-number attribute, estimate position
+              const allLines = codeBlock.textContent.split('\n');
+              if (lineNum <= allLines.length) {
+                // Scroll proportionally based on line number
+                const scrollPercent = lineNum / allLines.length;
+                const container = contentViewerRef.current;
+                container.scrollTop = (container.scrollHeight - container.clientHeight) * scrollPercent;
+                return;
+              }
+            }
+          }
+        }
+
+        // Scroll the container to the element
+        const container = contentViewerRef.current;
+        const elementTop = scrollTarget.offsetTop;
+        container.scrollTop = elementTop - 50; // Leave some space at top
       }
     };
 
     // Try multiple times in case elements are still rendering
     let attempts = 0;
-    const maxAttempts = 10;
-    const interval = setInterval(() => {
+    const maxAttempts = 20;
+    const checkAndScroll = () => {
       attempts++;
-      const element = contentViewerRef.current.querySelector(hash);
-      if (element || attempts >= maxAttempts) {
-        scrollToAnchor();
-        clearInterval(interval);
-      }
-    }, 50);
+      let element = contentViewerRef.current?.querySelector(hash);
 
-    return () => clearInterval(interval);
+      // If anchor not found, try finding the parent line element
+      if (!element && hash.match(/^#l\d+$/)) {
+        element = contentViewerRef.current?.querySelector(`[name="${hash.substring(1)}"]`);
+        if (!element) {
+          // Try finding by data attribute or nearby line div
+          const lineMatch = hash.match(/l(\d+)/);
+          if (lineMatch) {
+            const lineNum = lineMatch[1];
+            element = contentViewerRef.current?.querySelector(`.line [id="l${lineNum}"]`)?.closest('.line');
+          }
+        }
+      }
+
+      console.log(`Attempt ${attempts}: looking for ${hash}, found:`, !!element);
+      if (element) {
+        console.log("Element found! Scrolling...");
+        scrollToAnchor();
+      } else if (attempts < maxAttempts) {
+        setTimeout(checkAndScroll, 50);
+      } else {
+        console.log("Max attempts reached, giving up on scroll");
+      }
+    };
+
+    checkAndScroll();
   }, [selectedPageContent]);
 
   // Convert HTML with pre blocks into JSX with CodeBlock components
@@ -498,8 +552,10 @@ export default function Man3() {
           }
         }
 
-        // Extract and process fragment
+        // Extract fragment and preserve anchors separately for scrolling
         const fragmentHtml = remaining.substring(fragmentStart, fragmentEnd);
+
+        // Render the code block (without anchors for clean display)
         const codeContent = extractCodeFromFragment(fragmentHtml);
         if (codeContent.trim()) {
           elements.push(
@@ -508,6 +564,15 @@ export default function Man3() {
             </CodeBlock>,
           );
         }
+
+        // Also render the original fragment HTML hidden so anchors are in DOM for scrolling
+        elements.push(
+          <div
+            key={`anchors-${elements.length}`}
+            style={{ display: "none" }}
+            dangerouslySetInnerHTML={{ __html: fragmentHtml }}
+          />,
+        );
 
         // Update remaining
         remaining = remaining.substring(fragmentEnd);
