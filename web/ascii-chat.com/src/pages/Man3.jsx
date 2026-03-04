@@ -226,26 +226,36 @@ export default function Man3() {
                           <div className="px-4 pb-3 space-y-2">
                             {page.snippets.map((snippet, idx) => {
                               const snippetLines = snippet.text.split("\n");
-                              const startLine = snippet.lineNumber - 1; // First line before match
+                              const [beforeLineNum, matchLineNum, afterLineNum] = snippet.lineNumbers;
                               return (
                                 <div
                                   key={idx}
-                                  className="bg-gray-950/80 border border-gray-700/50 rounded px-3 py-2 text-xs text-gray-300 font-mono overflow-hidden"
+                                  className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden"
                                 >
-                                  <div className="text-gray-500 text-xs mb-1 opacity-75">Line {snippet.lineNumber}</div>
-                                  <div className="whitespace-pre-wrap break-words">
-                                    {snippetLines.map((line, lineIdx) => (
-                                      <div
-                                        key={lineIdx}
-                                        className={
-                                          lineIdx === Math.floor(snippetLines.length / 2)
-                                            ? "bg-gray-800/50 px-1 -mx-1"
-                                            : ""
-                                        }
-                                      >
-                                        {highlightMatches(line, searchQuery)}
-                                      </div>
-                                    ))}
+                                  <div className="flex gap-2">
+                                    {/* Line numbers column */}
+                                    <div className="text-gray-600 text-right flex-shrink-0 select-none">
+                                      {snippet.lineNumbers.map((lineNum, lineIdx) => (
+                                        <div key={lineIdx}>
+                                          {lineNum ? lineNum : "-"}
+                                        </div>
+                                      ))}
+                                    </div>
+                                    {/* Code content */}
+                                    <div className="whitespace-pre-wrap break-words flex-1">
+                                      {snippetLines.map((line, lineIdx) => (
+                                        <div
+                                          key={lineIdx}
+                                          className={
+                                            lineIdx === Math.floor(snippetLines.length / 2)
+                                              ? "bg-gray-800/50 px-1 -mx-1"
+                                              : ""
+                                          }
+                                        >
+                                          {highlightMatches(line, searchQuery)}
+                                        </div>
+                                      ))}
+                                    </div>
                                   </div>
                                 </div>
                               );

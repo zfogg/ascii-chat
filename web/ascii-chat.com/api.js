@@ -129,9 +129,15 @@ function findSnippets(text, query, maxSnippets = 3) {
         usedLines.add(i);
         if (i < lines.length - 1) usedLines.add(i + 1);
 
+        // Calculate line numbers for all 3 lines
+        const beforeLineNum = i > 0 ? lineNumbers[i - 1] : null;
+        const matchLineNum = lineNumbers[i];
+        const afterLineNum = i < lines.length - 1 ? lineNumbers[i + 1] : null;
+
         snippets.push({
           text: snippet,
-          lineNumber: lineNumbers[i], // The line number of the matching line
+          lineNumbers: [beforeLineNum, matchLineNum, afterLineNum],
+          matchLineNumber: matchLineNum,
         });
       }
     }
