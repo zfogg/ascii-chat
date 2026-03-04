@@ -14,7 +14,11 @@
 #include <ascii-chat/log/format.h>
 #include <ascii-chat/util/string.h>
 #include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/platform/filesystem.h>
 #include <time.h>
+
+// Forward declaration for filesystem functions
+extern bool check_binary_in_path_uncached(const char *bin_name);
 
 // Platform-specific binary suffix
 #ifdef _WIN32
