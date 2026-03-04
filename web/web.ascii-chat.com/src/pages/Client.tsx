@@ -1047,9 +1047,27 @@ export function ClientPage() {
       });
 
       console.log("[Client] Webcam stream acquired");
+      console.log(
+        `[Client] Stream tracks: ${stream.getTracks().length}, active=${stream.active}`,
+      );
       streamRef.current = stream;
       const video = videoRef.current!;
       video.srcObject = stream;
+
+      // Monitor stream for unexpected end
+      stream.getTracks().forEach((track) => {
+        track.onended = () => {
+          console.warn(
+            `[Client] Media track ended (${track.kind}): readyState=${track.readyState}`,
+          );
+        };
+        track.onmute = () => {
+          console.warn(`[Client] Media track muted (${track.kind})`);
+        };
+        track.onunmute = () => {
+          console.log(`[Client] Media track unmuted (${track.kind})`);
+        };
+      });
 
       // Set up metadata listener BEFORE playing to catch the event
       const metadataPromise = new Promise<void>((resolve) => {
@@ -1102,6 +1120,29 @@ export function ClientPage() {
 
       await Promise.race([metadataPromise, timeoutPromise]);
 
+      // Validate that canvas has valid dimensions before proceeding
+      if (!canvasRef.current || canvasRef.current.width === 0 || canvasRef.current.height === 0) {
+        const video = videoRef.current;
+        console.warn(
+          `[startWebcam] Canvas dimensions still invalid after metadata wait: canvas=${canvasRef.current?.width}x${canvasRef.current?.height}, video=${video?.videoWidth}x${video?.videoHeight}`,
+        );
+        // If video has dimensions, use them as fallback
+        if (video && video.videoWidth > 0 && video.videoHeight > 0) {
+          if (canvasRef.current) {
+            canvasRef.current.width = video.videoWidth;
+            canvasRef.current.height = video.videoHeight;
+            console.log(
+              `[startWebcam] Using video dimensions as fallback: ${video.videoWidth}x${video.videoHeight}`,
+            );
+          }
+        } else {
+          // Video still has no dimensions - cannot proceed
+          throw new Error(
+            "Failed to obtain video dimensions after 5-second wait. Browser may not have granted camera permissions or device is not available.",
+          );
+        }
+      }
+
       console.log(
         `[startWebcam] About to start capture loop, videoRef=${
           videoRef.current ? "OK" : "NULL"
@@ -1145,6 +1186,18 @@ export function ClientPage() {
       console.log(
         `[Client] frameInterval set to: ${frameIntervalRef.current}ms (${settings.targetFps} FPS)`,
       );
+
+      // Log stream state before starting capture
+      if (streamRef.current) {
+        console.log(
+          `[Client] Stream state before capture: active=${streamRef.current.active}, tracks=${streamRef.current.getTracks().length}`,
+        );
+        streamRef.current.getTracks().forEach((track) => {
+          console.log(
+            `[Client] Track (${track.kind}): readyState=${track.readyState}, enabled=${track.enabled}, muted=${track.muted}`,
+          );
+        });
+      }
 
       // Start both the capture loop (sends to server) and render loop (displays frames)
       if (webcamCaptureLoopRef.current) {
