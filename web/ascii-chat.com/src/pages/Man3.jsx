@@ -20,6 +20,28 @@ export default function Man3() {
       { name: "Home", path: "/" },
       { name: "API Reference", path: "/man3" },
     ]);
+
+    // Load from URL params
+    const params = new URLSearchParams(window.location.search);
+    const queryParam = params.get("q");
+    const pageParam = params.get("page");
+
+    if (queryParam) {
+      setSearchQuery(decodeURIComponent(queryParam));
+    }
+
+    if (pageParam) {
+      const pageName = decodeURIComponent(pageParam);
+      setSelectedPageName(pageName);
+      fetch(`/man3/${pageName}.html`)
+        .then((r) => r.text())
+        .then((html) => {
+          const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+          const content = bodyMatch ? bodyMatch[1] : html;
+          setSelectedPageContent(content);
+        })
+        .catch((e) => console.error("Failed to load page:", e));
+    }
   }, []);
 
   // Load man3 index
@@ -50,6 +72,8 @@ export default function Man3() {
         setFilesMatched(0);
         setTotalMatches(0);
         setSearching(false);
+        // Clear URL param when search is empty
+        window.history.replaceState({}, "", "/man3");
         return;
       }
 
@@ -70,6 +94,10 @@ export default function Man3() {
           setFilesMatched(data.filesMatched || 0);
           setTotalMatches(data.totalMatches || 0);
         }
+
+        // Update URL with search query
+        const newUrl = `/man3?q=${encodeURIComponent(searchQuery)}`;
+        window.history.replaceState({}, "", newUrl);
       } catch (e) {
         console.error("Search error:", e);
         setSearchResults([]);
@@ -92,6 +120,11 @@ export default function Man3() {
       // Toggle off if clicking same page
       setSelectedPageName(null);
       setSelectedPageContent(null);
+      // Remove page param from URL
+      const params = new URLSearchParams(window.location.search);
+      params.delete("page");
+      const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
+      window.history.replaceState({}, "", newUrl);
       return;
     }
 
@@ -102,6 +135,10 @@ export default function Man3() {
         const content = bodyMatch ? bodyMatch[1] : html;
         setSelectedPageContent(content);
         setSelectedPageName(pageName);
+        // Update URL with selected page param
+        const params = new URLSearchParams(window.location.search);
+        params.set("page", pageName);
+        window.history.replaceState({}, "", `/man3?${params.toString()}`);
       })
       .catch((e) => console.error("Failed to load page:", e));
   };
