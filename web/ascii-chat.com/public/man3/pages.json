@@ -1,2577 +1,2577 @@
 [
   {
-    "name": "ascii-chat-WebRTCAec3Wrapper",
-    "title": "ascii chat WebRTCAec3Wrapper",
+    "name": "WebRTCAec3Wrapper",
+    "title": "WebRTCAec3Wrapper",
     "file": "ascii-chat-WebRTCAec3Wrapper.html"
   },
   {
-    "name": "ascii-chat-acds_client.c",
-    "title": "ascii chat acds client.c",
+    "name": "acds_2client_8c",
+    "title": "acds client.c",
     "file": "ascii-chat-acds_client.c.html"
   },
   {
-    "name": "ascii-chat-acds_client_data_t",
-    "title": "ascii chat acds client data t",
+    "name": "acds_2client_2data_2t",
+    "title": "acds client data t",
     "file": "ascii-chat-acds_client_data_t.html"
   },
   {
-    "name": "ascii-chat-acds_config_t",
-    "title": "ascii chat acds config t",
+    "name": "acds_2config_2t",
+    "title": "acds config t",
     "file": "ascii-chat-acds_config_t.html"
   },
   {
-    "name": "ascii-chat-acds_handlers.c",
-    "title": "ascii chat acds handlers.c",
+    "name": "acds_2handlers_8c",
+    "title": "acds handlers.c",
     "file": "ascii-chat-acds_handlers.c.html"
   },
   {
-    "name": "ascii-chat-acds_hash_entry_t",
-    "title": "ascii chat acds hash entry t",
+    "name": "acds_2hash_2entry_2t",
+    "title": "acds hash entry t",
     "file": "ascii-chat-acds_hash_entry_t.html"
   },
   {
-    "name": "ascii-chat-acds_server.c",
-    "title": "ascii chat acds server.c",
+    "name": "acds_2server_8c",
+    "title": "acds server.c",
     "file": "ascii-chat-acds_server.c.html"
   },
   {
-    "name": "ascii-chat-acds_server_t",
-    "title": "ascii chat acds server t",
+    "name": "acds_2server_2t",
+    "title": "acds server t",
     "file": "ascii-chat-acds_server_t.html"
   },
   {
-    "name": "ascii-chat-acds_thread_context_t",
-    "title": "ascii chat acds thread context t",
+    "name": "acds_2thread_2context_2t",
+    "title": "acds thread context t",
     "file": "ascii-chat-acds_thread_context_t.html"
   },
   {
-    "name": "ascii-chat-adjectives.c",
-    "title": "ascii chat adjectives.c",
+    "name": "adjectives_8c",
+    "title": "adjectives.c",
     "file": "ascii-chat-adjectives.c.html"
   },
   {
-    "name": "ascii-chat-agent.c",
-    "title": "ascii chat agent.c",
+    "name": "agent_8c",
+    "title": "agent.c",
     "file": "ascii-chat-agent.c.html"
   },
   {
-    "name": "ascii-chat-analysis.c",
-    "title": "ascii chat analysis.c",
+    "name": "analysis_8c",
+    "title": "analysis.c",
     "file": "ascii-chat-analysis.c.html"
   },
   {
-    "name": "ascii-chat-ansi.c",
-    "title": "ascii chat ansi.c",
+    "name": "ansi_8c",
+    "title": "ansi.c",
     "file": "ascii-chat-ansi.c.html"
   },
   {
-    "name": "ascii-chat-app_callbacks.c",
-    "title": "ascii chat app callbacks.c",
+    "name": "app_2callbacks_8c",
+    "title": "app callbacks.c",
     "file": "ascii-chat-app_callbacks.c.html"
   },
   {
-    "name": "ascii-chat-ascii.c",
-    "title": "ascii chat ascii.c",
+    "name": "ascii_8c",
+    "title": "ascii.c",
     "file": "ascii-chat-ascii.c.html"
   },
   {
-    "name": "ascii-chat-ascii_query",
-    "title": "ascii chat ascii query",
+    "name": "ascii_2query",
+    "title": "ascii query",
     "file": "ascii-chat-ascii_query.html"
   },
   {
-    "name": "ascii-chat-ascii_query_BreakpointInfo",
-    "title": "ascii chat ascii query BreakpointInfo",
+    "name": "ascii_2query_2BreakpointInfo",
+    "title": "ascii query BreakpointInfo",
     "file": "ascii-chat-ascii_query_BreakpointInfo.html"
   },
   {
-    "name": "ascii-chat-ascii_query_FrameInfo",
-    "title": "ascii chat ascii query FrameInfo",
+    "name": "ascii_2query_2FrameInfo",
+    "title": "ascii query FrameInfo",
     "file": "ascii-chat-ascii_query_FrameInfo.html"
   },
   {
-    "name": "ascii-chat-ascii_query_HttpRequest",
-    "title": "ascii chat ascii query HttpRequest",
+    "name": "ascii_2query_2HttpRequest",
+    "title": "ascii query HttpRequest",
     "file": "ascii-chat-ascii_query_HttpRequest.html"
   },
   {
-    "name": "ascii-chat-ascii_query_HttpResponse",
-    "title": "ascii chat ascii query HttpResponse",
+    "name": "ascii_2query_2HttpResponse",
+    "title": "ascii query HttpResponse",
     "file": "ascii-chat-ascii_query_HttpResponse.html"
   },
   {
-    "name": "ascii-chat-ascii_query_HttpServer",
-    "title": "ascii chat ascii query HttpServer",
+    "name": "ascii_2query_2HttpServer",
+    "title": "ascii query HttpServer",
     "file": "ascii-chat-ascii_query_HttpServer.html"
   },
   {
-    "name": "ascii-chat-ascii_query_LLDBController",
-    "title": "ascii chat ascii query LLDBController",
+    "name": "ascii_2query_2LLDBController",
+    "title": "ascii query LLDBController",
     "file": "ascii-chat-ascii_query_LLDBController.html"
   },
   {
-    "name": "ascii-chat-ascii_query_ThreadInfo",
-    "title": "ascii chat ascii query ThreadInfo",
+    "name": "ascii_2query_2ThreadInfo",
+    "title": "ascii query ThreadInfo",
     "file": "ascii-chat-ascii_query_ThreadInfo.html"
   },
   {
-    "name": "ascii-chat-ascii_query_VariableInfo",
-    "title": "ascii chat ascii query VariableInfo",
+    "name": "ascii_2query_2VariableInfo",
+    "title": "ascii query VariableInfo",
     "file": "ascii-chat-ascii_query_VariableInfo.html"
   },
   {
-    "name": "ascii-chat-ascii_query_json",
-    "title": "ascii chat ascii query json",
+    "name": "ascii_2query_2json",
+    "title": "ascii query json",
     "file": "ascii-chat-ascii_query_json.html"
   },
   {
-    "name": "ascii-chat-ascii_query_json_JsonArray",
-    "title": "ascii chat ascii query json JsonArray",
+    "name": "ascii_2query_2json_2JsonArray",
+    "title": "ascii query json JsonArray",
     "file": "ascii-chat-ascii_query_json_JsonArray.html"
   },
   {
-    "name": "ascii-chat-ascii_query_json_JsonObject",
-    "title": "ascii chat ascii query json JsonObject",
+    "name": "ascii_2query_2json_2JsonObject",
+    "title": "ascii query json JsonObject",
     "file": "ascii-chat-ascii_query_json_JsonObject.html"
   },
   {
-    "name": "ascii-chat-ascii_query_json_JsonValue",
-    "title": "ascii chat ascii query json JsonValue",
+    "name": "ascii_2query_2json_2JsonValue",
+    "title": "ascii query json JsonValue",
     "file": "ascii-chat-ascii_query_json_JsonValue.html"
   },
   {
-    "name": "ascii-chat-asciichat_errno.c",
-    "title": "ascii chat asciichat errno.c",
+    "name": "asciichat_2errno_8c",
+    "title": "asciichat errno.c",
     "file": "ascii-chat-asciichat_errno.c.html"
   },
   {
-    "name": "ascii-chat-asciichat_instr_only_list",
-    "title": "ascii chat asciichat instr only list",
+    "name": "asciichat_2instr_2only_2list",
+    "title": "asciichat instr only list",
     "file": "ascii-chat-asciichat_instr_only_list.html"
   },
   {
-    "name": "ascii-chat-asciichat_instr_only_selector",
-    "title": "ascii chat asciichat instr only selector",
+    "name": "asciichat_2instr_2only_2selector",
+    "title": "asciichat instr only selector",
     "file": "ascii-chat-asciichat_instr_only_selector.html"
   },
   {
-    "name": "ascii-chat-asciichat_instr_runtime",
-    "title": "ascii chat asciichat instr runtime",
+    "name": "asciichat_2instr_2runtime",
+    "title": "asciichat instr runtime",
     "file": "ascii-chat-asciichat_instr_runtime.html"
   },
   {
-    "name": "ascii-chat-asciichat_mdns_t",
-    "title": "ascii chat asciichat mdns t",
+    "name": "asciichat_2mdns_2t",
+    "title": "asciichat mdns t",
     "file": "ascii-chat-asciichat_mdns_t.html"
   },
   {
-    "name": "ascii-chat-aspect_ratio.c",
-    "title": "ascii chat aspect ratio.c",
+    "name": "aspect_2ratio_8c",
+    "title": "aspect ratio.c",
     "file": "ascii-chat-aspect_ratio.c.html"
   },
   {
-    "name": "ascii-chat-atomic.c",
-    "title": "ascii chat atomic.c",
+    "name": "atomic_8c",
+    "title": "atomic.c",
     "file": "ascii-chat-atomic.c.html"
   },
   {
-    "name": "ascii-chat-audio_batch_info_t",
-    "title": "ascii chat audio batch info t",
+    "name": "audio_2batch_2info_2t",
+    "title": "audio batch info t",
     "file": "ascii-chat-audio_batch_info_t.html"
   },
   {
-    "name": "ascii-chat-audio_frame_t",
-    "title": "ascii chat audio frame t",
+    "name": "audio_2frame_2t",
+    "title": "audio frame t",
     "file": "ascii-chat-audio_frame_t.html"
   },
   {
-    "name": "ascii-chat-audio_send_packet_t",
-    "title": "ascii chat audio send packet t",
+    "name": "audio_2send_2packet_2t",
+    "title": "audio send packet t",
     "file": "ascii-chat-audio_send_packet_t.html"
   },
   {
-    "name": "ascii-chat-avx2_background.c",
-    "title": "ascii chat avx2 background.c",
+    "name": "avx2_2background_8c",
+    "title": "avx2 background.c",
     "file": "ascii-chat-avx2_background.c.html"
   },
   {
-    "name": "ascii-chat-avx2_foreground.c",
-    "title": "ascii chat avx2 foreground.c",
+    "name": "avx2_2foreground_8c",
+    "title": "avx2 foreground.c",
     "file": "ascii-chat-avx2_foreground.c.html"
   },
   {
-    "name": "ascii-chat-bash.c",
-    "title": "ascii chat bash.c",
+    "name": "bash_8c",
+    "title": "bash.c",
     "file": "ascii-chat-bash.c.html"
   },
   {
-    "name": "ascii-chat-bin_cache_entry_t",
-    "title": "ascii chat bin cache entry t",
+    "name": "bin_2cache_2entry_2t",
+    "title": "bin cache entry t",
     "file": "ascii-chat-bin_cache_entry_t.html"
   },
   {
-    "name": "ascii-chat-binary_level_opts_t",
-    "title": "ascii chat binary level opts t",
+    "name": "binary_2level_2opts_2t",
+    "title": "binary level opts t",
     "file": "ascii-chat-binary_level_opts_t.html"
   },
   {
-    "name": "ascii-chat-bool_field_ctx_t",
-    "title": "ascii chat bool field ctx t",
+    "name": "bool_2field_2ctx_2t",
+    "title": "bool field ctx t",
     "file": "ascii-chat-bool_field_ctx_t.html"
   },
   {
-    "name": "ascii-chat-broadcast_context_t",
-    "title": "ascii chat broadcast context t",
+    "name": "broadcast_2context_2t",
+    "title": "broadcast context t",
     "file": "ascii-chat-broadcast_context_t.html"
   },
   {
-    "name": "ascii-chat-buffer_pool.c",
-    "title": "ascii chat buffer pool.c",
+    "name": "buffer_2pool_8c",
+    "title": "buffer pool.c",
     "file": "ascii-chat-buffer_pool.c.html"
   },
   {
-    "name": "ascii-chat-builder.c",
-    "title": "ascii chat builder.c",
+    "name": "builder_8c",
+    "title": "builder.c",
     "file": "ascii-chat-builder.c.html"
   },
   {
-    "name": "ascii-chat-bvector",
-    "title": "ascii chat bvector",
+    "name": "bvector",
+    "title": "bvector",
     "file": "ascii-chat-bvector.html"
   },
   {
-    "name": "ascii-chat-callback_timing.c",
-    "title": "ascii chat callback timing.c",
+    "name": "callback_2timing_8c",
+    "title": "callback timing.c",
     "file": "ascii-chat-callback_timing.c.html"
   },
   {
-    "name": "ascii-chat-client_capture.c",
-    "title": "ascii chat client capture.c",
+    "name": "client_2capture_8c",
+    "title": "client capture.c",
     "file": "ascii-chat-client_capture.c.html"
   },
   {
-    "name": "ascii-chat-client_capture.h",
-    "title": "ascii chat client capture.h",
+    "name": "client_2capture_8h",
+    "title": "client capture.h",
     "file": "ascii-chat-client_capture.h.html"
   },
   {
-    "name": "ascii-chat-client_crypto.h",
-    "title": "ascii chat client crypto.h",
+    "name": "client_2crypto_8h",
+    "title": "client crypto.h",
     "file": "ascii-chat-client_crypto.h.html"
   },
   {
-    "name": "ascii-chat-client_dispatch_entry_t",
-    "title": "ascii chat client dispatch entry t",
+    "name": "client_2dispatch_2entry_2t",
+    "title": "client dispatch entry t",
     "file": "ascii-chat-client_dispatch_entry_t.html"
   },
   {
-    "name": "ascii-chat-client_display.h",
-    "title": "ascii chat client display.h",
+    "name": "client_2display_8h",
+    "title": "client display.h",
     "file": "ascii-chat-client_display.h.html"
   },
   {
-    "name": "ascii-chat-client_like.c",
-    "title": "ascii chat client like.c",
+    "name": "client_2like_8c",
+    "title": "client like.c",
     "file": "ascii-chat-client_like.c.html"
   },
   {
-    "name": "ascii-chat-client_like.h",
-    "title": "ascii chat client like.h",
+    "name": "client_2like_8h",
+    "title": "client like.h",
     "file": "ascii-chat-client_like.h.html"
   },
   {
-    "name": "ascii-chat-client_main.c",
-    "title": "ascii chat client main.c",
+    "name": "client_2main_8c",
+    "title": "client main.c",
     "file": "ascii-chat-client_main.c.html"
   },
   {
-    "name": "ascii-chat-client_main.h",
-    "title": "ascii chat client main.h",
+    "name": "client_2main_8h",
+    "title": "client main.h",
     "file": "ascii-chat-client_main.h.html"
   },
   {
-    "name": "ascii-chat-client_manager_t",
-    "title": "ascii chat client manager t",
+    "name": "client_2manager_2t",
+    "title": "client manager t",
     "file": "ascii-chat-client_manager_t.html"
   },
   {
-    "name": "ascii-chat-client_pipeline.cpp",
-    "title": "ascii chat client pipeline.cpp",
+    "name": "client_2pipeline_2cpp",
+    "title": "client pipeline.cpp",
     "file": "ascii-chat-client_pipeline.cpp.html"
   },
   {
-    "name": "ascii-chat-client_protocol.c",
-    "title": "ascii chat client protocol.c",
+    "name": "client_2protocol_8c",
+    "title": "client protocol.c",
     "file": "ascii-chat-client_protocol.c.html"
   },
   {
-    "name": "ascii-chat-client_protocol.h",
-    "title": "ascii chat client protocol.h",
+    "name": "client_2protocol_8h",
+    "title": "client protocol.h",
     "file": "ascii-chat-client_protocol.h.html"
   },
   {
-    "name": "ascii-chat-client_server.h",
-    "title": "ascii chat client server.h",
+    "name": "client_2server_8h",
+    "title": "client server.h",
     "file": "ascii-chat-client_server.h.html"
   },
   {
-    "name": "ascii-chat-client_session_state_t",
-    "title": "ascii chat client session state t",
+    "name": "client_2session_2state_2t",
+    "title": "client session state t",
     "file": "ascii-chat-client_session_state_t.html"
   },
   {
-    "name": "ascii-chat-client_webrtc.h",
-    "title": "ascii chat client webrtc.h",
+    "name": "client_2webrtc_8h",
+    "title": "client webrtc.h",
     "file": "ascii-chat-client_webrtc.h.html"
   },
   {
-    "name": "ascii-chat-color_filter.c",
-    "title": "ascii chat color filter.c",
+    "name": "color_2filter_8c",
+    "title": "color filter.c",
     "file": "ascii-chat-color_filter.c.html"
   },
   {
-    "name": "ascii-chat-colorize.c",
-    "title": "ascii chat colorize.c",
+    "name": "colorize_8c",
+    "title": "colorize.c",
     "file": "ascii-chat-colorize.c.html"
   },
   {
-    "name": "ascii-chat-colorscheme.c",
-    "title": "ascii chat colorscheme.c",
+    "name": "colorscheme_8c",
+    "title": "colorscheme.c",
     "file": "ascii-chat-colorscheme.c.html"
   },
   {
-    "name": "ascii-chat-common.c",
-    "title": "ascii chat common.c",
+    "name": "common_8c",
+    "title": "common.c",
     "file": "ascii-chat-common.c.html"
   },
   {
-    "name": "ascii-chat-common_session_capture.c",
-    "title": "ascii chat common session capture.c",
+    "name": "common_2session_2capture_8c",
+    "title": "common session capture.c",
     "file": "ascii-chat-common_session_capture.c.html"
   },
   {
-    "name": "ascii-chat-common_session_capture.h",
-    "title": "ascii chat common session capture.h",
+    "name": "common_2session_2capture_8h",
+    "title": "common session capture.h",
     "file": "ascii-chat-common_session_capture.h.html"
   },
   {
-    "name": "ascii-chat-common_session_display.h",
-    "title": "ascii chat common session display.h",
+    "name": "common_2session_2display_8h",
+    "title": "common session display.h",
     "file": "ascii-chat-common_session_display.h.html"
   },
   {
-    "name": "ascii-chat-common_session_render.c",
-    "title": "ascii chat common session render.c",
+    "name": "common_2session_2render_8c",
+    "title": "common session render.c",
     "file": "ascii-chat-common_session_render.c.html"
   },
   {
-    "name": "ascii-chat-common_session_render.h",
-    "title": "ascii chat common session render.h",
+    "name": "common_2session_2render_8h",
+    "title": "common session render.h",
     "file": "ascii-chat-common_session_render.h.html"
   },
   {
-    "name": "ascii-chat-completions.c",
-    "title": "ascii chat completions.c",
+    "name": "completions_8c",
+    "title": "completions.c",
     "file": "ascii-chat-completions.c.html"
   },
   {
-    "name": "ascii-chat-compression.c",
-    "title": "ascii chat compression.c",
+    "name": "compression_8c",
+    "title": "compression.c",
     "file": "ascii-chat-compression.c.html"
   },
   {
-    "name": "ascii-chat-cond.c",
-    "title": "ascii chat cond.c",
+    "name": "cond_8c",
+    "title": "cond.c",
     "file": "ascii-chat-cond.c.html"
   },
   {
-    "name": "ascii-chat-config.c",
-    "title": "ascii chat config.c",
+    "name": "config_8c",
+    "title": "config.c",
     "file": "ascii-chat-config.c.html"
   },
   {
-    "name": "ascii-chat-config_builder_t",
-    "title": "ascii chat config builder t",
+    "name": "config_2builder_2t",
+    "title": "config builder t",
     "file": "ascii-chat-config_builder_t.html"
   },
   {
-    "name": "ascii-chat-configuration.c",
-    "title": "ascii chat configuration.c",
+    "name": "configuration_8c",
+    "title": "configuration.c",
     "file": "ascii-chat-configuration.c.html"
   },
   {
-    "name": "ascii-chat-connection_attempt.c",
-    "title": "ascii chat connection attempt.c",
+    "name": "connection_2attempt_8c",
+    "title": "connection attempt.c",
     "file": "ascii-chat-connection_attempt.c.html"
   },
   {
-    "name": "ascii-chat-connection_attempt_t",
-    "title": "ascii chat connection attempt t",
+    "name": "connection_2attempt_2t",
+    "title": "connection attempt t",
     "file": "ascii-chat-connection_attempt_t.html"
   },
   {
-    "name": "ascii-chat-connection_state.h",
-    "title": "ascii chat connection state.h",
+    "name": "connection_2state_8h",
+    "title": "connection state.h",
     "file": "ascii-chat-connection_state.h.html"
   },
   {
-    "name": "ascii-chat-consensus.c",
-    "title": "ascii chat consensus.c",
+    "name": "consensus_8c",
+    "title": "consensus.c",
     "file": "ascii-chat-consensus.c.html"
   },
   {
-    "name": "ascii-chat-consensus.h",
-    "title": "ascii chat consensus.h",
+    "name": "consensus_8h",
+    "title": "consensus.h",
     "file": "ascii-chat-consensus.h.html"
   },
   {
-    "name": "ascii-chat-consensus_coordinator",
-    "title": "ascii chat consensus coordinator",
+    "name": "consensus_2coordinator",
+    "title": "consensus coordinator",
     "file": "ascii-chat-consensus_coordinator.html"
   },
   {
-    "name": "ascii-chat-consensus_integration.c",
-    "title": "ascii chat consensus integration.c",
+    "name": "consensus_2integration_8c",
+    "title": "consensus integration.c",
     "file": "ascii-chat-consensus_integration.c.html"
   },
   {
-    "name": "ascii-chat-consensus_integration.h",
-    "title": "ascii chat consensus integration.h",
+    "name": "consensus_2integration_8h",
+    "title": "consensus integration.h",
     "file": "ascii-chat-consensus_integration.h.html"
   },
   {
-    "name": "ascii-chat-consensus_metrics_collection",
-    "title": "ascii chat consensus metrics collection",
+    "name": "consensus_2metrics_2collection",
+    "title": "consensus metrics collection",
     "file": "ascii-chat-consensus_metrics_collection.html"
   },
   {
-    "name": "ascii-chat-consensus_state",
-    "title": "ascii chat consensus state",
+    "name": "consensus_2state",
+    "title": "consensus state",
     "file": "ascii-chat-consensus_state.html"
   },
   {
-    "name": "ascii-chat-consensus_topology",
-    "title": "ascii chat consensus topology",
+    "name": "consensus_2topology",
+    "title": "consensus topology",
     "file": "ascii-chat-consensus_topology.html"
   },
   {
-    "name": "ascii-chat-console.c",
-    "title": "ascii chat console.c",
+    "name": "console_8c",
+    "title": "console.c",
     "file": "ascii-chat-console.c.html"
   },
   {
-    "name": "ascii-chat-coordinator.c",
-    "title": "ascii chat coordinator.c",
+    "name": "coordinator_8c",
+    "title": "coordinator.c",
     "file": "ascii-chat-coordinator.c.html"
   },
   {
-    "name": "ascii-chat-core.c",
-    "title": "ascii chat core.c",
+    "name": "core_8c",
+    "title": "core.c",
     "file": "ascii-chat-core.c.html"
   },
   {
-    "name": "ascii-chat-crc32.c",
-    "title": "ascii chat crc32.c",
+    "name": "crc32_8c",
+    "title": "crc32.c",
     "file": "ascii-chat-crc32.c.html"
   },
   {
-    "name": "ascii-chat-crypto_handshake_common.c",
-    "title": "ascii chat crypto handshake common.c",
+    "name": "crypto_2handshake_2common_8c",
+    "title": "crypto handshake common.c",
     "file": "ascii-chat-crypto_handshake_common.c.html"
   },
   {
-    "name": "ascii-chat-deadlock_state_t",
-    "title": "ascii chat deadlock state t",
+    "name": "deadlock_2state_2t",
+    "title": "deadlock state t",
     "file": "ascii-chat-deadlock_state_t.html"
   },
   {
-    "name": "ascii-chat-debug.c",
-    "title": "ascii chat debug.c",
+    "name": "debug_8c",
+    "title": "debug.c",
     "file": "ascii-chat-debug.c.html"
   },
   {
-    "name": "ascii-chat-debug_atomic.c",
-    "title": "ascii chat debug atomic.c",
+    "name": "debug_2atomic_8c",
+    "title": "debug atomic.c",
     "file": "ascii-chat-debug_atomic.c.html"
   },
   {
-    "name": "ascii-chat-debug_backtrace.c",
-    "title": "ascii chat debug backtrace.c",
+    "name": "debug_2backtrace_8c",
+    "title": "debug backtrace.c",
     "file": "ascii-chat-debug_backtrace.c.html"
   },
   {
-    "name": "ascii-chat-debug_memory.c",
-    "title": "ascii chat debug memory.c",
+    "name": "debug_2memory_8c",
+    "title": "debug memory.c",
     "file": "ascii-chat-debug_memory.c.html"
   },
   {
-    "name": "ascii-chat-debug_mutex.c",
-    "title": "ascii chat debug mutex.c",
+    "name": "debug_2mutex_8c",
+    "title": "debug mutex.c",
     "file": "ascii-chat-debug_mutex.c.html"
   },
   {
-    "name": "ascii-chat-debug_named.c",
-    "title": "ascii chat debug named.c",
+    "name": "debug_2named_8c",
+    "title": "debug named.c",
     "file": "ascii-chat-debug_named.c.html"
   },
   {
-    "name": "ascii-chat-debug_state_request_t",
-    "title": "ascii chat debug state request t",
+    "name": "debug_2state_2request_2t",
+    "title": "debug state request t",
     "file": "ascii-chat-debug_state_request_t.html"
   },
   {
-    "name": "ascii-chat-decoder.c",
-    "title": "ascii chat decoder.c",
+    "name": "decoder_8c",
+    "title": "decoder.c",
     "file": "ascii-chat-decoder.c.html"
   },
   {
-    "name": "ascii-chat-defer_tool.cpp",
-    "title": "ascii chat defer tool.cpp",
+    "name": "defer_2tool_2cpp",
+    "title": "defer tool.cpp",
     "file": "ascii-chat-defer_tool.cpp.html"
   },
   {
-    "name": "ascii-chat-deprecated",
-    "title": "ascii chat deprecated",
+    "name": "deprecated",
+    "title": "deprecated",
     "file": "ascii-chat-deprecated.html"
   },
   {
-    "name": "ascii-chat-digital_rain.c",
-    "title": "ascii chat digital rain.c",
+    "name": "digital_2rain_8c",
+    "title": "digital rain.c",
     "file": "ascii-chat-digital_rain.c.html"
   },
   {
-    "name": "ascii-chat-discovery-service_main.c",
-    "title": "ascii chat discovery service main.c",
+    "name": "discovery-service_2main_8c",
+    "title": "discovery service main.c",
     "file": "ascii-chat-discovery-service_main.c.html"
   },
   {
-    "name": "ascii-chat-discovery-service_main.h",
-    "title": "ascii chat discovery service main.h",
+    "name": "discovery-service_2main_8h",
+    "title": "discovery service main.h",
     "file": "ascii-chat-discovery-service_main.h.html"
   },
   {
-    "name": "ascii-chat-discovery-service_server.h",
-    "title": "ascii chat discovery service server.h",
+    "name": "discovery-service_2server_8h",
+    "title": "discovery service server.h",
     "file": "ascii-chat-discovery-service_server.h.html"
   },
   {
-    "name": "ascii-chat-discovery.c",
-    "title": "ascii chat discovery.c",
+    "name": "discovery_8c",
+    "title": "discovery.c",
     "file": "ascii-chat-discovery.c.html"
   },
   {
-    "name": "ascii-chat-discovery_config_t",
-    "title": "ascii chat discovery config t",
+    "name": "discovery_2config_2t",
+    "title": "discovery config t",
     "file": "ascii-chat-discovery_config_t.html"
   },
   {
-    "name": "ascii-chat-discovery_database.c",
-    "title": "ascii chat discovery database.c",
+    "name": "discovery_2database_8c",
+    "title": "discovery database.c",
     "file": "ascii-chat-discovery_database.c.html"
   },
   {
-    "name": "ascii-chat-discovery_keys.c",
-    "title": "ascii chat discovery keys.c",
+    "name": "discovery_2keys_8c",
+    "title": "discovery keys.c",
     "file": "ascii-chat-discovery_keys.c.html"
   },
   {
-    "name": "ascii-chat-discovery_main.c",
-    "title": "ascii chat discovery main.c",
+    "name": "discovery_2main_8c",
+    "title": "discovery main.c",
     "file": "ascii-chat-discovery_main.c.html"
   },
   {
-    "name": "ascii-chat-discovery_main.h",
-    "title": "ascii chat discovery main.h",
+    "name": "discovery_2main_8h",
+    "title": "discovery main.h",
     "file": "ascii-chat-discovery_main.h.html"
   },
   {
-    "name": "ascii-chat-discovery_session_t",
-    "title": "ascii chat discovery session t",
+    "name": "discovery_2session_2t",
+    "title": "discovery session t",
     "file": "ascii-chat-discovery_session_t.html"
   },
   {
-    "name": "ascii-chat-discovery_strings.c",
-    "title": "ascii chat discovery strings.c",
+    "name": "discovery_2strings_8c",
+    "title": "discovery strings.c",
     "file": "ascii-chat-discovery_strings.c.html"
   },
   {
-    "name": "ascii-chat-discovery_thread_state_t",
-    "title": "ascii chat discovery thread state t",
+    "name": "discovery_2thread_2state_2t",
+    "title": "discovery thread state t",
     "file": "ascii-chat-discovery_thread_state_t.html"
   },
   {
-    "name": "ascii-chat-discovery_webrtc.h",
-    "title": "ascii chat discovery webrtc.h",
+    "name": "discovery_2webrtc_8h",
+    "title": "discovery webrtc.h",
     "file": "ascii-chat-discovery_webrtc.h.html"
   },
   {
-    "name": "ascii-chat-dns.c",
-    "title": "ascii chat dns.c",
+    "name": "dns_8c",
+    "title": "dns.c",
     "file": "ascii-chat-dns.c.html"
   },
   {
-    "name": "ascii-chat-double_field_ctx_t",
-    "title": "ascii chat double field ctx t",
+    "name": "double_2field_2ctx_2t",
+    "title": "double field ctx t",
     "file": "ascii-chat-double_field_ctx_t.html"
   },
   {
-    "name": "ascii-chat-election.c",
-    "title": "ascii chat election.c",
+    "name": "election_8c",
+    "title": "election.c",
     "file": "ascii-chat-election.c.html"
   },
   {
-    "name": "ascii-chat-election_result_t",
-    "title": "ascii chat election result t",
+    "name": "election_2result_2t",
+    "title": "election result t",
     "file": "ascii-chat-election_result_t.html"
   },
   {
-    "name": "ascii-chat-embedded.c",
-    "title": "ascii chat embedded.c",
+    "name": "embedded_8c",
+    "title": "embedded.c",
     "file": "ascii-chat-embedded.c.html"
   },
   {
-    "name": "ascii-chat-encoder.c",
-    "title": "ascii chat encoder.c",
+    "name": "encoder_8c",
+    "title": "encoder.c",
     "file": "ascii-chat-encoder.c.html"
   },
   {
-    "name": "ascii-chat-enums.c",
-    "title": "ascii chat enums.c",
+    "name": "enums_8c",
+    "title": "enums.c",
     "file": "ascii-chat-enums.c.html"
   },
   {
-    "name": "ascii-chat-env.c",
-    "title": "ascii chat env.c",
+    "name": "env_8c",
+    "title": "env.c",
     "file": "ascii-chat-env.c.html"
   },
   {
-    "name": "ascii-chat-environment.c",
-    "title": "ascii chat environment.c",
+    "name": "environment_8c",
+    "title": "environment.c",
     "file": "ascii-chat-environment.c.html"
   },
   {
-    "name": "ascii-chat-errors.c",
-    "title": "ascii chat errors.c",
+    "name": "errors_8c",
+    "title": "errors.c",
     "file": "ascii-chat-errors.c.html"
   },
   {
-    "name": "ascii-chat-examples.c",
-    "title": "ascii chat examples.c",
+    "name": "examples_8c",
+    "title": "examples.c",
     "file": "ascii-chat-examples.c.html"
   },
   {
-    "name": "ascii-chat-export.c",
-    "title": "ascii chat export.c",
+    "name": "export_8c",
+    "title": "export.c",
     "file": "ascii-chat-export.c.html"
   },
   {
-    "name": "ascii-chat-ffmpeg_decoder.c",
-    "title": "ascii chat ffmpeg decoder.c",
+    "name": "ffmpeg_2decoder_8c",
+    "title": "ffmpeg decoder.c",
     "file": "ascii-chat-ffmpeg_decoder.c.html"
   },
   {
-    "name": "ascii-chat-ffmpeg_decoder_t",
-    "title": "ascii chat ffmpeg decoder t",
+    "name": "ffmpeg_2decoder_2t",
+    "title": "ffmpeg decoder t",
     "file": "ascii-chat-ffmpeg_decoder_t.html"
   },
   {
-    "name": "ascii-chat-ffmpeg_encoder.c",
-    "title": "ascii chat ffmpeg encoder.c",
+    "name": "ffmpeg_2encoder_8c",
+    "title": "ffmpeg encoder.c",
     "file": "ascii-chat-ffmpeg_encoder.c.html"
   },
   {
-    "name": "ascii-chat-ffmpeg_encoder_s",
-    "title": "ascii chat ffmpeg encoder s",
+    "name": "ffmpeg_2encoder_2s",
+    "title": "ffmpeg encoder s",
     "file": "ascii-chat-ffmpeg_encoder_s.html"
   },
   {
-    "name": "ascii-chat-filesystem.c",
-    "title": "ascii chat filesystem.c",
+    "name": "filesystem_8c",
+    "title": "filesystem.c",
     "file": "ascii-chat-filesystem.c.html"
   },
   {
-    "name": "ascii-chat-find_client_context_t",
-    "title": "ascii chat find client context t",
+    "name": "find_2client_2context_2t",
+    "title": "find client context t",
     "file": "ascii-chat-find_client_context_t.html"
   },
   {
-    "name": "ascii-chat-fish.c",
-    "title": "ascii chat fish.c",
+    "name": "fish_8c",
+    "title": "fish.c",
     "file": "ascii-chat-fish.c.html"
   },
   {
-    "name": "ascii-chat-formatter.c",
-    "title": "ascii chat formatter.c",
+    "name": "formatter_8c",
+    "title": "formatter.c",
     "file": "ascii-chat-formatter.c.html"
   },
   {
-    "name": "ascii-chat-fps.c",
-    "title": "ascii chat fps.c",
+    "name": "fps_8c",
+    "title": "fps.c",
     "file": "ascii-chat-fps.c.html"
   },
   {
-    "name": "ascii-chat-fps_counter.c",
-    "title": "ascii chat fps counter.c",
+    "name": "fps_2counter_8c",
+    "title": "fps counter.c",
     "file": "ascii-chat-fps_counter.c.html"
   },
   {
-    "name": "ascii-chat-fps_counter_s",
-    "title": "ascii chat fps counter s",
+    "name": "fps_2counter_2s",
+    "title": "fps counter s",
     "file": "ascii-chat-fps_counter_s.html"
   },
   {
-    "name": "ascii-chat-frame_buffer.c",
-    "title": "ascii chat frame buffer.c",
+    "name": "frame_2buffer_8c",
+    "title": "frame buffer.c",
     "file": "ascii-chat-frame_buffer.c.html"
   },
   {
-    "name": "ascii-chat-frame_buffer",
-    "title": "ascii chat frame buffer",
+    "name": "frame_2buffer",
+    "title": "frame buffer",
     "file": "ascii-chat-frame_buffer.html"
   },
   {
-    "name": "ascii-chat-frame_queue_s",
-    "title": "ascii chat frame queue s",
+    "name": "frame_2queue_2s",
+    "title": "frame queue s",
     "file": "ascii-chat-frame_queue_s.html"
   },
   {
-    "name": "ascii-chat-general.c",
-    "title": "ascii chat general.c",
+    "name": "general_8c",
+    "title": "general.c",
     "file": "ascii-chat-general.c.html"
   },
   {
-    "name": "ascii-chat-globals.c",
-    "title": "ascii chat globals.c",
+    "name": "globals_8c",
+    "title": "globals.c",
     "file": "ascii-chat-globals.c.html"
   },
   {
-    "name": "ascii-chat-gpg_homedir",
-    "title": "ascii chat gpg homedir",
+    "name": "gpg_2homedir",
+    "title": "gpg homedir",
     "file": "ascii-chat-gpg_homedir.html"
   },
   {
-    "name": "ascii-chat-gpg_keys.c",
-    "title": "ascii chat gpg keys.c",
+    "name": "gpg_2keys_8c",
+    "title": "gpg keys.c",
     "file": "ascii-chat-gpg_keys.c.html"
   },
   {
-    "name": "ascii-chat-grep.c",
-    "title": "ascii chat grep.c",
+    "name": "grep_8c",
+    "title": "grep.c",
     "file": "ascii-chat-grep.c.html"
   },
   {
-    "name": "ascii-chat-grep_pattern_t",
-    "title": "ascii chat grep pattern t",
+    "name": "grep_2pattern_2t",
+    "title": "grep pattern t",
     "file": "ascii-chat-grep_pattern_t.html"
   },
   {
-    "name": "ascii-chat-h265_client_context",
-    "title": "ascii chat h265 client context",
+    "name": "h265_2client_2context",
+    "title": "h265 client context",
     "file": "ascii-chat-h265_client_context.html"
   },
   {
-    "name": "ascii-chat-h265_client_decoder_t",
-    "title": "ascii chat h265 client decoder t",
+    "name": "h265_2client_2decoder_2t",
+    "title": "h265 client decoder t",
     "file": "ascii-chat-h265_client_decoder_t.html"
   },
   {
-    "name": "ascii-chat-h265_decoder",
-    "title": "ascii chat h265 decoder",
+    "name": "h265_2decoder",
+    "title": "h265 decoder",
     "file": "ascii-chat-h265_decoder.html"
   },
   {
-    "name": "ascii-chat-h265_encoder",
-    "title": "ascii chat h265 encoder",
+    "name": "h265_2encoder",
+    "title": "h265 encoder",
     "file": "ascii-chat-h265_encoder.html"
   },
   {
-    "name": "ascii-chat-h265_packet_header_t",
-    "title": "ascii chat h265 packet header t",
+    "name": "h265_2packet_2header_2t",
+    "title": "h265 packet header t",
     "file": "ascii-chat-h265_packet_header_t.html"
   },
   {
-    "name": "ascii-chat-h265_server_context",
-    "title": "ascii chat h265 server context",
+    "name": "h265_2server_2context",
+    "title": "h265 server context",
     "file": "ascii-chat-h265_server_context.html"
   },
   {
-    "name": "ascii-chat-handler_hash_entry_t",
-    "title": "ascii chat handler hash entry t",
+    "name": "handler_2hash_2entry_2t",
+    "title": "handler hash entry t",
     "file": "ascii-chat-handler_hash_entry_t.html"
   },
   {
-    "name": "ascii-chat-help.c",
-    "title": "ascii chat help.c",
+    "name": "help_8c",
+    "title": "help.c",
     "file": "ascii-chat-help.c.html"
   },
   {
-    "name": "ascii-chat-help_api.c",
-    "title": "ascii chat help api.c",
+    "name": "help_2api_8c",
+    "title": "help api.c",
     "file": "ascii-chat-help_api.c.html"
   },
   {
-    "name": "ascii-chat-homedir.c",
-    "title": "ascii chat homedir.c",
+    "name": "homedir_8c",
+    "title": "homedir.c",
     "file": "ascii-chat-homedir.c.html"
   },
   {
-    "name": "ascii-chat-host.c",
-    "title": "ascii chat host.c",
+    "name": "host_8c",
+    "title": "host.c",
     "file": "ascii-chat-host.c.html"
   },
   {
-    "name": "ascii-chat-host.h",
-    "title": "ascii chat host.h",
+    "name": "host_8h",
+    "title": "host.h",
     "file": "ascii-chat-host.h.html"
   },
   {
-    "name": "ascii-chat-host_liveness_t",
-    "title": "ascii chat host liveness t",
+    "name": "host_2liveness_2t",
+    "title": "host liveness t",
     "file": "ascii-chat-host_liveness_t.html"
   },
   {
-    "name": "ascii-chat-http_client.c",
-    "title": "ascii chat http client.c",
+    "name": "http_2client_8c",
+    "title": "http client.c",
     "file": "ascii-chat-http_client.c.html"
   },
   {
-    "name": "ascii-chat-http_server.cpp",
-    "title": "ascii chat http server.cpp",
+    "name": "http_2server_2cpp",
+    "title": "http server.cpp",
     "file": "ascii-chat-http_server.cpp.html"
   },
   {
-    "name": "ascii-chat-http_server.h",
-    "title": "ascii chat http server.h",
+    "name": "http_2server_8h",
+    "title": "http server.h",
     "file": "ascii-chat-http_server.h.html"
   },
   {
-    "name": "ascii-chat-https_keys.c",
-    "title": "ascii chat https keys.c",
+    "name": "https_2keys_8c",
+    "title": "https keys.c",
     "file": "ascii-chat-https_keys.c.html"
   },
   {
-    "name": "ascii-chat-ice.c",
-    "title": "ascii chat ice.c",
+    "name": "ice_8c",
+    "title": "ice.c",
     "file": "ascii-chat-ice.c.html"
   },
   {
-    "name": "ascii-chat-ice_selected_pair.cpp",
-    "title": "ascii chat ice selected pair.cpp",
+    "name": "ice_2selected_2pair_2cpp",
+    "title": "ice selected pair.cpp",
     "file": "ascii-chat-ice_selected_pair.cpp.html"
   },
   {
-    "name": "ascii-chat-identity.c",
-    "title": "ascii chat identity.c",
+    "name": "identity_8c",
+    "title": "identity.c",
     "file": "ascii-chat-identity.c.html"
   },
   {
-    "name": "ascii-chat-image_source_t",
-    "title": "ascii chat image source t",
+    "name": "image_2source_2t",
+    "title": "image source t",
     "file": "ascii-chat-image_source_t.html"
   },
   {
-    "name": "ascii-chat-init.h",
-    "title": "ascii chat init.h",
+    "name": "init_8h",
+    "title": "init.h",
     "file": "ascii-chat-init.h.html"
   },
   {
-    "name": "ascii-chat-instrument_cov.c",
-    "title": "ascii chat instrument cov.c",
+    "name": "instrument_2cov_8c",
+    "title": "instrument cov.c",
     "file": "ascii-chat-instrument_cov.c.html"
   },
   {
-    "name": "ascii-chat-instrument_log.c",
-    "title": "ascii chat instrument log.c",
+    "name": "instrument_2log_8c",
+    "title": "instrument log.c",
     "file": "ascii-chat-instrument_log.c.html"
   },
   {
-    "name": "ascii-chat-int_field_ctx_t",
-    "title": "ascii chat int field ctx t",
+    "name": "int_2field_2ctx_2t",
+    "title": "int field ctx t",
     "file": "ascii-chat-int_field_ctx_t.html"
   },
   {
-    "name": "ascii-chat-io.c",
-    "title": "ascii chat io.c",
+    "name": "io_8c",
+    "title": "io.c",
     "file": "ascii-chat-io.c.html"
   },
   {
-    "name": "ascii-chat-ip.c",
-    "title": "ascii chat ip.c",
+    "name": "ip_8c",
+    "title": "ip.c",
     "file": "ascii-chat-ip.c.html"
   },
   {
-    "name": "ascii-chat-json.c",
-    "title": "ascii chat json.c",
+    "name": "json_8c",
+    "title": "json.c",
     "file": "ascii-chat-json.c.html"
   },
   {
-    "name": "ascii-chat-json.h",
-    "title": "ascii chat json.h",
+    "name": "json_8h",
+    "title": "json.h",
     "file": "ascii-chat-json.h.html"
   },
   {
-    "name": "ascii-chat-keepalive.c",
-    "title": "ascii chat keepalive.c",
+    "name": "keepalive_8c",
+    "title": "keepalive.c",
     "file": "ascii-chat-keepalive.c.html"
   },
   {
-    "name": "ascii-chat-keepalive.h",
-    "title": "ascii chat keepalive.h",
+    "name": "keepalive_8h",
+    "title": "keepalive.h",
     "file": "ascii-chat-keepalive.h.html"
   },
   {
-    "name": "ascii-chat-keyboard_handler.c",
-    "title": "ascii chat keyboard handler.c",
+    "name": "keyboard_2handler_8c",
+    "title": "keyboard handler.c",
     "file": "ascii-chat-keyboard_handler.c.html"
   },
   {
-    "name": "ascii-chat-keyboard_handler.h",
-    "title": "ascii chat keyboard handler.h",
+    "name": "keyboard_2handler_8h",
+    "title": "keyboard handler.h",
     "file": "ascii-chat-keyboard_handler.h.html"
   },
   {
-    "name": "ascii-chat-keyboard_help.c",
-    "title": "ascii chat keyboard help.c",
+    "name": "keyboard_2help_8c",
+    "title": "keyboard help.c",
     "file": "ascii-chat-keyboard_help.c.html"
   },
   {
-    "name": "ascii-chat-keys.c",
-    "title": "ascii chat keys.c",
+    "name": "keys_8c",
+    "title": "keys.c",
     "file": "ascii-chat-keys.c.html"
   },
   {
-    "name": "ascii-chat-keys_validation.c",
-    "title": "ascii chat keys validation.c",
+    "name": "keys_2validation_8c",
+    "title": "keys validation.c",
     "file": "ascii-chat-keys_validation.c.html"
   },
   {
-    "name": "ascii-chat-known_hosts.c",
-    "title": "ascii chat known hosts.c",
+    "name": "known_2hosts_8c",
+    "title": "known hosts.c",
     "file": "ascii-chat-known_hosts.c.html"
   },
   {
-    "name": "ascii-chat-layout.c",
-    "title": "ascii chat layout.c",
+    "name": "layout_8c",
+    "title": "layout.c",
     "file": "ascii-chat-layout.c.html"
   },
   {
-    "name": "ascii-chat-levenshtein.c",
-    "title": "ascii chat levenshtein.c",
+    "name": "levenshtein_8c",
+    "title": "levenshtein.c",
     "file": "ascii-chat-levenshtein.c.html"
   },
   {
-    "name": "ascii-chat-lib_audio_audio.c",
-    "title": "ascii chat lib audio audio.c",
+    "name": "lib_2audio_2audio_8c",
+    "title": "lib audio audio.c",
     "file": "ascii-chat-lib_audio_audio.c.html"
   },
   {
-    "name": "ascii-chat-lib_crypto_crypto.c",
-    "title": "ascii chat lib crypto crypto.c",
+    "name": "lib_2crypto_2crypto_8c",
+    "title": "lib crypto crypto.c",
     "file": "ascii-chat-lib_crypto_crypto.c.html"
   },
   {
-    "name": "ascii-chat-lib_crypto_handshake_client.c",
-    "title": "ascii chat lib crypto handshake client.c",
+    "name": "lib_2crypto_2handshake_2client_8c",
+    "title": "lib crypto handshake client.c",
     "file": "ascii-chat-lib_crypto_handshake_client.c.html"
   },
   {
-    "name": "ascii-chat-lib_crypto_handshake_server.c",
-    "title": "ascii chat lib crypto handshake server.c",
+    "name": "lib_2crypto_2handshake_2server_8c",
+    "title": "lib crypto handshake server.c",
     "file": "ascii-chat-lib_crypto_handshake_server.c.html"
   },
   {
-    "name": "ascii-chat-lib_discovery_session.c",
-    "title": "ascii chat lib discovery session.c",
+    "name": "lib_2discovery_2session_8c",
+    "title": "lib discovery session.c",
     "file": "ascii-chat-lib_discovery_session.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_acip_client.c",
-    "title": "ascii chat lib network acip client.c",
+    "name": "lib_2network_2acip_2client_8c",
+    "title": "lib network acip client.c",
     "file": "ascii-chat-lib_network_acip_client.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_acip_server.c",
-    "title": "ascii chat lib network acip server.c",
+    "name": "lib_2network_2acip_2server_8c",
+    "title": "lib network acip server.c",
     "file": "ascii-chat-lib_network_acip_server.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_client.c",
-    "title": "ascii chat lib network client.c",
+    "name": "lib_2network_2client_8c",
+    "title": "lib network client.c",
     "file": "ascii-chat-lib_network_client.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_tcp_client.c",
-    "title": "ascii chat lib network tcp client.c",
+    "name": "lib_2network_2tcp_2client_8c",
+    "title": "lib network tcp client.c",
     "file": "ascii-chat-lib_network_tcp_client.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_tcp_server.c",
-    "title": "ascii chat lib network tcp server.c",
+    "name": "lib_2network_2tcp_2server_8c",
+    "title": "lib network tcp server.c",
     "file": "ascii-chat-lib_network_tcp_server.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_webrtc_webrtc.c",
-    "title": "ascii chat lib network webrtc webrtc.c",
+    "name": "lib_2network_2webrtc_2webrtc_8c",
+    "title": "lib network webrtc webrtc.c",
     "file": "ascii-chat-lib_network_webrtc_webrtc.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_websocket_client.c",
-    "title": "ascii chat lib network websocket client.c",
+    "name": "lib_2network_2websocket_2client_8c",
+    "title": "lib network websocket client.c",
     "file": "ascii-chat-lib_network_websocket_client.c.html"
   },
   {
-    "name": "ascii-chat-lib_network_websocket_server.c",
-    "title": "ascii chat lib network websocket server.c",
+    "name": "lib_2network_2websocket_2server_8c",
+    "title": "lib network websocket server.c",
     "file": "ascii-chat-lib_network_websocket_server.c.html"
   },
   {
-    "name": "ascii-chat-lib_options_manpage_content_options.c",
-    "title": "ascii chat lib options manpage content options.c",
+    "name": "lib_2options_2manpage_2content_2options_8c",
+    "title": "lib options manpage content options.c",
     "file": "ascii-chat-lib_options_manpage_content_options.c.html"
   },
   {
-    "name": "ascii-chat-lib_options_options.c",
-    "title": "ascii chat lib options options.c",
+    "name": "lib_2options_2options_8c",
+    "title": "lib options options.c",
     "file": "ascii-chat-lib_options_options.c.html"
   },
   {
-    "name": "ascii-chat-lib_options_registry_audio.c",
-    "title": "ascii chat lib options registry audio.c",
+    "name": "lib_2options_2registry_2audio_8c",
+    "title": "lib options registry audio.c",
     "file": "ascii-chat-lib_options_registry_audio.c.html"
   },
   {
-    "name": "ascii-chat-lib_options_registry_display.c",
-    "title": "ascii chat lib options registry display.c",
+    "name": "lib_2options_2registry_2display_8c",
+    "title": "lib options registry display.c",
     "file": "ascii-chat-lib_options_registry_display.c.html"
   },
   {
-    "name": "ascii-chat-lib_platform_wasm_init.c",
-    "title": "ascii chat lib platform wasm init.c",
+    "name": "lib_2platform_2wasm_2init_8c",
+    "title": "lib platform wasm init.c",
     "file": "ascii-chat-lib_platform_wasm_init.c.html"
   },
   {
-    "name": "ascii-chat-lib_platform_wasm_stubs_audio.h",
-    "title": "ascii chat lib platform wasm stubs audio.h",
+    "name": "lib_2platform_2wasm_2stubs_2audio_8h",
+    "title": "lib platform wasm stubs audio.h",
     "file": "ascii-chat-lib_platform_wasm_stubs_audio.h.html"
   },
   {
-    "name": "ascii-chat-lib_platform_wasm_stubs_crypto.c",
-    "title": "ascii chat lib platform wasm stubs crypto.c",
+    "name": "lib_2platform_2wasm_2stubs_2crypto_8c",
+    "title": "lib platform wasm stubs crypto.c",
     "file": "ascii-chat-lib_platform_wasm_stubs_crypto.c.html"
   },
   {
-    "name": "ascii-chat-lib_util_display.c",
-    "title": "ascii chat lib util display.c",
+    "name": "lib_2util_2display_8c",
+    "title": "lib util display.c",
     "file": "ascii-chat-lib_util_display.c.html"
   },
   {
-    "name": "ascii-chat-lifecycle.c",
-    "title": "ascii chat lifecycle.c",
+    "name": "lifecycle_8c",
+    "title": "lifecycle.c",
     "file": "ascii-chat-lifecycle.c.html"
   },
   {
-    "name": "ascii-chat-linux_filesystem.c",
-    "title": "ascii chat linux filesystem.c",
+    "name": "linux_2filesystem_8c",
+    "title": "linux filesystem.c",
     "file": "ascii-chat-linux_filesystem.c.html"
   },
   {
-    "name": "ascii-chat-linux_keepawake.c",
-    "title": "ascii chat linux keepawake.c",
+    "name": "linux_2keepawake_8c",
+    "title": "linux keepawake.c",
     "file": "ascii-chat-linux_keepawake.c.html"
   },
   {
-    "name": "ascii-chat-linux_system.c",
-    "title": "ascii chat linux system.c",
+    "name": "linux_2system_8c",
+    "title": "linux system.c",
     "file": "ascii-chat-linux_system.c.html"
   },
   {
-    "name": "ascii-chat-lldb_controller.cpp",
-    "title": "ascii chat lldb controller.cpp",
+    "name": "lldb_2controller_2cpp",
+    "title": "lldb controller.cpp",
     "file": "ascii-chat-lldb_controller.cpp.html"
   },
   {
-    "name": "ascii-chat-lldb_controller.h",
-    "title": "ascii chat lldb controller.h",
+    "name": "lldb_2controller_8h",
+    "title": "lldb controller.h",
     "file": "ascii-chat-lldb_controller.h.html"
   },
   {
-    "name": "ascii-chat-log_format.c",
-    "title": "ascii chat log format.c",
+    "name": "log_2format_8c",
+    "title": "log format.c",
     "file": "ascii-chat-log_format.c.html"
   },
   {
-    "name": "ascii-chat-log_log.c",
-    "title": "ascii chat log log.c",
+    "name": "log_2log_8c",
+    "title": "log log.c",
     "file": "ascii-chat-log_log.c.html"
   },
   {
-    "name": "ascii-chat-log_named.c",
-    "title": "ascii chat log named.c",
+    "name": "log_2named_8c",
+    "title": "log named.c",
     "file": "ascii-chat-log_named.c.html"
   },
   {
-    "name": "ascii-chat-log_record",
-    "title": "ascii chat log record",
+    "name": "log_2record",
+    "title": "log record",
     "file": "ascii-chat-log_record.html"
   },
   {
-    "name": "ascii-chat-log_search_state_t",
-    "title": "ascii chat log search state t",
+    "name": "log_2search_2state_2t",
+    "title": "log search state t",
     "file": "ascii-chat-log_search_state_t.html"
   },
   {
-    "name": "ascii-chat-macos_filesystem.c",
-    "title": "ascii chat macos filesystem.c",
+    "name": "macos_2filesystem_8c",
+    "title": "macos filesystem.c",
     "file": "ascii-chat-macos_filesystem.c.html"
   },
   {
-    "name": "ascii-chat-macos_keepawake.c",
-    "title": "ascii chat macos keepawake.c",
+    "name": "macos_2keepawake_8c",
+    "title": "macos keepawake.c",
     "file": "ascii-chat-macos_keepawake.c.html"
   },
   {
-    "name": "ascii-chat-macos_system.c",
-    "title": "ascii chat macos system.c",
+    "name": "macos_2system_8c",
+    "title": "macos system.c",
     "file": "ascii-chat-macos_system.c.html"
   },
   {
-    "name": "ascii-chat-main.c",
-    "title": "ascii chat main.c",
+    "name": "main_8c",
+    "title": "main.c",
     "file": "ascii-chat-main.c.html"
   },
   {
-    "name": "ascii-chat-main.cpp",
-    "title": "ascii chat main.cpp",
+    "name": "main_2cpp",
+    "title": "main.cpp",
     "file": "ascii-chat-main.cpp.html"
   },
   {
-    "name": "ascii-chat-main.h",
-    "title": "ascii chat main.h",
+    "name": "main_8h",
+    "title": "main.h",
     "file": "ascii-chat-main.h.html"
   },
   {
-    "name": "ascii-chat-mdns_query_state_t",
-    "title": "ascii chat mdns query state t",
+    "name": "mdns_2query_2state_2t",
+    "title": "mdns query state t",
     "file": "ascii-chat-mdns_query_state_t.html"
   },
   {
-    "name": "ascii-chat-mdns_thread_context_t",
-    "title": "ascii chat mdns thread context t",
+    "name": "mdns_2thread_2context_2t",
+    "title": "mdns thread context t",
     "file": "ascii-chat-mdns_thread_context_t.html"
   },
   {
-    "name": "ascii-chat-media.c",
-    "title": "ascii chat media.c",
+    "name": "media_8c",
+    "title": "media.c",
     "file": "ascii-chat-media.c.html"
   },
   {
-    "name": "ascii-chat-media_font.c",
-    "title": "ascii chat media font.c",
+    "name": "media_2font_8c",
+    "title": "media font.c",
     "file": "ascii-chat-media_font.c.html"
   },
   {
-    "name": "ascii-chat-media_render_terminal.c",
-    "title": "ascii chat media render terminal.c",
+    "name": "media_2render_2terminal_8c",
+    "title": "media render terminal.c",
     "file": "ascii-chat-media_render_terminal.c.html"
   },
   {
-    "name": "ascii-chat-media_source_t",
-    "title": "ascii chat media source t",
+    "name": "media_2source_2t",
+    "title": "media source t",
     "file": "ascii-chat-media_source_t.html"
   },
   {
-    "name": "ascii-chat-memory_backend_t",
-    "title": "ascii chat memory backend t",
+    "name": "memory_2backend_2t",
+    "title": "memory backend t",
     "file": "ascii-chat-memory_backend_t.html"
   },
   {
-    "name": "ascii-chat-merger.c",
-    "title": "ascii chat merger.c",
+    "name": "merger_8c",
+    "title": "merger.c",
     "file": "ascii-chat-merger.c.html"
   },
   {
-    "name": "ascii-chat-metadata.c",
-    "title": "ascii chat metadata.c",
+    "name": "metadata_8c",
+    "title": "metadata.c",
     "file": "ascii-chat-metadata.c.html"
   },
   {
-    "name": "ascii-chat-metrics.c",
-    "title": "ascii chat metrics.c",
+    "name": "metrics_8c",
+    "title": "metrics.c",
     "file": "ascii-chat-metrics.c.html"
   },
   {
-    "name": "ascii-chat-migration_context_t",
-    "title": "ascii chat migration context t",
+    "name": "migration_2context_2t",
+    "title": "migration context t",
     "file": "ascii-chat-migration_context_t.html"
   },
   {
-    "name": "ascii-chat-migration_ctx_t",
-    "title": "ascii chat migration ctx t",
+    "name": "migration_2ctx_2t",
+    "title": "migration ctx t",
     "file": "ascii-chat-migration_ctx_t.html"
   },
   {
-    "name": "ascii-chat-mirror.c",
-    "title": "ascii chat mirror.c",
+    "name": "mirror_8c",
+    "title": "mirror.c",
     "file": "ascii-chat-mirror.c.html"
   },
   {
-    "name": "ascii-chat-mirror_main.c",
-    "title": "ascii chat mirror main.c",
+    "name": "mirror_2main_8c",
+    "title": "mirror main.c",
     "file": "ascii-chat-mirror_main.c.html"
   },
   {
-    "name": "ascii-chat-mirror_main.h",
-    "title": "ascii chat mirror main.h",
+    "name": "mirror_2main_8h",
+    "title": "mirror main.h",
     "file": "ascii-chat-mirror_main.h.html"
   },
   {
-    "name": "ascii-chat-mixer.c",
-    "title": "ascii chat mixer.c",
+    "name": "mixer_8c",
+    "title": "mixer.c",
     "file": "ascii-chat-mixer.c.html"
   },
   {
-    "name": "ascii-chat-mmap.c",
-    "title": "ascii chat mmap.c",
+    "name": "mmap_8c",
+    "title": "mmap.c",
     "file": "ascii-chat-mmap.c.html"
   },
   {
-    "name": "ascii-chat-mode_bit_name_t",
-    "title": "ascii chat mode bit name t",
+    "name": "mode_2bit_2name_2t",
+    "title": "mode bit name t",
     "file": "ascii-chat-mode_bit_name_t.html"
   },
   {
-    "name": "ascii-chat-mode_descriptor_t",
-    "title": "ascii chat mode descriptor t",
+    "name": "mode_2descriptor_2t",
+    "title": "mode descriptor t",
     "file": "ascii-chat-mode_descriptor_t.html"
   },
   {
-    "name": "ascii-chat-mode_metadata_t",
-    "title": "ascii chat mode metadata t",
+    "name": "mode_2metadata_2t",
+    "title": "mode metadata t",
     "file": "ascii-chat-mode_metadata_t.html"
   },
   {
-    "name": "ascii-chat-musl_c23_compat.c",
-    "title": "ascii chat musl c23 compat.c",
+    "name": "musl_2c23_2compat_8c",
+    "title": "musl c23 compat.c",
     "file": "ascii-chat-musl_c23_compat.c.html"
   },
   {
-    "name": "ascii-chat-named_entry",
-    "title": "ascii chat named entry",
+    "name": "named_2entry",
+    "title": "named entry",
     "file": "ascii-chat-named_entry.html"
   },
   {
-    "name": "ascii-chat-named_iter_entry_t",
-    "title": "ascii chat named iter entry t",
+    "name": "named_2iter_2entry_2t",
+    "title": "named iter entry t",
     "file": "ascii-chat-named_iter_entry_t.html"
   },
   {
-    "name": "ascii-chat-named_registry_t",
-    "title": "ascii chat named registry t",
+    "name": "named_2registry_2t",
+    "title": "named registry t",
     "file": "ascii-chat-named_registry_t.html"
   },
   {
-    "name": "ascii-chat-nat.c",
-    "title": "ascii chat nat.c",
+    "name": "nat_8c",
+    "title": "nat.c",
     "file": "ascii-chat-nat.c.html"
   },
   {
-    "name": "ascii-chat-nat.h",
-    "title": "ascii chat nat.h",
+    "name": "nat_8h",
+    "title": "nat.h",
     "file": "ascii-chat-nat.h.html"
   },
   {
-    "name": "ascii-chat-nat_quality_t",
-    "title": "ascii chat nat quality t",
+    "name": "nat_2quality_2t",
+    "title": "nat quality t",
     "file": "ascii-chat-nat_quality_t.html"
   },
   {
-    "name": "ascii-chat-negotiate.c",
-    "title": "ascii chat negotiate.c",
+    "name": "negotiate_8c",
+    "title": "negotiate.c",
     "file": "ascii-chat-negotiate.c.html"
   },
   {
-    "name": "ascii-chat-negotiate.h",
-    "title": "ascii chat negotiate.h",
+    "name": "negotiate_8h",
+    "title": "negotiate.h",
     "file": "ascii-chat-negotiate.h.html"
   },
   {
-    "name": "ascii-chat-negotiate_ctx_t",
-    "title": "ascii chat negotiate ctx t",
+    "name": "negotiate_2ctx_2t",
+    "title": "negotiate ctx t",
     "file": "ascii-chat-negotiate_ctx_t.html"
   },
   {
-    "name": "ascii-chat-neon_background.c",
-    "title": "ascii chat neon background.c",
+    "name": "neon_2background_8c",
+    "title": "neon background.c",
     "file": "ascii-chat-neon_background.c.html"
   },
   {
-    "name": "ascii-chat-neon_foreground.c",
-    "title": "ascii chat neon foreground.c",
+    "name": "neon_2foreground_8c",
+    "title": "neon foreground.c",
     "file": "ascii-chat-neon_foreground.c.html"
   },
   {
-    "name": "ascii-chat-neon_halfblock.c",
-    "title": "ascii chat neon halfblock.c",
+    "name": "neon_2halfblock_8c",
+    "title": "neon halfblock.c",
     "file": "ascii-chat-neon_halfblock.c.html"
   },
   {
-    "name": "ascii-chat-network_acip_handlers.c",
-    "title": "ascii chat network acip handlers.c",
+    "name": "network_2acip_2handlers_8c",
+    "title": "network acip handlers.c",
     "file": "ascii-chat-network_acip_handlers.c.html"
   },
   {
-    "name": "ascii-chat-network_frame_validator.c",
-    "title": "ascii chat network frame validator.c",
+    "name": "network_2frame_2validator_8c",
+    "title": "network frame validator.c",
     "file": "ascii-chat-network_frame_validator.c.html"
   },
   {
-    "name": "ascii-chat-network_mdns_mdns.c",
-    "title": "ascii chat network mdns mdns.c",
+    "name": "network_2mdns_2mdns_8c",
+    "title": "network mdns mdns.c",
     "file": "ascii-chat-network_mdns_mdns.c.html"
   },
   {
-    "name": "ascii-chat-network_network.c",
-    "title": "ascii chat network network.c",
+    "name": "network_2network_8c",
+    "title": "network network.c",
     "file": "ascii-chat-network_network.c.html"
   },
   {
-    "name": "ascii-chat-network_packet_parsing.c",
-    "title": "ascii chat network packet parsing.c",
+    "name": "network_2packet_2parsing_8c",
+    "title": "network packet parsing.c",
     "file": "ascii-chat-network_packet_parsing.c.html"
   },
   {
-    "name": "ascii-chat-network_rate_limit_memory.c",
-    "title": "ascii chat network rate limit memory.c",
+    "name": "network_2rate_2limit_2memory_8c",
+    "title": "network rate limit memory.c",
     "file": "ascii-chat-network_rate_limit_memory.c.html"
   },
   {
-    "name": "ascii-chat-nouns.c",
-    "title": "ascii chat nouns.c",
+    "name": "nouns_8c",
+    "title": "nouns.c",
     "file": "ascii-chat-nouns.c.html"
   },
   {
-    "name": "ascii-chat-openpgp.c",
-    "title": "ascii chat openpgp.c",
+    "name": "openpgp_8c",
+    "title": "openpgp.c",
     "file": "ascii-chat-openpgp.c.html"
   },
   {
-    "name": "ascii-chat-option_parsed_value_t",
-    "title": "ascii chat option parsed value t",
+    "name": "option_2parsed_2value_2t",
+    "title": "option parsed value t",
     "file": "ascii-chat-option_parsed_value_t.html"
   },
   {
-    "name": "ascii-chat-option_type_handler_t",
-    "title": "ascii chat option type handler t",
+    "name": "option_2type_2handler_2t",
+    "title": "option type handler t",
     "file": "ascii-chat-option_type_handler_t.html"
   },
   {
-    "name": "ascii-chat-options.h",
-    "title": "ascii chat options.h",
+    "name": "options_8h",
+    "title": "options.h",
     "file": "ascii-chat-options.h.html"
   },
   {
-    "name": "ascii-chat-options_builder_handlers.c",
-    "title": "ascii chat options builder handlers.c",
+    "name": "options_2builder_2handlers_8c",
+    "title": "options builder handlers.c",
     "file": "ascii-chat-options_builder_handlers.c.html"
   },
   {
-    "name": "ascii-chat-options_common.c",
-    "title": "ascii chat options common.c",
+    "name": "options_2common_8c",
+    "title": "options common.c",
     "file": "ascii-chat-options_common.c.html"
   },
   {
-    "name": "ascii-chat-options_manpage.c",
-    "title": "ascii chat options manpage.c",
+    "name": "options_2manpage_8c",
+    "title": "options manpage.c",
     "file": "ascii-chat-options_manpage.c.html"
   },
   {
-    "name": "ascii-chat-options_parsing_actions.c",
-    "title": "ascii chat options parsing actions.c",
+    "name": "options_2parsing_2actions_8c",
+    "title": "options parsing actions.c",
     "file": "ascii-chat-options_parsing_actions.c.html"
   },
   {
-    "name": "ascii-chat-options_registry_database.c",
-    "title": "ascii chat options registry database.c",
+    "name": "options_2registry_2database_8c",
+    "title": "options registry database.c",
     "file": "ascii-chat-options_registry_database.c.html"
   },
   {
-    "name": "ascii-chat-options_registry_logging.c",
-    "title": "ascii chat options registry logging.c",
+    "name": "options_2registry_2logging_8c",
+    "title": "options registry logging.c",
     "file": "ascii-chat-options_registry_logging.c.html"
   },
   {
-    "name": "ascii-chat-options_registry_mode_defaults.c",
-    "title": "ascii chat options registry mode defaults.c",
+    "name": "options_2registry_2mode_2defaults_8c",
+    "title": "options registry mode defaults.c",
     "file": "ascii-chat-options_registry_mode_defaults.c.html"
   },
   {
-    "name": "ascii-chat-options_registry_network.c",
-    "title": "ascii chat options registry network.c",
+    "name": "options_2registry_2network_8c",
+    "title": "options registry network.c",
     "file": "ascii-chat-options_registry_network.c.html"
   },
   {
-    "name": "ascii-chat-options_registry_terminal.c",
-    "title": "ascii chat options registry terminal.c",
+    "name": "options_2registry_2terminal_8c",
+    "title": "options registry terminal.c",
     "file": "ascii-chat-options_registry_terminal.c.html"
   },
   {
-    "name": "ascii-chat-options_registry_webcam.c",
-    "title": "ascii chat options registry webcam.c",
+    "name": "options_2registry_2webcam_8c",
+    "title": "options registry webcam.c",
     "file": "ascii-chat-options_registry_webcam.c.html"
   },
   {
-    "name": "ascii-chat-options_strings.c",
-    "title": "ascii chat options strings.c",
+    "name": "options_2strings_8c",
+    "title": "options strings.c",
     "file": "ascii-chat-options_strings.c.html"
   },
   {
-    "name": "ascii-chat-opus.c",
-    "title": "ascii chat opus.c",
+    "name": "opus_8c",
+    "title": "opus.c",
     "file": "ascii-chat-opus.c.html"
   },
   {
-    "name": "ascii-chat-output_buffer.c",
-    "title": "ascii chat output buffer.c",
+    "name": "output_2buffer_8c",
+    "title": "output buffer.c",
     "file": "ascii-chat-output_buffer.c.html"
   },
   {
-    "name": "ascii-chat-packet.c",
-    "title": "ascii chat packet.c",
+    "name": "packet_8c",
+    "title": "packet.c",
     "file": "ascii-chat-packet.c.html"
   },
   {
-    "name": "ascii-chat-palette.c",
-    "title": "ascii chat palette.c",
+    "name": "palette_8c",
+    "title": "palette.c",
     "file": "ascii-chat-palette.c.html"
   },
   {
-    "name": "ascii-chat-panic_tool.cpp",
-    "title": "ascii chat panic tool.cpp",
+    "name": "panic_2tool_2cpp",
+    "title": "panic tool.cpp",
     "file": "ascii-chat-panic_tool.cpp.html"
   },
   {
-    "name": "ascii-chat-parallel_connect.c",
-    "title": "ascii chat parallel connect.c",
+    "name": "parallel_2connect_8c",
+    "title": "parallel connect.c",
     "file": "ascii-chat-parallel_connect.c.html"
   },
   {
-    "name": "ascii-chat-parser.c",
-    "title": "ascii chat parser.c",
+    "name": "parser_8c",
+    "title": "parser.c",
     "file": "ascii-chat-parser.c.html"
   },
   {
-    "name": "ascii-chat-parsers.c",
-    "title": "ascii chat parsers.c",
+    "name": "parsers_8c",
+    "title": "parsers.c",
     "file": "ascii-chat-parsers.c.html"
   },
   {
-    "name": "ascii-chat-participant.c",
-    "title": "ascii chat participant.c",
+    "name": "participant_8c",
+    "title": "participant.c",
     "file": "ascii-chat-participant.c.html"
   },
   {
-    "name": "ascii-chat-participant.h",
-    "title": "ascii chat participant.h",
+    "name": "participant_8h",
+    "title": "participant.h",
     "file": "ascii-chat-participant.h.html"
   },
   {
-    "name": "ascii-chat-password.c",
-    "title": "ascii chat password.c",
+    "name": "password_8c",
+    "title": "password.c",
     "file": "ascii-chat-password.c.html"
   },
   {
-    "name": "ascii-chat-path.c",
-    "title": "ascii chat path.c",
+    "name": "path_8c",
+    "title": "path.c",
     "file": "ascii-chat-path.c.html"
   },
   {
-    "name": "ascii-chat-pcre2.c",
-    "title": "ascii chat pcre2.c",
+    "name": "pcre2_8c",
+    "title": "pcre2.c",
     "file": "ascii-chat-pcre2.c.html"
   },
   {
-    "name": "ascii-chat-pcre2_singleton",
-    "title": "ascii chat pcre2 singleton",
+    "name": "pcre2_2singleton",
+    "title": "pcre2 singleton",
     "file": "ascii-chat-pcre2_singleton.html"
   },
   {
-    "name": "ascii-chat-peer_entry_t",
-    "title": "ascii chat peer entry t",
+    "name": "peer_2entry_2t",
+    "title": "peer entry t",
     "file": "ascii-chat-peer_entry_t.html"
   },
   {
-    "name": "ascii-chat-peer_manager.c",
-    "title": "ascii chat peer manager.c",
+    "name": "peer_2manager_8c",
+    "title": "peer manager.c",
     "file": "ascii-chat-peer_manager.c.html"
   },
   {
-    "name": "ascii-chat-pem.c",
-    "title": "ascii chat pem.c",
+    "name": "pem_8c",
+    "title": "pem.c",
     "file": "ascii-chat-pem.c.html"
   },
   {
-    "name": "ascii-chat-pem_object_t",
-    "title": "ascii chat pem object t",
+    "name": "pem_2object_2t",
+    "title": "pem object t",
     "file": "ascii-chat-pem_object_t.html"
   },
   {
-    "name": "ascii-chat-pipeline.c",
-    "title": "ascii chat pipeline.c",
+    "name": "pipeline_8c",
+    "title": "pipeline.c",
     "file": "ascii-chat-pipeline.c.html"
   },
   {
-    "name": "ascii-chat-pipeline.h",
-    "title": "ascii chat pipeline.h",
+    "name": "pipeline_8h",
+    "title": "pipeline.h",
     "file": "ascii-chat-pipeline.h.html"
   },
   {
-    "name": "ascii-chat-pipeline_frame_t",
-    "title": "ascii chat pipeline frame t",
+    "name": "pipeline_2frame_2t",
+    "title": "pipeline frame t",
     "file": "ascii-chat-pipeline_frame_t.html"
   },
   {
-    "name": "ascii-chat-platform_linux_font.c",
-    "title": "ascii chat platform linux font.c",
+    "name": "platform_2linux_2font_8c",
+    "title": "platform linux font.c",
     "file": "ascii-chat-platform_linux_font.c.html"
   },
   {
-    "name": "ascii-chat-platform_macos_font.c",
-    "title": "ascii chat platform macos font.c",
+    "name": "platform_2macos_2font_8c",
+    "title": "platform macos font.c",
     "file": "ascii-chat-platform_macos_font.c.html"
   },
   {
-    "name": "ascii-chat-platform_mutex.c",
-    "title": "ascii chat platform mutex.c",
+    "name": "platform_2mutex_8c",
+    "title": "platform mutex.c",
     "file": "ascii-chat-platform_mutex.c.html"
   },
   {
-    "name": "ascii-chat-platform_terminal.c",
-    "title": "ascii chat platform terminal.c",
+    "name": "platform_2terminal_8c",
+    "title": "platform terminal.c",
     "file": "ascii-chat-platform_terminal.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_backtrace.c",
-    "title": "ascii chat platform wasm backtrace.c",
+    "name": "platform_2wasm_2backtrace_8c",
+    "title": "platform wasm backtrace.c",
     "file": "ascii-chat-platform_wasm_backtrace.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_lifecycle.c",
-    "title": "ascii chat platform wasm lifecycle.c",
+    "name": "platform_2wasm_2lifecycle_8c",
+    "title": "platform wasm lifecycle.c",
     "file": "ascii-chat-platform_wasm_lifecycle.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_log.c",
-    "title": "ascii chat platform wasm log.c",
+    "name": "platform_2wasm_2log_8c",
+    "title": "platform wasm log.c",
     "file": "ascii-chat-platform_wasm_log.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_string.c",
-    "title": "ascii chat platform wasm string.c",
+    "name": "platform_2wasm_2string_8c",
+    "title": "platform wasm string.c",
     "file": "ascii-chat-platform_wasm_string.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_stubs_actions.c",
-    "title": "ascii chat platform wasm stubs actions.c",
+    "name": "platform_2wasm_2stubs_2actions_8c",
+    "title": "platform wasm stubs actions.c",
     "file": "ascii-chat-platform_wasm_stubs_actions.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_stubs_log.c",
-    "title": "ascii chat platform wasm stubs log.c",
+    "name": "platform_2wasm_2stubs_2log_8c",
+    "title": "platform wasm stubs log.c",
     "file": "ascii-chat-platform_wasm_stubs_log.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_stubs_manpage.c",
-    "title": "ascii chat platform wasm stubs manpage.c",
+    "name": "platform_2wasm_2stubs_2manpage_8c",
+    "title": "platform wasm stubs manpage.c",
     "file": "ascii-chat-platform_wasm_stubs_manpage.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_stubs_mode_defaults.c",
-    "title": "ascii chat platform wasm stubs mode defaults.c",
+    "name": "platform_2wasm_2stubs_2mode_2defaults_8c",
+    "title": "platform wasm stubs mode defaults.c",
     "file": "ascii-chat-platform_wasm_stubs_mode_defaults.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_stubs_terminal.c",
-    "title": "ascii chat platform wasm stubs terminal.c",
+    "name": "platform_2wasm_2stubs_2terminal_8c",
+    "title": "platform wasm stubs terminal.c",
     "file": "ascii-chat-platform_wasm_stubs_terminal.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_terminal.c",
-    "title": "ascii chat platform wasm terminal.c",
+    "name": "platform_2wasm_2terminal_8c",
+    "title": "platform wasm terminal.c",
     "file": "ascii-chat-platform_wasm_terminal.c.html"
   },
   {
-    "name": "ascii-chat-platform_wasm_time.c",
-    "title": "ascii chat platform wasm time.c",
+    "name": "platform_2wasm_2time_8c",
+    "title": "platform wasm time.c",
     "file": "ascii-chat-platform_wasm_time.c.html"
   },
   {
-    "name": "ascii-chat-portaudio.h",
-    "title": "ascii chat portaudio.h",
+    "name": "portaudio_8h",
+    "title": "portaudio.h",
     "file": "ascii-chat-portaudio.h.html"
   },
   {
-    "name": "ascii-chat-positional.c",
-    "title": "ascii chat positional.c",
+    "name": "positional_8c",
+    "title": "positional.c",
     "file": "ascii-chat-positional.c.html"
   },
   {
-    "name": "ascii-chat-powershell.c",
-    "title": "ascii chat powershell.c",
+    "name": "powershell_8c",
+    "title": "powershell.c",
     "file": "ascii-chat-powershell.c.html"
   },
   {
-    "name": "ascii-chat-presets.c",
-    "title": "ascii chat presets.c",
+    "name": "presets_8c",
+    "title": "presets.c",
     "file": "ascii-chat-presets.c.html"
   },
   {
-    "name": "ascii-chat-public_api.c",
-    "title": "ascii chat public api.c",
+    "name": "public_2api_8c",
+    "title": "public api.c",
     "file": "ascii-chat-public_api.c.html"
   },
   {
-    "name": "ascii-chat-query.c",
-    "title": "ascii chat query.c",
+    "name": "query_8c",
+    "title": "query.c",
     "file": "ascii-chat-query.c.html"
   },
   {
-    "name": "ascii-chat-queue.c",
-    "title": "ascii chat queue.c",
+    "name": "queue_8c",
+    "title": "queue.c",
     "file": "ascii-chat-queue.c.html"
   },
   {
-    "name": "ascii-chat-rate_event_s",
-    "title": "ascii chat rate event s",
+    "name": "rate_2event_2s",
+    "title": "rate event s",
     "file": "ascii-chat-rate_event_s.html"
   },
   {
-    "name": "ascii-chat-rate_limit.c",
-    "title": "ascii chat rate limit.c",
+    "name": "rate_2limit_8c",
+    "title": "rate limit.c",
     "file": "ascii-chat-rate_limit.c.html"
   },
   {
-    "name": "ascii-chat-rate_limiter_s",
-    "title": "ascii chat rate limiter s",
+    "name": "rate_2limiter_2s",
+    "title": "rate limiter s",
     "file": "ascii-chat-rate_limiter_s.html"
   },
   {
-    "name": "ascii-chat-rcu.c",
-    "title": "ascii chat rcu.c",
+    "name": "rcu_8c",
+    "title": "rcu.c",
     "file": "ascii-chat-rcu.c.html"
   },
   {
-    "name": "ascii-chat-reader.c",
-    "title": "ascii chat reader.c",
+    "name": "reader_8c",
+    "title": "reader.c",
     "file": "ascii-chat-reader.c.html"
   },
   {
-    "name": "ascii-chat-regex.c",
-    "title": "ascii chat regex.c",
+    "name": "regex_8c",
+    "title": "regex.c",
     "file": "ascii-chat-regex.c.html"
   },
   {
-    "name": "ascii-chat-registry.c",
-    "title": "ascii chat registry.c",
+    "name": "registry_8c",
+    "title": "registry.c",
     "file": "ascii-chat-registry.c.html"
   },
   {
-    "name": "ascii-chat-remote_client_info_t",
-    "title": "ascii chat remote client info t",
+    "name": "remote_2client_2info_2t",
+    "title": "remote client info t",
     "file": "ascii-chat-remote_client_info_t.html"
   },
   {
-    "name": "ascii-chat-render_file_ctx_s",
-    "title": "ascii chat render file ctx s",
+    "name": "render_2file_2ctx_2s",
+    "title": "render file ctx s",
     "file": "ascii-chat-render_file_ctx_s.html"
   },
   {
-    "name": "ascii-chat-renderer.c",
-    "title": "ascii chat renderer.c",
+    "name": "renderer_8c",
+    "title": "renderer.c",
     "file": "ascii-chat-renderer.c.html"
   },
   {
-    "name": "ascii-chat-report.c",
-    "title": "ascii chat report.c",
+    "name": "report_8c",
+    "title": "report.c",
     "file": "ascii-chat-report.c.html"
   },
   {
-    "name": "ascii-chat-report_config",
-    "title": "ascii chat report config",
+    "name": "report_2config",
+    "title": "report config",
     "file": "ascii-chat-report_config.html"
   },
   {
-    "name": "ascii-chat-resources.c",
-    "title": "ascii chat resources.c",
+    "name": "resources_8c",
+    "title": "resources.c",
     "file": "ascii-chat-resources.c.html"
   },
   {
-    "name": "ascii-chat-ring_consensus_t",
-    "title": "ascii chat ring consensus t",
+    "name": "ring_2consensus_2t",
+    "title": "ring consensus t",
     "file": "ascii-chat-ring_consensus_t.html"
   },
   {
-    "name": "ascii-chat-ringbuffer.c",
-    "title": "ascii chat ringbuffer.c",
+    "name": "ringbuffer_8c",
+    "title": "ringbuffer.c",
     "file": "ascii-chat-ringbuffer.c.html"
   },
   {
-    "name": "ascii-chat-rle.c",
-    "title": "ascii chat rle.c",
+    "name": "rle_8c",
+    "title": "rle.c",
     "file": "ascii-chat-rle.c.html"
   },
   {
-    "name": "ascii-chat-rwlock.c",
-    "title": "ascii chat rwlock.c",
+    "name": "rwlock_8c",
+    "title": "rwlock.c",
     "file": "ascii-chat-rwlock.c.html"
   },
   {
-    "name": "ascii-chat-scalar_background.c",
-    "title": "ascii chat scalar background.c",
+    "name": "scalar_2background_8c",
+    "title": "scalar background.c",
     "file": "ascii-chat-scalar_background.c.html"
   },
   {
-    "name": "ascii-chat-scalar_foreground.c",
-    "title": "ascii chat scalar foreground.c",
+    "name": "scalar_2foreground_8c",
+    "title": "scalar foreground.c",
     "file": "ascii-chat-scalar_foreground.c.html"
   },
   {
-    "name": "ascii-chat-scalar_halfblock.c",
-    "title": "ascii chat scalar halfblock.c",
+    "name": "scalar_2halfblock_8c",
+    "title": "scalar halfblock.c",
     "file": "ascii-chat-scalar_halfblock.c.html"
   },
   {
-    "name": "ascii-chat-schema.c",
-    "title": "ascii chat schema.c",
+    "name": "schema_8c",
+    "title": "schema.c",
     "file": "ascii-chat-schema.c.html"
   },
   {
-    "name": "ascii-chat-sdp.c",
-    "title": "ascii chat sdp.c",
+    "name": "sdp_8c",
+    "title": "sdp.c",
     "file": "ascii-chat-sdp.c.html"
   },
   {
-    "name": "ascii-chat-search.c",
-    "title": "ascii chat search.c",
+    "name": "search_8c",
+    "title": "search.c",
     "file": "ascii-chat-search.c.html"
   },
   {
-    "name": "ascii-chat-security.c",
-    "title": "ascii chat security.c",
+    "name": "security_8c",
+    "title": "security.c",
     "file": "ascii-chat-security.c.html"
   },
   {
-    "name": "ascii-chat-send.c",
-    "title": "ascii chat send.c",
+    "name": "send_8c",
+    "title": "send.c",
     "file": "ascii-chat-send.c.html"
   },
   {
-    "name": "ascii-chat-server_client.h",
-    "title": "ascii chat server client.h",
+    "name": "server_2client_8h",
+    "title": "server client.h",
     "file": "ascii-chat-server_client.h.html"
   },
   {
-    "name": "ascii-chat-server_context_t",
-    "title": "ascii chat server context t",
+    "name": "server_2context_2t",
+    "title": "server context t",
     "file": "ascii-chat-server_context_t.html"
   },
   {
-    "name": "ascii-chat-server_crypto.h",
-    "title": "ascii chat server crypto.h",
+    "name": "server_2crypto_8h",
+    "title": "server crypto.h",
     "file": "ascii-chat-server_crypto.h.html"
   },
   {
-    "name": "ascii-chat-server_like.c",
-    "title": "ascii chat server like.c",
+    "name": "server_2like_8c",
+    "title": "server like.c",
     "file": "ascii-chat-server_like.c.html"
   },
   {
-    "name": "ascii-chat-server_like.h",
-    "title": "ascii chat server like.h",
+    "name": "server_2like_8h",
+    "title": "server like.h",
     "file": "ascii-chat-server_like.h.html"
   },
   {
-    "name": "ascii-chat-server_main.c",
-    "title": "ascii chat server main.c",
+    "name": "server_2main_8c",
+    "title": "server main.c",
     "file": "ascii-chat-server_main.c.html"
   },
   {
-    "name": "ascii-chat-server_main.h",
-    "title": "ascii chat server main.h",
+    "name": "server_2main_8h",
+    "title": "server main.h",
     "file": "ascii-chat-server_main.h.html"
   },
   {
-    "name": "ascii-chat-server_protocol.c",
-    "title": "ascii chat server protocol.c",
+    "name": "server_2protocol_8c",
+    "title": "server protocol.c",
     "file": "ascii-chat-server_protocol.c.html"
   },
   {
-    "name": "ascii-chat-server_protocol.h",
-    "title": "ascii chat server protocol.h",
+    "name": "server_2protocol_8h",
+    "title": "server protocol.h",
     "file": "ascii-chat-server_protocol.h.html"
   },
   {
-    "name": "ascii-chat-server_render.c",
-    "title": "ascii chat server render.c",
+    "name": "server_2render_8c",
+    "title": "server render.c",
     "file": "ascii-chat-server_render.c.html"
   },
   {
-    "name": "ascii-chat-server_render.h",
-    "title": "ascii chat server render.h",
+    "name": "server_2render_8h",
+    "title": "server render.h",
     "file": "ascii-chat-server_render.h.html"
   },
   {
-    "name": "ascii-chat-server_stats_t",
-    "title": "ascii chat server stats t",
+    "name": "server_2stats_2t",
+    "title": "server stats t",
     "file": "ascii-chat-server_stats_t.html"
   },
   {
-    "name": "ascii-chat-session.h",
-    "title": "ascii chat session.h",
+    "name": "session_8h",
+    "title": "session.h",
     "file": "ascii-chat-session.h.html"
   },
   {
-    "name": "ascii-chat-session",
-    "title": "ascii chat session",
+    "name": "session",
+    "title": "session",
     "file": "ascii-chat-session.html"
   },
   {
-    "name": "ascii-chat-session_audio_ctx",
-    "title": "ascii chat session audio ctx",
+    "name": "session_2audio_2ctx",
+    "title": "session audio ctx",
     "file": "ascii-chat-session_audio_ctx.html"
   },
   {
-    "name": "ascii-chat-session_audio_source_t",
-    "title": "ascii chat session audio source t",
+    "name": "session_2audio_2source_2t",
+    "title": "session audio source t",
     "file": "ascii-chat-session_audio_source_t.html"
   },
   {
-    "name": "ascii-chat-session_capture_config_t",
-    "title": "ascii chat session capture config t",
+    "name": "session_2capture_2config_2t",
+    "title": "session capture config t",
     "file": "ascii-chat-session_capture_config_t.html"
   },
   {
-    "name": "ascii-chat-session_capture_ctx",
-    "title": "ascii chat session capture ctx",
+    "name": "session_2capture_2ctx",
+    "title": "session capture ctx",
     "file": "ascii-chat-session_capture_ctx.html"
   },
   {
-    "name": "ascii-chat-session_client_like_config",
-    "title": "ascii chat session client like config",
+    "name": "session_2client_2like_2config",
+    "title": "session client like config",
     "file": "ascii-chat-session_client_like_config.html"
   },
   {
-    "name": "ascii-chat-session_consensus",
-    "title": "ascii chat session consensus",
+    "name": "session_2consensus",
+    "title": "session consensus",
     "file": "ascii-chat-session_consensus.html"
   },
   {
-    "name": "ascii-chat-session_consensus_callbacks_t",
-    "title": "ascii chat session consensus callbacks t",
+    "name": "session_2consensus_2callbacks_2t",
+    "title": "session consensus callbacks t",
     "file": "ascii-chat-session_consensus_callbacks_t.html"
   },
   {
-    "name": "ascii-chat-session_display_config_t",
-    "title": "ascii chat session display config t",
+    "name": "session_2display_2config_2t",
+    "title": "session display config t",
     "file": "ascii-chat-session_display_config_t.html"
   },
   {
-    "name": "ascii-chat-session_display_ctx",
-    "title": "ascii chat session display ctx",
+    "name": "session_2display_2ctx",
+    "title": "session display ctx",
     "file": "ascii-chat-session_display_ctx.html"
   },
   {
-    "name": "ascii-chat-session_h265_client.h",
-    "title": "ascii chat session h265 client.h",
+    "name": "session_2h265_2client_8h",
+    "title": "session h265 client.h",
     "file": "ascii-chat-session_h265_client.h.html"
   },
   {
-    "name": "ascii-chat-session_h265_protocol.h",
-    "title": "ascii chat session h265 protocol.h",
+    "name": "session_2h265_2protocol_8h",
+    "title": "session h265 protocol.h",
     "file": "ascii-chat-session_h265_protocol.h.html"
   },
   {
-    "name": "ascii-chat-session_h265_server.h",
-    "title": "ascii chat session h265 server.h",
+    "name": "session_2h265_2server_8h",
+    "title": "session h265 server.h",
     "file": "ascii-chat-session_h265_server.h.html"
   },
   {
-    "name": "ascii-chat-session_host",
-    "title": "ascii chat session host",
+    "name": "session_2host",
+    "title": "session host",
     "file": "ascii-chat-session_host.html"
   },
   {
-    "name": "ascii-chat-session_host_callbacks_t",
-    "title": "ascii chat session host callbacks t",
+    "name": "session_2host_2callbacks_2t",
+    "title": "session host callbacks t",
     "file": "ascii-chat-session_host_callbacks_t.html"
   },
   {
-    "name": "ascii-chat-session_host_client_info_t",
-    "title": "ascii chat session host client info t",
+    "name": "session_2host_2client_2info_2t",
+    "title": "session host client info t",
     "file": "ascii-chat-session_host_client_info_t.html"
   },
   {
-    "name": "ascii-chat-session_host_client_t",
-    "title": "ascii chat session host client t",
+    "name": "session_2host_2client_2t",
+    "title": "session host client t",
     "file": "ascii-chat-session_host_client_t.html"
   },
   {
-    "name": "ascii-chat-session_host_config_t",
-    "title": "ascii chat session host config t",
+    "name": "session_2host_2config_2t",
+    "title": "session host config t",
     "file": "ascii-chat-session_host_config_t.html"
   },
   {
-    "name": "ascii-chat-session_log_buffer.c",
-    "title": "ascii chat session log buffer.c",
+    "name": "session_2log_2buffer_8c",
+    "title": "session log buffer.c",
     "file": "ascii-chat-session_log_buffer.c.html"
   },
   {
-    "name": "ascii-chat-session_log_buffer.h",
-    "title": "ascii chat session log buffer.h",
+    "name": "session_2log_2buffer_8h",
+    "title": "session log buffer.h",
     "file": "ascii-chat-session_log_buffer.h.html"
   },
   {
-    "name": "ascii-chat-session_log_buffer",
-    "title": "ascii chat session log buffer",
+    "name": "session_2log_2buffer",
+    "title": "session log buffer",
     "file": "ascii-chat-session_log_buffer.html"
   },
   {
-    "name": "ascii-chat-session_participant",
-    "title": "ascii chat session participant",
+    "name": "session_2participant",
+    "title": "session participant",
     "file": "ascii-chat-session_participant.html"
   },
   {
-    "name": "ascii-chat-session_participant_callbacks_t",
-    "title": "ascii chat session participant callbacks t",
+    "name": "session_2participant_2callbacks_2t",
+    "title": "session participant callbacks t",
     "file": "ascii-chat-session_participant_callbacks_t.html"
   },
   {
-    "name": "ascii-chat-session_participant_config_t",
-    "title": "ascii chat session participant config t",
+    "name": "session_2participant_2config_2t",
+    "title": "session participant config t",
     "file": "ascii-chat-session_participant_config_t.html"
   },
   {
-    "name": "ascii-chat-session_pipeline_s",
-    "title": "ascii chat session pipeline s",
+    "name": "session_2pipeline_2s",
+    "title": "session pipeline s",
     "file": "ascii-chat-session_pipeline_s.html"
   },
   {
-    "name": "ascii-chat-session_server_like_config",
-    "title": "ascii chat session server like config",
+    "name": "session_2server_2like_2config",
+    "title": "session server like config",
     "file": "ascii-chat-session_server_like_config.html"
   },
   {
-    "name": "ascii-chat-session_settings_t",
-    "title": "ascii chat session settings t",
+    "name": "session_2settings_2t",
+    "title": "session settings t",
     "file": "ascii-chat-session_settings_t.html"
   },
   {
-    "name": "ascii-chat-setting_map_entry_t",
-    "title": "ascii chat setting map entry t",
+    "name": "setting_2map_2entry_2t",
+    "title": "setting map entry t",
     "file": "ascii-chat-setting_map_entry_t.html"
   },
   {
-    "name": "ascii-chat-settings.c",
-    "title": "ascii chat settings.c",
+    "name": "settings_8c",
+    "title": "settings.c",
     "file": "ascii-chat-settings.c.html"
   },
   {
-    "name": "ascii-chat-settings.h",
-    "title": "ascii chat settings.h",
+    "name": "settings_8h",
+    "title": "settings.h",
     "file": "ascii-chat-settings.h.html"
   },
   {
-    "name": "ascii-chat-sgr.c",
-    "title": "ascii chat sgr.c",
+    "name": "sgr_8c",
+    "title": "sgr.c",
     "file": "ascii-chat-sgr.c.html"
   },
   {
-    "name": "ascii-chat-sgr256_seq_t",
-    "title": "ascii chat sgr256 seq t",
+    "name": "sgr256_2seq_2t",
+    "title": "sgr256 seq t",
     "file": "ascii-chat-sgr256_seq_t.html"
   },
   {
-    "name": "ascii-chat-sha1.c",
-    "title": "ascii chat sha1.c",
+    "name": "sha1_8c",
+    "title": "sha1.c",
     "file": "ascii-chat-sha1.c.html"
   },
   {
-    "name": "ascii-chat-signaling.c",
-    "title": "ascii chat signaling.c",
+    "name": "signaling_8c",
+    "title": "signaling.c",
     "file": "ascii-chat-signaling.c.html"
   },
   {
-    "name": "ascii-chat-signaling.h",
-    "title": "ascii chat signaling.h",
+    "name": "signaling_8h",
+    "title": "signaling.h",
     "file": "ascii-chat-signaling.h.html"
   },
   {
-    "name": "ascii-chat-signing.c",
-    "title": "ascii chat signing.c",
+    "name": "signing_8c",
+    "title": "signing.c",
     "file": "ascii-chat-signing.c.html"
   },
   {
-    "name": "ascii-chat-socket.c",
-    "title": "ascii chat socket.c",
+    "name": "socket_8c",
+    "title": "socket.c",
     "file": "ascii-chat-socket.c.html"
   },
   {
-    "name": "ascii-chat-source.c",
-    "title": "ascii chat source.c",
+    "name": "source_8c",
+    "title": "source.c",
     "file": "ascii-chat-source.c.html"
   },
   {
-    "name": "ascii-chat-splash.c",
-    "title": "ascii chat splash.c",
+    "name": "splash_8c",
+    "title": "splash.c",
     "file": "ascii-chat-splash.c.html"
   },
   {
-    "name": "ascii-chat-splash_header_ctx_t",
-    "title": "ascii chat splash header ctx t",
+    "name": "splash_2header_2ctx_2t",
+    "title": "splash header ctx t",
     "file": "ascii-chat-splash_header_ctx_t.html"
   },
   {
-    "name": "ascii-chat-sqlite.c",
-    "title": "ascii chat sqlite.c",
+    "name": "sqlite_8c",
+    "title": "sqlite.c",
     "file": "ascii-chat-sqlite.c.html"
   },
   {
-    "name": "ascii-chat-sqlite_backend_t",
-    "title": "ascii chat sqlite backend t",
+    "name": "sqlite_2backend_2t",
+    "title": "sqlite backend t",
     "file": "ascii-chat-sqlite_backend_t.html"
   },
   {
-    "name": "ascii-chat-src_client_audio.c",
-    "title": "ascii chat src client audio.c",
+    "name": "src_2client_2audio_8c",
+    "title": "src client audio.c",
     "file": "ascii-chat-src_client_audio.c.html"
   },
   {
-    "name": "ascii-chat-src_client_audio.h",
-    "title": "ascii chat src client audio.h",
+    "name": "src_2client_2audio_8h",
+    "title": "src client audio.h",
     "file": "ascii-chat-src_client_audio.h.html"
   },
   {
-    "name": "ascii-chat-src_client_crypto.c",
-    "title": "ascii chat src client crypto.c",
+    "name": "src_2client_2crypto_8c",
+    "title": "src client crypto.c",
     "file": "ascii-chat-src_client_crypto.c.html"
   },
   {
-    "name": "ascii-chat-src_client_display.c",
-    "title": "ascii chat src client display.c",
+    "name": "src_2client_2display_8c",
+    "title": "src client display.c",
     "file": "ascii-chat-src_client_display.c.html"
   },
   {
-    "name": "ascii-chat-src_client_server.c",
-    "title": "ascii chat src client server.c",
+    "name": "src_2client_2server_8c",
+    "title": "src client server.c",
     "file": "ascii-chat-src_client_server.c.html"
   },
   {
-    "name": "ascii-chat-src_client_webrtc.c",
-    "title": "ascii chat src client webrtc.c",
+    "name": "src_2client_2webrtc_8c",
+    "title": "src client webrtc.c",
     "file": "ascii-chat-src_client_webrtc.c.html"
   },
   {
-    "name": "ascii-chat-src_common_session_audio.c",
-    "title": "ascii chat src common session audio.c",
+    "name": "src_2common_2session_2audio_8c",
+    "title": "src common session audio.c",
     "file": "ascii-chat-src_common_session_audio.c.html"
   },
   {
-    "name": "ascii-chat-src_common_session_audio.h",
-    "title": "ascii chat src common session audio.h",
+    "name": "src_2common_2session_2audio_8h",
+    "title": "src common session audio.h",
     "file": "ascii-chat-src_common_session_audio.h.html"
   },
   {
-    "name": "ascii-chat-src_common_session_display.c",
-    "title": "ascii chat src common session display.c",
+    "name": "src_2common_2session_2display_8c",
+    "title": "src common session display.c",
     "file": "ascii-chat-src_common_session_display.c.html"
   },
   {
-    "name": "ascii-chat-src_discovery-service_server.c",
-    "title": "ascii chat src discovery service server.c",
+    "name": "src_2discovery-service_2server_8c",
+    "title": "src discovery service server.c",
     "file": "ascii-chat-src_discovery-service_server.c.html"
   },
   {
-    "name": "ascii-chat-src_discovery_session.c",
-    "title": "ascii chat src discovery session.c",
+    "name": "src_2discovery_2session_8c",
+    "title": "src discovery session.c",
     "file": "ascii-chat-src_discovery_session.c.html"
   },
   {
-    "name": "ascii-chat-src_discovery_webrtc.c",
-    "title": "ascii chat src discovery webrtc.c",
+    "name": "src_2discovery_2webrtc_8c",
+    "title": "src discovery webrtc.c",
     "file": "ascii-chat-src_discovery_webrtc.c.html"
   },
   {
-    "name": "ascii-chat-src_server_client.c",
-    "title": "ascii chat src server client.c",
+    "name": "src_2server_2client_8c",
+    "title": "src server client.c",
     "file": "ascii-chat-src_server_client.c.html"
   },
   {
-    "name": "ascii-chat-src_server_crypto.c",
-    "title": "ascii chat src server crypto.c",
+    "name": "src_2server_2crypto_8c",
+    "title": "src server crypto.c",
     "file": "ascii-chat-src_server_crypto.c.html"
   },
   {
-    "name": "ascii-chat-src_session_h265_client.c",
-    "title": "ascii chat src session h265 client.c",
+    "name": "src_2session_2h265_2client_8c",
+    "title": "src session h265 client.c",
     "file": "ascii-chat-src_session_h265_client.c.html"
   },
   {
-    "name": "ascii-chat-src_session_h265_server.c",
-    "title": "ascii chat src session h265 server.c",
+    "name": "src_2session_2h265_2server_8c",
+    "title": "src session h265 server.c",
     "file": "ascii-chat-src_session_h265_server.c.html"
   },
   {
-    "name": "ascii-chat-src_web_client.c",
-    "title": "ascii chat src web client.c",
+    "name": "src_2web_2client_8c",
+    "title": "src web client.c",
     "file": "ascii-chat-src_web_client.c.html"
   },
   {
-    "name": "ascii-chat-src_web_common_init.c",
-    "title": "ascii chat src web common init.c",
+    "name": "src_2web_2common_2init_8c",
+    "title": "src web common init.c",
     "file": "ascii-chat-src_web_common_init.c.html"
   },
   {
-    "name": "ascii-chat-src_web_common_options.c",
-    "title": "ascii chat src web common options.c",
+    "name": "src_2web_2common_2options_8c",
+    "title": "src web common options.c",
     "file": "ascii-chat-src_web_common_options.c.html"
   },
   {
-    "name": "ascii-chat-sse2_background.c",
-    "title": "ascii chat sse2 background.c",
+    "name": "sse2_2background_8c",
+    "title": "sse2 background.c",
     "file": "ascii-chat-sse2_background.c.html"
   },
   {
-    "name": "ascii-chat-sse2_foreground.c",
-    "title": "ascii chat sse2 foreground.c",
+    "name": "sse2_2foreground_8c",
+    "title": "sse2 foreground.c",
     "file": "ascii-chat-sse2_foreground.c.html"
   },
   {
-    "name": "ascii-chat-ssh_agent.c",
-    "title": "ascii chat ssh agent.c",
+    "name": "ssh_2agent_8c",
+    "title": "ssh agent.c",
     "file": "ascii-chat-ssh_agent.c.html"
   },
   {
-    "name": "ascii-chat-ssh_keys.c",
-    "title": "ascii chat ssh keys.c",
+    "name": "ssh_2keys_8c",
+    "title": "ssh keys.c",
     "file": "ascii-chat-ssh_keys.c.html"
   },
   {
-    "name": "ascii-chat-ssse3_background.c",
-    "title": "ascii chat ssse3 background.c",
+    "name": "ssse3_2background_8c",
+    "title": "ssse3 background.c",
     "file": "ascii-chat-ssse3_background.c.html"
   },
   {
-    "name": "ascii-chat-ssse3_foreground.c",
-    "title": "ascii chat ssse3 foreground.c",
+    "name": "ssse3_2foreground_8c",
+    "title": "ssse3 foreground.c",
     "file": "ascii-chat-ssse3_foreground.c.html"
   },
   {
-    "name": "ascii-chat-state.c",
-    "title": "ascii chat state.c",
+    "name": "state_8c",
+    "title": "state.c",
     "file": "ascii-chat-state.c.html"
   },
   {
-    "name": "ascii-chat-stats.c",
-    "title": "ascii chat stats.c",
+    "name": "stats_8c",
+    "title": "stats.c",
     "file": "ascii-chat-stats.c.html"
   },
   {
-    "name": "ascii-chat-stats.h",
-    "title": "ascii chat stats.h",
+    "name": "stats_8h",
+    "title": "stats.h",
     "file": "ascii-chat-stats.h.html"
   },
   {
-    "name": "ascii-chat-status.c",
-    "title": "ascii chat status.c",
+    "name": "status_8c",
+    "title": "status.c",
     "file": "ascii-chat-status.c.html"
   },
   {
-    "name": "ascii-chat-stdbool.h",
-    "title": "ascii chat stdbool.h",
+    "name": "stdbool_8h",
+    "title": "stdbool.h",
     "file": "ascii-chat-stdbool.h.html"
   },
   {
-    "name": "ascii-chat-stdin_buffer_reader_t",
-    "title": "ascii chat stdin buffer reader t",
+    "name": "stdin_2buffer_2reader_2t",
+    "title": "stdin buffer reader t",
     "file": "ascii-chat-stdin_buffer_reader_t.html"
   },
   {
-    "name": "ascii-chat-stdin_buffer_t",
-    "title": "ascii chat stdin buffer t",
+    "name": "stdin_2buffer_2t",
+    "title": "stdin buffer t",
     "file": "ascii-chat-stdin_buffer_t.html"
   },
   {
-    "name": "ascii-chat-stream.c",
-    "title": "ascii chat stream.c",
+    "name": "stream_8c",
+    "title": "stream.c",
     "file": "ascii-chat-stream.c.html"
   },
   {
-    "name": "ascii-chat-stream.h",
-    "title": "ascii chat stream.h",
+    "name": "stream_8h",
+    "title": "stream.h",
     "file": "ascii-chat-stream.h.html"
   },
   {
-    "name": "ascii-chat-string_field_ctx_t",
-    "title": "ascii chat string field ctx t",
+    "name": "string_2field_2ctx_2t",
+    "title": "string field ctx t",
     "file": "ascii-chat-string_field_ctx_t.html"
   },
   {
-    "name": "ascii-chat-stun.c",
-    "title": "ascii chat stun.c",
+    "name": "stun_8c",
+    "title": "stun.c",
     "file": "ascii-chat-stun.c.html"
   },
   {
-    "name": "ascii-chat-sve_background.c",
-    "title": "ascii chat sve background.c",
+    "name": "sve_2background_8c",
+    "title": "sve background.c",
     "file": "ascii-chat-sve_background.c.html"
   },
   {
-    "name": "ascii-chat-sve_foreground.c",
-    "title": "ascii chat sve foreground.c",
+    "name": "sve_2foreground_8c",
+    "title": "sve foreground.c",
     "file": "ascii-chat-sve_foreground.c.html"
   },
   {
-    "name": "ascii-chat-symbol_entry_t",
-    "title": "ascii chat symbol entry t",
+    "name": "symbol_2entry_2t",
+    "title": "symbol entry t",
     "file": "ascii-chat-symbol_entry_t.html"
   },
   {
-    "name": "ascii-chat-symbols.c",
-    "title": "ascii chat symbols.c",
+    "name": "symbols_8c",
+    "title": "symbols.c",
     "file": "ascii-chat-symbols.c.html"
   },
   {
-    "name": "ascii-chat-sync.c",
-    "title": "ascii chat sync.c",
+    "name": "sync_8c",
+    "title": "sync.c",
     "file": "ascii-chat-sync.c.html"
   },
   {
-    "name": "ascii-chat-sync_buffer_t",
-    "title": "ascii chat sync buffer t",
+    "name": "sync_2buffer_2t",
+    "title": "sync buffer t",
     "file": "ascii-chat-sync_buffer_t.html"
   },
   {
-    "name": "ascii-chat-system.c",
-    "title": "ascii chat system.c",
+    "name": "system_8c",
+    "title": "system.c",
     "file": "ascii-chat-system.c.html"
   },
   {
-    "name": "ascii-chat-tcp_transport.c",
-    "title": "ascii chat tcp transport.c",
+    "name": "tcp_2transport_8c",
+    "title": "tcp transport.c",
     "file": "ascii-chat-tcp_transport.c.html"
   },
   {
-    "name": "ascii-chat-tcp_transport_data_t",
-    "title": "ascii chat tcp transport data t",
+    "name": "tcp_2transport_2data_2t",
+    "title": "tcp transport data t",
     "file": "ascii-chat-tcp_transport_data_t.html"
   },
   {
-    "name": "ascii-chat-terminal_fd_reader_s",
-    "title": "ascii chat terminal fd reader s",
+    "name": "terminal_2fd_2reader_2s",
+    "title": "terminal fd reader s",
     "file": "ascii-chat-terminal_fd_reader_s.html"
   },
   {
-    "name": "ascii-chat-terminal_fd_writer_s",
-    "title": "ascii chat terminal fd writer s",
+    "name": "terminal_2fd_2writer_2s",
+    "title": "terminal fd writer s",
     "file": "ascii-chat-terminal_fd_writer_s.html"
   },
   {
-    "name": "ascii-chat-terminal_renderer_s",
-    "title": "ascii chat terminal renderer s",
+    "name": "terminal_2renderer_2s",
+    "title": "terminal renderer s",
     "file": "ascii-chat-terminal_renderer_s.html"
   },
   {
-    "name": "ascii-chat-terminal_screen.c",
-    "title": "ascii chat terminal screen.c",
+    "name": "terminal_2screen_8c",
+    "title": "terminal screen.c",
     "file": "ascii-chat-terminal_screen.c.html"
   },
   {
-    "name": "ascii-chat-tests_common.c",
-    "title": "ascii chat tests common.c",
+    "name": "tests_2common_8c",
+    "title": "tests common.c",
     "file": "ascii-chat-tests_common.c.html"
   },
   {
-    "name": "ascii-chat-tests_logging.c",
-    "title": "ascii chat tests logging.c",
+    "name": "tests_2logging_8c",
+    "title": "tests logging.c",
     "file": "ascii-chat-tests_logging.c.html"
   },
   {
-    "name": "ascii-chat-thread.c",
-    "title": "ascii chat thread.c",
+    "name": "thread_8c",
+    "title": "thread.c",
     "file": "ascii-chat-thread.c.html"
   },
   {
-    "name": "ascii-chat-thread_entry",
-    "title": "ascii chat thread entry",
+    "name": "thread_2entry",
+    "title": "thread entry",
     "file": "ascii-chat-thread_entry.html"
   },
   {
-    "name": "ascii-chat-thread_filter_list",
-    "title": "ascii chat thread filter list",
+    "name": "thread_2filter_2list",
+    "title": "thread filter list",
     "file": "ascii-chat-thread_filter_list.html"
   },
   {
-    "name": "ascii-chat-thread_lock_stack_t",
-    "title": "ascii chat thread lock stack t",
+    "name": "thread_2lock_2stack_2t",
+    "title": "thread lock stack t",
     "file": "ascii-chat-thread_lock_stack_t.html"
   },
   {
-    "name": "ascii-chat-thread_pool.c",
-    "title": "ascii chat thread pool.c",
+    "name": "thread_2pool_8c",
+    "title": "thread pool.c",
     "file": "ascii-chat-thread_pool.c.html"
   },
   {
-    "name": "ascii-chat-thread_registry_entry_t",
-    "title": "ascii chat thread registry entry t",
+    "name": "thread_2registry_2entry_2t",
+    "title": "thread registry entry t",
     "file": "ascii-chat-thread_registry_entry_t.html"
   },
   {
-    "name": "ascii-chat-threading.c",
-    "title": "ascii chat threading.c",
+    "name": "threading_8c",
+    "title": "threading.c",
     "file": "ascii-chat-threading.c.html"
   },
   {
-    "name": "ascii-chat-todo",
-    "title": "ascii chat todo",
+    "name": "todo",
+    "title": "todo",
     "file": "ascii-chat-todo.html"
   },
   {
-    "name": "ascii-chat-topology.c",
-    "title": "ascii chat topology.c",
+    "name": "topology_8c",
+    "title": "topology.c",
     "file": "ascii-chat-topology.c.html"
   },
   {
-    "name": "ascii-chat-turn_credentials.c",
-    "title": "ascii chat turn credentials.c",
+    "name": "turn_2credentials_8c",
+    "title": "turn credentials.c",
     "file": "ascii-chat-turn_credentials.c.html"
   },
   {
-    "name": "ascii-chat-type_check_context",
-    "title": "ascii chat type check context",
+    "name": "type_2check_2context",
+    "title": "type check context",
     "file": "ascii-chat-type_check_context.html"
   },
   {
-    "name": "ascii-chat-ui_mdns.c",
-    "title": "ascii chat ui mdns.c",
+    "name": "ui_2mdns_8c",
+    "title": "ui mdns.c",
     "file": "ascii-chat-ui_mdns.c.html"
   },
   {
-    "name": "ascii-chat-update_checker.c",
-    "title": "ascii chat update checker.c",
+    "name": "update_2checker_8c",
+    "title": "update checker.c",
     "file": "ascii-chat-update_checker.c.html"
   },
   {
-    "name": "ascii-chat-upnp.c",
-    "title": "ascii chat upnp.c",
+    "name": "upnp_8c",
+    "title": "upnp.c",
     "file": "ascii-chat-upnp.c.html"
   },
   {
-    "name": "ascii-chat-url.c",
-    "title": "ascii chat url.c",
+    "name": "url_8c",
+    "title": "url.c",
     "file": "ascii-chat-url.c.html"
   },
   {
-    "name": "ascii-chat-usage.c",
-    "title": "ascii chat usage.c",
+    "name": "usage_8c",
+    "title": "usage.c",
     "file": "ascii-chat-usage.c.html"
   },
   {
-    "name": "ascii-chat-utf8.c",
-    "title": "ascii chat utf8.c",
+    "name": "utf8_8c",
+    "title": "utf8.c",
     "file": "ascii-chat-utf8.c.html"
   },
   {
-    "name": "ascii-chat-util.c",
-    "title": "ascii chat util.c",
+    "name": "util_8c",
+    "title": "util.c",
     "file": "ascii-chat-util.c.html"
   },
   {
-    "name": "ascii-chat-util_format.c",
-    "title": "ascii chat util format.c",
+    "name": "util_2format_8c",
+    "title": "util format.c",
     "file": "ascii-chat-util_format.c.html"
   },
   {
-    "name": "ascii-chat-util_image.c",
-    "title": "ascii chat util image.c",
+    "name": "util_2image_8c",
+    "title": "util image.c",
     "file": "ascii-chat-util_image.c.html"
   },
   {
-    "name": "ascii-chat-util_parsing.c",
-    "title": "ascii chat util parsing.c",
+    "name": "util_2parsing_8c",
+    "title": "util parsing.c",
     "file": "ascii-chat-util_parsing.c.html"
   },
   {
-    "name": "ascii-chat-util_string.c",
-    "title": "ascii chat util string.c",
+    "name": "util_2string_8c",
+    "title": "util string.c",
     "file": "ascii-chat-util_string.c.html"
   },
   {
-    "name": "ascii-chat-util_time.c",
-    "title": "ascii chat util time.c",
+    "name": "util_2time_8c",
+    "title": "util time.c",
     "file": "ascii-chat-util_time.c.html"
   },
   {
-    "name": "ascii-chat-validation.c",
-    "title": "ascii chat validation.c",
+    "name": "validation_8c",
+    "title": "validation.c",
     "file": "ascii-chat-validation.c.html"
   },
   {
-    "name": "ascii-chat-verification.c",
-    "title": "ascii chat verification.c",
+    "name": "verification_8c",
+    "title": "verification.c",
     "file": "ascii-chat-verification.c.html"
   },
   {
-    "name": "ascii-chat-version.c",
-    "title": "ascii chat version.c",
+    "name": "version_8c",
+    "title": "version.c",
     "file": "ascii-chat-version.c.html"
   },
   {
-    "name": "ascii-chat-video.c",
-    "title": "ascii chat video.c",
+    "name": "video_8c",
+    "title": "video.c",
     "file": "ascii-chat-video.c.html"
   },
   {
-    "name": "ascii-chat-video_ascii_common.c",
-    "title": "ascii chat video ascii common.c",
+    "name": "video_2ascii_2common_8c",
+    "title": "video ascii common.c",
     "file": "ascii-chat-video_ascii_common.c.html"
   },
   {
-    "name": "ascii-chat-video_ascii_frame_validator.c",
-    "title": "ascii chat video ascii frame validator.c",
+    "name": "video_2ascii_2frame_2validator_8c",
+    "title": "video ascii frame validator.c",
     "file": "ascii-chat-video_ascii_frame_validator.c.html"
   },
   {
-    "name": "ascii-chat-video_frame.c",
-    "title": "ascii chat video frame.c",
+    "name": "video_2frame_8c",
+    "title": "video frame.c",
     "file": "ascii-chat-video_frame.c.html"
   },
   {
-    "name": "ascii-chat-video_rgba_image.c",
-    "title": "ascii chat video rgba image.c",
+    "name": "video_2rgba_2image_8c",
+    "title": "video rgba image.c",
     "file": "ascii-chat-video_rgba_image.c.html"
   },
   {
-    "name": "ascii-chat-video_webcam_webcam.c",
-    "title": "ascii chat video webcam webcam.c",
+    "name": "video_2webcam_2webcam_8c",
+    "title": "video webcam webcam.c",
     "file": "ascii-chat-video_webcam_webcam.c.html"
   },
   {
-    "name": "ascii-chat-wasm_log.h",
-    "title": "ascii chat wasm log.h",
+    "name": "wasm_2log_8h",
+    "title": "wasm log.h",
     "file": "ascii-chat-wasm_log.h.html"
   },
   {
-    "name": "ascii-chat-wasm_stubs_filesystem.c",
-    "title": "ascii chat wasm stubs filesystem.c",
+    "name": "wasm_2stubs_2filesystem_8c",
+    "title": "wasm stubs filesystem.c",
     "file": "ascii-chat-wasm_stubs_filesystem.c.html"
   },
   {
-    "name": "ascii-chat-wasm_system.c",
-    "title": "ascii chat wasm system.c",
+    "name": "wasm_2system_8c",
+    "title": "wasm system.c",
     "file": "ascii-chat-wasm_system.c.html"
   },
   {
-    "name": "ascii-chat-wav_data_header_t",
-    "title": "ascii chat wav data header t",
+    "name": "wav_2data_2header_2t",
+    "title": "wav data header t",
     "file": "ascii-chat-wav_data_header_t.html"
   },
   {
-    "name": "ascii-chat-wav_fmt_chunk_t",
-    "title": "ascii chat wav fmt chunk t",
+    "name": "wav_2fmt_2chunk_2t",
+    "title": "wav fmt chunk t",
     "file": "ascii-chat-wav_fmt_chunk_t.html"
   },
   {
-    "name": "ascii-chat-wav_riff_header_t",
-    "title": "ascii chat wav riff header t",
+    "name": "wav_2riff_2header_2t",
+    "title": "wav riff header t",
     "file": "ascii-chat-wav_riff_header_t.html"
   },
   {
-    "name": "ascii-chat-wav_writer.c",
-    "title": "ascii chat wav writer.c",
+    "name": "wav_2writer_8c",
+    "title": "wav writer.c",
     "file": "ascii-chat-wav_writer.c.html"
   },
   {
-    "name": "ascii-chat-webcam_avfoundation.m",
-    "title": "ascii chat webcam avfoundation.m",
+    "name": "webcam_2avfoundation_2m",
+    "title": "webcam avfoundation.m",
     "file": "ascii-chat-webcam_avfoundation.m.html"
   },
   {
-    "name": "ascii-chat-webcam_mediafoundation.c",
-    "title": "ascii chat webcam mediafoundation.c",
+    "name": "webcam_2mediafoundation_8c",
+    "title": "webcam mediafoundation.c",
     "file": "ascii-chat-webcam_mediafoundation.c.html"
   },
   {
-    "name": "ascii-chat-webcam_v4l2.c",
-    "title": "ascii chat webcam v4l2.c",
+    "name": "webcam_2v4l2_8c",
+    "title": "webcam v4l2.c",
     "file": "ascii-chat-webcam_v4l2.c.html"
   },
   {
-    "name": "ascii-chat-webrtc_data_channel",
-    "title": "ascii chat webrtc data channel",
+    "name": "webrtc_2data_2channel",
+    "title": "webrtc data channel",
     "file": "ascii-chat-webrtc_data_channel.html"
   },
   {
-    "name": "ascii-chat-webrtc_peer_connection",
-    "title": "ascii chat webrtc peer connection",
+    "name": "webrtc_2peer_2connection",
+    "title": "webrtc peer connection",
     "file": "ascii-chat-webrtc_peer_connection.html"
   },
   {
-    "name": "ascii-chat-webrtc_peer_manager",
-    "title": "ascii chat webrtc peer manager",
+    "name": "webrtc_2peer_2manager",
+    "title": "webrtc peer manager",
     "file": "ascii-chat-webrtc_peer_manager.html"
   },
   {
-    "name": "ascii-chat-webrtc_recv_msg_t",
-    "title": "ascii chat webrtc recv msg t",
+    "name": "webrtc_2recv_2msg_2t",
+    "title": "webrtc recv msg t",
     "file": "ascii-chat-webrtc_recv_msg_t.html"
   },
   {
-    "name": "ascii-chat-webrtc_transport.c",
-    "title": "ascii chat webrtc transport.c",
+    "name": "webrtc_2transport_8c",
+    "title": "webrtc transport.c",
     "file": "ascii-chat-webrtc_transport.c.html"
   },
   {
-    "name": "ascii-chat-webrtc_transport_data_t",
-    "title": "ascii chat webrtc transport data t",
+    "name": "webrtc_2transport_2data_2t",
+    "title": "webrtc transport data t",
     "file": "ascii-chat-webrtc_transport_data_t.html"
   },
   {
-    "name": "ascii-chat-websocket.c",
-    "title": "ascii chat websocket.c",
+    "name": "websocket_8c",
+    "title": "websocket.c",
     "file": "ascii-chat-websocket.c.html"
   },
   {
-    "name": "ascii-chat-websocket_connection_data_t",
-    "title": "ascii chat websocket connection data t",
+    "name": "websocket_2connection_2data_2t",
+    "title": "websocket connection data t",
     "file": "ascii-chat-websocket_connection_data_t.html"
   },
   {
-    "name": "ascii-chat-websocket_transport.c",
-    "title": "ascii chat websocket transport.c",
+    "name": "websocket_2transport_8c",
+    "title": "websocket transport.c",
     "file": "ascii-chat-websocket_transport.c.html"
   },
   {
-    "name": "ascii-chat-word_cache_entry_t",
-    "title": "ascii chat word cache entry t",
+    "name": "word_2cache_2entry_2t",
+    "title": "word cache entry t",
     "file": "ascii-chat-word_cache_entry_t.html"
   },
   {
-    "name": "ascii-chat-writer.c",
-    "title": "ascii chat writer.c",
+    "name": "writer_8c",
+    "title": "writer.c",
     "file": "ascii-chat-writer.c.html"
   },
   {
-    "name": "ascii-chat-yt_dlp.c",
-    "title": "ascii chat yt dlp.c",
+    "name": "yt_2dlp_8c",
+    "title": "yt dlp.c",
     "file": "ascii-chat-yt_dlp.c.html"
   },
   {
-    "name": "ascii-chat-yt_dlp_cache_entry_t",
-    "title": "ascii chat yt dlp cache entry t",
+    "name": "yt_2dlp_2cache_2entry_2t",
+    "title": "yt dlp cache entry t",
     "file": "ascii-chat-yt_dlp_cache_entry_t.html"
   },
   {
-    "name": "ascii-chat-zsh.c",
-    "title": "ascii chat zsh.c",
+    "name": "zsh_8c",
+    "title": "zsh.c",
     "file": "ascii-chat-zsh.c.html"
   }
 ]
