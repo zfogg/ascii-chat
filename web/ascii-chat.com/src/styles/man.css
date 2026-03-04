@@ -238,3 +238,12 @@
 .man-page-html .directory .entry .icona {
   display: none;
 }
+
+.man-page-html .directory .levels {
+  display: none;
+}
+
+#doc-content .header {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
+}

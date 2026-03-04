@@ -13,7 +13,7 @@ libdir=${exec_prefix}/lib
 includedir=${prefix}/include
 
 Name: ascii-chat
-Description: Real-time terminal-based video chat with ASCII art conversion
+Description: Video chat in your terminal
 Version: @PROJECT_VERSION@
 URL: @PROJECT_HOMEPAGE_URL@
 

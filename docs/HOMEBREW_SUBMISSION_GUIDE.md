@@ -163,7 +163,7 @@ git add Formula/a/ascii-chat.rb
 # Commit with proper format (Homebrew is VERY strict about commit messages)
 git commit -m "ascii-chat 0.6.12 (new formula)
 
-Real-time terminal-based video chat with ASCII art conversion.
+Video chat in your terminal.
 
 Closes Homebrew/homebrew-core#XXXXX"
 
@@ -194,7 +194,7 @@ ascii-chat 0.6.12 (new formula)
 ```markdown
 ## Description
 
-Real-time terminal-based video chat with ASCII art conversion.
+Video chat in your terminal.
 
 ascii-chat is a client-server application for video chat in the terminal.
 It captures webcam video, converts it to ASCII art in real-time, and

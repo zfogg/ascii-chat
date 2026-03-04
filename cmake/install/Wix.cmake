@@ -102,7 +102,7 @@ if(DEFINED CPACK_PACKAGE_HOMEPAGE_URL)
 endif()
 
 # Comments shown in Add/Remove Programs
-set(CPACK_WIX_PROPERTY_ARPCOMMENTS "Real-time terminal-based video chat with ASCII art conversion")
+set(CPACK_WIX_PROPERTY_ARPCOMMENTS "Video chat in your terminal")
 
 # Contact/support information
 if(DEFINED CPACK_PACKAGE_CONTACT)
