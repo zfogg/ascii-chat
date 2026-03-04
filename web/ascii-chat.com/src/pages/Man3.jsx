@@ -402,6 +402,44 @@ export default function Man3() {
     tryScroll();
   }, [selectedPageContent]);
 
+  // Handle link clicks to clear hash if link doesn't have line number
+  useEffect(() => {
+    const container = contentViewerRef.current;
+    if (!container) return;
+
+    const handleLinkClick = (e) => {
+      const link = e.target.closest("a");
+      if (!link) return;
+
+      const href = link.getAttribute("href");
+      if (!href) return;
+
+      // Check if link has a line number hash (#l0000 or #l0000-00000)
+      const hasLineNumberHash = /#l\d+(?:-\d+)?$/.test(href);
+
+      // If link doesn't have line number hash, we'll clear the hash after navigation
+      if (!hasLineNumberHash) {
+        // Intercept the navigation to clear hash
+        e.preventDefault();
+
+        // Navigate to the new page without hash
+        const urlWithoutHash = href.split("#")[0];
+        window.history.pushState({}, "", urlWithoutHash);
+
+        // Load the page content if it's another man page
+        const pageMatch = urlWithoutHash.match(/page=([^&]+)/);
+        if (pageMatch) {
+          loadPageContent(decodeURIComponent(pageMatch[1]));
+        }
+      }
+    };
+
+    container.addEventListener("click", handleLinkClick);
+    return () => {
+      container.removeEventListener("click", handleLinkClick);
+    };
+  }, [selectedPageContent]);
+
   // Convert HTML with pre blocks into JSX with CodeBlock components
   const decodeHtmlEntities = (text) => {
     const textarea = document.createElement("textarea");
