@@ -134,28 +134,34 @@ export default function Man3() {
               <span className="text-purple-400">📚</span> ascii-chat-*(3)
             </h1>
             <p className="text-lg sm:text-xl text-gray-300 mb-6">
-              C API documentation for the ascii-chat library
+              C API documentation for libasciichat and ascii-chat executables
             </p>
 
             {/* Search Box */}
-            <div className="relative max-w-2xl">
-              <input
-                type="text"
-                placeholder="Search by name or regex (e.g., 'socket', '^asciichat_.*', 'error|crypto')..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-colors"
-              />
-              {searchQuery && (
-                <button
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
-                >
-                  ✕
-                </button>
-              )}
+            <div className="w-full">
+              <div className="flex items-center gap-4">
+                <label className="text-lg font-medium text-gray-300 whitespace-nowrap">Search:</label>
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search by name or regex (e.g., 'socket', '^asciichat_.*', 'error|crypto')..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-gray-900 border border-gray-700 rounded-lg px-4 py-3 text-gray-100 placeholder-gray-500 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 transition-colors"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2">Standard regex syntax supported</p>
             </div>
-            <p className="text-sm text-gray-400 mt-2">
+            <p className="text-sm text-gray-400 mt-3 text-center">
               {searching ? (
                 "Searching..."
               ) : searchResults.length > 0 ? (
