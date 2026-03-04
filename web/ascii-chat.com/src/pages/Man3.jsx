@@ -19,17 +19,6 @@ export default function Man3() {
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
 
-  // Clear hash when component unmounts (user leaves the page)
-  useEffect(() => {
-    return () => {
-      if (window.location.hash) {
-        const params = new URLSearchParams(window.location.search);
-        const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
-        window.history.replaceState({}, "", newUrl);
-      }
-    };
-  }, []);
-
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -90,11 +79,12 @@ export default function Man3() {
             return match;
           });
 
-          // Convert Doxygen source file links to Man3 links
-          // e.g., /man3/defer_2tool_8cpp_source.html#l00039 -> ?page=defer_2tool_8cpp_source
+          // Convert all HTML file links to Man3 links
+          // Handles: /man3/file.html, /file.html, file.html with optional #lXXXXX anchors
+          // e.g., /acds__server_8c_source.html#l00052 -> /man3?page=acds__server_8c_source
           // (strip line anchors when clicking links to different pages)
           content = content.replace(
-            /href="([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/g,
+            /href="([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/gi,
             (match, path, htmlFile, anchor) => {
               const pageName = htmlFile.replace(".html", "");
               const newHref = `/man3?page=${pageName}`;
