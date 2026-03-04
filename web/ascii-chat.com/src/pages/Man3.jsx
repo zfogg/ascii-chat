@@ -154,24 +154,18 @@ export default function Man3() {
     }
   };
 
-  // Debounce the API call when search query changes - NO BLOCKING
+  // Debounce the API call when search query changes
   useEffect(() => {
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
 
     if (!searchQuery.trim()) {
-      setSearchResults(manPages);
-      setFilesMatched(0);
-      setTotalMatches(0);
-      setSearching(false);
-      setRegexError(null);
+      performSearch("");
       return;
     }
 
     setSearching(true);
-
-    // Debounce search - don't block input
     searchTimeoutRef.current = setTimeout(() => {
       performSearch(searchQuery);
     }, 500);
