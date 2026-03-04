@@ -268,23 +268,25 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
   compute_key_fingerprint(old_pubkey, old_fingerprint);
   compute_key_fingerprint(new_pubkey, new_fingerprint);
 
-  log_warn("ACDS server key changed for: %s", acds_server);
+  const char *warning_msg =
+    "\n"
+    "⚠️  WARNING: ACDS SERVER KEY HAS CHANGED\n"
+    "═══════════════════════════════════════════════════════════════\n"
+    "Server: %s\n"
+    "\n"
+    "Old key (SHA256): %s\n"
+    "New key (SHA256): %s\n"
+    "\n"
+    "This could indicate:\n"
+    "  1. The server operator rotated their key\n"
+    "  2. A man-in-the-middle attack is in progress\n"
+    "\n"
+    "Verify the new key fingerprint with the server operator before accepting.\n"
+    "═══════════════════════════════════════════════════════════════\n";
 
-  log_plain_stderr("\n"
-                   "⚠️  WARNING: ACDS SERVER KEY HAS CHANGED\n"
-                   "═══════════════════════════════════════════════════════════════\n"
-                   "Server: %s\n"
-                   "\n"
-                   "Old key (SHA256): %s\n"
-                   "New key (SHA256): %s\n"
-                   "\n"
-                   "This could indicate:\n"
-                   "  1. The server operator rotated their key\n"
-                   "  2. A man-in-the-middle attack is in progress\n"
-                   "\n"
-                   "Verify the new key fingerprint with the server operator before accepting.\n"
-                   "═══════════════════════════════════════════════════════════════\n",
-                   acds_server, old_fingerprint, new_fingerprint);
+  // Log to both stderr and file log
+  log_plain_stderr(warning_msg, acds_server, old_fingerprint, new_fingerprint);
+  log_warn(warning_msg, acds_server, old_fingerprint, new_fingerprint);
 
   // Ask user to confirm
   bool accepted = platform_prompt_yes_no("Accept new ACDS server key", false);
