@@ -251,11 +251,13 @@ export default function Man3() {
         // Extract code content from pre tag
         const codeMatch = part.match(/<pre>([\s\S]*)<\/pre>/);
         const codeContent = codeMatch ? codeMatch[1] : '';
-        elements.push(
-          <CodeBlock key={`code-${idx}`} language="c">
-            {codeContent}
-          </CodeBlock>
-        );
+        if (codeContent.trim()) {
+          elements.push(
+            <CodeBlock key={`code-${idx}`} language="c">
+              {codeContent}
+            </CodeBlock>
+          );
+        }
       } else if (part.trim()) {
         // Regular HTML content
         elements.push(
