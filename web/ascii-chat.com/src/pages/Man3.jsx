@@ -37,6 +37,10 @@ export default function Man3() {
     if (pageParam) {
       const pageName = decodeURIComponent(pageParam);
       setSelectedPageName(pageName);
+
+      // Preserve hash for scrolling after content loads
+      const hash = window.location.hash;
+
       fetch(`/man3/${pageName}.html`)
         .then((r) => r.text())
         .then((html) => {
@@ -75,20 +79,20 @@ export default function Man3() {
             return match;
           });
 
+          // Convert Doxygen source file links to Man3 links
+          // e.g., /man3/defer_2tool_8cpp_source.html#l00039 -> ?page=defer_2tool_8cpp_source#l00039
+          content = content.replace(
+            /href="([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/g,
+            (match, path, htmlFile, anchor) => {
+              const pageName = htmlFile.replace(".html", "");
+              const newHref = `/man3?page=${pageName}${anchor || ""}`;
+              return `href="${newHref}"`;
+            },
+          );
+
           // Prepend stylesheets
           content = stylesheets.join("\n") + content;
           setSelectedPageContent(content);
-
-          // Scroll to hash if present
-          const hash = window.location.hash;
-          if (hash) {
-            setTimeout(() => {
-              const element = document.querySelector(hash);
-              if (element) {
-                element.scrollIntoView({ behavior: "smooth" });
-              }
-            }, 100);
-          }
         })
         .catch((e) => console.error("Failed to load page:", e));
     }
@@ -128,7 +132,7 @@ export default function Man3() {
         const newUrl = params.toString()
           ? `/man3?${params.toString()}`
           : "/man3";
-        window.history.replaceState({}, "", newUrl);
+        window.history.replaceState({}, "", newUrl + window.location.hash);
         return;
       }
 
@@ -153,7 +157,7 @@ export default function Man3() {
         // Update URL with search query (preserve page param if present)
         const params = new URLSearchParams(window.location.search);
         params.set("q", searchQuery);
-        window.history.replaceState({}, "", `/man3?${params.toString()}`);
+        window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
       } catch (e) {
         console.error("Search error:", e);
         setSearchResults([]);
@@ -206,7 +210,7 @@ export default function Man3() {
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
-        window.history.replaceState({}, "", `/man3?${params.toString()}`);
+        window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
       })
       .catch((e) => console.error("Failed to load page:", e));
   };
@@ -303,23 +307,80 @@ export default function Man3() {
     }
   }, [targetLineNumber]);
 
-  // Scroll to hash fragment when URL changes
+  // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
-    const handleHashChange = () => {
-      const hash = window.location.hash;
-      if (hash && contentViewerRef.current) {
-        setTimeout(() => {
-          const element = contentViewerRef.current.querySelector(hash);
-          if (element) {
-            element.scrollIntoView({ behavior: "smooth" });
-          }
-        }, 50);
+    if (!contentViewerRef.current) return;
+
+    const handleLinkClick = (e) => {
+      const link = e.target.closest("a");
+      if (!link) return;
+
+      const href = link.getAttribute("href");
+      if (!href) return;
+
+      // Match Doxygen source file links: /man3/filename.html#l00123
+      const doxygenMatch = href.match(
+        /\/man3\/(.+?)\.html(#l\d+)?$/,
+      );
+      if (doxygenMatch) {
+        e.preventDefault();
+        const pageName = doxygenMatch[1];
+        const lineAnchor = doxygenMatch[2] || "";
+
+        // Load the page and scroll to line if specified
+        loadPageContent(pageName);
+
+        // If there's a line anchor, scroll to it after content loads
+        if (lineAnchor) {
+          setTimeout(() => {
+            if (contentViewerRef.current) {
+              const element = contentViewerRef.current.querySelector(
+                lineAnchor,
+              );
+              if (element) {
+                element.scrollIntoView({ behavior: "smooth" });
+              }
+            }
+          }, 300);
+        }
       }
     };
 
-    window.addEventListener("hashchange", handleHashChange);
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    contentViewerRef.current.addEventListener("click", handleLinkClick);
+    return () => {
+      contentViewerRef.current?.removeEventListener("click", handleLinkClick);
+    };
   }, []);
+
+  // Scroll to hash fragment when page content changes
+  useEffect(() => {
+    if (!selectedPageContent || !contentViewerRef.current) return;
+
+    const hash = window.location.hash;
+    if (!hash) return;
+
+    // Wait for DOM to render, then scroll to anchor
+    const scrollToAnchor = () => {
+      const element = contentViewerRef.current.querySelector(hash);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth" });
+      }
+    };
+
+    // Try multiple times in case elements are still rendering
+    let attempts = 0;
+    const maxAttempts = 10;
+    const interval = setInterval(() => {
+      attempts++;
+      const element = contentViewerRef.current.querySelector(hash);
+      if (element || attempts >= maxAttempts) {
+        scrollToAnchor();
+        clearInterval(interval);
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [selectedPageContent]);
 
   // Convert HTML with pre blocks into JSX with CodeBlock components
   const decodeHtmlEntities = (text) => {
