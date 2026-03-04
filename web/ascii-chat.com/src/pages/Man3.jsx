@@ -75,7 +75,7 @@ export default function Man3() {
             return match;
           });
 
-          // Prepend stylesheets to content
+          // Prepend stylesheets
           content = stylesheets.join("\n") + content;
           setSelectedPageContent(content);
 

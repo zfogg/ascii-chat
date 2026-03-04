@@ -167,3 +167,9 @@
 .man-page-content pre > code > .token:nth-child(1) {
   margin-left: -6px;
 }
+
+/* Hide doxygen elements */
+#projectlogo,
+#MSearchResultsWindow {
+  display: none;
+}
