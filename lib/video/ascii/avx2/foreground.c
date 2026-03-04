@@ -664,9 +664,5 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
 }
 
 // Destroy AVX2 cache resources (called at program shutdown)
-void avx2_caches_destroy(void) {
-  // AVX2 currently uses shared caches from common.c, so no specific cleanup needed
-  log_dev("AVX2_CACHE: AVX2 optimized caches cleaned up");
-}
 
 #endif /* SIMD_SUPPORT_AVX2 */

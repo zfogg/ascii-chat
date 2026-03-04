@@ -534,8 +534,6 @@ void simd_caches_destroy_all(void) {
   // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
 #if SIMD_SUPPORT_NEON
   neon_caches_destroy();
-#elif SIMD_SUPPORT_AVX2
-  avx2_caches_destroy();
 #elif SIMD_SUPPORT_SSSE3
   ssse3_caches_destroy();
 #elif SIMD_SUPPORT_SSE2
