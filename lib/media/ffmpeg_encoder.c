@@ -54,6 +54,10 @@ struct ffmpeg_encoder_s {
 
   // Frame timing from capture timestamps
   uint64_t first_frame_captured_ns;  // Wall-clock timestamp of first frame (0 = not set)
+
+  // Snapshot mode frame distribution
+  int estimated_frame_count;         // Expected frame count for snapshot mode (fps * snapshot_delay)
+  int64_t estimated_frame_duration;  // Duration each frame should have in stream time_base units
 };
 
 // Determine audio codec from file extension
@@ -369,6 +373,20 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
   }
 
   enc->fps = fps;
+
+  // Snapshot mode frame distribution setup
+  enc->estimated_frame_count = 0;
+  enc->estimated_frame_duration = 0;
+  if (snapshot_mode && snapshot_delay > 0 && fps > 0) {
+    // Estimate how many frames we'll capture
+    enc->estimated_frame_count = (int)(fps * snapshot_delay + 0.5);
+    // Each frame should have uniform duration in stream time_base (1/90000 for MP4)
+    // frame_duration = total_duration / estimated_frame_count
+    //                = snapshot_delay seconds * time_base.den / estimated_frame_count
+    // We'll set this to stream->time_base later after it's initialized
+    log_debug("ffmpeg_encoder_create: Snapshot mode - estimated_frame_count=%d, snapshot_delay=%.2f",
+              enc->estimated_frame_count, snapshot_delay);
+  }
   enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
 
   // For codec/format detection, use output_path unless it's "-" (stdout)
@@ -568,6 +586,20 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     return SET_ERRNO(ERROR_INIT, "ffmpeg: avformat_write_header failed");
   }
 
+  // Now that stream->time_base is set, calculate estimated frame duration for snapshot mode
+  bool snapshot_mode_after_header = GET_OPTION(snapshot_mode);
+  double snapshot_delay_after_header = GET_OPTION(snapshot_delay);
+  if (snapshot_mode_after_header && enc->estimated_frame_count > 0 && snapshot_delay_after_header > 0) {
+    // Each frame should span: snapshot_delay / estimated_frame_count seconds
+    // In stream time_base units: (snapshot_delay * time_base.den) / estimated_frame_count
+    enc->estimated_frame_duration =
+        (int64_t)((snapshot_delay_after_header * (double)enc->stream->time_base.den) / enc->estimated_frame_count);
+    log_debug("ffmpeg_encoder_create: Calculated estimated_frame_duration=%lld time_base units "
+              "for snapshot mode (snapshot_delay=%.2f, estimated_frames=%d, time_base=%d/%d)",
+              (long long)enc->estimated_frame_duration, snapshot_delay_after_header, enc->estimated_frame_count,
+              enc->stream->time_base.num, enc->stream->time_base.den);
+  }
+
   enc->frame_count = 0;
   enc->video_pts = 0;
   enc->snapshot_actual_duration = 0.0;
@@ -614,11 +646,29 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
   if (enc->frame_count == 0) {
-    log_info("ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d, using actual frame deltas", snapshot_mode);
+    log_info("ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d, estimated_frame_count=%d, "
+             "estimated_frame_duration=%lld", snapshot_mode, enc->estimated_frame_count,
+             (long long)enc->estimated_frame_duration);
   }
 
-  if (snapshot_mode) {
-    // In snapshot mode, use ACTUAL elapsed time between frames for proper duration matching
+  if (snapshot_mode && enc->estimated_frame_count > 0 && enc->estimated_frame_duration > 0) {
+    // Snapshot mode with pre-estimated frame count: use uniform duration distribution
+    // Each frame gets the same duration so they're evenly distributed across snapshot_delay seconds
+    // Convert from stream time_base to codec time_base for FFmpeg encoding
+    // frame_duration_codec = frame_duration_stream * (stream_time_base.den / codec_time_base.den)
+    frame_duration = (int64_t)(((double)enc->estimated_frame_duration * enc->codec_ctx->time_base.den) /
+                               (double)enc->stream->time_base.den);
+    if (frame_duration == 0) {
+      frame_duration = 1;
+    }
+    if (enc->frame_count <= 2) {
+      log_debug("ffmpeg: frame %d SET uniform duration=%lld codec units (%.3f ms, estimated for %d frames over %.1f sec)",
+                enc->frame_count, (long long)frame_duration,
+                (double)frame_duration * enc->codec_ctx->time_base.num / enc->codec_ctx->time_base.den * 1000,
+                enc->estimated_frame_count, GET_OPTION(snapshot_delay));
+    }
+  } else if (snapshot_mode) {
+    // Snapshot mode without pre-estimation: use ACTUAL elapsed time between frames
     // Calculate duration from actual capture timestamp differences
     // IMPORTANT: Use codec's time_base here; FFmpeg will rescale to stream time_base later
     if (enc->frame_count > 0 && enc->previous_captured_ns > 0) {
