@@ -5,6 +5,7 @@
 **discovery.ascii-chat.com** is the official public key distribution website for ACDS (ASCII-Chat Discovery Service). It serves Ed25519 public keys over HTTPS that clients use to establish trusted connections to the ACDS server at `discovery-service.ascii-chat.com:27225`.
 
 The site provides:
+
 - SSH Ed25519 public key distribution (`/key.pub`)
 - GPG Ed25519 public key distribution (`/key.gpg`)
 - ACDS trust model documentation and usage guides
@@ -51,6 +52,7 @@ bun run type-check
 ### Build Pipeline (build.sh)
 
 The `scripts/build.sh` script runs:
+
 1. **Type checking** - `bun run tsc --noEmit`
 2. **Formatting check** - Detect unformatted files, auto-fix with `bun run format`
 3. **Linting** - Run eslint, fail on errors
@@ -62,6 +64,7 @@ The `scripts/build.sh` script runs:
 **Platform**: Vercel (GitHub push-to-deploy)
 
 **Configuration**: `vercel.json`
+
 - Build command: `bun run build`
 - Output directory: `dist/`
 - Install command: `cd .. && bun install` (monorepo root)
@@ -71,11 +74,13 @@ The `scripts/build.sh` script runs:
 ### Monorepo Integration
 
 Part of `/web` monorepo. Key dependency:
+
 - Uses `@ascii-chat/shared` workspace package (from `packages/@ascii-chat/shared`)
 
 ## Technology Stack
 
 **Frontend**:
+
 - React 19.2.4
 - React Router 7.13.0
 - React Helmet (for SEO/meta tags)
@@ -83,12 +88,14 @@ Part of `/web` monorepo. Key dependency:
 - Tailwind CSS 4.1.18 + PostCSS
 
 **Dev Tools**:
+
 - TypeScript 5.9.3
 - ESLint 10 + TypeScript plugin
 - Prettier 3.8.1
 - Vite Sitemap plugin
 
 **Monitoring**:
+
 - Vercel Analytics (`@vercel/analytics`)
 
 ## Key Files
@@ -115,10 +122,12 @@ Part of `/web` monorepo. Key dependency:
 ## Key Management
 
 **Public keys are generated from ACDS server identity** (`acds_identity` file, not in git):
+
 - **export-keys.sh** - Extracts public key and converts to SSH/GPG formats
 - **gpg-gen-key.batch** - GPG key generation template
 
 **Served as static files**:
+
 - `/public/key.pub` → Served at `/key.pub` (SSH format, base64-encoded)
 - `/public/key.gpg` → Served at `/key.gpg` (GPG armor format)
 
@@ -127,17 +136,20 @@ Clients fetch keys via HTTPS (CA-verified), then use them to verify TCP connecti
 ## Testing & Development
 
 **Browser Testing**: Use Claude in Chrome with Playwright
+
 - Test key fetching (`/key.pub`, `/key.gpg`)
 - Verify documentation display
 - Test responsive design and accessibility
 
 **Local Dev**:
+
 ```bash
 bun run dev           # Watch mode with HMR
 # Open http://localhost:5173 (or printed URL)
 ```
 
 **Pre-commit**:
+
 - Formatting is auto-fixed in build.sh
 - Linting must pass before deployment
 - Type checking must pass

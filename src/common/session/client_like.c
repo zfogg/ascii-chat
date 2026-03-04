@@ -295,6 +295,7 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     }
   } else if (media_file_val && strlen(media_file_val) > 0) {
     // Local file or stdin
+    log_info("DEBUG: media_file_val='%s', strcmp result=%d", media_file_val, strcmp(media_file_val, "-"));
     if (strcmp(media_file_val, "-") == 0) {
       log_info("Using stdin for media streaming (webcam disabled)");
       capture_config.type = MEDIA_SOURCE_STDIN;

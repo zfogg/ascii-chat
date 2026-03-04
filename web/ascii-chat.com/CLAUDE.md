@@ -35,6 +35,7 @@ bun run build
 ```
 
 **Important**:
+
 - Use `bun` commands exclusively, not `npm`
 - Build script runs type-check, format check, lint, man page generation, and vite build
 - All builds deploy to Vercel via GitHub pushes (no manual deployment)
@@ -131,6 +132,7 @@ Use Claude in Chrome browser automation for testing:
 ### Playwright Integration (Future)
 
 Planned for E2E testing:
+
 - Page navigation tests
 - Form submission flows
 - Responsive design verification
@@ -140,11 +142,13 @@ Planned for E2E testing:
 The `web/` directory is a Bun monorepo with three main sites:
 
 ### Sites
+
 - **ascii-chat.com** (this directory) - Marketing & documentation
 - **web.ascii-chat.com** - Web client for terminal chat
 - **discovery.ascii-chat.com** - Discovery service web UI
 
 ### Shared Package
+
 - **packages/@ascii-chat/shared** - Shared TypeScript utilities & types
 
 ### Root-level Commands (from web/)

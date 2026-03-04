@@ -117,6 +117,8 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
     session_pipeline_destroy(pipeline);
     return run_err;
+  } else {
+    log_warn("[SESSION_RENDER_LOOP] capture is NULL - will not use pipeline (capture_cb=%p)", (void*)capture_cb);
   }
 
   // Snapshot mode state tracking

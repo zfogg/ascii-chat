@@ -722,9 +722,9 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   }
 
   // Increase per-thread service buffer to prevent fragmentation of large messages
-  // Default is 4KB, causing 291KB frames to fragment into 74 × 4KB chunks
-  // Increase to 512KB to allow larger WebSocket frames without fragmentation
-  info.pt_serv_buf_size = 512 * 1024; // 512KB per-thread service buffer
+  // Default is 4KB, causing large frames to fragment into many chunks
+  // Video frames are 921KB, so increase to 2MB to handle them without fragmentation
+  info.pt_serv_buf_size = 2 * 1024 * 1024; // 2MB per-thread service buffer
 
   // Disable ALL default timeouts and keep-alive mechanisms
   // Use only the explicit retry_and_idle_policy we set above (30/35 seconds)

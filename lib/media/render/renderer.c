@@ -158,13 +158,21 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
 
   log_info("render_file_write_frame: pixels=%p pitch=%d dims=%dx%d", (void *)pixels, pitch, width_px, height_px);
 
-  // Check first few pixels to verify content
+  // Check pixels in multiple locations to verify content
   if (pixels) {
+    // Check pixel at (0,0) - top left corner
     uint8_t sample_r = pixels[0], sample_g = pixels[1], sample_b = pixels[2];
+
+    // Check pixel at (500, 100) where we injected a test red stripe
+    size_t test_offset = 100 * pitch + 500 * 3;
+    uint8_t test_r = pixels[test_offset], test_g = pixels[test_offset + 1], test_b = pixels[test_offset + 2];
+
+    // Check pixel at middle of screen
     uint8_t sample_r_mid = pixels[(height_px / 2) * pitch], sample_g_mid = pixels[(height_px / 2) * pitch + 1],
             sample_b_mid = pixels[(height_px / 2) * pitch + 2];
-    log_info("  pixel[0]: RGB(%u,%u,%u),  pixel[mid]: RGB(%u,%u,%u)", sample_r, sample_g, sample_b, sample_r_mid,
-             sample_g_mid, sample_b_mid);
+
+    log_info("  pixel[0,0]: RGB(%u,%u,%u), test_stripe[500,100]: RGB(%u,%u,%u), pixel[0,%d]: RGB(%u,%u,%u)",
+             sample_r, sample_g, sample_b, test_r, test_g, test_b, height_px/2, sample_r_mid, sample_g_mid, sample_b_mid);
   }
 
   // CRITICAL: Copy pixel buffer before encoding
@@ -177,6 +185,21 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     memcpy(pixels_copy, pixels, pixel_buffer_size);
     log_info("render_file_write_frame: copied %zu bytes of pixel data (was at %p, now at %p)",
              pixel_buffer_size, (void *)pixels, (void *)pixels_copy);
+
+    // DEBUG: Inject test red stripe to verify encoder is working
+    static int frame_num = 0;
+    if (frame_num++ < 1) {
+      log_info("DEBUG: Injecting test RED vertical stripe into pixel buffer for verification");
+      // Fill a 100-pixel-wide vertical stripe with bright red at x=500
+      for (int y = 0; y < height_px; y++) {
+        for (int x = 500; x < 600 && x < width_px; x++) {
+          uint8_t *pixel = pixels_copy + y * pitch + x * 3;
+          pixel[0] = 255;  // R
+          pixel[1] = 0;    // G
+          pixel[2] = 0;    // B
+        }
+      }
+    }
   }
 
   err = ffmpeg_encoder_write_frame(ctx->encoder, pixels_copy, pitch, captured_ns);
