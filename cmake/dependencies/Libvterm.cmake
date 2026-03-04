@@ -3,7 +3,7 @@
 # =============================================================================
 # Cross-platform configuration for libvterm terminal emulation
 #
-# For musl builds: libvterm is not built from source (it depends on GTK ecosystem)
+# For musl builds: libvterm is built from source (FetchContent)
 # For native builds: Uses system package manager
 #
 # Outputs (variables set by this file):
@@ -16,20 +16,45 @@
 # =============================================================================
 # NOTE: FreeType2 and Fontconfig must be included by Dependencies.cmake before this file
 
-# Musl builds: libvterm is not built from source (no GTK ecosystem)
+# All builds: Try to find libvterm
+
+# musl builds: Build vterm from source using Makefile
 if(USE_MUSL)
-    message(STATUS "${BoldYellow}⚠${ColorReset} libvterm: Not built for musl (GTK ecosystem excluded)")
-    set(VTERM_LDFLAGS "")
-    set(VTERM_INCLUDE_DIRS "")
-    set(RENDER_FILE_LIBS "")
-    set(RENDER_FILE_INCLUDES "")
-    set(GHOSTTY_LIBS "")
-    set(GHOSTTY_INCLUDES "")
-    return()
-endif()
+    include(FetchContent)
+    FetchContent_Declare(
+        libvterm
+        URL "https://github.com/neovim/libvterm/archive/refs/tags/v0.3.3.tar.gz"
+    )
+
+    FetchContent_GetProperties(libvterm)
+    if(NOT libvterm_POPULATED)
+        FetchContent_Populate(libvterm)
+    endif()
+
+    # Build vterm using its Makefile
+    add_custom_target(vterm_build ALL
+        COMMAND make libvterm.la
+        WORKING_DIRECTORY "${libvterm_SOURCE_DIR}"
+    )
+
+    # Create imported library target
+    add_library(vterm STATIC IMPORTED)
+    set_target_properties(vterm PROPERTIES
+        IMPORTED_LOCATION "${libvterm_SOURCE_DIR}/.libs/libvterm.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${libvterm_SOURCE_DIR}/include"
+    )
+    add_dependencies(vterm vterm_build)
+
+    set(VTERM_LDFLAGS vterm)
+    set(VTERM_INCLUDE_DIRS "${libvterm_SOURCE_DIR}/include")
+
+    set(RENDER_FILE_LIBS vterm ${FREETYPE_LIBRARIES} ${FONTCONFIG_LDFLAGS})
+    set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS} ${FONTCONFIG_INCLUDE_DIRS})
+
+    message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend: ${BoldCyan}libvterm (built from source) + FreeType2 + fontconfig${ColorReset}")
 
 # Non-musl builds: Use system package manager
-if(UNIX AND NOT APPLE)
+elseif(UNIX AND NOT APPLE)
     # Linux/BSD: Use system package managers
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(VTERM vterm REQUIRED)
