@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { AsciiChatHead } from "../components/AsciiChatHead";
@@ -20,6 +20,49 @@ export default function Man3() {
   const [regexError, setRegexError] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
+
+  // Helper function to process HTML content: convert URLs and highlight matches
+  const processPageContent = useCallback((html, searchQuery) => {
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    let content = bodyMatch ? bodyMatch[1] : html;
+
+    // Fix relative paths to absolute paths for images and links
+    content = content.replace(/src="([^"]+)"/g, (match, src) => {
+      if (!src.startsWith("/") && !src.startsWith("http")) {
+        return `src="/man3/${src}"`;
+      }
+      return match;
+    });
+    content = content.replace(/href="([^"]+)"/g, (match, href) => {
+      if (
+        !href.startsWith("/") &&
+        !href.startsWith("http") &&
+        !href.startsWith("#")
+      ) {
+        return `href="/man3/${href}"`;
+      }
+      return match;
+    });
+
+    // Convert all HTML file links to Man3 links
+    content = content.replace(
+      /href="(?:https?:\/\/[^/]+)?([^"]*\/)?([^/".]+\.html)(#l\d+)?"/gi,
+      (match, path, htmlFile, anchor) => {
+        const newPageName = htmlFile.replace(".html", "");
+        const newHref = `/man3?page=${newPageName}${anchor || ""}`;
+        return `href="${newHref}"`;
+      },
+    );
+
+    // Preserve empty anchor tags by adding zero-width space
+    content = content.replace(
+      /<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g,
+      '<a id="$1">\u200B</a>',
+    );
+
+    // Highlight matches in the processed content
+    return highlightMatchesInHTML(content, searchQuery);
+  }, []);
 
   useEffect(() => {
     setBreadcrumbSchema([
@@ -68,7 +111,7 @@ export default function Man3() {
         })
         .catch((e) => console.error("Failed to load page:", e));
     }
-  }, []);
+  }, [processPageContent]);
 
   // Load man3 index
   useEffect(() => {
@@ -87,7 +130,7 @@ export default function Man3() {
   }, []);
 
   // Debounced search function
-  const performSearch = async (query) => {
+  const performSearch = useCallback(async (query) => {
     if (!query.trim()) {
       setSearchResults(manPages);
       setFilesMatched(0);
@@ -152,7 +195,7 @@ export default function Man3() {
     } finally {
       setSearching(false);
     }
-  };
+  }, [manPages]);
 
   // Debounce the API call when search query changes
   useEffect(() => {
@@ -175,52 +218,9 @@ export default function Man3() {
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, manPages]);
+  }, [searchQuery, manPages, performSearch]);
 
-  // Helper function to process HTML content: convert URLs and highlight matches
-  const processPageContent = (html, searchQuery) => {
-    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    let content = bodyMatch ? bodyMatch[1] : html;
-
-    // Fix relative paths to absolute paths for images and links
-    content = content.replace(/src="([^"]+)"/g, (match, src) => {
-      if (!src.startsWith("/") && !src.startsWith("http")) {
-        return `src="/man3/${src}"`;
-      }
-      return match;
-    });
-    content = content.replace(/href="([^"]+)"/g, (match, href) => {
-      if (
-        !href.startsWith("/") &&
-        !href.startsWith("http") &&
-        !href.startsWith("#")
-      ) {
-        return `href="/man3/${href}"`;
-      }
-      return match;
-    });
-
-    // Convert all HTML file links to Man3 links
-    content = content.replace(
-      /href="(?:https?:\/\/[^/]+)?([^"]*\/)?([^/".]+\.html)(#l\d+)?"/gi,
-      (match, path, htmlFile, anchor) => {
-        const newPageName = htmlFile.replace(".html", "");
-        const newHref = `/man3?page=${newPageName}${anchor || ""}`;
-        return `href="${newHref}"`;
-      },
-    );
-
-    // Preserve empty anchor tags by adding zero-width space
-    content = content.replace(
-      /<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g,
-      '<a id="$1">\u200B</a>',
-    );
-
-    // Highlight matches in the processed content
-    return highlightMatchesInHTML(content, searchQuery);
-  };
-
-  const loadPageContent = (
+  const loadPageContent = useCallback((
     pageName,
     lineNumber = null,
     snippetIndex = null,
@@ -286,7 +286,7 @@ export default function Man3() {
         }
       })
       .catch((e) => console.error("Failed to load page:", e));
-  };
+  }, [processPageContent, searchQuery, selectedPageName]);
 
   const highlightMatches = (text, query) => {
     if (!query.trim()) return text;
@@ -392,11 +392,12 @@ export default function Man3() {
       setTargetLineNumber(null);
       setTargetSnippetIndex(null);
     }
-  }, [targetLineNumber]);
+  }, [selectedPageContent, targetLineNumber, targetSnippetIndex]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
-    if (!contentViewerRef.current) return;
+    const viewer = contentViewerRef.current;
+    if (!viewer) return;
 
     const handleLinkClick = (e) => {
       const link = e.target.closest("a");
@@ -435,9 +436,8 @@ export default function Man3() {
         // If there's a line anchor, scroll to it after content loads
         if (lineAnchor) {
           setTimeout(() => {
-            if (contentViewerRef.current) {
-              const element =
-                contentViewerRef.current.querySelector(lineAnchor);
+            if (viewer) {
+              const element = viewer.querySelector(lineAnchor);
               if (element) {
                 element.scrollIntoView({ behavior: "smooth" });
               }
@@ -447,11 +447,11 @@ export default function Man3() {
       }
     };
 
-    contentViewerRef.current.addEventListener("click", handleLinkClick);
+    viewer.addEventListener("click", handleLinkClick);
     return () => {
-      contentViewerRef.current?.removeEventListener("click", handleLinkClick);
+      viewer.removeEventListener("click", handleLinkClick);
     };
-  }, [loadPageContent, selectedPageContent]);
+  }, [loadPageContent]);
 
   // Scroll to hash fragment when page content changes
   useEffect(() => {
