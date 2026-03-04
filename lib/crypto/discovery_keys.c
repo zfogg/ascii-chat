@@ -94,56 +94,6 @@ asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey
 }
 
 // ============================================================================
-// GitHub/GitLab Fetching
-// ============================================================================
-
-asciichat_error_t discovery_keys_fetch_github(const char *username, bool is_gpg, uint8_t pubkey_out[32]) {
-  if (!username || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_fetch_github");
-  }
-
-  log_debug("Fetching ACDS key from GitHub for user: %s", username);
-
-  // Use existing parse_public_key infrastructure
-  char key_spec[BUFFER_SIZE_MEDIUM];
-  if (is_gpg) {
-    safe_snprintf(key_spec, sizeof(key_spec), "github:%s.gpg", username);
-  } else {
-    safe_snprintf(key_spec, sizeof(key_spec), "github:%s", username);
-  }
-
-  public_key_t key;
-  asciichat_error_t result = parse_public_key(key_spec, &key);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch ACDS key from GitHub: %s", username);
-  }
-
-  memcpy(pubkey_out, key.key, 32);
-  return ASCIICHAT_OK;
-}
-
-asciichat_error_t discovery_keys_fetch_gitlab(const char *username, uint8_t pubkey_out[32]) {
-  if (!username || !pubkey_out) {
-    return SET_ERRNO(ERROR_INVALID_PARAM, "NULL parameter in discovery_keys_fetch_gitlab");
-  }
-
-  log_debug("Fetching ACDS key from GitLab for user: %s", username);
-
-  // Use existing parse_public_key infrastructure
-  char key_spec[BUFFER_SIZE_MEDIUM];
-  safe_snprintf(key_spec, sizeof(key_spec), "gitlab:%s.gpg", username);
-
-  public_key_t key;
-  asciichat_error_t result = parse_public_key(key_spec, &key);
-  if (result != ASCIICHAT_OK) {
-    return SET_ERRNO(ERROR_CRYPTO_KEY, "Failed to fetch ACDS key from GitLab: %s", username);
-  }
-
-  memcpy(pubkey_out, key.key, 32);
-  return ASCIICHAT_OK;
-}
-
-// ============================================================================
 // Key Caching
 // ============================================================================
 

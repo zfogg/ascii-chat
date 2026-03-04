@@ -137,32 +137,6 @@ ASCIICHAT_API asciichat_error_t discovery_keys_download_https(const char *url, u
 ASCIICHAT_API asciichat_error_t discovery_keys_load_file(const char *file_path, uint8_t pubkey_out[32]);
 
 /**
- * @brief Fetch key from GitHub
- *
- * Downloads public key from GitHub using:
- * - SSH keys: https://github.com/username.keys (tries first Ed25519)
- * - GPG keys: https://github.com/username.gpg (if key_spec ends with .gpg)
- *
- * @param username GitHub username
- * @param is_gpg true to fetch GPG key, false for SSH key
- * @param pubkey_out Ed25519 public key output (32 bytes)
- * @return ASCIICHAT_OK on success, error code otherwise
- */
-ASCIICHAT_API asciichat_error_t discovery_keys_fetch_github(const char *username, bool is_gpg, uint8_t pubkey_out[32]);
-
-/**
- * @brief Fetch GPG key from GitLab
- *
- * Downloads GPG public key from GitLab using:
- * https://gitlab.com/username.gpg
- *
- * @param username GitLab username
- * @param pubkey_out Ed25519 public key output (32 bytes)
- * @return ASCIICHAT_OK on success, error code otherwise
- */
-ASCIICHAT_API asciichat_error_t discovery_keys_fetch_gitlab(const char *username, uint8_t pubkey_out[32]);
-
-/**
  * @brief Get cached key path for ACDS server
  *
  * Returns the local cache path for a given ACDS server's key.
