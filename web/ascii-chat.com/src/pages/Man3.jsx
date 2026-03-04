@@ -3,6 +3,7 @@ import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import "../styles/man.css";
 
 export default function Man3() {
   const [manPages, setManPages] = useState([]);

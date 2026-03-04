@@ -3,6 +3,7 @@ import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
 import { AsciiChatHead } from "../components/AsciiChatHead";
+import "../styles/man.css";
 
 export default function Man5() {
   useEffect(() => {
