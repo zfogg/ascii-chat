@@ -247,3 +247,8 @@
   font-size: 2rem;
   margin-bottom: 0.5rem;
 }
+
+/* annotated page */
+.directory .entry, .directory .desc {
+  padding-top: 0.55rem;
+}
