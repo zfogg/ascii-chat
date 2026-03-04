@@ -275,14 +275,15 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Initialize and start
+// Initialize cache
 initializeCache();
 
 // Export handler for Vercel
 export default app;
 
-// Start server if running locally (not on Vercel)
-if (!process.env.VERCEL) {
+// Start server if running as standalone (not as Vercel Function)
+// Check both VERCEL env var and if this file was imported as a module
+if (process.env.VERCEL !== "1" && import.meta.url === `file://${process.argv[1]}`) {
   app.listen(PORT, () => {
     logger.info(`Man3 search API running on http://localhost:${PORT}`);
     logger.info(`Environment: ${NODE_ENV}`);
