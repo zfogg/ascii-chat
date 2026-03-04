@@ -800,12 +800,6 @@ void platform_sleep_ns(uint64_t ns);
  *
  * @ingroup platform
  */
-typedef struct {
-  /** Path to the binary (exe, .so, dylib, DLL, etc.) */
-  char path[PLATFORM_MAX_PATH_LENGTH];
-  /** File offset within the binary (for symbolizer) */
-  uintptr_t file_offset;
-} platform_binary_match_t;
 
 /** @} */
 

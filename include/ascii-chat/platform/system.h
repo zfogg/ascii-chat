@@ -702,7 +702,15 @@ ssize_t platform_write(int fd, const void *buf, size_t count);
  *
  * @note Multiple matches are possible but rare (would indicate overlapping
  *       mapped regions, a configuration error).
- *
+ */
+typedef struct {
+  /** Path to the binary (exe, .so, dylib, DLL, etc.) */
+  char path[PLATFORM_MAX_PATH_LENGTH];
+  /** File offset within the binary (for symbolizer) */
+  uintptr_t file_offset;
+} platform_binary_match_t;
+
+/**
  * @par Example:
  * @code{.c}
  * platform_binary_match_t matches[2];
