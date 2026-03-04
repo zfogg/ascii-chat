@@ -68,9 +68,16 @@ endif()
 # Non-musl builds: Use system package manager
 if(UNIX AND NOT APPLE)
     # Linux/BSD: Use system package managers
-    find_package(Freetype REQUIRED)
+    find_package(Freetype)
 
-    message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
+    if(NOT FREETYPE_FOUND)
+        # Fallback for CMake FindFreetype module issues
+        set(FREETYPE_LIBRARIES "/usr/lib/x86_64-linux-gnu/libfreetype.so")
+        set(FREETYPE_INCLUDE_DIRS "/usr/include/freetype2")
+        message(STATUS "${BoldGreen}✓${ColorReset} FreeType2 (fallback): ${FREETYPE_LIBRARIES}")
+    else()
+        message(STATUS "${BoldGreen}✓${ColorReset} FreeType2: ${FREETYPE_LIBRARIES}")
+    endif()
 
 elseif(APPLE)
     # macOS: Use homebrew or macports

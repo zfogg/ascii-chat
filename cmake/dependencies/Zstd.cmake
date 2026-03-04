@@ -93,4 +93,9 @@ endif()
 
 set(ZSTD_FOUND TRUE)
 
+# Add alias for compatibility with code that uses zstd::libzstd
+if(NOT TARGET zstd::libzstd)
+    add_library(zstd::libzstd ALIAS zstd::zstd)
+endif()
+
 message(STATUS "${BoldGreen}✓${ColorReset} zstd found")
