@@ -660,24 +660,37 @@ export default function Man3() {
             setTimeout(() => {
               const codeBlocks = document.querySelectorAll(".code-with-highlight pre code");
               codeBlocks.forEach((block) => {
-                const arrowSpans = [];
-                block.querySelectorAll("span").forEach((span) => {
+                const allSpans = Array.from(block.querySelectorAll("span"));
+
+                allSpans.forEach((span, spanIdx) => {
                   if (span.textContent.includes("⟹")) {
-                    arrowSpans.push(span);
-                  }
-                });
+                    // Found arrow, highlight spans until we hit a newline
+                    let highlightCount = 0;
 
-                // Highlight all lines that have arrow markers
-                arrowSpans.forEach((arrowSpan) => {
-                  const arrowY = arrowSpan.offsetTop;
+                    // Highlight this span (the arrow)
+                    span.style.backgroundColor = "#fbbf24";
+                    span.style.color = "#000";
+                    highlightCount++;
 
-                  // Find all spans on this Y row and highlight them
-                  block.querySelectorAll("span").forEach((span) => {
-                    if (span.offsetTop === arrowY) {
-                      span.style.backgroundColor = "#fbbf24";
-                      span.style.color = "#000";
+                    // Highlight following spans until newline
+                    for (let i = spanIdx + 1; i < allSpans.length; i++) {
+                      const nextSpan = allSpans[i];
+                      if (nextSpan.textContent.includes("\n")) {
+                        // Stop at newline, but still highlight this span if it contains the newline
+                        if (nextSpan.textContent.includes("⟸")) {
+                          nextSpan.style.backgroundColor = "#fbbf24";
+                          nextSpan.style.color = "#000";
+                          highlightCount++;
+                        }
+                        break;
+                      }
+                      nextSpan.style.backgroundColor = "#fbbf24";
+                      nextSpan.style.color = "#000";
+                      highlightCount++;
                     }
-                  });
+
+                    console.log(`[highlight] Highlighted ${highlightCount} spans in logical line with arrows`);
+                  }
                 });
               });
             }, 0);
