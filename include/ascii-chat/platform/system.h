@@ -3,7 +3,7 @@
 /**
  * @file platform/system.h
  * @brief Cross-platform system functions interface for ascii-chat
- * @ingroup platform
+ * @ingroup platform_system
  * @addtogroup platform
  * @{
  *
@@ -40,7 +40,7 @@ extern "C" {
  * @brief Signal handler function type
  * @param sig Signal number
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 typedef void (*signal_handler_t)(int);
 
@@ -67,7 +67,7 @@ void platform_install_crash_handler(void);
  * Initializes platform-specific subsystems such as Winsock on Windows.
  * Must be called before using any platform-specific functions.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_init(void);
 
@@ -77,7 +77,7 @@ asciichat_error_t platform_init(void);
  * Performs cleanup for platform-specific subsystems.
  * Should be called during program shutdown.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_destroy(void);
 
@@ -96,7 +96,7 @@ void platform_destroy(void);
  * @note This function does not return. Process is terminated immediately.
  * @note Use this sparingly - prefer normal exit() whenever possible.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_force_exit(int exit_code);
 
@@ -106,7 +106,7 @@ void platform_force_exit(int exit_code);
  *
  * Sleeps the current thread for the specified duration.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_sleep_ms(unsigned int ms);
 
@@ -125,7 +125,7 @@ void platform_sleep_ms(unsigned int ms);
  * @note The absolute value is arbitrary; only differences are meaningful.
  * @note Wraps after approximately 584,942 years (uint64_t).
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 uint64_t platform_get_monotonic_time_us(void);
 
@@ -149,7 +149,7 @@ uint64_t platform_get_monotonic_time_us(void);
  * @note POSIX systems return ASCIICHAT_OK but do nothing
  * @note Must call platform_restore_timer_resolution() to restore default behavior
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_request_timer_precision(int precision);
 
@@ -168,7 +168,7 @@ asciichat_error_t platform_request_timer_precision(int precision);
  * @note Safe to call without a matching platform_request_timer_precision() call
  * @note POSIX systems return ASCIICHAT_OK but do nothing
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_restore_timer_resolution(void);
 
@@ -187,7 +187,7 @@ asciichat_error_t platform_restore_timer_resolution(void);
  * @note Safe to call multiple times (checks for already-enabled state)
  * @note Call platform_disable_keepawake() to revert
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_enable_keepawake(void);
 
@@ -205,7 +205,7 @@ asciichat_error_t platform_enable_keepawake(void);
  * @note Safe to call even if keepawake was never enabled
  * @note Safe to call multiple times
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_disable_keepawake(void);
 
@@ -235,7 +235,7 @@ void platform_disable_keepawake(void);
  * @param result Pointer to struct tm to receive result
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
 
@@ -249,7 +249,7 @@ asciichat_error_t platform_localtime(const time_t *timer, struct tm *result);
  * @param result Pointer to struct tm to receive result
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_gtime(const time_t *timer, struct tm *result);
 
@@ -261,7 +261,7 @@ asciichat_error_t platform_gtime(const time_t *timer, struct tm *result);
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 const char *platform_get_username(void);
 
@@ -273,13 +273,13 @@ const char *platform_get_username(void);
  *
  * Registers a signal handler for the specified signal.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 signal_handler_t platform_signal(int sig, signal_handler_t handler);
 
 /**
  * @brief Signal handler descriptor for bulk registration
- * @ingroup platform
+ * @ingroup platform_system
  */
 typedef struct {
   int sig;                  /**< Signal number to handle */
@@ -305,7 +305,7 @@ typedef struct {
  * platform_register_signal_handlers(handlers, 2);
  * @endcode
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_register_signal_handlers(const platform_signal_handler_t *handlers, int count);
 
@@ -318,7 +318,7 @@ asciichat_error_t platform_register_signal_handlers(const platform_signal_handle
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 const char *platform_getenv(const char *name);
 
@@ -330,7 +330,7 @@ const char *platform_getenv(const char *name);
  *
  * Sets or unsets an environment variable.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 int platform_setenv(const char *name, const char *value);
 
@@ -344,7 +344,7 @@ int platform_setenv(const char *name, const char *value);
  * Opaque handle returned by platform_stderr_redirect_to_null() that can be used
  * to restore stderr to its original destination.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 typedef struct {
   int original_fd; /**< Original stderr file descriptor (-1 if not redirected) */
@@ -369,7 +369,7 @@ typedef struct {
  * platform_stderr_restore(handle);        // stderr restored
  * @endcode
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void);
 
@@ -383,7 +383,7 @@ platform_stderr_redirect_handle_t platform_stderr_redirect_to_null(void);
  * @note Safe to call with invalid handle (e.g., {-1, -1}) - will do nothing
  * @note After calling this, the handle is invalidated and should not be reused
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_stderr_restore(platform_stderr_redirect_handle_t handle);
 
@@ -398,7 +398,7 @@ void platform_stderr_restore(platform_stderr_redirect_handle_t handle);
  * @note Always call platform_stdout_stderr_restore() with the returned handle
  * @note The returned handle uses original_fd for stdout, devnull_fd for stderr
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void);
 
@@ -411,7 +411,7 @@ platform_stderr_redirect_handle_t platform_stdout_stderr_redirect_to_null(void);
  *
  * @note Safe to call with invalid handle - will do nothing
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle);
 
@@ -424,7 +424,7 @@ void platform_stdout_stderr_restore(platform_stderr_redirect_handle_t handle);
  * @note On Windows, this function has no effect
  * @note This is a one-way operation - streams cannot be restored
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_stdio_redirect_to_null_permanent(void);
 
@@ -436,7 +436,7 @@ void platform_stdio_redirect_to_null_permanent(void);
  *
  * @note This should be called early in program initialization.
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 void platform_install_crash_handler(void);
 
@@ -456,7 +456,7 @@ void platform_install_crash_handler(void);
  * @param ... Variable arguments
  * @return Number of characters written (excluding null terminator) or negative on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
 
@@ -470,7 +470,7 @@ int safe_snprintf(char *buffer, size_t buffer_size, const char *format, ...);
  * @param ... Variable arguments
  * @return Number of characters written or negative on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 int safe_fprintf(FILE *stream, const char *format, ...);
 
@@ -486,7 +486,7 @@ int safe_fprintf(FILE *stream, const char *format, ...);
  * @param ap Variable argument list
  * @return Number of characters written (excluding null terminator) or negative on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list ap);
 
@@ -514,7 +514,7 @@ int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list
  * @param count Number of bytes to copy
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src, size_t count);
 
@@ -530,7 +530,7 @@ asciichat_error_t platform_memcpy(void *dest, size_t dest_size, const void *src,
  * @param count Number of bytes to set
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t count);
 
@@ -546,7 +546,7 @@ asciichat_error_t platform_memset(void *dest, size_t dest_size, int ch, size_t c
  * @param count Number of bytes to move
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src, size_t count);
 
@@ -561,7 +561,7 @@ asciichat_error_t platform_memmove(void *dest, size_t dest_size, const void *src
  * @param src Source string
  * @return ASCIICHAT_OK on success, error code on error
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src);
 
@@ -574,7 +574,7 @@ asciichat_error_t platform_strcpy(char *dest, size_t dest_size, const char *src)
  *
  * @return System error code (Windows DWORD cast to int, or errno on POSIX)
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 int platform_get_last_error(void);
 
@@ -591,7 +591,7 @@ int platform_get_last_error(void);
  * @note On POSIX, uses strerror_r with thread-local storage
  * @note On Windows, uses FormatMessageA with proper cleanup
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 const char *platform_strerror(int errnum);
 
@@ -606,7 +606,7 @@ const char *platform_strerror(int errnum);
  * @param ipv4_out_size Size of the output buffer
  * @return ASCIICHAT_OK on success, error code on failure
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *ipv4_out, size_t ipv4_out_size);
 
@@ -638,7 +638,7 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);
 
@@ -661,7 +661,7 @@ asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem
  * @note Returns early on fatal write errors (logs warning but continues retrying)
  * @note If NULL buffer or 0 count is passed, returns 0 immediately
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 size_t platform_write_all(int fd, const void *buf, size_t count);
 
@@ -678,7 +678,7 @@ size_t platform_write_all(int fd, const void *buf, size_t count);
  * @note On Windows, automatically handles line ending conversion if needed.
  * @note On POSIX, equivalent to standard write().
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 ssize_t platform_write(int fd, const void *buf, size_t count);
 
@@ -722,7 +722,7 @@ typedef struct {
  * }
  * @endcode
  *
- * @ingroup platform
+ * @ingroup platform_system
  */
 int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *matches, int max_matches);
 

@@ -1,126 +1,22 @@
 #pragma once
 
-/**
- * @defgroup platform Platform Abstractions
- * @brief 🔌 Cross-platform abstractions for threading, sockets, and system calls, and hardware access
+// Platform abstraction layer umbrella header
+// This file includes all platform abstraction components.
+// Individual component headers (system.h, terminal.h, thread.h, etc.) are documented separately.
+
+/*! @cond INTERNAL_IMPL
  *
- * @file platform/abstraction.h
- * @brief 🔌 Cross-platform abstraction layer umbrella header for ascii-chat
- * @ingroup platform
- * @addtogroup platform
- * @{
+ * The actual function declarations and implementations are in the component headers:
+ * - system.h / system.c - System functions, timers, environment variables
+ * - terminal.h / terminal.c - Terminal I/O and control sequences
+ * - thread.h - Threading primitives
+ * - socket.h - Network socket operations
+ * - And other component headers...
  *
- * This header provides the main entry point for the platform abstraction layer,
- * enabling ascii-chat to run seamlessly on Windows, Linux, and macOS with a
- * unified API. It serves as the umbrella header that includes all platform
- * abstraction components.
- *
- * **Purpose**:
- *
- * The abstraction layer eliminates platform-specific code (`#ifdef _WIN32` blocks)
- * from application code by providing a unified API. All platform differences are
- * hidden behind this abstraction layer, making the application code completely
- * platform-independent.
- *
- * **Usage**:
- *
- * @code{.c}
- * // Include the main platform abstraction header
- * #include "platform/abstraction.h"
- *
- * // Use unified API - works identically on all platforms
- * socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
- * asciichat_thread_t thread;
- * asciichat_thread_create(&thread, worker_func, arg);
- * @endcode
- *
- * **Organization**:
- *
- * The abstraction layer is organized into modular components, each with its own
- * header file. This header includes them all:
- *
- * - **Threading** (`thread.h`): Thread creation, joining, detaching, thread IDs
- * - **Synchronization** (`mutex.h`, `rwlock.h`, `cond.h`): Mutexes, read-write locks, condition variables
- * - **Networking** (`socket.h`): Socket operations, bind, listen, accept, send, recv
- * - **Terminal I/O** (`terminal.h`): Terminal size, raw mode, cursor control, ANSI support
- * - **System Functions** (`system.h`): Process info, environment variables, signals, backtraces
- * - **String Operations** (`string.h`): Safe string formatting and manipulation
- * - **File I/O** (`file.h`): Cross-platform file operations
- *
- * **Platform Detection**:
- *
- * This header automatically detects the target platform using `_WIN32` macro:
- * - **Windows**: Uses Win32 API, Winsock2, Critical Sections, SRW Locks
- * - **POSIX**: Uses pthreads, BSD sockets, termios (Linux/macOS)
- *
- * **Compatibility Layer**:
- *
- * This header also provides platform compatibility macros and definitions:
- * - POSIX-style constants for Windows (file permissions, signal constants, etc.)
- * - Type definitions (socket types, nfds_t, useconds_t)
- * - Function aliases (Windows POSIX-like function names)
- * - Missing POSIX functions (aligned_alloc, clock_gettime, gmtime_r)
- *
- * **Utility Macros**:
- *
- * - `PLATFORM_WINDOWS`: Defined as 1 on Windows, 0 on POSIX
- * - `PLATFORM_POSIX`: Defined as 1 on POSIX, 0 on Windows
- * - `PACKED_STRUCT_BEGIN/END`: Cross-platform packed struct support
- * - `ALIGNED_ATTR(x)`: Memory alignment attributes
- * - `THREAD_LOCAL`: Thread-local storage keyword
- * - `ALIGNED_32/ALIGNED_16`: Specific alignment macros
- * - `UNUSED(x)`: Suppress unused parameter warnings
- *
- * **Thread-Local Storage**:
- *
- * Provides unified thread-local storage support:
- * - **Windows MSVC**: `__declspec(thread)`
- * - **Windows Clang/GCC**: `__thread`
- * - **POSIX**: `__thread`
- *
- * **Initialization**:
- *
- * Before using platform functions, call `platform_init()` (required on Windows for
- * Winsock initialization). See `platform/system.h` for details.
- *
- * @par Example:
- * @code{.c}
- * #include "platform/abstraction.h"
- *
- * int main() {
- *     // Initialize platform (required on Windows)
- *     if (platform_init() != ASCIICHAT_OK) {
- *         return 1;
- *     }
- *
- *     // Use platform functions - no #ifdefs needed!
- *     socket_t sock = socket_create(AF_INET, SOCK_STREAM, 0);
- *     asciichat_thread_t thread;
- *     asciichat_thread_create(&thread, worker, NULL);
- *
- *     // Cleanup
- *     platform_destroy();
- *     return 0;
- * }
- * @endcode
- *
- * @note This header includes all platform abstraction components. For fine-grained
- *       control, you can include individual component headers directly (e.g.,
- *       `platform/thread.h`, `platform/socket.h`).
- *
- * @note All platform-specific code (`#ifdef _WIN32`) is contained in this header and
- *       implementation files. Application code never needs platform conditionals.
- *
- * @see @ref topic_platform "Platform Abstraction Layer" for comprehensive documentation
- * @see platform/thread.h for threading primitives
- * @see platform/mutex.h for mutex operations
- * @see platform/socket.h for socket operations
- * @see platform/terminal.h for terminal I/O
- * @see platform/system.h for system functions
- *
- * @author Zachary Fogg <me@zfo.gg>
- * @date September 2025
- */
+ * @endcond */
+
+// ============================================================================
+// Platform Detection
 
 // ============================================================================
 // Platform Detection

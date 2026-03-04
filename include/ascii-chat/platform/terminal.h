@@ -3,7 +3,7 @@
 /**
  * @file platform/terminal.h
  * @brief 🖥️ Cross-platform terminal interface for ascii-chat
- * @ingroup platform
+ * @ingroup platform_terminal
  * @addtogroup platform
  * @{
  *
@@ -85,7 +85,7 @@
  * - Windows: Uses platform/windows/getopt.h
  * - POSIX: Uses system <getopt.h>
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 #ifdef _WIN32
 #include "windows/getopt.h"
@@ -158,7 +158,7 @@
  * @note Rows represent height (vertical dimension).
  * @note Columns represent width (horizontal dimension).
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef struct {
   int rows; ///< Number of rows (height) in terminal
@@ -181,7 +181,7 @@ typedef struct {
  * @note On failure, size structure is not modified.
  * @note Terminal size may change if terminal is resized.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_get_size(terminal_size_t *size);
 
@@ -201,7 +201,7 @@ asciichat_error_t terminal_get_size(terminal_size_t *size);
  * @note Disabling raw mode restores normal terminal behavior.
  * @note Raw mode affects only the current terminal session.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_set_raw_mode(bool enable);
 
@@ -217,7 +217,7 @@ asciichat_error_t terminal_set_raw_mode(bool enable);
  * @note Echo mode works independently of raw mode.
  * @note Disabling echo is useful for password prompts.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_set_echo(bool enable);
 
@@ -232,7 +232,7 @@ asciichat_error_t terminal_set_echo(bool enable);
  * @note Returns true if ANY color support is detected (16, 256, or truecolor).
  * @note Use detect_terminal_capabilities() for detailed color level detection.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_supports_color(void);
 
@@ -246,7 +246,7 @@ bool terminal_supports_color(void);
  * @note Unicode support is broader than UTF-8 (includes UTF-16, etc.).
  * @note Use terminal_supports_utf8() for UTF-8 specific detection.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_supports_unicode(void);
 
@@ -260,7 +260,7 @@ bool terminal_supports_unicode(void);
  * @note UTF-8 support is required for Unicode palette characters.
  * @note Use detect_terminal_capabilities() for comprehensive capability detection.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_supports_utf8(void);
 
@@ -276,7 +276,7 @@ bool terminal_supports_utf8(void);
  * @note On Windows, uses Console API ClearScreen() function.
  * @note Screen clearing does not affect scrollback buffer.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_clear_screen(void);
 
@@ -294,7 +294,7 @@ asciichat_error_t terminal_clear_screen(void);
  * @note Column 1 is the leftmost column of the terminal.
  * @note Cursor position may be clamped to terminal bounds.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_move_cursor(int row, int col);
 
@@ -310,7 +310,7 @@ asciichat_error_t terminal_move_cursor(int row, int col);
  * @note Silently ignores attempts to move beyond terminal boundaries
  * @note This function is a no-op if stdout is not a TTY
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_move_cursor_relative(int offset);
 
@@ -325,7 +325,7 @@ asciichat_error_t terminal_move_cursor_relative(int offset);
  * @note On Windows, requires Windows 10 build 1511 or later.
  * @note ANSI support is enabled for the current console session.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 void terminal_enable_ansi(void);
 
@@ -345,7 +345,7 @@ void terminal_enable_ansi(void);
  * @note Buffering mode affects stdout/stderr behavior.
  * @note Unbuffered mode may reduce performance for large outputs.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_set_buffering(bool line_buffered);
 
@@ -360,7 +360,7 @@ asciichat_error_t terminal_set_buffering(bool line_buffered);
  * @note This function calls fsync/flush operations on the file descriptor.
  * @note Useful for ensuring output is visible before blocking operations.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_flush(int fd);
 
@@ -377,7 +377,7 @@ asciichat_error_t terminal_flush(int fd);
  * @note On failure, output parameters are not modified.
  * @note Cursor position detection may not be available on all terminals.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_get_cursor_position(int *row, int *col);
 
@@ -392,7 +392,7 @@ asciichat_error_t terminal_get_cursor_position(int *row, int *col);
  * @note Saved position is terminal-specific and not stored in application.
  * @note Some terminals may not support cursor position save/restore.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_save_cursor(void);
 
@@ -406,7 +406,7 @@ asciichat_error_t terminal_save_cursor(void);
  * @note Only restores the most recently saved cursor position.
  * @note Some terminals may not support cursor position save/restore.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_restore_cursor(void);
 
@@ -422,7 +422,7 @@ asciichat_error_t terminal_restore_cursor(void);
  * @note Title is truncated to terminal-specific maximum length.
  * @note Some terminals may not support title setting.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_set_title(const char *title);
 
@@ -436,7 +436,7 @@ asciichat_error_t terminal_set_title(const char *title);
  * @note Bell sound depends on terminal/system sound settings.
  * @note Some terminals may have bell disabled or silent.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_ring_bell(void);
 
@@ -453,7 +453,7 @@ asciichat_error_t terminal_ring_bell(void);
  *
  * @note Cursor should be restored with terminal_cursor_show() before exit.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_cursor_hide(void);
 
@@ -465,7 +465,7 @@ asciichat_error_t terminal_cursor_hide(void);
  * Uses ESC[?25h. On Windows, tries VT processing first and falls back to
  * SetConsoleCursorInfo for older consoles.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_cursor_show(void);
 
@@ -484,7 +484,7 @@ asciichat_error_t terminal_cursor_show(void);
  * @note Setting scroll region to entire terminal clears the restriction.
  * @note Some terminals may not support scroll regions.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_set_scroll_region(int top, int bottom);
 
@@ -504,7 +504,7 @@ asciichat_error_t terminal_set_scroll_region(int top, int bottom);
  * @note This function sends ANSI reset sequence (ESC[0m).
  * @note Terminal state is reset immediately.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_reset(int fd);
 
@@ -520,7 +520,7 @@ asciichat_error_t terminal_reset(int fd);
  * @note Home position is always row 1, column 1.
  * @note Useful for starting new frame rendering at top-left.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_cursor_home(int fd);
 
@@ -537,7 +537,7 @@ asciichat_error_t terminal_cursor_home(int fd);
  * @note Some terminals may not support scrollback clearing.
  * @note On Windows, clears console screen buffer.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t terminal_clear_scrollback(int fd);
 
@@ -573,7 +573,7 @@ asciichat_error_t terminal_clear_scrollback(int fd);
  * - Windows Console (Windows 10+ supports ANSI)
  * - tmux (supports truecolor with proper configuration)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef enum {
   /** @brief Auto-detect color support from terminal capabilities */
@@ -594,7 +594,7 @@ typedef enum {
  * Defines color filters for applying single-color tints to grayscale video.
  * Filters are applied server-side; clients see each user in their chosen color.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef enum {
   /** @brief No filtering (default) */
@@ -634,7 +634,7 @@ typedef enum {
  * combined to indicate support for various features. Used in terminal
  * capability detection and rendering optimization.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef enum {
   /** @brief 16-color support (TERM_CAP_COLOR_16) */
@@ -655,7 +655,7 @@ typedef enum {
  * Enumeration of rendering modes for ASCII art output. Different modes
  * provide different visual effects and require different terminal capabilities.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef enum {
   /** @brief Foreground colors only (text color) */
@@ -702,7 +702,7 @@ typedef enum {
  * - term_type: Value of $TERM environment variable (for troubleshooting)
  * - colorterm: Value of $COLORTERM (RGB/256/none hints)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef struct {
   /** @brief Detected color support level (terminal_color_mode_t) */
@@ -746,7 +746,7 @@ typedef struct {
  * @note owns_fd indicates whether the file descriptor was opened by the
  *       function and should be closed when done.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef struct {
   /** @brief File descriptor for TTY access */
@@ -782,7 +782,7 @@ typedef struct {
  * @note Detection reliability is indicated by detection_reliable field.
  * @note Use apply_color_mode_override() to apply command-line overrides.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 terminal_capabilities_t detect_terminal_capabilities(void);
 
@@ -797,7 +797,7 @@ terminal_capabilities_t detect_terminal_capabilities(void);
  * @note File descriptor may need to be closed if owns_fd is true.
  * @note TTY path is platform-specific (Unix: /dev/tty, Windows: CON, etc.).
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 tty_info_t get_current_tty(void);
 
@@ -812,7 +812,7 @@ tty_info_t get_current_tty(void);
  * @note Returns false for non-TTY devices or invalid paths.
  * @note Useful for validating TTY paths before use.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool is_valid_tty_path(const char *path);
 
@@ -831,7 +831,7 @@ bool is_valid_tty_path(const char *path);
  * @note Terminal size may change if terminal is resized.
  * @note This function is more reliable than terminal_get_size() due to fallbacks.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short int *height);
 
@@ -846,7 +846,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
  * @note Returns static string (do not free).
  * @note Returns "unknown" for invalid level values.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 const char *terminal_color_level_name(terminal_color_mode_t level);
 
@@ -862,7 +862,7 @@ const char *terminal_color_level_name(terminal_color_mode_t level);
  * @note Returns static string (do not free).
  * @note Summary format: "16-color, UTF-8, foreground mode" (example).
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 const char *terminal_capabilities_summary(const terminal_capabilities_t *caps);
 
@@ -876,7 +876,7 @@ const char *terminal_capabilities_summary(const terminal_capabilities_t *caps);
  * @note This function outputs test patterns to stdout.
  * @note Useful for verifying terminal capability detection accuracy.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 void test_terminal_output_modes(void);
 
@@ -895,7 +895,7 @@ void test_terminal_output_modes(void);
  * @note Returns a modified copy of the input structure.
  * @note Overrides take precedence over detected capabilities.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
 
@@ -912,7 +912,7 @@ terminal_capabilities_t apply_color_mode_override(terminal_capabilities_t caps);
  * @param fd File descriptor to check (STDOUT_FILENO or STDERR_FILENO)
  * @return true if colors should be used, false otherwise
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_should_color_output(int fd);
 
@@ -926,7 +926,7 @@ bool terminal_should_color_output(int fd);
  *
  * @return Effective terminal_color_mode_t to use
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 terminal_color_mode_t terminal_get_effective_color_mode(void);
 
@@ -949,7 +949,7 @@ terminal_color_mode_t terminal_get_effective_color_mode(void);
  * @note Result is cached for performance (theme doesn't change during session)
  * @note User can override via TERM_BACKGROUND environment variable
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_has_dark_background(void);
 
@@ -968,7 +968,7 @@ bool terminal_has_dark_background(void);
  * @note Has 100ms timeout to prevent hanging
  * @note Only works if stdout is a TTY
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b);
 
@@ -1003,7 +1003,7 @@ bool terminal_query_background_color(uint8_t *bg_r, uint8_t *bg_g, uint8_t *bg_b
  * @note Checks TESTING environment variable for test/CI environments.
  * @note Primary use case: determining if output is going to a TTY.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_should_use_control_sequences(int fd);
 
@@ -1027,7 +1027,7 @@ bool terminal_should_use_control_sequences(int fd);
  * @note Wrapper around platform_isatty(STDIN_FILENO) for clarity
  * @note Returns false in non-interactive environments (CI, scripts, pipes)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_is_stdin_tty(void);
 
@@ -1046,7 +1046,7 @@ bool terminal_is_stdin_tty(void);
  * @note Wrapper around platform_isatty(STDOUT_FILENO) for clarity
  * @note Returns false in piped contexts (e.g., ascii-chat client | less)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_is_stdout_tty(void);
 
@@ -1062,7 +1062,7 @@ bool terminal_is_stdout_tty(void);
  * @note Wrapper around platform_isatty(STDERR_FILENO) for clarity
  * @note stderr is often a TTY even when stdout is piped
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_is_stderr_tty(void);
 
@@ -1089,7 +1089,7 @@ bool terminal_is_stderr_tty(void);
  * @note Used for enabling interactive features (prompts, padding, splash)
  * @note Snapshot mode is checked separately via GET_OPTION(snapshot_mode)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_is_interactive(void);
 
@@ -1113,7 +1113,7 @@ bool terminal_is_interactive(void);
  * @note Equivalent to: !terminal_is_stdout_tty()
  * @note Common pattern: force stderr when piped to prevent data corruption
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_is_piped_output(void);
 
@@ -1140,7 +1140,7 @@ bool terminal_is_piped_output(void);
  * @note TESTING environment variable bypasses this for test environments
  * @note Typical usage: if (terminal_should_force_stderr()) log_set_force_stderr(true);
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_should_force_stderr(void);
 
@@ -1159,7 +1159,7 @@ bool terminal_should_force_stderr(void);
  * @note Use: int fd = terminal_choose_log_fd(LOG_INFO);
  * @note Common usage: platform_write_all(terminal_choose_log_fd(level), data, len);
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 int terminal_choose_log_fd(log_level_t level);
 
@@ -1193,7 +1193,7 @@ int terminal_choose_log_fd(log_level_t level);
  * @note When false, password prompts should auto-cancel with error
  * @note When false, yes/no prompts should use default value or deny
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool terminal_can_prompt_user(void);
 
@@ -1204,7 +1204,7 @@ bool terminal_can_prompt_user(void);
 /**
  * @brief Console control event types (cross-platform Ctrl+C handling)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef enum {
   CONSOLE_CTRL_C = 0,     /**< Ctrl+C pressed (SIGINT equivalent) */
@@ -1222,7 +1222,7 @@ typedef enum {
  * @note On Windows, this is called from a separate thread, not from signal context
  * @note On Unix, this is called from signal context (limited safe operations)
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef bool (*console_ctrl_handler_t)(console_ctrl_event_t event);
 
@@ -1241,7 +1241,7 @@ typedef bool (*console_ctrl_handler_t)(console_ctrl_event_t event);
  * @note Only one handler is supported at a time. Registering a new handler
  *       replaces the previous one.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler);
 
@@ -1250,7 +1250,7 @@ bool platform_set_console_ctrl_handler(console_ctrl_handler_t handler);
  * @param fd File descriptor to check
  * @return Non-zero if fd is a terminal, 0 otherwise
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 int platform_isatty(int fd);
 
@@ -1263,7 +1263,7 @@ int platform_isatty(int fd);
  *
  * @note The returned string may be a static buffer. Do not modify or free it.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 const char *platform_ttyname(int fd);
 
@@ -1281,7 +1281,7 @@ const char *platform_ttyname(int fd);
  * Used by both Linux and macOS renderers for consistent color selection.
  * Returns appropriate text color based on terminal theme.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
 
@@ -1295,7 +1295,7 @@ void terminal_get_default_foreground_color(int theme, uint8_t *out_r, uint8_t *o
  * Used by both Linux and macOS renderers for consistent color selection.
  * Returns appropriate background color based on terminal theme.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *out_g, uint8_t *out_b);
 
@@ -1333,7 +1333,7 @@ void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *o
  * unsigned short int width = terminal_get_effective_width();
  * @endcode
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 unsigned short int terminal_get_effective_width(void);
 
@@ -1371,7 +1371,7 @@ unsigned short int terminal_get_effective_width(void);
  * unsigned short int height = terminal_get_effective_height();
  * @endcode
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 unsigned short int terminal_get_effective_height(void);
 
@@ -1390,7 +1390,7 @@ unsigned short int terminal_get_effective_height(void);
  * @note Callback is called asynchronously from resize detection thread.
  * @note Callback should perform operations quickly to avoid blocking.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 typedef void (*terminal_resize_callback_t)(int cols, int rows);
 
@@ -1410,7 +1410,7 @@ typedef void (*terminal_resize_callback_t)(int cols, int rows);
  *
  * @warning Callback is called from a separate thread - ensure thread-safety.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 int terminal_start_resize_detection(terminal_resize_callback_t callback);
 
@@ -1423,7 +1423,7 @@ int terminal_start_resize_detection(terminal_resize_callback_t callback);
  * @note Safe to call multiple times (no-op after first call).
  * @note After stopping, resize events are no longer detected.
  *
- * @ingroup platform
+ * @ingroup platform_terminal
  */
 void terminal_stop_resize_detection(void);
 
