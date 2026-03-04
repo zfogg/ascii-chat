@@ -653,24 +653,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   }
 
   if (snapshot_mode) {
-    // Snapshot mode without pre-estimation: use ACTUAL elapsed time between frames
-    // Calculate duration from actual capture timestamp differences
-    // IMPORTANT: Use codec's time_base here; FFmpeg will rescale to stream time_base later
-    if (enc->frame_count > 0 && enc->previous_captured_ns > 0) {
-      // Frame duration = time since last frame, converted to codec time_base units with high precision
-      uint64_t elapsed_ns = captured_ns - enc->previous_captured_ns;
-      // Convert nanoseconds to codec time_base units using exact calculation
-      // formula: duration = elapsed_ns * time_base.den / (time_base.num * 1e9)
-      frame_duration = (int64_t)(elapsed_ns * enc->codec_ctx->time_base.den /
-                                 ((uint64_t)enc->codec_ctx->time_base.num * 1000000000ULL));
-      if (frame_duration == 0) {
-        // Frames too close together, use minimum 1 unit
-        frame_duration = 1;
-      }
-    } else {
-      // First frame: use a reasonable default (1 frame at output fps)
-      frame_duration = 1;  // 1 unit at codec time_base (1/fps)
-    }
+    // Snapshot mode: use placeholder durations that will be adjusted in destroy()
+    // Each frame gets a nominal duration; destroy() will redistribute to match snapshot_delay
+    // This ensures total video duration matches snapshot_delay regardless of actual capture speed
+    frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);
   } else {
     // Normal mode: use FPS-based frame duration
     frame_duration = enc->codec_ctx->time_base.den / (enc->codec_ctx->time_base.num * enc->fps);

@@ -394,9 +394,13 @@ asciichat_error_t session_pipeline_create(
     // We store a flag to know whether to enqueue frames for encoding
     double render_fps = session_display_get_render_fps(display);
     bool has_file = session_display_has_render_file(display);
+
+    // Enable encode thread if render_file is available
+    // Note: has_file can be true even if render_file creation failed (ctx->render_file exists)
+    // OR if render_fps is explicitly set for playback speed control
     p->has_render_file = render_fps > 0 || has_file;
-    log_info("[PIPELINE_CREATE] render_fps=%.1f, has_render_file=%d, enable_encode_thread=%d",
-             render_fps, has_file, p->has_render_file);
+    log_info("[PIPELINE_CREATE] render_fps=%.1f, has_file=%d, has_render_file=%d",
+             render_fps, has_file ? 1 : 0, p->has_render_file ? 1 : 0);
 
     atomic_store_bool(&p->stop, false);
     atomic_store_u64(&p->first_frame_ns, 0);
