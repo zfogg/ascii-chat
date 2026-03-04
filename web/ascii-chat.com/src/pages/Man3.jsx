@@ -241,6 +241,12 @@ export default function Man3() {
   }, [targetLineNumber]);
 
   // Convert HTML with pre blocks into JSX with CodeBlock components
+  const decodeHtmlEntities = (text) => {
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   const renderContentWithCodeBlocks = (html) => {
     // Split by pre tags while preserving surrounding HTML
     const parts = html.split(/(<pre>.*?<\/pre>)/s);
@@ -250,7 +256,8 @@ export default function Man3() {
       if (part.match(/^<pre>.*<\/pre>$/s)) {
         // Extract code content from pre tag
         const codeMatch = part.match(/<pre>([\s\S]*)<\/pre>/);
-        const codeContent = codeMatch ? codeMatch[1] : '';
+        let codeContent = codeMatch ? codeMatch[1] : '';
+        codeContent = decodeHtmlEntities(codeContent);
         if (codeContent.trim()) {
           elements.push(
             <CodeBlock key={`code-${idx}`} language="c">
