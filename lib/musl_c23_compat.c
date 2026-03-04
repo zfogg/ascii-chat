@@ -181,3 +181,73 @@ int __isoc23_vfwscanf(FILE *stream, const wchar_t *format, va_list args) {
 int __isoc23_vswscanf(const wchar_t *str, const wchar_t *format, va_list args) {
   return vswscanf(str, format, args);
 }
+
+// =============================================================================
+// musl Random Function Compatibility Stubs
+// =============================================================================
+// Provides compatibility for glibc-specific random functions used by expat and
+// fontconfig.
+
+#include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/syscall.h>
+
+// arc4random_buf() - used by expat for hash seeding
+// Fills buffer with random bytes from /dev/urandom or getrandom syscall
+void arc4random_buf(void *buf, size_t nbytes) {
+  if (nbytes == 0 || buf == NULL) {
+    return;
+  }
+
+  // Try getrandom syscall first (available in Linux 3.17+)
+  // This is preferred as it doesn't require opening a file descriptor
+  #ifdef SYS_getrandom
+  long result = syscall(SYS_getrandom, buf, nbytes, 0);
+  if (result == (long)nbytes) {
+    return;
+  }
+  #endif
+
+  // Fallback: read from /dev/urandom
+  int fd = open("/dev/urandom", O_RDONLY);
+  if (fd >= 0) {
+    ssize_t n = read(fd, buf, nbytes);
+    close(fd);
+    if (n == (ssize_t)nbytes) {
+      return;
+    }
+  }
+
+  // Final fallback: fill with simple pseudo-random data
+  uint8_t *b = (uint8_t *)buf;
+  for (size_t i = 0; i < nbytes; i++) {
+    b[i] = (uint8_t)((i + (uintptr_t)buf + i * 13) & 0xFF);
+  }
+}
+
+// initstate_r() - musl doesn't have this glibc-specific reentrant random function
+// Used by fontconfig. Minimal stub that returns success.
+int initstate_r(unsigned int seed, char *statebuf, size_t statelen,
+                struct random_data *buf) {
+  if (buf == NULL || statebuf == NULL) {
+    return -1;
+  }
+  if (statelen < 32) {
+    return -1;
+  }
+  *(void **)buf = statebuf;
+  return 0;
+}
+
+// random_r() - musl doesn't have this glibc-specific reentrant random function
+// Used by fontconfig. Returns a simple pseudo-random value.
+int random_r(struct random_data *restrict buf, int32_t *restrict result) {
+  if (buf == NULL || result == NULL) {
+    return -1;
+  }
+  static uint32_t seed = 1;
+  seed = seed * 1103515245 + 12345;
+  *result = (int32_t)(seed / 65536) % 32768;
+  return 0;
+}
