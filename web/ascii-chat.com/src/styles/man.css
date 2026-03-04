@@ -179,12 +179,7 @@
 }
 
 .man-page-html + pre {
-  margin-bottom: 2rem !important;
-}
-
-/* Code with highlight (for target lines) */
-.man-page-content .code-with-highlight {
-  margin-bottom: 2rem;
+  margin-bottom: 4rem !important;
 }
 
 /* Hide Doxygen elements */
@@ -202,14 +197,18 @@
   font-size: 1rem;
 }
 
-#container .header,
+.man-page-content #container .header,
 .contents {
-  margin-top: 2rem;
+  margin-top: 4rem;
 }
 
-.memberdecls,
+.man-page-content .memberdecls,
 #header-doc-func-members {
-  margin-top: 2rem;
+  margin-top: 3rem;
+}
+
+.man-page-content .code-with-highlight + div + .man-page-html > .memtitle {
+  margin-top: 3rem;
 }
 
 .man-page-html #nav-path {
