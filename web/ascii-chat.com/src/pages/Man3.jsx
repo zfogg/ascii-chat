@@ -433,6 +433,33 @@ export default function Man3() {
     tryScroll();
   }, [selectedPageContent]);
 
+  // Handle browser back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const pageName = params.get("page");
+
+      if (pageName) {
+        // Extract line number from hash if present
+        const hash = window.location.hash;
+        let lineNumber = null;
+        const lineMatch = hash.match(/#l(\d+)/);
+        if (lineMatch) {
+          lineNumber = parseInt(lineMatch[1], 10);
+        }
+        loadPageContent(pageName, lineNumber);
+      } else {
+        // No page param, clear the page
+        setSelectedPageName(null);
+        setSelectedPageContent(null);
+        setTargetLineNumber(null);
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [loadPageContent]);
+
   // Convert HTML with pre blocks into JSX with CodeBlock components
   const decodeHtmlEntities = (text) => {
     const textarea = document.createElement("textarea");
