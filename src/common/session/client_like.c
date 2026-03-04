@@ -366,13 +366,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_debug("session_client_like_run(): No probe source to destroy");
   }
 
-  // Pass probed FPS to display context for correct render-file duration
-  if (capture_config.target_fps > 0) {
-    session_display_set_render_fps(display, capture_config.target_fps);
-    log_debug("session_client_like_run(): Set display render FPS to %u for correct video encoding duration",
-              capture_config.target_fps);
-  }
-
   // ============================================================================
   // SETUP: Network Transports (TCP/WebSocket)
   // ============================================================================
