@@ -888,6 +888,10 @@ export default function Man3() {
                   <div className="p-4 text-center text-gray-400">
                     Loading pages...
                   </div>
+                ) : searching && searchResults.length === 0 ? (
+                  <div className="p-4 text-center text-blue-400">
+                    Searching...
+                  </div>
                 ) : searchResults.length === 0 ? (
                   <div className="p-4 text-center text-gray-400">
                     {searchQuery ? "No pages found" : "Search to get started"}
