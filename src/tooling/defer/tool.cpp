@@ -1002,6 +1002,7 @@ int main(int argc, const char **argv) {
   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
   // to CommandLineTools SDK, but we strip that from compile_commands.json and
   // set our own explicitly to ensure consistent behavior.
+  std::vector<std::string> appendArgs;
   std::string selectedSDK;
 #ifdef __APPLE__
   {
@@ -1024,6 +1025,26 @@ int main(int argc, const char **argv) {
       prependArgs.push_back("-isysroot");
       prependArgs.push_back(selectedSDK);
       // llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
+
+      const std::string sdkUsrInclude = selectedSDK + "/usr/include";
+      if (llvm::sys::fs::exists(sdkUsrInclude)) {
+        appendArgs.push_back("-isystem");
+        appendArgs.push_back(sdkUsrInclude);
+      }
+
+      // Ensure ptrcheck.h is discoverable for SDK headers that probe it.
+      // Prefer CLT clang 17 include path, then Xcode toolchain fallback.
+      const char *ptrcheckIncludeCandidates[] = {
+          "/Library/Developer/CommandLineTools/usr/lib/clang/17/include",
+          "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include",
+      };
+      for (const char *candidate : ptrcheckIncludeCandidates) {
+        if (llvm::sys::fs::exists(candidate)) {
+          appendArgs.push_back("-isystem");
+          appendArgs.push_back(candidate);
+          break;
+        }
+      }
     } else {
       llvm::errs() << "Warning: No macOS SDK found, system headers may not be available\n";
     }
@@ -1036,7 +1057,6 @@ int main(int argc, const char **argv) {
   // We use -isysroot to let cc1 mode find SDK headers, and DON'T add clang's builtin
   // include path explicitly since cc1 mode searches it automatically and it would
   // shadow the system headers when included with -isystem.
-  std::vector<std::string> appendArgs;
   // Note: We skip adding resourceDir/include as -isystem because cc1 mode
   // searches the clang resource directory automatically BEFORE -isystem paths,
   // which would cause it to look for stdio.h in the wrong place.
@@ -1078,6 +1098,21 @@ int main(int argc, const char **argv) {
       if (pathStr.find("/.deps-cache/") != std::string::npos)
         return false;
       return true;
+    };
+    auto isPublicIncludePath = [&inputRootStr](const std::string &path) -> bool {
+      if (inputRootStr.empty())
+        return false;
+      std::error_code ec;
+      auto normalizedPath = fs::canonical(path, ec);
+      if (ec)
+        return false;
+      auto normalizedRoot = fs::canonical(inputRootStr, ec);
+      if (ec)
+        return false;
+      std::string pathStr = normalizedPath.string();
+      std::string rootStr = normalizedRoot.string();
+      std::string publicInclude = rootStr + "/include";
+      return pathStr == publicInclude || pathStr.find(publicInclude + "/") == 0;
     };
     tooling::CommandLineArguments result;
 
@@ -1174,9 +1209,14 @@ int main(int argc, const char **argv) {
         // -I /path/to/dir (separate argument)
         const std::string &includePath = args[++i];
         if (isProjectPath(includePath)) {
-          // All project paths (including public include/) - convert to -iquote
-          result.push_back("-iquote");
-          result.push_back(includePath);
+          // Keep public include/ visible for angle includes (<ascii-chat/...>).
+          // Other project paths remain quote-only to avoid shadowing system headers.
+          if (isPublicIncludePath(includePath)) {
+            collectedIsystemPaths.push_back(includePath);
+          } else {
+            result.push_back("-iquote");
+            result.push_back(includePath);
+          }
         } else {
           // Collect dependency -I paths to add as -isystem after our builtins
           collectedIsystemPaths.push_back(includePath);
@@ -1187,9 +1227,14 @@ int main(int argc, const char **argv) {
         // -I/path/to/dir (combined form)
         std::string includePath = arg.substr(2);
         if (isProjectPath(includePath)) {
-          // All project paths (including public include/) - convert to -iquote
-          result.push_back("-iquote");
-          result.push_back(includePath);
+          // Keep public include/ visible for angle includes (<ascii-chat/...>).
+          // Other project paths remain quote-only to avoid shadowing system headers.
+          if (isPublicIncludePath(includePath)) {
+            collectedIsystemPaths.push_back(includePath);
+          } else {
+            result.push_back("-iquote");
+            result.push_back(includePath);
+          }
         } else {
           // Collect dependency -I paths to add as -isystem after our builtins
           collectedIsystemPaths.push_back(includePath);

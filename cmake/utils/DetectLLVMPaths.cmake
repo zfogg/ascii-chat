@@ -132,7 +132,7 @@ else()
     else()
         # Build list of llvm-config names (versioned variants)
         set(_llvm_config_names llvm-config)
-        foreach(_ver IN ITEMS 21 20 19 18 17 16 15)
+        foreach(_ver IN ITEMS 22 21 20 19 18 17 16 15)
             list(APPEND _llvm_config_names llvm-config-${_ver})
         endforeach()
 
@@ -148,6 +148,7 @@ else()
         else()
             # Linux
             set(_llvm_config_hints
+                /usr/lib/llvm-22/bin
                 /usr/lib/llvm-21/bin
                 /usr/lib/llvm-20/bin
                 /usr/lib/llvm-19/bin

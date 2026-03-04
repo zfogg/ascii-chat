@@ -30,6 +30,16 @@ function(ascii_defer_prepare)
     endif()
 
     # Build/find the defer tool using the common utility
+    if(APPLE)
+        # LLVM 22 LibTooling has a macOS header-resolution regression in defer parsing.
+        # Keep the main project on LLVM 22, but build defer tool with llvm@21.
+        if(EXISTS "/opt/homebrew/opt/llvm@21/bin/llvm-config" AND EXISTS "/opt/homebrew/opt/llvm@21/bin/clang++")
+            set(ASCIICHAT_LLVM_CONFIG_EXECUTABLE "/opt/homebrew/opt/llvm@21/bin/llvm-config")
+            set(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "/opt/homebrew/opt/llvm@21/bin/clang++")
+            message(STATUS "defer tool: Using llvm@21 for macOS parser compatibility")
+        endif()
+    endif()
+
     build_llvm_tool(
         NAME defer
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/defer"
@@ -119,6 +129,12 @@ function(ascii_defer_prepare)
     # Use CMake's standard compilation database
     # CMake generates compile_commands.json in the build directory
     set(_ASCII_COMPILE_DB "${CMAKE_BINARY_DIR}/compile_commands.json")
+    set(_defer_runner_script "${CMAKE_SOURCE_DIR}/cmake/utils/run_defer_with_includes.py")
+    if(ASCIICHAT_PYTHON3_EXECUTABLE)
+        set(_defer_runner_cmd "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${_defer_runner_script}")
+    else()
+        set(_defer_runner_cmd "python3" "${_defer_runner_script}")
+    endif()
 
     # Collect include directories (will be exposed to finalize phase)
     set(defer_source_dirs "")
@@ -159,8 +175,8 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND "${_defer_tool_exe}" -p ${CMAKE_BINARY_DIR} --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR} ${_rel_path}
-            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${_ASCII_COMPILE_DB}"
+            COMMAND ${_defer_runner_cmd} ${CMAKE_BINARY_DIR} "${_defer_tool_exe}" "${_abs_path}" --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR}
+            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${_ASCII_COMPILE_DB}" "${_defer_runner_script}"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"
             VERBATIM
