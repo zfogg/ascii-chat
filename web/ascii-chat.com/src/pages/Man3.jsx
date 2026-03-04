@@ -630,7 +630,11 @@ export default function Man3() {
           const hash = window.location.hash;
           let targetLineNum = null;
           if (hash.match(/^#l\d+$/)) {
-            targetLineNum = parseInt(hash.substring(2), 10);
+            const lineNum = parseInt(hash.substring(2), 10);
+            // Only set targetLineNum if this line actually exists in the code
+            if (codeLines.some((line) => line.number === lineNum)) {
+              targetLineNum = lineNum;
+            }
           }
 
           // Build code with arrows, then highlight after syntax highlighting
