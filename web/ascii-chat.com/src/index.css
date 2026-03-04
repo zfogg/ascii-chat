@@ -179,3 +179,13 @@
 #doc-content {
   font-size: 1rem;
 }
+
+#container .header,
+.contents {
+  margin-top: 2rem;
+}
+
+.memberdecls,
+#header-doc-func-members {
+  margin-top: 2rem;
+}
