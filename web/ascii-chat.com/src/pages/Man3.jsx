@@ -80,12 +80,13 @@ export default function Man3() {
           });
 
           // Convert Doxygen source file links to Man3 links
-          // e.g., /man3/defer_2tool_8cpp_source.html#l00039 -> ?page=defer_2tool_8cpp_source#l00039
+          // e.g., /man3/defer_2tool_8cpp_source.html#l00039 -> ?page=defer_2tool_8cpp_source
+          // (strip line anchors when clicking links to different pages)
           content = content.replace(
             /href="([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/g,
             (match, path, htmlFile, anchor) => {
               const pageName = htmlFile.replace(".html", "");
-              const newHref = `/man3?page=${pageName}${anchor || ""}`;
+              const newHref = `/man3?page=${pageName}`;
               return `href="${newHref}"`;
             },
           );
@@ -211,10 +212,10 @@ export default function Man3() {
           setTargetLineNumber(lineNumber);
           setTargetSnippetIndex(snippetIndex);
         }
-        // Update URL with selected page param (clear hash when changing pages)
+        // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
-        window.history.replaceState({}, "", `/man3?${params.toString()}`);
+        window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
       })
       .catch((e) => console.error("Failed to load page:", e));
   };
