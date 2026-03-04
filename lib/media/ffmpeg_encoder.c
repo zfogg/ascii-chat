@@ -649,28 +649,10 @@ asciichat_error_t ffmpeg_encoder_write_frame(ffmpeg_encoder_t *enc, const uint8_
   bool snapshot_mode = GET_OPTION(snapshot_mode);
 
   if (enc->frame_count == 0) {
-    log_info("ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d, estimated_frame_count=%d, "
-             "estimated_frame_duration=%lld", snapshot_mode, enc->estimated_frame_count,
-             (long long)enc->estimated_frame_duration);
+    log_info("ffmpeg_encoder_write_frame: frame 0, snapshot_mode=%d", snapshot_mode);
   }
 
-  if (snapshot_mode && enc->estimated_frame_count > 0 && enc->estimated_frame_duration > 0) {
-    // Snapshot mode with pre-estimated frame count: use uniform duration distribution
-    // Each frame gets the same duration so they're evenly distributed across snapshot_delay seconds
-    // Convert from stream time_base to codec time_base for FFmpeg encoding
-    // frame_duration_codec = frame_duration_stream * (stream_time_base.den / codec_time_base.den)
-    frame_duration = (int64_t)(((double)enc->estimated_frame_duration * enc->codec_ctx->time_base.den) /
-                               (double)enc->stream->time_base.den);
-    if (frame_duration == 0) {
-      frame_duration = 1;
-    }
-    if (enc->frame_count <= 2) {
-      log_debug("ffmpeg: frame %d SET uniform duration=%lld codec units (%.3f ms, estimated for %d frames over %.1f sec)",
-                enc->frame_count, (long long)frame_duration,
-                (double)frame_duration * enc->codec_ctx->time_base.num / enc->codec_ctx->time_base.den * 1000,
-                enc->estimated_frame_count, GET_OPTION(snapshot_delay));
-    }
-  } else if (snapshot_mode) {
+  if (snapshot_mode) {
     // Snapshot mode without pre-estimation: use ACTUAL elapsed time between frames
     // Calculate duration from actual capture timestamp differences
     // IMPORTANT: Use codec's time_base here; FFmpeg will rescale to stream time_base later
@@ -1001,10 +983,10 @@ asciichat_error_t ffmpeg_encoder_destroy(ffmpeg_encoder_t *enc) {
     if (snapshot_mode) {
       extern uint64_t g_snapshot_actual_duration_ms;
       double snapshot_delay = GET_OPTION(snapshot_delay);
-      // Use requested snapshot_delay for output duration, not actual capture time
-      // This ensures -D N produces an N-second video regardless of source duration
-      // Frames will be distributed linearly across the requested duration
-      double effective_duration = snapshot_delay;
+      // Use actual capture elapsed time if available, otherwise use snapshot_delay
+      // This ensures frames are distributed across the correct time window
+      double actual_capture_duration = g_snapshot_actual_duration_ms / 1000.0;
+      double effective_duration = (actual_capture_duration > 0) ? actual_capture_duration : snapshot_delay;
 
       // In snapshot mode with wall-clock timing, the video duration should equal the actual elapsed time
       // duration_seconds = effective_duration
