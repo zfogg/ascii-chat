@@ -170,7 +170,11 @@ $RequiredPackages = @(
     "libdatachannel",  # WebRTC DataChannels for P2P connections
     "miniupnpc",       # UPnP client library for automatic router port forwarding
     "abseil",          # C++ utility library (used by WebRTC AEC3)
-    "libwebsockets"    # WebSocket transport library for browser clients
+    "libwebsockets",   # WebSocket transport library for browser clients
+    "ffmpeg",          # Media file/URL streaming library
+    "yyjson",          # JSON library (write-only for this build)
+    "freetype",        # Font rendering library
+    "fontconfig"       # Font configuration library
 )
 
 Write-Host "`nInstalling required packages..." -ForegroundColor Cyan
