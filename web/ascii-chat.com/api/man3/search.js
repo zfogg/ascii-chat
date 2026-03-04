@@ -14,10 +14,7 @@ export default async function handler(req, res) {
 
   try {
     // Load the man3 index
-    const indexPath = path.join(
-      process.cwd(),
-      "public/man3/index.json"
-    );
+    const indexPath = path.join(process.cwd(), "public/man3/index.json");
     const indexData = fs.readFileSync(indexPath, "utf-8");
     const pages = JSON.parse(indexData);
 

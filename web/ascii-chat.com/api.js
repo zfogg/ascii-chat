@@ -26,7 +26,7 @@ const logger = winston.createLogger({
           const metaStr =
             Object.keys(meta).length > 0 ? JSON.stringify(meta) : "";
           return `[${timestamp}] ${level.toUpperCase()}: ${message} ${metaStr}`;
-        })
+        }),
   ),
   transports: [
     new winston.transports.Console(),
@@ -35,7 +35,11 @@ const logger = winston.createLogger({
 });
 
 // HTTP request logging middleware
-app.use(morgan(NODE_ENV === "production" ? "combined" : "dev", { stream: { write: (msg) => logger.info(msg.trim()) } }));
+app.use(
+  morgan(NODE_ENV === "production" ? "combined" : "dev", {
+    stream: { write: (msg) => logger.info(msg.trim()) },
+  }),
+);
 
 // Rate limiting: 30 searches per minute per IP
 const limiter = rateLimit({
@@ -63,7 +67,9 @@ function initializeCache() {
     logger.debug("Index file found, loading...");
     try {
       indexCache = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
-      logger.info(`Index loaded successfully with ${indexCache.length} entries`);
+      logger.info(
+        `Index loaded successfully with ${indexCache.length} entries`,
+      );
     } catch (err) {
       logger.error(`Failed to parse index.json: ${err.message}`);
     }
@@ -206,8 +212,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
 
     // Search in index (title/name)
     const titleMatches = indexCache.filter(
-      (page) =>
-        regex.test(page.title || page.name) || regex.test(page.name)
+      (page) => regex.test(page.title || page.name) || regex.test(page.name),
     );
 
     // Search in content for title matches (get snippets)
@@ -245,7 +250,10 @@ app.get("/api/man3/search", limiter, (req, res) => {
     }
 
     // Count total matches (snippets) before slicing
-    const totalMatches = results.reduce((sum, result) => sum + result.snippets.length, 0);
+    const totalMatches = results.reduce(
+      (sum, result) => sum + result.snippets.length,
+      0,
+    );
 
     res.json({
       query: query,

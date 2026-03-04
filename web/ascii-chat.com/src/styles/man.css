@@ -170,7 +170,7 @@
 
 .man-page-content pre > code > span:nth-child(1) {
   display: inline-block;
-  width: 2.0rem;
+  width: 2rem;
 }
 
 /* HTML content wrapper */

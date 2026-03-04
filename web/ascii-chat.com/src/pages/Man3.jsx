@@ -52,7 +52,9 @@ export default function Man3() {
           for (const match of styleMatches) {
             const href = match[1];
             if (!href.startsWith("/") && !href.startsWith("http")) {
-              stylesheets.push(`<link rel="stylesheet" href="/man3/${href}" />`);
+              stylesheets.push(
+                `<link rel="stylesheet" href="/man3/${href}" />`,
+              );
             } else {
               stylesheets.push(match[0]);
             }
@@ -95,9 +97,7 @@ export default function Man3() {
       // Clear search param but preserve page param if present
       const params = new URLSearchParams(window.location.search);
       params.delete("q");
-      const newUrl = params.toString()
-        ? `/man3?${params.toString()}`
-        : "/man3";
+      const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
       window.history.replaceState({}, "", newUrl + window.location.hash);
       return;
     }
@@ -121,7 +121,11 @@ export default function Man3() {
       // Update URL with search query (preserve page param if present)
       const params = new URLSearchParams(window.location.search);
       params.set("q", query);
-      window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
+      window.history.replaceState(
+        {},
+        "",
+        `/man3?${params.toString()}` + window.location.hash,
+      );
     } catch (e) {
       console.error("Search error:", e);
       setSearchResults([]);
@@ -189,7 +193,10 @@ export default function Man3() {
     );
 
     // Preserve empty anchor tags by adding zero-width space
-    content = content.replace(/<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g, '<a id="$1">\u200B</a>');
+    content = content.replace(
+      /<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g,
+      '<a id="$1">\u200B</a>',
+    );
 
     // Highlight matches in the processed content
     return highlightMatchesInHTML(content, searchQuery);
@@ -219,7 +226,11 @@ export default function Man3() {
     if (selectedPageName === pageName && lineNumber !== null) {
       setTargetLineNumber(lineNumber);
       const hash = "#l" + lineNumber.toString().padStart(5, "0");
-      window.history.replaceState({}, "", window.location.pathname + window.location.search + hash);
+      window.history.replaceState(
+        {},
+        "",
+        window.location.pathname + window.location.search + hash,
+      );
       return;
     }
 
@@ -377,14 +388,16 @@ export default function Man3() {
       if (!href) return;
 
       // Match new converted format: /man3?page=filename[#l00123 or %23l00123]
-      const newMatch = href.match(/^\/man3\?page=([^&#%]+)(?:%23|#)?(l\d+(?:-\d+)?)?/);
+      const newMatch = href.match(
+        /^\/man3\?page=([^&#%]+)(?:%23|#)?(l\d+(?:-\d+)?)?/,
+      );
       if (newMatch) {
         e.preventDefault();
         const pageName = decodeURIComponent(newMatch[1]);
         let lineNumber = null;
         if (newMatch[2]) {
           // Extract number from "l00046" format
-          const numStr = newMatch[2].replace(/^l/, '').split('-')[0];
+          const numStr = newMatch[2].replace(/^l/, "").split("-")[0];
           lineNumber = parseInt(numStr, 10);
         }
         loadPageContent(pageName, lineNumber);
@@ -392,9 +405,7 @@ export default function Man3() {
       }
 
       // Also match old Doxygen source file links for backward compatibility: /man3/filename.html#l00123
-      const doxygenMatch = href.match(
-        /\/man3\/(.+?)\.html(#l\d+)?$/,
-      );
+      const doxygenMatch = href.match(/\/man3\/(.+?)\.html(#l\d+)?$/);
       if (doxygenMatch) {
         e.preventDefault();
         const pageName = doxygenMatch[1];
@@ -407,9 +418,8 @@ export default function Man3() {
         if (lineAnchor) {
           setTimeout(() => {
             if (contentViewerRef.current) {
-              const element = contentViewerRef.current.querySelector(
-                lineAnchor,
-              );
+              const element =
+                contentViewerRef.current.querySelector(lineAnchor);
               if (element) {
                 element.scrollIntoView({ behavior: "smooth" });
               }
@@ -521,16 +531,20 @@ export default function Man3() {
 
       // Clone the line and remove anchors/line numbers for text extraction
       const lineClone = lineDiv.cloneNode(true);
-      lineClone.querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]').forEach((el) => el.remove());
+      lineClone
+        .querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]')
+        .forEach((el) => el.remove());
 
       // Unwrap fold divs in the clone
-      lineClone.querySelectorAll("div.foldopen, div.foldclose").forEach((el) => {
-        const parent = el.parentNode;
-        while (el.firstChild) {
-          parent.insertBefore(el.firstChild, el);
-        }
-        parent.removeChild(el);
-      });
+      lineClone
+        .querySelectorAll("div.foldopen, div.foldclose")
+        .forEach((el) => {
+          const parent = el.parentNode;
+          while (el.firstChild) {
+            parent.insertBefore(el.firstChild, el);
+          }
+          parent.removeChild(el);
+        });
 
       const lineText = lineClone.textContent.trimEnd();
       if (lineText) {
@@ -578,7 +592,9 @@ export default function Man3() {
             const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
             if (rangeMatch) {
               targetLineStart = parseInt(rangeMatch[1], 10);
-              targetLineEnd = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : targetLineStart;
+              targetLineEnd = rangeMatch[2]
+                ? parseInt(rangeMatch[2], 10)
+                : targetLineStart;
             }
           }
 
@@ -588,7 +604,8 @@ export default function Man3() {
               .map((text, idx) => {
                 const lineNum = idx + 1;
                 const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                const isTarget = lineNum >= targetLineStart && lineNum <= targetLineEnd;
+                const isTarget =
+                  lineNum >= targetLineStart && lineNum <= targetLineEnd;
 
                 if (isTarget) {
                   return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${text} ⟸</span></div>`;
@@ -684,9 +701,14 @@ export default function Man3() {
         const codeLines = extractCodeFromFragment(fragmentHtml);
         if (codeLines.length > 0) {
           // Calculate max line number width for alignment
-          const maxLineNum = codeLines.length > 0
-            ? Math.max(...codeLines.map((line) => (line.number || 0).toString().length))
-            : 1;
+          const maxLineNum =
+            codeLines.length > 0
+              ? Math.max(
+                  ...codeLines.map(
+                    (line) => (line.number || 0).toString().length,
+                  ),
+                )
+              : 1;
 
           // Extract target line number(s) from hash if present
           const hash = window.location.hash;
@@ -698,13 +720,17 @@ export default function Man3() {
             const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
             if (rangeMatch) {
               targetLineStart = parseInt(rangeMatch[1], 10);
-              targetLineEnd = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : targetLineStart;
+              targetLineEnd = rangeMatch[2]
+                ? parseInt(rangeMatch[2], 10)
+                : targetLineStart;
 
               // Only set if at least one line exists in the code
-              if (!codeLines.some((line) => {
-                const lineNum = line.number;
-                return lineNum >= targetLineStart && lineNum <= targetLineEnd;
-              })) {
+              if (
+                !codeLines.some((line) => {
+                  const lineNum = line.number;
+                  return lineNum >= targetLineStart && lineNum <= targetLineEnd;
+                })
+              ) {
                 targetLineStart = null;
                 targetLineEnd = null;
               }
@@ -716,9 +742,10 @@ export default function Man3() {
             .map((line) => {
               const lineNum = line.number || "";
               const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-              const isTarget = targetLineStart !== null &&
-                               line.number >= targetLineStart &&
-                               line.number <= targetLineEnd;
+              const isTarget =
+                targetLineStart !== null &&
+                line.number >= targetLineStart &&
+                line.number <= targetLineEnd;
 
               if (isTarget) {
                 return `⟹ ${paddedNum}  ${line.text} ⟸`;
@@ -728,7 +755,10 @@ export default function Man3() {
             .join("\n");
 
           elements.push(
-            <div key={`code-wrapper-${elements.length}`} className="code-with-highlight">
+            <div
+              key={`code-wrapper-${elements.length}`}
+              className="code-with-highlight"
+            >
               <style>{`
                 .code-with-highlight pre code {
                   display: block;
@@ -751,7 +781,9 @@ export default function Man3() {
           // Add JavaScript to highlight the lines with arrows after CodeBlock renders
           if (targetLineStart !== null && isSourcePage) {
             setTimeout(() => {
-              const codeBlocks = document.querySelectorAll(".code-with-highlight pre code");
+              const codeBlocks = document.querySelectorAll(
+                ".code-with-highlight pre code",
+              );
               codeBlocks.forEach((block) => {
                 const allSpans = Array.from(block.querySelectorAll("span"));
 
@@ -782,7 +814,9 @@ export default function Man3() {
                       highlightCount++;
                     }
 
-                    console.log(`[highlight] Highlighted ${highlightCount} spans in logical line with arrows`);
+                    console.log(
+                      `[highlight] Highlighted ${highlightCount} spans in logical line with arrows`,
+                    );
                   }
                 });
               });
@@ -1016,7 +1050,7 @@ export default function Man3() {
                   <div className="man-page-content">
                     {renderContentWithCodeBlocks(
                       selectedPageContent,
-                      selectedPageName?.endsWith("_source") || false
+                      selectedPageName?.endsWith("_source") || false,
                     )}
                   </div>
                 </div>
