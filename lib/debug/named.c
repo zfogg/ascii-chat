@@ -167,6 +167,11 @@ static const char *named_lookup_name_unlocked(uintptr_t parent_key) {
 
 const char *named_register(uintptr_t key, const char *base_name, const char *type, const char *format_spec,
                            const char *file, int line, const char *func, uintptr_t parent_key) {
+#ifdef NDEBUG
+  // In release builds, skip debug registry and return the base name
+  return base_name ? base_name : "?";
+#endif
+
   if (!base_name || !type || !format_spec) {
     return "?";
   }

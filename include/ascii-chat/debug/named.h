@@ -409,8 +409,12 @@ uintptr_t asciichat_thread_to_key(asciichat_thread_t thread);
  *
  * Convenience macro that automatically uses "0x%tx" format specifier for rwlock addresses.
  */
+#ifndef NDEBUG
 #define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr)                                                                   \
   named_register((uintptr_t)(const void *)(lock), (name), "rwlock", "0x%tx", __FILE__, __LINE__, __func__, (uintptr_t)(const void *)(parent_ptr))
+#else
+#define NAMED_REGISTER_RWLOCK(lock, name, parent_ptr) (name)
+#endif
 
 /**
  * @brief Register a condition variable with automatic format specifier
