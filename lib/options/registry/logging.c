@@ -44,7 +44,7 @@ const registry_entry_t g_logging_entries[] = {
 #ifndef NDEBUG
      OPTION_MODE_CLIENT | OPTION_MODE_SERVER | OPTION_MODE_MIRROR | OPTION_MODE_DISCOVERY | OPTION_MODE_DISCOVERY_SVC,
 #else
-     OPTIONS_MODE_BINARY,
+     OPTION_MODE_BINARY,
 #endif
      {0},
      get_default_log_file},

@@ -43,9 +43,9 @@ function(configure_yyjson)
             message(FATAL_ERROR "yyjson target not created by subdirectory")
         endif()
 
-        set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
-        set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src" PARENT_SCOPE)
-        set(YYJSON_FOUND TRUE PARENT_SCOPE)
+        set(YYJSON_LIBRARIES yyjson)
+        set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src")
+        set(YYJSON_FOUND TRUE)
 
         message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from submodule (musl)")
         message(STATUS "  Disabled: READER, UTILS, INCR_READER, TESTS, FUZZER, MISC, DOC")
@@ -103,9 +103,9 @@ function(configure_yyjson)
             message(FATAL_ERROR "yyjson target not created by subdirectory")
         endif()
 
-        set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
-        set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src" PARENT_SCOPE)
-        set(YYJSON_FOUND TRUE PARENT_SCOPE)
+        set(YYJSON_LIBRARIES yyjson)
+        set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src")
+        set(YYJSON_FOUND TRUE)
         message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from source (with disabled features)")
         message(STATUS "  Source: ${YYJSON_SOURCE_DIR}")
         message(STATUS "  Build directory: ${CMAKE_CURRENT_BINARY_DIR}/yyjson-build")
@@ -117,11 +117,11 @@ function(configure_yyjson)
 
     # yyjson::yyjson target is imported by find_package(yyjson) or created above
     # We export it to parent scope for use in target_link_libraries
-    set(YYJSON_LIBRARIES yyjson::yyjson PARENT_SCOPE)
+    set(YYJSON_LIBRARIES yyjson::yyjson)
 
     # Find include directory
     find_path(YYJSON_INCLUDE yyjson.h)
-    set(YYJSON_INCLUDE_DIRS ${YYJSON_INCLUDE} PARENT_SCOPE)
+    set(YYJSON_INCLUDE_DIRS ${YYJSON_INCLUDE})
 
     message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from system package")
     message(STATUS "  YYJSON_LIBRARIES: yyjson::yyjson")

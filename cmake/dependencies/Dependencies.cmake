@@ -88,11 +88,9 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PCRE2.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
 configure_mdns()
 
-# yyjson - Fast JSON library for structured logging (non-musl only)
-if(NOT USE_MUSL)
-    include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Yyjson.cmake)
-    configure_yyjson()
-endif()
+# yyjson - Fast JSON library for structured logging
+include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Yyjson.cmake)
+configure_yyjson()
 
 # FFmpeg - Media file decoding (includes HEVC codec support)
 include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)

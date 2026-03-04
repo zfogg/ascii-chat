@@ -56,9 +56,9 @@ if(USE_MUSL)
         add_custom_target(portaudio-musl DEPENDS alsa-lib-musl)
     endif()
 
-    set(PORTAUDIO_FOUND TRUE PARENT_SCOPE)
-    set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a" PARENT_SCOPE)
-    set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include" PARENT_SCOPE)
+    set(PORTAUDIO_FOUND TRUE)
+    set(PORTAUDIO_LIBRARIES "${PORTAUDIO_PREFIX}/lib/libportaudio.a")
+    set(PORTAUDIO_INCLUDE_DIRS "${PORTAUDIO_PREFIX}/include")
     return()
 endif()
 

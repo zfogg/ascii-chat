@@ -47,9 +47,9 @@ if(USE_MUSL)
         add_custom_target(bzip2-musl)
     endif()
 
-    set(BZIP2_FOUND TRUE PARENT_SCOPE)
-    set(BZIP2_LIBRARY "${BZIP2_LIBRARY}" PARENT_SCOPE)
-    set(BZIP2_INCLUDE_DIR "${BZIP2_INCLUDE_DIR}" PARENT_SCOPE)
+    set(BZIP2_FOUND TRUE)
+    set(BZIP2_LIBRARY "${BZIP2_LIBRARY}")
+    set(BZIP2_INCLUDE_DIR "${BZIP2_INCLUDE_DIR}")
 
     # Create imported target for bzip2 to match system find_package behavior
     if(NOT TARGET BZip2::BZip2)

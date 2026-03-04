@@ -134,6 +134,9 @@ if(NOT CMAKE_BUILD_TYPE STREQUAL "Release")
         ${LIB_DIR}/debug/memory.c
         ${LIB_DIR}/options/registry/debug.c
     )
+else()
+    # Release builds: provide stub implementations of debug functions
+    list(APPEND CORE_SRCS ${LIB_DIR}/debug/mutex_stubs.c)
 endif()
 
 # Include subdirectories that define module source variables
@@ -436,11 +439,21 @@ include_directories(SYSTEM ${FFMPEG_INCLUDE_DIRS})
 
 create_ascii_chat_module(ascii-chat-video "${VIDEO_SRCS}")
 
-# Link external dependencies (FFmpeg, ghostty)
+# Link external dependencies (FFmpeg, ghostty, freetype, fontconfig)
 # Module dependencies (util, platform, core, simd) are resolved through OBJECT library merging
 target_link_libraries(ascii-chat-video ${FFMPEG_LIBRARIES})
 target_include_directories(ascii-chat-video PRIVATE ${GHOSTTY_INCLUDES})
 target_link_libraries(ascii-chat-video ${GHOSTTY_LIBS})
+
+# FreeType2 for font rendering in render-file
+target_include_directories(ascii-chat-video PRIVATE ${FREETYPE_INCLUDE_DIRS})
+target_link_libraries(ascii-chat-video ${FREETYPE_LIBRARIES})
+
+# Fontconfig for font selection in render-file
+if(FONTCONFIG_LIBRARIES)
+    target_include_directories(ascii-chat-video PRIVATE ${FONTCONFIG_INCLUDE_DIRS})
+    target_link_libraries(ascii-chat-video ${FONTCONFIG_LIBRARIES})
+endif()
 
 # Mark generated font files as generated (for OBJECT libraries, must be before module creation)
 set_source_files_properties(
@@ -1060,9 +1073,11 @@ if(TARGET libdatachannel)
 endif()
 
 # Link FFmpeg for media file streaming
-if(FFMPEG_FOUND)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
-endif()
+target_link_libraries(ascii-chat-shared PRIVATE ${FFMPEG_LIBRARIES})
+
+# Link FreeType2 and Fontconfig for font rendering
+target_link_libraries(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARIES})
+target_link_libraries(ascii-chat-shared PRIVATE ${FONTCONFIG_LIBRARIES})
 
 # Link render-file dependencies
 if(NOT WIN32)

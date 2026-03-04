@@ -58,9 +58,9 @@ if(USE_MUSL)
         add_custom_target(opus-musl)
     endif()
 
-    set(OPUS_FOUND TRUE PARENT_SCOPE)
-    set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a" PARENT_SCOPE)
-    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include" PARENT_SCOPE)
+    set(OPUS_FOUND TRUE)
+    set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
+    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
     return()
 endif()
 

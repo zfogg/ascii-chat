@@ -127,17 +127,15 @@ if(USE_MUSL)
     endif()
 
     # Set FFmpeg variables for use in the build
-    set(FFMPEG_FOUND TRUE PARENT_SCOPE)
-    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include" PARENT_SCOPE)
+    set(FFMPEG_FOUND TRUE)
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
 
     set(FFMPEG_LIBRARIES
         "${FFMPEG_PREFIX}/lib/libavformat.a"
         "${FFMPEG_PREFIX}/lib/libavcodec.a"
         "${FFMPEG_PREFIX}/lib/libavutil.a"
         "${FFMPEG_PREFIX}/lib/libswscale.a"
-        "${FFMPEG_PREFIX}/lib/libswresample.a"
-        PARENT_SCOPE
-    )
+        "${FFMPEG_PREFIX}/lib/libswresample.a")
 
     # Create a custom target for musl builds (libraries are pre-built/cached)
     add_custom_target(ffmpeg-musl)

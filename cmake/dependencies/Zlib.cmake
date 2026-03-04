@@ -102,9 +102,9 @@ if(USE_MUSL)
         add_custom_target(zlib-musl)
     endif()
 
-    set(ZLIB_FOUND TRUE PARENT_SCOPE)
-    set(ZLIB_LIBRARY "${ZLIB_LIBRARY}" PARENT_SCOPE)
-    set(ZLIB_INCLUDE_DIR "${ZLIB_INCLUDE_DIR}" PARENT_SCOPE)
+    set(ZLIB_FOUND TRUE)
+    set(ZLIB_LIBRARY "${ZLIB_LIBRARY}")
+    set(ZLIB_INCLUDE_DIR "${ZLIB_INCLUDE_DIR}")
 
     # Create imported target for zlib to match system find_package behavior
     if(NOT TARGET ZLIB::zlib)

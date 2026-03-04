@@ -46,8 +46,8 @@ if(USE_MUSL)
         add_custom_target(libexecinfo-musl)
     endif()
 
-    set(LIBEXECINFO_LIBRARIES "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a" PARENT_SCOPE)
-    set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include" PARENT_SCOPE)
+    set(LIBEXECINFO_LIBRARIES "${LIBEXECINFO_PREFIX}/lib/libexecinfo.a")
+    set(LIBEXECINFO_INCLUDE_DIRS "${LIBEXECINFO_PREFIX}/include")
 
     return()
 endif()
@@ -56,20 +56,20 @@ endif()
 if(UNIX AND NOT APPLE)
     # Linux with glibc: execinfo.h is built-in
     message(STATUS "${BoldGreen}✓${ColorReset} libexecinfo: using glibc built-in (no separate library needed)")
-    set(LIBEXECINFO_LIBRARIES "" PARENT_SCOPE)
-    set(LIBEXECINFO_INCLUDE_DIRS "" PARENT_SCOPE)
+    set(LIBEXECINFO_LIBRARIES "")
+    set(LIBEXECINFO_INCLUDE_DIRS "")
 
 elseif(APPLE)
     # macOS: Has execinfo.h in libc
     message(STATUS "${BoldGreen}✓${ColorReset} libexecinfo: using macOS libc built-in (no separate library needed)")
-    set(LIBEXECINFO_LIBRARIES "" PARENT_SCOPE)
-    set(LIBEXECINFO_INCLUDE_DIRS "" PARENT_SCOPE)
+    set(LIBEXECINFO_LIBRARIES "")
+    set(LIBEXECINFO_INCLUDE_DIRS "")
 
 elseif(WIN32)
     # Windows: No execinfo.h equivalent
     message(STATUS "${BoldYellow}⚠${ColorReset} libexecinfo not needed on Windows")
-    set(LIBEXECINFO_LIBRARIES "" PARENT_SCOPE)
-    set(LIBEXECINFO_INCLUDE_DIRS "" PARENT_SCOPE)
+    set(LIBEXECINFO_LIBRARIES "")
+    set(LIBEXECINFO_INCLUDE_DIRS "")
 
 else()
     message(FATAL_ERROR "Unsupported platform for libexecinfo")

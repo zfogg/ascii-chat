@@ -48,8 +48,8 @@ if(USE_MUSL)
     endif()
 
     # Set ALSA variables for PortAudio to find
-    set(ALSA_LIBRARIES "${ALSA_PREFIX}/lib/libasound.a" PARENT_SCOPE)
-    set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include" PARENT_SCOPE)
+    set(ALSA_LIBRARIES "${ALSA_PREFIX}/lib/libasound.a")
+    set(ALSA_INCLUDE_DIRS "${ALSA_PREFIX}/include")
 
     return()
 endif()
@@ -60,21 +60,21 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(ALSA alsa REQUIRED)
 
-    set(ALSA_LIBRARIES ${ALSA_LDFLAGS} PARENT_SCOPE)
-    set(ALSA_INCLUDE_DIRS ${ALSA_INCLUDE_DIRS} PARENT_SCOPE)
+    set(ALSA_LIBRARIES ${ALSA_LDFLAGS})
+    set(ALSA_INCLUDE_DIRS ${ALSA_INCLUDE_DIRS})
 
     message(STATUS "${BoldGreen}✓${ColorReset} ALSA: ${ALSA_LDFLAGS}")
 
 elseif(APPLE)
     # macOS: ALSA is Linux-only, not available on macOS
     message(STATUS "${BoldYellow}⚠${ColorReset} ALSA is Linux-only, skipping for macOS")
-    set(ALSA_LIBRARIES "" PARENT_SCOPE)
-    set(ALSA_INCLUDE_DIRS "" PARENT_SCOPE)
+    set(ALSA_LIBRARIES "")
+    set(ALSA_INCLUDE_DIRS "")
 
 elseif(WIN32)
     message(STATUS "${BoldYellow}⚠${ColorReset} ALSA is Linux/macOS only, skipping for Windows")
-    set(ALSA_LIBRARIES "" PARENT_SCOPE)
-    set(ALSA_INCLUDE_DIRS "" PARENT_SCOPE)
+    set(ALSA_LIBRARIES "")
+    set(ALSA_INCLUDE_DIRS "")
 
 else()
     message(FATAL_ERROR "Unsupported platform for ALSA")

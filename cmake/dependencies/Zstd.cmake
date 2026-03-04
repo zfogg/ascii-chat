@@ -51,8 +51,8 @@ if(USE_MUSL)
         add_custom_target(zstd-musl)
     endif()
 
-    set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a" PARENT_SCOPE)
-    set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include" PARENT_SCOPE)
+    set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
+    set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
 
     # Create placeholder directories so CMake validation doesn't fail at configure time
     file(MAKE_DIRECTORY "${ZSTD_PREFIX}/include")
@@ -66,7 +66,7 @@ if(USE_MUSL)
         )
     endif()
 
-    set(ZSTD_FOUND TRUE PARENT_SCOPE)
+    set(ZSTD_FOUND TRUE)
     message(STATUS "${BoldGreen}✓${ColorReset} zstd (musl): ${ZSTD_PREFIX}/lib/libzstd.a")
     return()
 endif()

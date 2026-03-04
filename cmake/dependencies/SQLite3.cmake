@@ -121,9 +121,9 @@ if(USE_MUSL)
         message(STATUS "  ${BoldBlue}SQLite3${ColorReset} library found in cache: ${BoldMagenta}${SQLITE3_PREFIX}/lib/libsqlite3.a${ColorReset}")
     endif()
 
-    set(SQLITE3_FOUND TRUE PARENT_SCOPE)
-    set(SQLITE3_LIBRARIES "${SQLITE3_PREFIX}/lib/libsqlite3.a" PARENT_SCOPE)
-    set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include" PARENT_SCOPE)
+    set(SQLITE3_FOUND TRUE)
+    set(SQLITE3_LIBRARIES "${SQLITE3_PREFIX}/lib/libsqlite3.a")
+    set(SQLITE3_INCLUDE_DIRS "${SQLITE3_PREFIX}/include")
     return()
 endif()
 

@@ -58,9 +58,9 @@ if(USE_MUSL)
         add_custom_target(pcre2-musl)
     endif()
 
-    set(PCRE2_FOUND TRUE PARENT_SCOPE)
-    set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a" PARENT_SCOPE)
-    set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include" PARENT_SCOPE)
+    set(PCRE2_FOUND TRUE)
+    set(PCRE2_LIBRARIES "${PCRE2_PREFIX}/lib/libpcre2-8.a")
+    set(PCRE2_INCLUDE_DIRS "${PCRE2_PREFIX}/include")
     return()
 endif()
 

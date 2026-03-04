@@ -4,6 +4,9 @@
  * @brief 🔧 Shared cross-platform system utilities (safe string functions, etc.)
  */
 
+#ifndef PLATFORM_SYSTEM_C
+#define PLATFORM_SYSTEM_C
+
 #include <ascii-chat/atomic.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -374,3 +377,4 @@ size_t platform_write_all(int fd, const void *buf, size_t count) {
 
   return written_total;
 }
+#endif // PLATFORM_SYSTEM_C

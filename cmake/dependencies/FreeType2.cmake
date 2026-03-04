@@ -59,7 +59,7 @@ if(USE_MUSL)
     endif()
 
     set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a")
-    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include")
+    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2")
     file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
 
     return()

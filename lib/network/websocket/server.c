@@ -106,12 +106,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
     char client_name[128];
     char client_ip[64];
     lws_get_peer_simple(wsi, client_name, sizeof(client_name));
-    int peer_addresses_err = lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), client_name, sizeof(client_name),
-                                                    client_ip, sizeof(client_ip));
-    if (peer_addresses_err != 0) {
-      SET_ERRNO(ERROR_INVALID_STATE, "Failed to get peer addresses for %s: %s", client_name, SAFE_STRERROR(errno));
-      return -1;
-    }
+    lws_get_peer_addresses(wsi, lws_get_socket_fd(wsi), client_name, sizeof(client_name),
+                           client_ip, sizeof(client_ip));
 
     log_info("WebSocket client connected from %s", client_ip);
     log_debug("[LWS_CALLBACK_ESTABLISHED] Client IP: %s", client_ip);
