@@ -7,7 +7,6 @@ set(PLATFORM_SRCS_COMMON
     ${CMAKE_CURRENT_SOURCE_DIR}/mutex.c
     ${CMAKE_CURRENT_SOURCE_DIR}/rwlock.c
     ${CMAKE_CURRENT_SOURCE_DIR}/cond.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/system.c
     ${CMAKE_CURRENT_SOURCE_DIR}/terminal.c
 )
 
@@ -20,6 +19,7 @@ if(WIN32)
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/cond.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/terminal.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keyboard.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/system.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/system.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/keepawake.c
         ${CMAKE_CURRENT_SOURCE_DIR}/windows/socket.c
@@ -61,6 +61,7 @@ elseif(PLATFORM_POSIX)
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/filesystem.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/errno.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/agent.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/system.c
         ${CMAKE_CURRENT_SOURCE_DIR}/posix/system.c
     )
 

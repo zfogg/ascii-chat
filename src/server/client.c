@@ -2717,7 +2717,7 @@ void cleanup_client_media_buffers(client_info_t *client) {
     client->h265_rgb_frame = NULL;
   }
   if (client->h265_sws_ctx) {
-    sws_freeContext((SwsContext *)client->h265_sws_ctx);
+    sws_freeContext(client->h265_sws_ctx);
     client->h265_sws_ctx = NULL;
   }
 }

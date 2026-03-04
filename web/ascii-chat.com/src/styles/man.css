@@ -227,5 +227,10 @@
 }
 
 .man-page-html #container #doc-content #header-details {
-  margin-top: 4rem;
+  margin-top: 3rem;
+}
+
+.man-page-html .memberdecls [class*="memitem"] td {
+  padding-top: 1rem;
+  vertical-align: top;
 }

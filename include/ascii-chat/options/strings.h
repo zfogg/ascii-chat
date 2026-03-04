@@ -68,13 +68,6 @@ const char *asciichat_suggest_mode(const char *input);
 const char *color_mode_to_string(terminal_color_mode_t mode);
 
 /**
- * @brief Convert render mode enum to string
- * @param mode Render mode value
- * @return Render mode string (e.g., "foreground", "background", "half-block")
- */
-const char *render_mode_to_string(render_mode_t mode);
-
-/**
  * @brief Convert palette type enum to string
  * @param type Palette type value
  * @return Palette type string (e.g., "standard", "blocks", "cool")
