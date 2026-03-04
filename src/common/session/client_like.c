@@ -299,29 +299,8 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       log_info("Using stdin for media streaming (webcam disabled)");
       capture_config.type = MEDIA_SOURCE_STDIN;
       capture_config.path = NULL;
+      capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
       capture_config.loop = false;
-
-      if (fps_explicitly_set) {
-        capture_config.target_fps = (uint32_t)user_fps;
-        log_info("Using user-specified FPS: %u", capture_config.target_fps);
-      } else {
-        // Probe FPS from stdin data (buffered in memory)
-        log_debug("Probing FPS for stdin input");
-        probe_source = media_source_create(MEDIA_SOURCE_STDIN, NULL);
-        if (probe_source) {
-          double stdin_fps = media_source_get_video_fps(probe_source);
-          log_info("Detected stdin video FPS: %.1f", stdin_fps);
-          if (stdin_fps > 0.0) {
-            capture_config.target_fps = (uint32_t)(stdin_fps + 0.5);
-          } else {
-            log_warn("FPS detection failed for stdin, using default 60 FPS");
-            capture_config.target_fps = 60;
-          }
-        } else {
-          log_warn("Failed to create probe source for stdin FPS detection, using default 60 FPS");
-          capture_config.target_fps = 60;
-        }
-      }
     } else {
       log_info("Using media file: %s (webcam disabled)", media_file_val);
       capture_config.type = MEDIA_SOURCE_FILE;
