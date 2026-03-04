@@ -704,23 +704,6 @@ void platform_sleep_us(unsigned int usec);
  */
 void platform_sleep_ns(uint64_t ns);
 
-/**
- * @brief Platform-safe write function
- * @param fd File descriptor to write to
- * @param buf Buffer containing data to write
- * @param count Number of bytes to write
- * @return Number of bytes written on success, -1 on error
- *
- * Cross-platform write function that handles Windows-specific quirks
- * (e.g., CRLF line endings) and provides consistent behavior across platforms.
- *
- * @note On Windows, automatically handles line ending conversion if needed.
- * @note On POSIX, equivalent to standard write().
- *
- * @ingroup platform
- */
-ssize_t platform_write(int fd, const void *buf, size_t count);
-
 /** @} */
 
 // ============================================================================
@@ -823,42 +806,6 @@ typedef struct {
   /** File offset within the binary (for symbolizer) */
   uintptr_t file_offset;
 } platform_binary_match_t;
-
-/**
- * @brief Find which binary(ies) contain a given address
- *
- * Platform-independent interface to scan the runtime memory map and find
- * which loaded binary owns a given address. Used by backtrace symbol resolution
- * to map runtime addresses to binaries, which are then passed to llvm-symbolizer
- * or addr2line for function name lookup.
- *
- * **Implementations:**
- * - Linux: Scans `/proc/self/maps` to find executable segments
- * - macOS: Iterates dyld-loaded images
- * - Windows: Enumerates process modules via EnumProcessModules()
- *
- * @param addr Runtime address to look up
- * @param matches Output array to populate with matches (can be NULL)
- * @param max_matches Maximum number of matches to return
- * @return Number of matches found (0, 1, or rarely 2)
- *
- * @note Multiple matches are possible but rare (would indicate overlapping
- *       mapped regions, a configuration error).
- *
- * @par Example:
- * @code{.c}
- * platform_binary_match_t matches[2];
- * int count = get_binary_file_address_offsets(backtrace_address, matches, 2);
- * for (int i = 0; i < count; i++) {
- *     // Call llvm-symbolizer with matches[i].path and matches[i].file_offset
- *     printf("Address %p is in %s at offset %lx\n",
- *            backtrace_address, matches[i].path, matches[i].file_offset);
- * }
- * @endcode
- *
- * @ingroup platform
- */
-int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *matches, int max_matches);
 
 /** @} */
 
