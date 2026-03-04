@@ -211,10 +211,10 @@ export default function Man3() {
           setTargetLineNumber(lineNumber);
           setTargetSnippetIndex(snippetIndex);
         }
-        // Update URL with selected page param
+        // Update URL with selected page param (clear hash when changing pages)
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
-        window.history.replaceState({}, "", `/man3?${params.toString()}` + window.location.hash);
+        window.history.replaceState({}, "", `/man3?${params.toString()}`);
       })
       .catch((e) => console.error("Failed to load page:", e));
   };
