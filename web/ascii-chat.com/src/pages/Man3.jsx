@@ -222,11 +222,17 @@ export default function Man3() {
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
-        // Only remove line number hashes (#l0000 or #l0000-00000) when not targeting a line
-        // Preserve any other hashes
-        let hash = window.location.hash;
-        if (!lineNumber && /#l\d+(?:-\d+)?$/.test(hash)) {
-          hash = ""; // Remove line number hash
+        // Set hash based on lineNumber: if provided, use it; if not, preserve existing hash (unless it's a line number hash)
+        let hash = "";
+        if (lineNumber) {
+          hash = "#l" + lineNumber.toString().padStart(5, "0");
+        } else {
+          // Only remove line number hashes (#l0000 or #l0000-00000) when not targeting a line
+          // Preserve any other hashes
+          const currentHash = window.location.hash;
+          if (currentHash && !/#l\d+(?:-\d+)?$/.test(currentHash)) {
+            hash = currentHash;
+          }
         }
         window.history.replaceState({}, "", `/man3?${params.toString()}` + hash);
       })
@@ -343,7 +349,9 @@ export default function Man3() {
         const pageName = decodeURIComponent(newMatch[1]);
         let lineNumber = null;
         if (newMatch[2]) {
-          lineNumber = parseInt(newMatch[2], 10);
+          // Extract number from "l00046" format
+          const numStr = newMatch[2].replace(/^l/, '').split('-')[0];
+          lineNumber = parseInt(numStr, 10);
         }
         loadPageContent(pageName, lineNumber);
         return;
