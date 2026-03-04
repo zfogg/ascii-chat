@@ -274,7 +274,7 @@ export default function Man3() {
                                     <div className="text-gray-600 text-right flex-shrink-0 select-none">
                                       {snippet.lineNumbers.map((lineNum, lineIdx) => (
                                         <div key={lineIdx}>
-                                          {lineNum ? lineNum : "-"}
+                                          {lineNum}
                                         </div>
                                       ))}
                                     </div>
