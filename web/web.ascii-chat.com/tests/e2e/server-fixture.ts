@@ -102,9 +102,11 @@ export class ServerFixture {
       });
 
       // Poll for port availability to detect startup
+      // ★ CRITICAL: Wait for BOTH TCP and WebSocket ports - server needs time to init WS
       const pollInterval = setInterval(async () => {
-        const isListening = await isPortListening(tcpPort);
-        if (isListening) {
+        const tcpListening = await isPortListening(tcpPort);
+        const wsListening = await isPortListening(wsPort);
+        if (tcpListening && wsListening) {
           clearInterval(pollInterval);
           clearTimeout(timeout);
           resolve();

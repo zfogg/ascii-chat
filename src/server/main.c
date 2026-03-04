@@ -2686,6 +2686,15 @@ cleanup:
     log_warn("Skipping graceful handler thread cleanup due to WebSocket deadlock");
   }
 
+  // ★ CRITICAL: Cleanup debug sync BEFORE destroying websocket_server
+  // The debug_sync thread runs concurrently and accesses the named registry.
+  // If websocket_server_destroy() frees thread pool memory first, the debug thread
+  // will get a use-after-free error trying to check condition variables.
+  // Moving this before websocket destroy prevents the race condition.
+#ifndef NDEBUG
+  debug_sync_destroy();
+#endif
+
   // Now destroy WebSocket server after all handler threads have completed
   // This ensures no handler threads are still accessing the context.
   // (It's safe to call even if context was already destroyed forcefully above)
@@ -2777,9 +2786,8 @@ cleanup:
   // Clean up statistics system
   stats_cleanup();
 
-  // Clean up lock debugging system (always, regardless of build type)
-  // Lock debug records are allocated in debug builds too, so they must be cleaned up
-  debug_sync_destroy();
+  // Note: debug_sync_destroy() is now called earlier (before websocket_server_destroy)
+  // to avoid use-after-free race condition with the debug monitoring thread
 #endif
 
   // Destroy session host (before TCP server shutdown)
