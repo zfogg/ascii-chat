@@ -234,7 +234,7 @@ export default function Man3() {
             hash = currentHash;
           }
         }
-        window.history.replaceState({}, "", `/man3?${params.toString()}` + hash);
+        window.history.pushState({}, "", `/man3?${params.toString()}` + hash);
       })
       .catch((e) => console.error("Failed to load page:", e));
   };
