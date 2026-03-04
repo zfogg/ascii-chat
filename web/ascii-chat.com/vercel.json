@@ -2,6 +2,12 @@
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
   "installCommand": "cd .. && bun install",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/index.js"
+    }
+  ],
   "rewrites": [
     {
       "source": "/",
