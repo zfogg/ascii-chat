@@ -1,6 +1,6 @@
 @import "tailwindcss";
 @import "@ascii-chat/shared/styles/base.css";
-@import "./styles/man.css";
+@import "./man.css";
 
 @source ".";
 @source "../../packages/shared/src";
