@@ -7,6 +7,8 @@ export default function Man3() {
   const [manPages, setManPages] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState([]);
+  const [filesMatched, setFilesMatched] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
   const [loading, setLoading] = useState(true);
   const [searching, setSearching] = useState(false);
   const [selectedPageContent, setSelectedPageContent] = useState(null);
@@ -45,6 +47,8 @@ export default function Man3() {
     searchTimeoutRef.current = setTimeout(async () => {
       if (!searchQuery.trim()) {
         setSearchResults(manPages);
+        setFilesMatched(0);
+        setTotalMatches(0);
         setSearching(false);
         return;
       }
@@ -59,12 +63,18 @@ export default function Man3() {
 
         if (data.error) {
           setSearchResults([]);
+          setFilesMatched(0);
+          setTotalMatches(0);
         } else {
           setSearchResults(data.results || []);
+          setFilesMatched(data.filesMatched || 0);
+          setTotalMatches(data.totalMatches || 0);
         }
       } catch (e) {
         console.error("Search error:", e);
         setSearchResults([]);
+        setFilesMatched(0);
+        setTotalMatches(0);
       } finally {
         setSearching(false);
       }
@@ -164,8 +174,8 @@ export default function Man3() {
             <p className="text-sm text-gray-400 mt-3 text-center">
               {searching ? (
                 "Searching..."
-              ) : searchResults.length > 0 ? (
-                `${searchResults.length} result${searchResults.length !== 1 ? "s" : ""}`
+              ) : filesMatched > 0 ? (
+                `${filesMatched} file${filesMatched !== 1 ? "s" : ""} matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
               ) : (
                 "No results"
               )}

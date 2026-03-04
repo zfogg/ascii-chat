@@ -183,8 +183,13 @@ app.get("/api/man3/search", limiter, (req, res) => {
       }
     }
 
+    // Count total matches (snippets) before slicing
+    const totalMatches = results.reduce((sum, result) => sum + result.snippets.length, 0);
+
     res.json({
       query: query,
+      filesMatched: results.length,
+      totalMatches: totalMatches,
       results: results.slice(0, 10), // Limit to 10 results
     });
   } catch (e) {
