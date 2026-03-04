@@ -4,12 +4,38 @@ import dotenv from "dotenv";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import winston from "winston";
+import morgan from "morgan";
 
 dotenv.config();
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.API_PORT || 3001;
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+// Configure logger
+const logger = winston.createLogger({
+  level: NODE_ENV === "production" ? "info" : "debug",
+  format: winston.format.combine(
+    winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+    winston.format.errors({ stack: true }),
+    NODE_ENV === "production"
+      ? winston.format.json()
+      : winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          const metaStr =
+            Object.keys(meta).length > 0 ? JSON.stringify(meta) : "";
+          return `[${timestamp}] ${level.toUpperCase()}: ${message} ${metaStr}`;
+        })
+  ),
+  transports: [
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: "api.log" }),
+  ],
+});
+
+// HTTP request logging middleware
+app.use(morgan(NODE_ENV === "production" ? "combined" : "dev", { stream: { write: (msg) => logger.info(msg.trim()) } }));
 
 // Rate limiting: 30 searches per minute per IP
 const limiter = rateLimit({
@@ -29,14 +55,25 @@ function initializeCache() {
   const man3Dir = path.join(__dirname, "public/man3");
   const indexPath = path.join(man3Dir, "index.json");
 
+  logger.debug("Initializing cache...");
+  logger.debug(`Looking for index at: ${indexPath}`);
+
   // Load index
   if (fs.existsSync(indexPath)) {
-    indexCache = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
+    logger.debug("Index file found, loading...");
+    try {
+      indexCache = JSON.parse(fs.readFileSync(indexPath, "utf-8"));
+      logger.info(`Index loaded successfully with ${indexCache.length} entries`);
+    } catch (e) {
+      logger.error(`Failed to parse index.json: ${e.message}`);
+    }
+  } else {
+    logger.error(`Index file not found at ${indexPath}`);
   }
 
   // Pre-cache files in production
-  if (process.env.NODE_ENV === "production" && indexCache) {
-    console.log(`Caching ${indexCache.length} man pages...`);
+  if (NODE_ENV === "production" && indexCache) {
+    logger.info(`Caching ${indexCache.length} man pages...`);
     for (const page of indexCache) {
       const filePath = path.join(man3Dir, page.file);
       if (fs.existsSync(filePath)) {
@@ -44,11 +81,11 @@ function initializeCache() {
           const content = fs.readFileSync(filePath, "utf-8");
           fileCache[page.name] = extractTextContent(content);
         } catch (e) {
-          console.error(`Failed to cache ${page.name}:`, e.message);
+          logger.error(`Failed to cache ${page.name}: ${e.message}`);
         }
       }
     }
-    console.log(`Cached ${Object.keys(fileCache).length} files`);
+    logger.info(`Cached ${Object.keys(fileCache).length} files`);
   }
 }
 
@@ -234,7 +271,7 @@ app.get("/api/health", (req, res) => {
 initializeCache();
 
 app.listen(PORT, () => {
-  console.log(`Man3 search API running on http://localhost:${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`Rate limit: 30 searches per minute per IP`);
+  logger.info(`Man3 search API running on http://localhost:${PORT}`);
+  logger.info(`Environment: ${NODE_ENV}`);
+  logger.info(`Rate limit: 30 searches per minute per IP`);
 });

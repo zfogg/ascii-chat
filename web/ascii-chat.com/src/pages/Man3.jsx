@@ -280,31 +280,129 @@ export default function Man3() {
     return textarea.value;
   };
 
-  const renderContentWithCodeBlocks = (html) => {
-    // Split by pre tags while preserving surrounding HTML
-    const parts = html.split(/(<pre>.*?<\/pre>)/s);
-    const elements = [];
+  const extractCodeFromFragment = (fragmentHtml) => {
+    // Create a temporary DOM element to parse the HTML
+    const temp = document.createElement('div');
+    temp.innerHTML = fragmentHtml;
 
-    parts.forEach((part, idx) => {
-      if (part.match(/^<pre>.*<\/pre>$/s)) {
-        // Extract code content from pre tag
-        const codeMatch = part.match(/<pre>([\s\S]*)<\/pre>/);
-        let codeContent = codeMatch ? codeMatch[1] : '';
+    // Remove all line number spans and anchors from the clone
+    temp.querySelectorAll('span.lineno, a[id^="l"], a[name^="l"]').forEach((el) => el.remove());
+
+    // Unwrap fold open/close divs (keep their contents)
+    temp.querySelectorAll('div.foldopen, div.foldclose').forEach((el) => {
+      const parent = el.parentNode;
+      while (el.firstChild) {
+        parent.insertBefore(el.firstChild, el);
+      }
+      parent.removeChild(el);
+    });
+
+    // Get all line divs and extract their text
+    const lines = [];
+    temp.querySelectorAll('div.line').forEach((lineDiv) => {
+      const lineText = lineDiv.textContent.trim();
+      if (lineText) {
+        lines.push(lineText);
+      }
+    });
+
+    return lines.join('\n').trim();
+  };
+
+  const renderContentWithCodeBlocks = (html) => {
+    const elements = [];
+    let remaining = html;
+    let position = 0;
+
+    while (remaining.length > 0) {
+      // Try to find a pre tag
+      const preMatch = remaining.match(/^([\s\S]*?)<pre>([\s\S]*?)<\/pre>/);
+      if (preMatch) {
+        // Add HTML before pre tag
+        if (preMatch[1].trim()) {
+          elements.push(
+            <div key={`html-${elements.length}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: preMatch[1] }} />
+          );
+        }
+
+        // Add code block
+        let codeContent = preMatch[2];
         codeContent = decodeHtmlEntities(codeContent);
         if (codeContent.trim()) {
           elements.push(
-            <CodeBlock key={`code-${idx}`} language="c">
+            <CodeBlock key={`code-${elements.length}`} language="c">
               {codeContent}
             </CodeBlock>
           );
         }
-      } else if (part.trim()) {
-        // Regular HTML content
+
+        // Update remaining to after the pre tag
+        remaining = remaining.substring(preMatch[0].length);
+        continue;
+      }
+
+      // Try to find a fragment div
+      const fragmentStart = remaining.indexOf('<div class="fragment">');
+      if (fragmentStart !== -1) {
+        // Add HTML before fragment
+        if (fragmentStart > 0) {
+          const htmlBefore = remaining.substring(0, fragmentStart);
+          if (htmlBefore.trim()) {
+            elements.push(
+              <div key={`html-${elements.length}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: htmlBefore }} />
+            );
+          }
+        }
+
+        // Find matching closing div by counting open/close tags
+        let depth = 0;
+        let fragmentEnd = fragmentStart;
+        let inTag = false;
+
+        for (let i = fragmentStart; i < remaining.length; i++) {
+          if (remaining[i] === '<') {
+            inTag = true;
+            // Check if it's opening or closing
+            if (remaining[i + 1] === '/') {
+              // Closing tag
+              if (remaining.substring(i, i + 6) === '</div>') {
+                depth--;
+                if (depth === 0) {
+                  fragmentEnd = i + 6;
+                  break;
+                }
+              }
+            } else if (remaining.substring(i, i + 5) === '<div ') {
+              // Opening div tag
+              depth++;
+            }
+          }
+        }
+
+        // Extract and process fragment
+        const fragmentHtml = remaining.substring(fragmentStart, fragmentEnd);
+        const codeContent = extractCodeFromFragment(fragmentHtml);
+        if (codeContent.trim()) {
+          elements.push(
+            <CodeBlock key={`code-${elements.length}`} language="c">
+              {codeContent}
+            </CodeBlock>
+          );
+        }
+
+        // Update remaining
+        remaining = remaining.substring(fragmentEnd);
+        continue;
+      }
+
+      // No more code blocks, add remaining HTML
+      if (remaining.trim()) {
         elements.push(
-          <div key={`html-${idx}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: part }} />
+          <div key={`html-${elements.length}`} className="man-page-html" dangerouslySetInnerHTML={{ __html: remaining }} />
         );
       }
-    });
+      break;
+    }
 
     return elements.length > 0 ? elements : <div dangerouslySetInnerHTML={{ __html: html }} />;
   };
