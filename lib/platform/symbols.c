@@ -293,11 +293,9 @@ asciichat_error_t symbol_cache_init(void) {
     return 0; // Already initialized
   }
 
-  // Detect which symbolizer is available (once at init)
-  bool expected = false;
-  if (atomic_cas_bool(&g_symbolizer_detected, &expected, true)) {
-    g_symbolizer_type = detect_symbolizer();
-  }
+  // NOTE: Symbolizer detection is deferred to lazy initialization (symbol_cache_resolve_batch)
+  // to avoid large stack allocations during early initialization in musl static-pie builds.
+  // This prevents __stack_chk_fail() in check_binary_in_path_uncached() which allocates ~4.6KB on stack.
 
   // Initialize rwlock for thread safety (uthash requires external locking)
   if (rwlock_init(&g_symbol_cache_lock, "symbol_cache") != 0) {
@@ -871,6 +869,13 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
       result = run_addr2line_batch(buffer, size);
     }
     return result;
+  }
+
+  // Lazy initialize symbolizer detection on first use (not during symbol_cache_init)
+  // This avoids large stack allocations in musl static-pie during early initialization
+  bool expected = false;
+  if (atomic_cas_bool(&g_symbolizer_detected, &expected, true)) {
+    g_symbolizer_type = detect_symbolizer();
   }
 
   // Allocate result array (size + 1 for NULL terminator)
