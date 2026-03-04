@@ -12,10 +12,11 @@ set(VIDEO_SRCS
     # ASCII rendering pipeline
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ascii.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sgr.c
+  ${CMAKE_CURRENT_SOURCE_DIR}/terminal/ansi.c
     # SIMD-based ASCII render implementations
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/common.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ansi_fast.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ansi.c
+    
+    
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/palette.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/output_buffer.c
     ${CMAKE_CURRENT_SOURCE_DIR}/ascii/rle.c
