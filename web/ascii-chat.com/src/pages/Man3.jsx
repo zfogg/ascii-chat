@@ -14,6 +14,7 @@ export default function Man3() {
   const [selectedPageContent, setSelectedPageContent] = useState(null);
   const [selectedPageName, setSelectedPageName] = useState(null);
   const [targetLineNumber, setTargetLineNumber] = useState(null);
+  const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
 
@@ -117,12 +118,13 @@ export default function Man3() {
     };
   }, [searchQuery, manPages]);
 
-  const loadPageContent = (pageName, lineNumber = null) => {
+  const loadPageContent = (pageName, lineNumber = null, snippetIndex = null) => {
     if (selectedPageName === pageName && lineNumber === null) {
       // Toggle off if clicking same page
       setSelectedPageName(null);
       setSelectedPageContent(null);
       setTargetLineNumber(null);
+      setTargetSnippetIndex(null);
       // Remove page param from URL
       const params = new URLSearchParams(window.location.search);
       params.delete("page");
@@ -142,6 +144,7 @@ export default function Man3() {
         setSelectedPageName(pageName);
         if (lineNumber) {
           setTargetLineNumber(lineNumber);
+          setTargetSnippetIndex(snippetIndex);
         }
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
@@ -181,6 +184,7 @@ export default function Man3() {
       const regex = new RegExp(`(${query})`, "gi");
       // Split by HTML tags, only highlight text content (not tag content)
       const parts = html.split(/(<[^>]*>)/);
+
       const highlighted = parts.map(part => {
         if (part.startsWith('<')) {
           // It's a tag, don't modify
@@ -207,19 +211,33 @@ export default function Man3() {
       setTimeout(() => {
         const viewer = contentViewerRef.current;
         if (viewer) {
-          // Estimate scroll position based on line number
-          // HTML man pages typically render with ~40px per line (font + spacing)
-          const estimatedLineHeight = 40;
-          const estimatedScrollPosition = (targetLineNumber - 1) * estimatedLineHeight;
-          // Show matched line with ~100px of context above (avoids clamping for lines near top)
-          const topMargin = 100;
-          const finalScrollTop = Math.max(0, estimatedScrollPosition - topMargin);
-          viewer.scrollTop = finalScrollTop;
+          // Find all highlighted matches in the page
+          const highlights = viewer.querySelectorAll('.man-page-content span.bg-yellow-900\\/50');
+
+          // Use snippet index if available, otherwise find first match near target line
+          let targetHighlight = null;
+          if (targetSnippetIndex !== null && highlights.length > targetSnippetIndex) {
+            targetHighlight = highlights[targetSnippetIndex];
+          } else if (highlights.length > 0) {
+            targetHighlight = highlights[0];
+          }
+
+          if (targetHighlight) {
+            // Get element's position relative to the scrollable container
+            const elementTop = targetHighlight.offsetTop;
+
+            // Center it in the viewport
+            const viewportCenter = viewer.clientHeight / 2;
+            const scrollTop = Math.max(0, elementTop - viewportCenter);
+
+            viewer.scrollTop = scrollTop;
+          }
         }
-      }, 200);
+      }, 300);
       setTargetLineNumber(null);
+      setTargetSnippetIndex(null);
     }
-  }, [selectedPageContent, targetLineNumber]);
+  }, [targetLineNumber]);
 
   return (
     <>
@@ -322,7 +340,7 @@ export default function Man3() {
                               return (
                                 <div
                                   key={idx}
-                                  onClick={() => loadPageContent(page.name, snippet.lineNumbers[1])}
+                                  onClick={() => loadPageContent(page.name, snippet.lineNumbers[1], idx)}
                                   className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
                                 >
                                   <div className="flex gap-2">
