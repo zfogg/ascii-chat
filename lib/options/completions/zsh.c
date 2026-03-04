@@ -6,6 +6,7 @@
 
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <ascii-chat/options/completions/zsh.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/common.h>
@@ -102,6 +103,79 @@ static void zsh_write_option(FILE *output, const option_descriptor_t *opt) {
   fprintf(output, "]%s' \\\n", completion_spec);
 }
 
+/**
+ * Collect unique group names from options and sort them
+ */
+static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t count, size_t *out_group_count) {
+  if (!opts || count == 0) {
+    *out_group_count = 0;
+    return NULL;
+  }
+
+  // Allocate array for unique groups (worst case: count groups)
+  const char **groups = SAFE_MALLOC(count * sizeof(const char *), const char **);
+  size_t group_count = 0;
+
+  // Collect unique groups
+  for (size_t i = 0; i < count; i++) {
+    const char *group = opts[i].group;
+    if (!group) continue;
+
+    // Check if we already have this group
+    bool found = false;
+    for (size_t j = 0; j < group_count; j++) {
+      if (strcmp(groups[j], group) == 0) {
+        found = true;
+        break;
+      }
+    }
+    if (!found) {
+      groups[group_count++] = group;
+    }
+  }
+
+  // Sort groups alphabetically for consistent ordering
+  for (size_t i = 0; i < group_count; i++) {
+    for (size_t j = i + 1; j < group_count; j++) {
+      if (strcmp(groups[i], groups[j]) > 0) {
+        const char *tmp = groups[i];
+        groups[i] = groups[j];
+        groups[j] = tmp;
+      }
+    }
+  }
+
+  *out_group_count = group_count;
+  return groups;
+}
+
+/**
+ * Write grouped options with category headers
+ */
+static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count) {
+  if (!opts || count == 0) return;
+
+  size_t group_count = 0;
+  const char **groups = zsh_collect_groups(opts, count, &group_count);
+
+  // Write options grouped by category
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+
+    // Write group header as a comment
+    fprintf(output, "    # %s\n", group);
+
+    // Write all options in this group
+    for (size_t i = 0; i < count; i++) {
+      if (opts[i].group && strcmp(opts[i].group, group) == 0) {
+        zsh_write_option(output, &opts[i]);
+      }
+    }
+  }
+
+  SAFE_FREE(groups);
+}
+
 asciichat_error_t completions_generate_zsh(FILE *output) {
   if (!output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
@@ -118,14 +192,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  local curcontext=\"$curcontext\" state line\n"
                   "  _arguments -C \\\n");
 
-  /* Binary options - use unified display API matching help system */
+  /* Binary options - grouped by category */
   size_t binary_count = 0;
   const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
 
   if (binary_opts) {
-    for (size_t i = 0; i < binary_count; i++) {
-      zsh_write_option(output, &binary_opts[i]);
-    }
+    zsh_write_options_grouped(output, binary_opts, binary_count);
     SAFE_FREE(binary_opts);
   }
 
@@ -138,14 +210,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  server)\n"
                   "    _arguments \\\n");
 
-  /* Server options - use unified display API matching help system */
+  /* Server options - grouped by category */
   size_t server_count = 0;
   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
 
   if (server_opts) {
-    for (size_t i = 0; i < server_count; i++) {
-      zsh_write_option(output, &server_opts[i]);
-    }
+    zsh_write_options_grouped(output, server_opts, server_count);
     SAFE_FREE(server_opts);
   }
 
@@ -154,14 +224,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  client)\n"
                   "    _arguments \\\n");
 
-  /* Client options - use unified display API matching help system */
+  /* Client options - grouped by category */
   size_t client_count = 0;
   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
 
   if (client_opts) {
-    for (size_t i = 0; i < client_count; i++) {
-      zsh_write_option(output, &client_opts[i]);
-    }
+    zsh_write_options_grouped(output, client_opts, client_count);
     SAFE_FREE(client_opts);
   }
 
@@ -170,14 +238,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  mirror)\n"
                   "    _arguments \\\n");
 
-  /* Mirror options - use unified display API matching help system */
+  /* Mirror options - grouped by category */
   size_t mirror_count = 0;
   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
 
   if (mirror_opts) {
-    for (size_t i = 0; i < mirror_count; i++) {
-      zsh_write_option(output, &mirror_opts[i]);
-    }
+    zsh_write_options_grouped(output, mirror_opts, mirror_count);
     SAFE_FREE(mirror_opts);
   }
 
@@ -186,15 +252,13 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "  discovery-service)\n"
                   "    _arguments \\\n");
 
-  /* Discovery-service options */
+  /* Discovery-service options - grouped by category */
   size_t discovery_svc_count = 0;
   const option_descriptor_t *discovery_svc_opts =
       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
-    for (size_t i = 0; i < discovery_svc_count; i++) {
-      zsh_write_option(output, &discovery_svc_opts[i]);
-    }
+    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count);
     SAFE_FREE(discovery_svc_opts);
   }
 
