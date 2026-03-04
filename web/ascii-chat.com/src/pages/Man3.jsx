@@ -106,7 +106,7 @@ export default function Man3() {
       } finally {
         setSearching(false);
       }
-    }, 200);
+    }, 500);
 
     return () => {
       if (searchTimeoutRef.current) {
