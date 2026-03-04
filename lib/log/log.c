@@ -195,7 +195,7 @@ const char *get_level_string_padded(log_level_t level) {
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
     platform_write(_log_fd, "\n", 1);                                                                                  \
-    platform_print_backtrace(0);                                                                                       \
+    backtrace_print_simple(0);                                                                                       \
   } while (0)
 #else
 #define LOGGING_INTERNAL_ERROR(error, message, ...)                                                                    \
@@ -207,7 +207,7 @@ const char *get_level_string_padded(log_level_t level) {
     platform_write(_log_fd, msg_header, strlen(msg_header));                                                           \
     platform_write(_log_fd, message, strlen(message));                                                                 \
     platform_write(_log_fd, "\n", 1);                                                                                  \
-    platform_print_backtrace(0);                                                                                       \
+    backtrace_print_simple(0);                                                                                       \
   } while (0)
 #endif
 

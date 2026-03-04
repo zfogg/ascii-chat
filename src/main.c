@@ -49,6 +49,7 @@
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/system.h>
 #include <ascii-chat/platform/thread.h>
+#include <ascii-chat/platform/backtrace.h>
 #include <ascii-chat/debug/named.h>
 #include <ascii-chat/options/common.h>
 #include <ascii-chat/options/rcu.h>
@@ -697,7 +698,7 @@ int main(int argc, char *argv[]) {
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--backtrace") == 0) {
       log_info("=== Backtrace at startup ===");
-      platform_print_backtrace(0);
+      backtrace_print_simple(0);
       log_info("=== End Backtrace ===");
       asciichat_shared_destroy();
       return 0;

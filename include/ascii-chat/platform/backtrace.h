@@ -76,51 +76,13 @@ char **platform_backtrace_symbols(void *const *buffer, int size);
 void platform_backtrace_symbols_destroy(char **strings);
 
 /**
- * @brief Get a backtrace of the current call stack
- * @param buffer Array of pointers to store return addresses
- * @param size Maximum number of frames to capture
- * @return Number of frames captured
+ * @brief Print backtrace of the current call stack
  *
- * Captures the current call stack into the provided buffer.
- * Returns the number of frames actually captured.
+ * Captures the current call stack and prints it to stderr using platform_backtrace_symbols().
+ * Useful for debugging crashes and errors.
  *
- * @ingroup platform
+ * @param skip_frames Number of frames to skip from the top (0 = include all)
  */
-int platform_backtrace(void **buffer, int size);
+void backtrace_print_simple(int skip_frames);
 
-/**
- * @brief Convert backtrace addresses to symbol names
- * @param buffer Array of return addresses from platform_backtrace()
- * @param size Number of frames in buffer
- * @return Array of symbol name strings, or NULL on error
- *
- * Converts the return addresses from platform_backtrace() into
- * human-readable symbol names (function names, file names, line numbers).
- *
- * @note The returned array must be freed with platform_backtrace_symbols_destroy().
- *
- * @ingroup platform
- */
-char **platform_backtrace_symbols(void *const *buffer, int size);
-
-/**
- * @brief Free symbol array returned by platform_backtrace_symbols()
- * @param strings Array of symbol strings to free
- *
- * Frees the memory allocated by platform_backtrace_symbols().
- *
- * @ingroup platform
- */
-void platform_backtrace_symbols_destroy(char **strings);
-
-/**
- * @brief Callback type for filtering backtrace frames
- * @param frame The frame string to check
- * @return true if the frame should be skipped, false to include it
- *
- * @ingroup platform
- */
-typedef bool (*backtrace_frame_filter_t)(const char *frame);
-                                      backtrace_frame_filter_t filter);
-
-                                      /** @} */
+/** @} */

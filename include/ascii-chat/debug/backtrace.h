@@ -265,17 +265,6 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
  * ============================================================================ */
 
 /**
- * @brief Print a backtrace of the current call stack
- * @param skip_frames Number of frames to skip from the top
- *
- * Captures a backtrace and prints it using platform_print_backtrace_symbols().
- * Useful for debugging crashes or errors.
- *
- * @ingroup debug_util
- */
-void backtrace_print(int skip_frames);
-
-/**
  * @brief Print pre-resolved backtrace symbols with consistent formatting
  *
  * Uses colored format for all backtraces:

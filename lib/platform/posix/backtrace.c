@@ -11,6 +11,7 @@
 #include <execinfo.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdio.h>
 
 /**
  * @brief Manual stack unwinding using frame pointers
@@ -84,4 +85,19 @@ void platform_backtrace_symbols_destroy(char **strings) {
     return;
   }
   symbol_cache_free_symbols(strings);
+}
+
+void backtrace_print_simple(int skip_frames) {
+  void *buffer[64];
+  int depth = platform_backtrace(buffer, 64);
+
+  if (depth > 0) {
+    char **symbols = platform_backtrace_symbols((void *const *)buffer, depth);
+    if (symbols) {
+      for (int i = skip_frames; i < depth && symbols[i]; i++) {
+        fprintf(stderr, "  [%d] %s\n", i - skip_frames, symbols[i]);
+      }
+      platform_backtrace_symbols_destroy(symbols);
+    }
+  }
 }
