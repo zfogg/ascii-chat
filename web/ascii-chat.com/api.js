@@ -107,14 +107,44 @@ function initializeCache() {
 
 // Extract text from HTML
 function extractTextContent(html) {
-  return html
+  let text = html
     .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "") // Remove scripts
     .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "") // Remove styles
-    .replace(/<[^>]+>/g, "\n") // Replace HTML tags with newlines
-    .replace(/&nbsp;/g, " ")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
+    .replace(/<[^>]+>/g, "\n"); // Replace HTML tags with newlines
+
+  // Decode all HTML entities in one pass
+  text = text.replace(/&([a-zA-Z]+|#\d+|#x[0-9A-Fa-f]+);/g, (match) => {
+    const entities = {
+      lt: "<",
+      gt: ">",
+      amp: "&",
+      quot: '"',
+      apos: "'",
+      nbsp: " ",
+    };
+
+    if (match.startsWith("&#x")) {
+      // Hex entity: &#x00A0;
+      try {
+        return String.fromCharCode(parseInt(match.slice(3, -1), 16));
+      } catch {
+        return match;
+      }
+    } else if (match.startsWith("&#")) {
+      // Decimal entity: &#160;
+      try {
+        return String.fromCharCode(parseInt(match.slice(2, -1), 10));
+      } catch {
+        return match;
+      }
+    } else {
+      // Named entity: &nbsp; &lt; etc
+      const name = match.slice(1, -1);
+      return entities[name] || match;
+    }
+  });
+
+  return text
     .replace(/\n\s*\n/g, "\n") // Remove multiple blank lines
     .split("\n")
     .map((line) => line.trim())
