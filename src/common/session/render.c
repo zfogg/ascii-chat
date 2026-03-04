@@ -94,9 +94,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
 
   // SYNCHRONOUS MODE: Use threaded pipeline for capture + render
   if (capture != NULL) {
-    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Creating pipeline...");
+    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] Creating pipeline... (capture=%p, display=%p)", (void*)capture, (void*)display);
     session_pipeline_t *pipeline = NULL;
     asciichat_error_t pipeline_err = session_pipeline_create(capture, display, &pipeline);
+    log_info("[SESSION_RENDER_LOOP_SYNCHRONOUS] pipeline_create returned: %d (pipeline=%p)", pipeline_err, (void*)pipeline);
     if (pipeline_err != ASCIICHAT_OK) {
       log_error("[SESSION_RENDER_LOOP_SYNCHRONOUS] Pipeline creation failed: %d", pipeline_err);
       return pipeline_err;

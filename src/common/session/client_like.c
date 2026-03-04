@@ -339,16 +339,26 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
     capture_config.loop = false;
   } else {
-    // Default: webcam
-    log_debug("session_client_like_run(): Using local webcam (about to log)");
-    log_info("Using local webcam");
-    log_debug("session_client_like_run(): Setting webcam capture config");
-    capture_config.type = MEDIA_SOURCE_WEBCAM;
-    capture_config.path = NULL;
-    capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
-    capture_config.loop = false;
-    log_debug("session_client_like_run(): Webcam config set (type=%d, fps=%u)", capture_config.type,
-              capture_config.target_fps);
+    // Default: Try webcam if stdout is a TTY, otherwise use test pattern
+    // (webcam + piped output often fails, test pattern is reliable fallback)
+    bool stdout_is_tty = terminal_is_stdout_tty();
+    if (stdout_is_tty) {
+      // Normal terminal mode: use webcam
+      log_debug("session_client_like_run(): Stdout is TTY, using local webcam");
+      log_info("Using local webcam");
+      capture_config.type = MEDIA_SOURCE_WEBCAM;
+      capture_config.path = NULL;
+      capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
+      capture_config.loop = false;
+    } else {
+      // Piped output mode: use test pattern (webcam + pipes often fails)
+      log_debug("session_client_like_run(): Stdout is piped, defaulting to test pattern for reliability");
+      log_info("Stdout is piped - using test pattern instead of webcam");
+      capture_config.type = MEDIA_SOURCE_TEST;
+      capture_config.path = NULL;
+      capture_config.target_fps = fps_explicitly_set ? (uint32_t)user_fps : 60;
+      capture_config.loop = false;
+    }
   }
 
   // Apply initial seek if specified
@@ -409,32 +419,28 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // Only enable stdin render mode if:
   // 1. render-file is "-" (output to stdout)
   // 2. stdin is not a TTY
-  // 3. AND there's NO media source explicitly configured
-  //    (no test pattern, file, or URL - webcam is default but should not block stdin mode)
+  // 3. --height is explicitly specified (user must opt-in to stdin render mode)
+  // 4. NO media source is being used (not reading from file/URL/test-pattern)
+  // This prevents accidental activation when piping to other processes or using mirror mode
   const char *render_file_opt = GET_OPTION(render_file);
-  bool has_explicit_media = (GET_OPTION(test_pattern) ||
-                             (media_url_val && strlen(media_url_val) > 0) ||
-                             (media_file_val && strlen(media_file_val) > 0));
-  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 && !terminal_is_stdin_tty() && !has_explicit_media);
+  int frame_height = GET_OPTION(height);
+  bool height_explicitly_set = (frame_height != OPT_HEIGHT_DEFAULT);
+  bool has_media_source = (media_url_val && strlen(media_url_val) > 0) ||
+                          (media_file_val && strlen(media_file_val) > 0) ||
+                          GET_OPTION(test_pattern);
+  bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 &&
+                            !terminal_is_stdin_tty() && height_explicitly_set &&
+                            !has_media_source && !mirror_mode);
 
   if (stdin_render_mode) {
     // Stdin render mode: read ASCII frames from stdin, output video to stdout
     log_info("Stdin render mode enabled: reading ASCII frames from stdin, output to stdout");
 
-    // Require explicit --height when reading from stdin
-    // (height determines frame boundaries; width can be detected from line lengths)
-    int frame_height = GET_OPTION(height);
+    // Get frame dimensions (--height must be explicitly set to reach here)
     int frame_width = GET_OPTION(width);
 
-    // Validate stdin render mode constraints
-    bool height_was_not_set = (frame_height == OPT_HEIGHT_DEFAULT);
+    // Validate stdin render mode constraints (--height is already validated above since height_explicitly_set is true)
     bool width_was_explicitly_set = (frame_width != OPT_WIDTH_DEFAULT);
-
-    if (height_was_not_set) {
-      result = SET_ERRNO(ERROR_USAGE, "Stdin render mode requires explicit frame height.\n"
-                                      "Please specify: --height <rows>");
-      goto cleanup;
-    }
 
     if (width_was_explicitly_set) {
       result = SET_ERRNO(ERROR_USAGE, "Stdin render mode does not accept --width (auto-detected from frames).\n"
