@@ -168,9 +168,8 @@
   overflow-x: auto;
 }
 
-.man-page-content pre > code > span:nth-child(1) {
-  display: inline-block;
-  width: 2rem;
+.man-page-content pre code span:first-child {
+  margin-left: -6px;
 }
 
 /* HTML content wrapper */

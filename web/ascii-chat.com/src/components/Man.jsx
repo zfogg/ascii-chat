@@ -92,7 +92,14 @@ export default function Man({ html, isSourcePage = false }) {
           // Remove leading/trailing whitespace from entire code block
           codeContent = codeContent.trim();
           if (codeContent) {
-            const lines = codeContent.split("\n");
+            let lines = codeContent.split("\n");
+            // Remove any empty lines from start and end
+            while (lines.length > 0 && lines[0].trim() === "") {
+              lines.shift();
+            }
+            while (lines.length > 0 && lines[lines.length - 1].trim() === "") {
+              lines.pop();
+            }
             const hasExistingLineNumbers = codeHasLineNumbers(lines);
             const maxLineNum = lines.length.toString().length;
 
