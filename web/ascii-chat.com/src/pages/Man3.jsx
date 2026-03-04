@@ -232,20 +232,6 @@ export default function Man3() {
     snippetIndex = null,
     skipHistoryPush = false,
   ) => {
-    if (selectedPageName === pageName && lineNumber === null) {
-      // Toggle off if clicking same page
-      setSelectedPageName(null);
-      setSelectedPageContent(null);
-      setTargetLineNumber(null);
-      setTargetSnippetIndex(null);
-      // Remove page param from URL
-      const params = new URLSearchParams(window.location.search);
-      params.delete("page");
-      const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
-      window.history.replaceState({}, "", newUrl);
-      return;
-    }
-
     // If clicking a line number on the same page, just update the hash without fetching
     if (selectedPageName === pageName && lineNumber !== null) {
       setTargetLineNumber(lineNumber);
@@ -1080,19 +1066,10 @@ export default function Man3() {
                   ref={contentViewerRef}
                   className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]"
                 >
-                  <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
+                  <div className="mb-4 pb-4 border-b border-gray-800">
                     <h2 className="text-2xl font-bold text-purple-400">
                       {selectedPageName}(3)
                     </h2>
-                    <button
-                      onClick={() => {
-                        setSelectedPageContent(null);
-                        setSelectedPageName(null);
-                      }}
-                      className="text-gray-500 hover:text-gray-300"
-                    >
-                      ✕
-                    </button>
                   </div>
                   <div className="man-page-content">
                     {renderContentWithCodeBlocks(
