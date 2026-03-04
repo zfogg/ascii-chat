@@ -1086,18 +1086,19 @@ if(NOT WIN32)
 endif()
 
 # Link FreeType2 and Fontconfig for font rendering
-target_link_libraries(ascii-chat-shared PRIVATE ${FREETYPE_LIBRARIES})
+# Use PUBLIC to ensure these are transitively linked when linking static library
+target_link_libraries(ascii-chat-shared PUBLIC ${FREETYPE_LIBRARIES})
 if(FONTCONFIG_LIBRARIES)
-    target_link_libraries(ascii-chat-shared PRIVATE ${FONTCONFIG_LIBRARIES})
+    target_link_libraries(ascii-chat-shared PUBLIC ${FONTCONFIG_LIBRARIES})
 endif()
 
 # Link vterm for terminal emulation
 if(VTERM_LDFLAGS)
-    target_link_libraries(ascii-chat-shared PRIVATE ${VTERM_LDFLAGS})
+    target_link_libraries(ascii-chat-shared PUBLIC ${VTERM_LDFLAGS})
 endif()
 
 # Link yyjson for JSON support
-target_link_libraries(ascii-chat-shared PRIVATE ${YYJSON_LIBRARIES})
+target_link_libraries(ascii-chat-shared PUBLIC ${YYJSON_LIBRARIES})
 
 # Suppress linker warnings about duplicate debug symbols in libdatachannel
 # (libdatachannel embeds debug symbols with invalid timestamps - linker warning only, not an error)
