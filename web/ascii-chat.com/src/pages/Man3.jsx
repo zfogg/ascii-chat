@@ -13,7 +13,9 @@ export default function Man3() {
   const [searching, setSearching] = useState(false);
   const [selectedPageContent, setSelectedPageContent] = useState(null);
   const [selectedPageName, setSelectedPageName] = useState(null);
+  const [targetLineNumber, setTargetLineNumber] = useState(null);
   const searchTimeoutRef = useRef(null);
+  const contentViewerRef = useRef(null);
 
   useEffect(() => {
     setBreadcrumbSchema([
@@ -115,11 +117,12 @@ export default function Man3() {
     };
   }, [searchQuery, manPages]);
 
-  const loadPageContent = (pageName) => {
-    if (selectedPageName === pageName) {
+  const loadPageContent = (pageName, lineNumber = null) => {
+    if (selectedPageName === pageName && lineNumber === null) {
       // Toggle off if clicking same page
       setSelectedPageName(null);
       setSelectedPageContent(null);
+      setTargetLineNumber(null);
       // Remove page param from URL
       const params = new URLSearchParams(window.location.search);
       params.delete("page");
@@ -135,6 +138,9 @@ export default function Man3() {
         const content = bodyMatch ? bodyMatch[1] : html;
         setSelectedPageContent(content);
         setSelectedPageName(pageName);
+        if (lineNumber) {
+          setTargetLineNumber(lineNumber);
+        }
         // Update URL with selected page param
         const params = new URLSearchParams(window.location.search);
         params.set("page", pageName);
@@ -165,6 +171,24 @@ export default function Man3() {
       return text;
     }
   };
+
+  // Scroll to target line when content loads
+  useEffect(() => {
+    if (selectedPageContent && targetLineNumber && contentViewerRef.current) {
+      // Delay scroll to allow content to render
+      setTimeout(() => {
+        const viewer = contentViewerRef.current;
+        if (viewer) {
+          // Estimate scroll position based on line number (rough approximation)
+          // Assume each line is roughly 20px tall in the rendered content
+          const estimatedScrollPosition = (targetLineNumber - 1) * 20;
+          const centerOffset = viewer.clientHeight / 2;
+          viewer.scrollTop = Math.max(0, estimatedScrollPosition - centerOffset);
+        }
+      }, 100);
+      setTargetLineNumber(null);
+    }
+  }, [selectedPageContent, targetLineNumber]);
 
   return (
     <>
@@ -267,7 +291,8 @@ export default function Man3() {
                               return (
                                 <div
                                   key={idx}
-                                  className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden"
+                                  onClick={() => loadPageContent(page.name, snippet.lineNumbers[1])}
+                                  className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
                                 >
                                   <div className="flex gap-2">
                                     {/* Line numbers column */}
@@ -314,7 +339,7 @@ export default function Man3() {
             {/* Content viewer */}
             <div className="flex-1 min-w-0">
               {selectedPageContent ? (
-                <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]">
+                <div ref={contentViewerRef} className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]">
                   <div className="flex items-center justify-between mb-4 pb-4 border-b border-gray-800">
                     <h2 className="text-2xl font-bold text-purple-400">
                       {selectedPageName}(3)
