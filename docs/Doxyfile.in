@@ -135,8 +135,7 @@ FILE_PATTERNS          = *.c \
                          *.h \
                          *.cpp \
                          *.hpp \
-                         *.m \
-                         *.dox
+                         *.m
 
 RECURSIVE              = YES
 
@@ -150,7 +149,7 @@ EXCLUDE                = @CMAKE_SOURCE_DIR@/tests \
                          @CMAKE_BINARY_DIR@
 
 EXCLUDE_SYMLINKS       = NO
-EXCLUDE_PATTERNS       =
+EXCLUDE_PATTERNS       = */mainpage.dox
 EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       =
