@@ -431,7 +431,7 @@ asciichat_error_t acds_sign_session_create(const uint8_t identity_seckey[64], ui
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
 
   // Convert timestamp to network byte order and pack into message
-  uint64_t timestamp_net = htonll(timestamp);
+  uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
   memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   message[9] = capabilities;
@@ -460,7 +460,7 @@ asciichat_error_t acds_verify_session_create(const uint8_t identity_pubkey[32], 
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_CREATE;
 
   // Convert timestamp to network byte order and pack into message
-  uint64_t timestamp_net = htonll(timestamp);
+  uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
   memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   message[9] = capabilities;
@@ -492,7 +492,7 @@ asciichat_error_t acds_sign_session_join(const uint8_t identity_seckey[64], uint
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
   // Convert timestamp to network byte order and pack into message
-  uint64_t timestamp_net = htonll(timestamp);
+  uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
   memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
@@ -527,7 +527,7 @@ asciichat_error_t acds_verify_session_join(const uint8_t identity_pubkey[32], ui
   message[0] = (uint8_t)PACKET_TYPE_ACIP_SESSION_JOIN;
 
   // Convert timestamp to network byte order and pack into message
-  uint64_t timestamp_net = htonll(timestamp);
+  uint64_t timestamp_net = HOST_TO_NET_U64(timestamp);
   memcpy(&message[1], &timestamp_net, sizeof(timestamp_net));
 
   // Copy session string (copy exactly session_len bytes, no null terminator in signature)
