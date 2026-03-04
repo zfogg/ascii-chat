@@ -19,6 +19,17 @@ export default function Man3() {
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
 
+  // Clear hash when component unmounts (user leaves the page)
+  useEffect(() => {
+    return () => {
+      if (window.location.hash) {
+        const params = new URLSearchParams(window.location.search);
+        const newUrl = params.toString() ? `/man3?${params.toString()}` : "/man3";
+        window.history.replaceState({}, "", newUrl);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
