@@ -278,8 +278,14 @@ app.get("/api/health", (req, res) => {
 // Initialize and start
 initializeCache();
 
-app.listen(PORT, () => {
-  logger.info(`Man3 search API running on http://localhost:${PORT}`);
-  logger.info(`Environment: ${NODE_ENV}`);
-  logger.info(`Rate limit: 30 searches per minute per IP`);
-});
+// Export handler for Vercel
+export default app;
+
+// Start server if running locally (not on Vercel)
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    logger.info(`Man3 search API running on http://localhost:${PORT}`);
+    logger.info(`Environment: ${NODE_ENV}`);
+    logger.info(`Rate limit: 30 searches per minute per IP`);
+  });
+}
