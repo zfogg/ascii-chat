@@ -56,14 +56,14 @@ let indexCache = null;
 
 // Initialize cache
 function initializeCache() {
-  let indexPath = path.join(__dirname, "public/man3/index.json");
+  let indexPath = path.join(__dirname, "public/man3/pages.json");
   logger.debug(`Initializing cache...`);
   logger.debug(`__dirname: ${__dirname}`);
   logger.debug(`Looking for index at: ${indexPath}`);
 
   // Try fallback path on Vercel (files might be in dist)
   if (!fs.existsSync(indexPath) && process.env.VERCEL) {
-    const fallbackPath = path.join(__dirname, "dist/public/man3/index.json");
+    const fallbackPath = path.join(__dirname, "dist/public/man3/pages.json");
     logger.debug(`Index not found, trying fallback: ${fallbackPath}`);
     if (fs.existsSync(fallbackPath)) {
       indexPath = fallbackPath;

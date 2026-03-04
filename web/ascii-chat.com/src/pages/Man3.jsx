@@ -116,7 +116,7 @@ export default function Man3() {
 
   // Load man3 index
   useEffect(() => {
-    fetch("/man3/index.json")
+    fetch("/man3/pages.json")
       .then((r) => r.json())
       .then((pages) => {
         setManPages(pages);
