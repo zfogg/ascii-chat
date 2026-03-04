@@ -58,48 +58,11 @@ export default function Man3() {
             }
           }
 
-          const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-          let content = bodyMatch ? bodyMatch[1] : html;
-
-          // Fix relative paths to absolute paths for images and links
-          content = content.replace(/src="([^"]+)"/g, (match, src) => {
-            if (!src.startsWith("/") && !src.startsWith("http")) {
-              return `src="/man3/${src}"`;
-            }
-            return match;
-          });
-          content = content.replace(/href="([^"]+)"/g, (match, href) => {
-            if (
-              !href.startsWith("/") &&
-              !href.startsWith("http") &&
-              !href.startsWith("#")
-            ) {
-              return `href="/man3/${href}"`;
-            }
-            return match;
-          });
-
-          // Convert all HTML file links to Man3 links
-          // Handles full URLs, absolute paths, and relative paths with optional #lXXXXX anchors
-          // e.g., http://localhost:5173/acds__server_8c_source.html#l00052 -> /man3?page=acds__server_8c_source#l00052
-          // e.g., /acds__server_8c_source.html#l00052 -> /man3?page=acds__server_8c_source#l00052
-          // e.g., /man3/file.html -> /man3?page=file
-          // (preserve line anchors when navigating to different pages)
-          content = content.replace(
-            /href="(?:https?:\/\/[^\/]+)?([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/gi,
-            (match, path, htmlFile, anchor) => {
-              const pageName = htmlFile.replace(".html", "");
-              const newHref = `/man3?page=${pageName}${anchor || ""}`;
-              return `href="${newHref}"`;
-            },
-          );
-
-          // Preserve empty anchor tags by adding zero-width space
-          // This prevents browsers from stripping them
-          content = content.replace(/<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g, '<a id="$1">\u200B</a>');
+          // Process content (URLs and highlighting)
+          const processedContent = processPageContent(html, "");
 
           // Prepend stylesheets
-          content = stylesheets.join("\n") + content;
+          const content = stylesheets.join("\n") + processedContent;
           setSelectedPageContent(content);
         })
         .catch((e) => console.error("Failed to load page:", e));
@@ -183,6 +146,46 @@ export default function Man3() {
     };
   }, [searchQuery, manPages]);
 
+  // Helper function to process HTML content: convert URLs and highlight matches
+  const processPageContent = (html, searchQuery) => {
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+    let content = bodyMatch ? bodyMatch[1] : html;
+
+    // Fix relative paths to absolute paths for images and links
+    content = content.replace(/src="([^"]+)"/g, (match, src) => {
+      if (!src.startsWith("/") && !src.startsWith("http")) {
+        return `src="/man3/${src}"`;
+      }
+      return match;
+    });
+    content = content.replace(/href="([^"]+)"/g, (match, href) => {
+      if (
+        !href.startsWith("/") &&
+        !href.startsWith("http") &&
+        !href.startsWith("#")
+      ) {
+        return `href="/man3/${href}"`;
+      }
+      return match;
+    });
+
+    // Convert all HTML file links to Man3 links
+    content = content.replace(
+      /href="(?:https?:\/\/[^\/]+)?([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/gi,
+      (match, path, htmlFile, anchor) => {
+        const newPageName = htmlFile.replace(".html", "");
+        const newHref = `/man3?page=${newPageName}${anchor || ""}`;
+        return `href="${newHref}"`;
+      },
+    );
+
+    // Preserve empty anchor tags by adding zero-width space
+    content = content.replace(/<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g, '<a id="$1">\u200B</a>');
+
+    // Highlight matches in the processed content
+    return highlightMatchesInHTML(content, searchQuery);
+  };
+
   const loadPageContent = (
     pageName,
     lineNumber = null,
@@ -205,11 +208,8 @@ export default function Man3() {
     fetch(`/man3/${pageName}.html`)
       .then((r) => r.text())
       .then((html) => {
-        const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-        const content = bodyMatch ? bodyMatch[1] : html;
-        // Highlight matches in the HTML content
-        const highlightedContent = highlightMatchesInHTML(content, searchQuery);
-        setSelectedPageContent(highlightedContent);
+        const processedContent = processPageContent(html, searchQuery);
+        setSelectedPageContent(processedContent);
         setSelectedPageName(pageName);
         if (lineNumber) {
           setTargetLineNumber(lineNumber);
