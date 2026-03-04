@@ -52,11 +52,11 @@ elseif(APPLE)
 elseif(WIN32)
     # Windows: Use vcpkg for FreeType and fontconfig; FetchContent for libvterm
 
-    # libvterm: Not in vcpkg, use FetchContent to build from source
+    # libvterm: Not in vcpkg, use FetchContent to build from source (Launchpad)
     include(FetchContent)
     FetchContent_Declare(
         libvterm
-        URL "https://github.com/neovim/libvterm/archive/refs/heads/master.zip"
+        URL "https://launchpad.net/libvterm/+download/libvterm-0.3.3.tar.gz"
         SOURCE_SUBDIR "."
     )
 
