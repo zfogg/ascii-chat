@@ -297,6 +297,11 @@ export default function Man3() {
                                 </div>
                               );
                             })}
+                            {page.totalMatchesInFile > page.snippets.length && (
+                              <div className="text-gray-500 text-xs px-2 py-1">
+                                ... {page.totalMatchesInFile - page.snippets.length} more matching result{page.totalMatchesInFile - page.snippets.length !== 1 ? "s" : ""} for this file
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

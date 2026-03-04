@@ -107,45 +107,48 @@ function findSnippets(text, query, maxSnippets = 3) {
 
   const snippets = [];
   const usedLines = new Set(); // Track which lines we've already used
+  let totalMatches = 0; // Count all matches (not just displayed)
 
   try {
     const regex = new RegExp(query, "i");
 
-    for (let i = 0; i < lines.length && snippets.length < maxSnippets; i++) {
-      // Skip if we already used this line in a previous snippet
-      if (usedLines.has(i)) continue;
-
+    for (let i = 0; i < lines.length; i++) {
       if (regex.test(lines[i])) {
-        // Always show exactly 3 lines with match in the middle
-        const before = i > 0 ? lines[i - 1] : "";
-        const match = lines[i];
-        const after = i < lines.length - 1 ? lines[i + 1] : "";
+        totalMatches++; // Count this match
 
-        // Build snippet: exactly 3 lines with match in middle
-        const snippet = [before, match, after].join("\n");
+        // Only create snippet if we haven't reached max
+        if (snippets.length < maxSnippets && !usedLines.has(i)) {
+          // Always show exactly 3 lines with match in the middle
+          const before = i > 0 ? lines[i - 1] : "";
+          const match = lines[i];
+          const after = i < lines.length - 1 ? lines[i + 1] : "";
 
-        // Track which lines are used in this snippet to avoid overlaps
-        if (i > 0) usedLines.add(i - 1);
-        usedLines.add(i);
-        if (i < lines.length - 1) usedLines.add(i + 1);
+          // Build snippet: exactly 3 lines with match in middle
+          const snippet = [before, match, after].join("\n");
 
-        // Calculate line numbers for all 3 lines
-        const beforeLineNum = i > 0 ? lineNumbers[i - 1] : null;
-        const matchLineNum = lineNumbers[i];
-        const afterLineNum = i < lines.length - 1 ? lineNumbers[i + 1] : null;
+          // Track which lines are used in this snippet to avoid overlaps
+          if (i > 0) usedLines.add(i - 1);
+          usedLines.add(i);
+          if (i < lines.length - 1) usedLines.add(i + 1);
 
-        snippets.push({
-          text: snippet,
-          lineNumbers: [beforeLineNum, matchLineNum, afterLineNum],
-          matchLineNumber: matchLineNum,
-        });
+          // Calculate line numbers for all 3 lines
+          const beforeLineNum = i > 0 ? lineNumbers[i - 1] : null;
+          const matchLineNum = lineNumbers[i];
+          const afterLineNum = i < lines.length - 1 ? lineNumbers[i + 1] : null;
+
+          snippets.push({
+            text: snippet,
+            lineNumbers: [beforeLineNum, matchLineNum, afterLineNum],
+            matchLineNumber: matchLineNum,
+          });
+        }
       }
     }
   } catch (e) {
     // Invalid regex
   }
 
-  return snippets;
+  return { snippets, totalMatches };
 }
 
 // Search endpoint
@@ -173,13 +176,14 @@ app.get("/api/man3/search", limiter, (req, res) => {
     // Search in content for title matches (get snippets)
     for (const page of titleMatches) {
       const content = getFileContent(page.name);
-      const snippets = findSnippets(content, query, 3);
+      const { snippets, totalMatches } = findSnippets(content, query, 3);
 
       results.push({
         name: page.name,
         title: page.title,
         matchType: "title",
         snippets: snippets,
+        totalMatchesInFile: totalMatches,
       });
     }
 
@@ -190,7 +194,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
       }
 
       const content = getFileContent(page.name);
-      const snippets = findSnippets(content, query, 3);
+      const { snippets, totalMatches } = findSnippets(content, query, 3);
 
       if (snippets.length > 0) {
         results.push({
@@ -198,6 +202,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
           title: page.title,
           matchType: "content",
           snippets: snippets,
+          totalMatchesInFile: totalMatches,
         });
       }
     }
