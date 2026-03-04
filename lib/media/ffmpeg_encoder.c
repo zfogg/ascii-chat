@@ -384,8 +384,11 @@ asciichat_error_t ffmpeg_encoder_create(const char *output_path, int width_px, i
     // frame_duration = total_duration / estimated_frame_count
     //                = snapshot_delay seconds * time_base.den / estimated_frame_count
     // We'll set this to stream->time_base later after it's initialized
-    log_debug("ffmpeg_encoder_create: Snapshot mode - estimated_frame_count=%d, snapshot_delay=%.2f",
-              enc->estimated_frame_count, snapshot_delay);
+    log_info("ffmpeg_encoder_create: Snapshot mode ENABLED - estimated_frame_count=%d (fps=%d * snapshot_delay=%.2f)",
+              enc->estimated_frame_count, fps, snapshot_delay);
+  } else {
+    log_info("ffmpeg_encoder_create: Snapshot mode disabled or invalid - snapshot_mode=%d, snapshot_delay=%.2f, fps=%d",
+             snapshot_mode, snapshot_delay, fps);
   }
   enc->is_stdout_pipe = (output_path && strcmp(output_path, "-") == 0) ? 1 : 0;
 
