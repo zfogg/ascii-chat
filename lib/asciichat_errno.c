@@ -76,7 +76,7 @@ static struct {
 static void capture_backtrace(backtrace_t *bt) {
 #ifndef NDEBUG // Capture in Debug and Dev modes
   if (bt) {
-    backtrace_capture_and_symbolize(bt);
+    backtrace_capture(bt);  // Capture without symbolizing (symbolize later if needed)
   }
 #else
   (void)bt;
@@ -342,8 +342,12 @@ void asciichat_print_error_context(const asciichat_error_context_t *context) {
   }
 
   // Print stack trace from library error
-  if (context->backtrace.count > 0 && context->backtrace.symbols) {
-    backtrace_print("\nBacktrace from library error", &context->backtrace, 0, 0, skip_backtrace_frame);
+  if (context->backtrace.count > 0) {
+    // Symbolize backtrace only when actually printing it (not at capture time)
+    backtrace_symbolize(&context->backtrace);
+    if (context->backtrace.symbols) {
+      backtrace_print("\nBacktrace from library error", &context->backtrace, 0, 0, skip_backtrace_frame);
+    }
   }
 }
 
