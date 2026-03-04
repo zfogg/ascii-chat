@@ -164,8 +164,17 @@
   overflow-x: auto;
 }
 
-.man-page-content pre > code > .token:nth-child(1) {
-  margin-left: -6px;
+.man-page-content pre > code > span:nth-child(1) {
+  display: inline-block;
+  width: 2.0rem;
+}
+
+.man-page-html {
+  font-size: 1rem;
+}
+
+.man-page-html + pre {
+  margin-bottom: 2rem !important;
 }
 
 /* Hide doxygen elements */

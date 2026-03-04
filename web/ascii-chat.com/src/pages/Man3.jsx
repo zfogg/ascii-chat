@@ -520,23 +520,52 @@ export default function Man3() {
             targetLineNum = parseInt(hash.substring(2), 10);
           }
 
-          const codeWithLineNumbers = lines
-            .map((text, idx) => {
-              const lineNum = idx + 1;
-              const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-              const isTarget = lineNum === targetLineNum;
+          // If target line exists, render with yellow background and nice arrows
+          if (targetLineNum) {
+            const highlightedHtml = lines
+              .map((text, idx) => {
+                const lineNum = idx + 1;
+                const paddedNum = String(lineNum).padStart(maxLineNum, " ");
+                const isTarget = lineNum === targetLineNum;
 
-              if (isTarget) {
-                return `>>> ${paddedNum}  ${text} <<<`;
-              }
-              return `    ${paddedNum}  ${text}`;
-            })
-            .join("\n");
-          elements.push(
-            <CodeBlock key={`code-${elements.length}`} language="c">
-              {codeWithLineNumbers}
-            </CodeBlock>,
-          );
+                if (isTarget) {
+                  return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${text} ⟸</span></div>`;
+                }
+                return `<div style="font-family: monospace;"><span>    ${paddedNum}  ${text}</span></div>`;
+              })
+              .join("");
+
+            elements.push(
+              <div
+                key={`code-${elements.length}`}
+                style={{
+                  fontSize: "0.875rem",
+                  lineHeight: "1.5",
+                  backgroundColor: "#111827",
+                  padding: "1rem",
+                  borderRadius: "0.5rem",
+                  overflow: "auto",
+                  marginBottom: "1rem",
+                }}
+                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              />,
+            );
+          } else {
+            // No target line, use CodeBlock for syntax highlighting
+            const codeWithLineNumbers = lines
+              .map((text, idx) => {
+                const lineNum = idx + 1;
+                const paddedNum = String(lineNum).padStart(maxLineNum, " ");
+                return `    ${paddedNum}  ${text}`;
+              })
+              .join("\n");
+
+            elements.push(
+              <CodeBlock key={`code-${elements.length}`} language="c">
+                {codeWithLineNumbers}
+              </CodeBlock>,
+            );
+          }
         }
 
         // Update remaining to after the pre tag
@@ -604,24 +633,67 @@ export default function Man3() {
             targetLineNum = parseInt(hash.substring(2), 10);
           }
 
+          // Build code with arrows, then highlight after syntax highlighting
           const codeWithLineNumbers = codeLines
             .map((line) => {
               const lineNum = line.number || "";
               const paddedNum = String(lineNum).padStart(maxLineNum, " ");
               const isTarget = line.number === targetLineNum;
 
-              // Wrap target line in special marker for highlighting
               if (isTarget) {
-                return `>>> ${paddedNum}  ${line.text} <<<`;
+                return `⟹ ${paddedNum}  ${line.text} ⟸`;
               }
               return `    ${paddedNum}  ${line.text}`;
             })
             .join("\n");
+
           elements.push(
-            <CodeBlock key={`code-${elements.length}`} language="c">
-              {codeWithLineNumbers}
-            </CodeBlock>,
+            <div key={`code-wrapper-${elements.length}`} className="code-with-highlight">
+              <style>{`
+                .code-with-highlight pre code {
+                  display: block;
+                }
+                .code-with-highlight pre {
+                  position: relative;
+                }
+                .code-with-highlight pre::before {
+                  content: '';
+                  position: absolute;
+                  left: 0;
+                  right: 0;
+                  pointer-events: none;
+                }
+              `}</style>
+              <CodeBlock language="c">{codeWithLineNumbers}</CodeBlock>
+            </div>,
           );
+
+          // Add JavaScript to highlight the line with arrow after CodeBlock renders
+          if (targetLineNum) {
+            setTimeout(() => {
+              const codeBlocks = document.querySelectorAll(".code-with-highlight pre code");
+              codeBlocks.forEach((block) => {
+                let arrowSpan = null;
+                block.querySelectorAll("span").forEach((span) => {
+                  if (span.textContent.includes("⟹")) {
+                    arrowSpan = span;
+                  }
+                });
+
+                if (arrowSpan) {
+                  const arrowY = arrowSpan.offsetTop;
+
+                  // Find all spans and only highlight those on the same Y row
+                  block.querySelectorAll("span").forEach((span) => {
+                    if (span.offsetTop === arrowY) {
+                      span.style.backgroundColor = "#fbbf24";
+                      span.style.color = "#000";
+                    }
+                  });
+                }
+              });
+            }, 0);
+          }
         }
 
         // Also render the original fragment HTML hidden so anchors are in DOM for scrolling
