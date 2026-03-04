@@ -156,44 +156,44 @@
 <section class="Ss">
 <h2 class="Ss" id="void_symbol_cache_destroy_(void_)"><a class="permalink" href="#void_symbol_cache_destroy_(void_)">void
   symbol_cache_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>318</b> of file <b>symbols.c</b>.</p>
-<pre>318                                 {
-319   if (!lifecycle_shutdown(&amp;g_symbol_cache_lc)) {
-320     return;
-321   }
+<p class="Pp">Definition at line <b>316</b> of file <b>symbols.c</b>.</p>
+<pre>316                                 {
+317   if (!lifecycle_shutdown(&amp;g_symbol_cache_lc)) {
+318     return;
+319   }
+320 
+321   // Mark as uninitialized FIRST to prevent new inserts during cleanup
 322 
-323   // Mark as uninitialized FIRST to prevent new inserts during cleanup
-324 
-325   // Acquire write lock to prevent any concurrent operations
-326   rwlock_wrlock(&amp;g_symbol_cache_lock);
-327 
-328   // Count entries before freeing for debugging
-329   size_t entry_count = HASH_COUNT(g_symbol_cache);
-330 
-331   // Free all symbol entries using HASH_ITER
-332   symbol_entry_t *entry = NULL, *tmp = NULL;
-333   size_t freed_count = 0;
-334   HASH_ITER(hh, g_symbol_cache, entry, tmp) {
-335     if (entry) {
-336       HASH_DEL(g_symbol_cache, entry);
-337       if (entry-&gt;symbol) {
-338         free(entry-&gt;symbol);
-339       }
-340       free(entry);
-341       freed_count++;
-342     }
-343   }
-344 
-345   // Release lock and destroy rwlock
-346   rwlock_wrunlock(&amp;g_symbol_cache_lock);
-347   rwlock_destroy(&amp;g_symbol_cache_lock);
+323   // Acquire write lock to prevent any concurrent operations
+324   rwlock_wrlock(&amp;g_symbol_cache_lock);
+325 
+326   // Count entries before freeing for debugging
+327   size_t entry_count = HASH_COUNT(g_symbol_cache);
+328 
+329   // Free all symbol entries using HASH_ITER
+330   symbol_entry_t *entry = NULL, *tmp = NULL;
+331   size_t freed_count = 0;
+332   HASH_ITER(hh, g_symbol_cache, entry, tmp) {
+333     if (entry) {
+334       HASH_DEL(g_symbol_cache, entry);
+335       if (entry-&gt;symbol) {
+336         free(entry-&gt;symbol);
+337       }
+338       free(entry);
+339       freed_count++;
+340     }
+341   }
+342 
+343   // Release lock and destroy rwlock
+344   rwlock_wrunlock(&amp;g_symbol_cache_lock);
+345   rwlock_destroy(&amp;g_symbol_cache_lock);
+346 
+347   g_symbol_cache = NULL;
 348 
-349   g_symbol_cache = NULL;
-350 
-351   log_dev(&quot;Symbol cache cleaned up: %zu entries counted, %zu entries freed (hits=%llu, misses=%llu)&quot;, entry_count,
-352           freed_count, (unsigned long long)atomic_load_u64(&amp;g_cache_hits),
-353           (unsigned long long)atomic_load_u64(&amp;g_cache_misses));
-354 }</pre>
+349   log_dev(&quot;Symbol cache cleaned up: %zu entries counted, %zu entries freed (hits=%llu, misses=%llu)&quot;, entry_count,
+350           freed_count, (unsigned long long)atomic_load_u64(&amp;g_cache_hits),
+351           (unsigned long long)atomic_load_u64(&amp;g_cache_misses));
+352 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>, <b>lifecycle_shutdown()</b>,
@@ -203,35 +203,35 @@
 <section class="Ss">
 <h2 class="Ss" id="void_symbol_cache_free_symbols_(char_**_symbols)"><a class="permalink" href="#void_symbol_cache_free_symbols_(char_**_symbols)">void
   symbol_cache_free_symbols (char ** symbols)</a></h2>
-<p class="Pp">Definition at line <b>995</b> of file <b>symbols.c</b>.</p>
-<pre>995                                                {
-996   if (!symbols) {
-997     return;
-998   }
-999 
-1000   // The array is NULL-terminated (allocated with size+1, with result[size] = NULL)
-1001   // The terminator is a SINGLE NULL at index 'size'
-1002   // Failed allocations use the NULL_SENTINEL string &quot;[NULL]&quot; instead of NULL,
-1003   // so there are no NULL entries in the middle - only at the terminator
-1004   // This makes iteration safe: we can iterate until we find the first NULL (the terminator)
-1005 
-1006   // Iterate through entries, freeing all non-NULL entries until we hit the NULL terminator
-1007   for (int i = 0; i &lt; 64; i++) { // Reasonable limit to prevent infinite loop
-1008     if (symbols[i] == NULL) {
-1009       // Found NULL - this is the terminator, stop here
-1010       break;
-1011     }
-1012 
-1013     // Found a non-NULL entry - check if it's the sentinel string
-1014     // Both regular strings and sentinel strings are allocated (with strdup),
-1015     // so we free them all
-1016     SAFE_FREE(symbols[i]);
-1017     symbols[i] = NULL; // Clear pointer after freeing
-1018   }
-1019 
-1020   // Free the array itself
-1021   SAFE_FREE(symbols);
-1022 }</pre>
+<p class="Pp">Definition at line <b>1000</b> of file <b>symbols.c</b>.</p>
+<pre>1000                                                {
+1001   if (!symbols) {
+1002     return;
+1003   }
+1004 
+1005   // The array is NULL-terminated (allocated with size+1, with result[size] = NULL)
+1006   // The terminator is a SINGLE NULL at index 'size'
+1007   // Failed allocations use the NULL_SENTINEL string &quot;[NULL]&quot; instead of NULL,
+1008   // so there are no NULL entries in the middle - only at the terminator
+1009   // This makes iteration safe: we can iterate until we find the first NULL (the terminator)
+1010 
+1011   // Iterate through entries, freeing all non-NULL entries until we hit the NULL terminator
+1012   for (int i = 0; i &lt; 64; i++) { // Reasonable limit to prevent infinite loop
+1013     if (symbols[i] == NULL) {
+1014       // Found NULL - this is the terminator, stop here
+1015       break;
+1016     }
+1017 
+1018     // Found a non-NULL entry - check if it's the sentinel string
+1019     // Both regular strings and sentinel strings are allocated (with strdup),
+1020     // so we free them all
+1021     SAFE_FREE(symbols[i]);
+1022     symbols[i] = NULL; // Clear pointer after freeing
+1023   }
+1024 
+1025   // Free the array itself
+1026   SAFE_FREE(symbols);
+1027 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -239,20 +239,20 @@
 <h2 class="Ss" id="void_symbol_cache_get_stats_(uint64_t_*_hits_out,_uint64_t_*_misses_out,_size_t_*_entries_out)"><a class="permalink" href="#void_symbol_cache_get_stats_(uint64_t_*_hits_out,_uint64_t_*_misses_out,_size_t_*_entries_out)">void
   symbol_cache_get_stats (uint64_t * hits_out, uint64_t * misses_out, size_t *
   entries_out)</a></h2>
-<p class="Pp">Definition at line <b>437</b> of file <b>symbols.c</b>.</p>
-<pre>437                                                                                            {
-438   if (hits_out) {
-439     *hits_out = atomic_load_u64(&amp;g_cache_hits);
-440   }
-441   if (misses_out) {
-442     *misses_out = atomic_load_u64(&amp;g_cache_misses);
-443   }
-444   if (entries_out) {
-445     rwlock_rdlock(&amp;g_symbol_cache_lock);
-446     *entries_out = HASH_COUNT(g_symbol_cache);
-447     rwlock_rdunlock(&amp;g_symbol_cache_lock);
-448   }
-449 }</pre>
+<p class="Pp">Definition at line <b>435</b> of file <b>symbols.c</b>.</p>
+<pre>435                                                                                            {
+436   if (hits_out) {
+437     *hits_out = atomic_load_u64(&amp;g_cache_hits);
+438   }
+439   if (misses_out) {
+440     *misses_out = atomic_load_u64(&amp;g_cache_misses);
+441   }
+442   if (entries_out) {
+443     rwlock_rdlock(&amp;g_symbol_cache_lock);
+444     *entries_out = HASH_COUNT(g_symbol_cache);
+445     rwlock_rdunlock(&amp;g_symbol_cache_lock);
+446   }
+447 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>.</p>
@@ -266,95 +266,92 @@
 293     return 0; // Already initialized
 294   }
 295 
-296   // Detect which symbolizer is available (once at init)
-297   bool expected = false;
-298   if (atomic_cas_bool(&amp;g_symbolizer_detected, &amp;expected, true)) {
-299     g_symbolizer_type = detect_symbolizer();
-300   }
-301 
-302   // Initialize rwlock for thread safety (uthash requires external locking)
-303   if (rwlock_init(&amp;g_symbol_cache_lock, &quot;symbol_cache&quot;) != 0) {
-304     lifecycle_init_abort(&amp;g_symbol_cache_lc);
-305     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize symbol cache rwlock&quot;);
-306   }
-307 
-308   // Initialize uthash head to NULL (required)
-309   g_symbol_cache = NULL;
-310 
-311   atomic_store_u64(&amp;g_cache_hits, 0);
-312   atomic_store_u64(&amp;g_cache_misses, 0);
-313 
-314   log_dev(&quot;Symbol cache initialized&quot;);
-315   return 0;
-316 }</pre>
+296   // NOTE: Symbolizer detection is deferred to lazy initialization (symbol_cache_resolve_batch)
+297   // to avoid large stack allocations during early initialization in musl static-pie builds.
+298   // This prevents __stack_chk_fail() in check_binary_in_path_uncached() which allocates ~4.6KB on stack.
+299 
+300   // Initialize rwlock for thread safety (uthash requires external locking)
+301   if (rwlock_init(&amp;g_symbol_cache_lock, &quot;symbol_cache&quot;) != 0) {
+302     lifecycle_init_abort(&amp;g_symbol_cache_lc);
+303     return SET_ERRNO(ERROR_THREAD, &quot;Failed to initialize symbol cache rwlock&quot;);
+304   }
+305 
+306   // Initialize uthash head to NULL (required)
+307   g_symbol_cache = NULL;
+308 
+309   atomic_store_u64(&amp;g_cache_hits, 0);
+310   atomic_store_u64(&amp;g_cache_misses, 0);
+311 
+312   log_dev(&quot;Symbol cache initialized&quot;);
+313   return 0;
+314 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_bool()</b>, <b>atomic_store_u64()</b>,
-    <b>lifecycle_init()</b>, <b>lifecycle_init_abort()</b>, and
-    <b>rwlock_init()</b>.</p>
+<p class="Pp">References <b>atomic_store_u64()</b>, <b>lifecycle_init()</b>,
+    <b>lifecycle_init_abort()</b>, and <b>rwlock_init()</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> symbol_cache_insert (void * addr, const char *
   symbol)</h2>
-<p class="Pp">Definition at line <b>379</b> of file <b>symbols.c</b>.</p>
-<pre>379                                                          {
-380   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc) || !addr || !symbol) {
-381     return false;
-382   }
-383 
-384   // Acquire write lock to make the entire operation atomic
-385   rwlock_wrlock(&amp;g_symbol_cache_lock);
-386 
-387   // Double-check cache is still initialized after acquiring lock
-388   // (cleanup might have marked it uninitialized between our check and lock acquisition)
-389   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc)) {
-390     rwlock_wrunlock(&amp;g_symbol_cache_lock);
-391     return false;
-392   }
-393 
-394   // Check if entry already exists
-395   symbol_entry_t *existing = NULL;
-396   HASH_FIND_PTR(g_symbol_cache, &amp;addr, existing);
-397 
-398   if (existing) {
-399     // Entry exists - update symbol if different
-400     if (existing-&gt;symbol &amp;&amp; strcmp(existing-&gt;symbol, symbol) != 0) {
-401       // Free old symbol and allocate new one
-402       free(existing-&gt;symbol);
-403       existing-&gt;symbol = platform_strdup(symbol);
-404       if (!existing-&gt;symbol) {
-405         rwlock_wrunlock(&amp;g_symbol_cache_lock);
-406         return false;
-407       }
-408     }
-409     rwlock_wrunlock(&amp;g_symbol_cache_lock);
-410     return true;
-411   }
-412 
-413   // Create new entry
-414   symbol_entry_t *entry = (symbol_entry_t *)malloc(sizeof(symbol_entry_t));
-415   if (!entry) {
-416     rwlock_wrunlock(&amp;g_symbol_cache_lock);
-417     return false;
-418   }
-419 
-420   entry-&gt;addr = addr;
-421   entry-&gt;symbol = platform_strdup(symbol);
-422   if (!entry-&gt;symbol) {
-423     free(entry);
-424     rwlock_wrunlock(&amp;g_symbol_cache_lock);
-425     return false;
-426   }
-427 
-428   // Add to hash table
-429   HASH_ADD_PTR(g_symbol_cache, addr, entry);
-430 
-431   // Release lock
-432   rwlock_wrunlock(&amp;g_symbol_cache_lock);
-433 
-434   return true;
-435 }</pre>
+<p class="Pp">Definition at line <b>377</b> of file <b>symbols.c</b>.</p>
+<pre>377                                                          {
+378   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc) || !addr || !symbol) {
+379     return false;
+380   }
+381 
+382   // Acquire write lock to make the entire operation atomic
+383   rwlock_wrlock(&amp;g_symbol_cache_lock);
+384 
+385   // Double-check cache is still initialized after acquiring lock
+386   // (cleanup might have marked it uninitialized between our check and lock acquisition)
+387   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc)) {
+388     rwlock_wrunlock(&amp;g_symbol_cache_lock);
+389     return false;
+390   }
+391 
+392   // Check if entry already exists
+393   symbol_entry_t *existing = NULL;
+394   HASH_FIND_PTR(g_symbol_cache, &amp;addr, existing);
+395 
+396   if (existing) {
+397     // Entry exists - update symbol if different
+398     if (existing-&gt;symbol &amp;&amp; strcmp(existing-&gt;symbol, symbol) != 0) {
+399       // Free old symbol and allocate new one
+400       free(existing-&gt;symbol);
+401       existing-&gt;symbol = platform_strdup(symbol);
+402       if (!existing-&gt;symbol) {
+403         rwlock_wrunlock(&amp;g_symbol_cache_lock);
+404         return false;
+405       }
+406     }
+407     rwlock_wrunlock(&amp;g_symbol_cache_lock);
+408     return true;
+409   }
+410 
+411   // Create new entry
+412   symbol_entry_t *entry = (symbol_entry_t *)malloc(sizeof(symbol_entry_t));
+413   if (!entry) {
+414     rwlock_wrunlock(&amp;g_symbol_cache_lock);
+415     return false;
+416   }
+417 
+418   entry-&gt;addr = addr;
+419   entry-&gt;symbol = platform_strdup(symbol);
+420   if (!entry-&gt;symbol) {
+421     free(entry);
+422     rwlock_wrunlock(&amp;g_symbol_cache_lock);
+423     return false;
+424   }
+425 
+426   // Add to hash table
+427   HASH_ADD_PTR(g_symbol_cache, addr, entry);
+428 
+429   // Release lock
+430   rwlock_wrunlock(&amp;g_symbol_cache_lock);
+431 
+432   return true;
+433 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>symbol_entry_t::addr</b>,
@@ -365,29 +362,29 @@
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_symbol_cache_lookup_(void_*_addr)"><a class="permalink" href="#const_char_*_symbol_cache_lookup_(void_*_addr)">const
   char * symbol_cache_lookup (void * addr)</a></h2>
-<p class="Pp">Definition at line <b>356</b> of file <b>symbols.c</b>.</p>
-<pre>356                                             {
-357   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc) || !addr) {
-358     return NULL;
-359   }
+<p class="Pp">Definition at line <b>354</b> of file <b>symbols.c</b>.</p>
+<pre>354                                             {
+355   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc) || !addr) {
+356     return NULL;
+357   }
+358 
+359   rwlock_rdlock(&amp;g_symbol_cache_lock);
 360 
-361   rwlock_rdlock(&amp;g_symbol_cache_lock);
-362 
-363   symbol_entry_t *entry = NULL;
-364   HASH_FIND_PTR(g_symbol_cache, &amp;addr, entry);
-365 
-366   const char *result = NULL;
-367   if (entry) {
-368     // Copy string while holding lock to prevent use-after-free
-369     result = platform_strdup(entry-&gt;symbol);
-370     atomic_fetch_add_u64(&amp;g_cache_hits, 1);
-371   } else {
-372     atomic_fetch_add_u64(&amp;g_cache_misses, 1);
-373   }
-374 
-375   rwlock_rdunlock(&amp;g_symbol_cache_lock);
-376   return result;
-377 }</pre>
+361   symbol_entry_t *entry = NULL;
+362   HASH_FIND_PTR(g_symbol_cache, &amp;addr, entry);
+363 
+364   const char *result = NULL;
+365   if (entry) {
+366     // Copy string while holding lock to prevent use-after-free
+367     result = platform_strdup(entry-&gt;symbol);
+368     atomic_fetch_add_u64(&amp;g_cache_hits, 1);
+369   } else {
+370     atomic_fetch_add_u64(&amp;g_cache_misses, 1);
+371   }
+372 
+373   rwlock_rdunlock(&amp;g_symbol_cache_lock);
+374   return result;
+375 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
@@ -398,21 +395,21 @@
 <section class="Ss">
 <h2 class="Ss" id="void_symbol_cache_print_stats_(void_)"><a class="permalink" href="#void_symbol_cache_print_stats_(void_)">void
   symbol_cache_print_stats (void )</a></h2>
-<p class="Pp">Definition at line <b>451</b> of file <b>symbols.c</b>.</p>
-<pre>451                                     {
-452   uint64_t hits = atomic_load_u64(&amp;g_cache_hits);
-453   uint64_t misses = atomic_load_u64(&amp;g_cache_misses);
-454 
-455   rwlock_rdlock(&amp;g_symbol_cache_lock);
-456   size_t entries = HASH_COUNT(g_symbol_cache);
-457   rwlock_rdunlock(&amp;g_symbol_cache_lock);
-458 
-459   uint64_t total = hits + misses;
-460   double hit_rate = total &gt; 0 ? (100.0 * (double)hits / (double)total) : 0.0;
-461 
-462   log_debug(&quot;Symbol Cache Stats: %zu entries, %llu hits, %llu misses (%.1f%% hit rate)&quot;, entries,
-463             (unsigned long long)hits, (unsigned long long)misses, hit_rate);
-464 }</pre>
+<p class="Pp">Definition at line <b>449</b> of file <b>symbols.c</b>.</p>
+<pre>449                                     {
+450   uint64_t hits = atomic_load_u64(&amp;g_cache_hits);
+451   uint64_t misses = atomic_load_u64(&amp;g_cache_misses);
+452 
+453   rwlock_rdlock(&amp;g_symbol_cache_lock);
+454   size_t entries = HASH_COUNT(g_symbol_cache);
+455   rwlock_rdunlock(&amp;g_symbol_cache_lock);
+456 
+457   uint64_t total = hits + misses;
+458   double hit_rate = total &gt; 0 ? (100.0 * (double)hits / (double)total) : 0.0;
+459 
+460   log_debug(&quot;Symbol Cache Stats: %zu entries, %llu hits, %llu misses (%.1f%% hit rate)&quot;, entries,
+461             (unsigned long long)hits, (unsigned long long)misses, hit_rate);
+462 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>.</p>
@@ -420,150 +417,157 @@
 <section class="Ss">
 <h2 class="Ss" id="char_**_symbol_cache_resolve_batch_(void_*const_*_buffer,_int_size)"><a class="permalink" href="#char_**_symbol_cache_resolve_batch_(void_*const_*_buffer,_int_size)">char
   ** symbol_cache_resolve_batch (void *const * buffer, int size)</a></h2>
-<p class="Pp">Definition at line <b>858</b> of file <b>symbols.c</b>.</p>
-<pre>858                                                                  {
-859   if (size &lt;= 0 || !buffer) {
-860     log_error(&quot;Invalid parameters: buffer=%p, size=%d&quot;, (void *)buffer, size);
-861     return NULL;
-862   }
-863 
-864   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
-865   // The cache must be initialized explicitly by platform_init() before use
-866   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc)) {
-867     // Cache not initialized - fall back to uncached resolution
-868     // This happens during early initialization before platform_init() completes
-869     char **result = run_llvm_symbolizer_batch(buffer, size);
-870     if (!result) {
-871       result = run_addr2line_batch(buffer, size);
-872     }
-873     return result;
-874   }
-875 
-876   // Allocate result array (size + 1 for NULL terminator)
-877   // CALLOC zeros the memory, so result[size] is already NULL
-878   char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
-879   if (!result) {
-880     return NULL;
-881   }
-882 
-883   // Ensure NULL terminator is explicitly set (CALLOC already did this, but be explicit)
-884   result[size] = NULL;
-885 
-886   // First pass: check cache for all addresses
-887   int uncached_count = 0;
-888 
-889   // Allocate arrays for uncached addresses on heap instead of stack
-890   // VLAs can cause stack overflow with large backtrace sizes
-891   void **uncached_addrs = SAFE_MALLOC((size_t)size, void **);
-892   int *uncached_indices = SAFE_MALLOC((size_t)size * sizeof(int), int *);
+<p class="Pp">Definition at line <b>856</b> of file <b>symbols.c</b>.</p>
+<pre>856                                                                  {
+857   if (size &lt;= 0 || !buffer) {
+858     log_error(&quot;Invalid parameters: buffer=%p, size=%d&quot;, (void *)buffer, size);
+859     return NULL;
+860   }
+861 
+862   // DO NOT auto-initialize here - causes circular dependency during lock_debug_init()
+863   // The cache must be initialized explicitly by platform_init() before use
+864   if (!lifecycle_is_initialized(&amp;g_symbol_cache_lc)) {
+865     // Cache not initialized - fall back to uncached resolution
+866     // This happens during early initialization before platform_init() completes
+867     char **result = run_llvm_symbolizer_batch(buffer, size);
+868     if (!result) {
+869       result = run_addr2line_batch(buffer, size);
+870     }
+871     return result;
+872   }
+873 
+874   // Lazy initialize symbolizer detection on first use (not during symbol_cache_init)
+875   // This avoids large stack allocations in musl static-pie during early initialization
+876   bool expected = false;
+877   if (atomic_cas_bool(&amp;g_symbolizer_detected, &amp;expected, true)) {
+878     g_symbolizer_type = detect_symbolizer();
+879   }
+880 
+881   // Allocate result array (size + 1 for NULL terminator)
+882   // CALLOC zeros the memory, so result[size] is already NULL
+883   char **result = SAFE_CALLOC((size_t)(size + 1), sizeof(char *), char **);
+884   if (!result) {
+885     return NULL;
+886   }
+887 
+888   // Ensure NULL terminator is explicitly set (CALLOC already did this, but be explicit)
+889   result[size] = NULL;
+890 
+891   // First pass: check cache for all addresses
+892   int uncached_count = 0;
 893 
-894   if (!uncached_addrs || !uncached_indices) {
-895     SAFE_FREE(uncached_addrs);
-896     SAFE_FREE(uncached_indices);
-897     // Return result array with raw addresses as fallback
-898     for (int i = 0; i &lt; size; i++) {
-899       result[i] = SAFE_MALLOC(32, char *);
-900       if (result[i]) {
-901         SAFE_SNPRINTF(result[i], 32, &quot;%p&quot;, buffer[i]);
-902       }
-903     }
-904     return result;
-905   }
-906 
-907   for (int i = 0; i &lt; size; i++) {
-908     const char *cached = symbol_cache_lookup(buffer[i]);
-909     if (cached) {
-910       // Cache hit - symbol_cache_lookup already duplicated the string
-911       result[i] = (char *)cached;
-912     } else {
-913       // Cache miss - track for batch resolution
-914       uncached_addrs[uncached_count] = buffer[i];
-915       uncached_indices[uncached_count] = i;
-916       uncached_count++;
-917     }
-918   }
-919 
-920   // Second pass: resolve uncached addresses with selected symbolizer
-921   if (uncached_count &gt; 0) {
-922     char **resolved = NULL;
-923 
-924     // Use the detected symbolizer type
-925     switch (g_symbolizer_type) {
-926     case SYMBOLIZER_LLVM:
-927       resolved = run_llvm_symbolizer_batch(uncached_addrs, uncached_count);
-928       break;
-929     case SYMBOLIZER_ADDR2LINE:
-930       resolved = run_addr2line_batch(uncached_addrs, uncached_count);
-931       break;
-932     case SYMBOLIZER_NONE:
-933     default:
-934       // No symbolizer available - will fall through to raw address handling
-935       resolved = NULL;
+894   // Allocate arrays for uncached addresses on heap instead of stack
+895   // VLAs can cause stack overflow with large backtrace sizes
+896   void **uncached_addrs = SAFE_MALLOC((size_t)size, void **);
+897   int *uncached_indices = SAFE_MALLOC((size_t)size * sizeof(int), int *);
+898 
+899   if (!uncached_addrs || !uncached_indices) {
+900     SAFE_FREE(uncached_addrs);
+901     SAFE_FREE(uncached_indices);
+902     // Return result array with raw addresses as fallback
+903     for (int i = 0; i &lt; size; i++) {
+904       result[i] = SAFE_MALLOC(32, char *);
+905       if (result[i]) {
+906         SAFE_SNPRINTF(result[i], 32, &quot;%p&quot;, buffer[i]);
+907       }
+908     }
+909     return result;
+910   }
+911 
+912   for (int i = 0; i &lt; size; i++) {
+913     const char *cached = symbol_cache_lookup(buffer[i]);
+914     if (cached) {
+915       // Cache hit - symbol_cache_lookup already duplicated the string
+916       result[i] = (char *)cached;
+917     } else {
+918       // Cache miss - track for batch resolution
+919       uncached_addrs[uncached_count] = buffer[i];
+920       uncached_indices[uncached_count] = i;
+921       uncached_count++;
+922     }
+923   }
+924 
+925   // Second pass: resolve uncached addresses with selected symbolizer
+926   if (uncached_count &gt; 0) {
+927     char **resolved = NULL;
+928 
+929     // Use the detected symbolizer type
+930     switch (g_symbolizer_type) {
+931     case SYMBOLIZER_LLVM:
+932       resolved = run_llvm_symbolizer_batch(uncached_addrs, uncached_count);
+933       break;
+934     case SYMBOLIZER_ADDR2LINE:
+935       resolved = run_addr2line_batch(uncached_addrs, uncached_count);
 936       break;
-937     }
-938 
-939     if (resolved) {
-940       for (int i = 0; i &lt; uncached_count; i++) {
-941         int orig_idx = uncached_indices[i];
-942         if (resolved[i]) {
-943           result[orig_idx] = platform_strdup(resolved[i]);
-944           // If strdup failed, use sentinel string instead of NULL
-945           if (!result[orig_idx]) {
-946             log_error(&quot;Failed to duplicate string for result[%d]&quot;, orig_idx);
-947             result[orig_idx] = platform_strdup(NULL_SENTINEL);
-948           }
-949           // Only insert into cache if strdup succeeded (and it's not the sentinel)
-950           if (result[orig_idx] &amp;&amp; strcmp(result[orig_idx], NULL_SENTINEL) != 0) {
-951             if (!symbol_cache_insert(uncached_addrs[i], resolved[i])) {
-952               log_error(&quot;Failed to insert symbol into cache for result[%d]&quot;, orig_idx);
-953             }
-954           }
-955           SAFE_FREE(resolved[i]);
-956         } else {
-957           // resolved[i] is NULL - use sentinel string
-958           if (!result[orig_idx]) {
-959             result[orig_idx] = platform_strdup(NULL_SENTINEL);
-960           }
-961         }
-962         if (!result[orig_idx]) {
-963           log_error(&quot;Failed to allocate memory for result[%d]&quot;, orig_idx);
-964         }
-965       }
-966 
-967       SAFE_FREE(resolved);
-968 
-969     } else {
-970       // addr2line failed - fill uncached entries with raw addresses or sentinel
-971       for (int i = 0; i &lt; uncached_count; i++) {
-972         int orig_idx = uncached_indices[i];
-973         if (!result[orig_idx]) {
-974           result[orig_idx] = SAFE_MALLOC(32, char *);
-975           if (result[orig_idx]) {
-976             SAFE_SNPRINTF(result[orig_idx], 32, &quot;%p&quot;, uncached_addrs[i]);
-977           } else {
-978             result[orig_idx] = platform_strdup(NULL_SENTINEL);
-979           }
-980         }
-981         if (!result[orig_idx]) {
-982           log_error(&quot;Failed to allocate memory for result[%d]&quot;, orig_idx);
-983         }
-984       }
-985     }
-986   }
-987 
-988   // Clean up heap-allocated arrays
-989   SAFE_FREE(uncached_addrs);
-990   SAFE_FREE(uncached_indices);
-991 
-992   return result;
-993 }</pre>
+937     case SYMBOLIZER_NONE:
+938     default:
+939       // No symbolizer available - will fall through to raw address handling
+940       resolved = NULL;
+941       break;
+942     }
+943 
+944     if (resolved) {
+945       for (int i = 0; i &lt; uncached_count; i++) {
+946         int orig_idx = uncached_indices[i];
+947         if (resolved[i]) {
+948           result[orig_idx] = platform_strdup(resolved[i]);
+949           // If strdup failed, use sentinel string instead of NULL
+950           if (!result[orig_idx]) {
+951             log_error(&quot;Failed to duplicate string for result[%d]&quot;, orig_idx);
+952             result[orig_idx] = platform_strdup(NULL_SENTINEL);
+953           }
+954           // Only insert into cache if strdup succeeded (and it's not the sentinel)
+955           if (result[orig_idx] &amp;&amp; strcmp(result[orig_idx], NULL_SENTINEL) != 0) {
+956             if (!symbol_cache_insert(uncached_addrs[i], resolved[i])) {
+957               log_error(&quot;Failed to insert symbol into cache for result[%d]&quot;, orig_idx);
+958             }
+959           }
+960           SAFE_FREE(resolved[i]);
+961         } else {
+962           // resolved[i] is NULL - use sentinel string
+963           if (!result[orig_idx]) {
+964             result[orig_idx] = platform_strdup(NULL_SENTINEL);
+965           }
+966         }
+967         if (!result[orig_idx]) {
+968           log_error(&quot;Failed to allocate memory for result[%d]&quot;, orig_idx);
+969         }
+970       }
+971 
+972       SAFE_FREE(resolved);
+973 
+974     } else {
+975       // addr2line failed - fill uncached entries with raw addresses or sentinel
+976       for (int i = 0; i &lt; uncached_count; i++) {
+977         int orig_idx = uncached_indices[i];
+978         if (!result[orig_idx]) {
+979           result[orig_idx] = SAFE_MALLOC(32, char *);
+980           if (result[orig_idx]) {
+981             SAFE_SNPRINTF(result[orig_idx], 32, &quot;%p&quot;, uncached_addrs[i]);
+982           } else {
+983             result[orig_idx] = platform_strdup(NULL_SENTINEL);
+984           }
+985         }
+986         if (!result[orig_idx]) {
+987           log_error(&quot;Failed to allocate memory for result[%d]&quot;, orig_idx);
+988         }
+989       }
+990     }
+991   }
+992 
+993   // Clean up heap-allocated arrays
+994   SAFE_FREE(uncached_addrs);
+995   SAFE_FREE(uncached_indices);
+996 
+997   return result;
+998 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_is_initialized()</b>,
-    <b>NULL_SENTINEL</b>, <b>platform_strdup()</b>,
-    <b>symbol_cache_insert()</b>, <b>symbol_cache_lookup()</b>,
-    <b>SYMBOLIZER_ADDR2LINE</b>, <b>SYMBOLIZER_LLVM</b>, and
-    <b>SYMBOLIZER_NONE</b>.</p>
+<p class="Pp">References <b>atomic_cas_bool()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>NULL_SENTINEL</b>,
+    <b>platform_strdup()</b>, <b>symbol_cache_insert()</b>,
+    <b>symbol_cache_lookup()</b>, <b>SYMBOLIZER_ADDR2LINE</b>,
+    <b>SYMBOLIZER_LLVM</b>, and <b>SYMBOLIZER_NONE</b>.</p>
 </section>
 </section>
 <section class="Sh">
