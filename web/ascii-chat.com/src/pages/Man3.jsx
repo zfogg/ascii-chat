@@ -80,14 +80,16 @@ export default function Man3() {
           });
 
           // Convert all HTML file links to Man3 links
-          // Handles: /man3/file.html, /file.html, file.html with optional #lXXXXX anchors
-          // e.g., /acds__server_8c_source.html#l00052 -> /man3?page=acds__server_8c_source
-          // (strip line anchors when clicking links to different pages)
+          // Handles full URLs, absolute paths, and relative paths with optional #lXXXXX anchors
+          // e.g., http://localhost:5173/acds__server_8c_source.html#l00052 -> /man3?page=acds__server_8c_source#l00052
+          // e.g., /acds__server_8c_source.html#l00052 -> /man3?page=acds__server_8c_source#l00052
+          // e.g., /man3/file.html -> /man3?page=file
+          // (preserve line anchors when navigating to different pages)
           content = content.replace(
-            /href="([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/gi,
+            /href="(?:https?:\/\/[^\/]+)?([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/gi,
             (match, path, htmlFile, anchor) => {
               const pageName = htmlFile.replace(".html", "");
-              const newHref = `/man3?page=${pageName}`;
+              const newHref = `/man3?page=${pageName}${anchor || ""}`;
               return `href="${newHref}"`;
             },
           );
