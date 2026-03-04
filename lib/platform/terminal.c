@@ -303,3 +303,29 @@ void terminal_get_default_background_color(int theme, uint8_t *out_r, uint8_t *o
   }
 }
 
+
+/**
+ * @brief Check if terminal control sequences should be used for the given fd
+ * @param fd File descriptor to check
+ * @return true if terminal control sequences should be used, false otherwise
+ *
+ * This function determines whether to send terminal POSITIONING and CONTROL
+ * sequences (cursor home, clear screen, hide cursor, etc.) which should only
+ * be sent to TTY and never to pipes/redirected output.
+ *
+ * Note: This does NOT control ANSI COLOR CODES, which are controlled by
+ * --color-mode option and may be sent to pipes if explicitly requested.
+ */
+bool terminal_should_use_control_sequences(int fd) {
+  if (fd < 0) {
+    return false;
+  }
+  if (GET_OPTION(snapshot_mode)) {
+    return false;
+  }
+  const char *testing_env = SAFE_GETENV("TESTING");
+  if (testing_env != NULL) {
+    return false;
+  }
+  return platform_isatty(fd) != 0;
+}

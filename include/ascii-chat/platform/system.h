@@ -642,6 +642,29 @@ asciichat_error_t platform_resolve_hostname_to_ipv4(const char *hostname, char *
  */
 asciichat_error_t platform_load_system_ca_certs(char **pem_data_out, size_t *pem_size_out);
 
+// ============================================================================
+// I/O Functions
+// ============================================================================
+
+/**
+ * @brief Write all bytes to a file descriptor, handling partial writes
+ * @param fd File descriptor to write to
+ * @param buf Buffer containing data to write
+ * @param count Number of bytes to write
+ * @return Number of bytes successfully written (may be less than count on retry limit)
+ *
+ * Handles partial writes and EAGAIN errors, retrying up to 1000 times before giving up.
+ * This ensures that data is fully written even when dealing with non-blocking I/O or
+ * interrupted syscalls.
+ *
+ * @note On EAGAIN/EWOULDBLOCK, sleeps 100us before retrying instead of busy-waiting
+ * @note Returns early on fatal write errors (logs warning but continues retrying)
+ * @note If NULL buffer or 0 count is passed, returns 0 immediately
+ *
+ * @ingroup platform
+ */
+size_t platform_write_all(int fd, const void *buf, size_t count);
+
 #ifdef __cplusplus
 }
 #endif

@@ -324,3 +324,53 @@ int safe_vsnprintf(char *buffer, size_t buffer_size, const char *format, va_list
   /* Delegate to platform_vsnprintf for actual formatting */
   return platform_vsnprintf(buffer, buffer_size, format, ap);
 }
+
+// ============================================================================
+// I/O Functions
+// ============================================================================
+
+/**
+ * @brief Write all bytes to a file descriptor, handling partial writes
+ *
+ * Handles partial writes and EAGAIN errors, retrying up to 1000 times before giving up.
+ * This ensures that data is fully written even when dealing with non-blocking I/O or
+ * interrupted syscalls.
+ */
+size_t platform_write_all(int fd, const void *buf, size_t count) {
+  if (!buf || count == 0) {
+    return 0;
+  }
+
+  size_t written_total = 0;
+  int attempts = 0;
+  const int MAX_ATTEMPTS = 1000;
+
+  while (written_total < count && attempts < MAX_ATTEMPTS) {
+    ssize_t result = platform_write(fd, (const char *)buf + written_total, count - written_total);
+
+    if (result > 0) {
+      written_total += (size_t)result;
+      attempts = 0; // Reset attempt counter on successful write
+    } else if (result < 0) {
+      // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
+      if (errno == EAGAIN || errno == EWOULDBLOCK) {
+        // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
+        platform_sleep_us(100);
+      } else {
+        // Other write errors - log and retry
+        log_warn("platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)", fd, written_total,
+                 count, errno);
+      }
+      attempts++;
+    } else {
+      // result == 0: no bytes written, retry
+      attempts++;
+    }
+  }
+
+  if (attempts >= MAX_ATTEMPTS && written_total < count) {
+    log_warn("platform_write_all: Hit retry limit on fd=%d: wrote %zu of %zu bytes", fd, written_total, count);
+  }
+
+  return written_total;
+}
