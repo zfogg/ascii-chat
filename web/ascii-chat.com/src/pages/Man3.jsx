@@ -38,9 +38,6 @@ export default function Man3() {
       const pageName = decodeURIComponent(pageParam);
       setSelectedPageName(pageName);
 
-      // Preserve hash for scrolling after content loads
-      const hash = window.location.hash;
-
       fetch(`/man3/${pageName}.html`)
         .then((r) => r.text())
         .then((html) => {
@@ -184,7 +181,7 @@ export default function Man3() {
 
     // Convert all HTML file links to Man3 links
     content = content.replace(
-      /href="(?:https?:\/\/[^\/]+)?([^"]*\/)?([^\/".]+\.html)(#l\d+)?"/gi,
+      /href="(?:https?:\/\/[^/]+)?([^"]*\/)?([^/".]+\.html)(#l\d+)?"/gi,
       (match, path, htmlFile, anchor) => {
         const newPageName = htmlFile.replace(".html", "");
         const newHref = `/man3?page=${newPageName}${anchor || ""}`;
@@ -288,7 +285,7 @@ export default function Man3() {
         }
         return <span key={i}>{part}</span>;
       });
-    } catch (e) {
+    } catch (_e) {
       return text;
     }
   };
@@ -331,7 +328,7 @@ export default function Man3() {
         .join("");
 
       return highlighted;
-    } catch (e) {
+    } catch (_e) {
       return html;
     }
   };
@@ -345,7 +342,7 @@ export default function Man3() {
         if (viewer) {
           // Find all highlighted matches in the page
           const highlights = viewer.querySelectorAll(
-            ".man-page-content span.bg-yellow-900\\/50",
+            ".man-page-content span.bg-yellow-900/50",
           );
 
           // Use snippet index if available, otherwise find first match near target line
@@ -558,7 +555,6 @@ export default function Man3() {
   const renderContentWithCodeBlocks = (html, isSourcePage = false) => {
     const elements = [];
     let remaining = html;
-    let position = 0;
 
     while (remaining.length > 0) {
       // Try to find a pre tag
@@ -672,11 +668,9 @@ export default function Man3() {
         // Find matching closing div by counting open/close tags
         let depth = 0;
         let fragmentEnd = fragmentStart;
-        let inTag = false;
 
         for (let i = fragmentStart; i < remaining.length; i++) {
           if (remaining[i] === "<") {
-            inTag = true;
             // Check if it's opening or closing
             if (remaining[i + 1] === "/") {
               // Closing tag
@@ -959,9 +953,9 @@ export default function Man3() {
                             {page.snippets.map((snippet, idx) => {
                               const snippetLines = snippet.text.split("\n");
                               const [
-                                beforeLineNum,
-                                matchLineNum,
-                                afterLineNum,
+                                _beforeLineNum,
+                                _matchLineNum,
+                                _afterLineNum,
                               ] = snippet.lineNumbers;
                               return (
                                 <div

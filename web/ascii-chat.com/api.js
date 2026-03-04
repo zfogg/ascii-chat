@@ -187,7 +187,7 @@ function findSnippets(text, query, maxSnippets = 3) {
         }
       }
     }
-  } catch (e) {
+  } catch (_e) {
     // Invalid regex
   }
 
