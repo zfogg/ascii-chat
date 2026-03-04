@@ -40,8 +40,43 @@ export default function Man3() {
       fetch(`/man3/${pageName}.html`)
         .then((r) => r.text())
         .then((html) => {
+          // Extract stylesheets from head
+          const stylesheets = [];
+          const styleMatches = html.matchAll(
+            /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
+          );
+          for (const match of styleMatches) {
+            const href = match[1];
+            if (!href.startsWith("/") && !href.startsWith("http")) {
+              stylesheets.push(`<link rel="stylesheet" href="/man3/${href}" />`);
+            } else {
+              stylesheets.push(match[0]);
+            }
+          }
+
           const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-          const content = bodyMatch ? bodyMatch[1] : html;
+          let content = bodyMatch ? bodyMatch[1] : html;
+
+          // Fix relative paths to absolute paths for images and links
+          content = content.replace(/src="([^"]+)"/g, (match, src) => {
+            if (!src.startsWith("/") && !src.startsWith("http")) {
+              return `src="/man3/${src}"`;
+            }
+            return match;
+          });
+          content = content.replace(/href="([^"]+)"/g, (match, href) => {
+            if (
+              !href.startsWith("/") &&
+              !href.startsWith("http") &&
+              !href.startsWith("#")
+            ) {
+              return `href="/man3/${href}"`;
+            }
+            return match;
+          });
+
+          // Prepend stylesheets to content
+          content = stylesheets.join("\n") + content;
           setSelectedPageContent(content);
 
           // Scroll to hash if present
