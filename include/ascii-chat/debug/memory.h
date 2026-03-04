@@ -46,10 +46,9 @@
 
 #pragma once
 
-#if defined(DEBUG_MEMORY)
-
 #include <stdbool.h>
 #include <stddef.h>
+#include <stdlib.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -59,6 +58,8 @@ extern "C" {
  * @brief Init the lifecycle of the debug memory module
  */
 void debug_memory_ensure_init(void);
+
+#if defined(DEBUG_MEMORY)
 
 /**
  * @brief Enable or disable quiet mode for memory reports
@@ -246,10 +247,58 @@ void debug_memory_trigger_report(void);
  */
 void debug_memory_thread_cleanup(void);
 
+#else  /* !DEBUG_MEMORY - Provide stub implementations */
+
+/* Stubs for when DEBUG_MEMORY is not defined */
+static inline void debug_memory_set_quiet_mode(bool quiet) {
+  (void)quiet;
+}
+
+static inline void debug_memory_report(void) {
+}
+
+static inline void *debug_malloc(size_t size, const char *file, int line) {
+  (void)file; (void)line;
+  return malloc(size);
+}
+
+static inline void *debug_calloc(size_t count, size_t size, const char *file, int line) {
+  (void)file; (void)line;
+  return calloc(count, size);
+}
+
+static inline void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
+  (void)file; (void)line;
+  return realloc(ptr, size);
+}
+
+static inline void debug_free(void *ptr, const char *file, int line) {
+  (void)file; (void)line;
+  free(ptr);
+}
+
+static inline void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
+  (void)ptr; (void)size; (void)file; (void)line;
+}
+
+static inline int debug_memory_thread_init(void) {
+  return 0;
+}
+
+static inline int debug_memory_thread_start(void) {
+  return 0;
+}
+
+static inline void debug_memory_trigger_report(void) {
+}
+
+static inline void debug_memory_thread_cleanup(void) {
+}
+
+#endif  /* DEBUG_MEMORY */
+
 /** @} */
 
 #ifdef __cplusplus
 } // extern "C"
 #endif
-
-#endif /* DEBUG_MEMORY */

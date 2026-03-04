@@ -5,7 +5,7 @@
  * @brief 🧠 Memory debugging implementation for ascii-chat debug builds
  */
 
-#if defined(DEBUG_MEMORY) && !defined(NDEBUG)
+#ifdef DEBUG_MEMORY
 
 #include <stdlib.h>
 #include <string.h>
