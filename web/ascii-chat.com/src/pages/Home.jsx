@@ -591,7 +591,7 @@ cat video.mp4 | ascii-chat mirror --file -`}
                 <ul className="list-disc list-inside space-y-2 text-gray-300 mb-4 ml-4">
                   <li>
                     <strong className="text-cyan-400">Video:</strong> Webcam,
-                    files, ASCII conversion, palettes, color modes
+                    files, ASCII conversion, palettes, color modes, H.265 encoding
                   </li>
                   <li>
                     <strong className="text-purple-400">Audio:</strong> Opus
