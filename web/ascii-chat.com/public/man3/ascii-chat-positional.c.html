@@ -62,12 +62,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_content_free_positional_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_positional_(char_*_content)">void
   manpage_content_free_positional (char * content)</a></h2>
-<p class="Pp">Definition at line <b>64</b> of file <b>positional.c</b>.</p>
-<pre>64                                                     {
-65   if (content) {
-66     SAFE_FREE(content);
-67   }
-68 }</pre>
+<p class="Pp">Definition at line <b>74</b> of file <b>positional.c</b>.</p>
+<pre>74                                                     {
+75   if (content) {
+76     SAFE_FREE(content);
+77   }
+78 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
@@ -79,53 +79,63 @@
   config)</a></h2>
 <p class="Pp">Definition at line <b>15</b> of file <b>positional.c</b>.</p>
 <pre>15                                                                           {
-16   if (!config || config-&gt;num_positional_args == 0) {
+16   if (!config) {
 17     char *buffer = SAFE_MALLOC(1, char *);
 18     buffer[0] = '\0';
 19     return buffer;
 20   }
 21 
-22   // Allocate growing buffer for positional section
-23   size_t buffer_capacity = 4096;
-24   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
-25   size_t offset = 0;
-26 
-27   for (size_t i = 0; i &lt; config-&gt;num_positional_args; i++) {
-28     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
-29 
-30     // Ensure buffer is large enough
-31     if (offset + 512 &gt;= buffer_capacity) {
-32       buffer_capacity *= 2;
-33       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
-34     }
-35 
-36     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
-37     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B %s\n&quot;, pos_arg-&gt;name);
-38 
-39     if (pos_arg-&gt;help_text) {
-40       offset +=
-41           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(pos_arg-&gt;help_text));
-42     }
-43 
-44     // Add examples if present
-45     if (pos_arg-&gt;num_examples &gt; 0) {
-46       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
-47       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B Examples:\n&quot;);
-48       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
-49       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.nf\n&quot;);
-50       for (size_t j = 0; j &lt; pos_arg-&gt;num_examples; j++) {
-51         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;,
-52                                 escape_groff_special(pos_arg-&gt;examples[j]));
-53       }
-54       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.fi\n&quot;);
-55       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
-56       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
-57     }
-58   }
-59 
-60   log_debug(&quot;Generated POSITIONAL ARGUMENTS section (%zu bytes)&quot;, offset);
-61   return buffer;
-62 }</pre>
+22   if (config-&gt;num_positional_args == 0) {
+23     // Generate fallback content when no positional arguments are defined
+24     size_t buffer_capacity = 256;
+25     char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+26     size_t offset = 0;
+27     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\nNo positional arguments for this mode.\n&quot;);
+28     log_debug(&quot;Generated POSITIONAL ARGUMENTS section (fallback - no args found)&quot;);
+29     return buffer;
+30   }
+31 
+32   // Allocate growing buffer for positional section
+33   size_t buffer_capacity = 4096;
+34   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+35   size_t offset = 0;
+36 
+37   for (size_t i = 0; i &lt; config-&gt;num_positional_args; i++) {
+38     const positional_arg_descriptor_t *pos_arg = &amp;config-&gt;positional_args[i];
+39 
+40     // Ensure buffer is large enough
+41     if (offset + 512 &gt;= buffer_capacity) {
+42       buffer_capacity *= 2;
+43       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+44     }
+45 
+46     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+47     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B %s\n&quot;, pos_arg-&gt;name);
+48 
+49     if (pos_arg-&gt;help_text) {
+50       offset +=
+51           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(pos_arg-&gt;help_text));
+52     }
+53 
+54     // Add examples if present
+55     if (pos_arg-&gt;num_examples &gt; 0) {
+56       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
+57       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B Examples:\n&quot;);
+58       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RS\n&quot;);
+59       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.nf\n&quot;);
+60       for (size_t j = 0; j &lt; pos_arg-&gt;num_examples; j++) {
+61         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;,
+62                                 escape_groff_special(pos_arg-&gt;examples[j]));
+63       }
+64       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.fi\n&quot;);
+65       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
+66       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.RE\n&quot;);
+67     }
+68   }
+69 
+70   log_debug(&quot;Generated POSITIONAL ARGUMENTS section (%zu bytes)&quot;, offset);
+71   return buffer;
+72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>escape_groff_special()</b>, and
