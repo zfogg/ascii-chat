@@ -37,12 +37,10 @@ export function CodeBlock({
 
   // Apply search highlighting after Prism renders
   useEffect(() => {
-    console.log('[CodeBlock] useEffect triggered, searchQuery:', searchQuery, 'codeRef:', !!codeRef.current);
     if (!searchQuery || !codeRef.current) return;
 
     try {
       const codeBlock = codeRef.current.querySelector('code');
-      console.log('[CodeBlock] Found code block:', !!codeBlock);
       if (!codeBlock) return;
 
       // Get all text nodes
@@ -59,12 +57,10 @@ export function CodeBlock({
         allTextNodes.push(node);
       }
 
-      console.log('[CodeBlock] Found', allTextNodes.length, 'total text nodes');
 
       // Create regex for search term
       const searchRegex = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const regex = new RegExp(`(${searchRegex})`, 'gi');
-      console.log('[CodeBlock] Created regex for:', searchQuery);
 
       // Combine all text nodes to find matches across tokens
       const fullText = allTextNodes.map(n => n.textContent || '').join('');
@@ -72,7 +68,6 @@ export function CodeBlock({
 
       let match;
       while ((match = regex.exec(fullText)) !== null) {
-        console.log('[CodeBlock] Found match:', match[0], 'at index:', match.index);
         // Find which text node this match starts in
         let charCount = 0;
         let startNodeIdx = 0;
@@ -95,10 +90,10 @@ export function CodeBlock({
         });
       }
 
-      console.log('[CodeBlock] Found', matches.length, 'total matches across all nodes');
 
       // Apply highlighting for each match
-      matches.forEach((match) => {
+      matches.forEach((matchNum, matchIndex) => {
+        const match = matchNum;
         let remaining = match.text;
         let nodeIdx = match.startNodeIdx;
         let offset = match.startOffset;
@@ -122,7 +117,8 @@ export function CodeBlock({
             const parent = node.parentNode;
             if (parent) {
               const highlightSpan = document.createElement('span');
-              highlightSpan.className = 'bg-yellow-900/50 text-yellow-200';
+              highlightSpan.style.backgroundColor = 'rgba(120, 53, 15, 0.5)'; // yellow-900/50
+              highlightSpan.style.color = '#fef08a'; // yellow-200
               highlightSpan.textContent = nodeText;
               parent.replaceChild(highlightSpan, node);
               allTextNodes[nodeIdx] = highlightSpan;
@@ -132,7 +128,8 @@ export function CodeBlock({
             const beforeText = nodeText.substring(0, offset);
             const beforeNode = document.createTextNode(beforeText);
             const highlightSpan = document.createElement('span');
-            highlightSpan.className = 'bg-yellow-900/50 text-yellow-200';
+            highlightSpan.style.backgroundColor = 'rgba(120, 53, 15, 0.5)'; // yellow-900/50
+            highlightSpan.style.color = '#fef08a'; // yellow-200
             highlightSpan.textContent = matchPart;
 
             const parent = node.parentNode;
@@ -147,7 +144,8 @@ export function CodeBlock({
             const afterText = nodeText.substring(offset + takeFromNode);
             const beforeNode = document.createTextNode(beforeText);
             const highlightSpan = document.createElement('span');
-            highlightSpan.className = 'bg-yellow-900/50 text-yellow-200';
+            highlightSpan.style.backgroundColor = 'rgba(120, 53, 15, 0.5)'; // yellow-900/50
+            highlightSpan.style.color = '#fef08a'; // yellow-200
             highlightSpan.textContent = matchPart;
             const afterNode = document.createTextNode(afterText);
 
@@ -165,7 +163,6 @@ export function CodeBlock({
         }
       });
 
-      console.log('[CodeBlock] Highlighting complete');
     } catch (e) {
       console.error('[CodeBlock] Error:', e);
     }

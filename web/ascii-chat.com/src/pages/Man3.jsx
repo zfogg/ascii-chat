@@ -716,23 +716,34 @@ export default function Man3() {
       if (!lineMatch) return false;
 
       const targetLineNum = parseInt(lineMatch[1], 10);
-      const blockId = `code-block-${targetLineNum}`;
 
-      // Look for code block with matching line number
-      const targetBlock = container.querySelector(`div[id="${blockId}"]`);
+      // First try to find by exact ID match (for inline code blocks)
+      const blockId = `code-block-${targetLineNum}`;
+      let targetBlock = container.querySelector(`div[id="${blockId}"]`);
       if (targetBlock) {
         targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-        console.log("[scroll-to-hash] Found matching code block:", blockId);
         return true;
       }
 
-      console.log("[scroll-to-hash] No matching code block found for line", targetLineNum);
+      // Otherwise, look for a code block that contains this line number
+      // by checking data attributes (first-line and last-line)
+      const allCodeBlocks = container.querySelectorAll(".code-with-highlight");
+      for (const block of allCodeBlocks) {
+        const firstLine = parseInt(block.getAttribute("data-first-line"), 10);
+        const lastLine = parseInt(block.getAttribute("data-last-line"), 10);
 
-      // Fallback: look for any code block
-      const allCodeBlocks = container.querySelectorAll(".code-with-highlight, pre");
-      if (allCodeBlocks.length > 0) {
-        console.log("[scroll-to-hash] Scrolling to first code block as fallback");
-        allCodeBlocks[0].scrollIntoView({ behavior: "smooth", block: "center" });
+        if (!isNaN(firstLine) && !isNaN(lastLine) &&
+            targetLineNum >= firstLine && targetLineNum <= lastLine) {
+          // Found the code block that contains the target line
+          block.scrollIntoView({ behavior: "smooth", block: "center" });
+          return true;
+        }
+      }
+
+      // Final fallback: scroll to first code block if nothing else matched
+      const firstCodeBlock = container.querySelector(".code-with-highlight, pre");
+      if (firstCodeBlock) {
+        firstCodeBlock.scrollIntoView({ behavior: "smooth", block: "center" });
         return true;
       }
 
@@ -755,7 +766,7 @@ export default function Man3() {
     };
 
     tryScroll();
-  }, [selectedPageContent]);
+  }, [selectedPageContent, window.location.hash]);
 
   // Handle browser back/forward navigation
   useEffect(() => {
@@ -905,6 +916,21 @@ export default function Man3() {
           const lines = decodedContent.split("\n");
           const maxLineNum = lines.length.toString().length;
 
+          // Extract source line numbers from pre-tag content (format: "00123 code")
+          let firstSourceLineNum = null;
+          let lastSourceLineNum = null;
+          const lineNumPattern = /^(\d+)\s+/;
+          for (const line of lines) {
+            const match = line.match(lineNumPattern);
+            if (match) {
+              const lineNum = parseInt(match[1], 10);
+              if (firstSourceLineNum === null) {
+                firstSourceLineNum = lineNum;
+              }
+              lastSourceLineNum = lineNum;
+            }
+          }
+
           const codeWithLineNumbers = lines
             .map((text, idx) => {
               const lineNum = idx + 1;
@@ -918,7 +944,13 @@ export default function Man3() {
           const blockId = targetLineStart ? `code-block-${targetLineStart}` : undefined;
 
           elements.push(
-            <div key={`code-${elements.length}`} id={blockId}>
+            <div
+              key={`code-${elements.length}`}
+              id={blockId}
+              className="code-with-highlight"
+              data-first-line={firstSourceLineNum}
+              data-last-line={lastSourceLineNum}
+            >
               <CodeBlock
                 highlightLines={targetLineStart ? { start: targetLineStart, end: targetLineEnd } : undefined}
                 searchQuery={searchQuery}
@@ -1036,12 +1068,17 @@ export default function Man3() {
 
           // Add an id to the wrapper if this block has a target line for scrolling
           const wrapperId = targetLineStart ? `code-block-${targetLineStart}` : undefined;
+          // Also add data attribute to track which source lines are in this block
+          const firstLineNum = codeLines.length > 0 ? codeLines[0].number : null;
+          const lastLineNum = codeLines.length > 0 ? codeLines[codeLines.length - 1].number : null;
 
           elements.push(
             <div
               key={`code-wrapper-${elements.length}`}
               id={wrapperId}
               className="code-with-highlight"
+              data-first-line={firstLineNum}
+              data-last-line={lastLineNum}
             >
               <style>{`
                 .code-with-highlight pre code {
