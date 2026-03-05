@@ -183,7 +183,7 @@ export default function Man3() {
           });
       }
     }
-  }, [processPageContent, manPages]);
+  }, [processPageContent, manPages, window.location.search]);
 
   // Load man3 index
   useEffect(() => {
