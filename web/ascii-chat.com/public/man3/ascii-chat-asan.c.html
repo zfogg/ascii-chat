@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>asan.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">asan.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">asan.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">asan.c - AddressSanitizer error reporting integration with logging
+    system.</p>
+<p class="Pp"></p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">AddressSanitizer error reporting integration with logging
+  system.</p>
+<p class="Pp">Integrates ASan error reports into the ascii-chat logging system
+    so that memory errors are captured in log files and respect --grep
+    filtering, rather than spamming stderr and corrupting terminal
+  rendering.</p>
+<p class="Pp"></p>
+<p class="Pp">Uses __asan_set_error_report_callback() to intercept ASan reports
+    before they hit stderr. Reports are fed through log_fatal() which
+  respects:</p>
+<ul class="Bl-bullet">
+  <li>--log-file (writes to file instead of stdout/stderr)</li>
+  <li>--grep (filters error messages)</li>
+  <li>Proper formatting without terminal corruption</li>
+</ul>
+<p class="Pp">CONSTRUCTOR TIMING: The <b>attribute</b>((constructor)) runs
+    before <b>main()</b>, ensuring ASan reports are captured from the very first
+    allocation.</p>
+<p class="Pp"></p>
+<p class="Pp">SAFETY: The callback is intentionally minimal to avoid deadlocks.
+    ASan calls this callback when memory is corrupted, so:</p>
+<ul class="Bl-bullet">
+  <li>No mutex locks (deadlock risk)</li>
+  <li>No complex operations</li>
+  <li>Just pass the report string to logging</li>
+</ul>
+<p class="Pp">The actual logging (log_fatal) may be called in an unsafe state,
+    but at that point the process is about to abort anyway, so best effort is
+    fine.</p>
+<p class="Pp">Definition in file <b>asan.c</b>.</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
+    code.</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>

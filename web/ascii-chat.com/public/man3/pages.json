@@ -90,6 +90,12 @@
     "sourcePath": "lib/app_callbacks.c"
   },
   {
+    "name": "asan.c",
+    "title": "asan.c",
+    "file": "ascii-chat-asan.c.html",
+    "sourcePath": "lib/log/asan.c"
+  },
+  {
     "name": "ascii.c",
     "title": "ascii.c",
     "file": "ascii-chat-ascii.c.html",
