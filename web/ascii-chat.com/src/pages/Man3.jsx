@@ -415,7 +415,10 @@ export default function Man3() {
           if (contentViewerRef.current && !window.location.hash) {
             contentViewerRef.current.scrollTop = 0;
           }
-          let processedContent = processPageContent(html, searchQuery);
+          // Read current search query from URL to ensure we use latest value
+          const currentParams = new URLSearchParams(window.location.search);
+          const currentSearchQuery = currentParams.get("q") || searchQuery;
+          let processedContent = processPageContent(html, currentSearchQuery);
 
           // Add GitHub links for "Definition at line X" text and line numbers
           const page = manPages.find((p) => p.name === pageName);
@@ -610,7 +613,13 @@ export default function Man3() {
 
   // Scroll to matching search term in the right panel content
   useEffect(() => {
-    if (!selectedPageContent || !contentViewerRef.current || !searchQuery) return;
+    if (!selectedPageContent || !contentViewerRef.current) return;
+
+    // Get current search query from URL since state might be stale
+    const currentParams = new URLSearchParams(window.location.search);
+    const currentSearchQuery = currentParams.get("q");
+
+    if (!currentSearchQuery) return;
 
     // Delay scroll to allow content to render
     setTimeout(() => {
@@ -633,7 +642,7 @@ export default function Man3() {
         viewer.scrollTop = scrollTop;
       }
     }, 100);
-  }, [selectedPageContent, searchQuery]);
+  }, [selectedPageContent]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
