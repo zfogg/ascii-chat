@@ -89,29 +89,24 @@ __attribute__((unused)) static const char **zsh_collect_groups(const option_desc
 }
 
 /**
- * Write options using _arguments for native zsh option parsing
+ * Write options as a single array for _describe (avoids "corrections" duplicates)
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
                                        const char *func_prefix) {
-  (void)func_prefix;  // Parameter not used in _arguments format
   if (!opts || count == 0) return;
 
-  // Use _arguments for proper zsh option completion (avoids "corrections" duplicates)
-  // Format: 'option-name[description]'
-  fprintf(output, "  _arguments \\\n");
+  // Use single array with _describe to show all options without grouping
+  // This avoids "corrections (errors)" messages that occur with multiple _describe calls
+  fprintf(output, "  local -a %s_all_opts=(\n", func_prefix);
 
   for (size_t i = 0; i < count; i++) {
-    fprintf(output, "    '--");
-    fprintf(output, "%s[", opts[i].long_name);
+    fprintf(output, "    '--%s:", opts[i].long_name);
     zsh_escape_desc(output, opts[i].help_text);
-    fprintf(output, "]'");
-
-    // Add backslash for line continuation (except on last item)
-    if (i < count - 1) {
-      fprintf(output, " \\");
-    }
-    fprintf(output, "\n");
+    fprintf(output, "'\n");
   }
+
+  fprintf(output, "  )\n");
+  fprintf(output, "  _describe -t %s 'options' %s_all_opts\n", func_prefix, func_prefix);
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
