@@ -136,6 +136,20 @@ for html_file in sorted(man3_dir.glob("*.html")):
         if base_name in source_lookup:
             source_path = source_lookup[base_name]
 
+    # If still not found, try extracting filename from HTML's "Definition at line of file" section
+    # This handles classes/structs defined in other files
+    if not source_path:
+        try:
+            html_content = html_file.read_text(encoding='utf-8', errors='ignore')
+            # Look for: Definition at line <b>XX</b> of file <b>filename</b>
+            def_match = re.search(r'Definition at line <b>\d+</b> of file\s*<b>([^<]+)</b>', html_content)
+            if def_match:
+                def_filename = def_match.group(1)
+                if def_filename in source_lookup:
+                    source_path = source_lookup[def_filename]
+        except Exception:
+            pass
+
     pages.append({
         "name": name,
         "title": name,
