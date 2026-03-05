@@ -67,20 +67,28 @@ for html_file in sorted(man3_dir.glob("*.html")):
     filename = html_file.name
     basename_no_ext = filename[:-5]  # Remove .html
 
+    # Skip Doxygen internal documentation pages (file docs, source listings, etc)
+    if re.search(r'_8[a-z](_source)?$', basename_no_ext):
+        continue
+
     # Corresponding .3 file has same basename but with .3 extension
     man3_file = build_man3_dir / f"{basename_no_ext}.3"
 
+    # Skip HTML files that don't have corresponding .3 man files
+    # (ensures pages.json only includes pages from current Doxygen output)
+    if not man3_file.exists():
+        continue
+
     # Extract Doxygen name from .3 file
     name = None
-    if man3_file.exists():
-        try:
-            content = man3_file.read_text(encoding='utf-8', errors='ignore')
-            # Extract from .TH line: .TH "name" 3 ...
-            th_match = re.search(r'\.TH\s+"([^"]+)"', content)
-            if th_match:
-                name = th_match.group(1).strip()
-        except Exception:
-            pass
+    try:
+        content = man3_file.read_text(encoding='utf-8', errors='ignore')
+        # Extract from .TH line: .TH "name" 3 ...
+        th_match = re.search(r'\.TH\s+"([^"]+)"', content)
+        if th_match:
+            name = th_match.group(1).strip()
+    except Exception:
+        pass
 
     # Fallback: use basename with ascii-chat- prefix removed
     if not name:
