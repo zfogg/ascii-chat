@@ -270,8 +270,6 @@ export class ClientConnection {
     }
 
     try {
-      const typeName = (type: number) => packetTypeName(type);
-
       // Parse packet header
       const parsed = parsePacket(rawPacket);
 

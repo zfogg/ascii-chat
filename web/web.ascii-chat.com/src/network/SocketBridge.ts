@@ -6,17 +6,18 @@
 /**
  * Parse packet type from raw bytes (first 10 bytes: 8 magic + 2 type).
  * Returns type in host byte order. Does NOT validate magic.
+ * (Commented out - only used in debug logging)
  */
-function quickParseType(packet: Uint8Array): number | null {
-  if (packet.length < 10) return null;
-  // Type is at offset 8, 2 bytes, big-endian (network byte order)
-  const b1 = packet[8];
-  const b2 = packet[9];
-  if (b1 !== undefined && b2 !== undefined) {
-    return (b1 << 8) | b2;
-  }
-  return null;
-}
+// function quickParseType(packet: Uint8Array): number | null {
+//   if (packet.length < 10) return null;
+//   // Type is at offset 8, 2 bytes, big-endian (network byte order)
+//   const b1 = packet[8];
+//   const b2 = packet[9];
+//   if (b1 !== undefined && b2 !== undefined) {
+//     return (b1 << 8) | b2;
+//   }
+//   return null;
+// }
 
 export type PacketCallback = (packet: Uint8Array) => void;
 export type ErrorCallback = (error: Error) => void;
@@ -126,7 +127,7 @@ export class SocketBridge {
 
       // ★ CRITICAL: Process ALL complete packets in the reassembly buffer
       // Don't just process one per handleMessage - multiple packets may be queued
-      let packetsProcessed = 0;
+      // let packetsProcessed = 0;
       while (this.reassemblySize >= 14 && this.reassemblyBuffer !== null) {
         // Check if we have a complete ACIP packet by reading the length field
         // ACIP header: magic(8) + type(2) + length(4) + crc32(4) + client_id(4) = 22 bytes
@@ -144,9 +145,9 @@ export class SocketBridge {
             0,
             expectedPacketSize,
           );
-          const pktType = quickParseType(completePacket);
+          // const pktType = quickParseType(completePacket);
           // console.error(
-          //   `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType}`,
+          //   `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes`,
           // );
 
           // Save any leftover data for next packet
@@ -163,7 +164,7 @@ export class SocketBridge {
           }
 
           // Pass complete packet to handler
-          packetsProcessed++;
+          // packetsProcessed++;
           this.onPacketCallback?.(completePacket);
         } else {
           // Not enough data for a complete packet yet
