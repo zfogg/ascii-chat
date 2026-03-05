@@ -524,6 +524,10 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 
   g_handshake_complete = true;
   g_connection_state = CONNECTION_STATE_CONNECTED;
+
+  // Update transport with the crypto context so ACIP can encrypt/decrypt packets
+  g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
+
   WASM_LOG("=== HANDSHAKE COMPLETE - session encrypted ===");
   return 0;
 }
