@@ -123,8 +123,8 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
     fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
   }
 
-  // Return after _describe to prevent zsh fallback completion
-  fprintf(output, "  return\n");
+  // Note: Do NOT add return here - return is added at the end of each mode function
+  // after all option sets (both binary and mode-specific) are described
 
   SAFE_FREE(groups);
 }
@@ -191,7 +191,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "}\n"
                   "\n"
                   "_ascii_chat_args() {\n"
-                  "  case $words[1] in\n"
+                  "  case $words[2] in\n"
                   "    # Server-like modes\n"
                   "    server)\n"
                   "      _ascii_chat_server\n"
@@ -227,7 +227,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(server_opts);
   }
 
-  fprintf(output, "}\n"
+  fprintf(output, "  return\n"
+                  "}\n"
                   "\n"
                   "_ascii_chat_discovery_service() {\n");
 
@@ -241,7 +242,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(discovery_svc_opts);
   }
 
-  fprintf(output, "}\n"
+  fprintf(output, "  return\n"
+                  "}\n"
                   "\n"
                   "# Client-like modes: connect to servers or render local media\n"
                   "_ascii_chat_client() {\n");
@@ -255,7 +257,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(client_opts);
   }
 
-  fprintf(output, "}\n"
+  fprintf(output, "  return\n"
+                  "}\n"
                   "\n"
                   "_ascii_chat_mirror() {\n");
 
@@ -268,10 +271,20 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(mirror_opts);
   }
 
-  fprintf(output, "}\n"
+  fprintf(output, "  return\n"
+                  "}\n"
                   "\n"
                   "# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n"
                   "_ascii_chat_discovery() {\n");
+
+  /* Binary-level options (available regardless of mode) - grouped by category */
+  size_t binary_count = 0;
+  const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
+
+  if (binary_opts) {
+    zsh_write_options_grouped(output, binary_opts, binary_count, "binary");
+    SAFE_FREE(binary_opts);
+  }
 
   /* Discovery options - grouped by category */
   size_t discovery_count = 0;
@@ -282,7 +295,9 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(discovery_opts);
   }
 
-  fprintf(output, "}\n"
+  // Return after all option sets are described (prevents zsh fallback completion)
+  fprintf(output, "  return\n"
+                  "}\n"
                   "\n"
                   "_ascii_chat \"$@\"\n");
 
