@@ -57,10 +57,29 @@ if [ -d "$REPO_ROOT" ]; then
 import json
 from pathlib import Path
 import re
+import subprocess
 
 man3_dir = Path("public/man3")
 build_man3_dir = Path("../../build/share/man/man3")
+repo_root = Path("../../").resolve()
 pages = []
+
+# Build filename->path lookup from git-tracked source files
+source_lookup = {}
+try:
+    result = subprocess.run(
+        ['git', 'ls-files'],
+        capture_output=True, text=True, cwd=str(repo_root), timeout=10
+    )
+    for filepath in result.stdout.strip().splitlines():
+        fname = Path(filepath).name
+        if fname not in source_lookup:
+            source_lookup[fname] = filepath
+        # If duplicate, prefer src/ or lib/ paths
+        elif filepath.startswith(('src/', 'lib/', 'include/')):
+            source_lookup[fname] = filepath
+except Exception:
+    pass
 
 # Get all HTML files except pages.json
 for html_file in sorted(man3_dir.glob("*.html")):
@@ -96,10 +115,25 @@ for html_file in sorted(man3_dir.glob("*.html")):
         if name.startswith("ascii-chat-"):
             name = name[11:]  # Remove "ascii-chat-" prefix
 
+    # Look up source path from filename
+    source_path = None
+    # Try to match the name.c or name.h
+    for ext in ['.c', '.h', '.cpp']:
+        candidate = name + ext
+        if candidate in source_lookup:
+            source_path = source_lookup[candidate]
+            break
+    # If not found by direct name, try to look up by Doxygen name pattern
+    if not source_path and name.endswith('_8c'):
+        base_name = name[:-3] + '.c'
+        if base_name in source_lookup:
+            source_path = source_lookup[base_name]
+
     pages.append({
         "name": name,
         "title": name,
-        "file": filename
+        "file": filename,
+        "sourcePath": source_path
     })
 
 # Write pages.json

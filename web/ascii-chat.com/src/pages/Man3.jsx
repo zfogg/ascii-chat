@@ -66,6 +66,18 @@ export default function Man3() {
     return highlightMatchesInHTML(content, searchQuery);
   }, []);
 
+  // Helper function to convert "Definition at line X of file Y" to GitHub links
+  const processDefinitionLinks = useCallback((html, sourcePath, commitSha) => {
+    if (!sourcePath || !commitSha || commitSha === 'unknown') return html;
+    return html.replace(
+      /Definition at line <b>(\d+)<\/b> of file <b>([^<]+)<\/b>/g,
+      (_, lineNum, filename) =>
+        `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+        `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
+        `Definition at line ${lineNum} of file ${filename}</a>`
+    );
+  }, []);
+
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -127,7 +139,11 @@ export default function Man3() {
             }
 
             // Process content (URLs and highlighting)
-            const processedContent = processPageContent(html, "");
+            let processedContent = processPageContent(html, "");
+
+            // Add GitHub links for "Definition at line X" text
+            const sourcePath = manPages.find(p => p.name === pageName)?.sourcePath;
+            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__);
 
             // Prepend stylesheets
             const content = stylesheets.join("\n") + processedContent;
@@ -170,7 +186,11 @@ export default function Man3() {
             }
 
             // Process content (URLs and highlighting)
-            const processedContent = processPageContent(html, "");
+            let processedContent = processPageContent(html, "");
+
+            // Add GitHub links for "Definition at line X" text
+            const sourcePath = manPages.find(p => p.name === pageName)?.sourcePath;
+            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__);
 
             // Prepend stylesheets
             const content = stylesheets.join("\n") + processedContent;
@@ -183,7 +203,7 @@ export default function Man3() {
           });
       }
     }
-  }, [processPageContent, manPages, window.location.search]);
+  }, [processPageContent, processDefinitionLinks, manPages, window.location.search]);
 
   // Load man3 index
   useEffect(() => {
