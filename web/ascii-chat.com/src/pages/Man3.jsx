@@ -78,8 +78,8 @@ export default function Man3() {
       (_, lineNum, filename) =>
         `Definition at <a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
         `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">line ${lineNum}</b></a> of file ` +
-        `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
-        `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">${filename}</b></a> ` +
+        `<a href="/man3?page=${filename}" ` +
+        `<b class="text-cyan-400">${filename}</b></a> ` +
         `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
         `target="_blank" rel="noopener noreferrer"><span class="text-gray-500">(github@${commitSha})</span></a>`
     );
