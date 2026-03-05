@@ -128,24 +128,30 @@
   display: block;
 }
 
-/* Data Fields section - organize field entries */
+/* Data Fields section - field name and description inline */
 #Data_Fields ~ .Pp {
   margin: 1rem 0;
   line-height: 1.8;
-  white-space: pre-wrap;
-  word-wrap: break-word;
 }
 
-/* Hide odd-numbered br (between field name and description) */
-#Data_Fields ~ .Pp br:nth-of-type(odd) {
+/* Hide br tags - they separate fields */
+#Data_Fields ~ .Pp br {
   display: none;
-  height: 0;
 }
 
-/* Style even-numbered br (after descriptions) as line breaks */
-#Data_Fields ~ .Pp br:nth-of-type(even) {
-  display: block;
-  height: 0.25rem;
+/* Add visual line breaks after descriptions by inserting newlines before next b tag (3rd+ b) */
+#Data_Fields ~ .Pp b:nth-of-type(3)::before,
+#Data_Fields ~ .Pp b:nth-of-type(5)::before,
+#Data_Fields ~ .Pp b:nth-of-type(7)::before,
+#Data_Fields ~ .Pp b:nth-of-type(9)::before,
+#Data_Fields ~ .Pp b:nth-of-type(11)::before,
+#Data_Fields ~ .Pp b:nth-of-type(13)::before,
+#Data_Fields ~ .Pp b:nth-of-type(15)::before,
+#Data_Fields ~ .Pp b:nth-of-type(17)::before,
+#Data_Fields ~ .Pp b:nth-of-type(19)::before,
+#Data_Fields ~ .Pp b:nth-of-type(21)::before {
+  content: '\A';
+  white-space: pre;
 }
 
 /* Lists */
