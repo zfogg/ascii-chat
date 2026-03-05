@@ -379,6 +379,19 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     break;
   }
 
+  case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH: {
+    log_info(">>> CALLBACK: LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH (wsi=%p) - WebSocket upgrade starting", (void *)wsi);
+    break;
+  }
+
+  case LWS_CALLBACK_PROTOCOL_INIT: {
+    log_info(">>> CALLBACK: LWS_CALLBACK_PROTOCOL_INIT (wsi=%p, ws_data=%p)", (void *)wsi, (void *)ws_data);
+    if (atomic_load_bool(&ws_data->is_destroying)) {
+      return 0;
+    }
+    break;
+  }
+
   case LWS_CALLBACK_CLIENT_RECEIVE: {
     // Received data from server - may be fragmented for large messages
     if (atomic_load_bool(&ws_data->is_destroying)) {
