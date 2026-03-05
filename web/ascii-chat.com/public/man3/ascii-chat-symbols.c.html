@@ -458,7 +458,7 @@
 893 
 894   // Allocate arrays for uncached addresses on heap instead of stack
 895   // VLAs can cause stack overflow with large backtrace sizes
-896   void **uncached_addrs = SAFE_MALLOC((size_t)size, void **);
+896   void **uncached_addrs = SAFE_MALLOC((size_t)size * sizeof(void *), void **);
 897   int *uncached_indices = SAFE_MALLOC((size_t)size * sizeof(int), int *);
 898 
 899   if (!uncached_addrs || !uncached_indices) {

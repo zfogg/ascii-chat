@@ -51,7 +51,7 @@
 <br/>
 <p class="Pp">#define <b>ACDS_HASH_SIZE</b> 32
   <br/>
-  #define <b>ACDS_HANDLER_COUNT</b> 10
+  #define <b>ACDS_HANDLER_COUNT</b> 11
   <br/>
   #define <b>ACDS_HASH</b>(type)
   <br/>
@@ -99,9 +99,9 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_ACDS_HANDLER_COUNT___10"><a class="permalink" href="#_define_ACDS_HANDLER_COUNT___10">#define
-  ACDS_HANDLER_COUNT 10</a></h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>acds_handlers.c</b>.</p>
+<h2 class="Ss" id="_define_ACDS_HANDLER_COUNT___11"><a class="permalink" href="#_define_ACDS_HANDLER_COUNT___11">#define
+  ACDS_HANDLER_COUNT 11</a></h2>
+<p class="Pp">Definition at line <b>33</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_HASH(_type)"><a class="permalink" href="#_define_ACDS_HASH(_type)">#define
@@ -110,12 +110,12 @@
 <pre>((type) % ACDS_HASH_SIZE)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>41</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ACDS_HASH_SIZE___32"><a class="permalink" href="#_define_ACDS_HASH_SIZE___32">#define
   ACDS_HASH_SIZE 32</a></h2>
-<p class="Pp">Definition at line <b>30</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>32</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -126,7 +126,7 @@
   asciichat_error_t(* acip_acds_handler_func_t) (const void *payload, size_t
   payload_len, int client_socket, const char *client_ip, const
   acip_acds_callbacks_t *callbacks)</a></h2>
-<p class="Pp">Definition at line <b>26</b> of file <b>acds_handlers.c</b>.</p>
+<p class="Pp">Definition at line <b>28</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 </section>
 <section class="Sh">
@@ -137,21 +137,21 @@
   acip_handle_acds_packet (<b>acip_transport_t</b> * transport, packet_type_t
   type, const void * payload, size_t payload_len, int client_socket, const char
   * client_ip, const acip_acds_callbacks_t * callbacks)</a></h2>
-<p class="Pp">Definition at line <b>114</b> of file <b>acds_handlers.c</b>.</p>
-<pre>116                                                                                   {
-117   if (!callbacks) {
-118     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
-119   }
-120   (void)transport;
-121 
-122   // O(1) dispatch via hash table lookup
-123   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
-124   if (idx &lt; 0) {
-125     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
-126   }
-127 
-128   return g_acds_handlers[idx](payload, payload_len, client_socket, client_ip, callbacks);
-129 }</pre>
+<p class="Pp">Definition at line <b>116</b> of file <b>acds_handlers.c</b>.</p>
+<pre>118                                                                                   {
+119   if (!callbacks) {
+120     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
+121   }
+122   (void)transport;
+123 
+124   // O(1) dispatch via hash table lookup
+125   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
+126   if (idx &lt; 0) {
+127     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
+128   }
+129 
+130   return g_acds_handlers[idx](payload, payload_len, client_socket, client_ip, callbacks);
+131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
