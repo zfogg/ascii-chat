@@ -31,11 +31,15 @@ asciichat_error_t crypto_handshake_init(const char *name, crypto_handshake_conte
   memset(ctx, 0, sizeof(crypto_handshake_context_t));
 
   // Initialize core crypto context
+#ifndef NDEBUG
   log_info("★★★ BEFORE crypto_init()");
   debug_sync_print_state();
+#endif
   crypto_result_t result = crypto_init(&ctx->crypto_ctx);
+#ifndef NDEBUG
   log_info("★★★ AFTER crypto_init(), result=%d", result);
   debug_sync_print_state();
+#endif
   if (result != CRYPTO_OK) {
     return SET_ERRNO(ERROR_CRYPTO, "Failed to initialize crypto context: %s", crypto_result_to_string(result));
   }
