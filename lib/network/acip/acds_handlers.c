@@ -264,30 +264,13 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
   return ASCIICHAT_OK;
 }
 
+// Adapter wrappers that convert dispatcher signature to generic keepalive handlers
 static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_len, int client_socket,
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
   (void)callbacks;
-
-  log_debug("ACDS keepalive: Received PING from %s, responding with PONG", client_ip);
-
-  // Create temporary transport for sending PONG response
-  acip_transport_t *transport = acip_tcp_transport_create("transport_acds_keepalive", client_socket, NULL);
-  if (!transport) {
-    return SET_ERRNO(ERROR_NETWORK, "Failed to create transport for PONG response to %s", client_ip);
-  }
-
-  asciichat_error_t result = acip_send_pong(transport);
-  acip_transport_destroy(transport);
-
-  if (result != ASCIICHAT_OK) {
-    log_warn("ACDS keepalive: Failed to send PONG to %s: %s", client_ip, asciichat_error_string(result));
-    return result;
-  }
-
-  log_debug("ACDS keepalive: Sent PONG to %s", client_ip);
-  return ASCIICHAT_OK;
+  return acip_handle_ping(client_socket, client_ip);
 }
 
 static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, int client_socket,
@@ -296,9 +279,7 @@ static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_le
   (void)payload_len;
   (void)client_socket;
   (void)callbacks;
-
-  log_debug("ACDS keepalive: Received PONG from %s", client_ip);
-  return ASCIICHAT_OK;
+  return acip_handle_pong(client_ip);
 }
 
 static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len, int client_socket,

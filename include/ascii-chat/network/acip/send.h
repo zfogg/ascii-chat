@@ -179,3 +179,30 @@ asciichat_error_t acip_send_session_info(acip_transport_t *transport, const acip
  * @return ASCIICHAT_OK on success, error code on failure
  */
 asciichat_error_t acip_send_session_joined(acip_transport_t *transport, const acip_session_joined_t *response);
+
+// =============================================================================
+// Generic Keepalive Handlers (for all servers)
+// =============================================================================
+
+/**
+ * @brief Handle incoming PING packet
+ *
+ * Generic handler suitable for any server (main server, ACDS, etc).
+ * Creates temporary transport and sends PONG response.
+ *
+ * @param client_socket Client socket file descriptor
+ * @param client_ip Client IP address (for logging)
+ * @return ASCIICHAT_OK on success, error code on failure
+ */
+asciichat_error_t acip_handle_ping(int client_socket, const char *client_ip);
+
+/**
+ * @brief Handle incoming PONG packet
+ *
+ * Generic handler suitable for any server.
+ * Simply logs receipt of PONG (used for timeout detection).
+ *
+ * @param client_ip Client IP address (for logging)
+ * @return ASCIICHAT_OK (always succeeds)
+ */
+asciichat_error_t acip_handle_pong(const char *client_ip);
