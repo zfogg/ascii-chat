@@ -418,6 +418,7 @@ export default function Man3() {
           // Read current search query from URL to ensure we use latest value
           const currentParams = new URLSearchParams(window.location.search);
           const currentSearchQuery = currentParams.get("q") || searchQuery;
+          console.log("[DEBUG] loadPageContent - currentSearchQuery from URL:", currentParams.get("q"), "fallback searchQuery:", searchQuery, "final:", currentSearchQuery);
           let processedContent = processPageContent(html, currentSearchQuery);
 
           // Add GitHub links for "Definition at line X" text and line numbers
@@ -619,6 +620,8 @@ export default function Man3() {
     const currentParams = new URLSearchParams(window.location.search);
     const currentSearchQuery = currentParams.get("q");
 
+    console.log("[DEBUG] Right panel scroll effect - currentSearchQuery:", currentSearchQuery);
+
     if (!currentSearchQuery) return;
 
     // Delay scroll to allow content to render
@@ -628,6 +631,8 @@ export default function Man3() {
 
       // Search for elements with bg-yellow-900 (includes bg-yellow-900/50)
       let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900"]');
+
+      console.log("[DEBUG] Found highlighted elements:", highlightedElements.length);
 
       if (highlightedElements.length > 0) {
         // Scroll to the first highlighted match and center it
