@@ -510,16 +510,18 @@ export default function Man3() {
       snippetIndex = null,
       skipHistoryPush = false,
     ) => {
-      // If clicking a line number on the same page, just update the hash without fetching
-      if (selectedPageName === pageName && lineNumber !== null) {
-        setTargetLineNumber(lineNumber);
+      // If already on the same page, just update the hash and scroll without fetching
+      if (selectedPageName === pageName) {
+        if (lineNumber !== null) {
+          const hash = "#l" + lineNumber.toString().padStart(5, "0");
+          window.history.replaceState(
+            {},
+            "",
+            window.location.pathname + window.location.search + hash,
+          );
+          setTargetLineNumber(lineNumber);
+        }
         setTargetSnippetIndex(snippetIndex);
-        const hash = "#l" + lineNumber.toString().padStart(5, "0");
-        window.history.replaceState(
-          {},
-          "",
-          window.location.pathname + window.location.search + hash,
-        );
         return;
       }
 
