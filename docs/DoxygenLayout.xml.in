@@ -182,7 +182,7 @@
       <variables visible="yes" title=""/>
       <properties visible="yes" title=""/>
     </memberdef>
-    <authorsection/>
+    <authorsection visible="yes"/>
   </file>
 
   <!-- Layout definition for a group page -->
