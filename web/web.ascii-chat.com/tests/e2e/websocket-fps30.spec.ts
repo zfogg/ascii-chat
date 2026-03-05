@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { ServerFixture, getRandomPort } from "./server-fixture";
 
 const WEB_CLIENT_URL = "http://localhost:3000/client";
-const TEST_TIMEOUT = 10000;
+const TEST_TIMEOUT = 5000;
 
 // Use fake media device for E2E tests (real hardware may not be available)
 test.use({
