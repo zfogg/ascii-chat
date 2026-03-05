@@ -115,7 +115,7 @@ const registry_entry_t g_logging_entries[] = {
      "Format 1: /pattern/flags (with flags). Format 2: pattern (plain regex, no flags). "
      "Flags (format 1 only): i(case-insensitive), m(multiline), s(dotall), x(extended), g(global highlight), "
      "I(invert match), F(fixed string), A<n>(n lines after), B<n>(n lines before), C<n>(n lines of context). "
-     "Examples: '/error/i', 'error', '/panic/C5', 'warn|error', '/buffer pool/Fg'. Multiple --grep allowed (OR).",
+     "Multiple --grep allowed (OR).",
      "LOGGING",
      "PATTERN",
      false,
@@ -170,16 +170,12 @@ const registry_entry_t g_logging_entries[] = {
      offsetof(options_t, log_template),
      NULL,
      sizeof(((options_t *)0)->log_template),
-     "Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see 'man 3 strftime' for "
-     "codes like %Y, %m, %d, %H, %M, %S); "
+     "Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see man 3 strftime); "
      "%level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5 chars; "
      "%file - full file path; %file_relative - file path relative to project root; %line - line number; "
      "%func - function name; %tid - thread ID; %message - log message; "
-     "%color(LEVEL, text) - colorize text using LEVEL's color from current scheme (e.g., %color(INFO, %tid)). "
-     "Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line %message'. "
-     "Escape %% for literal %, \\\\ for literal backslash. "
-     "Default: release mode '[%time(%H:%M:%S)] [%level_aligned] %message' or debug mode '[%time(%H:%M:%S)] "
-     "[%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message'.",
+     "%color(LEVEL, text) - colorize text using LEVEL's color from current scheme. "
+     "Escape %% for literal %, \\\\ for literal backslash.",
      "LOGGING",
      "TEMPLATE",
      false,
