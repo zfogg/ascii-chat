@@ -126,6 +126,9 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
   // Note: Do NOT add return here - return is added at the end of each mode function
   // after all option sets (both binary and mode-specific) are described
 
+  // Note: Do NOT add return here - return is added at the end of each mode function
+  // after all option sets (both binary and mode-specific) are described
+
   SAFE_FREE(groups);
 }
 
