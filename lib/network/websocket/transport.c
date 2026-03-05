@@ -181,6 +181,10 @@ static void *websocket_service_thread(void *arg) {
         bool failed = ws_data->connection_failed;
         mutex_unlock(&ws_data->state_mutex);
 
+        if (loop_count <= 50) {
+          log_debug("[LOOP %d] Connection failed check: %d", loop_count, failed);
+        }
+
         if (failed) {
           log_info("[LOOP %d] Connection attempt failed, exiting service thread", loop_count);
           break;
@@ -234,6 +238,13 @@ static void *websocket_service_thread(void *arg) {
     // Call lws_service() frequently during handshake, less frequently after connection
     // Use 100us interval during handshake, 1ms after connected
     uint64_t service_interval = ws_data->is_connected ? 1000000ULL : 100000ULL; // 1ms : 100us
+
+    if (loop_count <= 10) {
+      log_debug("[LOOP %d] Timing check: time_since_last=%lu us, interval=%lu us, will_service=%d",
+                loop_count, time_since_last_service / 1000, service_interval / 1000,
+                (int)(time_since_last_service >= service_interval));
+    }
+
     if (time_since_last_service >= service_interval) {
       last_service_call = now_ns;
       uint64_t service_start_ns = now_ns;
@@ -267,6 +278,10 @@ static void *websocket_service_thread(void *arg) {
       // During handshake: 10us sleep (will retry service interval quickly)
       // During transfer: 100us sleep (normal cadence)
       uint64_t sleep_us = ws_data->is_connected ? 100 : 10;
+      if (loop_count <= 50) {
+        log_debug("[LOOP %d] Time since service: %lu us, interval: %lu us - sleeping %lu us",
+                  loop_count, time_since_last_service / 1000, service_interval / 1000, sleep_us);
+      }
       platform_sleep_us(sleep_us);
     }
 
