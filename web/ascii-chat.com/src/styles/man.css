@@ -128,6 +128,21 @@
   display: block;
 }
 
+/* Data Fields section - hide br tags and add line spacing */
+#Data_Fields ~ .Pp {
+  margin: 1rem 0;
+}
+
+#Data_Fields ~ .Pp br {
+  display: none;
+}
+
+/* Add spacing after every 4th b element (every field description pair) */
+#Data_Fields ~ .Pp b:nth-of-type(4n)::after {
+  content: '\A';
+  white-space: pre;
+}
+
 /* Lists */
 .man-page-content ul,
 .man-page-content ol {
