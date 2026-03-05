@@ -232,19 +232,34 @@ The Data Fields section in struct documentation is transformed from Doxygen's aw
 
 ### Auto-Scrolling to Content
 
-When manpage content loads with search results or anchors, the page automatically scrolls to highlight the relevant entry.
+When manpage content loads with search results or anchors, the page automatically scrolls to highlight the relevant entry. The scrolling logic handles both source code pages (with line numbers) and documentation pages (without line numbers).
 
 **Implementation** (in `Man3.jsx`):
-1. When page content loads, check for `targetLineNumber` or `targetSnippetIndex` state
-2. For line highlighting (source pages with `#l123` anchors):
-   - Extract line number from URL hash (e.g., `#l95`)
-   - Find the element with matching `id="l95"`
-   - Scroll that element into view and apply highlight styling
-3. For search results in the left panel:
-   - When user clicks a search result, scroll the right panel to that location
-   - Highlight the matched line/field in the code
-4. UseEffect hooks monitor content changes and URL hash changes to trigger scrolling
-5. Smooth scroll behavior (CSS `scroll-behavior: smooth`) provides visual feedback
+
+**State tracking**:
+- `targetLineNumber` - Line number to scroll to (for source code pages)
+- `targetSnippetIndex` - Which snippet in the results is selected
+- `targetSnippetText` - The actual text content of the matched snippet (for documentation pages)
+
+**Scrolling logic order**:
+1. **Non-codeblock snippet scrolling** (highest priority):
+   - If `targetSnippetText` is set (documentation pages without line numbers)
+   - Extract first line of snippet text
+   - Walk the DOM to find a text node containing that text
+   - Scroll the parent element into view
+   - Works for: function descriptions, struct field documentation, Data Fields sections, etc.
+
+2. **Line number scrolling** (source code pages):
+   - If `targetLineNumber` is set (source code with #l123 anchors)
+   - Search for spans/elements containing the exact line number
+   - Prioritize exact matches, then partial matches
+   - Highlight all spans on the same visual line
+   - Applies yellow highlight (#fbbf24) with black text for visibility
+
+3. **Fallback search scrolling**:
+   - If line number search fails but searchQuery is available
+   - Find first text node matching the search query
+   - Scroll that element into view
 
 **URL Hash Format**:
 - `#l123` - Scroll to line 123 (source code pages)
@@ -253,15 +268,20 @@ When manpage content loads with search results or anchors, the page automaticall
 
 **Search Integration**:
 - Search results show line snippets in the left panel
-- Clicking a result updates the right panel to show full context
-- Page auto-scrolls to position the match in the viewport center (when possible)
-- Current selection is highlighted to distinguish from other matches
+- When clicking a result:
+  - Snippet text is passed to `loadPageContent` via `snippetText` parameter
+  - `targetSnippetText` state is updated
+  - useEffect detects change and scrolls to the matching element
+- Clicking snippets on same page triggers immediate scroll without page reload
+- Snippet text is cleared after successful scroll to avoid re-scrolling
 
 **Technical Details**:
-- Uses `useEffect` to monitor `window.location.hash` changes
+- Uses `useEffect` with dependencies on `[selectedPageContent, targetLineNumber, targetSnippetText, searchQuery]`
 - Applies temporary highlight styling to found elements
-- Handles cases where elements don't exist yet (waits for DOM to settle)
-- Respects user scroll position after initial load
+- Handles cases where elements don't exist yet (waits for DOM to settle with 100ms timeout)
+- Walks up DOM tree to find meaningful containers (avoids highlighting just SPAN tags)
+- Respects user scroll position by using element-level scrolling rather than container-level
+- Smooth scroll behavior (CSS `scroll-behavior: smooth`) provides visual feedback
 
 ## Environment Variables
 

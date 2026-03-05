@@ -19,6 +19,7 @@ export default function Man3() {
   const [pageNotFound, setPageNotFound] = useState(false);
   const [targetLineNumber, setTargetLineNumber] = useState(null);
   const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
+  const [targetSnippetText, setTargetSnippetText] = useState(null);
   const [regexError, setRegexError] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
@@ -509,6 +510,7 @@ export default function Man3() {
       lineNumber = null,
       snippetIndex = null,
       skipHistoryPush = false,
+      snippetText = null,
     ) => {
       // If already on the same page, just update the hash and scroll without fetching
       if (selectedPageName === pageName) {
@@ -522,6 +524,7 @@ export default function Man3() {
           setTargetLineNumber(lineNumber);
         }
         setTargetSnippetIndex(snippetIndex);
+        setTargetSnippetText(snippetText);
         return;
       }
 
@@ -562,6 +565,7 @@ export default function Man3() {
           if (lineNumber) {
             setTargetLineNumber(lineNumber);
             setTargetSnippetIndex(snippetIndex);
+            setTargetSnippetText(snippetText);
           }
           // Update URL with selected page param and preserve search query
           const params = new URLSearchParams(window.location.search);
@@ -739,6 +743,72 @@ export default function Man3() {
         ) {
           el.style.backgroundColor = "";
         }
+      }
+
+      // First, try to find and scroll to snippet text in non-codeblock content
+      if (targetSnippetText && !targetLineNumber) {
+        console.log("[Man3] Looking for snippet text:", targetSnippetText.substring(0, 50));
+
+        const walker = document.createTreeWalker(
+          viewer,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false,
+        );
+
+        let foundNode = null;
+        let node;
+
+        // Find first text node containing significant portion of the snippet
+        // Extract just the matched text (first line of snippet usually has the match)
+        const firstLine = targetSnippetText.split('\n')[0];
+        const searchTerm = firstLine.trim();
+
+        while ((node = walker.nextNode())) {
+          if (node.textContent.includes(searchTerm)) {
+            foundNode = node;
+            console.log("[Man3] Found snippet text in node:", node.textContent.substring(0, 50));
+            break;
+          }
+        }
+
+        if (foundNode) {
+          let scrollTarget = foundNode.parentElement;
+
+          // Walk up to find a reasonable scrollable parent (at least a paragraph or section)
+          while (
+            scrollTarget &&
+            scrollTarget !== viewer &&
+            scrollTarget.offsetHeight === 0
+          ) {
+            scrollTarget = scrollTarget.parentElement;
+          }
+
+          // Walk up to find a meaningful container (like a section or paragraph)
+          let containerWalks = 0;
+          while (
+            scrollTarget &&
+            scrollTarget !== viewer &&
+            containerWalks < 5 &&
+            scrollTarget.tagName === "SPAN"
+          ) {
+            scrollTarget = scrollTarget.parentElement;
+            containerWalks++;
+          }
+
+          if (scrollTarget && scrollTarget !== viewer) {
+            console.log(
+              "[Man3] Scrolling snippet to view:",
+              scrollTarget.tagName,
+              scrollTarget.textContent?.substring(0, 50),
+            );
+            scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+            setTargetSnippetText(null); // Clear after scrolling
+            return;
+          }
+        }
+
+        console.log("[Man3] No element found for snippet text");
       }
 
       // Scroll to target line if set (when clicking search snippets)
@@ -1007,7 +1077,7 @@ export default function Man3() {
         }
       }
     }, 100);
-  }, [selectedPageContent, targetLineNumber, searchQuery]);
+  }, [selectedPageContent, targetLineNumber, targetSnippetText, searchQuery]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
@@ -1741,6 +1811,8 @@ export default function Man3() {
                                       page.name,
                                       snippet.lineNumbers[1],
                                       idx,
+                                      false,
+                                      snippet.text,
                                     )
                                   }
                                   className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
