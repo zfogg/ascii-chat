@@ -470,7 +470,7 @@ The documentation is automatically generated from source code using Doxygen and 
 
 ### Testing
 
-> 🧪 **Full documentation: [Testing Framework](https://ascii-chat.com/man3)** in the man3 pages
+> 🧪 **Full documentation: [Testing Framework](https://ascii-chat.com/man3?page=tests_common.c)** in the man3 pages
 
 #### Testing Framework
 

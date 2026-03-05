@@ -205,9 +205,9 @@
 181   }
 182   opus_encoder_ctl(p-&gt;encoder, OPUS_SET_BITRATE(p-&gt;config.opus_bitrate));
 183 
-184   // Disable DTX (Discontinuous Transmission) to prevent &quot;beeps&quot;.
-185   // DTX stops sending frames during silence, causing audible clicks/beeps when audio resumes.
-186   // opus_encoder_ctl(p-&gt;encoder, OPUS_SET_DTX(0));
+184   // TODO: investigate this claim from Claude: DTX stops sending frames during silence, perhaps causing audible
+185   // clicks/beeps when audio resumes. For now leave it enabled.
+186   opus_encoder_ctl(p-&gt;encoder, OPUS_SET_DTX(0));
 187 
 188   // Create Opus decoder
 189   p-&gt;decoder = opus_decoder_create(p-&gt;config.sample_rate, 1, &amp;opus_error);
