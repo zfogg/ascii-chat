@@ -591,29 +591,9 @@ export default function Man3() {
         }
       }
 
-      // Search for elements with the bg-yellow-900/50 class (note: / is literal in HTML class)
-      let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900/50"]');
-      console.log('[DEBUG] Selector 1 ([class*="bg-yellow-900/50"]):', highlightedElements.length);
-
-      if (highlightedElements.length === 0) {
-        // Try any element with bg-yellow (not just spans)
-        highlightedElements = viewer.querySelectorAll('[class*="bg-yellow"]');
-        console.log('[DEBUG] Selector 2 ([class*="bg-yellow"] - any element):', highlightedElements.length);
-      }
-
-      if (highlightedElements.length === 0) {
-        // Fallback: manually search through ALL elements looking for yellow background
-        const allElements = viewer.querySelectorAll('*');
-        console.log('[DEBUG] Total elements in right panel:', allElements.length);
-        highlightedElements = Array.from(allElements).filter(el => {
-          const hasYellow = el.className && (el.className.includes('bg-yellow-900/50') || el.className.includes('bg-yellow'));
-          return hasYellow;
-        });
-        console.log('[DEBUG] Manual search found:', highlightedElements.length, 'elements with yellow');
-        if (highlightedElements.length > 0) {
-          console.log('[DEBUG] First match class:', highlightedElements[0].className);
-        }
-      }
+      // Search for elements with bg-yellow-900 (includes bg-yellow-900/50)
+      let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900"]');
+      console.log('[DEBUG] Found highlighted elements:', highlightedElements.length);
 
       if (highlightedElements.length > 0) {
         // Scroll to the first highlighted match
