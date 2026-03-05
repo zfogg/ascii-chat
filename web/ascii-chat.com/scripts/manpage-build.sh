@@ -157,39 +157,37 @@ for html_file in sorted(man3_dir.glob("*.html")):
         "sourcePath": source_path
     })
 
-# Handle duplicate page names by using sourcePath or HTML filename to create unique names
+# Handle duplicate page names by using HTML filename to create unique names
 name_counts = {}
 for page in pages:
     name = page["name"]
     name_counts[name] = name_counts.get(name, 0) + 1
 
-# For duplicates, modify the name to include the directory
+# For duplicates, use HTML filename (with ascii-chat- prefix removed)
 for i, page in enumerate(pages):
     name = page["name"]
     if name_counts[name] > 1:
-        # Extract HTML filename without prefix: "ascii-chat-tests_common.c.html" -> "tests_common.c"
+        # Extract HTML filename without prefix: "ascii-chat-debug_atomic.c.html" -> "debug_atomic.c"
         html_file = page["file"]
-        if html_file.startswith("ascii-chat-"):
+        if html_file.startswith("ascii-chat-") and html_file.endswith(".html"):
             # Remove "ascii-chat-" prefix and ".html" suffix
-            unique_base = html_file[11:-5]  # Skip "ascii-chat-", remove ".html"
+            unique_name = html_file[11:-5]  # Skip "ascii-chat-", remove ".html"
+            page["name"] = unique_name
 
-            # Check if this looks like a path with underscores: "tests_common.c"
-            # vs something like "network_2network_8c" (old doxygen format)
-            if "_" in unique_base and not re.search(r'_\d+', unique_base):
-                # Use the filename-based name (e.g., "tests_common.c")
-                page["name"] = unique_base
-            else:
-                # Fallback: use sourcePath if available
-                source_path = page.get("sourcePath")
-                if source_path:
-                    parts = source_path.split("/")
-                    if len(parts) > 1:
-                        dir_part = parts[-2]
-                        file_part = parts[-1]
-                        file_base = file_part.rsplit(".", 1)[0]
-                        ext = file_part.rsplit(".", 1)[-1]
-                        unique_name = f"{dir_part}_{file_base}.{ext}"
-                        page["name"] = unique_name
+# Check for remaining duplicates (error if any exist)
+name_counts_final = {}
+for page in pages:
+    name = page["name"]
+    name_counts_final[name] = name_counts_final.get(name, 0) + 1
+
+duplicates = {k: v for k, v in name_counts_final.items() if v > 1}
+if duplicates:
+    print(f"ERROR: Found {len(duplicates)} duplicate page names:")
+    for name, count in sorted(duplicates.items()):
+        matching = [p for p in pages if p["name"] == name]
+        for p in matching:
+            print(f"  {name}: {p['file']} -> {p.get('sourcePath', 'N/A')}")
+    exit(1)
 
 # Write pages.json
 with open("public/man3/pages.json", "w") as f:
