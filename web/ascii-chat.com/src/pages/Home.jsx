@@ -542,6 +542,21 @@ ascii-chat mirror --file photo.jpg --snapshot`}
 cat video.mp4 | ascii-chat mirror --file -`}
                 </CodeBlock>
               </div>
+
+              <div>
+                <h3 className="text-xl font-semibold text-orange-300 mb-3">
+                  Create ASCII art video with FFmpeg
+                </h3>
+                <CodeBlock language="bash">
+                  {`# Render video as ASCII and overlay on original (cool artistic effect)
+ascii-chat mirror --file input.mp4 --render-file=ascii.txt && \\
+ffmpeg -i input.mp4 -vf "drawtext=fontfile=/usr/share/fonts/truetype/monospace.ttf:textfile=ascii.txt:fontsize=10:fontcolor=00ff00" output.mp4
+
+# Or create a matrix-style recording with black background
+ascii-chat mirror --file input.mp4 --render-file=ascii.txt && \\
+ffmpeg -f lavfi -i color=black:1920x1440:d=5 -vf "drawtext=fontsize=10:fontcolor=00ff00:x=20:y=20:textfile=ascii.txt" output.mp4`}
+                </CodeBlock>
+              </div>
             </div>
           </section>
 
