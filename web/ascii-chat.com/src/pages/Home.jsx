@@ -271,6 +271,19 @@ ascii-chat happy-sunset-ocean
               </TrackedLink>
 
               <TrackedLink
+                to="/man3"
+                label="Home - Docs Man Page (3)"
+                className="bg-gray-900/50 border border-pink-900/50 rounded-lg p-4 hover:border-pink-500/50 transition-colors"
+              >
+                <h3 className="text-pink-300 font-semibold mb-1">
+                  📚 ascii-chat(3)
+                </h3>
+                <p className="text-gray-400 text-sm">
+                  Library functions and API reference
+                </p>
+              </TrackedLink>
+
+              <TrackedLink
                 to="/man1#ENVIRONMENT"
                 label="Home - Docs Environment Variables"
                 className="bg-gray-900/50 border border-green-900/50 rounded-lg p-4 hover:border-green-500/50 transition-colors"
