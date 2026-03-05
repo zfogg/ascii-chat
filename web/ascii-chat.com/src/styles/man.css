@@ -146,6 +146,32 @@
   display: inline;
 }
 
+/* Data Fields table styling */
+.man-data-fields-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+}
+
+.man-data-field-type,
+.man-data-field-name {
+  padding-right: 1rem;
+}
+
+.man-data-field-type {
+  color: #c084fc;
+  font-weight: 600;
+}
+
+.man-data-field-name {
+  color: #c084fc;
+  font-weight: 600;
+}
+
+.man-data-field-desc {
+  color: #d1d5db;
+}
+
 /* Lists */
 .man-page-content ul,
 .man-page-content ol {
