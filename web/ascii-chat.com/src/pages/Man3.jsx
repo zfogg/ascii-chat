@@ -517,8 +517,9 @@ export default function Man3() {
         const viewer = contentViewerRef.current;
         if (viewer) {
           // Find all highlighted matches in the page
+          // Use attribute selector since Tailwind opacity syntax (/) is not valid in querySelectorAll
           const highlights = viewer.querySelectorAll(
-            ".man-page-content span.bg-yellow-900/50",
+            ".man-page-content span[class*='bg-yellow-900']",
           );
 
           // Use snippet index if available, otherwise find first match near target line
