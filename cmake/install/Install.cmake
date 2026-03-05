@@ -198,6 +198,17 @@ else()
                 COMPONENT Development
             OPTIONAL
         )
+
+        # Force-recreate symlinks to handle CMake's limitation with existing symlinks
+        # CMake's file(INSTALL) doesn't force-replace existing symlinks, so we need a custom rule
+        install(CODE "
+            file(REMOVE \"${CMAKE_INSTALL_PREFIX}/lib/libasciichat.so.0\")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E create_symlink
+                    libasciichat.so.0.3.0
+                    \"${CMAKE_INSTALL_PREFIX}/lib/libasciichat.so.0\"
+            )
+        " COMPONENT Development)
     endif()
 
     message(STATUS "${BoldGreen}Configured${ColorReset} library installation: ${BoldBlue}libasciichat.a${ColorReset} (optional) and ${BoldBlue}${_ascii_chat_shared_label}${ColorReset} (optional) → ${BoldYellow}lib/${ColorReset}")
@@ -499,14 +510,14 @@ if(WIN32)
         OUTPUT
             "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
             "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
             "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
         COMMAND powershell -NoProfile -Command
             "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat'" > NUL 2>&1
         COMMAND powershell -NoProfile -Command
             "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish'" > NUL 2>&1
         COMMAND powershell -NoProfile -Command
-            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat'" > NUL 2>&1
+            "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat'" > NUL 2>&1
         COMMAND powershell -NoProfile -Command
             "$env:ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y'; & '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1'" > NUL 2>&1
         DEPENDS $<TARGET_FILE:ascii-chat>
@@ -520,11 +531,11 @@ else()
         OUTPUT
             "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
             "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
             "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
         COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions bash '${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat' >/dev/null 2>&1"
         COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions fish '${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish' >/dev/null 2>&1"
-        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat' >/dev/null 2>&1"
+        COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions zsh '${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat' >/dev/null 2>&1"
         COMMAND bash -c "ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '$<TARGET_FILE:ascii-chat>' --completions powershell '${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1' >/dev/null 2>&1"
         DEPENDS $<TARGET_FILE:ascii-chat>
         COMMENT "Building shell completions"
@@ -536,7 +547,7 @@ add_custom_target(completions ALL
     DEPENDS
         "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
         "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-        "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+        "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
         "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
 )
 
@@ -559,11 +570,11 @@ if(UNIX)
     # Zsh completions - generated at build time
     # Standard location: /usr/share/zsh/site-functions/
     # User location: ~/.local/share/zsh/site-functions/ or a directory in $fpath
-    install(FILES "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii-chat"
+    install(FILES "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
         DESTINATION share/zsh/site-functions
         COMPONENT Runtime
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii-chat${ColorReset} (generated) → ${BoldYellow}share/zsh/site-functions/_ascii-chat${ColorReset}")
+    message(STATUS "${BoldGreen}Configured${ColorReset} zsh completion: ${BoldBlue}_ascii_chat${ColorReset} (generated) → ${BoldYellow}share/zsh/site-functions/_ascii_chat${ColorReset}")
 
     # Fish completions - generated at build time
     # Standard location: /usr/share/fish/vendor_completions.d/
