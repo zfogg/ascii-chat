@@ -111,14 +111,21 @@
   font-size: 1.1rem;
   color: #22d3ee;
   font-weight: 600;
-  margin-top: 1rem;
+  margin-top: 0.5rem;
+  display: inline;
 }
 
 .man-page-content dd {
   font-size: 1rem;
-  margin-left: 2rem;
+  margin-left: 0;
   margin-bottom: 0.5rem;
   color: #d1d5db;
+  display: inline;
+}
+
+.man-page-content dd::after {
+  content: "";
+  display: block;
 }
 
 /* Lists */
