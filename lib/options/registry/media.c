@@ -45,7 +45,7 @@ const registry_entry_t g_media_entries[] = {
      "",
      0,
      "Stream from media file or stdin (use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man "
-     "ffmpeg-codecs",
+     "ffmpeg-codecs.",
      "MEDIA",
      NULL,
      false,
@@ -65,7 +65,7 @@ const registry_entry_t g_media_entries[] = {
      0,
      "Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg; complex sites (YouTube, TikTok, etc.) use "
      "yt-dlp. Supported formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp "
-     "https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites",
+     "https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites.",
      "MEDIA",
      NULL,
      false,
@@ -138,7 +138,7 @@ const registry_entry_t g_media_entries[] = {
      NULL,
      sizeof(((options_t *)0)->yt_dlp_options),
      "Arbitrary yt-dlp options passed to the extraction subprocess for URL resolution. "
-     "Examples: \"--no-warnings\" or \"--proxy socks5://127.0.0.1:1080\" or \"--cookies-from-browser=firefox\"",
+     "Examples: \"--no-warnings\" or \"--proxy socks5://127.0.0.1:1080\" or \"--cookies-from-browser=firefox\".",
      "MEDIA",
      NULL,
      false,
@@ -156,7 +156,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, video_codec),
      "hevc",
      sizeof(((options_t *)0)->video_codec),
-     "Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265 compression. Default: hevc",
+     "Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265 compression. Default: hevc.",
      "MEDIA",
      "CODEC",
      false,
@@ -179,7 +179,7 @@ const registry_entry_t g_media_entries[] = {
      "",
      sizeof(((options_t *)0)->render_file),
      "Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: "
-     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only)",
+     ".mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only).",
      "MEDIA",
      "PATH",
      false,
@@ -198,7 +198,7 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_theme),
      &default_render_theme_value,
      sizeof(int),
-     "Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only)",
+     "Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only).",
      "MEDIA",
      "THEME",
      false,
@@ -222,7 +222,7 @@ const registry_entry_t g_media_entries[] = {
      "Font for render-file output: bundled names (\"matrix\" or \"default\"), system font names, or absolute .ttf/.otf path. "
      "Default: \"matrix\" (Matrix Resurrected font). Falls back to \"default\" (DejaVu Sans Mono) if unavailable. "
      "Examples: \"matrix\", \"default\", \"JetBrains Mono\", \"Nerd Font Mono\", \"/path/to/font.ttf\"  "
-     "(macOS and Linux only)",
+     "(macOS and Linux only).",
      "MEDIA",
      "FONT",
      false,
@@ -242,7 +242,7 @@ const registry_entry_t g_media_entries[] = {
      &default_render_font_size_value,
      sizeof(double),
      "Font size in points for render-file output (default: 12.0, must be > 0, fractional sizes supported e.g. 10.5).  "
-     "(macOS and Linux only)",
+     "(macOS and Linux only).",
      "MEDIA",
      "SIZE",
      false,
