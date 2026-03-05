@@ -26,9 +26,9 @@ desktop environment at all to video chat with ascii-chat. (\*)
 
 🆕 We support UTF-8 now so it's not just ASCII anymore. However, the name is still ascii-chat.
 
-🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol](https://ascii-chat.com/man3?page=network_2network_8c)** in the man3 pages.
+🆕 Now 3+ simultaneous people can connect and the server will render the clients to each other as a grid, like Google Hangouts and Zoom calls do. See the **[Network Protocol](https://ascii-chat.com/man3?page=network.c)** in the man3 pages.
 
-🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System](https://ascii-chat.com/man3?page=lib_2audio_2audio_8c)** in the man3 pages. (TODO: buggy - needs work). Update: works with --file and --url.
+🆕 Audio is now supported - turn on your microphone and start talking! See the **[Audio System](https://ascii-chat.com/man3?page=audio.c)** in the man3 pages. (TODO: buggy - needs work). Update: works with --file and --url.
 
 🆕 **Media support with smart resolution!** ascii-chat can turn media from files and URLs into ascii art. Use `--file` for local files (all FFmpeg-supported formats) or `--url` for streaming. For complex streaming sites (YouTube, TikTok, Twitch, etc.), ascii-chat automatically uses yt-dlp to extract playable streams. For direct HTTP streams and media files, FFmpeg handles them natively. You can livestream the result with audio into an ascii-chat call, so you could watch a video with friends and discuss it live, all as ascii art. Pass arbitrary yt-dlp options with `--yt-dlp-options` if needed (e.g., `--yt-dlp-options "--no-warnings"`)
 
@@ -232,7 +232,7 @@ See **[ascii-chat.com/man1/#ENVIRONMENT](https://www.ascii-chat.com/man1#ENVIRON
 ## ascii-chat Internet Protocol (ACIP)
 
 - 📡 **User Network Documentation: [ascii-chat.com/docs/network](https://www.ascii-chat.com/docs/network)**
-- 📡 **Developer API Reference: [Man3 Network Protocol Pages](https://ascii-chat.com/man3?page=network_2network_8c)**
+- 📡 **Developer API Reference: [Man3 Network Protocol Pages](https://ascii-chat.com/man3?page=network.c)**
 
 ### Philosophy
 
@@ -470,7 +470,7 @@ The documentation is automatically generated from source code using Doxygen and 
 
 ### Testing
 
-> 🧪 **Full documentation: [Testing Framework](https://ascii-chat.com/man3?page=tests_2common_8c)** in the man3 pages
+> 🧪 **Full documentation: [Testing Framework](https://ascii-chat.com/man3)** in the man3 pages
 
 #### Testing Framework
 
