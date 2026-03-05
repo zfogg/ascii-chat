@@ -43,6 +43,7 @@
 #include <ascii-chat/debug/memory.h>
 #include <ascii-chat/debug/named.h>
 #include <libwebsockets.h>
+#include <openssl/err.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -383,8 +384,16 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
   case LWS_CALLBACK_CLIENT_CONNECTION_ERROR: {
     uint64_t now_ns = time_get_ns();
-    log_fatal("🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, timestamp=%llu", reason,
-              in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data, (unsigned long long)now_ns);
+
+    // Get detailed OpenSSL error if available
+    unsigned long ssl_err = ERR_get_error();
+    char ssl_err_str[256] = "no SSL error";
+    if (ssl_err) {
+      ERR_error_string_n(ssl_err, ssl_err_str, sizeof(ssl_err_str));
+    }
+
+    log_fatal("🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, ssl_err=%lu (%s), timestamp=%llu",
+              reason, in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data, ssl_err, ssl_err_str, (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = false;
