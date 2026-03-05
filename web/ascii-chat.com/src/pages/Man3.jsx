@@ -66,16 +66,35 @@ export default function Man3() {
     return highlightMatchesInHTML(content, searchQuery);
   }, []);
 
-  // Helper function to convert "Definition at line X of file Y" to GitHub links
-  const processDefinitionLinks = useCallback((html, sourcePath, commitSha) => {
+  // Helper function to add GitHub links to "Definition at line X of file Y"
+  // Also converts line number anchors on source pages to GitHub links
+  const processDefinitionLinks = useCallback((html, sourcePath, commitSha, isSourcePage = false) => {
     if (!sourcePath || !commitSha || commitSha === 'unknown') return html;
-    return html.replace(
+
+    // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
+    let result = html.replace(
       /Definition at line <b>(\d+)<\/b> of file <b>([^<]+)<\/b>/g,
       (_, lineNum, filename) =>
-        `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
-        `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
-        `Definition at line ${lineNum} of file ${filename}</a>`
+        `Definition at line <a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+        `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">${lineNum}</b></a> of file ` +
+        `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
+        `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">${filename}</b></a> ` +
+        `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
+        `target="_blank" rel="noopener noreferrer"><span class="text-gray-500">(github@${commitSha})</span></a>`
     );
+
+    // On source pages, transform line number anchors to GitHub links
+    // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
+    if (isSourcePage) {
+      result = result.replace(
+        /<a\s+id="l(\d+)"[^>]*>(\d+)<\/a>/g,
+        (_, lineNum, displayNum) =>
+          `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">${displayNum}</a>`
+      );
+    }
+
+    return result;
   }, []);
 
   useEffect(() => {
@@ -141,9 +160,11 @@ export default function Man3() {
             // Process content (URLs and highlighting)
             let processedContent = processPageContent(html, "");
 
-            // Add GitHub links for "Definition at line X" text
-            const sourcePath = manPages.find(p => p.name === pageName)?.sourcePath;
-            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__);
+            // Add GitHub links for "Definition at line X" text and line numbers
+            const page = manPages.find(p => p.name === pageName);
+            const sourcePath = page?.sourcePath;
+            const isSourcePage = pageName?.endsWith("_source") || false;
+            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__, isSourcePage);
 
             // Prepend stylesheets
             const content = stylesheets.join("\n") + processedContent;
@@ -188,9 +209,11 @@ export default function Man3() {
             // Process content (URLs and highlighting)
             let processedContent = processPageContent(html, "");
 
-            // Add GitHub links for "Definition at line X" text
-            const sourcePath = manPages.find(p => p.name === pageName)?.sourcePath;
-            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__);
+            // Add GitHub links for "Definition at line X" text and line numbers
+            const page = manPages.find(p => p.name === pageName);
+            const sourcePath = page?.sourcePath;
+            const isSourcePage = pageName?.endsWith("_source") || false;
+            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__, isSourcePage);
 
             // Prepend stylesheets
             const content = stylesheets.join("\n") + processedContent;
@@ -356,7 +379,14 @@ export default function Man3() {
           if (contentViewerRef.current) {
             contentViewerRef.current.scrollTop = 0;
           }
-          const processedContent = processPageContent(html, searchQuery);
+          let processedContent = processPageContent(html, searchQuery);
+
+          // Add GitHub links for "Definition at line X" text and line numbers
+          const page = manPages.find((p) => p.name === pageName);
+          const sourcePath = page?.sourcePath;
+          const isSourcePage = pageName?.endsWith("_source") || false;
+          processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__, isSourcePage);
+
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
           if (lineNumber) {
