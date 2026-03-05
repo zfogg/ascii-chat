@@ -123,6 +123,9 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
     fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
   }
 
+  // Return after _describe to prevent zsh fallback completion
+  fprintf(output, "  return\n");
+
   SAFE_FREE(groups);
 }
 
