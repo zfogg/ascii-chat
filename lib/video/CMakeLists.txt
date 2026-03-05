@@ -80,22 +80,19 @@ endif()
 if(ENABLE_SIMD_AVX2)
     list(APPEND SIMD_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/background.c
     )
     set_source_files_properties(
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/background.c
         PROPERTIES COMPILE_FLAGS "-mavx2"
     )
 endif()
 
 if(ENABLE_SIMD_NEON)
     list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/mono.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/color.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/foreground.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/halfblock.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/background.c
     )
 endif()
 
