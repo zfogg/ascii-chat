@@ -43,7 +43,7 @@ export default function Man3() {
 
     // Parse each section to extract type, name, and description
     const rows = [];
-    let pendingDescription = "";
+    let previousField = null;  // Track previous field to assign description retroactively
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i].trim();
@@ -57,24 +57,14 @@ export default function Man3() {
       if (bTags.length === 0) continue;
 
       // Extract type and name based on number of b tags
-      let type, name, description;
+      let type, name, description = "";
 
       if (bTags.length === 2) {
         // Two b tags: both type and name
         type = bTags[0].textContent;
         name = bTags[1].textContent;
-        // Get text before first b tag as description
-        const beforeFirstB = section.substring(0, section.indexOf("<b>")).trim();
-        // Extract plain text from HTML
-        const tempEl = document.createElement("div");
-        tempEl.innerHTML = beforeFirstB;
-        description = tempEl.textContent;
-
-        // If there's a pending description from the previous section, apply it to a new row first
-        if (pendingDescription) {
-          // This shouldn't happen in section 0, but if it does, ignore it
-          pendingDescription = "";
-        }
+        // No description here; will come from next section
+        description = "";
       } else if (bTags.length === 1) {
         // One b tag: it's the name
         name = bTags[0].textContent;
@@ -109,12 +99,26 @@ export default function Man3() {
 
         type = typeStr;
         description = prevDesc;
-        pendingDescription = "";
+
+        // If there's a previous field waiting for a description, assign this description to it
+        if (previousField && !previousField.description) {
+          previousField.description = description;
+          // Push the completed previous field
+          rows.push(previousField);
+          previousField = null;
+          // Current field has no description yet (will get one from next section)
+          description = "";
+        }
       }
 
       if (type && name) {
-        rows.push({ type, name, description: description || "" });
+        previousField = { type, name, description };
       }
+    }
+
+    // Don't forget the last field if it hasn't been pushed yet
+    if (previousField) {
+      rows.push(previousField);
     }
 
     // Build table from parsed rows
