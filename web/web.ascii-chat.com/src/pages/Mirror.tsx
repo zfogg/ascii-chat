@@ -224,9 +224,16 @@ export function MirrorPage() {
   }, []);
 
   const debugCountRef = useRef(0);
+  const firstFrameTimeRef = useRef<number | null>(null);
 
   const renderFrame = useCallback(() => {
     if (!isWasmReady() || !rendererRef.current) return;
+
+    const now = performance.now();
+    if (firstFrameTimeRef.current === null) {
+      firstFrameTimeRef.current = now;
+      console.time("[Mirror] Time to first frame render");
+    }
 
     const frame = captureFrame();
     if (!frame) {
@@ -236,9 +243,9 @@ export function MirrorPage() {
       return;
     }
 
-    if (debugCountRef.current % 300 === 0) {
+    if (debugCountRef.current === 0) {
       console.log(
-        `[Mirror] frame captured: ${frame.width}x${frame.height}, data length: ${frame.data.length}`,
+        `[Mirror] First frame captured at ${now - firstFrameTimeRef.current!}ms: ${frame.width}x${frame.height}, ${frame.data.length} bytes`,
       );
     }
 
@@ -250,13 +257,18 @@ export function MirrorPage() {
       return;
     }
 
-    if (debugCountRef.current % 300 === 0) {
+    if (debugCountRef.current === 0) {
       console.log(
-        `[Mirror] ASCII art generated: ${asciiArt.length} chars, first 100: ${asciiArt.substring(0, 100)}`,
+        `[Mirror] First ASCII art generated at ${performance.now() - firstFrameTimeRef.current!}ms: ${asciiArt.length} chars`,
       );
     }
 
     rendererRef.current.writeFrame(asciiArt);
+
+    if (debugCountRef.current === 0) {
+      console.timeEnd("[Mirror] Time to first frame render");
+    }
+
     debugCountRef.current++;
   }, [captureFrame]);
 
@@ -271,6 +283,8 @@ export function MirrorPage() {
   );
 
   const startWebcam = useCallback(async () => {
+    const clickTime = performance.now();
+    console.log("[Mirror] Button clicked");
     console.time("[Mirror] Total startWebcam time");
 
     if (!videoRef.current || !canvasRef.current) {
@@ -280,7 +294,6 @@ export function MirrorPage() {
 
     try {
       console.time("[Mirror] WASM settings");
-      // Reapply settings to WASM before starting
       if (isWasmReady()) {
         setColorMode(mapColorMode(settings.colorMode));
         setColorFilter(mapColorFilter(settings.colorFilter));
@@ -293,7 +306,8 @@ export function MirrorPage() {
       }
       console.timeEnd("[Mirror] WASM settings");
 
-      console.time("[Mirror] getUserMedia");
+      console.log("[Mirror] Calling getUserMedia...");
+      console.time("[Mirror] getUserMedia (incl browser permission)");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: settings.width },
@@ -302,7 +316,10 @@ export function MirrorPage() {
         },
         audio: false,
       });
-      console.timeEnd("[Mirror] getUserMedia");
+      console.timeEnd("[Mirror] getUserMedia (incl browser permission)");
+      console.log(
+        `[Mirror] Stream received after ${performance.now() - clickTime}ms from button click`,
+      );
 
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
@@ -335,6 +352,42 @@ export function MirrorPage() {
       setError(`Failed to start webcam: ${err}`);
     }
   }, [settings, isMacOS, startRenderLoop]);
+
+  // Request camera permission early when page loads (not on button click)
+  useEffect(() => {
+    console.log("[Mirror] Requesting camera permission early on page load");
+    navigator.mediaDevices
+      .enumerateDevices()
+      .then(() => {
+        console.log("[Mirror] enumerated devices, now requesting camera");
+        return navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1 }, height: { ideal: 1 } },
+          audio: false,
+        });
+      })
+      .then((stream) => {
+        console.log("[Mirror] Got early camera stream, stopping it");
+        stream.getTracks().forEach((track) => track.stop());
+      })
+      .catch((err) => {
+        console.log(
+          "[Mirror] Early camera request failed (may be normal):",
+          err.message,
+        );
+      });
+  }, []);
+
+  // Auto-start webcam in development mode
+  useEffect(() => {
+    if (
+      import.meta.env["NODE_ENV"] !== "production" &&
+      wasmInitialized &&
+      !isRunning
+    ) {
+      console.log("[Mirror] Auto-starting webcam in development mode");
+      startWebcam();
+    }
+  }, [wasmInitialized, isRunning, startWebcam]);
 
   // Cleanup on unmount
   useEffect(() => {

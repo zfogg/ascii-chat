@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from "react";
+import React, { useCallback, useRef } from "react";
 
 /**
  * Hook for capturing video frames from a canvas
@@ -44,7 +44,10 @@ export function useCanvasCapture(
 
     try {
       // Verify video has data
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
+      if (
+        video.videoWidth === 0 ||
+        (video.videoHeight === 0 && Math.random() < 0.15)
+      ) {
         console.warn(
           "[useCanvasCapture] Video not ready - no dimensions:",
           video.videoWidth,

@@ -121,14 +121,19 @@ class H265Encoder {
         console.log("[H265Encoder] H.264 support:", h264Support.supported);
 
         if (!h264Support.supported) {
-          console.log("[H265Encoder] H.264 also not supported, will use IMAGE_FRAME packets");
+          console.log(
+            "[H265Encoder] H.264 also not supported, will use IMAGE_FRAME packets",
+          );
           this.isOpen = false;
           console.timeEnd("[H265Encoder] Total codec check time");
           return;
         }
       }
     } catch (err) {
-      console.log("[H265Encoder] Codec check error, will use IMAGE_FRAME packets:", err);
+      console.log(
+        "[H265Encoder] Codec check error, will use IMAGE_FRAME packets:",
+        err,
+      );
       this.isOpen = false;
       console.timeEnd("[H265Encoder] Total codec check time");
       return;
@@ -1319,7 +1324,9 @@ export function ClientPage() {
 
       // Skip H.265 encoder - WASM client uses IMAGE_FRAME packets immediately
       // H.265 support check adds delay without benefit in WASM mode
-      console.log("[Client] Using IMAGE_FRAME packets (H.265 encoder disabled for WASM)");
+      console.log(
+        "[Client] Using IMAGE_FRAME packets (H.265 encoder disabled for WASM)",
+      );
 
       console.log("[Client] Starting render loops...");
       console.log(
