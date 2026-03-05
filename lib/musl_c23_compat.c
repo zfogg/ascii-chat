@@ -15,68 +15,27 @@
 #include <stdio.h>
 #include <stdarg.h>
 #include <wchar.h>
+#include <limits.h>
 
 // strtol family - string to integer conversion
-// NOTE: Direct implementation to avoid infinite recursion with musl static builds
-// where strtol might redirect back to __isoc23_strtol
+// NOTE: Uses strtoll as backend to avoid infinite recursion, with proper long clamping.
 long __isoc23_strtol(const char *str, char **endptr, int base) {
-  // Simplified implementation for common cases (base 10 only for now)
-  // This avoids calling strtol() which might cause infinite recursion
   if (!str) {
     if (endptr)
       *endptr = (char *)str;
     return 0;
   }
 
-  // For non-base-10, fall back to strtoll and cast
-  // (strtoll seems to work in musl static builds)
-  if (base != 10) {
-    long long result = strtoll(str, endptr, base);
-    // Clamp to long range
-    if (result > __LONG_MAX__)
-      return __LONG_MAX__;
-    if (result < -__LONG_MAX__ - 1)
-      return -__LONG_MAX__ - 1;
-    return (long)result;
-  }
+  // Use strtoll which is more robust and handles all bases correctly
+  long long result = strtoll(str, endptr, base);
 
-  // Manual base-10 parsing to avoid strtol() infinite loop
-  const char *p = str;
-  long sign = 1;
-  long result = 0;
+  // Clamp to long range
+  if (result > LONG_MAX)
+    return LONG_MAX;
+  if (result < LONG_MIN)
+    return LONG_MIN;
 
-  // Skip whitespace
-  while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')
-    p++;
-
-  // Handle sign
-  if (*p == '-') {
-    sign = -1;
-    p++;
-  } else if (*p == '+') {
-    p++;
-  }
-
-  // Convert digits
-  int has_digits = 0;
-  while (*p >= '0' && *p <= '9') {
-    has_digits = 1;
-    int digit = *p - '0';
-    // Check for overflow
-    if (result > (__LONG_MAX__ - digit) / 10) {
-      if (endptr)
-        *endptr = (char *)p;
-      return sign > 0 ? __LONG_MAX__ : -__LONG_MAX__ - 1;
-    }
-    result = result * 10 + digit;
-    p++;
-  }
-
-  if (endptr) {
-    *endptr = (char *)(has_digits ? p : str);
-  }
-
-  return sign * result;
+  return (long)result;
 }
 
 long long __isoc23_strtoll(const char *str, char **endptr, int base) {
@@ -226,28 +185,45 @@ void arc4random_buf(void *buf, size_t nbytes) {
   }
 }
 
+// Random state structure layout: first 4 bytes store the seed for consistency
+typedef struct {
+  uint32_t seed;
+  // Rest of buffer is available for future state tracking
+  char state[28];
+} _random_state_t;
+
 // initstate_r() - musl doesn't have this glibc-specific reentrant random function
-// Used by fontconfig. Minimal stub that returns success.
+// Used by fontconfig. Initializes the random state with a seed.
 int initstate_r(unsigned int seed, char *statebuf, size_t statelen,
                 struct random_data *buf) {
-  if (buf == NULL || statebuf == NULL) {
+  // Validate parameters
+  if (statelen < sizeof(_random_state_t)) {
     return -1;
   }
-  if (statelen < 32) {
-    return -1;
-  }
+
+  // Initialize state structure with seed
+  _random_state_t *state = (_random_state_t *)statebuf;
+  state->seed = seed;
+
+  // Store pointer to state buffer in the random_data structure
   *(void **)buf = statebuf;
   return 0;
 }
 
 // random_r() - musl doesn't have this glibc-specific reentrant random function
-// Used by fontconfig. Returns a simple pseudo-random value.
+// Used by fontconfig. Uses arc4random_buf for cryptographically secure randomness.
 int random_r(struct random_data *restrict buf, int32_t *restrict result) {
   if (buf == NULL || result == NULL) {
     return -1;
   }
-  static uint32_t seed = 1;
-  seed = seed * 1103515245 + 12345;
-  *result = (int32_t)(seed / 65536) % 32768;
+
+  // Get random bytes from arc4random_buf (cryptographically secure)
+  uint32_t random_bytes;
+  arc4random_buf(&random_bytes, sizeof(random_bytes));
+
+  // Convert to 31-bit positive integer (matching glibc behavior)
+  // glibc's random_r returns values in range [0, 2^31)
+  *result = (int32_t)((random_bytes >> 1) & 0x7FFFFFFF);
+
   return 0;
 }
