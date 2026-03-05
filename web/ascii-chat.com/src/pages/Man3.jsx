@@ -667,74 +667,62 @@ export default function Man3() {
             const allSpans = codeBlock.querySelectorAll("span, div, *");
             const lineElements = [];
 
-            // Collect spans on the same line, filtering out empty and duplicate content
+            // Collect all text content on this line and find the best container to highlight
+            // Strategy: Get a minimal set of spans that covers the entire line without overlapping
             const lineSpans = [];
             for (const span of allSpans) {
               if (span.offsetTop === targetTop && span.offsetHeight > 0 && span.offsetHeight < 100) {
                 const text = span.textContent || "";
-                // Only include spans with non-whitespace content (at least 1 character)
-                // This filters out empty spans and spacing-only spans
+                // Only include spans with non-whitespace content
                 if (text.trim().length > 0) {
                   lineSpans.push(span);
                 }
               }
             }
 
-            // Group spans by offsetLeft to identify and filter out overlapped content
-            const positionMap = {}; // key: offsetLeft (rounded to nearest pixel) -> spans at that position
+            console.log("[Man3] Found", lineSpans.length, "non-empty spans on line");
+
+            // Sort spans by offsetLeft to process left-to-right
+            lineSpans.sort((a, b) => a.offsetLeft - b.offsetLeft);
+
+            // Build a minimal set of spans without overlapping
+            // Keep only spans that don't completely overlap with earlier spans
+            const spansToHighlight = [];
+            let maxEndPos = -1;
+
             for (const span of lineSpans) {
-              // Round to handle floating point offsetLeft values
-              const key = Math.round(span.offsetLeft);
-              if (!positionMap[key]) {
-                positionMap[key] = [];
-              }
-              positionMap[key].push(span);
-            }
+              const spanStart = span.offsetLeft;
+              const spanEnd = span.offsetLeft + span.offsetWidth;
 
-            // For each position, keep only the span with the most content
-            // (overlapping spans at same position - keep the one with longest text)
-            const deduplicatedSpans = [];
-            for (const spansAtPosition of Object.values(positionMap)) {
-              if (spansAtPosition.length === 1) {
-                deduplicatedSpans.push(spansAtPosition[0]);
+              // Only add if it extends beyond what we've already covered
+              if (spanEnd > maxEndPos) {
+                spansToHighlight.push(span);
+                maxEndPos = Math.max(maxEndPos, spanEnd);
+                console.log("[Man3] Added span covering", spanStart, 'to', spanEnd, 'text:', span.textContent?.substring(0, 20));
               } else {
-                // Multiple spans at same position - keep the one with most content
-                const longest = spansAtPosition.reduce((a, b) =>
-                  (a.textContent?.length || 0) > (b.textContent?.length || 0) ? a : b
-                );
-                deduplicatedSpans.push(longest);
-                console.log("[Man3] Deduplicated", spansAtPosition.length, "overlapping spans at position", Math.round(longest.offsetLeft));
+                console.log("[Man3] Skipped overlapping span at', spanStart, "text:", span.textContent?.substring(0, 20));
               }
             }
 
-            // Sort by offsetLeft to maintain left-to-right order
-            deduplicatedSpans.sort((a, b) => a.offsetLeft - b.offsetLeft);
+            console.log("[Man3] Will highlight", spansToHighlight.length, "spans (minimal non-overlapping set)");
 
-            for (const span of deduplicatedSpans) {
-              lineElements.push(span);
-              console.log("[Man3] Added span:", span.tagName, "offsetLeft:", span.offsetLeft, "text:", span.textContent?.substring(0, 30));
-            }
-
-            console.log("[Man3] Found", lineElements.length, "elements on line");
-
-            if (lineElements.length > 0) {
-              // Highlight all spans on the line with yellow background and black text
-              for (const el of lineElements) {
+            if (spansToHighlight.length > 0) {
+              // Highlight all non-overlapping spans on the line
+              for (const el of spansToHighlight) {
                 el.style.backgroundColor = "#fbbf24";
                 el.style.color = "#000000";
-                // Ensure hidden elements are visible
+                // Ensure visible
                 if (el.offsetHeight === 0) {
                   el.style.display = "inline";
                   el.style.visibility = "visible";
                   el.style.opacity = "1";
-                  console.log("[Man3] Unhid element with text:", el.textContent?.substring(0, 20));
                 }
               }
 
-              console.log("[Man3] Applied highlight to", lineElements.length, "elements");
+              console.log("[Man3] Applied highlight to", spansToHighlight.length, "elements");
 
               // Scroll the first element into view, centered
-              lineElements[0].scrollIntoView({ behavior: 'auto', block: 'center' });
+              spansToHighlight[0].scrollIntoView({ behavior: 'auto', block: 'center' });
               console.log("[Man3] Scrolled line into view");
             }
           }
