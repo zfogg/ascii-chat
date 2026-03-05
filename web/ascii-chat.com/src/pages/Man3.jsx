@@ -637,7 +637,7 @@ export default function Man3() {
           // Priority 1: Exact match - text is ONLY the line number (with possible whitespace)
           if (trimmed === String(targetLineNumber)) {
             console.log("[Man3] Found EXACT line number match:", text.substring(0, 30));
-            potentialMatches.unshift({ node, priority: 1, text }); // Add to front
+            potentialMatches.push({ node, priority: 1, text }); // Push to preserve order
           }
           // Priority 2: Line number followed by whitespace only
           else if (new RegExp(`^${targetLineNumber}\\s*$`).test(trimmed)) {
@@ -653,7 +653,9 @@ export default function Man3() {
 
         // Use the best match found
         if (potentialMatches.length > 0) {
-          console.log("[Man3] Found", potentialMatches.length, "potential matches, using best match");
+          // Sort by priority (lower is better, preserves document order for same priority)
+          potentialMatches.sort((a, b) => a.priority - b.priority);
+          console.log("[Man3] Found", potentialMatches.length, "potential matches (priority", potentialMatches[0].priority, "), using best match at", potentialMatches[0].text.substring(0, 30));
           node = potentialMatches[0].node;
           foundElement = node.parentElement;
           console.log("[Man3] foundElement tag:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
