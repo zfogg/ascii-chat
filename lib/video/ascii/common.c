@@ -19,9 +19,9 @@
 // Include SIMD architecture headers for cleanup functions
 // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
 #if SIMD_SUPPORT_NEON
-#include <ascii-chat/video/ascii/neon/foreground.h>
+#include <ascii-chat/video/ascii/neon.h>
 #elif SIMD_SUPPORT_AVX2
-#include <ascii-chat/video/ascii/avx2/foreground.h>
+#include <ascii-chat/video/ascii/avx2.h>
 #elif SIMD_SUPPORT_SSSE3
 #include <ascii-chat/video/ascii/ssse3/foreground.h>
 #elif SIMD_SUPPORT_SSE2

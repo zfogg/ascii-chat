@@ -539,11 +539,11 @@ void simd_caches_destroy_all(void);
 #include <ascii-chat/video/ascii/ssse3/foreground.h>
 #endif
 #if SIMD_SUPPORT_AVX2
-#include <ascii-chat/video/ascii/avx2/foreground.h>
+#include <ascii-chat/video/ascii/avx2.h>
 #endif
 #if SIMD_SUPPORT_SVE
 #include <ascii-chat/video/ascii/sve/foreground.h>
 #endif
 #if SIMD_SUPPORT_NEON
-#include <ascii-chat/video/ascii/neon/foreground.h>
+#include <ascii-chat/video/ascii/neon.h>
 #endif

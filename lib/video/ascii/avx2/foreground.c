@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/video/ascii/avx2/common.h>
+#include <ascii-chat/video/ascii/avx2.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
@@ -663,6 +663,12 @@ char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_backgro
   return output;
 }
 
-// Destroy AVX2 cache resources (called at program shutdown)
+// Wrapper for background color rendering
+char *render_ascii_avx2_background(const image_t *image, bool use_256color, const char *ascii_chars) {
+  if (!image)
+    return NULL;
+  // Delegates to unified function with use_background=true
+  return render_ascii_avx2_unified_optimized(image, true, use_256color, ascii_chars);
+}
 
 #endif /* SIMD_SUPPORT_AVX2 */

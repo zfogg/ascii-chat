@@ -34,7 +34,7 @@
 #endif
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/asciichat_errno.h>
-#include <ascii-chat/video/ascii/neon/foreground.h>
+#include <ascii-chat/video/ascii/neon.h>
 
 #include <string.h>
 #include <stdio.h>

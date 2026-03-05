@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file video/ascii/avx2/common.h
+ * @file video/ascii/avx2.h
  * @brief AVX2-optimized ASCII rendering functions
  * @ingroup video
  * @addtogroup video
