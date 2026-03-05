@@ -1507,6 +1507,8 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   info.protocols = client_protocols;
   info.gid = (gid_t)-1; // Cast to avoid undefined behavior with unsigned type
   info.uid = (uid_t)-1; // Cast to avoid undefined behavior with unsigned type
+  // Initialize SSL globally for client (required even for clients to use OpenSSL)
+  // The LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT flag works for both servers and clients
   info.options = LWS_SERVER_OPTION_DO_SSL_GLOBAL_INIT;
   info.extensions = NULL; // Disable client compression due to lws_set_extension_option() assertion
 
