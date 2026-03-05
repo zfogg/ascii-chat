@@ -1189,255 +1189,272 @@
 1834 
 1835   // Validate all string options contain valid UTF-8
 1836   // This prevents crashes and corruption from invalid UTF-8 in any option
-1837   const char *string_fields[][2] = {{&quot;address&quot;, opts.address},
-1838                                     {&quot;address6&quot;, opts.address6},
-1839                                     {&quot;encrypt_key&quot;, opts.encrypt_key},
-1840                                     {&quot;encrypt_keyfile&quot;, opts.encrypt_keyfile},
-1841                                     {&quot;server_key&quot;, opts.server_key},
-1842                                     {&quot;client_keys&quot;, opts.client_keys},
-1843                                     {&quot;discovery_server&quot;, opts.discovery_server},
-1844                                     {&quot;discovery_service_key&quot;, opts.discovery_service_key},
-1845                                     {&quot;discovery_database_path&quot;, opts.discovery_database_path},
-1846                                     {&quot;log_file&quot;, opts.log_file},
-1847                                     {&quot;media_file&quot;, opts.media_file},
-1848                                     {&quot;palette_custom&quot;, opts.palette_custom},
-1849                                     {&quot;stun_servers&quot;, opts.stun_servers},
-1850                                     {&quot;turn_servers&quot;, opts.turn_servers},
-1851                                     {&quot;turn_username&quot;, opts.turn_username},
-1852                                     {&quot;turn_credential&quot;, opts.turn_credential},
-1853                                     {&quot;turn_secret&quot;, opts.turn_secret},
-1854                                     {&quot;session_string&quot;, opts.session_string},
-1855                                     {NULL, NULL}};
-1856 
-1857   for (int i = 0; string_fields[i][0] != NULL; i++) {
-1858     const char *field_name = string_fields[i][0];
-1859     const char *field_value = string_fields[i][1];
-1860 
-1861     // Skip empty strings
-1862     if (!field_value || field_value[0] == '\0') {
-1863       continue;
-1864     }
-1865 
-1866     // Validate UTF-8
-1867     if (!utf8_is_valid(field_value)) {
-1868       log_error(&quot;Error: Option --%s contains invalid UTF-8 sequences&quot;, field_name);
-1869       log_error(&quot;       Value: %s&quot;, field_value);
-1870       options_config_destroy(config);
-1871       SAFE_FREE(allocated_mode_argv);
-1872       return option_error_invalid();
-1873     }
-1874   }
-1875   // Validate options
-1876   result = validate_options_and_report(config, &amp;opts);
-1877   if (result != ASCIICHAT_OK) {
-1878     options_config_destroy(config);
-1879     SAFE_FREE(allocated_mode_argv);
-1880     return result;
-1881   }
-1882   // Check for unexpected remaining arguments
-1883   if (remaining_argc &gt; 0) {
-1884     log_error(&quot;Error: Unexpected arguments after options:&quot;);
-1885     for (int i = 0; i &lt; remaining_argc; i++) {
-1886       log_error(&quot;  %s&quot;, remaining_argv[i]);
-1887     }
-1888     options_config_destroy(config);
-1889     SAFE_FREE(allocated_mode_argv);
-1890     return option_error_invalid();
-1891   }
-1892 
-1893   // Mode-specific post-processing
-1894   // Apply mode-specific defaults (port, websocket-port)
-1895   apply_mode_specific_defaults(&amp;opts);
-1896   log_dev(&quot;Applied mode-specific defaults: port=%d, websocket_port=%d&quot;, opts.port, opts.websocket_port);
+1837   // DISABLED IN RELEASE BUILDS: utf8_is_valid() has performance issues with musl
+1838   #ifndef NDEBUG
+1839   const char *string_fields[][2] = {{&quot;address&quot;, opts.address},
+1840                                     {&quot;address6&quot;, opts.address6},
+1841                                     {&quot;encrypt_key&quot;, opts.encrypt_key},
+1842                                     {&quot;encrypt_keyfile&quot;, opts.encrypt_keyfile},
+1843                                     {&quot;server_key&quot;, opts.server_key},
+1844                                     {&quot;client_keys&quot;, opts.client_keys},
+1845                                     {&quot;discovery_server&quot;, opts.discovery_server},
+1846                                     {&quot;discovery_service_key&quot;, opts.discovery_service_key},
+1847                                     {&quot;discovery_database_path&quot;, opts.discovery_database_path},
+1848                                     {&quot;log_file&quot;, opts.log_file},
+1849                                     {&quot;media_file&quot;, opts.media_file},
+1850                                     {&quot;palette_custom&quot;, opts.palette_custom},
+1851                                     {&quot;stun_servers&quot;, opts.stun_servers},
+1852                                     {&quot;turn_servers&quot;, opts.turn_servers},
+1853                                     {&quot;turn_username&quot;, opts.turn_username},
+1854                                     {&quot;turn_credential&quot;, opts.turn_credential},
+1855                                     {&quot;turn_secret&quot;, opts.turn_secret},
+1856                                     {&quot;session_string&quot;, opts.session_string},
+1857                                     {NULL, NULL}};
+1858 
+1859   for (int i = 0; string_fields[i][0] != NULL; i++) {
+1860     const char *field_name = string_fields[i][0];
+1861     const char *field_value = string_fields[i][1];
+1862 
+1863     // Skip empty strings
+1864     if (!field_value || field_value[0] == '\0') {
+1865       continue;
+1866     }
+1867 
+1868     // Validate UTF-8
+1869     if (!utf8_is_valid(field_value)) {
+1870       log_error(&quot;Error: Option --%s contains invalid UTF-8 sequences&quot;, field_name);
+1871       log_error(&quot;       Value: %s&quot;, field_value);
+1872       options_config_destroy(config);
+1873       SAFE_FREE(allocated_mode_argv);
+1874       return option_error_invalid();
+1875     }
+1876   }
+1877   #endif
+1878   // Validate options
+1879   log_info(&quot;&#x2605; VALIDATE_OPTIONS_AND_REPORT: About to call&quot;);
+1880   result = validate_options_and_report(config, &amp;opts);
+1881   log_info(&quot;&#x2605; VALIDATE_OPTIONS_AND_REPORT: Returned with result=%d&quot;, result);
+1882   if (result != ASCIICHAT_OK) {
+1883     options_config_destroy(config);
+1884     SAFE_FREE(allocated_mode_argv);
+1885     return result;
+1886   }
+1887   // Check for unexpected remaining arguments
+1888   if (remaining_argc &gt; 0) {
+1889     log_error(&quot;Error: Unexpected arguments after options:&quot;);
+1890     for (int i = 0; i &lt; remaining_argc; i++) {
+1891       log_error(&quot;  %s&quot;, remaining_argv[i]);
+1892     }
+1893     options_config_destroy(config);
+1894     SAFE_FREE(allocated_mode_argv);
+1895     return option_error_invalid();
+1896   }
 1897 
-1898   if (detected_mode == MODE_DISCOVERY_SERVICE) {
-1899     // Set default paths if not specified
-1900     if (opts.discovery_database_path[0] == '\0') {
-1901       // Database: Try system-wide location first, fall back to user directories
-1902       // Preference: /usr/local/var/ascii-chat/ &gt; ~/.local/share/ascii-chat/ &gt; ~/.config/ascii-chat/
-1903       char *db_dir = get_discovery_database_dir();
-1904       if (!db_dir) {
-1905         options_config_destroy(config);
-1906         SAFE_FREE(allocated_mode_argv);
-1907         return SET_ERRNO(ERROR_CONFIG, &quot;Failed to get database directory (tried system and user locations)&quot;);
-1908       }
-1909       safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), &quot;%sdiscovery.db&quot;, db_dir);
-1910       SAFE_FREE(db_dir);
-1911     }
-1912   }
-1913 
-1914   options_config_destroy(config);
-1915 
-1916   // ========================================================================
-1917   // STAGE 7: Post-Processing &amp; Validation
-1918   // ========================================================================
-1919 
-1920   // Collect multiple --key flags for multi-key support (server/ACDS only)
-1921   // This enables servers to load both SSH and GPG keys and select the right one
-1922   // during handshake based on what the client expects
-1923   if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
-1924     int num_keys = options_collect_identity_keys(&amp;opts, argc, argv);
-1925     if (num_keys &lt; 0) {
-1926       SAFE_FREE(allocated_mode_argv);
-1927       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to collect identity keys&quot;);
-1928     }
-1929     // num_keys == 0 is OK (no --key flags provided)
-1930   }
+1898   // Mode-specific post-processing
+1899   // Apply mode-specific defaults (port, websocket-port)
+1900   log_info(&quot;&#x2605; APPLY_MODE_SPECIFIC: About to call&quot;);
+1901   apply_mode_specific_defaults(&amp;opts);
+1902   log_info(&quot;&#x2605; APPLY_MODE_SPECIFIC: Done&quot;);
+1903   log_dev(&quot;Applied mode-specific defaults: port=%d, websocket_port=%d&quot;, opts.port, opts.websocket_port);
+1904 
+1905   if (detected_mode == MODE_DISCOVERY_SERVICE) {
+1906     // Set default paths if not specified
+1907     log_info(&quot;&#x2605; DISCOVERY_SERVICE: Handling discovery service defaults&quot;);
+1908     if (opts.discovery_database_path[0] == '\0') {
+1909       // Database: Try system-wide location first, fall back to user directories
+1910       // Preference: /usr/local/var/ascii-chat/ &gt; ~/.local/share/ascii-chat/ &gt; ~/.config/ascii-chat/
+1911       log_info(&quot;&#x2605; DISCOVERY_SERVICE: About to call get_discovery_database_dir()&quot;);
+1912       char *db_dir = get_discovery_database_dir();
+1913       log_info(&quot;&#x2605; DISCOVERY_SERVICE: get_discovery_database_dir() returned %p&quot;, (void*)db_dir);
+1914       if (!db_dir) {
+1915         options_config_destroy(config);
+1916         SAFE_FREE(allocated_mode_argv);
+1917         return SET_ERRNO(ERROR_CONFIG, &quot;Failed to get database directory (tried system and user locations)&quot;);
+1918       }
+1919       safe_snprintf(opts.discovery_database_path, sizeof(opts.discovery_database_path), &quot;%sdiscovery.db&quot;, db_dir);
+1920       SAFE_FREE(db_dir);
+1921     }
+1922   }
+1923 
+1924   log_info(&quot;&#x2605; OPTIONS_CONFIG_DESTROY: About to call&quot;);
+1925   options_config_destroy(config);
+1926   log_info(&quot;&#x2605; OPTIONS_CONFIG_DESTROY: Done&quot;);
+1927 
+1928   // ========================================================================
+1929   // STAGE 7: Post-Processing &amp; Validation
+1930   // ========================================================================
 1931 
-1932   // After parsing command line options, update dimensions
-1933   // First set any auto dimensions to terminal size, then apply full height logic
-1934 
-1935   // Clear auto flags if dimensions were explicitly parsed from options
-1936   // This must happen before update_dimensions_to_terminal_size to prevent auto-detected
-1937   // values from overwriting user-specified dimensions
-1938   // Note: width=0 and height=0 are special values meaning &quot;auto-detect&quot;, so don't clear auto flags for those
-1939   if (opts.width != OPT_WIDTH_DEFAULT &amp;&amp; opts.width != 0) {
-1940     opts.auto_width = false;
-1941   }
-1942   if (opts.height != OPT_HEIGHT_DEFAULT &amp;&amp; opts.height != 0) {
-1943     opts.auto_height = false;
-1944   }
-1945   update_dimensions_to_terminal_size(&amp;opts);
-1946   update_dimensions_for_full_height(&amp;opts);
-1947   // Apply verbose level to log threshold
-1948   // Each -V decreases the log level by 1 (showing more verbose output)
-1949   // Minimum level is LOG_DEV (0)
-1950   if (opts.verbose_level &gt; 0) {
-1951     log_level_t current_level = log_get_level();
-1952     int new_level = (int)current_level - (int)opts.verbose_level;
-1953     if (new_level &lt; LOG_DEV) {
-1954       new_level = LOG_DEV;
-1955     }
-1956     log_set_level((log_level_t)new_level);
-1957   }
-1958 
-1959   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
-1960   // Useful for CI/CD and testing environments without a physical webcam
-1961   const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
-1962   if (webcam_disabled &amp;&amp;
-1963       (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
-1964        platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
-1965     opts.test_pattern = true;
-1966   }
-1967 
-1968   // Apply --no-compress interaction with audio encoding
-1969   if (opts.no_compress) {
-1970     opts.encode_audio = false;
-1971     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
-1972   }
-1973 
-1974   // Set media_from_stdin flag if media_file is &quot;-&quot;
-1975   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
-1976     opts.media_from_stdin = true;
-1977     log_debug(&quot;Media file set to stdin&quot;);
-1978   }
-1979 
-1980   // Validate --seek option
-1981   if (opts.media_seek_timestamp &gt; 0.0) {
-1982     // Can't seek stdin
-1983     if (opts.media_from_stdin) {
-1984       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
-1985       SAFE_FREE(allocated_mode_argv);
-1986       return ERROR_INVALID_PARAM;
-1987     }
-1988 
-1989     // Require --file or --url
-1990     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-1991       log_error(&quot;--seek requires --file or --url&quot;);
-1992       SAFE_FREE(allocated_mode_argv);
-1993       return ERROR_INVALID_PARAM;
-1994     }
-1995   }
-1996 
-1997   // Validate --pause option
-1998   if (opts.pause) {
-1999     // Require --file or --url (not webcam, not test pattern)
-2000     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
-2001       log_error(&quot;--pause requires --file or --url&quot;);
-2002       SAFE_FREE(allocated_mode_argv);
-2003       return ERROR_INVALID_PARAM;
-2004     }
-2005   }
+1932   log_info(&quot;&#x2605; STAGE 7: Starting post-processing&quot;);
+1933 
+1934   // Collect multiple --key flags for multi-key support (server/ACDS only)
+1935   // This enables servers to load both SSH and GPG keys and select the right one
+1936   // during handshake based on what the client expects
+1937   if (detected_mode == MODE_SERVER || detected_mode == MODE_DISCOVERY_SERVICE) {
+1938     log_info(&quot;&#x2605; STAGE 7.1: About to collect identity keys&quot;);
+1939     int num_keys = options_collect_identity_keys(&amp;opts, argc, argv);
+1940     log_info(&quot;&#x2605; STAGE 7.1: options_collect_identity_keys returned %d&quot;, num_keys);
+1941     if (num_keys &lt; 0) {
+1942       SAFE_FREE(allocated_mode_argv);
+1943       return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Failed to collect identity keys&quot;);
+1944     }
+1945     // num_keys == 0 is OK (no --key flags provided)
+1946   }
+1947 
+1948   log_info(&quot;&#x2605; STAGE 7.2: About to update dimensions&quot;);
+1949 
+1950   // After parsing command line options, update dimensions
+1951   // First set any auto dimensions to terminal size, then apply full height logic
+1952 
+1953   // Clear auto flags if dimensions were explicitly parsed from options
+1954   // This must happen before update_dimensions_to_terminal_size to prevent auto-detected
+1955   // values from overwriting user-specified dimensions
+1956   // Note: width=0 and height=0 are special values meaning &quot;auto-detect&quot;, so don't clear auto flags for those
+1957   if (opts.width != OPT_WIDTH_DEFAULT &amp;&amp; opts.width != 0) {
+1958     opts.auto_width = false;
+1959   }
+1960   if (opts.height != OPT_HEIGHT_DEFAULT &amp;&amp; opts.height != 0) {
+1961     opts.auto_height = false;
+1962   }
+1963   update_dimensions_to_terminal_size(&amp;opts);
+1964   update_dimensions_for_full_height(&amp;opts);
+1965   // Apply verbose level to log threshold
+1966   // Each -V decreases the log level by 1 (showing more verbose output)
+1967   // Minimum level is LOG_DEV (0)
+1968   if (opts.verbose_level &gt; 0) {
+1969     log_level_t current_level = log_get_level();
+1970     int new_level = (int)current_level - (int)opts.verbose_level;
+1971     if (new_level &lt; LOG_DEV) {
+1972       new_level = LOG_DEV;
+1973     }
+1974     log_set_level((log_level_t)new_level);
+1975   }
+1976 
+1977   // Check WEBCAM_DISABLED environment variable to enable test pattern mode
+1978   // Useful for CI/CD and testing environments without a physical webcam
+1979   const char *webcam_disabled = SAFE_GETENV(&quot;WEBCAM_DISABLED&quot;);
+1980   if (webcam_disabled &amp;&amp;
+1981       (strcmp(webcam_disabled, &quot;1&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;true&quot;) == 0 ||
+1982        platform_strcasecmp(webcam_disabled, &quot;yes&quot;) == 0 || platform_strcasecmp(webcam_disabled, &quot;on&quot;) == 0)) {
+1983     opts.test_pattern = true;
+1984   }
+1985 
+1986   // Apply --no-compress interaction with audio encoding
+1987   if (opts.no_compress) {
+1988     opts.encode_audio = false;
+1989     log_debug(&quot;--no-compress set: disabling audio encoding&quot;);
+1990   }
+1991 
+1992   // Set media_from_stdin flag if media_file is &quot;-&quot;
+1993   if (opts.media_file[0] != '\0' &amp;&amp; strcmp(opts.media_file, &quot;-&quot;) == 0) {
+1994     opts.media_from_stdin = true;
+1995     log_debug(&quot;Media file set to stdin&quot;);
+1996   }
+1997 
+1998   // Validate --seek option
+1999   if (opts.media_seek_timestamp &gt; 0.0) {
+2000     // Can't seek stdin
+2001     if (opts.media_from_stdin) {
+2002       log_error(&quot;--seek cannot be used with stdin (--file -)&quot;);
+2003       SAFE_FREE(allocated_mode_argv);
+2004       return ERROR_INVALID_PARAM;
+2005     }
 2006 
-2007   // Validate --url option
-2008   if (opts.media_url[0] != '\0') {
-2009     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
-2010     if (!url_is_valid(opts.media_url)) {
-2011       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
-2012       SAFE_FREE(allocated_mode_argv);
-2013       return ERROR_INVALID_PARAM;
-2014     }
-2015 
-2016     // Normalize bare URLs by prepending http:// if not present
-2017     if (!strstr(opts.media_url, &quot;://&quot;)) {
-2018       char normalized_url[2048];
-2019       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
-2020       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
-2021         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
-2022       } else {
-2023         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
-2024         SAFE_FREE(allocated_mode_argv);
-2025         return ERROR_INVALID_PARAM;
-2026       }
-2027     }
-2028   }
-2029 
-2030   // ========================================================================
-2031   // STAGE 7: Publish to RCU
-2032   // ========================================================================
-2033 
-2034   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
-2035 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2036   bool quiet_for_memory_report = opts.quiet;
-2037 #endif
-2038 
-2039   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
-2040   // This makes the options visible to all threads via lock-free reads
-2041   asciichat_error_t publish_result = options_state_set(&amp;opts);
-2042   if (publish_result != ASCIICHAT_OK) {
-2043     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
-2044     SAFE_FREE(allocated_mode_argv);
-2045     return publish_result;
-2046   }
-2047 
-2048   // Now update debug memory quiet mode with the saved quiet value
-2049 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
-2050   debug_memory_set_quiet_mode(quiet_for_memory_report);
-2051 #endif
-2052 
-2053   // ========================================================================
-2054   // Apply color scheme to logging
-2055   // ========================================================================
-2056   // Now that options are parsed, set and apply the selected color scheme to logging
-2057   if (opts.color_scheme_name[0] != '\0') {
-2058     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
-2059     if (scheme_result == ASCIICHAT_OK) {
-2060       const color_scheme_t *scheme = colorscheme_get_active_scheme();
-2061       if (scheme) {
-2062         log_set_color_scheme(scheme);
-2063         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
-2064       }
-2065     } else {
-2066       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
-2067     }
-2068   }
+2007     // Require --file or --url
+2008     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2009       log_error(&quot;--seek requires --file or --url&quot;);
+2010       SAFE_FREE(allocated_mode_argv);
+2011       return ERROR_INVALID_PARAM;
+2012     }
+2013   }
+2014 
+2015   // Validate --pause option
+2016   if (opts.pause) {
+2017     // Require --file or --url (not webcam, not test pattern)
+2018     if (opts.media_file[0] == '\0' &amp;&amp; opts.media_url[0] == '\0') {
+2019       log_error(&quot;--pause requires --file or --url&quot;);
+2020       SAFE_FREE(allocated_mode_argv);
+2021       return ERROR_INVALID_PARAM;
+2022     }
+2023   }
+2024 
+2025   if (opts.media_url[0] != '\0') {
+2026     // URL must be a valid HTTP(S) URL (YouTube URLs are HTTPS URLs)
+2027     if (!url_is_valid(opts.media_url)) {
+2028       log_error(&quot;--url must be a valid HTTP(S) URL: %s&quot;, opts.media_url);
+2029       SAFE_FREE(allocated_mode_argv);
+2030       return ERROR_INVALID_PARAM;
+2031     }
+2032 
+2033     // Normalize bare URLs by prepending http:// if not present
+2034     if (!strstr(opts.media_url, &quot;://&quot;)) {
+2035       char normalized_url[2048];
+2036       int result = snprintf(normalized_url, sizeof(normalized_url), &quot;http://%s&quot;, opts.media_url);
+2037       if (result &gt; 0 &amp;&amp; result &lt; (int)sizeof(normalized_url)) {
+2038         SAFE_STRNCPY(opts.media_url, normalized_url, sizeof(opts.media_url));
+2039       } else {
+2040         log_error(&quot;Failed to normalize URL (too long): %s&quot;, opts.media_url);
+2041         SAFE_FREE(allocated_mode_argv);
+2042         return ERROR_INVALID_PARAM;
+2043       }
+2044     }
+2045   }
+2046 
+2047   // ========================================================================
+2048   // STAGE 8: Publish to RCU
+2049   // ========================================================================
+2050 
+2051   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
+2052 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2053   bool quiet_for_memory_report = opts.quiet;
+2054 #endif
+2055 
+2056   // Publish parsed options to RCU state (replaces options_state_populate_from_globals)
+2057   // This makes the options visible to all threads via lock-free reads
+2058   asciichat_error_t publish_result = options_state_set(&amp;opts);
+2059   if (publish_result != ASCIICHAT_OK) {
+2060     log_error(&quot;Failed to publish parsed options to RCU state: %d&quot;, publish_result);
+2061     SAFE_FREE(allocated_mode_argv);
+2062     return publish_result;
+2063   }
+2064 
+2065   // Now update debug memory quiet mode with the saved quiet value
+2066 #if defined(DEBUG_MEMORY) &amp;&amp; !defined(USE_MIMALLOC_DEBUG) &amp;&amp; !defined(NDEBUG)
+2067   debug_memory_set_quiet_mode(quiet_for_memory_report);
+2068 #endif
 2069 
 2070   // ========================================================================
-2071   // STAGE 8: Execute deferred actions (after all options parsed and published)
+2071   // Apply color scheme to logging
 2072   // ========================================================================
-2073   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
-2074   // are executed here after all options are fully parsed and published via RCU.
-2075   // This ensures action output reflects the final parsed state (e.g., final dimensions
-2076   // for --show-capabilities).
-2077   // Re-enable terminal output so deferred actions can print their results.
-2078   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
-2079   if (has_action) {
-2080     log_set_terminal_output(true);
-2081   }
-2082   actions_execute_deferred();
-2083   SAFE_FREE(allocated_mode_argv);
-2084   return ASCIICHAT_OK;
-2085 }</pre>
+2073   // Now that options are parsed, set and apply the selected color scheme to logging
+2074   if (opts.color_scheme_name[0] != '\0') {
+2075     asciichat_error_t scheme_result = colorscheme_set_active_scheme(opts.color_scheme_name);
+2076     if (scheme_result == ASCIICHAT_OK) {
+2077       const color_scheme_t *scheme = colorscheme_get_active_scheme();
+2078       if (scheme) {
+2079         log_set_color_scheme(scheme);
+2080         log_debug(&quot;Color scheme applied: %s&quot;, opts.color_scheme_name);
+2081       }
+2082     } else {
+2083       log_warn(&quot;Failed to apply color scheme: %s&quot;, opts.color_scheme_name);
+2084     }
+2085   }
+2086 
+2087   // ========================================================================
+2088   // STAGE 8: Execute deferred actions (after all options parsed and published)
+2089   // ========================================================================
+2090   // Deferred actions (--list-webcams, --list-microphones, --list-speakers, --show-capabilities)
+2091   // are executed here after all options are fully parsed and published via RCU.
+2092   // This ensures action output reflects the final parsed state (e.g., final dimensions
+2093   // for --show-capabilities).
+2094   // Re-enable terminal output so deferred actions can print their results.
+2095   // It was disabled earlier (STAGE 1C) to suppress log noise during option parsing.
+2096   if (has_action) {
+2097     log_set_terminal_output(true);
+2098   }
+2099   actions_execute_deferred();
+2100   SAFE_FREE(allocated_mode_argv);
+2101   return ASCIICHAT_OK;
+2102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_check_update_immediate()</b>,

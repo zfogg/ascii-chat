@@ -70,20 +70,24 @@
 20   hints.ai_socktype = SOCK_STREAM;
 21 
 22   log_debug(&quot;Testing DNS connectivity to %s...&quot;, hostname);
-23 
-24   int ret = getaddrinfo(hostname, &quot;443&quot;, &amp;hints, &amp;result);
-25   if (ret != 0) {
-26     log_warn(&quot;DNS resolution failed for %s: %s&quot;, hostname, gai_strerror(ret));
-27     return false;
-28   }
-29 
-30   if (result) {
-31     freeaddrinfo(result);
+23   log_info(&quot;&#x2605; ABOUT TO CALL getaddrinfo for %s&quot;, hostname);
+24 
+25   // Use NULL for port to avoid musl strtoul parsing bug with string port numbers
+26   // The actual port doesn't matter for connectivity testing - we just need DNS resolution
+27   int ret = getaddrinfo(hostname, NULL, &amp;hints, &amp;result);
+28   log_info(&quot;&#x2605; getaddrinfo returned %d&quot;, ret);
+29   if (ret != 0) {
+30     log_warn(&quot;DNS resolution failed for %s: %s&quot;, hostname, gai_strerror(ret));
+31     return false;
 32   }
 33 
-34   log_debug(&quot;DNS connectivity test succeeded for %s&quot;, hostname);
-35   return true;
-36 }</pre>
+34   if (result) {
+35     freeaddrinfo(result);
+36   }
+37 
+38   log_debug(&quot;DNS connectivity test succeeded for %s&quot;, hostname);
+39   return true;
+40 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>update_check_perform()</b>.</p>

@@ -562,167 +562,168 @@
 826 
 827   // Truncate log if it's already too large
 828   log_truncate_if_large();
-829 
-830   // Handle --help and --version (these are detected and flagged by options_init)
-831   // Terminal capabilities already initialized before options_init() at startup
-832   if (opts-&gt;help) {
-833     print_usage(opts-&gt;detected_mode);
-834     fflush(NULL);
-835     _Exit(0);
-836   }
-837 
-838   if (opts-&gt;version) {
-839     log_set_terminal_output(true);
-840     action_show_version();
-841     // action_show_version() calls _Exit(), so we don't reach here
-842   }
-843 
-844 #ifndef NDEBUG
-845   // Handle --debug-state (debug builds only)
-846   // Sleep for specified time AFTER mode initialization so locks are created
-847   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &amp;&amp; opts-&gt;debug_sync_state_time &gt; 0.0) {
-848     log_info(&quot;Will print sync state after %f seconds&quot;, opts-&gt;debug_sync_state_time);
-849   }
-850 #endif
-851 
-852   // For server mode with status screen: disable terminal output only if interactive
-853   // In non-interactive mode (piped output), logs go to stdout/stderr normally
-854   // The status screen (when shown) will capture and display logs in its buffer instead
-855   if (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; opts-&gt;status_screen &amp;&amp; terminal_is_interactive()) {
-856     log_set_terminal_output(false);
-857   }
-858 
-859   log_dev(&quot;Logging initialized to %s&quot;, final_log_file);
-860 
-861   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
-862   // 1. Tools like ripgrep can display ANSI colors when piped
-863   // 2. Sandboxed/containerized environments may report false positives for isatty()
-864   // 3. Users can explicitly disable colors with --color=false if needed
-865   // Color behavior is now fully controlled by --color and --color-mode options.
-866 
-867 #ifndef NDEBUG
-868   // Initialize lock debugging system after logging is fully set up
-869   log_debug(&quot;Initializing lock debug system...&quot;);
-870   int debug_sync_result = debug_sync_init();
-871   if (debug_sync_result != 0) {
-872     LOG_ERRNO_IF_SET(&quot;Debug sync system initialization failed&quot;);
-873     FATAL(ERROR_PLATFORM_INIT, &quot;Debug sync system initialization failed&quot;);
-874   }
-875   log_debug(&quot;Debug sync system initialized successfully&quot;);
-876 
-877   // Initialize memory debug system
-878   // TEMPORARILY DISABLED: these calls hang in non-interactive mode
-879   // log_debug(&quot;Initializing memory debug system...&quot;);
-880   // int debug_memory_result = debug_memory_thread_init();
-881   // if (debug_memory_result != 0) {
-882   //   LOG_ERRNO_IF_SET(&quot;Memory debug system initialization failed&quot;);
-883   //   FATAL(ERROR_PLATFORM_INIT, &quot;Memory debug system initialization failed&quot;);
-884   // }
-885   // log_debug(&quot;Memory debug system initialized successfully&quot;);
-886 
-887   // Start memory debug (now just prints report directly)
-888   // if (debug_memory_thread_start() != 0) {
-889   //   LOG_ERRNO_IF_SET(&quot;Memory debug startup failed&quot;);
-890   //   FATAL(ERROR_THREAD, &quot;Memory debug startup failed&quot;);
-891   // }
-892 
-893 #ifndef _WIN32
-894   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
-895   sigset_t set;
-896   sigemptyset(&amp;set);
-897   sigaddset(&amp;set, SIGUSR1);
-898   sigaddset(&amp;set, SIGUSR2);
-899   sigprocmask(SIG_UNBLOCK, &amp;set, NULL);
-900 
-901   // Register SIGUSR1 to trigger synchronization debugging output in all modes
-902   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
-903   if (old_usr1 == SIG_ERR) {
-904     log_warn(&quot;Failed to register SIGUSR1 handler&quot;);
-905   } else {
-906     log_debug(&quot;SIGUSR1 handler registered successfully&quot;);
-907   }
-908 
-909   // Register SIGUSR2 to trigger memory report in all modes
-910   signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
-911   if (old_usr2 == SIG_ERR) {
-912     log_warn(&quot;Failed to register SIGUSR2 handler&quot;);
-913   } else {
-914     log_debug(&quot;SIGUSR2 handler registered successfully&quot;);
-915   }
-916 #endif
+829   fflush(stderr);
+830 
+831   // Handle --help and --version (these are detected and flagged by options_init)
+832   // Terminal capabilities already initialized before options_init() at startup
+833   if (opts-&gt;help) {
+834     print_usage(opts-&gt;detected_mode);
+835     fflush(NULL);
+836     _Exit(0);
+837   }
+838 
+839   if (opts-&gt;version) {
+840     log_set_terminal_output(true);
+841     action_show_version();
+842     // action_show_version() calls _Exit(), so we don't reach here
+843   }
+844 
+845 #ifndef NDEBUG
+846   // Handle --debug-state (debug builds only)
+847   // Sleep for specified time AFTER mode initialization so locks are created
+848   if (IS_OPTION_EXPLICIT(debug_sync_state_time, opts) &amp;&amp; opts-&gt;debug_sync_state_time &gt; 0.0) {
+849     log_info(&quot;Will print sync state after %f seconds&quot;, opts-&gt;debug_sync_state_time);
+850   }
+851 #endif
+852 
+853   // For server mode with status screen: disable terminal output only if interactive
+854   // In non-interactive mode (piped output), logs go to stdout/stderr normally
+855   // The status screen (when shown) will capture and display logs in its buffer instead
+856   if (opts-&gt;detected_mode == MODE_SERVER &amp;&amp; opts-&gt;status_screen &amp;&amp; terminal_is_interactive()) {
+857     log_set_terminal_output(false);
+858   }
+859 
+860   log_dev(&quot;Logging initialized to %s&quot;, final_log_file);
+861 
+862   // Note: We do NOT auto-disable colors when stdout appears to be piped, because:
+863   // 1. Tools like ripgrep can display ANSI colors when piped
+864   // 2. Sandboxed/containerized environments may report false positives for isatty()
+865   // 3. Users can explicitly disable colors with --color=false if needed
+866   // Color behavior is now fully controlled by --color and --color-mode options.
+867 
+868 #ifndef NDEBUG
+869   // Initialize lock debugging system after logging is fully set up
+870   log_debug(&quot;Initializing lock debug system...&quot;);
+871   int debug_sync_result = debug_sync_init();
+872   if (debug_sync_result != 0) {
+873     LOG_ERRNO_IF_SET(&quot;Debug sync system initialization failed&quot;);
+874     FATAL(ERROR_PLATFORM_INIT, &quot;Debug sync system initialization failed&quot;);
+875   }
+876   log_debug(&quot;Debug sync system initialized successfully&quot;);
+877 
+878   // Initialize memory debug system
+879   // TEMPORARILY DISABLED: these calls hang in non-interactive mode
+880   // log_debug(&quot;Initializing memory debug system...&quot;);
+881   // int debug_memory_result = debug_memory_thread_init();
+882   // if (debug_memory_result != 0) {
+883   //   LOG_ERRNO_IF_SET(&quot;Memory debug system initialization failed&quot;);
+884   //   FATAL(ERROR_PLATFORM_INIT, &quot;Memory debug system initialization failed&quot;);
+885   // }
+886   // log_debug(&quot;Memory debug system initialized successfully&quot;);
+887 
+888   // Start memory debug (now just prints report directly)
+889   // if (debug_memory_thread_start() != 0) {
+890   //   LOG_ERRNO_IF_SET(&quot;Memory debug startup failed&quot;);
+891   //   FATAL(ERROR_THREAD, &quot;Memory debug startup failed&quot;);
+892   // }
+893 
+894 #ifndef _WIN32
+895   // Unblock SIGUSR1 and SIGUSR2 at process level to ensure delivery
+896   sigset_t set;
+897   sigemptyset(&amp;set);
+898   sigaddset(&amp;set, SIGUSR1);
+899   sigaddset(&amp;set, SIGUSR2);
+900   sigprocmask(SIG_UNBLOCK, &amp;set, NULL);
+901 
+902   // Register SIGUSR1 to trigger synchronization debugging output in all modes
+903   signal_handler_t old_usr1 = platform_signal(SIGUSR1, common_handle_sigusr1);
+904   if (old_usr1 == SIG_ERR) {
+905     log_warn(&quot;Failed to register SIGUSR1 handler&quot;);
+906   } else {
+907     log_debug(&quot;SIGUSR1 handler registered successfully&quot;);
+908   }
+909 
+910   // Register SIGUSR2 to trigger memory report in all modes
+911   signal_handler_t old_usr2 = platform_signal(SIGUSR2, common_handle_sigusr2);
+912   if (old_usr2 == SIG_ERR) {
+913     log_warn(&quot;Failed to register SIGUSR2 handler&quot;);
+914   } else {
+915     log_debug(&quot;SIGUSR2 handler registered successfully&quot;);
+916   }
 917 #endif
-918 
-919   if (opts-&gt;fps &gt; 0) {
-920     if (opts-&gt;fps &lt; 1 || opts-&gt;fps &gt; 144) {
-921       log_warn(&quot;FPS value %d out of range (1-144), using default&quot;, opts-&gt;fps);
-922     } else {
-923       log_debug(&quot;FPS set from command line: %d&quot;, opts-&gt;fps);
-924     }
-925   }
-926 
-927   // Automatic update check at startup (once per week maximum)
-928   if (!GET_OPTION(no_check_update)) {
-929     update_check_result_t update_result;
-930     asciichat_error_t update_err = update_check_startup(&amp;update_result);
-931     if (update_err == ASCIICHAT_OK &amp;&amp; update_result.update_available) {
-932       char notification[1024];
-933       update_check_format_notification(&amp;update_result, notification, sizeof(notification));
-934       log_info(&quot;%s&quot;, notification);
-935 
-936       // Set update notification for splash/status screens
-937       splash_set_update_notification(notification);
-938     }
-939   }
-940 
-941   // Set up global signal handlers BEFORE mode dispatch
-942   // All modes use the same centralized exit mechanism
-943   setup_signal_handlers();
-944 
-945   // Register application callbacks so lib code can check exit flags
-946   // This connects the render loop's should_exit check to signal_exit()
-947   static const app_callbacks_t app_callbacks = {
-948       .should_exit = should_exit,
-949       .signal_exit = signal_exit,
-950   };
-951   app_callbacks_register(&amp;app_callbacks);
-952 
-953   // Register shutdown callback so splash thread and other code can check for exit
-954   shutdown_register_callback((shutdown_check_fn)should_exit);
-955 
-956 #ifndef NDEBUG
-957   // Start debug threads now, after initialization but before mode entry
-958   // This avoids lock contention during critical initialization phase
-959   // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
-960   // direct pthread calls instead of mutex_init/cond_init to avoid named registry
-961   // deadlock during thread startup
-962   if (debug_sync_start_thread() != 0) {
-963     LOG_ERRNO_IF_SET(&quot;Debug sync thread startup failed&quot;);
-964     FATAL(ERROR_THREAD, &quot;Debug sync thread startup failed&quot;);
-965   }
-966   log_debug(&quot;Debug sync thread started&quot;);
-967 
-968 #endif
-969 
-970   // Find and dispatch to mode entry point
-971   const mode_descriptor_t *mode = find_mode(opts-&gt;detected_mode);
-972   if (!mode) {
-973     fprintf(stderr, &quot;Error: Mode not found for detected_mode=%d\n&quot;, opts-&gt;detected_mode);
-974     return 1;
-975   }
-976 
-977   // Call the mode-specific entry point
-978   // Mode entry points use options_get() to access parsed options
-979   int exit_code = mode-&gt;entry_point();
-980 
-981   // Named registry cleanup is handled by asciichat_shared_destroy()
-982   // (called via atexit handler), which runs AFTER the memory report
-983 
-984   if (exit_code == ERROR_USAGE) {
-985     exit(ERROR_USAGE);
-986   }
-987 
-988   return exit_code;
-989 }</pre>
+918 #endif
+919 
+920   if (opts-&gt;fps &gt; 0) {
+921     if (opts-&gt;fps &lt; 1 || opts-&gt;fps &gt; 144) {
+922       log_warn(&quot;FPS value %d out of range (1-144), using default&quot;, opts-&gt;fps);
+923     } else {
+924       log_debug(&quot;FPS set from command line: %d&quot;, opts-&gt;fps);
+925     }
+926   }
+927 
+928   // Automatic update check at startup (once per week maximum)
+929   if (!GET_OPTION(no_check_update)) {
+930     update_check_result_t update_result;
+931     asciichat_error_t update_err = update_check_startup(&amp;update_result);
+932     if (update_err == ASCIICHAT_OK &amp;&amp; update_result.update_available) {
+933       char notification[1024];
+934       update_check_format_notification(&amp;update_result, notification, sizeof(notification));
+935       log_info(&quot;%s&quot;, notification);
+936 
+937       // Set update notification for splash/status screens
+938       splash_set_update_notification(notification);
+939     }
+940   }
+941 
+942   // Set up global signal handlers BEFORE mode dispatch
+943   // All modes use the same centralized exit mechanism
+944   setup_signal_handlers();
+945 
+946   // Register application callbacks so lib code can check exit flags
+947   // This connects the render loop's should_exit check to signal_exit()
+948   static const app_callbacks_t app_callbacks = {
+949       .should_exit = should_exit,
+950       .signal_exit = signal_exit,
+951   };
+952   app_callbacks_register(&amp;app_callbacks);
+953 
+954   // Register shutdown callback so splash thread and other code can check for exit
+955   shutdown_register_callback((shutdown_check_fn)should_exit);
+956 
+957 #ifndef NDEBUG
+958   // Start debug threads now, after initialization but before mode entry
+959   // This avoids lock contention during critical initialization phase
+960   // Note: debug_sync_start_thread() and debug_memory_thread_start() now use
+961   // direct pthread calls instead of mutex_init/cond_init to avoid named registry
+962   // deadlock during thread startup
+963   if (debug_sync_start_thread() != 0) {
+964     LOG_ERRNO_IF_SET(&quot;Debug sync thread startup failed&quot;);
+965     FATAL(ERROR_THREAD, &quot;Debug sync thread startup failed&quot;);
+966   }
+967   log_debug(&quot;Debug sync thread started&quot;);
+968 
+969 #endif
+970 
+971   // Find and dispatch to mode entry point
+972   const mode_descriptor_t *mode = find_mode(opts-&gt;detected_mode);
+973   if (!mode) {
+974     fprintf(stderr, &quot;Error: Mode not found for detected_mode=%d\n&quot;, opts-&gt;detected_mode);
+975     return 1;
+976   }
+977 
+978   // Call the mode-specific entry point
+979   // Mode entry points use options_get() to access parsed options
+980   int exit_code = mode-&gt;entry_point();
+981 
+982   // Named registry cleanup is handled by asciichat_shared_destroy()
+983   // (called via atexit handler), which runs AFTER the memory report
+984 
+985   if (exit_code == ERROR_USAGE) {
+986     exit(ERROR_USAGE);
+987   }
+988 
+989   return exit_code;
+990 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action_show_version()</b>,

@@ -83,3 +83,8 @@ vcpkg_installed/
 
 # Build directory fonts (downloaded at build time)
 /build/fonts/
+
+# Valgrind core dumps and profiling data
+vgcore*
+callgrind.out*
+massif.out*

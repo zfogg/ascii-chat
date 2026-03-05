@@ -71,12 +71,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_manpage_content_free_examples_(char_*_content)"><a class="permalink" href="#void_manpage_content_free_examples_(char_*_content)">void
   manpage_content_free_examples (char * content)</a></h2>
-<p class="Pp">Definition at line <b>141</b> of file <b>examples.c</b>.</p>
-<pre>141                                                   {
-142   if (content) {
-143     SAFE_FREE(content);
-144   }
-145 }</pre>
+<p class="Pp">Definition at line <b>151</b> of file <b>examples.c</b>.</p>
+<pre>151                                                   {
+152   if (content) {
+153     SAFE_FREE(content);
+154   }
+155 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>options_config_generate_manpage_merged()</b>, and
@@ -87,66 +87,76 @@
   * manpage_content_generate_examples (const options_config_t * config)</a></h2>
 <p class="Pp">Definition at line <b>79</b> of file <b>examples.c</b>.</p>
 <pre>79                                                                         {
-80   if (!config || config-&gt;num_examples == 0) {
+80   if (!config) {
 81     char *buffer = SAFE_MALLOC(1, char *);
 82     buffer[0] = '\0';
 83     return buffer;
 84   }
 85 
-86   // Seed random number generator for mode selection
-87   // Use config pointer address for deterministic-but-varied seed
-88   srand((unsigned int)((uintptr_t)config));
-89 
-90   // Allocate growing buffer for examples section
-91   size_t buffer_capacity = 8192;
-92   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
-93   size_t offset = 0;
-94 
-95   for (size_t i = 0; i &lt; config-&gt;num_examples; i++) {
-96     const example_descriptor_t *example = &amp;config-&gt;examples[i];
-97 
-98     // Get all mode names from bitmask (examples can apply to multiple modes)
-99     // For man pages, we only show each example once, randomly selecting one mode
-100     size_t num_modes = 0;
-101     const char **mode_names = get_all_mode_names_from_bitmask(example-&gt;mode_bitmask, &amp;num_modes);
-102 
-103     // Ensure buffer is large enough
-104     if (offset + 512 &gt;= buffer_capacity) {
-105       buffer_capacity *= 2;
-106       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
-107     }
-108 
-109     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
-110     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat&quot;);
-111 
-112     // Add mode name if applicable (randomly select one mode for multi-mode examples)
-113     if (num_modes &gt; 0) {
-114       size_t selected_mode = (size_t)rand() % num_modes;
-115       if (mode_names[selected_mode]) {
-116         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, mode_names[selected_mode]);
-117       }
-118     }
-119 
-120     if (example-&gt;args) {
-121       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, example-&gt;args);
-122     }
-123     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
-124 
-125     if (example-&gt;description) {
-126       offset +=
-127           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(example-&gt;description));
+86   if (config-&gt;num_examples == 0) {
+87     // Generate fallback content when no examples are defined
+88     size_t buffer_capacity = 256;
+89     char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+90     size_t offset = 0;
+91     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.PP\nNo examples available for this mode.\n&quot;);
+92     log_debug(&quot;Generated EXAMPLES section (fallback - no examples found)&quot;);
+93     return buffer;
+94   }
+95 
+96   // Seed random number generator for mode selection
+97   // Use config pointer address for deterministic-but-varied seed
+98   srand((unsigned int)((uintptr_t)config));
+99 
+100   // Allocate growing buffer for examples section
+101   size_t buffer_capacity = 8192;
+102   char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+103   size_t offset = 0;
+104 
+105   for (size_t i = 0; i &lt; config-&gt;num_examples; i++) {
+106     const example_descriptor_t *example = &amp;config-&gt;examples[i];
+107 
+108     // Get all mode names from bitmask (examples can apply to multiple modes)
+109     // For man pages, we only show each example once, randomly selecting one mode
+110     size_t num_modes = 0;
+111     const char **mode_names = get_all_mode_names_from_bitmask(example-&gt;mode_bitmask, &amp;num_modes);
+112 
+113     // Ensure buffer is large enough
+114     if (offset + 512 &gt;= buffer_capacity) {
+115       buffer_capacity *= 2;
+116       buffer = SAFE_REALLOC(buffer, buffer_capacity, char *);
+117     }
+118 
+119     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.TP\n&quot;);
+120     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;.B ascii-chat&quot;);
+121 
+122     // Add mode name if applicable (randomly select one mode for multi-mode examples)
+123     if (num_modes &gt; 0) {
+124       size_t selected_mode = (size_t)rand() % num_modes;
+125       if (mode_names[selected_mode]) {
+126         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, mode_names[selected_mode]);
+127       }
 128     }
 129 
-130     // Free mode names array
-131     if (mode_names) {
-132       SAFE_FREE(mode_names);
-133     }
-134   }
-135 
-136   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
-137 
-138   return buffer;
-139 }</pre>
+130     if (example-&gt;args) {
+131       offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot; %s&quot;, example-&gt;args);
+132     }
+133     offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+134 
+135     if (example-&gt;description) {
+136       offset +=
+137           safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;%s\n&quot;, escape_groff_special(example-&gt;description));
+138     }
+139 
+140     // Free mode names array
+141     if (mode_names) {
+142       SAFE_FREE(mode_names);
+143     }
+144   }
+145 
+146   offset += safe_snprintf(buffer + offset, buffer_capacity - offset, &quot;\n&quot;);
+147 
+148   return buffer;
+149 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>escape_groff_special()</b>, and
