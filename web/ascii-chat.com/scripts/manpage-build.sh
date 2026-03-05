@@ -117,12 +117,19 @@ for html_file in sorted(man3_dir.glob("*.html")):
 
     # Look up source path from filename
     source_path = None
-    # Try to match the name.c or name.h
-    for ext in ['.c', '.h', '.cpp']:
-        candidate = name + ext
-        if candidate in source_lookup:
-            source_path = source_lookup[candidate]
-            break
+
+    # If name already ends with .c, .h, or .cpp, use it directly
+    if name.endswith(('.c', '.h', '.cpp')):
+        if name in source_lookup:
+            source_path = source_lookup[name]
+    else:
+        # Try to match the name.c or name.h
+        for ext in ['.c', '.h', '.cpp']:
+            candidate = name + ext
+            if candidate in source_lookup:
+                source_path = source_lookup[candidate]
+                break
+
     # If not found by direct name, try to look up by Doxygen name pattern
     if not source_path and name.endswith('_8c'):
         base_name = name[:-3] + '.c'
