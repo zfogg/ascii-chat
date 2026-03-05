@@ -678,16 +678,48 @@ export default function Man3() {
             console.log("[Man3] Found", lineElements.length, "elements on line");
 
             if (lineElements.length > 0) {
-              // Highlight all elements on this line
-              for (const el of lineElements) {
-                el.style.backgroundColor = "#fbbf24";
-                el.style.color = "#000000";
-              }
-              console.log("[Man3] Applied highlight to", lineElements.length, "elements");
+              // Try to find the immediate line container (usually a div that wraps a single line)
+              // by walking up just one level from the first element
+              let lineParent = lineElements[0].parentElement?.parentElement;
 
-              // Scroll the first element into view, centered
-              lineElements[0].scrollIntoView({ behavior: 'auto', block: 'center' });
-              console.log("[Man3] Scrolled element into view");
+              // Verify this parent actually contains all our line elements and is reasonably sized
+              let isValidLineParent = false;
+              if (lineParent && lineParent.offsetHeight > 0 && lineParent.offsetHeight < 100) {
+                isValidLineParent = true;
+                for (const el of lineElements) {
+                  if (!lineParent.contains(el)) {
+                    isValidLineParent = false;
+                    break;
+                  }
+                }
+              }
+
+              if (isValidLineParent) {
+                // Highlight the entire line parent with continuous background
+                lineParent.style.backgroundColor = "#fbbf24";
+                lineParent.style.color = "#000000";
+
+                // Ensure all children text is black
+                const allChildren = lineParent.querySelectorAll("*");
+                for (const child of allChildren) {
+                  child.style.color = "#000000";
+                }
+
+                console.log("[Man3] Applied highlight to line container:", lineParent.tagName);
+
+                // Scroll the line into view, centered
+                lineParent.scrollIntoView({ behavior: 'auto', block: 'center' });
+                console.log("[Man3] Scrolled line into view");
+              } else {
+                // Fallback: highlight individual spans if we can't find a good parent
+                for (const el of lineElements) {
+                  el.style.backgroundColor = "#fbbf24";
+                  el.style.color = "#000000";
+                }
+                console.log("[Man3] Applied highlight to individual spans (fallback)");
+
+                lineElements[0].scrollIntoView({ behavior: 'auto', block: 'center' });
+              }
             }
           }
         } else {
