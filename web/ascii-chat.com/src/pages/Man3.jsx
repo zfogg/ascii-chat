@@ -386,8 +386,18 @@ export default function Man3() {
       snippetIndex = null,
       skipHistoryPush = false,
     ) => {
+      console.log("[DEBUG] loadPageContent called:", {
+        pageName,
+        lineNumber,
+        snippetIndex,
+        skipHistoryPush,
+        selectedPageName,
+        currentSearchQuery: searchQuery,
+      });
+
       // If clicking a line number on the same page, just update the hash without fetching
       if (selectedPageName === pageName && lineNumber !== null) {
+        console.log("[DEBUG] Same page, updating hash only");
         setTargetLineNumber(lineNumber);
         setTargetSnippetIndex(snippetIndex);
         const hash = "#l" + lineNumber.toString().padStart(5, "0");
@@ -432,6 +442,7 @@ export default function Man3() {
             isSourcePage,
           );
 
+          console.log("[DEBUG] processedContent includes bg-yellow-900:", processedContent.includes("bg-yellow-900"));
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
           if (lineNumber) {
@@ -578,8 +589,10 @@ export default function Man3() {
 
   // Auto-load first search result when search results appear
   useEffect(() => {
+    console.log("[DEBUG] Auto-load effect - searchResults:", searchResults.length, "selectedPageName:", selectedPageName, "searchQuery:", searchQuery);
     if (searchResults.length > 0 && !selectedPageName && searchQuery) {
       // Load first search result's page
+      console.log("[DEBUG] Auto-loading first search result:", searchResults[0].name);
       const pageName = searchResults[0].name;
       const filename = searchResults[0].file || `${pageName}.html`;
 
@@ -661,10 +674,13 @@ export default function Man3() {
       const href = link.getAttribute("href");
       if (!href) return;
 
+      console.log("[DEBUG] Link clicked, href:", href);
+
       // Match new converted format: /man3?page=filename[#l00123 or %23l00123]
       const newMatch = href.match(
         /^\/man3\?page=([^&#%]+)(?:%23|#)?(l\d+(?:-\d+)?)?/,
       );
+      console.log("[DEBUG] newMatch result:", newMatch);
       if (newMatch) {
         e.preventDefault();
         const pageName = decodeURIComponent(newMatch[1]);
