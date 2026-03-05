@@ -1157,7 +1157,10 @@ export default function Man3() {
                         }`}
                       >
                         <button
-                          onClick={() => loadPageContent(page.name)}
+                          onClick={() => {
+                            window.location.hash = "";
+                            loadPageContent(page.name);
+                          }}
                           className="w-full text-left px-4 py-3 block cursor-pointer hover:text-purple-200 transition-colors"
                         >
                           <div className="font-mono text-sm font-semibold truncate text-purple-300">
