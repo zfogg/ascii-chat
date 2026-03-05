@@ -223,14 +223,41 @@ export function MirrorPage() {
     setIsRunning(false);
   }, []);
 
+  const debugCountRef = useRef(0);
+
   const renderFrame = useCallback(() => {
     if (!isWasmReady() || !rendererRef.current) return;
 
     const frame = captureFrame();
-    if (!frame) return;
+    if (!frame) {
+      if (debugCountRef.current % 300 === 0) {
+        console.log("[Mirror] captureFrame returned null");
+      }
+      return;
+    }
+
+    if (debugCountRef.current % 300 === 0) {
+      console.log(
+        `[Mirror] frame captured: ${frame.width}x${frame.height}, data length: ${frame.data.length}`,
+      );
+    }
 
     const asciiArt = convertFrameToAscii(frame.data, frame.width, frame.height);
+    if (!asciiArt) {
+      if (debugCountRef.current % 300 === 0) {
+        console.log("[Mirror] convertFrameToAscii returned empty");
+      }
+      return;
+    }
+
+    if (debugCountRef.current % 300 === 0) {
+      console.log(
+        `[Mirror] ASCII art generated: ${asciiArt.length} chars, first 100: ${asciiArt.substring(0, 100)}`,
+      );
+    }
+
     rendererRef.current.writeFrame(asciiArt);
+    debugCountRef.current++;
   }, [captureFrame]);
 
   const { startRenderLoop } = useRenderLoop(
@@ -246,12 +273,6 @@ export function MirrorPage() {
   const startWebcam = useCallback(async () => {
     if (!videoRef.current || !canvasRef.current) {
       setError("Video or canvas element not ready");
-      return;
-    }
-
-    const dims = rendererRef.current?.getDimensions();
-    if (!dims || dims.cols === 0 || dims.rows === 0) {
-      setError("Terminal not ready. Please wait a moment and try again.");
       return;
     }
 
@@ -284,10 +305,14 @@ export function MirrorPage() {
         videoRef.current!.addEventListener(
           "loadedmetadata",
           () => {
-            const video = videoRef.current!;
             const canvas = canvasRef.current!;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            // Use requested dimensions from settings, not video.videoWidth
+            // (which are 2x2 when loadedmetadata fires, before actual stream loads)
+            canvas.width = settings.width;
+            canvas.height = settings.height;
+            console.log(
+              `[Mirror] canvas set to ${canvas.width}x${canvas.height} (from settings)`,
+            );
             resolve();
           },
           { once: true },
