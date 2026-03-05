@@ -162,14 +162,25 @@ function extractTextWithLineNumbers(html) {
   // Decode entities
   text = text.replace(/&([a-zA-Z]+|#\d+|#x[0-9A-Fa-f]+);/g, (match) => {
     const entities = {
-      lt: "<", gt: ">", amp: "&", quot: '"', apos: "'", nbsp: " ",
+      lt: "<",
+      gt: ">",
+      amp: "&",
+      quot: '"',
+      apos: "'",
+      nbsp: " ",
     };
     if (match.startsWith("&#x")) {
-      try { return String.fromCharCode(parseInt(match.slice(3, -1), 16)); }
-      catch { return match; }
+      try {
+        return String.fromCharCode(parseInt(match.slice(3, -1), 16));
+      } catch {
+        return match;
+      }
     } else if (match.startsWith("&#")) {
-      try { return String.fromCharCode(parseInt(match.slice(2, -1), 10)); }
-      catch { return match; }
+      try {
+        return String.fromCharCode(parseInt(match.slice(2, -1), 10));
+      } catch {
+        return match;
+      }
     } else {
       return entities[match.slice(1, -1)] || match;
     }
@@ -193,10 +204,10 @@ function extractTextWithLineNumbers(html) {
   }
 
   // If we found actual code lines, return with preserved line numbers
-  if (lineNumbers.some(ln => ln > 0)) {
+  if (lineNumbers.some((ln) => ln > 0)) {
     return {
-      text: text,  // Return text AS-IS with line number prefixes
-      lineNumbers: lineNumbers,  // Array aligned with split text
+      text: text, // Return text AS-IS with line number prefixes
+      lineNumbers: lineNumbers, // Array aligned with split text
     };
   }
 
@@ -204,8 +215,8 @@ function extractTextWithLineNumbers(html) {
   const plainLines = text
     .replace(/\n\s*\n/g, "\n")
     .split("\n")
-    .map(l => l.trim())
-    .filter(l => l.length > 0);
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   return {
     text: plainLines.join("\n"),
     lineNumbers: plainLines.map((_, idx) => idx + 1),
@@ -233,32 +244,6 @@ function getFileContentWithLineNumbers(pageName, fileName) {
   }
 
   return { text: "", lineNumbers: null };
-}
-
-// Get file text content (from cache or disk)
-function getFileContent(pageName, fileName) {
-  if (fileCache[pageName]) {
-    return fileCache[pageName];
-  }
-
-  // In development, read from disk
-  if (process.env.NODE_ENV !== "production") {
-    const man3Dir = path.join(__dirname, "public/man3");
-    // Use the actual filename from pages.json if provided, otherwise construct it
-    const actualFileName = fileName || `${pageName}.html`;
-    const filePath = path.join(man3Dir, actualFileName);
-
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, "utf-8");
-      const result = extractTextWithLineNumbers(content);
-      const text = result.text;
-      // Cache in memory for this request cycle
-      fileCache[pageName] = text;
-      return text;
-    }
-  }
-
-  return "";
 }
 
 // Find snippets around matches (centered on match)
@@ -366,9 +351,19 @@ app.get("/api/man3/search", limiter, (req, res) => {
 
     // Search in content for title matches (get snippets)
     for (const page of titleMatches) {
-      const { text: content, lineNumbers } = getFileContentWithLineNumbers(page.name, page.file);
-      logger.debug(`[search] Retrieved ${lineNumbers ? lineNumbers.length : 0} line numbers for ${page.name}`);
-      const { snippets, totalMatches } = findSnippets(content, query, 3, lineNumbers);
+      const { text: content, lineNumbers } = getFileContentWithLineNumbers(
+        page.name,
+        page.file,
+      );
+      logger.debug(
+        `[search] Retrieved ${lineNumbers ? lineNumbers.length : 0} line numbers for ${page.name}`,
+      );
+      const { snippets, totalMatches } = findSnippets(
+        content,
+        query,
+        3,
+        lineNumbers,
+      );
 
       results.push({
         name: page.name,
@@ -388,8 +383,16 @@ app.get("/api/man3/search", limiter, (req, res) => {
         continue; // Skip source pages and already added matches
       }
 
-      const { text: content, lineNumbers } = getFileContentWithLineNumbers(page.name, page.file);
-      const { snippets, totalMatches } = findSnippets(content, query, 3, lineNumbers);
+      const { text: content, lineNumbers } = getFileContentWithLineNumbers(
+        page.name,
+        page.file,
+      );
+      const { snippets, totalMatches } = findSnippets(
+        content,
+        query,
+        3,
+        lineNumbers,
+      );
 
       if (snippets.length > 0) {
         results.push({

@@ -160,7 +160,9 @@ export default function Man3() {
 
               // Process content (URLs and highlighting)
               // Use query param from URL if available for highlighting search results
-              const decodedQuery = queryParam ? decodeURIComponent(queryParam) : "";
+              const decodedQuery = queryParam
+                ? decodeURIComponent(queryParam)
+                : "";
               let processedContent = processPageContent(html, decodedQuery);
 
               // Add GitHub links for "Definition at line X" text and line numbers
@@ -223,7 +225,9 @@ export default function Man3() {
 
             // Process content (URLs and highlighting)
             // Use query param from URL if available for highlighting search results
-            const decodedQuery = queryParam ? decodeURIComponent(queryParam) : "";
+            const decodedQuery = queryParam
+              ? decodeURIComponent(queryParam)
+              : "";
             let processedContent = processPageContent(html, decodedQuery);
 
             // Add GitHub links for "Definition at line X" text and line numbers
@@ -513,7 +517,10 @@ export default function Man3() {
       const regex = new RegExp(`(${query})`, "gi");
       // For code blocks: preserve Doxygen syntax highlighting while adding search highlight
       // Wrap matches with highlight span but preserve existing span classes
-      return html.replace(regex, '<span class="bg-yellow-900/50 text-yellow-200">$1</span>');
+      return html.replace(
+        regex,
+        '<span class="bg-yellow-900/50 text-yellow-200">$1</span>',
+      );
     } catch (_e) {
       return html;
     }
@@ -549,7 +556,7 @@ export default function Man3() {
             // Center the element in the viewport
             const scrollTop = Math.max(
               0,
-              elementTop + elementHeight / 2 - scrollParentHeight / 2
+              elementTop + elementHeight / 2 - scrollParentHeight / 2,
             );
 
             scrollParent.scrollTop = scrollTop;
@@ -585,11 +592,7 @@ export default function Man3() {
           // Update URL with selected page param
           const params = new URLSearchParams(window.location.search);
           params.set("page", pageName);
-          window.history.replaceState(
-            {},
-            "",
-            `/man3?${params.toString()}`,
-          );
+          window.history.replaceState({}, "", `/man3?${params.toString()}`);
         })
         .catch((e) => console.error("Failed to load first search result:", e));
     }
@@ -604,9 +607,14 @@ export default function Man3() {
     // Delay to allow content to render
     setTimeout(() => {
       // Clear any previous yellow highlighting
-      const allHighlighted = viewer.querySelectorAll('[style*="background-color"]');
+      const allHighlighted = viewer.querySelectorAll(
+        '[style*="background-color"]',
+      );
       for (const el of allHighlighted) {
-        if (el.style.backgroundColor === "rgb(255, 191, 36)" || el.style.backgroundColor === "#fbbf24") {
+        if (
+          el.style.backgroundColor === "rgb(255, 191, 36)" ||
+          el.style.backgroundColor === "#fbbf24"
+        ) {
           el.style.backgroundColor = "";
         }
       }
@@ -620,7 +628,7 @@ export default function Man3() {
           viewer,
           NodeFilter.SHOW_TEXT,
           null,
-          false
+          false,
         );
 
         let foundElement = null;
@@ -636,17 +644,28 @@ export default function Man3() {
 
           // Priority 1: Exact match - text is ONLY the line number (with possible whitespace)
           if (trimmed === String(targetLineNumber)) {
-            console.log("[Man3] Found EXACT line number match:", text.substring(0, 30));
+            console.log(
+              "[Man3] Found EXACT line number match:",
+              text.substring(0, 30),
+            );
             potentialMatches.push({ node, priority: 1, text }); // Push to preserve order
           }
           // Priority 2: Line number followed by whitespace only
           else if (new RegExp(`^${targetLineNumber}\\s*$`).test(trimmed)) {
-            console.log("[Man3] Found line number + whitespace:", text.substring(0, 30));
+            console.log(
+              "[Man3] Found line number + whitespace:",
+              text.substring(0, 30),
+            );
             potentialMatches.push({ node, priority: 2, text });
           }
           // Priority 3: Line number in mixed content (fallback)
-          else if (new RegExp(`(^|\\D)${targetLineNumber}(?:\\D|$)`).test(text)) {
-            console.log("[Man3] Found line number in text:", text.substring(0, 30));
+          else if (
+            new RegExp(`(^|\\D)${targetLineNumber}(?:\\D|$)`).test(text)
+          ) {
+            console.log(
+              "[Man3] Found line number in text:",
+              text.substring(0, 30),
+            );
             potentialMatches.push({ node, priority: 3, text });
           }
         }
@@ -655,10 +674,22 @@ export default function Man3() {
         if (potentialMatches.length > 0) {
           // Sort by priority (lower is better, preserves document order for same priority)
           potentialMatches.sort((a, b) => a.priority - b.priority);
-          console.log("[Man3] Found", potentialMatches.length, "potential matches (priority", potentialMatches[0].priority, "), using best match at", potentialMatches[0].text.substring(0, 30));
+          console.log(
+            "[Man3] Found",
+            potentialMatches.length,
+            "potential matches (priority",
+            potentialMatches[0].priority,
+            "), using best match at",
+            potentialMatches[0].text.substring(0, 30),
+          );
           node = potentialMatches[0].node;
           foundElement = node.parentElement;
-          console.log("[Man3] foundElement tag:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
+          console.log(
+            "[Man3] foundElement tag:",
+            foundElement?.tagName,
+            "height:",
+            foundElement?.offsetHeight,
+          );
 
           // Walk up to find a reasonable scrollable/visible parent
           let parent = foundElement;
@@ -667,16 +698,35 @@ export default function Man3() {
           }
           if (parent && parent !== viewer) {
             foundElement = parent;
-            console.log("[Man3] After walking up from 0-height, foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
+            console.log(
+              "[Man3] After walking up from 0-height, foundElement:",
+              foundElement?.tagName,
+              "height:",
+              foundElement?.offsetHeight,
+            );
           }
         }
 
         if (foundElement) {
-          console.log("[Man3] foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight, "offsetTop:", foundElement?.offsetTop, "text:", foundElement?.textContent?.substring(0, 50));
+          console.log(
+            "[Man3] foundElement:",
+            foundElement?.tagName,
+            "height:",
+            foundElement?.offsetHeight,
+            "offsetTop:",
+            foundElement?.offsetTop,
+            "text:",
+            foundElement?.textContent?.substring(0, 50),
+          );
 
           // Get all spans in the CODE block and find those on the same line
-          const codeBlock = foundElement.closest("code") || foundElement.closest("pre");
-          console.log("[Man3] Code block:", codeBlock?.tagName, codeBlock ? "found" : "NOT found");
+          const codeBlock =
+            foundElement.closest("code") || foundElement.closest("pre");
+          console.log(
+            "[Man3] Code block:",
+            codeBlock?.tagName,
+            codeBlock ? "found" : "NOT found",
+          );
 
           if (codeBlock) {
             // Find the offsetTop of our element to identify its line
@@ -685,12 +735,15 @@ export default function Man3() {
 
             // Find all spans/elements in the code block
             const allSpans = codeBlock.querySelectorAll("span, div, *");
-            const lineElements = [];
 
             // Collect all spans on this line that have non-whitespace content
             const lineSpans = [];
             for (const span of allSpans) {
-              if (span.offsetTop === targetTop && span.offsetHeight > 0 && span.offsetHeight < 100) {
+              if (
+                span.offsetTop === targetTop &&
+                span.offsetHeight > 0 &&
+                span.offsetHeight < 100
+              ) {
                 const text = span.textContent || "";
                 if (text.trim().length > 0) {
                   lineSpans.push(span);
@@ -698,7 +751,11 @@ export default function Man3() {
               }
             }
 
-            console.log("[Man3] Found", lineSpans.length, "non-empty spans on line");
+            console.log(
+              "[Man3] Found",
+              lineSpans.length,
+              "non-empty spans on line",
+            );
 
             // Sort by offsetLeft to process left-to-right, then by DOM order
             lineSpans.sort((a, b) => {
@@ -729,13 +786,28 @@ export default function Man3() {
               if (!overlapsExisting) {
                 spansToHighlight.push(span);
                 positionClusters.push(span.offsetLeft);
-                console.log("[Man3] Selected span at", span.offsetLeft, "text:", span.textContent?.substring(0, 20));
+                console.log(
+                  "[Man3] Selected span at",
+                  span.offsetLeft,
+                  "text:",
+                  span.textContent?.substring(0, 20),
+                );
               } else {
-                console.log("[Man3] Skipped span at", span.offsetLeft, "(too close to existing)", "text:", span.textContent?.substring(0, 20));
+                console.log(
+                  "[Man3] Skipped span at",
+                  span.offsetLeft,
+                  "(too close to existing)",
+                  "text:",
+                  span.textContent?.substring(0, 20),
+                );
               }
             }
 
-            console.log("[Man3] Will highlight", spansToHighlight.length, "spans");
+            console.log(
+              "[Man3] Will highlight",
+              spansToHighlight.length,
+              "spans",
+            );
 
             if (spansToHighlight.length > 0) {
               for (const el of spansToHighlight) {
@@ -748,8 +820,15 @@ export default function Man3() {
                 }
               }
 
-              console.log("[Man3] Applied highlight to", spansToHighlight.length, "elements");
-              spansToHighlight[0].scrollIntoView({ behavior: 'auto', block: 'center' });
+              console.log(
+                "[Man3] Applied highlight to",
+                spansToHighlight.length,
+                "elements",
+              );
+              spansToHighlight[0].scrollIntoView({
+                behavior: "auto",
+                block: "center",
+              });
               console.log("[Man3] Scrolled line into view");
             }
           }
@@ -771,7 +850,6 @@ export default function Man3() {
 
       const href = link.getAttribute("href");
       if (!href) return;
-
 
       // Match new converted format: /man3?page=filename[#l00123 or %23l00123]
       const newMatch = href.match(
@@ -852,8 +930,12 @@ export default function Man3() {
         const firstLine = parseInt(block.getAttribute("data-first-line"), 10);
         const lastLine = parseInt(block.getAttribute("data-last-line"), 10);
 
-        if (!isNaN(firstLine) && !isNaN(lastLine) &&
-            targetLineNum >= firstLine && targetLineNum <= lastLine) {
+        if (
+          !isNaN(firstLine) &&
+          !isNaN(lastLine) &&
+          targetLineNum >= firstLine &&
+          targetLineNum <= lastLine
+        ) {
           // Found the code block that contains the target line
           block.scrollIntoView({ behavior: "smooth", block: "center" });
           return true;
@@ -861,7 +943,9 @@ export default function Man3() {
       }
 
       // Final fallback: scroll to first code block if nothing else matched
-      const firstCodeBlock = container.querySelector(".code-with-highlight, pre");
+      const firstCodeBlock = container.querySelector(
+        ".code-with-highlight, pre",
+      );
       if (firstCodeBlock) {
         firstCodeBlock.scrollIntoView({ behavior: "smooth", block: "center" });
         return true;
@@ -966,7 +1050,12 @@ export default function Man3() {
     return lines;
   };
 
-  const renderContentWithCodeBlocks = (html, isSourcePage = false, searchQuery = "", targetLineNum = null) => {
+  const renderContentWithCodeBlocks = (
+    html,
+    isSourcePage = false,
+    searchQuery = "",
+    targetLineNum = null,
+  ) => {
     const elements = [];
     let remaining = html;
 
@@ -990,7 +1079,10 @@ export default function Man3() {
 
         // Strip search highlighting to allow CodeBlock to tokenize properly
         const cleanedContent = codeContent
-          .replace(/<span[^>]*style="[^"]*background-color:\s*#fbbf24[^"]*"[^>]*>/g, "")
+          .replace(
+            /<span[^>]*style="[^"]*background-color:\s*#fbbf24[^"]*"[^>]*>/g,
+            "",
+          )
           .replace(/<span[^>]*class="[^"]*bg-yellow-900[^"]*"[^>]*>/g, "")
           .replace(/<\/span>/g, "");
 
@@ -1064,7 +1156,9 @@ export default function Man3() {
 
           // Use CodeBlock with line highlighting
           // Add an id to the container if this block has a target line for scrolling
-          const blockId = targetLineStart ? `code-block-${targetLineStart}` : undefined;
+          const blockId = targetLineStart
+            ? `code-block-${targetLineStart}`
+            : undefined;
 
           elements.push(
             <div
@@ -1075,7 +1169,11 @@ export default function Man3() {
               data-last-line={lastSourceLineNum}
             >
               <CodeBlock
-                highlightLines={targetLineStart ? { start: targetLineStart, end: targetLineEnd } : undefined}
+                highlightLines={
+                  targetLineStart
+                    ? { start: targetLineStart, end: targetLineEnd }
+                    : undefined
+                }
                 searchQuery={searchQuery}
               >
                 {codeWithLineNumbers}
@@ -1190,10 +1288,16 @@ export default function Man3() {
             .join("\n");
 
           // Add an id to the wrapper if this block has a target line for scrolling
-          const wrapperId = targetLineStart ? `code-block-${targetLineStart}` : undefined;
+          const wrapperId = targetLineStart
+            ? `code-block-${targetLineStart}`
+            : undefined;
           // Also add data attribute to track which source lines are in this block
-          const firstLineNum = codeLines.length > 0 ? codeLines[0].number : null;
-          const lastLineNum = codeLines.length > 0 ? codeLines[codeLines.length - 1].number : null;
+          const firstLineNum =
+            codeLines.length > 0 ? codeLines[0].number : null;
+          const lastLineNum =
+            codeLines.length > 0
+              ? codeLines[codeLines.length - 1].number
+              : null;
 
           elements.push(
             <div
@@ -1218,7 +1322,9 @@ export default function Man3() {
                   pointer-events: none;
                 }
               `}</style>
-              <CodeBlock searchQuery={searchQuery}>{codeWithLineNumbers}</CodeBlock>
+              <CodeBlock searchQuery={searchQuery}>
+                {codeWithLineNumbers}
+              </CodeBlock>
             </div>,
           );
 
@@ -1556,7 +1662,9 @@ export default function Man3() {
                   <div className="man-page-content">
                     {renderContentWithCodeBlocks(
                       selectedPageContent,
-                      selectedPageName?.endsWith("_source") || selectedPageName?.endsWith(".c") || false,
+                      selectedPageName?.endsWith("_source") ||
+                        selectedPageName?.endsWith(".c") ||
+                        false,
                       searchQuery,
                       targetLineNumber,
                     )}

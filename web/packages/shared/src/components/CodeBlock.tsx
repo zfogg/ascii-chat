@@ -20,7 +20,7 @@ export function CodeBlock({
   searchQuery,
   ...props
 }: CodeBlockProps) {
-  const codeRef = useRef<HTMLElement>(null);
+  const codeRef = useRef<HTMLDivElement>(null);
 
   if (inline) {
     return (
@@ -53,10 +53,9 @@ export function CodeBlock({
 
       // Walk through text nodes and apply highlighting
       const walker = document.createTreeWalker(
-        codeBlock,
+        codeBlock as Node,
         NodeFilter.SHOW_TEXT,
-        null,
-        false
+        null
       );
 
       const nodesToProcess: Node[] = [];
@@ -67,7 +66,7 @@ export function CodeBlock({
 
       // Process nodes in reverse to avoid invalidating references
       for (let i = nodesToProcess.length - 1; i >= 0; i--) {
-        const textNode = nodesToProcess[i];
+        const textNode = nodesToProcess[i]!;
         const text = textNode.textContent || '';
         const parent = textNode.parentNode;
         if (!parent || !regex.test(text)) continue;
@@ -99,7 +98,7 @@ export function CodeBlock({
         }
 
         // Replace the text node with the fragment
-        parent.replaceChild(fragment, textNode);
+        parent.replaceChild(fragment, textNode as Node);
       }
     } catch (e) {
       console.error('[CodeBlock] Error:', e);
