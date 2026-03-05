@@ -10,6 +10,7 @@
 ## Related Web Projects
 
 Part of Bun monorepo in `web/`:
+
 - **ascii-chat.com** - Marketing/documentation website
 - **web.ascii-chat.com** (this) - Browser client for terminal chat
 - **discovery.ascii-chat.com** - ACDS public key distribution
@@ -108,6 +109,7 @@ bun run build  # Runs all checks + WASM + vite build
 ```
 
 **Script Breakdown** (from package.json):
+
 - `dev` - Start Vite dev server on port 3000
 - `build` - Full production build via scripts/build.sh
 - `preview` - Preview production build locally
@@ -143,6 +145,7 @@ The `bun run build` command executes `scripts/build.sh` which:
 ### Background
 
 The core ascii-chat C code (mirror and client modes) is compiled to WebAssembly using Emscripten. This allows:
+
 - Video processing in the browser
 - Crypto operations (X25519, XSalsa20-Poly1305)
 - Packet protocol handling
@@ -166,11 +169,13 @@ bun run wasm:clean
 ```
 
 **Build locations:**
+
 - Source: `src/web/mirror.c`, `src/web/client.c`
 - Output: `src/wasm/dist/mirror_web.js`, `src/wasm/dist/client_web.js`, `.wasm` files
 - CMake config: Root `CMakeLists.txt` with `mirror-web` and `client-web` targets
 
 **If WASM build fails:**
+
 - Check that Emscripten is installed and in PATH: `emcc --version`
 - Emscripten not available is non-fatal (build skips with warning)
 - Check C compilation errors in output
@@ -178,6 +183,7 @@ bun run wasm:clean
 ### WASM Module TypeScript Bindings
 
 Each WASM module has TypeScript wrappers:
+
 - `src/wasm/mirror.ts` - Mirror mode wrapper
 - `src/wasm/client.ts` - Client mode wrapper
 - `src/wasm/types.ts` - Shared type definitions
@@ -191,6 +197,7 @@ These provide type-safe interfaces to the compiled C code.
 The project integrates with Claude in Chrome and Playwright for automated browser testing:
 
 **Playwright Configuration:**
+
 - Tests in `tests/e2e/` directory
 - Chromium only (camera/microphone permissions granted)
 - Base URL: `http://localhost:3000`
@@ -199,6 +206,7 @@ The project integrates with Claude in Chrome and Playwright for automated browse
 - Traces: On first retry (CI environment)
 
 **Running Tests:**
+
 ```bash
 # Start dev server and run E2E tests
 bun run test:e2e
@@ -211,12 +219,14 @@ HEADED=true bun run test:e2e
 ```
 
 **Using Claude in Chrome for Manual Testing:**
+
 1. Start the dev server: `bun run dev`
 2. Open Claude in Chrome
 3. Use browser automation tools to interact with the web app
 4. Test UI flows, WebSocket connections, WASM initialization, etc.
 
 **Playwright Browser Permissions:**
+
 - Camera access granted automatically
 - Microphone access granted automatically
 - Useful for testing media input in mirror and client modes
@@ -224,16 +234,19 @@ HEADED=true bun run test:e2e
 ### Test Structure
 
 **Unit tests** (`tests/unit/*.test.ts`):
+
 - Vitest + jsdom
 - Test individual components and utilities
 - Run with `bun run test:unit`
 
 **E2E tests** (`tests/e2e/*.spec.ts`):
+
 - Playwright
 - Test full application flows
 - Run with `bun run test:e2e`
 
 **Test setup:**
+
 - `tests/setup.ts` - Vitest setup for unit tests
 - `playwright.config.ts` - Playwright configuration
 
@@ -354,6 +367,7 @@ web.ascii-chat.com/
 ```
 
 **Key points:**
+
 - Runs `bun run build` from web.ascii-chat.com directory
 - Outputs to `dist/`
 - Installs dependencies from web root (parent directory)
@@ -370,6 +384,7 @@ web.ascii-chat.com/
 ## Shared Dependencies
 
 The project uses `@ascii-chat/shared` from `../packages/shared`:
+
 - Common types and interfaces
 - Shared utilities
 - Installed via Bun workspace (`workspace:*` in package.json)
@@ -400,6 +415,7 @@ All environment variables map to Vercel or build-time configuration:
 If using git hooks from `../../git-hooks/pre-commit`:
 
 Hooks run before each commit:
+
 - TypeScript type checking
 - Prettier formatting check
 - ESLint linting
@@ -410,6 +426,7 @@ To bypass (not recommended): `git commit --no-verify`
 ## Shared TypeScript Configuration
 
 The project extends `../tsconfig.base.json` from the web root. This provides:
+
 - Shared compiler options across all web projects
 - Path aliases (may include others like `@discovery`, `@ascii-chat`, etc)
 - Base library configuration
@@ -472,6 +489,7 @@ bun run test:e2e
 ### Debugging Browser Issues
 
 Use Claude in Chrome browser automation tools:
+
 1. Open the running dev server in Chrome
 2. Use browser automation to interact with the UI
 3. Check browser console for errors: `bun run dev` and look at the output

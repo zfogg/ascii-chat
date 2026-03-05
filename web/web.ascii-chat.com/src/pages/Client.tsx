@@ -1238,7 +1238,11 @@ export function ClientPage() {
       await Promise.race([metadataPromise, timeoutPromise]);
 
       // Validate that canvas has valid dimensions before proceeding
-      if (!canvasRef.current || canvasRef.current.width === 0 || canvasRef.current.height === 0) {
+      if (
+        !canvasRef.current ||
+        canvasRef.current.width === 0 ||
+        canvasRef.current.height === 0
+      ) {
         const video = videoRef.current;
         console.warn(
           `[startWebcam] Canvas dimensions still invalid after metadata wait: canvas=${canvasRef.current?.width}x${canvasRef.current?.height}, video=${video?.videoWidth}x${video?.videoHeight}`,
