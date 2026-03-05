@@ -136,7 +136,7 @@
 173 
 174   // Check if we can allocate more
 175   size_t total_size = sizeof(buffer_node_t) + size;
-176   size_t current = atomic_load_u64(&amp;pool-&gt;current_bytes);
+176   uint64_t current = atomic_load_u64(&amp;pool-&gt;current_bytes);
 177 
 178   // Atomically try to reserve space
 179   while (current + total_size &lt;= pool-&gt;max_bytes) {
@@ -624,8 +624,7 @@
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">

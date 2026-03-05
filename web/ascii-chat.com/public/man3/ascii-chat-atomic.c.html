@@ -214,6 +214,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_int_impl()</b>, and
     <b>atomic_on_cas()</b>.</p>
+<p class="Pp">Referenced by <b>lifecycle_init_once()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> atomic_cas_int_impl (atomic_t * a, int64_t *
@@ -526,7 +527,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_load()</b>.</p>
-<p class="Pp">Referenced by <b>log_console_impl()</b>, <b>log_destroy()</b>,
+<p class="Pp">Referenced by <b>lifecycle_is_initialized()</b>,
+    <b>log_console_impl()</b>, <b>log_destroy()</b>,
     <b>log_disable_file_output()</b>, <b>log_init()</b>, <b>log_msg()</b>,
     <b>log_plain_msg()</b>, <b>log_search_get_global_highlight()</b>,
     <b>log_search_get_match_info()</b>,
@@ -937,7 +939,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_on_store()</b>.</p>
-<p class="Pp">Referenced by <b>log_destroy()</b>,
+<p class="Pp">Referenced by <b>lifecycle_init()</b>,
+    <b>lifecycle_init_abort()</b>, <b>lifecycle_init_commit()</b>,
+    <b>lifecycle_shutdown()</b>, <b>log_destroy()</b>,
     <b>log_disable_file_output()</b>, <b>log_init()</b>,
     <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
     <b>log_search_init()</b>, <b>log_set_json_output()</b>, and
@@ -1019,8 +1023,7 @@
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">

@@ -67,11 +67,12 @@
 <pre>10                                                        {
 11   (void)name;
 12   if (!lc) return false;
-13   atomic_store(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+13   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
 14   return true;
 15 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_lifecycle_init_abort_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_abort_(lifecycle_t_*_lc)">void
@@ -80,10 +81,11 @@
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>30                                            {
 31   if (!lc) return;
-32   atomic_store(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+32   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
 33 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_lifecycle_init_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_commit_(lifecycle_t_*_lc)">void
@@ -92,10 +94,11 @@
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>25                                             {
 26   if (!lc) return;
-27   atomic_store(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+27   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
 28 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_init_once (lifecycle_t * lc)</h2>
@@ -106,11 +109,11 @@
 19 
 20   // Try to transition from UNINITIALIZED to INITIALIZING
 21   int expected = LIFECYCLE_UNINITIALIZED;
-22   return atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING);
+22   return atomic_cas_int(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING);
 23 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_cas_u64()</b>.</p>
+<p class="Pp">References <b>atomic_cas_int()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const lifecycle_t *
@@ -119,10 +122,11 @@
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>45                                                      {
 46   if (!lc) return false;
-47   return atomic_load(&amp;((lifecycle_t *)lc)-&gt;state) == LIFECYCLE_INITIALIZED;
+47   return atomic_load_int((atomic_t *)&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
 48 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>atomic_load_int()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_shutdown (lifecycle_t * lc)</h2>
@@ -130,11 +134,12 @@
     <b>platform/wasm/lifecycle.c</b>.</p>
 <pre>35                                          {
 36   if (!lc) return false;
-37   atomic_store(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+37   atomic_store_int(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
 38   return true;
 39 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>atomic_store_int()</b>.</p>
 <p class="Pp">Referenced by <b>lifecycle_shutdown_forever()</b>.</p>
 </section>
 <section class="Ss">
@@ -151,8 +156,7 @@
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
-<p class="Pp">Generated automatically by Doxygen for ascii-chat from the source
-    code.</p>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
 </section>
 </div>
 <table class="foot">
