@@ -70,6 +70,7 @@ pkill -f "ascii-chat.*(server|client).*$PORT" && sleep 0.5 || true
 cmake --build "$BUILD_DIR"
 
 # Protocol-specific configuration
+declare -a server_args=()
 case "$PROTO" in
   tcp)
     PROTO_PREFIX="tcp"
@@ -85,19 +86,17 @@ case "$PROTO" in
         openssl req -x509 -newkey rsa:2048 -keyout "$key_file" -out "$cert_file" \
           -days 1 -nodes -subj "/CN=localhost"
       fi
-      server_wss_args="--websocket-tls-cert $cert_file --websocket-tls-key $key_file"
+      server_args=(--websocket-tls-cert "$cert_file" --websocket-tls-key "$key_file")
     else
       PROTO_PREFIX="ws"
       echo "Testing WebSocket (WS) connectivity (snapshot delay: ${SNAPSHOT_DELAY}s)"
-      server_wss_args=""
     fi
     ;;
 esac
 
 # Start WebSocket server
-# shellcheck disable=SC2086
 "$BUILD_DIR"/bin/ascii-chat --log-file "$server_log" --log-level debug \
-  server --port "$PORT" --websocket-port "$PORT_WS" $server_wss_args \
+  server --port "$PORT" --websocket-port "$PORT_WS" "${server_args[@]}" \
   >/dev/null 2>&1 &
 SERVER_PID=$!
 sleep 0.25
