@@ -545,16 +545,17 @@ cat video.mp4 | ascii-chat mirror --file -`}
 
               <div>
                 <h3 className="text-xl font-semibold text-orange-300 mb-3">
-                  Create ASCII art video with FFmpeg
+                  Pipe ASCII video through FFmpeg
                 </h3>
                 <CodeBlock language="bash">
-                  {`# Render video as ASCII and overlay on original (cool artistic effect)
-ascii-chat mirror --file input.mp4 --render-file=ascii.txt && \\
-ffmpeg -i input.mp4 -vf "drawtext=fontfile=/usr/share/fonts/truetype/monospace.ttf:textfile=ascii.txt:fontsize=10:fontcolor=00ff00" output.mp4
+                  {`# Convert ASCII-rendered WebM to MP4 with H.264 encoding
+ascii-chat mirror --file input.mp4 --render-file="-" | ffmpeg -i pipe:0 -c:v libx264 -c:a aac output.mp4
 
-# Or create a matrix-style recording with black background
-ascii-chat mirror --file input.mp4 --render-file=ascii.txt && \\
-ffmpeg -f lavfi -i color=black:1920x1440:d=5 -vf "drawtext=fontsize=10:fontcolor=00ff00:x=20:y=20:textfile=ascii.txt" output.mp4`}
+# Re-encode to a different format (GIF, WebP, etc.)
+ascii-chat mirror --file video.mp4 --render-file="-" | ffmpeg -i pipe:0 -vf "fps=10,scale=800:600" output.gif
+
+# Preview ASCII video in real-time with ffplay
+ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
                 </CodeBlock>
               </div>
             </div>
