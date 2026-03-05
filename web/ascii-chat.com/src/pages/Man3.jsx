@@ -23,6 +23,7 @@ export default function Man3() {
   const [regexError, setRegexError] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
+  const searchResultsPanelRef = useRef(null);
 
   // Transform Data Fields section into a table using DOM
   useEffect(() => {
@@ -668,25 +669,8 @@ export default function Man3() {
         );
 
         if (targetElement) {
-          // Find the scrollable parent (the results list container)
-          const scrollParent = targetElement.closest(
-            '.overflow-y-auto[class*="max-h"]',
-          );
-
-          if (scrollParent) {
-            // Calculate scroll position to center the element
-            const elementTop = targetElement.offsetTop;
-            const elementHeight = targetElement.clientHeight;
-            const scrollParentHeight = scrollParent.clientHeight;
-
-            // Center the element in the viewport
-            const scrollTop = Math.max(
-              0,
-              elementTop + elementHeight / 2 - scrollParentHeight / 2,
-            );
-
-            scrollParent.scrollTop = scrollTop;
-          }
+          // Scroll the snippet into view with smooth behavior
+          targetElement.scrollIntoView({ behavior: "smooth", block: "center" });
         }
       }, 100);
     }
