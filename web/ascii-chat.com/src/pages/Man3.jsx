@@ -527,46 +527,50 @@ export default function Man3() {
     }
   };
 
-  // Scroll to target line when content loads
+  // Scroll search result snippet to center when selected
   useEffect(() => {
-    if (selectedPageContent && targetLineNumber && contentViewerRef.current) {
-      // Delay scroll to allow content to render
+    if (targetSnippetIndex !== null && searchResults.length > 0) {
+      // Find the snippet element in the left panel and scroll it into view
       setTimeout(() => {
-        const viewer = contentViewerRef.current;
-        if (viewer) {
-          // Find all highlighted matches in the page
-          // Use attribute selector since Tailwind opacity syntax (/) is not valid in querySelectorAll
-          const highlights = viewer.querySelectorAll(
-            ".man-page-content span[class*='bg-yellow-900']",
-          );
+        // Get all snippet divs in the search results panel
+        const snippetElements = document.querySelectorAll(
+          '[data-snippet-index]',
+        );
 
-          // Use snippet index if available, otherwise find first match near target line
-          let targetHighlight = null;
-          if (
-            targetSnippetIndex !== null &&
-            highlights.length > targetSnippetIndex
-          ) {
-            targetHighlight = highlights[targetSnippetIndex];
-          } else if (highlights.length > 0) {
-            targetHighlight = highlights[0];
-          }
-
-          if (targetHighlight) {
-            // Get element's position relative to the scrollable container
-            const elementTop = targetHighlight.offsetTop;
-
-            // Center it in the viewport
-            const viewportCenter = viewer.clientHeight / 2;
-            const scrollTop = Math.max(0, elementTop - viewportCenter);
-
-            viewer.scrollTop = scrollTop;
+        // Find the one matching our target index
+        let targetElement = null;
+        for (const el of snippetElements) {
+          if (el.getAttribute('data-snippet-index') === String(targetSnippetIndex)) {
+            targetElement = el;
+            break;
           }
         }
-      }, 300);
-      setTargetLineNumber(null);
-      setTargetSnippetIndex(null);
+
+        if (targetElement) {
+          // Find the scrollable parent (the results list container)
+          const scrollParent = targetElement.closest(
+            '.overflow-y-auto[class*="max-h"]',
+          );
+
+          if (scrollParent) {
+            // Calculate scroll position to center the element
+            const elementTop = targetElement.offsetTop;
+            const elementHeight = targetElement.clientHeight;
+            const scrollParentHeight = scrollParent.clientHeight;
+            const scrollParentTop = scrollParent.scrollTop;
+
+            // Center the element in the viewport
+            const centerScroll =
+              elementTop -
+              scrollParentHeight / 2 +
+              elementHeight / 2;
+
+            scrollParent.scrollTop = Math.max(0, centerScroll);
+          }
+        }
+      }, 100);
     }
-  }, [selectedPageContent, targetLineNumber, targetSnippetIndex]);
+  }, [targetSnippetIndex, searchResults]);
 
   // Scroll to hash anchor when content loads (for function links, etc.)
   useEffect(() => {
@@ -1223,6 +1227,7 @@ export default function Man3() {
                               return (
                                 <div
                                   key={idx}
+                                  data-snippet-index={idx}
                                   onClick={() =>
                                     loadPageContent(
                                       page.name,
