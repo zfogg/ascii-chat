@@ -222,13 +222,17 @@ static void *websocket_service_thread(void *arg) {
     }
 
     // Service libwebsockets (processes network events, triggers callbacks)
-    // Call frequently (1ms) to handle both incoming AND outgoing data responsively
+    // Call frequently to handle both incoming AND outgoing data responsively
+    // During TLS handshake: every 100us (1/10 of 1ms) for rapid protocol progression
+    // During data transfer: every 1ms to balance responsiveness vs CPU usage
     uint64_t now_ns = time_get_ns();
     uint64_t time_since_last_service = now_ns - last_service_call;
     int result = 0;
 
-    // Call lws_service() every 1ms for low-latency frame transmission and reception
-    if (time_since_last_service >= 1000000ULL) { // 1ms
+    // Call lws_service() frequently during handshake, less frequently after connection
+    // Use 100us interval during handshake, 1ms after connected
+    uint64_t service_interval = ws_data->is_connected ? 1000000ULL : 100000ULL; // 1ms : 100us
+    if (time_since_last_service >= service_interval) {
       last_service_call = now_ns;
       uint64_t service_start_ns = now_ns;
 
@@ -258,7 +262,10 @@ static void *websocket_service_thread(void *arg) {
       }
     } else {
       // Sleep briefly between lws_service() calls to avoid busy-waiting
-      platform_sleep_us(100); // 0.1ms
+      // During handshake: 10us sleep (will retry service interval quickly)
+      // During transfer: 100us sleep (normal cadence)
+      uint64_t sleep_us = ws_data->is_connected ? 100 : 10;
+      platform_sleep_us(sleep_us);
     }
 
     // Check if connection is still alive
