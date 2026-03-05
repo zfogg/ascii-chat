@@ -578,13 +578,11 @@ cat video.mp4 | ascii-chat mirror --file -`}
                   Internet Protocol) for encrypted peer-to-peer video and audio
                   streaming.{" "}
                   <TrackedLink
-                    href="https://zfogg.github.io/ascii-chat/"
+                    to="/man3"
                     label="Home - libasciichat API Documentation"
-                    target="_blank"
-                    rel="noopener noreferrer"
                     className="text-cyan-400 hover:text-cyan-300 transition-colors underline"
                   >
-                    View Doxygen documentation →
+                    View man(3) API docs →
                   </TrackedLink>
                 </p>
 
