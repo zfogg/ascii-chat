@@ -1023,52 +1023,61 @@ export default function Man3() {
     if (!selectedPageContent || !contentViewerRef.current) return;
 
     const hash = window.location.hash;
-    if (!hash || !hash.match(/#l(\d+)/)) return;
+    if (!hash) return;
 
-    // Try to find and scroll to code block matching the hash line number
+    // Try to find and scroll to hash target (line numbers or element IDs)
     const scrollToHash = () => {
       const container = contentViewerRef.current;
 
-      // Extract line number from hash
+      // Check if hash is a line number pattern (#l<digits> or #l<digits>-<digits>)
       const lineMatch = hash.match(/#l(\d+)/);
-      if (!lineMatch) return false;
+      if (lineMatch) {
+        // Handle line number scrolling
+        const targetLineNum = parseInt(lineMatch[1], 10);
 
-      const targetLineNum = parseInt(lineMatch[1], 10);
-
-      // First try to find by exact ID match (for inline code blocks)
-      const blockId = `code-block-${targetLineNum}`;
-      let targetBlock = container.querySelector(`div[id="${blockId}"]`);
-      if (targetBlock) {
-        targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-        return true;
-      }
-
-      // Otherwise, look for a code block that contains this line number
-      // by checking data attributes (first-line and last-line)
-      const allCodeBlocks = container.querySelectorAll(".code-with-highlight");
-      for (const block of allCodeBlocks) {
-        const firstLine = parseInt(block.getAttribute("data-first-line"), 10);
-        const lastLine = parseInt(block.getAttribute("data-last-line"), 10);
-
-        if (
-          !isNaN(firstLine) &&
-          !isNaN(lastLine) &&
-          targetLineNum >= firstLine &&
-          targetLineNum <= lastLine
-        ) {
-          // Found the code block that contains the target line
-          block.scrollIntoView({ behavior: "smooth", block: "center" });
+        // First try to find by exact ID match (for inline code blocks)
+        const blockId = `code-block-${targetLineNum}`;
+        let targetBlock = container.querySelector(`div[id="${blockId}"]`);
+        if (targetBlock) {
+          targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
           return true;
         }
-      }
 
-      // Final fallback: scroll to first code block if nothing else matched
-      const firstCodeBlock = container.querySelector(
-        ".code-with-highlight, pre",
-      );
-      if (firstCodeBlock) {
-        firstCodeBlock.scrollIntoView({ behavior: "smooth", block: "center" });
-        return true;
+        // Otherwise, look for a code block that contains this line number
+        // by checking data attributes (first-line and last-line)
+        const allCodeBlocks = container.querySelectorAll(".code-with-highlight");
+        for (const block of allCodeBlocks) {
+          const firstLine = parseInt(block.getAttribute("data-first-line"), 10);
+          const lastLine = parseInt(block.getAttribute("data-last-line"), 10);
+
+          if (
+            !isNaN(firstLine) &&
+            !isNaN(lastLine) &&
+            targetLineNum >= firstLine &&
+            targetLineNum <= lastLine
+          ) {
+            // Found the code block that contains the target line
+            block.scrollIntoView({ behavior: "smooth", block: "center" });
+            return true;
+          }
+        }
+
+        // Final fallback: scroll to first code block if nothing else matched
+        const firstCodeBlock = container.querySelector(
+          ".code-with-highlight, pre",
+        );
+        if (firstCodeBlock) {
+          firstCodeBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+          return true;
+        }
+      } else {
+        // Handle non-line-number hashes (section IDs, function IDs, etc.)
+        const elementId = hash.substring(1); // Remove the # prefix
+        const targetElement = container.querySelector(`[id="${elementId}"]`);
+        if (targetElement) {
+          targetElement.scrollIntoView({ behavior: "smooth", block: "start" });
+          return true;
+        }
       }
 
       return false;
