@@ -551,7 +551,7 @@ cat video.mp4 | ascii-chat mirror --file -`}
                   {`# Render 60 seconds of Twitch stream as ASCII art video
 ascii-chat mirror --url 'https://www.twitch.tv/doublelift' --snapshot --snapshot-delay 60 --render-file=ascii-art.mp4
 
-# Pipe ASCII-rendered GIF with black bars (400x600 aspect ratio preserved)
+# Pipe ASCII-rendered GIF (400x600 aspect ratio preserved)
 ascii-chat mirror --file input.mp4 --render-file="-" --render-file-format=gif | ffmpeg -i pipe:0 -vf "scale=400:600:force_original_aspect_ratio=1,pad=400:600:(ow-iw)/2:(oh-ih)/2:color=black" output.gif
 
 # Preview ASCII video in real-time with ffplay
