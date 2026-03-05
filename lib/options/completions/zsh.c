@@ -15,46 +15,14 @@
 
 /**
  * Escape special characters in completion descriptions for zsh
- * Keep descriptions under 120 characters, truncating at last space
  */
 static void zsh_escape_desc(FILE *output, const char *text) {
   if (!text) {
     return;
   }
 
-  const size_t MAX_DESC = 120;
-  size_t len = strlen(text);
-
-  // If short enough, just escape normally
-  if (len <= MAX_DESC) {
-    for (const char *p = text; *p; p++) {
-      switch (*p) {
-      case '\'':
-        fprintf(output, "'\\''");
-        break;
-      case '\n':
-      case '\t':
-        fprintf(output, " ");
-        break;
-      default:
-        fputc(*p, output);
-      }
-    }
-    return;
-  }
-
-  // Truncate at last space before MAX_DESC
-  size_t truncate_at = MAX_DESC;
-  for (size_t i = MAX_DESC; i > 0; i--) {
-    if (text[i] == ' ' || text[i] == '.') {
-      truncate_at = i;
-      break;
-    }
-  }
-
-  // Escape and output truncated text
-  for (size_t i = 0; i < truncate_at && text[i]; i++) {
-    switch (text[i]) {
+  for (const char *p = text; *p; p++) {
+    switch (*p) {
     case '\'':
       fprintf(output, "'\\''");
       break;
@@ -63,7 +31,7 @@ static void zsh_escape_desc(FILE *output, const char *text) {
       fprintf(output, " ");
       break;
     default:
-      fputc(text[i], output);
+      fputc(*p, output);
     }
   }
 }
