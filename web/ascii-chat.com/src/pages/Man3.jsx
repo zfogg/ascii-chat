@@ -866,18 +866,12 @@ export default function Man3() {
             </pre>,
           );
         } else {
-          codeContent = decodeHtmlEntities(codeContent);
-          if (codeContent.trim()) {
-          const lines = codeContent.split("\n");
-          const maxLineNum = lines.length.toString().length;
-
-          // Extract target line number(s) from hash if present
+          // Check for target line hash before decoding
           const hash = window.location.hash;
           let targetLineStart = null;
           let targetLineEnd = null;
 
           if (isSourcePage) {
-            // Match both single line (#l00423) and range (#l00423-00458)
             const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
             if (rangeMatch) {
               targetLineStart = parseInt(rangeMatch[1], 10);
@@ -887,38 +881,62 @@ export default function Man3() {
             }
           }
 
-          // If target line(s) exist on source pages, use CodeBlock for syntax highlighting
+          // If target line exists, preserve original HTML with Doxygen syntax highlighting
           if (targetLineStart !== null && isSourcePage) {
-            const codeWithLineNumbers = lines
-              .map((text, idx) => {
+            const lines = codeContent.split("\n");
+            const maxLineNum = lines.length.toString().length;
+
+            const highlightedHtml = lines
+              .map((line, idx) => {
                 const lineNum = idx + 1;
                 const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                return `    ${paddedNum}  ${text}`;
+                const isTarget =
+                  lineNum >= targetLineStart && lineNum <= targetLineEnd;
+
+                if (isTarget) {
+                  return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${line} ⟸</span></div>`;
+                }
+                return `<div style="font-family: monospace;"><span>    ${paddedNum}  ${line}</span></div>`;
               })
-              .join("\n");
+              .join("");
 
             elements.push(
-              <CodeBlock key={`code-${elements.length}`} language="c">
-                {codeWithLineNumbers}
-              </CodeBlock>,
+              <div
+                key={`code-${elements.length}`}
+                style={{
+                  fontSize: "0.875rem",
+                  lineHeight: "1.5",
+                  backgroundColor: "#111827",
+                  padding: "1rem",
+                  borderRadius: "0.5rem",
+                  overflow: "auto",
+                  marginBottom: "1rem",
+                }}
+                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+              />,
             );
           } else {
-            // No target line, use CodeBlock for syntax highlighting
-            const codeWithLineNumbers = lines
-              .map((text, idx) => {
-                const lineNum = idx + 1;
-                const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                return `    ${paddedNum}  ${text}`;
-              })
-              .join("\n");
+            // No target line, decode and use CodeBlock
+            const decodedContent = decodeHtmlEntities(codeContent);
+            if (decodedContent.trim()) {
+              const lines = decodedContent.split("\n");
+              const maxLineNum = lines.length.toString().length;
 
-            elements.push(
-              <CodeBlock key={`code-${elements.length}`} language="c">
-                {codeWithLineNumbers}
-              </CodeBlock>,
-            );
+              const codeWithLineNumbers = lines
+                .map((text, idx) => {
+                  const lineNum = idx + 1;
+                  const paddedNum = String(lineNum).padStart(maxLineNum, " ");
+                  return `    ${paddedNum}  ${text}`;
+                })
+                .join("\n");
+
+              elements.push(
+                <CodeBlock key={`code-${elements.length}`} language="c">
+                  {codeWithLineNumbers}
+                </CodeBlock>,
+              );
+            }
           }
-        }
         }
 
         // Update remaining to after the pre tag
