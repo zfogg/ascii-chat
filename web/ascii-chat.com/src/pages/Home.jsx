@@ -593,7 +593,8 @@ cat video.mp4 | ascii-chat mirror --file -`}
                 <ul className="list-disc list-inside space-y-2 text-gray-300 mb-4 ml-4">
                   <li>
                     <strong className="text-cyan-400">Video:</strong> Webcam,
-                    files, ASCII conversion, palettes, color modes, H.265 encoding
+                    files, ASCII conversion, palettes, color modes, H.265
+                    encoding
                   </li>
                   <li>
                     <strong className="text-purple-400">Audio:</strong> Opus
@@ -612,7 +613,8 @@ cat video.mp4 | ascii-chat mirror --file -`}
                     Handshake, sessions, packets, multi-client
                   </li>
                   <li>
-                    <strong className="text-purple-400">Terminal:</strong> Capability detection, color modes, UTF-8, cross-platform
+                    <strong className="text-purple-400">Terminal:</strong>{" "}
+                    Capability detection, color modes, UTF-8, cross-platform
                   </li>
                 </ul>
 

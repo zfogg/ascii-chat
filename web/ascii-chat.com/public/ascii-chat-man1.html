@@ -92,10 +92,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty) start new session
-phony-beck-slip
-difficult-worship-raise
-subconscious-bun-chi
-lebanese-topic-platoon</pre>
+suburban-pause-soda
+hearsay-pickle-wager
+humorous-realm-coffin
+tan-shrink-engineer</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -179,39 +179,39 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat parental-bus-shove</b></dt>
+  <dt><b>ascii-chat regular-cod-irony</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat waste-instant-cure --file video.mp4</b></dt>
+  <dt><b>ascii-chat bronze-hillary-paycheck --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat tenacious-fundamental-urge --url
+  <dt><b>ascii-chat plastic-margarita-morphine --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat offensive-webster-tidy -f -</b></dt>
+  <dt><b>ascii-chat seasonal-aerial-marine -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat rude-lounge-monster --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat intensive-grub-squid --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat taken-dowry-limo --discovery-service
+  <dt><b>ascii-chat moderate-dignity-convoy --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat discovery-service</b></dt>
+  <dt><b>ascii-chat server</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
   <dt><b>ascii-chat server 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
-  <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
+  <dt><b>ascii-chat discovery-service 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat server --port 8080</b></dt>
+  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat mirror --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
   <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat client --snapshot</b></dt>
+  <dt><b>ascii-chat mirror --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
@@ -428,9 +428,9 @@ https://example.com/stream.m3u8</pre>
   <dt id="P,"><a class="permalink" href="#P,"><b>-P, --palette
     <i>VALUE</i></b></a></dt>
   <dd>Palette type with which to render images to text art. Values: standard,
-      blocks, digital, minimal, cool, custom. All but &quot;custom&quot; are
-      built-in presets that all look different and nice. Try them out! (modes:
-      default, client, mirror)</dd>
+      blocks, digital, minimal, cool, custom. All but 'custom' are built-in
+      presets that all look different and nice. Try them out. (modes: default,
+      client, mirror)</dd>
   <dt id="C,"><a class="permalink" href="#C,"><b>-C, --palette-chars
     <i>STRING</i></b></a></dt>
   <dd>Ordered sequence of characters from darkest to brightest to use with
@@ -516,8 +516,8 @@ https://example.com/stream.m3u8</pre>
   <dd>Alias for --microphone-volume. (modes: default, client, mirror)</dd>
   <dt id="speakers-volume"><a class="permalink" href="#speakers-volume"><b>--speakers-volume
     <i>VALUE</i></b></a></dt>
-  <dd>Speakers volume multiplier (0.0-1.0; press &#x2191;/&#x2193; during
-      rendering to adjust). (modes: default, client, mirror)</dd>
+  <dd>Speakers volume multiplier (0.0-1.0; press ^/v during rendering to
+      adjust). (modes: default, client, mirror)</dd>
   <dt id="volume"><a class="permalink" href="#volume"><b>--volume
     <i>VALUE</i></b></a></dt>
   <dd>Alias for --speakers-volume. (modes: default, client, mirror)</dd>
@@ -579,10 +579,8 @@ https://example.com/stream.m3u8</pre>
   <dt id="yt-dlp-options"><a class="permalink" href="#yt-dlp-options"><b>--yt-dlp-options
     <i>STRING</i></b></a></dt>
   <dd>Arbitrary yt-dlp options passed to the extraction subprocess for URL
-      resolution. Examples: &quot;--no-warnings&quot; or &quot;--proxy
-      socks5://127.0.0.1:1080&quot; or
-      &quot;--cookies-from-browser=firefox&quot;. (modes: default, client,
-      mirror)</dd>
+      resolution. Examples: --no-warnings or --proxy socks5://127.0.0.1:1080 or
+      --cookies-from-browser=firefox. (modes: default, client, mirror)</dd>
   <dt id="video-codec"><a class="permalink" href="#video-codec"><b>--video-codec
     <i>CODEC</i></b></a></dt>
   <dd>Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265
@@ -598,13 +596,12 @@ https://example.com/stream.m3u8</pre>
       Linux only). (modes: default, client, mirror)</dd>
   <dt id="render-font"><a class="permalink" href="#render-font"><b>--render-font
     <i>FONT</i></b></a></dt>
-  <dd>Font for render-file output: bundled names (&quot;matrix&quot; or
-      &quot;default&quot;), system font names, or absolute .ttf/.otf path.
-      Default: &quot;matrix&quot; (Matrix Resurrected font). Falls back to
-      &quot;default&quot; (DejaVu Sans Mono) if unavailable. Examples:
-      &quot;matrix&quot;, &quot;default&quot;, &quot;JetBrains Mono&quot;,
-      &quot;Nerd Font Mono&quot;, &quot;/path/to/font.ttf&quot; (macOS and Linux
-      only). (modes: default, client, mirror)</dd>
+  <dd>Font for render-file output: bundled names (matrix or default), system
+      font names, or absolute .ttf/.otf path. Default: matrix (Matrix
+      Resurrected font). Falls back to default (DejaVu Sans Mono) if
+      unavailable. Examples: matrix, default, JetBrains Mono, Nerd Font Mono,
+      /path/to/font.ttf. (macOS and Linux only). (modes: default, client,
+      mirror)</dd>
   <dt id="render-font-size"><a class="permalink" href="#render-font-size"><b>--render-font-size
     <i>SIZE</i></b></a></dt>
   <dd>Font size in points for render-file output (default: 12.0, must be &gt; 0,
