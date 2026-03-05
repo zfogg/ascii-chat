@@ -9,7 +9,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
-#include <ascii-chat/video/ascii/avx2/foreground.h>
+#include <ascii-chat/video/ascii/avx2/common.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>

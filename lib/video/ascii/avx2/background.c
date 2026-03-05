@@ -8,8 +8,7 @@
  */
 
 #if SIMD_SUPPORT_AVX2
-#include <ascii-chat/video/ascii/avx2/background.h>
-#include <ascii-chat/video/ascii/avx2/foreground.h>
+#include <ascii-chat/video/ascii/avx2/common.h>
 #include <ascii-chat/common.h>
 
 // Wrapper for background color rendering
