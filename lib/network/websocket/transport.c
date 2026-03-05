@@ -352,13 +352,18 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
              callback_count, reason, reason, (void *)wsi, len, (unsigned long long)now_ns);
   }
 
-  // Early exit during shutdown to prevent crashes in libwebsockets callbacks
-  if (ws_data && atomic_load_bool(&ws_data->is_destroying)) {
+  // Validate ws_data exists before accessing it (prevents heap-buffer-overflow in TLS callbacks)
+  // For unknown callbacks (especially TLS internal callbacks from OpenSSL), return early
+  if (!ws_data) {
     return 0;
   }
 
   switch (reason) {
   case LWS_CALLBACK_CLIENT_ESTABLISHED: {
+    // Don't process if we're in shutdown mode
+    if (atomic_load_bool(&ws_data->is_destroying)) {
+      return 0;
+    }
     uint64_t now_ns = time_get_ns();
     log_fatal("🟢🟢🟢 WebSocket CLIENT_ESTABLISHED! wsi=%p, ws_data=%p, timestamp=%llu, elapsed_from_start=%llu",
               (void *)wsi, (void *)ws_data,
@@ -376,9 +381,12 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 
   case LWS_CALLBACK_CLIENT_RECEIVE: {
     // Received data from server - may be fragmented for large messages
+    if (atomic_load_bool(&ws_data->is_destroying)) {
+      return 0;
+    }
     uint64_t now_ns = time_get_ns();
-    if (!ws_data || !in || len == 0) {
-      log_debug("CLIENT_RECEIVE: ws_data=%p, in=%p, len=%zu - skipping", (void *)ws_data, in, len);
+    if (!in || len == 0) {
+      log_debug("CLIENT_RECEIVE: in=%p, len=%zu - skipping", in, len);
       break;
     }
 
