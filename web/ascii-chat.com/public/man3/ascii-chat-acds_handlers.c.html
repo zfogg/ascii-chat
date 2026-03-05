@@ -51,7 +51,7 @@
 <br/>
 <p class="Pp">#define <b>ACDS_HASH_SIZE</b> 32
   <br/>
-  #define <b>ACDS_HANDLER_COUNT</b> 11
+  #define <b>ACDS_HANDLER_COUNT</b> 10
   <br/>
   #define <b>ACDS_HASH</b>(type)
   <br/>
@@ -99,8 +99,8 @@
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="_define_ACDS_HANDLER_COUNT___11"><a class="permalink" href="#_define_ACDS_HANDLER_COUNT___11">#define
-  ACDS_HANDLER_COUNT 11</a></h2>
+<h2 class="Ss" id="_define_ACDS_HANDLER_COUNT___10"><a class="permalink" href="#_define_ACDS_HANDLER_COUNT___10">#define
+  ACDS_HANDLER_COUNT 10</a></h2>
 <p class="Pp">Definition at line <b>31</b> of file <b>acds_handlers.c</b>.</p>
 </section>
 <section class="Ss">
@@ -137,21 +137,21 @@
   acip_handle_acds_packet (<b>acip_transport_t</b> * transport, packet_type_t
   type, const void * payload, size_t payload_len, int client_socket, const char
   * client_ip, const acip_acds_callbacks_t * callbacks)</a></h2>
-<p class="Pp">Definition at line <b>118</b> of file <b>acds_handlers.c</b>.</p>
-<pre>120                                                                                   {
-121   if (!callbacks) {
-122     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
-123   }
-124   (void)transport;
-125 
-126   // O(1) dispatch via hash table lookup
-127   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
-128   if (idx &lt; 0) {
-129     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
-130   }
-131 
-132   return g_acds_handlers[idx](payload, payload_len, client_socket, client_ip, callbacks);
-133 }</pre>
+<p class="Pp">Definition at line <b>114</b> of file <b>acds_handlers.c</b>.</p>
+<pre>116                                                                                   {
+117   if (!callbacks) {
+118     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Invalid callbacks&quot;);
+119   }
+120   (void)transport;
+121 
+122   // O(1) dispatch via hash table lookup
+123   int idx = acds_handler_hash_lookup(g_acds_handler_hash, type);
+124   if (idx &lt; 0) {
+125     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Unhandled ACDS packet type: %d from %s&quot;, type, client_ip);
+126   }
+127 
+128   return g_acds_handlers[idx](payload, payload_len, client_socket, client_ip, callbacks);
+129 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>.</p>
