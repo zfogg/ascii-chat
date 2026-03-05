@@ -16,6 +16,7 @@ export default function Man3() {
   const [searching, setSearching] = useState(false);
   const [selectedPageContent, setSelectedPageContent] = useState(null);
   const [selectedPageName, setSelectedPageName] = useState(null);
+  const [pageNotFound, setPageNotFound] = useState(false);
   const [targetLineNumber, setTargetLineNumber] = useState(null);
   const [targetSnippetIndex, setTargetSnippetIndex] = useState(null);
   const [regexError, setRegexError] = useState(null);
@@ -88,11 +89,27 @@ export default function Man3() {
       // Otherwise, fetch pages.json first
       if (manPages.length > 0) {
         const page = manPages.find((p) => p.name === pageName);
-        const filename = page ? page.file : `${pageName}.html`;
 
-        fetch(`/man3/${filename}`)
-          .then((r) => r.text())
+        // Check if page exists in the pages list
+        if (!page) {
+          setPageNotFound(true);
+          setSelectedPageContent(null);
+        } else {
+          setPageNotFound(false);
+          const filename = page.file;
+
+          fetch(`/man3/${filename}`)
+          .then((r) => {
+            if (!r.ok) {
+              setPageNotFound(true);
+              setSelectedPageContent(null);
+              return null;
+            }
+            return r.text();
+          })
           .then((html) => {
+            if (!html) return;
+            setPageNotFound(false);
             // Extract stylesheets from head
             const stylesheets = [];
             const styleMatches = html.matchAll(
@@ -116,12 +133,26 @@ export default function Man3() {
             const content = stylesheets.join("\n") + processedContent;
             setSelectedPageContent(content);
           })
-          .catch((e) => console.error("Failed to load page:", e));
+          .catch((e) => {
+            console.error("Failed to load page:", e);
+            setPageNotFound(true);
+            setSelectedPageContent(null);
+          });
+        }
       } else {
         // manPages not loaded yet, try default filename
         fetch(`/man3/${pageName}.html`)
-          .then((r) => r.text())
+          .then((r) => {
+            if (!r.ok) {
+              setPageNotFound(true);
+              setSelectedPageContent(null);
+              return null;
+            }
+            return r.text();
+          })
           .then((html) => {
+            if (!html) return;
+            setPageNotFound(false);
             // Extract stylesheets from head
             const stylesheets = [];
             const styleMatches = html.matchAll(
@@ -145,7 +176,11 @@ export default function Man3() {
             const content = stylesheets.join("\n") + processedContent;
             setSelectedPageContent(content);
           })
-          .catch((e) => console.error("Failed to load page:", e));
+          .catch((e) => {
+            console.error("Failed to load page:", e);
+            setPageNotFound(true);
+            setSelectedPageContent(null);
+          });
       }
     }
   }, [processPageContent, manPages]);
@@ -286,7 +321,15 @@ export default function Man3() {
         return;
       }
 
-      fetch(`/man3/${pageName}.html`)
+      // Look up the actual filename from manPages
+      // Falls back to ${pageName}.html if page not found
+      let filename = `${pageName}.html`;
+      const page = manPages.find((p) => p.name === pageName);
+      if (page) {
+        filename = page.file;
+      }
+
+      fetch(`/man3/${filename}`)
         .then((r) => r.text())
         .then((html) => {
           // Scroll to top before loading new content
@@ -325,7 +368,7 @@ export default function Man3() {
         })
         .catch((e) => console.error("Failed to load page:", e));
     },
-    [processPageContent, searchQuery, selectedPageName],
+    [processPageContent, searchQuery, selectedPageName, manPages],
   );
 
   const highlightMatches = (text, query) => {
@@ -1126,7 +1169,26 @@ export default function Man3() {
 
             {/* Content viewer */}
             <div className="flex-1 min-w-0">
-              {selectedPageContent ? (
+              {pageNotFound ? (
+                <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto h-[calc(100vh-300px)] flex flex-col items-center justify-center">
+                  <div className="text-center">
+                    <h2 className="text-7xl font-bold text-red-400 mb-6">
+                      404
+                    </h2>
+                    <p className="text-3xl text-red-400 font-semibold mb-8">
+                      Page Not Found
+                    </p>
+                    <div className="text-gray-400 text-lg">
+                      <p className="mb-6">
+                        The documentation page for <code className="bg-gray-800 px-3 py-2 rounded text-xl">{selectedPageName}</code> could not be found.
+                      </p>
+                      <p className="text-gray-500">
+                        Try searching for a different page or check the spelling.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : selectedPageContent ? (
                 <div
                   ref={contentViewerRef}
                   className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]"
