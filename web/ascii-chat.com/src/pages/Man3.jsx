@@ -667,13 +667,11 @@ export default function Man3() {
             const allSpans = codeBlock.querySelectorAll("span, div, *");
             const lineElements = [];
 
-            // Collect all text content on this line and find the best container to highlight
-            // Strategy: Get a minimal set of spans that covers the entire line without overlapping
+            // Collect all spans on this line that have non-whitespace content
             const lineSpans = [];
             for (const span of allSpans) {
               if (span.offsetTop === targetTop && span.offsetHeight > 0 && span.offsetHeight < 100) {
                 const text = span.textContent || "";
-                // Only include spans with non-whitespace content
                 if (text.trim().length > 0) {
                   lineSpans.push(span);
                 }
@@ -682,36 +680,47 @@ export default function Man3() {
 
             console.log("[Man3] Found", lineSpans.length, "non-empty spans on line");
 
-            // Sort spans by offsetLeft to process left-to-right
-            lineSpans.sort((a, b) => a.offsetLeft - b.offsetLeft);
+            // Sort by offsetLeft to process left-to-right, then by DOM order
+            lineSpans.sort((a, b) => {
+              if (Math.abs(a.offsetLeft - b.offsetLeft) > 1) {
+                return a.offsetLeft - b.offsetLeft;
+              }
+              // Same position - preserve DOM order
+              return 0;
+            });
 
-            // Build a minimal set of spans without overlapping
-            // Keep only spans that don't completely overlap with earlier spans
+            // Filter: only keep spans that have minimal overlap
+            // Two spans overlap if their offsetLeft values are very close (within 5px)
+            // Keep only the first span at each visual position cluster
             const spansToHighlight = [];
-            let maxEndPos = -1;
+            const positionClusters = []; // Track positions we've already covered
 
             for (const span of lineSpans) {
-              const spanStart = span.offsetLeft;
-              const spanEnd = span.offsetLeft + span.offsetWidth;
+              let overlapsExisting = false;
 
-              // Only add if it extends beyond what we've already covered
-              if (spanEnd > maxEndPos) {
+              // Check if this span's position already has a nearby span highlighted
+              for (const clusterPos of positionClusters) {
+                if (Math.abs(span.offsetLeft - clusterPos) < 5) {
+                  overlapsExisting = true;
+                  break;
+                }
+              }
+
+              if (!overlapsExisting) {
                 spansToHighlight.push(span);
-                maxEndPos = Math.max(maxEndPos, spanEnd);
-                console.log("[Man3] Added span covering", spanStart, 'to', spanEnd, 'text:', span.textContent?.substring(0, 20));
+                positionClusters.push(span.offsetLeft);
+                console.log("[Man3] Selected span at", span.offsetLeft, "text:", span.textContent?.substring(0, 20));
               } else {
-                console.log("[Man3] Skipped overlapping span at', spanStart, "text:", span.textContent?.substring(0, 20));
+                console.log("[Man3] Skipped span at", span.offsetLeft, "(too close to existing)", "text:", span.textContent?.substring(0, 20));
               }
             }
 
-            console.log("[Man3] Will highlight", spansToHighlight.length, "spans (minimal non-overlapping set)");
+            console.log("[Man3] Will highlight", spansToHighlight.length, "spans");
 
             if (spansToHighlight.length > 0) {
-              // Highlight all non-overlapping spans on the line
               for (const el of spansToHighlight) {
                 el.style.backgroundColor = "#fbbf24";
                 el.style.color = "#000000";
-                // Ensure visible
                 if (el.offsetHeight === 0) {
                   el.style.display = "inline";
                   el.style.visibility = "visible";
@@ -720,8 +729,6 @@ export default function Man3() {
               }
 
               console.log("[Man3] Applied highlight to", spansToHighlight.length, "elements");
-
-              // Scroll the first element into view, centered
               spansToHighlight[0].scrollIntoView({ behavior: 'auto', block: 'center' });
               console.log("[Man3] Scrolled line into view");
             }
