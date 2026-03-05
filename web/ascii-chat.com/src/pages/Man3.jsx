@@ -681,6 +681,7 @@ export default function Man3() {
               // Highlight all elements on this line
               for (const el of lineElements) {
                 el.style.backgroundColor = "#fbbf24";
+                el.style.color = "#000000";
               }
               console.log("[Man3] Applied highlight to", lineElements.length, "elements");
 
