@@ -59,29 +59,38 @@ from pathlib import Path
 import re
 
 man3_dir = Path("public/man3")
+build_man3_dir = Path("../../build/share/man/man3")
 pages = []
 
 # Get all HTML files except pages.json
 for html_file in sorted(man3_dir.glob("*.html")):
     filename = html_file.name
-    # Extract the base name without .html
-    basename = filename[:-5]  # Remove .html
+    basename_no_ext = filename[:-5]  # Remove .html
 
-    # Remove "ascii-chat-" prefix to get the original doxygen name
-    if basename.startswith("ascii-chat-"):
-        doxygen_name = basename[11:]  # Remove "ascii-chat-" prefix
-    else:
-        doxygen_name = basename
+    # Corresponding .3 file has same basename but with .3 extension
+    man3_file = build_man3_dir / f"{basename_no_ext}.3"
 
-    # Create a readable title from the filename
-    # Replace underscores and hyphens with spaces, but keep structure
-    title = doxygen_name.replace("_8c", ".c").replace("_8h", ".h")
-    title = re.sub(r'_(\d+)', lambda m: '', title)  # Remove numeric suffixes like _source
-    title = title.replace("_", " ").replace("-", " ")
+    # Extract Doxygen name from .3 file
+    name = None
+    if man3_file.exists():
+        try:
+            content = man3_file.read_text(encoding='utf-8', errors='ignore')
+            # Extract from .TH line: .TH "name" 3 ...
+            th_match = re.search(r'\.TH\s+"([^"]+)"', content)
+            if th_match:
+                name = th_match.group(1).strip()
+        except Exception:
+            pass
+
+    # Fallback: use basename with ascii-chat- prefix removed
+    if not name:
+        name = basename_no_ext
+        if name.startswith("ascii-chat-"):
+            name = name[11:]  # Remove "ascii-chat-" prefix
 
     pages.append({
-        "name": doxygen_name,
-        "title": title,
+        "name": name,
+        "title": name,
         "file": filename
     })
 
