@@ -23,12 +23,26 @@ static void zsh_escape_desc(FILE *output, const char *text) {
 
   for (const char *p = text; *p; p++) {
     switch (*p) {
-    case '\'':
-      fprintf(output, "'\\''");
+    case '"':
+      // Escape double quotes for zsh double-quoted strings
+      fprintf(output, "\\\"");
       break;
     case '\\':
-      // Escape backslashes for zsh single-quoted strings
+      // Escape backslashes for zsh double-quoted strings
       fprintf(output, "\\\\");
+      break;
+    case '$':
+      // Escape dollar signs to prevent variable expansion
+      fprintf(output, "\\$");
+      break;
+    case '`':
+      // Escape backticks to prevent command substitution
+      fprintf(output, "\\`");
+      break;
+    case ':':
+      // Colons don't need escaping in descriptions - they only have special meaning
+      // as field separators before the description, which has already been written
+      fputc(':', output);
       break;
     case '\n':
     case '\t':
@@ -106,9 +120,9 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
       if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
 
       // Long option only (short options are less discoverable via TAB)
-      fprintf(output, "    '--%s:", opts[i].long_name);
+      fprintf(output, "    \"--%s:", opts[i].long_name);
       zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "'\n");
+      fprintf(output, "\"\n");
     }
 
     fprintf(output, "  )\n");
