@@ -154,6 +154,12 @@
 }
 
 .man-data-field-type,
+.man-data-field-name,
+.man-data-field-desc {
+  vertical-align: top;
+}
+
+.man-data-field-type,
 .man-data-field-name {
   padding-right: 1rem;
 }
