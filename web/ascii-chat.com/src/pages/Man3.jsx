@@ -591,29 +591,28 @@ export default function Man3() {
         }
       }
 
-      // Try multiple selectors - the class is "bg-yellow-900/50" but we need to search for the escaped version
-      let highlightedElements = viewer.querySelectorAll('[class~="bg-yellow-900/50"]');
-      console.log('[DEBUG] Selector 1 ([class~="bg-yellow-900/50"]):', highlightedElements.length);
+      // Search for elements with the bg-yellow-900/50 class (note: / is literal in HTML class)
+      let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900/50"]');
+      console.log('[DEBUG] Selector 1 ([class*="bg-yellow-900/50"]):', highlightedElements.length);
 
       if (highlightedElements.length === 0) {
-        // Fallback: search for ANY span with "bg-yellow" in class
-        highlightedElements = viewer.querySelectorAll('span[class*="bg-yellow"]');
-        console.log('[DEBUG] Selector 2 (span[class*="bg-yellow"]):', highlightedElements.length);
+        // Try any element with bg-yellow (not just spans)
+        highlightedElements = viewer.querySelectorAll('[class*="bg-yellow"]');
+        console.log('[DEBUG] Selector 2 ([class*="bg-yellow"] - any element):', highlightedElements.length);
       }
 
-      console.log('[DEBUG] Checking if need manual filter - length:', highlightedElements.length);
       if (highlightedElements.length === 0) {
-        // Manually search through all spans and find ones with the yellow class
-        const allSpans = viewer.querySelectorAll('span');
-        console.log('[DEBUG] Total spans in right panel:', allSpans.length);
-        highlightedElements = Array.from(allSpans).filter(span => {
-          const hasYellow = span.className && span.className.includes('bg-yellow');
-          if (hasYellow) {
-            console.log('[DEBUG] Found span with bg-yellow:', span.className);
-          }
+        // Fallback: manually search through ALL elements looking for yellow background
+        const allElements = viewer.querySelectorAll('*');
+        console.log('[DEBUG] Total elements in right panel:', allElements.length);
+        highlightedElements = Array.from(allElements).filter(el => {
+          const hasYellow = el.className && (el.className.includes('bg-yellow-900/50') || el.className.includes('bg-yellow'));
           return hasYellow;
         });
-        console.log('[DEBUG] Manual filter result:', highlightedElements.length);
+        console.log('[DEBUG] Manual search found:', highlightedElements.length, 'elements with yellow');
+        if (highlightedElements.length > 0) {
+          console.log('[DEBUG] First match class:', highlightedElements[0].className);
+        }
       }
 
       if (highlightedElements.length > 0) {
