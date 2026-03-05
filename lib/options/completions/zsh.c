@@ -30,10 +30,6 @@ static void zsh_escape_desc(FILE *output, const char *text) {
     case '\t':
       fprintf(output, " ");
       break;
-    case ':':
-      // Escape colons which are special in completion descriptions
-      fprintf(output, "\\:");
-      break;
     default:
       fputc(*p, output);
     }
