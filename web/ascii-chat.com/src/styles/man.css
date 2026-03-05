@@ -128,28 +128,26 @@
   display: block;
 }
 
-/* Data Fields section - field name and description inline */
+/* Data Fields section - each field type with description on one line */
 #Data_Fields ~ .Pp {
   margin: 1rem 0;
-  line-height: 1.8;
 }
 
-/* Hide br tags - they separate fields */
+/* Hide br tags */
 #Data_Fields ~ .Pp br {
   display: none;
 }
 
-/* Add visual line breaks after descriptions by inserting newlines before next b tag (3rd+ b) */
-#Data_Fields ~ .Pp b:nth-of-type(3)::before,
-#Data_Fields ~ .Pp b:nth-of-type(5)::before,
-#Data_Fields ~ .Pp b:nth-of-type(7)::before,
-#Data_Fields ~ .Pp b:nth-of-type(9)::before,
-#Data_Fields ~ .Pp b:nth-of-type(11)::before,
-#Data_Fields ~ .Pp b:nth-of-type(13)::before,
-#Data_Fields ~ .Pp b:nth-of-type(15)::before,
-#Data_Fields ~ .Pp b:nth-of-type(17)::before,
-#Data_Fields ~ .Pp b:nth-of-type(19)::before,
-#Data_Fields ~ .Pp b:nth-of-type(21)::before {
+/* Style field type names */
+#Data_Fields ~ .Pp b {
+  display: inline;
+  color: #f0abfc;
+  font-weight: 600;
+  margin-right: 0.5rem;
+}
+
+/* After each even-numbered b tag (every description), add a line break */
+#Data_Fields ~ .Pp b:nth-of-type(even)::after {
   content: '\A';
   white-space: pre;
 }
