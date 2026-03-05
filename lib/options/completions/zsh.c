@@ -42,10 +42,9 @@ static void zsh_escape_desc(FILE *output, const char *text) {
 }
 
 /**
- * Collect unique group names from options and sort them (DEPRECATED: kept for reference)
- * NOTE: This function is no longer used after switching to _arguments for option parsing.
+ * Collect unique group names from options and sort them
  */
-__attribute__((unused)) static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t count, size_t *out_group_count) {
+static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t count, size_t *out_group_count) {
   if (!opts || count == 0) {
     *out_group_count = 0;
     return NULL;
@@ -89,24 +88,42 @@ __attribute__((unused)) static const char **zsh_collect_groups(const option_desc
 }
 
 /**
- * Write options as a single array for _describe (avoids "corrections" duplicates)
+ * Write options grouped by category using _describe for proper group headers
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
                                        const char *func_prefix) {
   if (!opts || count == 0) return;
 
-  // Use single array with _describe to show all options without grouping
-  // This avoids "corrections (errors)" messages that occur with multiple _describe calls
-  fprintf(output, "  local -a %s_all_opts=(\n", func_prefix);
+  size_t group_count = 0;
+  const char **groups = zsh_collect_groups(opts, count, &group_count);
 
-  for (size_t i = 0; i < count; i++) {
-    fprintf(output, "    '--%s:", opts[i].long_name);
-    zsh_escape_desc(output, opts[i].help_text);
-    fprintf(output, "'\n");
+  // First pass: declare arrays for each group
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
+
+    // Write all options in this group (long options only to avoid "corrections" duplicates)
+    for (size_t i = 0; i < count; i++) {
+      if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
+
+      // Long option only (short options are less discoverable via TAB)
+      fprintf(output, "    '--%s:", opts[i].long_name);
+      zsh_escape_desc(output, opts[i].help_text);
+      fprintf(output, "'\n");
+    }
+
+    fprintf(output, "  )\n");
   }
 
-  fprintf(output, "  )\n");
-  fprintf(output, "  _describe -t %s 'options' %s_all_opts\n", func_prefix, func_prefix);
+  // Second pass: call _describe for each group (with lowercase display)
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+    fprintf(output, "  _describe -t %s '", group);
+    utf8_write_lowercase(output, group);
+    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
+  }
+
+  SAFE_FREE(groups);
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
