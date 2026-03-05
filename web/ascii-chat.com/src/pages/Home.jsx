@@ -545,7 +545,7 @@ cat video.mp4 | ascii-chat mirror --file -`}
 
               <div>
                 <h3 className="text-xl font-semibold text-orange-300 mb-3">
-                  Pipe ASCII video through FFmpeg
+                  Render ASCII Art Files and Pipe to FFmpeg
                 </h3>
                 <CodeBlock language="bash">
                   {`# Pipe ASCII-rendered GIF with black bars (400x600 aspect ratio preserved)
