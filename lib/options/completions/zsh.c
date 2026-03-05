@@ -201,9 +201,13 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "    mirror)\n"
                   "      _ascii_chat_mirror\n"
                   "      ;;\n"
+                  "    discovery)\n"
+                  "      _ascii_chat_discovery\n"
+                  "      ;;\n"
                   "\n"
                   "    *)\n"
-                  "      # Binary-level options\n");
+                  "      # Default mode (discovery) + binary-level options\n"
+                  "      _ascii_chat_discovery\n");
 
   /* Binary options - grouped by category */
   size_t binary_count = 0;
@@ -269,6 +273,20 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   if (mirror_opts) {
     zsh_write_options_grouped(output, mirror_opts, mirror_count, "mirror");
     SAFE_FREE(mirror_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n"
+                  "_ascii_chat_discovery() {\n");
+
+  /* Discovery options - grouped by category */
+  size_t discovery_count = 0;
+  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
+
+  if (discovery_opts) {
+    zsh_write_options_grouped(output, discovery_opts, discovery_count, "discovery");
+    SAFE_FREE(discovery_opts);
   }
 
   fprintf(output, "}\n"
