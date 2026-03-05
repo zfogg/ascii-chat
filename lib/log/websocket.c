@@ -85,11 +85,25 @@ static void websocket_client_lws_log_callback(int level, const char *line) {
 }
 
 void lws_log_init_server(void) {
-  // Enable libwebsockets logging with our custom callback (DEBUG disabled to reduce noise)
-  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO, websocket_server_lws_log_callback);
+  // Enable libwebsockets logging with our custom callback
+  // In debug builds: include LLL_DEBUG for detailed TLS/handshake diagnostics
+  // In release builds: exclude DEBUG to reduce noise
+#ifdef CMAKE_BUILD_TYPE_DEBUG
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG;
+#else
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO;
+#endif
+  lws_set_log_level(log_level, websocket_server_lws_log_callback);
 }
 
 void lws_log_init_client(void) {
-  // Enable libwebsockets logging with our custom callback (DEBUG disabled to reduce noise)
-  lws_set_log_level(LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO, websocket_client_lws_log_callback);
+  // Enable libwebsockets logging with our custom callback
+  // In debug builds: include LLL_DEBUG for detailed TLS/handshake diagnostics
+  // In release builds: exclude DEBUG to reduce noise
+#ifdef CMAKE_BUILD_TYPE_DEBUG
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO | LLL_DEBUG;
+#else
+  int log_level = LLL_ERR | LLL_WARN | LLL_NOTICE | LLL_INFO;
+#endif
+  lws_set_log_level(log_level, websocket_client_lws_log_callback);
 }
