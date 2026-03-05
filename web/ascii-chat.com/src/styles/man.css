@@ -128,41 +128,29 @@
   display: block;
 }
 
-/* Data Fields table styling */
-.man-data-fields-table {
-  width: 100%;
-  border-collapse: collapse;
+/* Data Fields section - keep all content inline */
+#Data_Fields ~ .Pp {
   margin: 1rem 0;
 }
 
-.man-data-fields-table tbody tr {
-  border-bottom: 1px solid #1f2937;
+/* Hide br tags between field type/name and description (odd-numbered) */
+#Data_Fields ~ .Pp br:nth-of-type(odd) {
+  display: none;
 }
 
-.man-data-fields-table tbody tr:last-child {
-  border-bottom: none;
+/* Keep br tags that separate field entries visible (even-numbered) */
+#Data_Fields ~ .Pp br:nth-of-type(even) {
+  display: block;
+  content: "";
+  margin: 0.5rem 0;
 }
 
-.man-data-field-type {
+/* Make b tags inline and styled */
+#Data_Fields ~ .Pp b {
   color: #f0abfc;
   font-weight: 600;
-  padding: 0.5rem 1rem 0.5rem 0;
-  vertical-align: top;
-  white-space: nowrap;
-}
-
-.man-data-field-name {
-  color: #f0abfc;
-  font-weight: 600;
-  padding: 0.5rem 1rem 0.5rem 0;
-  vertical-align: top;
-  white-space: nowrap;
-}
-
-.man-data-field-desc {
-  color: #d1d5db;
-  padding: 0.5rem 0;
-  vertical-align: top;
+  margin-right: 0.25rem;
+  display: inline;
 }
 
 /* Lists */

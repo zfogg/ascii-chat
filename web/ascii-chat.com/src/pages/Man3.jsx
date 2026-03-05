@@ -25,15 +25,15 @@ export default function Man3() {
 
   // Transform Data Fields section into a table
   const transformDataFieldsToTable = useCallback((html) => {
-    // Find the Data Fields section and its content paragraph - more lenient regex
-    const dataFieldsRegex =
-      /(<[^>]*id="Data_Fields"[^>]*>[\s\S]*?<\/[^>]+>\s*)<p[^>]*class="Pp"[^>]*>([\s\S]*?)(?=<h[1-6]|<section|$)/i;
-    const match = html.match(dataFieldsRegex);
+    // Find the Data Fields section - very lenient regex
+    const dataFieldsMatch = html.match(
+      /(<[^>]*id="Data_Fields"[^>]*>[\s\S]*?<\/[^>]*>\s*)<p[^>]*>([\s\S]*?)(?=<h[1-6]|$)/i
+    );
 
-    if (!match) return html;
+    if (!dataFieldsMatch) return html;
 
-    const heading = match[1];
-    const contentText = match[2];
+    const heading = dataFieldsMatch[1];
+    const contentText = dataFieldsMatch[2];
 
     // Parse fields by finding field names (always in bold tags)
     // Pattern: type text <b>fieldname</b> followed by description text
