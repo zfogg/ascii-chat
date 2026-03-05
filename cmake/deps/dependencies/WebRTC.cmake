@@ -53,8 +53,8 @@ endif()
 execute_process(
     COMMAND ${CMAKE_COMMAND}
         -DWEBRTC_AEC3_SOURCE_DIR=${webrtc_aec3_SOURCE_DIR}
-        -DPATCH_SCRIPT_DIR=${CMAKE_SOURCE_DIR}/cmake/dependencies/patches
-        -P ${CMAKE_SOURCE_DIR}/cmake/dependencies/patches/patch-webrtc-aec3-cmake.cmake
+        -DPATCH_SCRIPT_DIR=${CMAKE_SOURCE_DIR}/cmake/deps/patches
+        -P ${CMAKE_SOURCE_DIR}/cmake/deps/patches/patch-webrtc-aec3-cmake.cmake
     RESULT_VARIABLE PATCH_RESULT
     WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
 )

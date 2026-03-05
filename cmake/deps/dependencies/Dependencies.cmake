@@ -32,7 +32,7 @@
 # =============================================================================
 # Windows: vcpkg Package Manager Configuration
 # =============================================================================
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Vcpkg.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Vcpkg.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (EARLY - needed by other dependencies)
@@ -41,7 +41,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Vcpkg.cmake)
 # Windows SDK detection and configuration (Windows + Clang only)
 # Must be included early so WINDOWS_SDK_VERSION and WINDOWS_KITS_DIR are available
 # for dependencies like WebRTC that need to pass library paths to subprojects
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WindowsSDK.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/WindowsSDK.cmake)
 
 # =============================================================================
 # Core Dependencies
@@ -49,82 +49,82 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WindowsSDK.cmake)
 # These dependencies are required on all platforms
 
 # zstd - Compression library for frame data
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Zstd.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Zstd.cmake)
 
 # libsodium - Cryptography library for encryption
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libsodium.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libsodium.cmake)
 
 # ALSA - Advanced Linux Sound Architecture (Linux only, needed by PortAudio especially for musl)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/ALSA.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/ALSA.cmake)
 
 # PortAudio - Audio I/O library for capture/playback
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Portaudio.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Portaudio.cmake)
 
 # Opus - Audio codec for real-time compression
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Opus.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Opus.cmake)
 
 # WebRTC Audio Processing - Production-grade echo cancellation with AEC3
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/WebRTC.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/WebRTC.cmake)
 
 # OpenSSL - SSL/TLS library (required by libdatachannel, libwebsockets, and TURN credentials)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/OpenSSL.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/OpenSSL.cmake)
 
 # BearSSL - SSL/TLS library for HTTPS key fetching
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/BearSSL.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/BearSSL.cmake)
 
 # libdatachannel - WebRTC DataChannels for P2P ACIP transport
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libdatachannel.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libdatachannel.cmake)
 
 # Zlib - Compression library (required by libwebsockets, especially for musl builds)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Zlib.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Zlib.cmake)
 
 # libwebsockets - WebSocket transport for browser clients (uses zlib for compression and mbedTLS for WSS)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libwebsockets.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libwebsockets.cmake)
 
 # miniupnpc - UPnP/NAT-PMP for direct TCP without WebRTC (optional, graceful fallback)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Miniupnpc.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Miniupnpc.cmake)
 
 # SQLite3 - Database for ACDS sessions and rate limiting
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/SQLite3.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/SQLite3.cmake)
 
 # PCRE2 - Regular expression library for URL validation
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PCRE2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/PCRE2.cmake)
 
 # mdns - mDNS service discovery library (requires patching to exclude main())
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mdns.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Mdns.cmake)
 configure_mdns()
 
 # yyjson - Fast JSON library for structured logging
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Yyjson.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Yyjson.cmake)
 configure_yyjson()
 
 # FFmpeg - Media file decoding (includes HEVC codec support)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FFmpeg.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/FFmpeg.cmake)
 
 # libexecinfo - Backtrace support (musl only)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libexecinfo.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libexecinfo.cmake)
 
 # Abseil - Google C++ library (WebRTC dependency)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Abseil.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Abseil.cmake)
 
 # FreeType2 - Font rasterization for render-file
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/FreeType2.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/FreeType2.cmake)
 
 # Fontconfig - Font configuration for render-file
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Fontconfig.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Fontconfig.cmake)
 
 # Libvterm - Terminal emulation for render-file (depends on FreeType2/Fontconfig)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Libvterm.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Libvterm.cmake)
 
 # =============================================================================
 # Test Dependencies
 # =============================================================================
 # Criterion test framework and related dependencies (Unix only)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Criterion.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Criterion.cmake)
 
 # =============================================================================
 # Platform-Specific Configuration (LATE)
 # =============================================================================
 
 # Platform-specific system libraries (Windows, macOS frameworks, Linux libs)
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PlatformLibraries.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/PlatformLibraries.cmake)

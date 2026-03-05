@@ -228,7 +228,7 @@ include(${CMAKE_SOURCE_DIR}/cmake/compiler/CRC32.cmake)
 # =============================================================================
 # This sets PKG_CONFIG and PKG_CONFIG_PATH globally so that nested processes
 # (like Zig builds) can find system libraries without requiring manual env vars
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PkgConfigSetup.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/PkgConfigSetup.cmake)
 
 # =============================================================================
 # Dependencies
@@ -241,24 +241,24 @@ include(${CMAKE_SOURCE_DIR}/cmake/dependencies/PkgConfigSetup.cmake)
 # This must come BEFORE Dependencies.cmake which includes all modular dependency files
 include(${CMAKE_SOURCE_DIR}/cmake/utils/MuslDep.cmake)
 
-# All dependencies are now modularized into individual .cmake files in cmake/dependencies/
+# All dependencies are now modularized into individual .cmake files in cmake/deps/
 # Dependencies.cmake orchestrates including them all
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Dependencies.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Dependencies.cmake)
 
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Tomlc17.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Tomlc17.cmake)
 configure_tomlc17()
 
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/LibsodiumBcryptPbkdf.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/LibsodiumBcryptPbkdf.cmake)
 configure_libsodium_bcrypt_pbkdf()
 
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Uthash.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Uthash.cmake)
 configure_uthash()
 
 include(${CMAKE_SOURCE_DIR}/cmake/targets/Fonts.cmake)
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Include.cmake)
 
-include(${CMAKE_SOURCE_DIR}/cmake/dependencies/Mimalloc.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/deps/Mimalloc.cmake)
 
 configure_include_directories()
 
