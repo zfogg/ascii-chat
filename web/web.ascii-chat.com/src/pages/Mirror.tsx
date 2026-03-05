@@ -108,6 +108,7 @@ export function MirrorPage() {
   });
   const [showSettings, setShowSettings] = useState(false);
   const [wasmInitialized, setWasmInitialized] = useState(false);
+  const [permissionGranted, setPermissionGranted] = useState(false);
 
   const optionsManager = useMemo(() => {
     if (!wasmInitialized || !isWasmReady()) return null;
@@ -353,28 +354,35 @@ export function MirrorPage() {
     }
   }, [settings, isMacOS, startRenderLoop]);
 
-  // Request camera permission early when page loads (not on button click)
+  // Request camera permission early on page load (browsers require explicit permission)
+  // This helps Firefox and other browsers allow camera access before auto-start
   useEffect(() => {
-    console.log("[Mirror] Requesting camera permission early on page load");
-    navigator.mediaDevices
-      .enumerateDevices()
-      .then(() => {
-        console.log("[Mirror] enumerated devices, now requesting camera");
-        return navigator.mediaDevices.getUserMedia({
+    const requestPermission = async () => {
+      try {
+        console.log("[Mirror] Requesting camera permission on page load");
+        // Request minimal 1x1 stream just to trigger permission dialog
+        const stream = await navigator.mediaDevices.getUserMedia({
           video: { width: { ideal: 1 }, height: { ideal: 1 } },
           audio: false,
         });
-      })
-      .then((stream) => {
-        console.log("[Mirror] Got early camera stream, stopping it");
+        console.log("[Mirror] Permission granted, stopping stream");
         stream.getTracks().forEach((track) => track.stop());
-      })
-      .catch((err) => {
+        // Add a small delay to ensure Firefox properly releases the camera
+        // before the auto-start tries to access it
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        setPermissionGranted(true);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
         console.log(
-          "[Mirror] Early camera request failed (may be normal):",
-          err.message,
+          "[Mirror] Permission request failed (user may have denied):",
+          message,
         );
-      });
+        // Even if permission request fails, proceed with auto-start
+        // (user may deny and then manually grant, or have already granted)
+        setPermissionGranted(true);
+      }
+    };
+    requestPermission();
   }, []);
 
   // Auto-start webcam in development mode
@@ -382,12 +390,13 @@ export function MirrorPage() {
     if (
       import.meta.env["NODE_ENV"] !== "production" &&
       wasmInitialized &&
+      permissionGranted &&
       !isRunning
     ) {
       console.log("[Mirror] Auto-starting webcam in development mode");
       startWebcam();
     }
-  }, [wasmInitialized, isRunning, startWebcam]);
+  }, [wasmInitialized, permissionGranted, isRunning, startWebcam]);
 
   // Cleanup on unmount
   useEffect(() => {
