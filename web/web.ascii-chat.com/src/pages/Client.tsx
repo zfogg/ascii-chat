@@ -654,23 +654,41 @@ export function ClientPage() {
             const now = performance.now();
             frameReceiptTimesRef.current.push(now);
 
-            // Log frame arrival rate every 10 frames
-            if (receivedFrameCountRef.current % 10 === 0) {
+            // Update test metrics immediately (for E2E test frame counting)
+            // Use unique frame count instead of packet count for accurate server frame measurement
+            window.__clientFrameMetrics = {
+              rendered: frameCountRef.current,
+              received: Object.keys(uniqueReceivedFramesRef.current).length, // Count unique frames, not packets
+              queueDepth: frameQueueRef.current.length,
+              uniqueRendered: cumulativeUniqueFramesRef.current,
+              frameHashes: uniqueReceivedFramesRef.current,
+            };
+
+            // Log unique frame arrival rate every time we see a new unique frame
+            const uniqueCount = Object.keys(uniqueReceivedFramesRef.current).length;
+            if (uniqueCount > 0 && uniqueCount % 1 === 0) {
               const recentTimes = frameReceiptTimesRef.current.slice(-10);
               if (recentTimes.length > 1) {
                 const timeDiff =
                   recentTimes[recentTimes.length - 1]! - recentTimes[0]!;
-                const framesPerSecond = (9 / timeDiff) * 1000; // 9 intervals over 10 frames
+                const packetsPerSecond = (9 / timeDiff) * 1000; // 9 intervals over 10 packets
                 console.log(
-                  `[Client] Frame arrival rate: ${framesPerSecond.toFixed(
+                  `[Client] Frame arrival: ${packetsPerSecond.toFixed(
                     1,
-                  )} FPS (received ${receivedFrameCountRef.current} total frames)`,
+                  )} packets/sec (${uniqueCount} unique frames, ${receivedFrameCountRef.current} total packets)`,
                 );
               }
             }
 
             try {
               const frame = parseAsciiFrame(decryptedPayload);
+              // Track unique frames at reception (for measuring actual frames from server)
+              const frameHash = hashFrame(frame.ansiString);
+              if (!uniqueReceivedFramesRef.current[frameHash]) {
+                uniqueReceivedFramesRef.current[frameHash] = 0;
+              }
+              uniqueReceivedFramesRef.current[frameHash]++;
+
               // Queue frame for the render loop to process at target FPS
               // This prevents frame accumulation when tab is hidden
               frameQueueRef.current.push(frame.ansiString);
@@ -748,15 +766,16 @@ export function ClientPage() {
   const renderNoOpCountRef = useRef(0);
   const diagnosticFrameCountRef = useRef(0);
   const cumulativeUniqueFramesRef = useRef(0);
+  const uniqueReceivedFramesRef = useRef<Record<string, number>>({}); // Track unique frames at reception
 
   // Expose frame count for testing
   useEffect(() => {
     const metrics = {
       rendered: frameCountRef.current,
-      received: receivedFrameCountRef.current,
+      received: Object.keys(uniqueReceivedFramesRef.current).length, // Count unique frames, not packets
       queueDepth: frameQueueRef.current.length,
       uniqueRendered: cumulativeUniqueFramesRef.current,
-      frameHashes: frameHashesRef.current,
+      frameHashes: uniqueReceivedFramesRef.current,
     };
     window.__clientFrameMetrics = metrics;
     if (frameCountRef.current % 60 === 0 && frameCountRef.current > 0) {
