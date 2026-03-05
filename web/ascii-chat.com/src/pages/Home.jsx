@@ -597,7 +597,7 @@ cat video.mp4 | ascii-chat mirror --file -`}
                   </li>
                   <li>
                     <strong className="text-teal-400">Crypto:</strong> Ed25519,
-                    X25519, XSalsa20-Poly1305
+                    X25519, XSalsa20-Poly1305, Argon2
                   </li>
                   <li>
                     <strong className="text-pink-400">Network:</strong> TCP, NAT
