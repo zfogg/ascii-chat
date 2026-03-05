@@ -76,8 +76,8 @@ export default function Man3() {
     let result = html.replace(
       /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
       (_, lineNum, filename) =>
-        `Definition at line <a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
-        `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">${lineNum}</b></a> of file ` +
+        `Definition at <a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+        `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">line ${lineNum}</b></a> of file ` +
         `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
         `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">${filename}</b></a> ` +
         `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
