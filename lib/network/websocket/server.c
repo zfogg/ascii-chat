@@ -603,9 +603,8 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
       break;
     }
 
-    // Trigger WRITEABLE on both protocols
-    // Browser clients connect with "http" protocol, so they MUST have WRITEABLE triggered
-    for (int i = 0; i < 2; i++) {
+    // Trigger WRITEABLE on the ACIP protocol (libwebsockets handles h1 internally)
+    for (int i = 0; i < 1; i++) {
       log_dev_every(1 * NS_PER_SEC_INT,
                     ">>> EVENT_WAIT_CANCELLED: Calling lws_callback_on_writable_all_protocol for protocol '%s'",
                     websocket_protocols[i].name);
@@ -626,16 +625,7 @@ static int websocket_server_callback(struct lws *wsi, enum lws_callback_reasons 
  */
 static struct lws_protocols websocket_protocols[] = {
     {
-        "http",                              // Default HTTP protocol (required for WebSocket upgrade)
-        websocket_server_callback,           // Use same callback for all protocols
-        sizeof(websocket_connection_data_t), // Per-session data size
-        524288,                              // RX buffer size (512KB for video frames)
-        0,                                   // ID (auto-assigned)
-        NULL,                                // User pointer (set to server instance)
-        524288                               // TX packet size (512KB for video frames)
-    },
-    {
-        "acip",                              // ACIP WebSocket subprotocol
+        "acip",                              // ACIP WebSocket subprotocol (after HTTP upgrade)
         websocket_server_callback,           // Callback function
         sizeof(websocket_connection_data_t), // Per-session data size
         524288,                              // RX buffer size (512KB for video frames)
@@ -645,6 +635,9 @@ static struct lws_protocols websocket_protocols[] = {
     },
     {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
 };
+// NOTE: libwebsockets provides built-in "h1" (HTTP/1.1) protocol for the initial WebSocket
+// upgrade handshake. The server doesn't need to define its own "http" protocol - libwebsockets
+// handles the HTTP upgrade automatically with h1, then delegates to our "acip" protocol.
 
 /**
  * @brief WebSocket extensions - permessage-deflate compression (RFC 7692)
@@ -687,9 +680,8 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   atomic_store_bool(&server->running, true);
 
   // Store server pointer in protocol user data so callbacks can access it
-  // Both the HTTP and ACIP protocols need access to the server
-  websocket_protocols[0].user = server; // http protocol
-  websocket_protocols[1].user = server; // acip protocol
+  // Only the ACIP protocol needs access to the server (libwebsockets handles h1 internally)
+  websocket_protocols[0].user = server; // acip protocol
 
   // Enable libwebsockets logging through centralized logging system
   lws_log_init_server();
