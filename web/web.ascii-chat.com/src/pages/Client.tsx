@@ -14,6 +14,8 @@ declare global {
       rendered: number;
       received: number;
       queueDepth: number;
+      uniqueRendered?: number;
+      frameHashes?: Record<string, number>;
     };
   }
 }
@@ -665,7 +667,9 @@ export function ClientPage() {
             };
 
             // Log unique frame arrival rate every time we see a new unique frame
-            const uniqueCount = Object.keys(uniqueReceivedFramesRef.current).length;
+            const uniqueCount = Object.keys(
+              uniqueReceivedFramesRef.current,
+            ).length;
             if (uniqueCount > 0 && uniqueCount % 1 === 0) {
               const recentTimes = frameReceiptTimesRef.current.slice(-10);
               if (recentTimes.length > 1) {
@@ -832,7 +836,7 @@ export function ClientPage() {
           `[Client] Frame hash distribution:`,
           frameHashesRef.current,
         );
-        renderLoopStartTimeRef.current = now;
+        renderLoopStartTimeRef.current = performance.now();
         diagnosticFrameCountRef.current = 0;
         frameHashesRef.current = {};
       }

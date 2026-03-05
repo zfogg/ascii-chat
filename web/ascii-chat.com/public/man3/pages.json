@@ -240,22 +240,10 @@
     "sourcePath": null
   },
   {
-    "name": "avx2_background.c",
-    "title": "background.c",
-    "file": "ascii-chat-avx2_background.c.html",
-    "sourcePath": "lib/video/ascii/scalar/background.c"
-  },
-  {
     "name": "avx2_color.c",
     "title": "color.c",
     "file": "ascii-chat-avx2_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
-  },
-  {
-    "name": "avx2_foreground.c",
-    "title": "foreground.c",
-    "file": "ascii-chat-avx2_foreground.c.html",
-    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "avx2_mono.c",
@@ -418,12 +406,6 @@
     "title": "webrtc.h",
     "file": "ascii-chat-client_webrtc.h.html",
     "sourcePath": "src/discovery/webrtc.h"
-  },
-  {
-    "name": "color.c",
-    "title": "color.c",
-    "file": "ascii-chat-color.c.html",
-    "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
     "name": "color_filter.c",
@@ -1542,12 +1524,6 @@
     "sourcePath": null
   },
   {
-    "name": "mono.c",
-    "title": "mono.c",
-    "file": "ascii-chat-mono.c.html",
-    "sourcePath": "lib/video/ascii/sve/mono.c"
-  },
-  {
     "name": "musl_c23_compat.c",
     "title": "musl_c23_compat.c",
     "file": "ascii-chat-musl_c23_compat.c.html",
@@ -1608,22 +1584,10 @@
     "sourcePath": "src/discovery/negotiate.h"
   },
   {
-    "name": "neon_background.c",
-    "title": "background.c",
-    "file": "ascii-chat-neon_background.c.html",
-    "sourcePath": "lib/video/ascii/scalar/background.c"
-  },
-  {
     "name": "neon_color.c",
     "title": "color.c",
     "file": "ascii-chat-neon_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
-  },
-  {
-    "name": "neon_foreground.c",
-    "title": "foreground.c",
-    "file": "ascii-chat-neon_foreground.c.html",
-    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "neon_halfblock.c",
@@ -2130,18 +2094,6 @@
     "sourcePath": "lib/platform/windows/rwlock.c"
   },
   {
-    "name": "scalar_background.c",
-    "title": "background.c",
-    "file": "ascii-chat-scalar_background.c.html",
-    "sourcePath": "lib/video/ascii/scalar/background.c"
-  },
-  {
-    "name": "scalar_foreground.c",
-    "title": "foreground.c",
-    "file": "ascii-chat-scalar_foreground.c.html",
-    "sourcePath": "lib/video/ascii/scalar/foreground.c"
-  },
-  {
     "name": "scalar_halfblock.c",
     "title": "halfblock.c",
     "file": "ascii-chat-scalar_halfblock.c.html",
@@ -2622,22 +2574,10 @@
     "sourcePath": "src/web/common/options.c"
   },
   {
-    "name": "sse2_background.c",
-    "title": "background.c",
-    "file": "ascii-chat-sse2_background.c.html",
-    "sourcePath": "lib/video/ascii/scalar/background.c"
-  },
-  {
     "name": "sse2_color.c",
     "title": "color.c",
     "file": "ascii-chat-sse2_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
-  },
-  {
-    "name": "sse2_foreground.c",
-    "title": "foreground.c",
-    "file": "ascii-chat-sse2_foreground.c.html",
-    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "sse2_mono.c",
@@ -2658,22 +2598,10 @@
     "sourcePath": "lib/crypto/ssh/ssh_keys.c"
   },
   {
-    "name": "ssse3_background.c",
-    "title": "background.c",
-    "file": "ascii-chat-ssse3_background.c.html",
-    "sourcePath": "lib/video/ascii/scalar/background.c"
-  },
-  {
     "name": "ssse3_color.c",
     "title": "color.c",
     "file": "ascii-chat-ssse3_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
-  },
-  {
-    "name": "ssse3_foreground.c",
-    "title": "foreground.c",
-    "file": "ascii-chat-ssse3_foreground.c.html",
-    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "ssse3_mono.c",
@@ -2748,22 +2676,10 @@
     "sourcePath": "lib/network/webrtc/stun.c"
   },
   {
-    "name": "sve_background.c",
-    "title": "background.c",
-    "file": "ascii-chat-sve_background.c.html",
-    "sourcePath": "lib/video/ascii/scalar/background.c"
-  },
-  {
     "name": "sve_color.c",
     "title": "color.c",
     "file": "ascii-chat-sve_color.c.html",
     "sourcePath": "lib/video/ascii/sve/color.c"
-  },
-  {
-    "name": "sve_foreground.c",
-    "title": "foreground.c",
-    "file": "ascii-chat-sve_foreground.c.html",
-    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "sve_mono.c",
