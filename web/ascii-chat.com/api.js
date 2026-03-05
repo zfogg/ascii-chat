@@ -153,7 +153,7 @@ function extractTextContent(html) {
 }
 
 // Get file text content (from cache or disk)
-function getFileContent(pageName) {
+function getFileContent(pageName, fileName) {
   if (fileCache[pageName]) {
     return fileCache[pageName];
   }
@@ -161,7 +161,9 @@ function getFileContent(pageName) {
   // In development, read from disk
   if (process.env.NODE_ENV !== "production") {
     const man3Dir = path.join(__dirname, "public/man3");
-    const filePath = path.join(man3Dir, `${pageName}.html`);
+    // Use the actual filename from pages.json if provided, otherwise construct it
+    const actualFileName = fileName || `${pageName}.html`;
+    const filePath = path.join(man3Dir, actualFileName);
 
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, "utf-8");
@@ -259,7 +261,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
 
     // Search in content for title matches (get snippets)
     for (const page of titleMatches) {
-      const content = getFileContent(page.name);
+      const content = getFileContent(page.name, page.file);
       const { snippets, totalMatches } = findSnippets(content, query, 3);
 
       results.push({
@@ -280,7 +282,7 @@ app.get("/api/man3/search", limiter, (req, res) => {
         continue; // Skip source pages and already added matches
       }
 
-      const content = getFileContent(page.name);
+      const content = getFileContent(page.name, page.file);
       const { snippets, totalMatches } = findSnippets(content, query, 3);
 
       if (snippets.length > 0) {
