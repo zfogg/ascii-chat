@@ -53,7 +53,7 @@ void init_neon_decimal_table(void);
  *
  * @ingroup video
  */
-char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii_chars);
+char *render_ascii_mono_neon(const image_t *image, const char *ascii_chars);
 
 /**
  * @brief Render image as ASCII with color using NEON
@@ -65,7 +65,7 @@ char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii
  *
  * @ingroup video
  */
-char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+char *render_ascii_color_neon(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
 
 /**

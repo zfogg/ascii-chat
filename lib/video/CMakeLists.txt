@@ -55,34 +55,36 @@ set(SIMD_SRCS
 
 if(ENABLE_SIMD_SSE2)
     list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/background.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/color.c
     )
     set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/background.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sse2/color.c
         PROPERTIES COMPILE_FLAGS "-msse2"
     )
 endif()
 
 if(ENABLE_SIMD_SSSE3)
     list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/background.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/color.c
     )
     set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/background.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/ssse3/color.c
         PROPERTIES COMPILE_FLAGS "-mssse3"
     )
 endif()
 
 if(ENABLE_SIMD_AVX2)
     list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/color.c
     )
     set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/foreground.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/color.c
         PROPERTIES COMPILE_FLAGS "-mavx2"
     )
 endif()
@@ -98,12 +100,12 @@ endif()
 
 if(ENABLE_SIMD_SVE)
     list(APPEND SIMD_SRCS
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/background.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/color.c
     )
     set_source_files_properties(
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/foreground.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/background.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/mono.c
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/sve/color.c
         PROPERTIES COMPILE_FLAGS "-march=armv8-a+sve"
     )
 endif()

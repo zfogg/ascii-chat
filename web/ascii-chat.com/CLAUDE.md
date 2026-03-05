@@ -190,11 +190,13 @@ The `/man3` route displays auto-generated API documentation from Doxygen. Pages 
 ### How Man3 Pages Work
 
 **Generation (Build Time)**:
+
 1. Build script (`scripts/manpage-build.sh`) runs the ascii-chat binary to generate man pages
 2. Doxygen-generated HTML is saved to `public/man3/` directory
 3. Pages are indexed in `public/man3/pages.json` for search
 
 **Rendering (Runtime)**:
+
 1. `Man3.jsx` component fetches HTML from `public/man3/{pageName}.html`
 2. Content is processed to:
    - Convert relative links to `/man3?page=...` routes
@@ -203,6 +205,7 @@ The `/man3` route displays auto-generated API documentation from Doxygen. Pages 
    - Highlight search query matches with yellow background
 
 **Key Features**:
+
 - **Search**: Regex-based search across all man pages (case-insensitive by default)
 - **Line Highlighting**: `#l123` anchors highlight specific lines (for source pages)
 - **Interactive**: Links between structs, functions, and file references
@@ -215,6 +218,7 @@ The Data Fields section in struct documentation is transformed from Doxygen's aw
 **Problem**: Doxygen generates Data Fields with `<br>` tags separating field type/name from descriptions, making the layout hard to read.
 
 **Solution** (implemented in `Man3.jsx`):
+
 1. Find the Data_Fields section in the page DOM
 2. Split the HTML content by `<br>` tags to get individual sections
 3. Parse each section using DOM API to extract bold tags (type/name)
@@ -224,6 +228,7 @@ The Data Fields section in struct documentation is transformed from Doxygen's aw
 7. Replace the original paragraph with the styled table
 
 **CSS Styling** (`src/styles/man.css`):
+
 - `.man-data-fields-table`: Table with `border-spacing` for row separation
 - `.man-data-field-type`, `.man-data-field-name`: Column widths with `padding-right`
 - `.man-data-field-desc`: Full-width description column
@@ -237,11 +242,13 @@ When manpage content loads with search results or anchors, the page automaticall
 **Implementation** (in `Man3.jsx`):
 
 **State tracking**:
+
 - `targetLineNumber` - Line number to scroll to (for source code pages)
 - `targetSnippetIndex` - Which snippet in the results is selected
 - `targetSnippetText` - The actual text content of the matched snippet (for documentation pages)
 
 **Scrolling logic order**:
+
 1. **Non-codeblock snippet scrolling** (highest priority):
    - If `targetSnippetText` is set (documentation pages without line numbers)
    - Extract first line of snippet text
@@ -262,11 +269,13 @@ When manpage content loads with search results or anchors, the page automaticall
    - Scroll that element into view
 
 **URL Hash Format**:
+
 - `#l123` - Scroll to line 123 (source code pages)
 - `#Data_Fields` - Scroll to named section (via standard HTML anchors)
 - Can be combined with query params: `/man3?page=file.c&q=searchterm#l50`
 
 **Search Integration**:
+
 - Search results show line snippets in the left panel
 - When clicking a result:
   - Snippet text is passed to `loadPageContent` via `snippetText` parameter
@@ -276,6 +285,7 @@ When manpage content loads with search results or anchors, the page automaticall
 - Snippet text is cleared after successful scroll to avoid re-scrolling
 
 **Technical Details**:
+
 - Uses `useEffect` with dependencies on `[selectedPageContent, targetLineNumber, targetSnippetText, searchQuery]`
 - Applies temporary highlight styling to found elements
 - Handles cases where elements don't exist yet (waits for DOM to settle with 100ms timeout)

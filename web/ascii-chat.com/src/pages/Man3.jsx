@@ -23,7 +23,6 @@ export default function Man3() {
   const [regexError, setRegexError] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
-  const searchResultsPanelRef = useRef(null);
 
   // Transform Data Fields section into a table using DOM
   useEffect(() => {
@@ -45,7 +44,7 @@ export default function Man3() {
 
     // Parse each section to extract type, name, and description
     const rows = [];
-    let previousField = null;  // Track previous field to assign description retroactively
+    let previousField = null; // Track previous field to assign description retroactively
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i].trim();
@@ -59,7 +58,9 @@ export default function Man3() {
       if (bTags.length === 0) continue;
 
       // Extract type and name based on number of b tags
-      let type, name, description = "";
+      let type,
+        name,
+        description = "";
 
       if (bTags.length === 2) {
         // Two b tags: both type and name
@@ -83,7 +84,7 @@ export default function Man3() {
         // Split by period to separate description from type
         const periodIndex = plainText.lastIndexOf(". ");
         let prevDesc = "";
-        let typeStr = "";
+        let typeStr;
 
         if (periodIndex !== -1) {
           prevDesc = plainText.substring(0, periodIndex + 1).trim();
@@ -381,12 +382,7 @@ export default function Man3() {
           });
       }
     }
-  }, [
-    processPageContent,
-    processDefinitionLinks,
-    manPages,
-    window.location.search,
-  ]);
+  }, [processPageContent, processDefinitionLinks, manPages]);
 
   // Load man3 index
   useEffect(() => {
@@ -597,7 +593,13 @@ export default function Man3() {
         })
         .catch((e) => console.error("Failed to load page:", e));
     },
-    [processPageContent, searchQuery, selectedPageName, manPages],
+    [
+      processPageContent,
+      processDefinitionLinks,
+      searchQuery,
+      selectedPageName,
+      manPages,
+    ],
   );
 
   const highlightMatches = (text, query) => {
@@ -706,7 +708,13 @@ export default function Man3() {
         })
         .catch((e) => console.error("Failed to load first search result:", e));
     }
-  }, [searchResults, searchQuery, processPageContent, processDefinitionLinks]);
+  }, [
+    searchResults,
+    searchQuery,
+    selectedPageName,
+    processPageContent,
+    processDefinitionLinks,
+  ]);
 
   // Scroll to target line when it's set
   useEffect(() => {
@@ -731,7 +739,10 @@ export default function Man3() {
 
       // First, try to find and scroll to snippet text in non-codeblock content
       if (targetSnippetText && !targetLineNumber) {
-        console.log("[Man3] Looking for snippet text:", targetSnippetText.substring(0, 50));
+        console.log(
+          "[Man3] Looking for snippet text:",
+          targetSnippetText.substring(0, 50),
+        );
 
         const walker = document.createTreeWalker(
           viewer,
@@ -745,13 +756,16 @@ export default function Man3() {
 
         // Find first text node containing significant portion of the snippet
         // Extract just the matched text (first line of snippet usually has the match)
-        const firstLine = targetSnippetText.split('\n')[0];
+        const firstLine = targetSnippetText.split("\n")[0];
         const searchTerm = firstLine.trim();
 
         while ((node = walker.nextNode())) {
           if (node.textContent.includes(searchTerm)) {
             foundNode = node;
-            console.log("[Man3] Found snippet text in node:", node.textContent.substring(0, 50));
+            console.log(
+              "[Man3] Found snippet text in node:",
+              node.textContent.substring(0, 50),
+            );
             break;
           }
         }
@@ -1047,7 +1061,10 @@ export default function Man3() {
                 }
 
                 if (scrollTarget && scrollTarget !== viewer) {
-                  scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+                  scrollTarget.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
                   console.log(
                     "[Man3] Scrolled to matching text in",
                     scrollTarget.tagName,
@@ -1061,7 +1078,13 @@ export default function Man3() {
         }
       }
     }, 100);
-  }, [selectedPageContent, targetLineNumber, targetSnippetText, searchQuery]);
+  }, [
+    selectedPageContent,
+    selectedPageName,
+    targetLineNumber,
+    targetSnippetText,
+    searchQuery,
+  ]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
@@ -1149,7 +1172,9 @@ export default function Man3() {
 
         // Otherwise, look for a code block that contains this line number
         // by checking data attributes (first-line and last-line)
-        const allCodeBlocks = container.querySelectorAll(".code-with-highlight");
+        const allCodeBlocks = container.querySelectorAll(
+          ".code-with-highlight",
+        );
         for (const block of allCodeBlocks) {
           const firstLine = parseInt(block.getAttribute("data-first-line"), 10);
           const lastLine = parseInt(block.getAttribute("data-last-line"), 10);
@@ -1171,7 +1196,10 @@ export default function Man3() {
           ".code-with-highlight, pre",
         );
         if (firstCodeBlock) {
-          firstCodeBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+          firstCodeBlock.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
           return true;
         }
       } else {
@@ -1203,7 +1231,7 @@ export default function Man3() {
     };
 
     tryScroll();
-  }, [selectedPageContent, window.location.hash]);
+  }, [selectedPageContent]);
 
   // Handle browser back/forward navigation
   useEffect(() => {

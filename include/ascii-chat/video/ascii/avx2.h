@@ -31,7 +31,7 @@
  *
  * @ingroup video
  */
-char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars);
+char *render_ascii_mono_avx2(const image_t *image, const char *ascii_chars);
 
 /**
  * @brief Render image as ASCII with color using AVX2
@@ -43,7 +43,7 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
  *
  * @ingroup video
  */
-char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+char *render_ascii_color_avx2(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
 
 #endif

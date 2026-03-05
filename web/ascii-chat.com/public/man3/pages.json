@@ -237,13 +237,31 @@
     "name": "avx2_background.c",
     "title": "background.c",
     "file": "ascii-chat-avx2_background.c.html",
-    "sourcePath": "lib/video/ascii/sve/background.c"
+    "sourcePath": "lib/video/ascii/scalar/background.c"
+  },
+  {
+    "name": "avx2_color.c",
+    "title": "color.c",
+    "file": "ascii-chat-avx2_color.c.html",
+    "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
     "name": "avx2_foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-avx2_foreground.c.html",
-    "sourcePath": "lib/video/ascii/sve/foreground.c"
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
+  },
+  {
+    "name": "avx2_mono.c",
+    "title": "mono.c",
+    "file": "ascii-chat-avx2_mono.c.html",
+    "sourcePath": "lib/video/ascii/sve/mono.c"
+  },
+  {
+    "name": "background.c",
+    "title": "background.c",
+    "file": "ascii-chat-background.c.html",
+    "sourcePath": "lib/video/ascii/scalar/background.c"
   },
   {
     "name": "bash.c",
@@ -396,6 +414,12 @@
     "sourcePath": "src/discovery/webrtc.h"
   },
   {
+    "name": "color.c",
+    "title": "color.c",
+    "file": "ascii-chat-color.c.html",
+    "sourcePath": "lib/video/ascii/sve/color.c"
+  },
+  {
     "name": "color_filter.c",
     "title": "color_filter.c",
     "file": "ascii-chat-color_filter.c.html",
@@ -417,7 +441,7 @@
     "name": "common.c",
     "title": "common.c",
     "file": "ascii-chat-common.c.html",
-    "sourcePath": "lib/video/ascii/common.c"
+    "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
     "name": "common_session_capture.c",
@@ -579,7 +603,7 @@
     "name": "crypto_handshake_common.c",
     "title": "common.c",
     "file": "ascii-chat-crypto_handshake_common.c.html",
-    "sourcePath": "lib/video/ascii/common.c"
+    "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
     "name": "deadlock_state_t",
@@ -844,6 +868,12 @@
     "title": "fish.c",
     "file": "ascii-chat-fish.c.html",
     "sourcePath": "lib/options/completions/fish.c"
+  },
+  {
+    "name": "foreground.c",
+    "title": "foreground.c",
+    "file": "ascii-chat-foreground.c.html",
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "formatter.c",
@@ -1506,6 +1536,12 @@
     "sourcePath": null
   },
   {
+    "name": "mono.c",
+    "title": "mono.c",
+    "file": "ascii-chat-mono.c.html",
+    "sourcePath": "lib/video/ascii/sve/mono.c"
+  },
+  {
     "name": "musl_c23_compat.c",
     "title": "musl_c23_compat.c",
     "file": "ascii-chat-musl_c23_compat.c.html",
@@ -1569,19 +1605,31 @@
     "name": "neon_background.c",
     "title": "background.c",
     "file": "ascii-chat-neon_background.c.html",
-    "sourcePath": "lib/video/ascii/sve/background.c"
+    "sourcePath": "lib/video/ascii/scalar/background.c"
+  },
+  {
+    "name": "neon_color.c",
+    "title": "color.c",
+    "file": "ascii-chat-neon_color.c.html",
+    "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
     "name": "neon_foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-neon_foreground.c.html",
-    "sourcePath": "lib/video/ascii/sve/foreground.c"
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "neon_halfblock.c",
     "title": "halfblock.c",
     "file": "ascii-chat-neon_halfblock.c.html",
     "sourcePath": "lib/video/ascii/scalar/halfblock.c"
+  },
+  {
+    "name": "neon_mono.c",
+    "title": "mono.c",
+    "file": "ascii-chat-neon_mono.c.html",
+    "sourcePath": "lib/video/ascii/sve/mono.c"
   },
   {
     "name": "network_acip_handlers.c",
@@ -1659,7 +1707,7 @@
     "name": "options_common.c",
     "title": "common.c",
     "file": "ascii-chat-options_common.c.html",
-    "sourcePath": "lib/video/ascii/common.c"
+    "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
     "name": "options_manpage.c",
@@ -2079,13 +2127,13 @@
     "name": "scalar_background.c",
     "title": "background.c",
     "file": "ascii-chat-scalar_background.c.html",
-    "sourcePath": "lib/video/ascii/sve/background.c"
+    "sourcePath": "lib/video/ascii/scalar/background.c"
   },
   {
     "name": "scalar_foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-scalar_foreground.c.html",
-    "sourcePath": "lib/video/ascii/sve/foreground.c"
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
   },
   {
     "name": "scalar_halfblock.c",
@@ -2571,13 +2619,25 @@
     "name": "sse2_background.c",
     "title": "background.c",
     "file": "ascii-chat-sse2_background.c.html",
-    "sourcePath": "lib/video/ascii/sve/background.c"
+    "sourcePath": "lib/video/ascii/scalar/background.c"
+  },
+  {
+    "name": "sse2_color.c",
+    "title": "color.c",
+    "file": "ascii-chat-sse2_color.c.html",
+    "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
     "name": "sse2_foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-sse2_foreground.c.html",
-    "sourcePath": "lib/video/ascii/sve/foreground.c"
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
+  },
+  {
+    "name": "sse2_mono.c",
+    "title": "mono.c",
+    "file": "ascii-chat-sse2_mono.c.html",
+    "sourcePath": "lib/video/ascii/sve/mono.c"
   },
   {
     "name": "ssh_agent.c",
@@ -2595,13 +2655,25 @@
     "name": "ssse3_background.c",
     "title": "background.c",
     "file": "ascii-chat-ssse3_background.c.html",
-    "sourcePath": "lib/video/ascii/sve/background.c"
+    "sourcePath": "lib/video/ascii/scalar/background.c"
+  },
+  {
+    "name": "ssse3_color.c",
+    "title": "color.c",
+    "file": "ascii-chat-ssse3_color.c.html",
+    "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
     "name": "ssse3_foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-ssse3_foreground.c.html",
-    "sourcePath": "lib/video/ascii/sve/foreground.c"
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
+  },
+  {
+    "name": "ssse3_mono.c",
+    "title": "mono.c",
+    "file": "ascii-chat-ssse3_mono.c.html",
+    "sourcePath": "lib/video/ascii/sve/mono.c"
   },
   {
     "name": "state.c",
@@ -2673,13 +2745,25 @@
     "name": "sve_background.c",
     "title": "background.c",
     "file": "ascii-chat-sve_background.c.html",
-    "sourcePath": "lib/video/ascii/sve/background.c"
+    "sourcePath": "lib/video/ascii/scalar/background.c"
+  },
+  {
+    "name": "sve_color.c",
+    "title": "color.c",
+    "file": "ascii-chat-sve_color.c.html",
+    "sourcePath": "lib/video/ascii/sve/color.c"
   },
   {
     "name": "sve_foreground.c",
     "title": "foreground.c",
     "file": "ascii-chat-sve_foreground.c.html",
-    "sourcePath": "lib/video/ascii/sve/foreground.c"
+    "sourcePath": "lib/video/ascii/scalar/foreground.c"
+  },
+  {
+    "name": "sve_mono.c",
+    "title": "mono.c",
+    "file": "ascii-chat-sve_mono.c.html",
+    "sourcePath": "lib/video/ascii/sve/mono.c"
   },
   {
     "name": "symbol_entry_t",
@@ -2751,7 +2835,7 @@
     "name": "tests_common.c",
     "title": "common.c",
     "file": "ascii-chat-tests_common.c.html",
-    "sourcePath": "lib/video/ascii/common.c"
+    "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
     "name": "tests_logging.c",
@@ -2925,13 +3009,19 @@
     "name": "video_ascii_common.c",
     "title": "common.c",
     "file": "ascii-chat-video_ascii_common.c.html",
-    "sourcePath": "lib/video/ascii/common.c"
+    "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
     "name": "video_ascii_frame_validator.c",
     "title": "frame_validator.c",
     "file": "ascii-chat-video_ascii_frame_validator.c.html",
     "sourcePath": "lib/video/ascii/frame_validator.c"
+  },
+  {
+    "name": "video_ascii_neon_common.c",
+    "title": "common.c",
+    "file": "ascii-chat-video_ascii_neon_common.c.html",
+    "sourcePath": "lib/video/ascii/neon/common.c"
   },
   {
     "name": "video_frame.c",
