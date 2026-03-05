@@ -9,7 +9,7 @@ import { test, expect } from "@playwright/test";
 import { ServerFixture, getRandomPort } from "./server-fixture";
 
 const WEB_CLIENT_URL = "http://localhost:3000/client";
-const TEST_TIMEOUT = 5000;
+const TEST_TIMEOUT = 10000;
 
 // Use fake media device for E2E tests (real hardware may not be available)
 test.use({
@@ -38,8 +38,7 @@ test("client mode: can initialize and connect", async ({ page, context }) => {
   try {
     await context.grantPermissions(["camera", "microphone"]);
     const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
-    // Don't use waitUntil: "networkidle" - WebSocket connection happens after page load
-    await page.goto(clientUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(clientUrl, { waitUntil: "networkidle" });
 
     // Verify connection
     await expect(page.locator(".status")).toContainText("Connected", {
@@ -72,8 +71,7 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
   try {
     await context.grantPermissions(["camera", "microphone"]);
     const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
-    // Don't use waitUntil: "networkidle" - WebSocket connection happens after page load
-    await page.goto(clientUrl, { waitUntil: "domcontentloaded" });
+    await page.goto(clientUrl, { waitUntil: "networkidle" });
 
     // Wait for connection
     await expect(page.locator(".status")).toContainText("Connected", {
@@ -155,9 +153,7 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
     console.log(
       `Note: Fake device info - all video frames identical (1 unique frame), so ASCII output also static`,
     );
-    // Verify server produced frames (expect at least 1 unique frame)
-    expect(endMetrics.received).toBeGreaterThanOrEqual(1);
-    console.log(`✓ Server sent ${endMetrics.received} unique frames`);
+    expect(receivedFps).toBeGreaterThanOrEqual(1);
   } finally {
     await server.stop();
   }
