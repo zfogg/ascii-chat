@@ -434,9 +434,13 @@ export default function Man3() {
             setTargetLineNumber(lineNumber);
             setTargetSnippetIndex(snippetIndex);
           }
-          // Update URL with selected page param
+          // Update URL with selected page param and preserve search query
           const params = new URLSearchParams(window.location.search);
           params.set("page", pageName);
+          // Ensure search query is preserved in URL
+          if (searchQuery && !params.has("q")) {
+            params.set("q", searchQuery);
+          }
           // Set hash based on lineNumber: if provided, use it; if not, preserve existing hash (unless it's a line number hash)
           let hash = "";
           if (lineNumber) {
@@ -556,17 +560,53 @@ export default function Man3() {
             const scrollParentHeight = scrollParent.clientHeight;
 
             // Center the element in the viewport
-            const centerScroll =
-              elementTop -
-              scrollParentHeight / 2 +
-              elementHeight / 2;
+            const scrollTop = Math.max(
+              0,
+              elementTop + elementHeight / 2 - scrollParentHeight / 2
+            );
 
-            scrollParent.scrollTop = Math.max(0, centerScroll);
+            scrollParent.scrollTop = scrollTop;
           }
         }
       }, 100);
     }
   }, [targetSnippetIndex, selectedPageName, searchResults]);
+
+  // Auto-load first search result when search results appear
+  useEffect(() => {
+    if (searchResults.length > 0 && !selectedPageName && searchQuery) {
+      // Load first search result's page
+      const pageName = searchResults[0].name;
+      const filename = searchResults[0].file || `${pageName}.html`;
+
+      fetch(`/man3/${filename}`)
+        .then((r) => r.text())
+        .then((html) => {
+          let processedContent = processPageContent(html, searchQuery);
+          const page = searchResults[0];
+          const sourcePath = page?.sourcePath;
+          const isSourcePage = pageName?.endsWith("_source") || false;
+          processedContent = processDefinitionLinks(
+            processedContent,
+            sourcePath,
+            __COMMIT_SHA__,
+            isSourcePage,
+          );
+          setSelectedPageContent(processedContent);
+          setSelectedPageName(pageName);
+
+          // Update URL with selected page param
+          const params = new URLSearchParams(window.location.search);
+          params.set("page", pageName);
+          window.history.replaceState(
+            {},
+            "",
+            `/man3?${params.toString()}`,
+          );
+        })
+        .catch((e) => console.error("Failed to load first search result:", e));
+    }
+  }, [searchResults, searchQuery, processPageContent, processDefinitionLinks]);
 
   // Scroll to matching search term in the right panel content
   useEffect(() => {
@@ -577,37 +617,20 @@ export default function Man3() {
       const viewer = contentViewerRef.current;
       if (!viewer) return;
 
-      console.log('[DEBUG] Right panel - searching for matches of:', searchQuery);
-
-      // Check if HTML contains the highlighting span
-      if (viewer.innerHTML.includes('bg-yellow-900')) {
-        console.log('[DEBUG] HTML contains bg-yellow-900 highlighting');
-      } else {
-        console.log('[DEBUG] HTML does NOT contain highlighting - checking selectedPageContent');
-        if (selectedPageContent.includes('bg-yellow-900')) {
-          console.log('[DEBUG] selectedPageContent HAS highlighting but it didn\'t render to DOM');
-        } else {
-          console.log('[DEBUG] selectedPageContent does NOT have highlighting');
-        }
-      }
-
       // Search for elements with bg-yellow-900 (includes bg-yellow-900/50)
       let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900"]');
-      console.log('[DEBUG] Found highlighted elements:', highlightedElements.length);
 
       if (highlightedElements.length > 0) {
-        // Scroll to the first highlighted match
+        // Scroll to the first highlighted match and center it
         const firstMatch = highlightedElements[0];
         const elementTop = firstMatch.offsetTop;
+        const elementHeight = firstMatch.clientHeight;
+        const viewportHeight = viewer.clientHeight;
 
-        // Center it in the viewport
-        const viewportCenter = viewer.clientHeight / 2;
-        const scrollTop = Math.max(0, elementTop - viewportCenter);
+        // Calculate scroll position to center the element
+        const scrollTop = Math.max(0, elementTop + elementHeight / 2 - viewportHeight / 2);
 
-        console.log('[DEBUG] Scrolling right panel to first match - elementTop:', elementTop, 'scrollTop:', scrollTop);
         viewer.scrollTop = scrollTop;
-      } else {
-        console.log('[DEBUG] No highlighted matches found in right panel');
       }
     }, 100);
   }, [selectedPageContent, searchQuery]);
