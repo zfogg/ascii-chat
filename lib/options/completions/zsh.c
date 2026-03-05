@@ -26,6 +26,10 @@ static void zsh_escape_desc(FILE *output, const char *text) {
     case '\'':
       fprintf(output, "'\\''");
       break;
+    case '\\':
+      // Escape backslashes for zsh single-quoted strings
+      fprintf(output, "\\\\");
+      break;
     case '\n':
     case '\t':
       fprintf(output, " ");
@@ -92,13 +96,10 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
   size_t group_count = 0;
   const char **groups = zsh_collect_groups(opts, count, &group_count);
 
-  // Build a single array with all options (no intermediate arrays to avoid completion conflicts)
-  fprintf(output, "  local -a %s_opts=(\n", func_prefix);
-
-  // Write all options sorted by group, with group headers as comments for clarity
+  // First pass: declare arrays for each group
   for (size_t g = 0; g < group_count; g++) {
     const char *group = groups[g];
-    fprintf(output, "    # %s\n", group);
+    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
 
     // Write all options in this group (long options only)
     for (size_t i = 0; i < count; i++) {
@@ -109,12 +110,17 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
       zsh_escape_desc(output, opts[i].help_text);
       fprintf(output, "'\n");
     }
+
+    fprintf(output, "  )\n");
   }
 
-  fprintf(output, "  )\n");
-
-  // Single _describe call with all options (eliminates completion conflicts)
-  fprintf(output, "  _describe -t options 'options' %s_opts\n", func_prefix);
+  // Second pass: call _describe for each group (with lowercase display)
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+    fprintf(output, "  _describe -t %s '", group);
+    utf8_write_lowercase(output, group);
+    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
+  }
 
   // Note: Do NOT add return here - return is added at the end of each mode function
   // after all option sets (both binary and mode-specific) are described
@@ -270,37 +276,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n"
                   "_ascii_chat_discovery() {\n");
 
-  /* For discovery mode, combine binary and discovery options into single array to avoid multiple _describe calls */
-  size_t binary_count = 0;
+  /* For discovery mode, get all options (binary + mode-specific) in a single call */
   size_t discovery_count = 0;
-  const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
-  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
+  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &discovery_count);
 
-  size_t combined_count = binary_count + discovery_count;
-  if (combined_count > 0) {
-    /* Create combined array of all options */
-    option_descriptor_t *combined_opts = SAFE_MALLOC(combined_count * sizeof(option_descriptor_t), option_descriptor_t *);
-
-    /* Copy binary options first */
-    if (binary_opts) {
-      memcpy(combined_opts, binary_opts, binary_count * sizeof(option_descriptor_t));
-    }
-
-    /* Copy discovery options after */
-    if (discovery_opts) {
-      memcpy(combined_opts + binary_count, discovery_opts, discovery_count * sizeof(option_descriptor_t));
-    }
-
-    /* Write combined options as single array with single _describe call */
-    zsh_write_options_grouped(output, combined_opts, combined_count, "discovery");
-
-    SAFE_FREE(combined_opts);
-  }
-
-  if (binary_opts) {
-    SAFE_FREE(binary_opts);
-  }
   if (discovery_opts) {
+    zsh_write_options_grouped(output, discovery_opts, discovery_count, "discovery");
     SAFE_FREE(discovery_opts);
   }
 
