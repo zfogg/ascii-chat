@@ -257,9 +257,19 @@ static void *websocket_service_thread(void *arg) {
                    (int)is_destroying);
         }
       } else {
-        // Call lws_service with valid context
-        // Use 1ms timeout for responsive frame transmission and reception
-        result = lws_service(ws_data->context, 1);
+        // Call lws_service with NON-BLOCKING mode (timeout=0)
+        // Prevents indefinite blocking during TLS handshake
+        // - With timeout=1ms: select() blocks waiting for socket readiness (can block >1ms during TLS)
+        // - With timeout=0: select() returns immediately, TLS can progress at 100us cadence
+        // The service loop calls us every 100us during handshake, providing responsive polling
+        if (loop_count <= 10) {
+          log_info("[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=0)",
+                   loop_count, ws_data->is_connected, (void *)ws_data->wsi);
+        }
+        result = lws_service(ws_data->context, 0);  // 0 = non-blocking, don't wait
+        if (loop_count <= 10) {
+          log_info("[LOOP %d] <<< lws_service() RETURNED (result=%d)", loop_count, result);
+        }
       }
       uint64_t service_end_ns = time_get_ns();
 
@@ -275,14 +285,18 @@ static void *websocket_service_thread(void *arg) {
       }
     } else {
       // Sleep briefly between lws_service() calls to avoid busy-waiting
-      // During handshake: 10us sleep (will retry service interval quickly)
+      // During handshake: 0us sleep (busy-wait for maximum responsiveness during TLS)
+      //   lws_service is now non-blocking, so tight polling won't block
       // During transfer: 100us sleep (normal cadence)
-      uint64_t sleep_us = ws_data->is_connected ? 100 : 10;
+      uint64_t sleep_us = ws_data->is_connected ? 100 : 0;
       if (loop_count <= 50) {
         log_debug("[LOOP %d] Time since service: %lu us, interval: %lu us - sleeping %lu us",
                   loop_count, time_since_last_service / 1000, service_interval / 1000, sleep_us);
       }
-      platform_sleep_us(sleep_us);
+      if (sleep_us > 0) {
+        platform_sleep_us(sleep_us);
+      }
+      // else: no sleep during handshake - busy-wait with non-blocking lws_service calls
     }
 
     // Check if connection is still alive
@@ -310,6 +324,17 @@ static void *websocket_service_thread(void *arg) {
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len) {
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)user;
 
+  // Log all callback reasons for TLS investigation
+  static uint64_t callback_count = 0;
+  uint64_t now_ns = time_get_ns();
+  if (reason == LWS_CALLBACK_PROTOCOL_INIT || reason == LWS_CALLBACK_CLIENT_ESTABLISHED ||
+      reason == LWS_CALLBACK_CLIENT_WRITEABLE || reason == LWS_CALLBACK_CLIENT_RECEIVE ||
+      reason == LWS_CALLBACK_CLIENT_CONNECTION_ERROR || reason == LWS_CALLBACK_CLOSED) {
+    callback_count++;
+    log_info(">>> CALLBACK #%lu: reason=%d (0x%x), wsi=%p, len=%zu, timestamp=%llu",
+             callback_count, reason, reason, (void *)wsi, len, (unsigned long long)now_ns);
+  }
+
   // Early exit during shutdown to prevent crashes in libwebsockets callbacks
   if (ws_data && atomic_load_bool(&ws_data->is_destroying)) {
     return 0;
@@ -318,8 +343,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   switch (reason) {
   case LWS_CALLBACK_CLIENT_ESTABLISHED: {
     uint64_t now_ns = time_get_ns();
-    log_fatal("🟢🟢🟢 WebSocket CLIENT_ESTABLISHED! wsi=%p, ws_data=%p, timestamp=%llu", (void *)wsi, (void *)ws_data,
-              (unsigned long long)now_ns);
+    log_fatal("🟢🟢🟢 WebSocket CLIENT_ESTABLISHED! wsi=%p, ws_data=%p, timestamp=%llu, elapsed_from_start=%llu",
+              (void *)wsi, (void *)ws_data,
+              (unsigned long long)now_ns, (unsigned long long)(now_ns / 1000000000ULL));
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       log_fatal("    [ESTABLISHED] Setting is_connected=true (was %d)", ws_data->is_connected);
