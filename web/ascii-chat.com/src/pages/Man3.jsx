@@ -43,7 +43,7 @@ export default function Man3() {
 
     // Parse each section to extract type, name, and description
     const rows = [];
-    let prevDescription = "";
+    let pendingDescription = "";
 
     for (let i = 0; i < sections.length; i++) {
       const section = sections[i].trim();
@@ -60,13 +60,18 @@ export default function Man3() {
       let type, name, description;
 
       if (bTags.length === 2) {
-        // Two b tags: type and name both have <b> tags
+        // Two b tags: both type and name
         type = bTags[0].textContent;
         name = bTags[1].textContent;
-        // Description is everything before the first b tag in this section
-        const beforeFirstB = section.substring(0, section.indexOf("<b>"));
-        description = (prevDescription ? prevDescription + " " : "") + beforeFirstB.trim();
-        prevDescription = "";
+        // Get text before first b tag as description
+        const beforeFirstB = section.substring(0, section.indexOf("<b>")).trim();
+        description = beforeFirstB;
+
+        // If there's a pending description from the previous section, apply it to a new row first
+        if (pendingDescription) {
+          // This shouldn't happen in section 0, but if it does, ignore it
+          pendingDescription = "";
+        }
       } else if (bTags.length === 1) {
         // One b tag: it's the name
         name = bTags[0].textContent;
@@ -75,16 +80,28 @@ export default function Man3() {
         const lastBStart = section.lastIndexOf("<b>");
         const beforeLastB = section.substring(0, lastBStart).trim();
 
-        // The last "word" before the b tag is the type
-        const lastSpace = beforeLastB.lastIndexOf(" ");
-        if (lastSpace !== -1) {
-          type = beforeLastB.substring(lastSpace + 1);
-          description = beforeLastB.substring(0, lastSpace).trim();
+        // Split by period to separate description from type
+        const periodIndex = beforeLastB.lastIndexOf(". ");
+        let prevDesc = "";
+        let typeStr = "";
+
+        if (periodIndex !== -1) {
+          prevDesc = beforeLastB.substring(0, periodIndex + 1).trim();
+          typeStr = beforeLastB.substring(periodIndex + 2).trim();
         } else {
-          type = beforeLastB;
-          description = prevDescription;
+          // No period found, might be a simple type with no description
+          const lastSpace = beforeLastB.lastIndexOf(" ");
+          if (lastSpace !== -1) {
+            prevDesc = beforeLastB.substring(0, lastSpace).trim();
+            typeStr = beforeLastB.substring(lastSpace + 1).trim();
+          } else {
+            typeStr = beforeLastB;
+          }
         }
-        prevDescription = "";
+
+        type = typeStr;
+        description = prevDesc;
+        pendingDescription = "";
       }
 
       if (type && name) {
