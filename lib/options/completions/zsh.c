@@ -167,11 +167,15 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   fprintf(output, "      )\n"
                   "      client_modes=(\n");
 
-  /* Generate client-like modes from registry */
+  /* Generate client-like modes from registry (exclude discovery since it's the default mode) */
   size_t mode_client_count = 0;
   const mode_descriptor_t *mode_client_descs = get_modes_by_group("client-like", &mode_client_count);
   if (mode_client_descs) {
     for (size_t i = 0; i < mode_client_count; i++) {
+      /* Skip discovery mode - it's the default when no mode is specified */
+      if (strcmp(mode_client_descs[i].name, "discovery") == 0) {
+        continue;
+      }
       fprintf(output, "        '%s:%s'\n", mode_client_descs[i].name, mode_client_descs[i].description);
     }
     SAFE_FREE(mode_client_descs);
@@ -201,13 +205,11 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "    mirror)\n"
                   "      _ascii_chat_mirror\n"
                   "      ;;\n"
-                  "    discovery)\n"
-                  "      _ascii_chat_discovery\n"
-                  "      ;;\n"
                   "\n"
                   "    *)\n"
                   "      # Default mode (discovery) + binary-level options\n"
-                  "      _ascii_chat_discovery\n");
+                  "      _ascii_chat_discovery\n"
+                  "      # Also show binary-level options\n");
 
   /* Binary options - grouped by category */
   size_t binary_count = 0;
