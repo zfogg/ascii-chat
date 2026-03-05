@@ -133,19 +133,12 @@
   margin: 1rem 0;
 }
 
-/* Hide br tags between field type/name and description (odd-numbered) */
-#Data_Fields ~ .Pp br:nth-of-type(odd) {
+/* Hide ALL br tags - they separate fields from descriptions on same logical line */
+#Data_Fields ~ .Pp br {
   display: none;
 }
 
-/* Keep br tags that separate field entries visible (even-numbered) */
-#Data_Fields ~ .Pp br:nth-of-type(even) {
-  display: block;
-  content: "";
-  margin: 0.5rem 0;
-}
-
-/* Make b tags inline and styled */
+/* Styled bold tags (field types and names) */
 #Data_Fields ~ .Pp b {
   color: #f0abfc;
   font-weight: 600;
