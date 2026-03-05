@@ -72,8 +72,9 @@ export default function Man3() {
     if (!sourcePath || !commitSha || commitSha === 'unknown') return html;
 
     // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
+    // Use \s* to handle whitespace/newlines between "of file" and the filename
     let result = html.replace(
-      /Definition at line <b>(\d+)<\/b> of file <b>([^<]+)<\/b>/g,
+      /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
       (_, lineNum, filename) =>
         `Definition at line <a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
         `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">${lineNum}</b></a> of file ` +
