@@ -511,25 +511,9 @@ export default function Man3() {
 
     try {
       const regex = new RegExp(`(${query})`, "gi");
-      // Split by HTML tags, only highlight text content (not tag content)
-      const parts = html.split(/(<[^>]*>)/);
-
-      const highlighted = parts
-        .map((part) => {
-          if (part.startsWith("<")) {
-            // It's a tag, don't modify
-            return part;
-          } else {
-            // It's text content, highlight matches
-            return part.replace(
-              regex,
-              '<span class="bg-yellow-900/50 text-yellow-200">$1</span>',
-            );
-          }
-        })
-        .join("");
-
-      return highlighted;
+      // For code blocks: preserve Doxygen syntax highlighting while adding search highlight
+      // Wrap matches with highlight span but preserve existing span classes
+      return html.replace(regex, '<span class="bg-yellow-900/50 text-yellow-200">$1</span>');
     } catch (_e) {
       return html;
     }
@@ -723,22 +707,25 @@ export default function Man3() {
     const hash = window.location.hash;
     if (!hash) return;
 
-    // Try to find and scroll to the first line with the arrow marker
+    // Try to find and scroll to code block with target line
     const scrollToHash = () => {
       const container = contentViewerRef.current;
 
-      // Look for the first arrow marker (⟹) in visible code blocks
-      const codeBlocks = container.querySelectorAll("pre code");
-      for (const block of codeBlocks) {
-        const spans = block.querySelectorAll("span");
-        for (const span of spans) {
-          if (span.textContent.includes("⟹")) {
-            // Found the first arrow, scroll it to the center of the viewport
-            span.scrollIntoView({ block: "center" });
-            return true;
-          }
-        }
+      // Extract line number from hash (e.g., #l00213 -> 213)
+      const lineMatch = hash.match(/#l(\d+)/);
+      if (!lineMatch) return false;
+
+      const lineNum = parseInt(lineMatch[1], 10);
+      const blockId = `code-block-${lineNum}`;
+
+      // Look for the code block with this target line
+      const targetBlock = container.querySelector(`#${blockId}`);
+      if (targetBlock) {
+        // Scroll the code block to center of viewport
+        targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
       }
+
       return false;
     };
 
@@ -836,7 +823,7 @@ export default function Man3() {
     return lines;
   };
 
-  const renderContentWithCodeBlocks = (html, isSourcePage = false) => {
+  const renderContentWithCodeBlocks = (html, isSourcePage = false, searchQuery = "") => {
     const elements = [];
     let remaining = html;
 
@@ -858,15 +845,16 @@ export default function Man3() {
         // Add code block with line numbers
         let codeContent = preMatch[2];
 
-        // If highlighting is present, preserve it by using dangerouslySetInnerHTML
-        if (codeContent.includes("bg-yellow-900")) {
-          elements.push(
-            <pre key={`code-${elements.length}`} style={{ overflow: "auto", marginBottom: "1rem" }}>
-              <code dangerouslySetInnerHTML={{ __html: codeContent }} />
-            </pre>,
-          );
-        } else {
-          // Check for target line hash before decoding
+        // Strip search highlighting to allow CodeBlock to tokenize properly
+        const cleanedContent = codeContent
+          .replace(/<span[^>]*style="[^"]*background-color:\s*#fbbf24[^"]*"[^>]*>/g, "")
+          .replace(/<span[^>]*class="[^"]*bg-yellow-900[^"]*"[^>]*>/g, "")
+          .replace(/<\/span>/g, "");
+
+        // Decode to plain text
+        const decodedContent = decodeHtmlEntities(cleanedContent);
+        if (decodedContent.trim()) {
+          // Check for target line hash
           const hash = window.location.hash;
           let targetLineStart = null;
           let targetLineEnd = null;
@@ -881,62 +869,31 @@ export default function Man3() {
             }
           }
 
-          // If target line exists, preserve original HTML with Doxygen syntax highlighting
-          if (targetLineStart !== null && isSourcePage) {
-            const lines = codeContent.split("\n");
-            const maxLineNum = lines.length.toString().length;
+          const lines = decodedContent.split("\n");
+          const maxLineNum = lines.length.toString().length;
 
-            const highlightedHtml = lines
-              .map((line, idx) => {
-                const lineNum = idx + 1;
-                const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                const isTarget =
-                  lineNum >= targetLineStart && lineNum <= targetLineEnd;
+          const codeWithLineNumbers = lines
+            .map((text, idx) => {
+              const lineNum = idx + 1;
+              const paddedNum = String(lineNum).padStart(maxLineNum, " ");
+              return `    ${paddedNum}  ${text}`;
+            })
+            .join("\n");
 
-                if (isTarget) {
-                  return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${line} ⟸</span></div>`;
-                }
-                return `<div style="font-family: monospace;"><span>    ${paddedNum}  ${line}</span></div>`;
-              })
-              .join("");
+          // Use CodeBlock with line highlighting
+          // Add an id to the container if this block has a target line for scrolling
+          const blockId = targetLineStart ? `code-block-${targetLineStart}` : undefined;
 
-            elements.push(
-              <div
-                key={`code-${elements.length}`}
-                style={{
-                  fontSize: "0.875rem",
-                  lineHeight: "1.5",
-                  backgroundColor: "#111827",
-                  padding: "1rem",
-                  borderRadius: "0.5rem",
-                  overflow: "auto",
-                  marginBottom: "1rem",
-                }}
-                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-              />,
-            );
-          } else {
-            // No target line, decode and use CodeBlock
-            const decodedContent = decodeHtmlEntities(codeContent);
-            if (decodedContent.trim()) {
-              const lines = decodedContent.split("\n");
-              const maxLineNum = lines.length.toString().length;
-
-              const codeWithLineNumbers = lines
-                .map((text, idx) => {
-                  const lineNum = idx + 1;
-                  const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                  return `    ${paddedNum}  ${text}`;
-                })
-                .join("\n");
-
-              elements.push(
-                <CodeBlock key={`code-${elements.length}`} language="c">
-                  {codeWithLineNumbers}
-                </CodeBlock>,
-              );
-            }
-          }
+          elements.push(
+            <div key={`code-${elements.length}`} id={blockId}>
+              <CodeBlock
+                highlightLines={targetLineStart ? { start: targetLineStart, end: targetLineEnd } : undefined}
+                searchQuery={searchQuery}
+              >
+                {codeWithLineNumbers}
+              </CodeBlock>
+            </div>,
+          );
         }
 
         // Update remaining to after the pre tag
@@ -1044,9 +1001,13 @@ export default function Man3() {
             })
             .join("\n");
 
+          // Add an id to the wrapper if this block has a target line for scrolling
+          const wrapperId = targetLineStart ? `code-block-${targetLineStart}` : undefined;
+
           elements.push(
             <div
               key={`code-wrapper-${elements.length}`}
+              id={wrapperId}
               className="code-with-highlight"
             >
               <style>{`
@@ -1064,7 +1025,7 @@ export default function Man3() {
                   pointer-events: none;
                 }
               `}</style>
-              <CodeBlock language="c">{codeWithLineNumbers}</CodeBlock>
+              <CodeBlock searchQuery={searchQuery}>{codeWithLineNumbers}</CodeBlock>
             </div>,
           );
 
@@ -1403,6 +1364,7 @@ export default function Man3() {
                     {renderContentWithCodeBlocks(
                       selectedPageContent,
                       selectedPageName?.endsWith("_source") || false,
+                      searchQuery,
                     )}
                   </div>
                 </div>

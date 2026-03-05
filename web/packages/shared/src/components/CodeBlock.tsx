@@ -6,6 +6,7 @@ interface CodeBlockProps extends Omit<HTMLAttributes<HTMLPreElement>, 'className
   inline?: boolean;
   className?: string;
   language?: string;
+  highlightLines?: { start: number; end: number };
 }
 
 export function CodeBlock({
@@ -13,6 +14,7 @@ export function CodeBlock({
   children,
   className = "",
   language = 'bash',
+  highlightLines,
   ...props
 }: CodeBlockProps) {
   if (inline) {
@@ -45,6 +47,19 @@ export function CodeBlock({
         style: {
           fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
         }
+      }}
+      lineProps={(lineNumber) => {
+        const isHighlighted = highlightLines &&
+          lineNumber >= highlightLines.start &&
+          lineNumber <= highlightLines.end;
+
+        return isHighlighted ? {
+          style: {
+            backgroundColor: '#fbbf24',
+            display: 'block',
+            padding: '0.125rem 0.5rem',
+          }
+        } : {};
       }}
     >
       {code}
