@@ -509,35 +509,28 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
   // For server-side transports (owns_context=false), the connection is already established
-  // For client-side transports (owns_context=true), wait for connection to be established
-  // before sending, instead of failing immediately. This allows sends to work even if
-  // they're called before the service thread has fully established the connection.
+  // For client-side transports (owns_context=true), check connection status WITHOUT blocking
+  // CRITICAL: Don't hold state_mutex while waiting - this prevents service thread from updating state
+  // Instead, do a quick check and return error if not connected. Caller can retry.
   if (ws_data->owns_context) {
-    // Wait for connection with same timeout as recv()
-    const uint64_t CONNECT_WAIT_TIMEOUT_NS = 100 * 1000000ULL; // 100ms per wait iteration
-    uint64_t wait_start_ns = time_get_ns();
-
+    // Quick non-blocking check of connection status
     mutex_lock(&ws_data->state_mutex);
-    while (!ws_data->is_connected && !ws_data->connection_failed) {
-      uint64_t elapsed_ns = time_get_ns() - wait_start_ns;
-      if (elapsed_ns > 30 * 1000000000ULL) { // 30 second total timeout
-        log_error("[WEBSOCKET_SEND] Connection timeout after 30 seconds, cannot send");
-        mutex_unlock(&ws_data->state_mutex);
-        return SET_ERRNO(ERROR_NETWORK, "WebSocket connection timeout");
-      }
-      // Wait for connection with timeout
-      cond_timedwait(&ws_data->state_cond, &ws_data->state_mutex, CONNECT_WAIT_TIMEOUT_NS);
-    }
     bool connected = ws_data->is_connected;
     bool connection_failed = ws_data->connection_failed;
     mutex_unlock(&ws_data->state_mutex);
 
-    if (connection_failed && !connected) {
-      log_error("[WEBSOCKET_SEND] Connection failed during establishment");
+    // Return error if connection failed or not yet established
+    if (connection_failed) {
+      log_error("[WEBSOCKET_SEND] Connection failed - cannot send");
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
-    log_dev_every(1000000, "websocket_send (client): is_connected=%d, wsi=%p, send_len=%zu", connected,
+    if (!connected) {
+      log_warn("[WEBSOCKET_SEND] Connection not yet established - cannot send (client will retry)");
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket connection not yet established");
+    }
+
+    log_dev_every(1000000, "websocket_send (client): is_connected=true, wsi=%p, send_len=%zu",
                   (void *)ws_data->wsi, len);
   } else {
     log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)",
@@ -1599,16 +1592,9 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   transport->crypto_ctx = crypto_ctx;
   transport->impl_data = ws_data;
 
-  // CRITICAL: Give libwebsockets time to initialize connection before starting service thread
-  // libwebsockets needs to process the initial connection handshake callbacks before lws_service()
-  // is called repeatedly. Concurrent access to context during connection setup can trigger assertions.
-  // Sleep 50ms to let lws_client_connect_via_info() callbacks complete initialization.
-  log_debug("Delaying service thread start to allow libwebsockets connection initialization...");
-  platform_sleep_us(50000); // 50ms delay
-
-  // Start service thread after connection initialization
-  // Only the service thread should call lws_service() on this context
-  log_debug("Starting WebSocket service thread...");
+  // Start service thread immediately - it will drive TLS handshake with frequent polling
+  // The service thread checks is_destroying and context validity before calling lws_service,
+  // so it's safe to start it right away without delays.
   ws_data->service_running = true;
   if (asciichat_thread_create(&ws_data->service_thread, "ws_service", websocket_service_thread, ws_data) != 0) {
     log_error("Failed to create WebSocket service thread");
