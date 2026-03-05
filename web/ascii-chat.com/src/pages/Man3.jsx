@@ -1067,9 +1067,9 @@ export default function Man3() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-800">
-                    {highlightedResults.map((page) => (
+                    {highlightedResults.map((page, index) => (
                       <div
-                        key={page.file}
+                        key={`${page.file}-${page.name}`}
                         className={`border-l-4 transition-colors ${
                           selectedPageName === page.name
                             ? "bg-purple-900/30 border-purple-500"
