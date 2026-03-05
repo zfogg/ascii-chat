@@ -377,7 +377,8 @@ export default function Man3() {
         .then((r) => r.text())
         .then((html) => {
           // Scroll to top before loading new content
-          if (contentViewerRef.current) {
+          // Only reset scroll if there's no hash anchor (hash will handle scrolling)
+          if (contentViewerRef.current && !window.location.hash) {
             contentViewerRef.current.scrollTop = 0;
           }
           let processedContent = processPageContent(html, searchQuery);
@@ -527,6 +528,34 @@ export default function Man3() {
       setTargetSnippetIndex(null);
     }
   }, [selectedPageContent, targetLineNumber, targetSnippetIndex]);
+
+  // Scroll to hash anchor when content loads (for function links, etc.)
+  useEffect(() => {
+    if (!selectedPageContent || !contentViewerRef.current) return;
+
+    // Get hash from URL, removing the leading #
+    const hash = window.location.hash.substring(1);
+    if (!hash) return;
+
+    // Delay scroll to allow content to render
+    setTimeout(() => {
+      const viewer = contentViewerRef.current;
+      if (!viewer) return;
+
+      // Find element with matching id attribute
+      const targetElement = viewer.querySelector(`[id="${hash}"]`);
+      if (targetElement) {
+        // Get element's position relative to the scrollable container
+        const elementTop = targetElement.offsetTop;
+
+        // Center it in the viewport
+        const viewportCenter = viewer.clientHeight / 2;
+        const scrollTop = Math.max(0, elementTop - viewportCenter);
+
+        viewer.scrollTop = scrollTop;
+      }
+    }, 100);
+  }, [selectedPageContent, window.location.hash]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
