@@ -611,6 +611,9 @@ cat video.mp4 | ascii-chat mirror --file -`}
                     <strong className="text-cyan-400">Protocol:</strong>{" "}
                     Handshake, sessions, packets, multi-client
                   </li>
+                  <li>
+                    <strong className="text-purple-400">Terminal:</strong> Capability detection, color modes, UTF-8, cross-platform
+                  </li>
                 </ul>
 
                 <p className="text-gray-300 mb-4">
