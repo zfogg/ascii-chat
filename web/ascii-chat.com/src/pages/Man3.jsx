@@ -595,50 +595,106 @@ export default function Man3() {
     }
   }, [searchResults, searchQuery, processPageContent, processDefinitionLinks]);
 
-  // Scroll to matching search term in the right panel content
+  // Scroll to target line when it's set
   useEffect(() => {
     if (!selectedPageContent || !contentViewerRef.current) return;
 
-    // Get current search query from URL since state might be stale
-    const currentParams = new URLSearchParams(window.location.search);
-    const currentSearchQuery = currentParams.get("q");
+    const viewer = contentViewerRef.current;
 
-
-    if (!currentSearchQuery) return;
-
-    // Delay scroll to allow content to render
+    // Delay to allow content to render
     setTimeout(() => {
-      const viewer = contentViewerRef.current;
-      if (!viewer) return;
-
-
-      // Search for spans with bg-yellow-900 classes
-      // Using getComputedStyle to find elements that have yellow background
-      let highlightedElements = [];
-      const allSpans = viewer.querySelectorAll("span");
-
-      for (const span of allSpans) {
-        const classes = span.className || "";
-        if (classes.includes("bg-yellow-900")) {
-          highlightedElements.push(span);
+      // Clear any previous yellow highlighting
+      const allHighlighted = viewer.querySelectorAll('[style*="background-color"]');
+      for (const el of allHighlighted) {
+        if (el.style.backgroundColor === "rgb(255, 191, 36)" || el.style.backgroundColor === "#fbbf24") {
+          el.style.backgroundColor = "";
         }
       }
 
+      // Scroll to target line if set (when clicking search snippets)
+      if (targetLineNumber) {
+        console.log("[Man3] Looking for line:", targetLineNumber);
 
-      if (highlightedElements.length > 0) {
-        // Scroll to the first highlighted match and center it
-        const firstMatch = highlightedElements[0];
-        const elementTop = firstMatch.offsetTop;
-        const elementHeight = firstMatch.clientHeight;
-        const viewportHeight = viewer.clientHeight;
+        // Search for any element that contains the target line number
+        const walker = document.createTreeWalker(
+          viewer,
+          NodeFilter.SHOW_TEXT,
+          null,
+          false
+        );
 
-        // Calculate scroll position to center the element
-        const scrollTop = Math.max(0, elementTop + elementHeight / 2 - viewportHeight / 2);
+        let foundElement = null;
+        let node;
 
-        viewer.scrollTop = scrollTop;
+        // Walk through all text nodes looking for the line number
+        while ((node = walker.nextNode())) {
+          const text = node.textContent || "";
+          // Look for text that starts with the line number followed by whitespace or special chars
+          const match = text.match(new RegExp(`\\b${targetLineNumber}\\b`));
+          if (match) {
+            console.log("[Man3] Found text node with line number:", text.substring(0, 50));
+            // Found a text node containing the line number
+            // Get the closest parent element (which should be a visible container)
+            foundElement = node.parentElement;
+            console.log("[Man3] foundElement tag:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
+
+            // Walk up to find a reasonable scrollable/visible parent
+            let parent = foundElement;
+            while (parent && parent !== viewer && parent.offsetHeight === 0) {
+              parent = parent.parentElement;
+            }
+            if (parent && parent !== viewer) {
+              foundElement = parent;
+              console.log("[Man3] After walking up from 0-height, foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
+            }
+            break;
+          }
+        }
+
+        if (foundElement) {
+          console.log("[Man3] foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight, "offsetTop:", foundElement?.offsetTop);
+
+          // Get all spans in the CODE block and find those on the same line
+          const codeBlock = foundElement.closest("code") || foundElement.closest("pre");
+          console.log("[Man3] Code block:", codeBlock?.tagName);
+
+          if (codeBlock) {
+            // Find the offsetTop of our element to identify its line
+            const targetTop = foundElement.offsetTop;
+            console.log("[Man3] Target line offsetTop:", targetTop);
+
+            // Find all spans/elements in the code block
+            const allSpans = codeBlock.querySelectorAll("span, div, *");
+            const lineElements = [];
+
+            // Collect all elements on the same line
+            for (const span of allSpans) {
+              if (span.offsetTop === targetTop && span.offsetHeight > 0 && span.offsetHeight < 100) {
+                lineElements.push(span);
+                console.log("[Man3] Found element on same line:", span.tagName, "text:", span.textContent?.substring(0, 20));
+              }
+            }
+
+            console.log("[Man3] Found", lineElements.length, "elements on line");
+
+            if (lineElements.length > 0) {
+              // Highlight all elements on this line
+              for (const el of lineElements) {
+                el.style.backgroundColor = "#fbbf24";
+              }
+              console.log("[Man3] Applied highlight to", lineElements.length, "elements");
+
+              // Scroll the first element into view, centered
+              lineElements[0].scrollIntoView({ behavior: 'auto', block: 'center' });
+              console.log("[Man3] Scrolled element into view");
+            }
+          }
+        } else {
+          console.log("[Man3] No element found for line number");
+        }
       }
     }, 100);
-  }, [selectedPageContent]);
+  }, [selectedPageContent, targetLineNumber]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
@@ -846,7 +902,7 @@ export default function Man3() {
     return lines;
   };
 
-  const renderContentWithCodeBlocks = (html, isSourcePage = false, searchQuery = "") => {
+  const renderContentWithCodeBlocks = (html, isSourcePage = false, searchQuery = "", targetLineNum = null) => {
     const elements = [];
     let remaining = html;
 
@@ -878,35 +934,38 @@ export default function Man3() {
         const decodedContent = decodeHtmlEntities(cleanedContent);
         if (decodedContent.trim()) {
           // Check if the pre tag contains source line numbers
-          // and extract requested line based on hash anchor
+          // and extract requested line based on hash anchor or targetLineNum parameter
           let targetLineStart = null;
           let targetLineEnd = null;
-          const hash = window.location.hash;
 
-          if (isSourcePage && hash.match(/^#l(\d+)/)) {
-            const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
-            if (rangeMatch) {
-              const requestedLineNum = parseInt(rangeMatch[1], 10);
-              const requestedLineEnd = rangeMatch[2]
-                ? parseInt(rangeMatch[2], 10)
-                : requestedLineNum;
+          // Use targetLineNum parameter if provided, otherwise check hash
+          let requestedLineNum = targetLineNum;
+          if (!requestedLineNum && isSourcePage) {
+            const hash = window.location.hash;
+            if (hash.match(/^#l(\d+)/)) {
+              const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
+              if (rangeMatch) {
+                requestedLineNum = parseInt(rangeMatch[1], 10);
+              }
+            }
+          }
 
-              const lines = decodedContent.split("\n");
-              // Check if lines start with line number format: "00001 code" or similar
-              const lineNumPattern = /^(\d+)\s+/;
-              const firstLineMatch = lines[0]?.match(lineNumPattern);
+          if (isSourcePage && requestedLineNum !== null) {
+            const lines = decodedContent.split("\n");
+            // Check if lines start with line number format: "00001 code" or similar
+            const lineNumPattern = /^(\d+)\s+/;
+            const firstLineMatch = lines[0]?.match(lineNumPattern);
 
-              if (firstLineMatch) {
-                // Try to find the requested line
-                for (let i = 0; i < lines.length; i++) {
-                  const match = lines[i].match(lineNumPattern);
-                  if (match) {
-                    const lineNum = parseInt(match[1], 10);
-                    if (lineNum === requestedLineNum) {
-                      targetLineStart = i + 1; // 1-indexed position in this code block
-                      targetLineEnd = Math.min(requestedLineEnd - requestedLineNum + i + 1, lines.length);
-                      break;
-                    }
+            if (firstLineMatch) {
+              // Try to find the requested line
+              for (let i = 0; i < lines.length; i++) {
+                const match = lines[i].match(lineNumPattern);
+                if (match) {
+                  const lineNum = parseInt(match[1], 10);
+                  if (lineNum === requestedLineNum) {
+                    targetLineStart = i + 1; // 1-indexed position in this code block
+                    targetLineEnd = i + 1; // Highlight just the one line
+                    break;
                   }
                 }
               }
@@ -1435,6 +1494,7 @@ export default function Man3() {
                       selectedPageContent,
                       selectedPageName?.endsWith("_source") || selectedPageName?.endsWith(".c") || false,
                       searchQuery,
+                      targetLineNumber,
                     )}
                   </div>
                 </div>
