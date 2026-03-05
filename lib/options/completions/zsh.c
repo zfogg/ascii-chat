@@ -15,13 +15,15 @@
 
 /**
  * Escape special characters in completion descriptions for zsh
+ * Truncate to first sentence or 80 characters for readability
  */
 static void zsh_escape_desc(FILE *output, const char *text) {
   if (!text) {
     return;
   }
 
-  for (const char *p = text; *p; p++) {
+  size_t len = 0;
+  for (const char *p = text; *p && len < 80; p++, len++) {
     switch (*p) {
     case '\'':
       fprintf(output, "'\\''");
@@ -34,9 +36,21 @@ static void zsh_escape_desc(FILE *output, const char *text) {
       // Escape colons which are special in completion descriptions
       fprintf(output, "\\:");
       break;
+    case '.':
+      // Stop at end of sentence
+      fputc(*p, output);
+      if (*(p + 1) == ' ' || *(p + 1) == '\0') {
+        return;
+      }
+      break;
     default:
       fputc(*p, output);
     }
+  }
+  // Truncate if we hit 80 chars
+  if (len >= 80) {
+    // Remove trailing space if present
+    fprintf(output, "...");
   }
 }
 
