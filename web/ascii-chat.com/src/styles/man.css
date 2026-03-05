@@ -149,7 +149,8 @@
 /* Data Fields table styling */
 .man-data-fields-table {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
   margin: 1rem 0;
 }
 
