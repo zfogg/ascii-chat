@@ -667,11 +667,23 @@ export default function Man3() {
             const allSpans = codeBlock.querySelectorAll("span, div, *");
             const lineElements = [];
 
-            // Collect all elements on the same line
+            // Collect elements on the same line, deduplicating overlapping spans
+            const seenPositions = new Set();
             for (const span of allSpans) {
               if (span.offsetTop === targetTop && span.offsetHeight > 0 && span.offsetHeight < 100) {
+                // Create a position key to detect overlapping spans
+                const posKey = `${span.offsetLeft}:${span.offsetTop}`;
+
+                // Skip spans that are at the same position as one we already collected
+                // (likely overlapping duplicates from syntax highlighter)
+                if (seenPositions.has(posKey)) {
+                  console.log("[Man3] Skipping duplicate at position:", posKey, "text:", span.textContent?.substring(0, 20));
+                  continue;
+                }
+
+                seenPositions.add(posKey);
                 lineElements.push(span);
-                console.log("[Man3] Found element on same line:", span.tagName, "text:", span.textContent?.substring(0, 20));
+                console.log("[Man3] Found element on same line:", span.tagName, "height:", span.offsetHeight, "offsetLeft:", span.offsetLeft, "text:", span.textContent?.substring(0, 20));
               }
             }
 
@@ -682,6 +694,13 @@ export default function Man3() {
               for (const el of lineElements) {
                 el.style.backgroundColor = "#fbbf24";
                 el.style.color = "#000000";
+                // Ensure hidden elements are visible
+                if (el.offsetHeight === 0) {
+                  el.style.display = "inline";
+                  el.style.visibility = "visible";
+                  el.style.opacity = "1";
+                  console.log("[Man3] Unhid element with text:", el.textContent?.substring(0, 20));
+                }
               }
 
               console.log("[Man3] Applied highlight to", lineElements.length, "elements");
