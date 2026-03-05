@@ -128,19 +128,24 @@
   display: block;
 }
 
-/* Data Fields section - hide br tags and add line spacing */
+/* Data Fields section - organize field entries */
 #Data_Fields ~ .Pp {
   margin: 1rem 0;
+  line-height: 1.8;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
-#Data_Fields ~ .Pp br {
+/* Hide odd-numbered br (between field name and description) */
+#Data_Fields ~ .Pp br:nth-of-type(odd) {
   display: none;
+  height: 0;
 }
 
-/* Add spacing after every 4th b element (every field description pair) */
-#Data_Fields ~ .Pp b:nth-of-type(4n)::after {
-  content: '\A';
-  white-space: pre;
+/* Style even-numbered br (after descriptions) as line breaks */
+#Data_Fields ~ .Pp br:nth-of-type(even) {
+  display: block;
+  height: 0.25rem;
 }
 
 /* Lists */
