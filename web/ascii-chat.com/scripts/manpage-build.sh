@@ -53,7 +53,7 @@ if [ -d "$REPO_ROOT" ]; then
     done
 
     # Generate pages.json index from converted HTML files
-    python3 "$(dirname "$0")/generate_pages_json.py"
+    python3 scripts/generate_man3.py
     if [ $? -ne 0 ]; then
       echo "Failed to generate pages.json"
       exit 1
