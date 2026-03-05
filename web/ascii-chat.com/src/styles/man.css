@@ -14,6 +14,11 @@
   overflow-x: auto;
 }
 
+/* Section spacing */
+.section {
+  margin-bottom: 1rem;
+}
+
 /* Hide Doxygen header/footer tables */
 .man-page-content table.head,
 .man-page-content table.foot {
