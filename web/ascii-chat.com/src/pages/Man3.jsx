@@ -386,14 +386,6 @@ export default function Man3() {
       snippetIndex = null,
       skipHistoryPush = false,
     ) => {
-        pageName,
-        lineNumber,
-        snippetIndex,
-        skipHistoryPush,
-        selectedPageName,
-        currentSearchQuery: searchQuery,
-      });
-
       // If clicking a line number on the same page, just update the hash without fetching
       if (selectedPageName === pageName && lineNumber !== null) {
         setTargetLineNumber(lineNumber);
