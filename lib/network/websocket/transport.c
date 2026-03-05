@@ -77,65 +77,14 @@
 // Forward declaration for libwebsockets callback
 static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason, void *user, void *in, size_t len);
 
-/**
- * @brief Helper to call lws_service() with timeout enforcement
- *
- * libwebsockets internally hangs for ~1 second during TLS handshake,
- * completely blocking the service thread and exceeding 60fps budget (~16ms per frame).
- * We spawn a separate thread to call lws_service(), and if it takes too long,
- * we abandon it and continue the main service loop.
- */
-typedef struct {
-  struct lws_context *context;
-  volatile int result;
-  volatile bool completed;
-} lws_service_args_t;
-
-static void *lws_service_thread_fn(void *arg) {
-  lws_service_args_t *args = (lws_service_args_t *)arg;
-  args->result = lws_service(args->context, 0);
-  args->completed = true;
-  return NULL;
-}
-
-static int lws_service_with_timeout(struct lws_context *context, uint64_t timeout_ms) {
-  pthread_t service_tid;
-  lws_service_args_t args = {
-    .context = context,
-    .result = -1,
-    .completed = false
-  };
-
-  // Spawn thread to call lws_service()
-  if (pthread_create(&service_tid, NULL, lws_service_thread_fn, &args) != 0) {
-    log_warn("Failed to spawn lws_service thread, calling directly");
-    return lws_service(context, 0);
-  }
-
-  // Wait for completion with timeout (don't cancel thread, just abandon if slow)
-  uint64_t deadline_ns = time_get_ns() + (timeout_ms * 1000000ULL);
-  bool timed_out = false;
-
-  while (!args.completed) {
-    uint64_t now_ns = time_get_ns();
-    if (now_ns > deadline_ns) {
-      // lws_service is taking too long, abandon the thread
-      // This is safer than pthread_cancel which corrupts libwebsockets state
-      log_warn("⏱️  lws_service TIMEOUT after %lu ms, abandoning thread", timeout_ms);
-      pthread_detach(service_tid);
-      timed_out = true;
-      break;
-    }
-    platform_sleep_us(1000);  // 1ms sleep
-  }
-
-  if (timed_out) {
-    return 0;  // Return success to continue service loop
-  }
-
-  pthread_join(service_tid, NULL);
-  return args.result;
-}
+// REMOVED: lws_service_with_timeout() was creating a race condition
+// by spawning multiple threads that all call lws_service() on the same context.
+// LibWebSockets is NOT thread-safe for concurrent calls.
+//
+// Instead: Service thread calls lws_service(1) directly in a tight loop.
+// timeout=1 means: block up to 1ms on internal poll(), then return.
+// This is fast enough to keep 60fps (16.6ms per frame budget) while
+// letting the TLS state machine progress incrementally.
 
 
 // =============================================================================
@@ -319,25 +268,21 @@ static void *websocket_service_thread(void *arg) {
                    (int)is_destroying);
         }
       } else {
-        // Call lws_service with NON-BLOCKING mode (timeout=0)
-        // Prevents indefinite blocking during TLS handshake
-        // - With timeout=1ms: select() blocks waiting for socket readiness (can block >1ms during TLS)
-        // - With timeout=0: select() returns immediately, TLS can progress at 100us cadence
-        // The service loop calls us every 100us during handshake, providing responsive polling
+        // Call lws_service with short timeout (1ms)
+        // This lets lws_service() block briefly on internal poll() if there's no socket activity,
+        // but returns quickly to let service loop continue if needed.
+        // 1ms timeout is short enough to maintain 60fps (16.6ms per frame) while being responsive.
         //
-        // CRITICAL FIX: lws_service() internally calls poll(timeout=~5000ms) during TLS
-        // This overrides timeout=0 parameter. We enforce hard wall-clock limit.
+        // Why timeout=1, not timeout=0?
+        // - timeout=0: select() returns immediately, but TLS state machine might not progress
+        // - timeout=1: select() blocks up to 1ms for socket events, letting TLS negotiate faster
+        //   while still being responsive to multiple service calls per frame
         if (loop_count <= 10) {
-          log_info("[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=0)",
+          log_info("[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=1ms)",
                    loop_count, ws_data->is_connected, (void *)ws_data->wsi);
         }
 
-        // Call lws_service with timeout enforcement
-        // Adaptive timeout: longer during handshake, shorter once connected
-        // - During handshake: allow up to 1000ms (TLS needs ~1 second to negotiate)
-        // - After connected: limit to 10ms to maintain 60fps frame budget
-        uint64_t service_timeout_ms = ws_data->is_connected ? 10 : 1000;
-        result = lws_service_with_timeout(ws_data->context, service_timeout_ms);
+        result = lws_service(ws_data->context, 1);
 
         if (loop_count <= 10) {
           log_info("[LOOP %d] <<< lws_service() RETURNED (result=%d)", loop_count, result);
