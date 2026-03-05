@@ -166,7 +166,7 @@ export function CodeBlock({
     } catch (e) {
       console.error('[CodeBlock] Error:', e);
     }
-  }, [searchQuery]);
+  }, [searchQuery, children]);
 
   return (
     <div ref={codeRef}>
