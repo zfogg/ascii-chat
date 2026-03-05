@@ -648,10 +648,20 @@ export default function Man3() {
       console.log("[DEBUG] Viewer HTML length:", viewer.innerHTML.length);
       console.log("[DEBUG] Viewer HTML includes bg-yellow-900:", viewer.innerHTML.includes("bg-yellow-900"));
 
-      // Search for elements with bg-yellow-900 (includes bg-yellow-900/50)
-      let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900"]');
+      // Search for spans with bg-yellow-900 classes
+      // Using getComputedStyle to find elements that have yellow background
+      let highlightedElements = [];
+      const allSpans = viewer.querySelectorAll("span");
+      console.log("[DEBUG] Total spans in viewer:", allSpans.length);
 
-      console.log("[DEBUG] Found highlighted elements:", highlightedElements.length);
+      for (const span of allSpans) {
+        const classes = span.className || "";
+        if (classes.includes("bg-yellow-900")) {
+          highlightedElements.push(span);
+        }
+      }
+
+      console.log("[DEBUG] Found highlighted elements:", highlightedElements.length, "by className check");
 
       if (highlightedElements.length > 0) {
         // Scroll to the first highlighted match and center it
@@ -871,8 +881,17 @@ export default function Man3() {
 
         // Add code block with line numbers
         let codeContent = preMatch[2];
-        codeContent = decodeHtmlEntities(codeContent);
-        if (codeContent.trim()) {
+
+        // If highlighting is present, preserve it by using dangerouslySetInnerHTML
+        if (codeContent.includes("bg-yellow-900")) {
+          elements.push(
+            <pre key={`code-${elements.length}`} style={{ overflow: "auto", marginBottom: "1rem" }}>
+              <code dangerouslySetInnerHTML={{ __html: codeContent }} />
+            </pre>,
+          );
+        } else {
+          codeContent = decodeHtmlEntities(codeContent);
+          if (codeContent.trim()) {
           const lines = codeContent.split("\n");
           const maxLineNum = lines.length.toString().length;
 
@@ -939,6 +958,7 @@ export default function Man3() {
               </CodeBlock>,
             );
           }
+        }
         }
 
         // Update remaining to after the pre tag
