@@ -626,37 +626,55 @@ export default function Man3() {
         let foundElement = null;
         let node;
 
+        // Collect all potential matches and prioritize exact line number matches
+        const potentialMatches = [];
+
         // Walk through all text nodes looking for the line number
         while ((node = walker.nextNode())) {
           const text = node.textContent || "";
-          // Look for text that starts with the line number followed by whitespace or special chars
-          const match = text.match(new RegExp(`\\b${targetLineNumber}\\b`));
-          if (match) {
-            console.log("[Man3] Found text node with line number:", text.substring(0, 50));
-            // Found a text node containing the line number
-            // Get the closest parent element (which should be a visible container)
-            foundElement = node.parentElement;
-            console.log("[Man3] foundElement tag:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
+          const trimmed = text.trim();
 
-            // Walk up to find a reasonable scrollable/visible parent
-            let parent = foundElement;
-            while (parent && parent !== viewer && parent.offsetHeight === 0) {
-              parent = parent.parentElement;
-            }
-            if (parent && parent !== viewer) {
-              foundElement = parent;
-              console.log("[Man3] After walking up from 0-height, foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
-            }
-            break;
+          // Priority 1: Exact match - text is ONLY the line number (with possible whitespace)
+          if (trimmed === String(targetLineNumber)) {
+            console.log("[Man3] Found EXACT line number match:", text.substring(0, 30));
+            potentialMatches.unshift({ node, priority: 1, text }); // Add to front
+          }
+          // Priority 2: Line number followed by whitespace only
+          else if (new RegExp(`^${targetLineNumber}\\s*$`).test(trimmed)) {
+            console.log("[Man3] Found line number + whitespace:", text.substring(0, 30));
+            potentialMatches.push({ node, priority: 2, text });
+          }
+          // Priority 3: Line number in mixed content (fallback)
+          else if (new RegExp(`(^|\\D)${targetLineNumber}(?:\\D|$)`).test(text)) {
+            console.log("[Man3] Found line number in text:", text.substring(0, 30));
+            potentialMatches.push({ node, priority: 3, text });
+          }
+        }
+
+        // Use the best match found
+        if (potentialMatches.length > 0) {
+          console.log("[Man3] Found", potentialMatches.length, "potential matches, using best match");
+          node = potentialMatches[0].node;
+          foundElement = node.parentElement;
+          console.log("[Man3] foundElement tag:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
+
+          // Walk up to find a reasonable scrollable/visible parent
+          let parent = foundElement;
+          while (parent && parent !== viewer && parent.offsetHeight === 0) {
+            parent = parent.parentElement;
+          }
+          if (parent && parent !== viewer) {
+            foundElement = parent;
+            console.log("[Man3] After walking up from 0-height, foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight);
           }
         }
 
         if (foundElement) {
-          console.log("[Man3] foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight, "offsetTop:", foundElement?.offsetTop);
+          console.log("[Man3] foundElement:", foundElement?.tagName, "height:", foundElement?.offsetHeight, "offsetTop:", foundElement?.offsetTop, "text:", foundElement?.textContent?.substring(0, 50));
 
           // Get all spans in the CODE block and find those on the same line
           const codeBlock = foundElement.closest("code") || foundElement.closest("pre");
-          console.log("[Man3] Code block:", codeBlock?.tagName);
+          console.log("[Man3] Code block:", codeBlock?.tagName, codeBlock ? "found" : "NOT found");
 
           if (codeBlock) {
             // Find the offsetTop of our element to identify its line
