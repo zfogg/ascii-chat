@@ -260,13 +260,16 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
   return ASCIICHAT_OK;
 }
 
-// Adapter wrappers that convert dispatcher signature to generic keepalive handlers
+// Keepalive handlers for PING/PONG packets
 static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_len, int client_socket,
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks) {
   (void)payload;
   (void)payload_len;
   (void)callbacks;
-  return acip_handle_ping(client_socket, client_ip);
+
+  log_debug("★ PING received from %s on socket %d", client_ip, client_socket);
+  // Simply acknowledge (log only) - client expects us to respond naturally
+  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, int client_socket,
@@ -275,7 +278,10 @@ static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_le
   (void)payload_len;
   (void)client_socket;
   (void)callbacks;
-  return acip_handle_pong(client_ip);
+
+  log_debug("★ PONG received from %s (heartbeat OK)", client_ip);
+  // Simply acknowledge (log only) - used for timeout/heartbeat detection
+  return ASCIICHAT_OK;
 }
 
 static asciichat_error_t handle_acds_host_announcement(const void *payload, size_t payload_len, int client_socket,
