@@ -15,23 +15,30 @@
 
 /**
  * Escape special characters in completion descriptions for zsh
+ * Keep descriptions under 60 characters to avoid zsh parser issues
  */
 static void zsh_escape_desc(FILE *output, const char *text) {
   if (!text) {
     return;
   }
 
-  for (const char *p = text; *p; p++) {
+  size_t chars = 0;
+  const size_t MAX_DESC = 60;
+
+  for (const char *p = text; *p && chars < MAX_DESC; p++) {
     switch (*p) {
     case '\'':
       fprintf(output, "'\\''");
+      chars++;
       break;
     case '\n':
     case '\t':
       fprintf(output, " ");
+      chars++;
       break;
     default:
       fputc(*p, output);
+      chars++;
     }
   }
 }
