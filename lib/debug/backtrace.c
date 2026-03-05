@@ -406,6 +406,13 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   return offset;
 }
 
+void backtrace_log_frames(int num_frames, int skip_frames) {
+  backtrace_t bt;
+  backtrace_capture_and_symbolize(&bt);
+  backtrace_print("Backtrace", &bt, skip_frames, num_frames, NULL);
+  backtrace_t_free(&bt);
+}
+
 #endif // NDEBUG
 
 // ============================================================================
@@ -452,6 +459,12 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
   (void)filter;
   // No-op in release builds
   return 0;
+}
+
+void backtrace_log_frames(int num_frames, int skip_frames) {
+  (void)num_frames;
+  (void)skip_frames;
+  // No-op in release builds
 }
 
 #endif
