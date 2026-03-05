@@ -145,9 +145,8 @@ export class SocketBridge {
             expectedPacketSize,
           );
           const pktType = quickParseType(completePacket);
-          const typeHex = pktType !== null ? pktType.toString(16) : "??";
           // console.error(
-          //   `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType} (0x${typeHex})`,
+          //   `[SocketBridge] ★ COMPLETE PACKET ${packetsProcessed + 1}: assembled from ${this.reassemblySize} bytes, extracted ${expectedPacketSize} bytes, pkt_type=${pktType}`,
           // );
 
           // Save any leftover data for next packet
@@ -304,10 +303,9 @@ export class SocketBridge {
       );
       throw new Error("WebSocket not connected");
     }
-    const pktType = quickParseType(packet);
-    const typeHex = pktType !== null ? pktType.toString(16) : "??";
+    // const pktType = quickParseType(packet);
     // console.error(
-    //   `[SocketBridge] >>> SEND ${packet.length} bytes, pkt_type=${pktType} (0x${typeHex})`,
+    //   `[SocketBridge] >>> SEND ${packet.length} bytes`,
     // );
     this.ws.send(packet);
   }

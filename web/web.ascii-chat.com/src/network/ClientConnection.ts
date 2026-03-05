@@ -274,7 +274,6 @@ export class ClientConnection {
 
       // Parse packet header
       const parsed = parsePacket(rawPacket);
-      const name = typeName(parsed.type);
 
       // Track packet statistics
       const count = (this.packetStats.get(parsed.type) || 0) + 1;
@@ -390,9 +389,8 @@ export class ClientConnection {
 
           // Parse the inner packet header
           const innerParsed = parsePacket(plaintext);
-          const innerName = packetTypeName(innerParsed.type);
           // console.log(
-          //   `[ClientConnection] Inner packet type: ${innerParsed.type} (${innerName})`,
+          //   `[ClientConnection] Inner packet type: ${innerParsed.type}`,
           // );
           // console.log(
           //   `[ClientConnection] Inner packet payload size: ${innerParsed.length}`,
