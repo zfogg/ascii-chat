@@ -210,18 +210,16 @@ set(LIB_SRC_COMMON
     ${LIB_ROOT}/crypto/crypto.c
 
     # Video processing (needed by logging and config systems)
-    ${LIB_ROOT}/video/ascii.c
-    ${LIB_ROOT}/video/ansi.c
-    ${LIB_ROOT}/video/ansi_fast.c
-    ${LIB_ROOT}/video/color_filter.c
-    ${LIB_ROOT}/video/video_frame.c
-    ${LIB_ROOT}/video/palette.c
-    ${LIB_ROOT}/video/output_buffer.c
-    ${LIB_ROOT}/video/simd/common.c
-    ${LIB_ROOT}/video/simd/ascii_simd.c
-    ${LIB_ROOT}/video/simd/ascii_simd_color.c
-    ${LIB_ROOT}/video/simd/avx2.c
-    ${LIB_ROOT}/video/scalar/halfblock.c  # Scalar halfblock rendering fallback
+    ${LIB_ROOT}/video/ascii/ascii.c
+    ${LIB_ROOT}/video/terminal/ansi.c
+    ${LIB_ROOT}/video/rgba/color_filter.c
+    ${LIB_ROOT}/video/rgba/video_frame.c
+    ${LIB_ROOT}/video/ascii/palette.c
+    ${LIB_ROOT}/video/ascii/output_buffer.c
+    ${LIB_ROOT}/video/ascii/common.c
+    ${LIB_ROOT}/video/ascii/scalar/background.c
+    ${LIB_ROOT}/video/ascii/scalar/foreground.c
+    ${LIB_ROOT}/video/ascii/scalar/halfblock.c
 
     # Utilities (minimal set needed by options)
     ${LIB_ROOT}/util/format.c
@@ -253,6 +251,8 @@ set(LIB_SRC_COMMON
 
     # Debug/memory tracking
     ${LIB_ROOT}/debug/memory.c
+    ${LIB_ROOT}/debug/named.c
+    ${LIB_ROOT}/atomic.c
 
     # Terminal abstraction (using WASM-specific version from PLATFORM_SRC)
     # ${LIB_ROOT}/platform/terminal.c - EXCLUDED: using wasm/terminal.c instead
@@ -260,9 +260,9 @@ set(LIB_SRC_COMMON
 
 # Mirror-specific sources (not needed by client mode)
 set(LIB_SRC_MIRROR_ONLY
-    ${LIB_ROOT}/video/image.c          # Image file I/O (JPEG/PNG) - mirror only
-    ${LIB_ROOT}/video/rle.c            # RLE codec for server ASCII frames - mirror only
-    ${LIB_ROOT}/video/digital_rain.c   # Matrix rain effect - mirror only
+    ${LIB_ROOT}/video/rgba/image.c          # Image file I/O (JPEG/PNG) - mirror only
+    ${LIB_ROOT}/video/ascii/rle.c            # RLE codec for server ASCII frames - mirror only
+    ${LIB_ROOT}/video/anim/digital_rain.c   # Matrix rain effect - mirror only
     ${LIB_ROOT}/util/aspect_ratio.c    # Video scaling - mirror only
 )
 
@@ -274,7 +274,7 @@ set(LIB_SRC_CLIENT_CRYPTO
 )
 
 set(LIB_SRC_CLIENT_NETWORK
-    ${LIB_ROOT}/network/packet_parsing.c
+    ${LIB_ROOT}/network/packet/parsing.c
     ${LIB_ROOT}/network/crc32.c
     ${LIB_ROOT}/network/compression.c
     ${LIB_ROOT}/network/errors.c
@@ -307,6 +307,9 @@ target_link_libraries(wasm-common PRIVATE
 )
 
 # Create WASM mirror module
+message("DEBUG: WEB_SRC_MIRROR=${WEB_SRC_MIRROR}")
+message("DEBUG: LIB_SRC_MIRROR_ONLY=${LIB_SRC_MIRROR_ONLY}")
+message("DEBUG: CMAKE_CURRENT_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR}")
 add_executable(mirror-web
     ${WEB_SRC_MIRROR}
     ${LIB_SRC_MIRROR_ONLY}

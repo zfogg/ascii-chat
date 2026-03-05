@@ -27,3 +27,8 @@ void backtrace_print_many(const char *label, const backtrace_t *bts, int count) 
   (void)count;
   // No-op
 }
+
+void backtrace_symbolize(backtrace_t *bt) {
+  (void)bt;
+  // No-op - symbolization not available in WASM
+}

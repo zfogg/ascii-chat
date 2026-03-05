@@ -47,7 +47,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/transport.h>
 #include <ascii-chat/video/ascii.h>
-#include <ascii-chat/video/ascii/ansi_fast.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer_pool.h>
 #include <ascii-chat/util/format.h>
@@ -524,6 +524,10 @@ int client_handle_handshake_complete(const uint8_t *packet, size_t packet_len) {
 
   g_handshake_complete = true;
   g_connection_state = CONNECTION_STATE_CONNECTED;
+
+  // Update transport with the crypto context so ACIP can encrypt/decrypt packets
+  g_wasm_transport.crypto_ctx = &g_crypto_handshake_ctx.crypto_ctx;
+
   WASM_LOG("=== HANDSHAKE COMPLETE - session encrypted ===");
   return 0;
 }
