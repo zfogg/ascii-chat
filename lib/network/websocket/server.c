@@ -22,10 +22,12 @@
 #include <libwebsockets.h>
 #include <string.h>
 #include <errno.h>
+#include <openssl/err.h>
 #ifndef _WIN32
 #include <sys/socket.h>
 #include <netinet/tcp.h>
 #include <netinet/in.h>
+#include <unistd.h>
 #endif
 
 // Shared internal types (websocket_recv_msg_t, websocket_transport_data_t)
@@ -706,6 +708,14 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   if (config->tls_cert_path && config->tls_cert_path[0] != '\0' && config->tls_key_path &&
       config->tls_key_path[0] != '\0') {
 #ifdef LWS_WITH_TLS
+    // Validate certificate and key files are readable
+    if (access(config->tls_cert_path, R_OK) != 0) {
+      return SET_ERRNO(ERROR_NETWORK_BIND, "TLS certificate file not readable: %s (errno=%d)", config->tls_cert_path, errno);
+    }
+    if (access(config->tls_key_path, R_OK) != 0) {
+      return SET_ERRNO(ERROR_NETWORK_BIND, "TLS key file not readable: %s (errno=%d)", config->tls_key_path, errno);
+    }
+
     info.ssl_cert_filepath = config->tls_cert_path;
     info.ssl_private_key_filepath = config->tls_key_path;
     log_info("WebSocket server configured for WSS (TLS): cert=%s, key=%s", config->tls_cert_path, config->tls_key_path);
@@ -735,9 +745,25 @@ asciichat_error_t websocket_server_init(websocket_server_t *server, const websoc
   info.timeout_secs = 360000; // 100 hours - effectively disabled
 
   // Create libwebsockets context
+  // Log diagnostic info before attempting creation
+  log_debug("lws_create_context: port=%u, protocols=%p, options=0x%x, ssl_cert=%s, ssl_key=%s",
+            info.port, (void*)info.protocols, info.options,
+            info.ssl_cert_filepath ? info.ssl_cert_filepath : "(none)",
+            info.ssl_private_key_filepath ? info.ssl_private_key_filepath : "(none)");
+
   server->context = lws_create_context(&info);
   if (!server->context) {
-    return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to create libwebsockets context");
+    // Capture any OpenSSL errors that may have occurred during context creation
+    unsigned long ssl_err = 0;
+    char ssl_err_str[256] = "no OpenSSL errors in queue";
+
+    // Extract all errors from OpenSSL error queue
+    while ((ssl_err = ERR_get_error()) != 0) {
+      ERR_error_string_n(ssl_err, ssl_err_str, sizeof(ssl_err_str));
+      log_error("OpenSSL error: %lu: %s", ssl_err, ssl_err_str);
+    }
+
+    return SET_ERRNO(ERROR_NETWORK_BIND, "Failed to create libwebsockets context (last OpenSSL error: %s)", ssl_err_str);
   }
 
   // Create thread pool for handling client connections
