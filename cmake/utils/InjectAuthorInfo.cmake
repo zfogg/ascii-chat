@@ -26,10 +26,11 @@ foreach(MANPAGE ${MANPAGES})
     # Check if Author section exists
     if(CONTENT MATCHES "\\.SH \"Author\"")
         # Replace the generic author text with actual author info
-        # Pattern: .SH "Author"\n.PP \nGenerated automatically...
+        # Match the pattern: .SH "Author" followed by .PP and generic text
+        # Use multiline regex to match across line breaks
         string(REGEX REPLACE
-            "\\.SH \"Author\"\n\\.PP\n*Generated automatically by Doxygen for ascii-chat from the source code\\\\&\\."
-            ".SH \"Author\"\n.PP\n${AUTHOR_NAME} <${AUTHOR_EMAIL}>"
+            "(\\.SH \"Author\"\n\\.PP )\nGenerated automatically by Doxygen for ascii-chat from the source code\\\\&\\."
+            "\\1\n${AUTHOR_NAME} <${AUTHOR_EMAIL}>"
             CONTENT
             "${CONTENT}")
 
