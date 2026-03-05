@@ -705,35 +705,24 @@ export default function Man3() {
     if (!selectedPageContent || !contentViewerRef.current) return;
 
     const hash = window.location.hash;
-    if (!hash) return;
+    if (!hash || !hash.match(/#l(\d+)/)) return;
 
-    // Try to find and scroll to code block with target line
+    // Try to find and scroll to first code block with an ID (which means it has target lines)
     const scrollToHash = () => {
       const container = contentViewerRef.current;
 
-      // Extract line number from hash (e.g., #l00213 -> 213)
-      const lineMatch = hash.match(/#l(\d+)/);
-      if (!lineMatch) return false;
-
-      const lineNum = parseInt(lineMatch[1], 10);
-
-      // First, try to find by exact ID
-      const blockId = `code-block-${lineNum}`;
-      let targetBlock = container.querySelector(`#${blockId}`);
+      // Look for code blocks that have IDs set (indicating they contain target lines)
+      // These are divs with id="code-block-{index}"
+      const targetBlock = container.querySelector('div[id^="code-block-"]');
 
       if (targetBlock) {
-        // Scroll the code block to center of viewport
         targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
         return true;
       }
 
-      // If not found, try to find any code block and scroll to it
-      // (for cases where line numbers don't match exactly)
-      const allCodeBlocks = container.querySelectorAll(
-        "[class*='code-'], .man-page-html pre"
-      );
+      // Fallback: look for any code block
+      const allCodeBlocks = container.querySelectorAll(".code-with-highlight, pre");
       if (allCodeBlocks.length > 0) {
-        // Scroll to the first code block
         allCodeBlocks[0].scrollIntoView({ behavior: "smooth", block: "center" });
         return true;
       }
@@ -746,7 +735,9 @@ export default function Man3() {
     const maxAttempts = 20;
 
     const tryScroll = () => {
-      if (scrollToHash()) return;
+      if (scrollToHash()) {
+        return;
+      }
 
       attempts++;
       if (attempts < maxAttempts) {
@@ -866,18 +857,39 @@ export default function Man3() {
         // Decode to plain text
         const decodedContent = decodeHtmlEntities(cleanedContent);
         if (decodedContent.trim()) {
-          // Check for target line hash
-          const hash = window.location.hash;
+          // Check if the pre tag contains source line numbers
+          // and extract requested line based on hash anchor
           let targetLineStart = null;
           let targetLineEnd = null;
+          const hash = window.location.hash;
 
-          if (isSourcePage) {
+          if (isSourcePage && hash.match(/^#l(\d+)/)) {
             const rangeMatch = hash.match(/^#l(\d+)(?:-(\d+))?$/);
             if (rangeMatch) {
-              targetLineStart = parseInt(rangeMatch[1], 10);
-              targetLineEnd = rangeMatch[2]
+              const requestedLineNum = parseInt(rangeMatch[1], 10);
+              const requestedLineEnd = rangeMatch[2]
                 ? parseInt(rangeMatch[2], 10)
-                : targetLineStart;
+                : requestedLineNum;
+
+              const lines = decodedContent.split("\n");
+              // Check if lines start with line number format: "00001 code" or similar
+              const lineNumPattern = /^(\d+)\s+/;
+              const firstLineMatch = lines[0]?.match(lineNumPattern);
+
+              if (firstLineMatch) {
+                // Try to find the requested line
+                for (let i = 0; i < lines.length; i++) {
+                  const match = lines[i].match(lineNumPattern);
+                  if (match) {
+                    const lineNum = parseInt(match[1], 10);
+                    if (lineNum === requestedLineNum) {
+                      targetLineStart = i + 1; // 1-indexed position in this code block
+                      targetLineEnd = Math.min(requestedLineEnd - requestedLineNum + i + 1, lines.length);
+                      break;
+                    }
+                  }
+                }
+              }
             }
           }
 
@@ -1037,7 +1049,7 @@ export default function Man3() {
                   pointer-events: none;
                 }
               `}</style>
-              <CodeBlock>{codeWithLineNumbers}</CodeBlock>
+              <CodeBlock searchQuery={searchQuery}>{codeWithLineNumbers}</CodeBlock>
             </div>,
           );
 
