@@ -52,6 +52,7 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Debug")
 
+        add_definitions(-DCMAKE_BUILD_TYPE_DEBUG)
         add_definitions(-DENABLE_ERRNO_BACKTRACES)
         add_definitions(-DDEBUG_LOCKS)
 
@@ -69,6 +70,7 @@ function(configure_build_type_post_project)
         configure_debug_memory(${USE_MIMALLOC} ${USE_MUSL} FALSE)
         configure_debug_build_flags("Dev")
         # No sanitizers in Dev mode
+        add_definitions(-DCMAKE_BUILD_TYPE_DEBUG)
         add_definitions(-DENABLE_ERRNO_BACKTRACES)
         add_definitions(-DDEBUG_LOCKS)
         fix_macos_asan_runtime()
