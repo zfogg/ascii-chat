@@ -462,7 +462,8 @@ ascii-chat mirror --color-filter rainbow --matrix`}
                 </h3>
                 <CodeBlock language="bash">
                   {`# Take a snapshot from your webcam and save to file
-ascii-chat --color mirror --snapshot --render-mode half-block > selfie.txt`}
+ascii-chat --snapshot-delay 0 --color mirror --snapshot --render-mode half-block > selfie.txt
+cat selfie.txt`}
                 </CodeBlock>
               </div>
 
