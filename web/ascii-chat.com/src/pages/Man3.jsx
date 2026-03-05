@@ -83,30 +83,32 @@ export default function Man3() {
         const lastBStart = section.lastIndexOf("<b>");
         const beforeLastB = section.substring(0, lastBStart).trim();
 
+        // Extract plain text first to handle HTML tags correctly
+        const tempEl = document.createElement("div");
+        tempEl.innerHTML = beforeLastB;
+        const plainText = tempEl.textContent;
+
         // Split by period to separate description from type
-        const periodIndex = beforeLastB.lastIndexOf(". ");
+        const periodIndex = plainText.lastIndexOf(". ");
         let prevDesc = "";
         let typeStr = "";
 
         if (periodIndex !== -1) {
-          prevDesc = beforeLastB.substring(0, periodIndex + 1).trim();
-          typeStr = beforeLastB.substring(periodIndex + 2).trim();
+          prevDesc = plainText.substring(0, periodIndex + 1).trim();
+          typeStr = plainText.substring(periodIndex + 2).trim();
         } else {
           // No period found, might be a simple type with no description
-          const lastSpace = beforeLastB.lastIndexOf(" ");
+          const lastSpace = plainText.lastIndexOf(" ");
           if (lastSpace !== -1) {
-            prevDesc = beforeLastB.substring(0, lastSpace).trim();
-            typeStr = beforeLastB.substring(lastSpace + 1).trim();
+            prevDesc = plainText.substring(0, lastSpace).trim();
+            typeStr = plainText.substring(lastSpace + 1).trim();
           } else {
-            typeStr = beforeLastB;
+            typeStr = plainText;
           }
         }
 
         type = typeStr;
-        // Extract plain text from HTML to avoid styling issues
-        const tempEl = document.createElement("div");
-        tempEl.innerHTML = prevDesc;
-        description = tempEl.textContent;
+        description = prevDesc;
         pendingDescription = "";
       }
 
