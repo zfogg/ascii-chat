@@ -893,7 +893,7 @@ char **symbol_cache_resolve_batch(void *const *buffer, int size) {
 
   // Allocate arrays for uncached addresses on heap instead of stack
   // VLAs can cause stack overflow with large backtrace sizes
-  void **uncached_addrs = SAFE_MALLOC((size_t)size, void **);
+  void **uncached_addrs = SAFE_MALLOC((size_t)size * sizeof(void *), void **);
   int *uncached_indices = SAFE_MALLOC((size_t)size * sizeof(int), int *);
 
   if (!uncached_addrs || !uncached_indices) {

@@ -433,17 +433,26 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     websocket_recv_msg_t msg;
     int message_count = 0;
 
-    mutex_lock(&ws_data->send_mutex);
-
     // Process all messages in queue until pipe is choked or queue is empty
-    // This ensures remainders are sent before new messages
-    while (ringbuffer_peek(ws_data->send_queue, &msg)) {
+    // CRITICAL: Do NOT hold send_mutex while calling lws_write()
+    // lws_write() can block for seconds during TLS operations, causing other threads to deadlock
+    while (1) {
+      // Dequeue one message (lock only for queue access)
+      mutex_lock(&ws_data->send_mutex);
+      if (!ringbuffer_peek(ws_data->send_queue, &msg)) {
+        // Queue is empty
+        mutex_unlock(&ws_data->send_mutex);
+        break;
+      }
       // Check pipe state BEFORE dequeuing
       if (lws_send_pipe_choked(ws_data->wsi)) {
         log_debug("Pipe choked, stopping message processing");
+        mutex_unlock(&ws_data->send_mutex);
         break;
       }
+      // Dequeue the message
       ringbuffer_read(ws_data->send_queue, &msg);
+      mutex_unlock(&ws_data->send_mutex); // Release mutex BEFORE calling lws_write()
 
       log_debug("WebSocket CLIENT_WRITEABLE: sending queued %zu bytes in fragments (msg %d)", msg.len,
                 message_count + 1);
@@ -458,7 +467,10 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       if (result < 0) {
         // Error - pipe is full or other error
         log_debug("WebSocket write returned %d (pipe choked), re-queueing", result);
+        // Re-queue the message (lock only for queue access)
+        mutex_lock(&ws_data->send_mutex);
         ringbuffer_write(ws_data->send_queue, &msg);
+        mutex_unlock(&ws_data->send_mutex);
         break; // Stop processing, wait for next writeable callback
       } else {
         // Success - lws_write handles ALL fragmentation internally
@@ -468,8 +480,6 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
         log_debug("Message queued for send, will be fragmented by libwebsockets");
       }
     } // End while loop - continues until queue empty or pipe choked
-
-    mutex_unlock(&ws_data->send_mutex);
 
     // Request another callback if more messages are queued
     // Must request even if pipe was choked so we drain queue once TCP buffer drains
