@@ -15,9 +15,19 @@
 #include <limits.h>
 
 char *manpage_content_generate_options(const options_config_t *config) {
-  if (!config || config->num_descriptors == 0) {
+  if (!config) {
     char *buffer = SAFE_MALLOC(1, char *);
     buffer[0] = '\0';
+    return buffer;
+  }
+
+  if (config->num_descriptors == 0) {
+    // Generate fallback content when no options are defined
+    size_t buffer_capacity = 512;
+    char *buffer = SAFE_MALLOC(buffer_capacity, char *);
+    size_t offset = 0;
+    offset += safe_snprintf(buffer + offset, buffer_capacity - offset, ".PP\nNo command-line options are available for this mode.\n");
+    log_debug("Generated OPTIONS section (fallback - no options found)");
     return buffer;
   }
 
