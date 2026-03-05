@@ -43,7 +43,15 @@ export function CodeBlock({
       const codeBlock = codeRef.current.querySelector('code');
       if (!codeBlock) return;
 
-      // Get all text nodes
+      // Use regex to find matches and wrap them with spans
+      const createRegex = (searchTerm: string) => {
+        const escaped = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`(${escaped})`, 'gi');
+      };
+
+      const regex = createRegex(searchQuery);
+
+      // Walk through text nodes and apply highlighting
       const walker = document.createTreeWalker(
         codeBlock,
         NodeFilter.SHOW_TEXT,
@@ -51,118 +59,48 @@ export function CodeBlock({
         false
       );
 
-      const allTextNodes: Node[] = [];
+      const nodesToProcess: Node[] = [];
       let node: Node | null;
       while ((node = walker.nextNode())) {
-        allTextNodes.push(node);
+        nodesToProcess.push(node);
       }
 
+      // Process nodes in reverse to avoid invalidating references
+      for (let i = nodesToProcess.length - 1; i >= 0; i--) {
+        const textNode = nodesToProcess[i];
+        const text = textNode.textContent || '';
+        const parent = textNode.parentNode;
+        if (!parent || !regex.test(text)) continue;
 
-      // Create regex for search term
-      const searchRegex = searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const regex = new RegExp(`(${searchRegex})`, 'gi');
+        regex.lastIndex = 0; // Reset regex after test
+        let lastIndex = 0;
+        let match;
+        const fragment = document.createDocumentFragment();
 
-      // Combine all text nodes to find matches across tokens
-      const fullText = allTextNodes.map(n => n.textContent || '').join('');
-      const matches: Array<{ text: string; startNodeIdx: number; startOffset: number }> = [];
-
-      let match;
-      while ((match = regex.exec(fullText)) !== null) {
-        // Find which text node this match starts in
-        let charCount = 0;
-        let startNodeIdx = 0;
-        let startOffset = 0;
-
-        for (let i = 0; i < allTextNodes.length; i++) {
-          const nodeLength = (allTextNodes[i].textContent || '').length;
-          if (charCount + nodeLength > match.index) {
-            startNodeIdx = i;
-            startOffset = match.index - charCount;
-            break;
+        while ((match = regex.exec(text)) !== null) {
+          // Add text before match
+          if (match.index > lastIndex) {
+            fragment.appendChild(document.createTextNode(text.slice(lastIndex, match.index)));
           }
-          charCount += nodeLength;
+
+          // Add highlighted match
+          const span = document.createElement('span');
+          span.style.backgroundColor = 'rgba(120, 53, 15, 0.5)';
+          span.style.color = '#fef08a';
+          span.textContent = match[0];
+          fragment.appendChild(span);
+
+          lastIndex = regex.lastIndex;
         }
 
-        matches.push({
-          text: match[0],
-          startNodeIdx,
-          startOffset,
-        });
+        // Add remaining text
+        if (lastIndex < text.length) {
+          fragment.appendChild(document.createTextNode(text.slice(lastIndex)));
+        }
+
+        // Replace the text node with the fragment
+        parent.replaceChild(fragment, textNode);
       }
-
-
-      // Apply highlighting for each match
-      matches.forEach((matchNum, matchIndex) => {
-        const match = matchNum;
-        let remaining = match.text;
-        let nodeIdx = match.startNodeIdx;
-        let offset = match.startOffset;
-
-        while (remaining && nodeIdx < allTextNodes.length) {
-          const node = allTextNodes[nodeIdx];
-          const nodeText = node.textContent || '';
-          const availableInNode = nodeText.length - offset;
-
-          if (availableInNode <= 0) {
-            nodeIdx++;
-            offset = 0;
-            continue;
-          }
-
-          const takeFromNode = Math.min(remaining.length, availableInNode);
-          const matchPart = nodeText.substring(offset, offset + takeFromNode);
-
-          if (offset === 0 && takeFromNode === nodeText.length) {
-            // Replace entire node
-            const parent = node.parentNode;
-            if (parent) {
-              const highlightSpan = document.createElement('span');
-              highlightSpan.style.backgroundColor = 'rgba(120, 53, 15, 0.5)'; // yellow-900/50
-              highlightSpan.style.color = '#fef08a'; // yellow-200
-              highlightSpan.textContent = nodeText;
-              parent.replaceChild(highlightSpan, node);
-              allTextNodes[nodeIdx] = highlightSpan;
-            }
-          } else if (offset > 0 && takeFromNode === nodeText.length - offset) {
-            // Highlight rest of node from offset
-            const beforeText = nodeText.substring(0, offset);
-            const beforeNode = document.createTextNode(beforeText);
-            const highlightSpan = document.createElement('span');
-            highlightSpan.style.backgroundColor = 'rgba(120, 53, 15, 0.5)'; // yellow-900/50
-            highlightSpan.style.color = '#fef08a'; // yellow-200
-            highlightSpan.textContent = matchPart;
-
-            const parent = node.parentNode;
-            if (parent) {
-              parent.insertBefore(beforeNode, node);
-              parent.replaceChild(highlightSpan, node);
-              allTextNodes[nodeIdx] = highlightSpan;
-            }
-          } else {
-            // Split node: before + highlight + after
-            const beforeText = nodeText.substring(0, offset);
-            const afterText = nodeText.substring(offset + takeFromNode);
-            const beforeNode = document.createTextNode(beforeText);
-            const highlightSpan = document.createElement('span');
-            highlightSpan.style.backgroundColor = 'rgba(120, 53, 15, 0.5)'; // yellow-900/50
-            highlightSpan.style.color = '#fef08a'; // yellow-200
-            highlightSpan.textContent = matchPart;
-            const afterNode = document.createTextNode(afterText);
-
-            const parent = node.parentNode;
-            if (parent) {
-              parent.insertBefore(beforeNode, node);
-              parent.insertBefore(highlightSpan, node);
-              parent.replaceChild(afterNode, node);
-            }
-          }
-
-          remaining = remaining.substring(takeFromNode);
-          nodeIdx++;
-          offset = 0;
-        }
-      });
-
     } catch (e) {
       console.error('[CodeBlock] Error:', e);
     }
