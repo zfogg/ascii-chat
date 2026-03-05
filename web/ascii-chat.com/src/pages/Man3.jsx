@@ -65,7 +65,10 @@ export default function Man3() {
         name = bTags[1].textContent;
         // Get text before first b tag as description
         const beforeFirstB = section.substring(0, section.indexOf("<b>")).trim();
-        description = beforeFirstB;
+        // Extract plain text from HTML
+        const tempEl = document.createElement("div");
+        tempEl.innerHTML = beforeFirstB;
+        description = tempEl.textContent;
 
         // If there's a pending description from the previous section, apply it to a new row first
         if (pendingDescription) {
@@ -100,7 +103,10 @@ export default function Man3() {
         }
 
         type = typeStr;
-        description = prevDesc;
+        // Extract plain text from HTML to avoid styling issues
+        const tempEl = document.createElement("div");
+        tempEl.innerHTML = prevDesc;
+        description = tempEl.textContent;
         pendingDescription = "";
       }
 
