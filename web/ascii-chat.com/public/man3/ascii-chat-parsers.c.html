@@ -122,48 +122,48 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_audio_source (const char * arg, void * dest,
   char ** error_msg)</h2>
-<p class="Pp">Definition at line <b>1148</b> of file <b>parsers.c</b>.</p>
-<pre>1148                                                                        {
-1149   if (!arg || !dest) {
-1150     if (error_msg) {
-1151       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
-1152     }
-1153     return false;
-1154   }
-1155 
-1156   audio_source_t *audio_source = (audio_source_t *)dest;
-1157   char lower[32];
-1158   to_lower(arg, lower, sizeof(lower));
-1159 
-1160   // Auto (smart selection based on media state)
-1161   if (strcmp(lower, &quot;auto&quot;) == 0) {
-1162     *audio_source = AUDIO_SOURCE_AUTO;
-1163     return true;
-1164   }
-1165 
-1166   // Microphone only
-1167   if (strcmp(lower, &quot;mic&quot;) == 0) {
-1168     *audio_source = AUDIO_SOURCE_MIC;
-1169     return true;
-1170   }
-1171 
-1172   // Media only
-1173   if (strcmp(lower, &quot;media&quot;) == 0) {
-1174     *audio_source = AUDIO_SOURCE_MEDIA;
-1175     return true;
-1176   }
-1177 
-1178   // Both microphone and media
-1179   if (strcmp(lower, &quot;both&quot;) == 0) {
-1180     *audio_source = AUDIO_SOURCE_BOTH;
-1181     return true;
-1182   }
-1183 
-1184   if (error_msg) {
-1185     *error_msg = platform_strdup(&quot;Audio source must be 'auto', 'mic', 'media', or 'both'&quot;);
-1186   }
-1187   return false;
-1188 }</pre>
+<p class="Pp">Definition at line <b>1149</b> of file <b>parsers.c</b>.</p>
+<pre>1149                                                                        {
+1150   if (!arg || !dest) {
+1151     if (error_msg) {
+1152       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+1153     }
+1154     return false;
+1155   }
+1156 
+1157   audio_source_t *audio_source = (audio_source_t *)dest;
+1158   char lower[32];
+1159   to_lower(arg, lower, sizeof(lower));
+1160 
+1161   // Auto (smart selection based on media state)
+1162   if (strcmp(lower, &quot;auto&quot;) == 0) {
+1163     *audio_source = AUDIO_SOURCE_AUTO;
+1164     return true;
+1165   }
+1166 
+1167   // Microphone only
+1168   if (strcmp(lower, &quot;mic&quot;) == 0) {
+1169     *audio_source = AUDIO_SOURCE_MIC;
+1170     return true;
+1171   }
+1172 
+1173   // Media only
+1174   if (strcmp(lower, &quot;media&quot;) == 0) {
+1175     *audio_source = AUDIO_SOURCE_MEDIA;
+1176     return true;
+1177   }
+1178 
+1179   // Both microphone and media
+1180   if (strcmp(lower, &quot;both&quot;) == 0) {
+1181     *audio_source = AUDIO_SOURCE_BOTH;
+1182     return true;
+1183   }
+1184 
+1185   if (error_msg) {
+1186     *error_msg = platform_strdup(&quot;Audio source must be 'auto', 'mic', 'media', or 'both'&quot;);
+1187   }
+1188   return false;
+1189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_strdup()</b>.</p>
@@ -198,163 +198,164 @@
 692   if (strncmp(arg, &quot;ws://&quot;, 5) == 0 || strncmp(arg, &quot;wss://&quot;, 6) == 0) {
 693     log_debug(&quot;Detected WebSocket URL: %s&quot;, arg);
 694     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
-695     // For wss://, default to no ACIP-level encryption (TLS handles it)
-696     if (strncmp(arg, &quot;wss://&quot;, 6) == 0) {
-697       bool *no_encrypt = (bool *)config + offsetof(struct options_state, no_encrypt);
-698       *no_encrypt = true;
-699       log_debug(&quot;Auto-detected wss:// - setting no_encrypt=true (TLS handles encryption)&quot;);
-700     }
-701     // Don't set port - WebSocket transport handles URL parsing internally
-702     return 1; // Consumed 1 argument
-703   }
-704 
-705   // Check for TCP URL (tcp://) - passed through directly to FFmpeg
-706   // TCP URLs are used for streaming media from custom TCP servers
-707   if (strncmp(arg, &quot;tcp://&quot;, 6) == 0) {
-708     log_debug(&quot;Detected TCP URL: %s&quot;, arg);
-709     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
-710     // Don't set port - TCP transport handles URL parsing internally
-711     return 1; // Consumed 1 argument
-712   }
-713 
-714   // Check if this is a session string (format: adjective-noun-noun)
-715   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
-716   bool is_session = is_session_string(arg);
-717   log_debug(&quot;parse_client_address: is_session_string('%s') = %s&quot;, arg, is_session ? &quot;true&quot; : &quot;false&quot;);
-718 
-719   if (is_session) {
-720     // This is a session string, not a server address
-721     char *session_string = (char *)config + offsetof(struct options_state, session_string);
-722     SAFE_SNPRINTF(session_string, SESSION_STRING_BUFFER_SIZE, &quot;%s&quot;, arg);
-723     log_debug(&quot;parse_client_address: Stored session string: %s&quot;, arg);
-724     return 1; // Consumed 1 arg
-725   }
-726 
-727   // Not a session string, parse as server address
-728   log_debug(&quot;parse_client_address: Parsing as server address (not a session string)&quot;);
-729 
-730   // Check for port in address (format: address:port or [ipv6]:port)
-731   const char *colon = strrchr(arg, ':');
-732 
-733   if (colon != NULL) {
-734     // Check if this is IPv6 with port [::1]:port or plain hostname:port
-735     if (arg[0] == '[') {
-736       // IPv6 with brackets: [address]:port
-737       const char *closing_bracket = strchr(arg, ']');
-738       if (closing_bracket &amp;&amp; closing_bracket &lt; colon) {
-739         // Extract address (remove brackets)
-740         size_t addr_len = (size_t)(closing_bracket - arg - 1);
-741         if (addr_len &gt;= OPTIONS_BUFF_SIZE) {
-742           if (error_msg) {
-743             *error_msg = platform_strdup(&quot;IPv6 address too long&quot;);
-744           }
-745           return -1;
-746         }
-747         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%.*s&quot;, (int)addr_len, arg + 1);
-748 
-749         // Extract and validate port
-750         const char *port_str = colon + 1;
-751         char *endptr;
-752         long port_num = strtol(port_str, &amp;endptr, 10);
-753         if (*endptr != '\0' || port_num &lt; 1 || port_num &gt; 65535) {
-754           if (error_msg) {
-755             char msg[256];
-756             safe_snprintf(msg, sizeof(msg), &quot;Invalid port number '%s'. Must be 1-65535.&quot;, port_str);
-757             *error_msg = platform_strdup(msg);
-758           }
-759           return -1;
-760         }
-761         *port = (int)port_num;
-762       }
-763     } else {
-764       // Check if it's IPv6 without brackets (no port allowed)
-765       // or hostname/IPv4:port
-766       size_t colon_count = 0;
-767       for (const char *p = arg; *p; p++) {
-768         if (*p == ':')
-769           colon_count++;
-770       }
-771 
-772       if (colon_count == 1) {
-773         // Likely hostname:port or IPv4:port
-774         size_t addr_len = (size_t)(colon - arg);
-775         if (addr_len &gt;= OPTIONS_BUFF_SIZE) {
-776           if (error_msg) {
-777             *error_msg = platform_strdup(&quot;Address too long&quot;);
-778           }
-779           return -1;
-780         }
-781         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%.*s&quot;, (int)addr_len, arg);
-782 
-783         // Extract and validate port
-784         const char *port_str = colon + 1;
-785         char *endptr;
-786         long port_num = strtol(port_str, &amp;endptr, 10);
-787         if (*endptr != '\0' || port_num &lt; 1 || port_num &gt; 65535) {
-788           if (error_msg) {
-789             char msg[256];
-790             safe_snprintf(msg, sizeof(msg), &quot;Invalid port number '%s'. Must be 1-65535.&quot;, port_str);
-791             *error_msg = platform_strdup(msg);
-792           }
-793           return -1;
-794         }
-795         *port = (int)port_num;
-796       } else {
-797         // Multiple colons - likely bare IPv6 address
-798         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
-799       }
-800     }
-801   } else {
-802     // No colon - just an address
-803     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
-804   }
-805 
-806   // Validate addresses using comprehensive IPv4/IPv6 detection
-807   bool has_dot = strchr(address, '.') != NULL;
-808   bool has_colon = strchr(address, ':') != NULL;
-809   bool starts_with_digit = address[0] &gt;= '0' &amp;&amp; address[0] &lt;= '9';
-810 
-811   // Potential IPv6 address (has colons) - validate as IPv6
-812   if (has_colon) {
-813     if (!is_valid_ipv6(address)) {
-814       if (error_msg) {
-815         char msg[512];
-816         safe_snprintf(msg, sizeof(msg),
-817                       &quot;Invalid IPv6 address '%s'.\n&quot;
-818                       &quot;IPv6 addresses must be valid hex notation with colons.\n&quot;
-819                       &quot;Examples: ::1, 2001:db8::1, fe80::1\n&quot;
-820                       &quot;Or use hostnames like example.com&quot;,
-821                       address);
-822         *error_msg = platform_strdup(msg);
-823       }
-824       return -1;
-825     }
-826   } else if (has_dot &amp;&amp; starts_with_digit) {
-827     // Potential IPv4 address (has dots and starts with digit) - validate strictly
-828     if (!is_valid_ipv4(address)) {
-829       if (error_msg) {
-830         char msg[512];
-831         safe_snprintf(msg, sizeof(msg),
-832                       &quot;Invalid IPv4 address '%s'.\n&quot;
-833                       &quot;IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n&quot;
-834                       &quot;Examples: 127.0.0.1, 192.168.1.1\n&quot;
-835                       &quot;For hostnames, use letters: example.com, localhost&quot;,
-836                       address);
-837         *error_msg = platform_strdup(msg);
-838       }
-839       return -1;
-840     }
-841   }
-842   // Otherwise treat as valid hostname (no validation needed)
-843 
-844   // Note: Port conflict checking would require additional state
-845   // (checking if --port flag was used). For now, this is a simplified version.
-846   // Full implementation would need to track whether port was set via flag.
-847 
-848   log_debug(&quot;parse_client_address: Set address='%s', port=%d&quot;, address[0] ? address : &quot;(empty)&quot;, *port);
-849 
-850   return 1; // Consumed 1 arg
-851 }</pre>
+695     // For wss://, TLS handles transport encryption - allow ACIP to handle auth independently
+696     // For ws://, default to ACIP encryption (no TLS)
+697     if (strncmp(arg, &quot;wss://&quot;, 6) == 0) {
+698       bool *no_encrypt = (bool *)config + offsetof(struct options_state, no_encrypt);
+699       *no_encrypt = true;
+700       log_debug(&quot;Auto-detected wss:// - setting no_encrypt=true (TLS handles transport encryption, ACIP handles auth)&quot;);
+701     }
+702     // Don't set port - WebSocket transport handles URL parsing internally
+703     return 1; // Consumed 1 argument
+704   }
+705 
+706   // Check for TCP URL (tcp://) - passed through directly to FFmpeg
+707   // TCP URLs are used for streaming media from custom TCP servers
+708   if (strncmp(arg, &quot;tcp://&quot;, 6) == 0) {
+709     log_debug(&quot;Detected TCP URL: %s&quot;, arg);
+710     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+711     // Don't set port - TCP transport handles URL parsing internally
+712     return 1; // Consumed 1 argument
+713   }
+714 
+715   // Check if this is a session string (format: adjective-noun-noun)
+716   // Session strings have exactly 2 hyphens, only lowercase letters, length 5-47
+717   bool is_session = is_session_string(arg);
+718   log_debug(&quot;parse_client_address: is_session_string('%s') = %s&quot;, arg, is_session ? &quot;true&quot; : &quot;false&quot;);
+719 
+720   if (is_session) {
+721     // This is a session string, not a server address
+722     char *session_string = (char *)config + offsetof(struct options_state, session_string);
+723     SAFE_SNPRINTF(session_string, SESSION_STRING_BUFFER_SIZE, &quot;%s&quot;, arg);
+724     log_debug(&quot;parse_client_address: Stored session string: %s&quot;, arg);
+725     return 1; // Consumed 1 arg
+726   }
+727 
+728   // Not a session string, parse as server address
+729   log_debug(&quot;parse_client_address: Parsing as server address (not a session string)&quot;);
+730 
+731   // Check for port in address (format: address:port or [ipv6]:port)
+732   const char *colon = strrchr(arg, ':');
+733 
+734   if (colon != NULL) {
+735     // Check if this is IPv6 with port [::1]:port or plain hostname:port
+736     if (arg[0] == '[') {
+737       // IPv6 with brackets: [address]:port
+738       const char *closing_bracket = strchr(arg, ']');
+739       if (closing_bracket &amp;&amp; closing_bracket &lt; colon) {
+740         // Extract address (remove brackets)
+741         size_t addr_len = (size_t)(closing_bracket - arg - 1);
+742         if (addr_len &gt;= OPTIONS_BUFF_SIZE) {
+743           if (error_msg) {
+744             *error_msg = platform_strdup(&quot;IPv6 address too long&quot;);
+745           }
+746           return -1;
+747         }
+748         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%.*s&quot;, (int)addr_len, arg + 1);
+749 
+750         // Extract and validate port
+751         const char *port_str = colon + 1;
+752         char *endptr;
+753         long port_num = strtol(port_str, &amp;endptr, 10);
+754         if (*endptr != '\0' || port_num &lt; 1 || port_num &gt; 65535) {
+755           if (error_msg) {
+756             char msg[256];
+757             safe_snprintf(msg, sizeof(msg), &quot;Invalid port number '%s'. Must be 1-65535.&quot;, port_str);
+758             *error_msg = platform_strdup(msg);
+759           }
+760           return -1;
+761         }
+762         *port = (int)port_num;
+763       }
+764     } else {
+765       // Check if it's IPv6 without brackets (no port allowed)
+766       // or hostname/IPv4:port
+767       size_t colon_count = 0;
+768       for (const char *p = arg; *p; p++) {
+769         if (*p == ':')
+770           colon_count++;
+771       }
+772 
+773       if (colon_count == 1) {
+774         // Likely hostname:port or IPv4:port
+775         size_t addr_len = (size_t)(colon - arg);
+776         if (addr_len &gt;= OPTIONS_BUFF_SIZE) {
+777           if (error_msg) {
+778             *error_msg = platform_strdup(&quot;Address too long&quot;);
+779           }
+780           return -1;
+781         }
+782         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%.*s&quot;, (int)addr_len, arg);
+783 
+784         // Extract and validate port
+785         const char *port_str = colon + 1;
+786         char *endptr;
+787         long port_num = strtol(port_str, &amp;endptr, 10);
+788         if (*endptr != '\0' || port_num &lt; 1 || port_num &gt; 65535) {
+789           if (error_msg) {
+790             char msg[256];
+791             safe_snprintf(msg, sizeof(msg), &quot;Invalid port number '%s'. Must be 1-65535.&quot;, port_str);
+792             *error_msg = platform_strdup(msg);
+793           }
+794           return -1;
+795         }
+796         *port = (int)port_num;
+797       } else {
+798         // Multiple colons - likely bare IPv6 address
+799         SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+800       }
+801     }
+802   } else {
+803     // No colon - just an address
+804     SAFE_SNPRINTF(address, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+805   }
+806 
+807   // Validate addresses using comprehensive IPv4/IPv6 detection
+808   bool has_dot = strchr(address, '.') != NULL;
+809   bool has_colon = strchr(address, ':') != NULL;
+810   bool starts_with_digit = address[0] &gt;= '0' &amp;&amp; address[0] &lt;= '9';
+811 
+812   // Potential IPv6 address (has colons) - validate as IPv6
+813   if (has_colon) {
+814     if (!is_valid_ipv6(address)) {
+815       if (error_msg) {
+816         char msg[512];
+817         safe_snprintf(msg, sizeof(msg),
+818                       &quot;Invalid IPv6 address '%s'.\n&quot;
+819                       &quot;IPv6 addresses must be valid hex notation with colons.\n&quot;
+820                       &quot;Examples: ::1, 2001:db8::1, fe80::1\n&quot;
+821                       &quot;Or use hostnames like example.com&quot;,
+822                       address);
+823         *error_msg = platform_strdup(msg);
+824       }
+825       return -1;
+826     }
+827   } else if (has_dot &amp;&amp; starts_with_digit) {
+828     // Potential IPv4 address (has dots and starts with digit) - validate strictly
+829     if (!is_valid_ipv4(address)) {
+830       if (error_msg) {
+831         char msg[512];
+832         safe_snprintf(msg, sizeof(msg),
+833                       &quot;Invalid IPv4 address '%s'.\n&quot;
+834                       &quot;IPv4 addresses must have exactly 4 octets (0-255) separated by dots.\n&quot;
+835                       &quot;Examples: 127.0.0.1, 192.168.1.1\n&quot;
+836                       &quot;For hostnames, use letters: example.com, localhost&quot;,
+837                       address);
+838         *error_msg = platform_strdup(msg);
+839       }
+840       return -1;
+841     }
+842   }
+843   // Otherwise treat as valid hostname (no validation needed)
+844 
+845   // Note: Port conflict checking would require additional state
+846   // (checking if --port flag was used). For now, this is a simplified version.
+847   // Full implementation would need to track whether port was set via flag.
+848 
+849   log_debug(&quot;parse_client_address: Set address='%s', port=%d&quot;, address[0] ? address : &quot;(empty)&quot;, *port);
+850 
+851   return 1; // Consumed 1 arg
+852 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>is_session_string()</b>, <b>is_valid_ipv4()</b>,
@@ -497,40 +498,40 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_log_file (const char * arg, void * dest, char
   ** error_msg)</h2>
-<p class="Pp">Definition at line <b>1114</b> of file <b>parsers.c</b>.</p>
-<pre>1114                                                                    {
-1115   if (!arg || !dest) {
-1116     if (error_msg) {
-1117       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
-1118     }
-1119     return false;
-1120   }
-1121 
-1122   // Validate and normalize the log file path
-1123   char *normalized = NULL;
-1124   asciichat_error_t result = path_validate_user_path(arg, PATH_ROLE_LOG_FILE, &amp;normalized);
-1125 
-1126   if (result != ASCIICHAT_OK) {
-1127     if (error_msg) {
-1128       asciichat_error_context_t err_ctx;
-1129       if (HAS_ERRNO(&amp;err_ctx)) {
-1130         *error_msg = platform_strdup(err_ctx.context_message);
-1131       } else {
-1132         *error_msg = platform_strdup(&quot;Log file path validation failed&quot;);
-1133       }
-1134     }
-1135     return false;
-1136   }
-1137 
-1138   // Copy validated path to destination
-1139   char *log_file_buf = (char *)dest;
-1140   const size_t max_size = 256;
-1141   SAFE_STRNCPY(log_file_buf, normalized, max_size - 1);
-1142   log_file_buf[max_size - 1] = '\0';
-1143 
-1144   SAFE_FREE(normalized);
-1145   return true;
-1146 }</pre>
+<p class="Pp">Definition at line <b>1115</b> of file <b>parsers.c</b>.</p>
+<pre>1115                                                                    {
+1116   if (!arg || !dest) {
+1117     if (error_msg) {
+1118       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+1119     }
+1120     return false;
+1121   }
+1122 
+1123   // Validate and normalize the log file path
+1124   char *normalized = NULL;
+1125   asciichat_error_t result = path_validate_user_path(arg, PATH_ROLE_LOG_FILE, &amp;normalized);
+1126 
+1127   if (result != ASCIICHAT_OK) {
+1128     if (error_msg) {
+1129       asciichat_error_context_t err_ctx;
+1130       if (HAS_ERRNO(&amp;err_ctx)) {
+1131         *error_msg = platform_strdup(err_ctx.context_message);
+1132       } else {
+1133         *error_msg = platform_strdup(&quot;Log file path validation failed&quot;);
+1134       }
+1135     }
+1136     return false;
+1137   }
+1138 
+1139   // Copy validated path to destination
+1140   char *log_file_buf = (char *)dest;
+1141   const size_t max_size = 256;
+1142   SAFE_STRNCPY(log_file_buf, normalized, max_size - 1);
+1143   log_file_buf[max_size - 1] = '\0';
+1144 
+1145   SAFE_FREE(normalized);
+1146   return true;
+1147 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>path_validate_user_path()</b>, and
@@ -625,52 +626,52 @@
   <dt>4.</dt>
   <dd>Set media_file or media_url accordingly</dd>
 </dl>
-<p class="Pp">Definition at line <b>866</b> of file <b>parsers.c</b>.</p>
-<pre>866                                                                                                              {
-867   (void)remaining;
-868   (void)num_remaining;
-869 
-870   if (!arg || !config) {
-871     if (error_msg) {
-872       *error_msg = platform_strdup(&quot;Internal error: NULL argument or config&quot;);
-873     }
-874     return -1;
-875   }
-876 
-877   log_debug(&quot;parse_mirror_media: Processing argument: '%s'&quot;, arg);
-878 
-879   // Access media_file and media_url fields from options_state struct (same as other positional parsers)
-880   char *media_file = (char *)config + offsetof(struct options_state, media_file);
-881   char *media_url = (char *)config + offsetof(struct options_state, media_url);
-882 
-883   // Enforce mutual exclusion with --file flag
-884   if (media_file[0] != '\0') {
-885     if (error_msg) {
-886       *error_msg = platform_strdup(&quot;cannot use both --file and a positional argument&quot;);
-887     }
-888     return -1;
-889   }
-890 
-891   // Enforce mutual exclusion with --url flag
-892   if (media_url[0] != '\0') {
-893     if (error_msg) {
-894       *error_msg = platform_strdup(&quot;cannot use both --url and a positional argument&quot;);
-895     }
-896     return -1;
-897   }
-898 
-899   // Check if it's an accessible file path (priority 1)
-900   if (platform_access(arg, PLATFORM_ACCESS_READ) == 0) {
-901     log_debug(&quot;Argument '%s' is an accessible file&quot;, arg);
-902     SAFE_SNPRINTF(media_file, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
-903     return 1; // Consumed 1 argument
-904   }
-905 
-906   // Not a file; treat as URL (yt-dlp/ffmpeg will handle any errors)
-907   log_debug(&quot;Argument '%s' not found as file; treating as URL&quot;, arg);
-908   SAFE_SNPRINTF(media_url, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
-909   return 1; // Consumed 1 argument
-910 }</pre>
+<p class="Pp">Definition at line <b>867</b> of file <b>parsers.c</b>.</p>
+<pre>867                                                                                                              {
+868   (void)remaining;
+869   (void)num_remaining;
+870 
+871   if (!arg || !config) {
+872     if (error_msg) {
+873       *error_msg = platform_strdup(&quot;Internal error: NULL argument or config&quot;);
+874     }
+875     return -1;
+876   }
+877 
+878   log_debug(&quot;parse_mirror_media: Processing argument: '%s'&quot;, arg);
+879 
+880   // Access media_file and media_url fields from options_state struct (same as other positional parsers)
+881   char *media_file = (char *)config + offsetof(struct options_state, media_file);
+882   char *media_url = (char *)config + offsetof(struct options_state, media_url);
+883 
+884   // Enforce mutual exclusion with --file flag
+885   if (media_file[0] != '\0') {
+886     if (error_msg) {
+887       *error_msg = platform_strdup(&quot;cannot use both --file and a positional argument&quot;);
+888     }
+889     return -1;
+890   }
+891 
+892   // Enforce mutual exclusion with --url flag
+893   if (media_url[0] != '\0') {
+894     if (error_msg) {
+895       *error_msg = platform_strdup(&quot;cannot use both --url and a positional argument&quot;);
+896     }
+897     return -1;
+898   }
+899 
+900   // Check if it's an accessible file path (priority 1)
+901   if (platform_access(arg, PLATFORM_ACCESS_READ) == 0) {
+902     log_debug(&quot;Argument '%s' is an accessible file&quot;, arg);
+903     SAFE_SNPRINTF(media_file, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+904     return 1; // Consumed 1 argument
+905   }
+906 
+907   // Not a file; treat as URL (yt-dlp/ffmpeg will handle any errors)
+908   log_debug(&quot;Argument '%s' not found as file; treating as URL&quot;, arg);
+909   SAFE_SNPRINTF(media_url, OPTIONS_BUFF_SIZE, &quot;%s&quot;, arg);
+910   return 1; // Consumed 1 argument
+911 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_access()</b>, and
@@ -680,49 +681,49 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_palette_chars (const char * arg, void * dest,
   char ** error_msg)</h2>
-<p class="Pp">Definition at line <b>916</b> of file <b>parsers.c</b>.</p>
-<pre>916                                                                         {
-917   if (!arg || !dest) {
-918     if (error_msg) {
-919       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
-920     }
-921     return false;
-922   }
-923 
-924   // The dest pointer points to the palette_custom field in options_t
-925   // We need to get the full options_t struct to call parse_palette_chars_option
-926   // Since we only have the field pointer, we need to handle this directly
-927 
-928   char *palette_custom = (char *)dest;
-929 
-930   size_t len = strlen(arg);
-931   if (len == 0) {
-932     if (error_msg) {
-933       *error_msg = platform_strdup(&quot;Invalid palette-chars: value cannot be empty&quot;);
-934     }
-935     return false;
-936   }
-937 
-938   if (len &gt;= 256) {
-939     if (error_msg) {
-940       char msg[256];
-941       safe_snprintf(msg, sizeof(msg), &quot;Invalid palette-chars: too long (%zu chars, max 255)&quot;, len);
-942       *error_msg = platform_strdup(msg);
-943     }
-944     return false;
-945   }
-946 
-947   // Copy the palette characters
-948   SAFE_STRNCPY(palette_custom, arg, 256);
-949   palette_custom[255] = '\0';
-950 
-951   // Also set the palette type to custom by calculating back to options_t pointer
-952   // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic
-953   options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_custom));
-954   opts-&gt;palette_type = PALETTE_CUSTOM;
-955 
-956   return true;
-957 }</pre>
+<p class="Pp">Definition at line <b>917</b> of file <b>parsers.c</b>.</p>
+<pre>917                                                                         {
+918   if (!arg || !dest) {
+919     if (error_msg) {
+920       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+921     }
+922     return false;
+923   }
+924 
+925   // The dest pointer points to the palette_custom field in options_t
+926   // We need to get the full options_t struct to call parse_palette_chars_option
+927   // Since we only have the field pointer, we need to handle this directly
+928 
+929   char *palette_custom = (char *)dest;
+930 
+931   size_t len = strlen(arg);
+932   if (len == 0) {
+933     if (error_msg) {
+934       *error_msg = platform_strdup(&quot;Invalid palette-chars: value cannot be empty&quot;);
+935     }
+936     return false;
+937   }
+938 
+939   if (len &gt;= 256) {
+940     if (error_msg) {
+941       char msg[256];
+942       safe_snprintf(msg, sizeof(msg), &quot;Invalid palette-chars: too long (%zu chars, max 255)&quot;, len);
+943       *error_msg = platform_strdup(msg);
+944     }
+945     return false;
+946   }
+947 
+948   // Copy the palette characters
+949   SAFE_STRNCPY(palette_custom, arg, 256);
+950   palette_custom[255] = '\0';
+951 
+952   // Also set the palette type to custom by calculating back to options_t pointer
+953   // dest points to options_t.palette_custom, so we can get options_t* using offset arithmetic
+954   options_t *opts = (options_t *)((char *)dest - offsetof(options_t, palette_custom));
+955   opts-&gt;palette_type = PALETTE_CUSTOM;
+956 
+957   return true;
+958 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_strdup()</b>, and
@@ -1079,91 +1080,91 @@
   <li>&quot;0:1:30.5&quot; = 1 minute 30.5 seconds (90.5 seconds)</li>
   <li>&quot;1:2:30.5&quot; = 1 hour 2 minutes 30.5 seconds (3750.5 seconds)</li>
 </ul>
-<p class="Pp">Definition at line <b>997</b> of file <b>parsers.c</b>.</p>
-<pre>997                                                                     {
-998   if (!arg || arg[0] == '\0') {
-999     if (error_msg) {
-1000       *error_msg = platform_strdup(&quot;--seek requires a timestamp argument&quot;);
-1001     }
-1002     return false;
-1003   }
-1004 
-1005   double *timestamp = (double *)dest;
-1006   char *endptr;
-1007   long strtol_result;
-1008 
-1009   // Count colons to determine format
-1010   int colon_count = 0;
-1011   for (const char *p = arg; *p; p++) {
-1012     if (*p == ':')
-1013       colon_count++;
-1014   }
-1015 
-1016   if (colon_count == 0) {
-1017     // Plain seconds format: &quot;30&quot; or &quot;30.5&quot;
-1018     *timestamp = strtod(arg, &amp;endptr);
-1019     if (*endptr != '\0' || *timestamp &lt; 0.0) {
-1020       if (error_msg) {
-1021         *error_msg = platform_strdup(&quot;Invalid timestamp: expected non-negative seconds&quot;);
-1022       }
-1023       return false;
-1024     }
-1025     return true;
-1026   } else if (colon_count == 1) {
-1027     // MM:SS or MM:SS.ms format
-1028     strtol_result = strtol(arg, &amp;endptr, 10);
-1029     if (*endptr != ':' || strtol_result &lt; 0) {
-1030       if (error_msg) {
-1031         *error_msg = platform_strdup(&quot;Invalid timestamp: expected MM:SS or MM:SS.ms format&quot;);
-1032       }
-1033       return false;
-1034     }
-1035     long minutes = strtol_result;
-1036     double seconds = strtod(endptr + 1, &amp;endptr);
-1037     if (*endptr != '\0' &amp;&amp; *endptr != '.' &amp;&amp; *endptr != '\0') {
-1038       if (error_msg) {
-1039         *error_msg = platform_strdup(&quot;Invalid timestamp: expected MM:SS or MM:SS.ms format&quot;);
-1040       }
-1041       return false;
-1042     }
-1043     *timestamp = minutes * 60.0 + seconds;
-1044     return true;
-1045   } else if (colon_count == 2) {
-1046     // HH:MM:SS or HH:MM:SS.ms format
-1047     strtol_result = strtol(arg, &amp;endptr, 10);
-1048     if (*endptr != ':' || strtol_result &lt; 0) {
-1049       if (error_msg) {
-1050         *error_msg = platform_strdup(&quot;Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format&quot;);
-1051       }
-1052       return false;
-1053     }
-1054     long hours = strtol_result;
-1055 
-1056     strtol_result = strtol(endptr + 1, &amp;endptr, 10);
-1057     if (*endptr != ':' || strtol_result &lt; 0 || strtol_result &gt;= 60) {
-1058       if (error_msg) {
-1059         *error_msg = platform_strdup(&quot;Invalid timestamp: minutes must be 0-59&quot;);
-1060       }
-1061       return false;
-1062     }
-1063     long minutes = strtol_result;
-1064 
-1065     double seconds = strtod(endptr + 1, &amp;endptr);
-1066     if (*endptr != '\0') {
-1067       if (error_msg) {
-1068         *error_msg = platform_strdup(&quot;Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format&quot;);
-1069       }
-1070       return false;
-1071     }
-1072     *timestamp = hours * (double)SEC_PER_HOUR + minutes * (double)SEC_PER_MIN + seconds;
-1073     return true;
-1074   } else {
-1075     if (error_msg) {
-1076       *error_msg = platform_strdup(&quot;Invalid timestamp format: too many colons&quot;);
-1077     }
-1078     return false;
-1079   }
-1080 }</pre>
+<p class="Pp">Definition at line <b>998</b> of file <b>parsers.c</b>.</p>
+<pre>998                                                                     {
+999   if (!arg || arg[0] == '\0') {
+1000     if (error_msg) {
+1001       *error_msg = platform_strdup(&quot;--seek requires a timestamp argument&quot;);
+1002     }
+1003     return false;
+1004   }
+1005 
+1006   double *timestamp = (double *)dest;
+1007   char *endptr;
+1008   long strtol_result;
+1009 
+1010   // Count colons to determine format
+1011   int colon_count = 0;
+1012   for (const char *p = arg; *p; p++) {
+1013     if (*p == ':')
+1014       colon_count++;
+1015   }
+1016 
+1017   if (colon_count == 0) {
+1018     // Plain seconds format: &quot;30&quot; or &quot;30.5&quot;
+1019     *timestamp = strtod(arg, &amp;endptr);
+1020     if (*endptr != '\0' || *timestamp &lt; 0.0) {
+1021       if (error_msg) {
+1022         *error_msg = platform_strdup(&quot;Invalid timestamp: expected non-negative seconds&quot;);
+1023       }
+1024       return false;
+1025     }
+1026     return true;
+1027   } else if (colon_count == 1) {
+1028     // MM:SS or MM:SS.ms format
+1029     strtol_result = strtol(arg, &amp;endptr, 10);
+1030     if (*endptr != ':' || strtol_result &lt; 0) {
+1031       if (error_msg) {
+1032         *error_msg = platform_strdup(&quot;Invalid timestamp: expected MM:SS or MM:SS.ms format&quot;);
+1033       }
+1034       return false;
+1035     }
+1036     long minutes = strtol_result;
+1037     double seconds = strtod(endptr + 1, &amp;endptr);
+1038     if (*endptr != '\0' &amp;&amp; *endptr != '.' &amp;&amp; *endptr != '\0') {
+1039       if (error_msg) {
+1040         *error_msg = platform_strdup(&quot;Invalid timestamp: expected MM:SS or MM:SS.ms format&quot;);
+1041       }
+1042       return false;
+1043     }
+1044     *timestamp = minutes * 60.0 + seconds;
+1045     return true;
+1046   } else if (colon_count == 2) {
+1047     // HH:MM:SS or HH:MM:SS.ms format
+1048     strtol_result = strtol(arg, &amp;endptr, 10);
+1049     if (*endptr != ':' || strtol_result &lt; 0) {
+1050       if (error_msg) {
+1051         *error_msg = platform_strdup(&quot;Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format&quot;);
+1052       }
+1053       return false;
+1054     }
+1055     long hours = strtol_result;
+1056 
+1057     strtol_result = strtol(endptr + 1, &amp;endptr, 10);
+1058     if (*endptr != ':' || strtol_result &lt; 0 || strtol_result &gt;= 60) {
+1059       if (error_msg) {
+1060         *error_msg = platform_strdup(&quot;Invalid timestamp: minutes must be 0-59&quot;);
+1061       }
+1062       return false;
+1063     }
+1064     long minutes = strtol_result;
+1065 
+1066     double seconds = strtod(endptr + 1, &amp;endptr);
+1067     if (*endptr != '\0') {
+1068       if (error_msg) {
+1069         *error_msg = platform_strdup(&quot;Invalid timestamp: expected HH:MM:SS or HH:MM:SS.ms format&quot;);
+1070       }
+1071       return false;
+1072     }
+1073     *timestamp = hours * (double)SEC_PER_HOUR + minutes * (double)SEC_PER_MIN + seconds;
+1074     return true;
+1075   } else {
+1076     if (error_msg) {
+1077       *error_msg = platform_strdup(&quot;Invalid timestamp format: too many colons&quot;);
+1078     }
+1079     return false;
+1080   }
+1081 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_strdup()</b>.</p>
@@ -1197,70 +1198,70 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_verbose_flag (const char * arg, void * dest,
   char ** error_msg)</h2>
-<p class="Pp">Definition at line <b>959</b> of file <b>parsers.c</b>.</p>
-<pre>959                                                                        {
-960   (void)error_msg; // Unused but required by function signature
-961 
-962   // If arg is NULL or starts with a flag, just increment
-963   // Otherwise try to parse as integer count
-964   unsigned short int *verbose_level = (unsigned short int *)dest;
-965 
-966   if (!arg || arg[0] == '\0') {
-967     // No argument provided, just increment
-968     (*verbose_level)++;
-969     return true;
-970   }
-971 
-972   // Try to parse as integer count
-973   char *endptr;
-974   long value = strtol(arg, &amp;endptr, 10);
-975   if (*endptr == '\0' &amp;&amp; value &gt;= 0 &amp;&amp; value &lt;= 100) {
-976     *verbose_level = (unsigned short int)value;
-977     return true;
-978   }
-979 
-980   // If it didn't parse as int, treat as flag increment
-981   (*verbose_level)++;
-982   return true;
-983 }</pre>
+<p class="Pp">Definition at line <b>960</b> of file <b>parsers.c</b>.</p>
+<pre>960                                                                        {
+961   (void)error_msg; // Unused but required by function signature
+962 
+963   // If arg is NULL or starts with a flag, just increment
+964   // Otherwise try to parse as integer count
+965   unsigned short int *verbose_level = (unsigned short int *)dest;
+966 
+967   if (!arg || arg[0] == '\0') {
+968     // No argument provided, just increment
+969     (*verbose_level)++;
+970     return true;
+971   }
+972 
+973   // Try to parse as integer count
+974   char *endptr;
+975   long value = strtol(arg, &amp;endptr, 10);
+976   if (*endptr == '\0' &amp;&amp; value &gt;= 0 &amp;&amp; value &lt;= 100) {
+977     *verbose_level = (unsigned short int)value;
+978     return true;
+979   }
+980 
+981   // If it didn't parse as int, treat as flag increment
+982   (*verbose_level)++;
+983   return true;
+984 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> parse_volume (const char * arg, void * dest, char **
   error_msg)</h2>
-<p class="Pp">Definition at line <b>1082</b> of file <b>parsers.c</b>.</p>
-<pre>1082                                                                  {
-1083   if (!arg || !dest) {
-1084     if (error_msg) {
-1085       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
-1086     }
-1087     return false;
-1088   }
-1089 
-1090   float *volume = (float *)dest;
-1091   char *endptr;
-1092   float val = strtof(arg, &amp;endptr);
-1093 
-1094   if (*endptr != '\0' || arg == endptr) {
-1095     if (error_msg) {
-1096       *error_msg = platform_strdup(&quot;Invalid volume value. Must be a number between 0.0 and 1.0&quot;);
-1097     }
-1098     return false;
-1099   }
-1100 
-1101   if (val &lt; 0.0f || val &gt; 1.0f) {
-1102     if (error_msg) {
-1103       char buf[256];
-1104       SAFE_SNPRINTF(buf, sizeof(buf), &quot;Volume must be between 0.0 and 1.0 (got %.2f)&quot;, val);
-1105       *error_msg = platform_strdup(buf);
-1106     }
-1107     return false;
-1108   }
-1109 
-1110   *volume = val;
-1111   return true;
-1112 }</pre>
+<p class="Pp">Definition at line <b>1083</b> of file <b>parsers.c</b>.</p>
+<pre>1083                                                                  {
+1084   if (!arg || !dest) {
+1085     if (error_msg) {
+1086       *error_msg = platform_strdup(&quot;Internal error: NULL argument or destination&quot;);
+1087     }
+1088     return false;
+1089   }
+1090 
+1091   float *volume = (float *)dest;
+1092   char *endptr;
+1093   float val = strtof(arg, &amp;endptr);
+1094 
+1095   if (*endptr != '\0' || arg == endptr) {
+1096     if (error_msg) {
+1097       *error_msg = platform_strdup(&quot;Invalid volume value. Must be a number between 0.0 and 1.0&quot;);
+1098     }
+1099     return false;
+1100   }
+1101 
+1102   if (val &lt; 0.0f || val &gt; 1.0f) {
+1103     if (error_msg) {
+1104       char buf[256];
+1105       SAFE_SNPRINTF(buf, sizeof(buf), &quot;Volume must be between 0.0 and 1.0 (got %.2f)&quot;, val);
+1106       *error_msg = platform_strdup(buf);
+1107     }
+1108     return false;
+1109   }
+1110 
+1111   *volume = val;
+1112   return true;
+1113 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_strdup()</b>.</p>

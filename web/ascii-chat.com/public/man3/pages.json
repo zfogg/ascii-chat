@@ -6,6 +6,12 @@
     "sourcePath": "lib/audio/client_pipeline.cpp"
   },
   {
+    "name": "_random_state_t",
+    "title": "_random_state_t",
+    "file": "ascii-chat-_random_state_t.html",
+    "sourcePath": "lib/musl_c23_compat.c"
+  },
+  {
     "name": "acds_client.c",
     "title": "acds_client.c",
     "file": "ascii-chat-acds_client.c.html",

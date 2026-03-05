@@ -214,14 +214,8 @@ int client_crypto_init(void) {
     crypto_handshake_destroy(&g_crypto_ctx);
   }
 
-  // Check if encryption is disabled
-  if (GET_OPTION(no_encrypt)) {
-    log_info("Encryption disabled");
-    log_debug("CLIENT_CRYPTO_INIT: Encryption disabled, returning 0");
-    return 0;
-  }
-
   log_debug("CLIENT_CRYPTO_INIT: Initializing crypto handshake context");
+  log_debug("CLIENT_CRYPTO_INIT: crypto_mode=%d (NONE=0, ENCRYPT=1, AUTH=2, FULL=3)", g_crypto_mode);
 
   // Check if we have an SSH key, password, or neither
   int result;

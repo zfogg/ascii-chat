@@ -37,6 +37,15 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>_random_state_t</b>
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">long <b>__isoc23_strtol</b> (const char *str, char **endptr, int
@@ -123,15 +132,15 @@
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_fscanf_(FILE_*_stream,_const_char_*_format,__"><a class="permalink" href="#int___isoc23_fscanf_(FILE_*_stream,_const_char_*_format,__">int
   __isoc23_fscanf (FILE * stream, const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>120</b> of file
+<p class="Pp">Definition at line <b>136</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>120                                                            {
-121   va_list args;
-122   va_start(args, format);
-123   int result = vfscanf(stream, format, args);
-124   va_end(args);
-125   return result;
-126 }</pre>
+<pre>136                                                            {
+137   va_list args;
+138   va_start(args, format);
+139   int result = vfscanf(stream, format, args);
+140   va_end(args);
+141   return result;
+142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -139,15 +148,15 @@
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_fwscanf_(FILE_*_stream,_const_wchar_t_*_format,__">int
   __isoc23_fwscanf (FILE * stream, const wchar_t * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>157</b> of file
+<p class="Pp">Definition at line <b>173</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>157                                                                {
-158   va_list args;
-159   va_start(args, format);
-160   int result = vfwscanf(stream, format, args);
-161   va_end(args);
-162   return result;
-163 }</pre>
+<pre>173                                                                {
+174   va_list args;
+175   va_start(args, format);
+176   int result = vfwscanf(stream, format, args);
+177   va_end(args);
+178   return result;
+179 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -155,28 +164,12 @@
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_scanf_(const_char_*_format,__"><a class="permalink" href="#int___isoc23_scanf_(const_char_*_format,__">int
   __isoc23_scanf (const char * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>112</b> of file
-  <b>musl_c23_compat.c</b>.</p>
-<pre>112                                             {
-113   va_list args;
-114   va_start(args, format);
-115   int result = vscanf(format, args);
-116   va_end(args);
-117   return result;
-118 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>args</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__"><a class="permalink" href="#int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__">int
-  __isoc23_sscanf (const char * str, const char * format, ...)</a></h2>
 <p class="Pp">Definition at line <b>128</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>128                                                               {
+<pre>128                                             {
 129   va_list args;
 130   va_start(args, format);
-131   int result = vsscanf(str, format, args);
+131   int result = vscanf(format, args);
 132   va_end(args);
 133   return result;
 134 }</pre>
@@ -185,88 +178,120 @@
 <p class="Pp">References <b>args</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__"><a class="permalink" href="#int___isoc23_sscanf_(const_char_*_str,_const_char_*_format,__">int
+  __isoc23_sscanf (const char * str, const char * format, ...)</a></h2>
+<p class="Pp">Definition at line <b>144</b> of file
+  <b>musl_c23_compat.c</b>.</p>
+<pre>144                                                               {
+145   va_list args;
+146   va_start(args, format);
+147   int result = vsscanf(str, format, args);
+148   va_end(args);
+149   return result;
+150 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>args</b>.</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="long___isoc23_strtol_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#long___isoc23_strtol_(const_char_*_str,_char_**_endptr,_int_base)">long
   __isoc23_strtol (const char * str, char ** endptr, int base)</a></h2>
-<p class="Pp">Definition at line <b>22</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>22                                                                {
-23   // Simplified implementation for common cases (base 10 only for now)
-24   // This avoids calling strtol() which might cause infinite recursion
-25   if (!str) {
-26     if (endptr)
-27       *endptr = (char *)str;
-28     return 0;
-29   }
-30 
-31   // For non-base-10, fall back to strtoll and cast
-32   // (strtoll seems to work in musl static builds)
-33   if (base != 10) {
-34     long long result = strtoll(str, endptr, base);
-35     // Clamp to long range
-36     if (result &gt; __LONG_MAX__)
-37       return __LONG_MAX__;
-38     if (result &lt; -__LONG_MAX__ - 1)
-39       return -__LONG_MAX__ - 1;
-40     return (long)result;
-41   }
-42 
-43   // Manual base-10 parsing to avoid strtol() infinite loop
-44   const char *p = str;
-45   long sign = 1;
-46   long result = 0;
-47 
-48   // Skip whitespace
-49   while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r')
-50     p++;
-51 
-52   // Handle sign
-53   if (*p == '-') {
-54     sign = -1;
-55     p++;
-56   } else if (*p == '+') {
-57     p++;
-58   }
-59 
-60   // Convert digits
-61   int has_digits = 0;
-62   while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {
-63     has_digits = 1;
-64     int digit = *p - '0';
-65     // Check for overflow
-66     if (result &gt; (__LONG_MAX__ - digit) / 10) {
-67       if (endptr)
-68         *endptr = (char *)p;
-69       return sign &gt; 0 ? __LONG_MAX__ : -__LONG_MAX__ - 1;
-70     }
-71     result = result * 10 + digit;
-72     p++;
-73   }
-74 
-75   if (endptr) {
-76     *endptr = (char *)(has_digits ? p : str);
-77   }
+<p class="Pp">Definition at line <b>23</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>23                                                                {
+24   if (!str) {
+25     if (endptr)
+26       *endptr = (char *)str;
+27     return 0;
+28   }
+29 
+30   // For base-10 (most common), use manual parser to avoid infinite recursion
+31   // in musl where strtoll might redirect back to __isoc23_strtoll
+32   if (base == 10 || base == 0) {
+33     const char *p = str;
+34     int sign = 1;
+35     long result = 0;
+36 
+37     // Skip whitespace
+38     while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' ||
+39            *p == '\v' || *p == '\f')
+40       p++;
+41 
+42     // Handle optional sign
+43     if (*p == '-') {
+44       sign = -1;
+45       p++;
+46     } else if (*p == '+') {
+47       p++;
+48     }
+49 
+50     // For base-0, detect hex or octal prefix
+51     if (base == 0) {
+52       if (*p == '0') {
+53         if (p[1] == 'x' || p[1] == 'X') {
+54           // Hex - fall through to strtoll for proper parsing
+55           goto use_strtoll;
+56         } else if (p[1] &gt;= '0' &amp;&amp; p[1] &lt;= '7') {
+57           // Octal - fall through to strtoll for proper parsing
+58           goto use_strtoll;
+59         }
+60       }
+61       base = 10; // Default to decimal
+62     }
+63 
+64     // Parse decimal digits
+65     int has_digits = 0;
+66     while (*p &gt;= '0' &amp;&amp; *p &lt;= '9') {
+67       has_digits = 1;
+68       int digit = *p - '0';
+69       // Check for overflow before multiplication
+70       if (result &gt; (LONG_MAX - digit) / 10) {
+71         if (endptr)
+72           *endptr = (char *)p;
+73         return sign &gt; 0 ? LONG_MAX : LONG_MIN;
+74       }
+75       result = result * 10 + digit;
+76       p++;
+77     }
 78 
-79   return sign * result;
-80 }</pre>
+79     if (endptr) {
+80       *endptr = (char *)(has_digits ? p : str);
+81     }
+82 
+83     return sign * result;
+84   }
+85 
+86   // For non-base-10, try strtoll (less common path)
+87 use_strtoll: {
+88     long long result = strtoll(str, endptr, base);
+89     // Clamp to long range
+90     if (result &gt; LONG_MAX)
+91       return LONG_MAX;
+92     if (result &lt; LONG_MIN)
+93       return LONG_MIN;
+94     return (long)result;
+95   }
+96 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_strtoll_(const_char_*_str,_char_**_endptr,_int_base)">long
   long __isoc23_strtoll (const char * str, char ** endptr, int base)</a></h2>
-<p class="Pp">Definition at line <b>82</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>82                                                                      {
-83   return strtoll(str, endptr, base);
-84 }</pre>
+<p class="Pp">Definition at line <b>98</b> of file <b>musl_c23_compat.c</b>.</p>
+<pre>98                                                                      {
+99   return strtoll(str, endptr, base);
+100 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_strtoul_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
   long __isoc23_strtoul (const char * str, char ** endptr, int base)</a></h2>
-<p class="Pp">Definition at line <b>86</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>86                                                                          {
-87   return strtoul(str, endptr, base);
-88 }</pre>
+<p class="Pp">Definition at line <b>102</b> of file
+  <b>musl_c23_compat.c</b>.</p>
+<pre>102                                                                          {
+103   return strtoul(str, endptr, base);
+104 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -274,25 +299,26 @@
 <h2 class="Ss" id="unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long_long___isoc23_strtoull_(const_char_*_str,_char_**_endptr,_int_base)">unsigned
   long long __isoc23_strtoull (const char * str, char ** endptr, int
   base)</a></h2>
-<p class="Pp">Definition at line <b>90</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>90                                                                                {
-91   return strtoull(str, endptr, base);
-92 }</pre>
+<p class="Pp">Definition at line <b>106</b> of file
+  <b>musl_c23_compat.c</b>.</p>
+<pre>106                                                                                {
+107   return strtoull(str, endptr, base);
+108 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_swscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,__">int
   __isoc23_swscanf (const wchar_t * str, const wchar_t * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>165</b> of file
+<p class="Pp">Definition at line <b>181</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>165                                                                      {
-166   va_list args;
-167   va_start(args, format);
-168   int result = vswscanf(str, format, args);
-169   va_end(args);
-170   return result;
-171 }</pre>
+<pre>181                                                                      {
+182   va_list args;
+183   va_start(args, format);
+184   int result = vswscanf(str, format, args);
+185   va_end(args);
+186   return result;
+187 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -300,11 +326,11 @@
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vfscanf_(FILE_*_stream,_const_char_*_format,_va_list_args)">int
   __isoc23_vfscanf (FILE * stream, const char * format, va_list args)</a></h2>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>156</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>140                                                                      {
-141   return vfscanf(stream, format, args);
-142 }</pre>
+<pre>156                                                                      {
+157   return vfscanf(stream, format, args);
+158 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -313,11 +339,11 @@
 <h2 class="Ss" id="int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vfwscanf_(FILE_*_stream,_const_wchar_t_*_format,_va_list_args)">int
   __isoc23_vfwscanf (FILE * stream, const wchar_t * format, va_list
   args)</a></h2>
-<p class="Pp">Definition at line <b>177</b> of file
+<p class="Pp">Definition at line <b>193</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>177                                                                          {
-178   return vfwscanf(stream, format, args);
-179 }</pre>
+<pre>193                                                                          {
+194   return vfwscanf(stream, format, args);
+195 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -325,11 +351,11 @@
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vscanf_(const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vscanf_(const_char_*_format,_va_list_args)">int
   __isoc23_vscanf (const char * format, va_list args)</a></h2>
-<p class="Pp">Definition at line <b>136</b> of file
+<p class="Pp">Definition at line <b>152</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>136                                                       {
-137   return vscanf(format, args);
-138 }</pre>
+<pre>152                                                       {
+153   return vscanf(format, args);
+154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -338,11 +364,11 @@
 <h2 class="Ss" id="int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vsscanf_(const_char_*_str,_const_char_*_format,_va_list_args)">int
   __isoc23_vsscanf (const char * str, const char * format, va_list
   args)</a></h2>
-<p class="Pp">Definition at line <b>144</b> of file
+<p class="Pp">Definition at line <b>160</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>144                                                                         {
-145   return vsscanf(str, format, args);
-146 }</pre>
+<pre>160                                                                         {
+161   return vsscanf(str, format, args);
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -351,11 +377,11 @@
 <h2 class="Ss" id="int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vswscanf_(const_wchar_t_*_str,_const_wchar_t_*_format,_va_list_args)">int
   __isoc23_vswscanf (const wchar_t * str, const wchar_t * format, va_list
   args)</a></h2>
-<p class="Pp">Definition at line <b>181</b> of file
+<p class="Pp">Definition at line <b>197</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>181                                                                                {
-182   return vswscanf(str, format, args);
-183 }</pre>
+<pre>197                                                                                {
+198   return vswscanf(str, format, args);
+199 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -363,11 +389,11 @@
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)"><a class="permalink" href="#int___isoc23_vwscanf_(const_wchar_t_*_format,_va_list_args)">int
   __isoc23_vwscanf (const wchar_t * format, va_list args)</a></h2>
-<p class="Pp">Definition at line <b>173</b> of file
+<p class="Pp">Definition at line <b>189</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>173                                                           {
-174   return vwscanf(format, args);
-175 }</pre>
+<pre>189                                                           {
+190   return vwscanf(format, args);
+191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -375,10 +401,11 @@
 <section class="Ss">
 <h2 class="Ss" id="long___isoc23_wcstol_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#long___isoc23_wcstol_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">long
   __isoc23_wcstol (const wchar_t * str, wchar_t ** endptr, int base)</a></h2>
-<p class="Pp">Definition at line <b>95</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>95                                                                      {
-96   return wcstol(str, endptr, base);
-97 }</pre>
+<p class="Pp">Definition at line <b>111</b> of file
+  <b>musl_c23_compat.c</b>.</p>
+<pre>111                                                                      {
+112   return wcstol(str, endptr, base);
+113 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -386,10 +413,11 @@
 <h2 class="Ss" id="long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#long_long___isoc23_wcstoll_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">long
   long __isoc23_wcstoll (const wchar_t * str, wchar_t ** endptr, int
   base)</a></h2>
-<p class="Pp">Definition at line <b>99</b> of file <b>musl_c23_compat.c</b>.</p>
-<pre>99                                                                            {
-100   return wcstoll(str, endptr, base);
-101 }</pre>
+<p class="Pp">Definition at line <b>115</b> of file
+  <b>musl_c23_compat.c</b>.</p>
+<pre>115                                                                            {
+116   return wcstoll(str, endptr, base);
+117 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -397,11 +425,11 @@
 <h2 class="Ss" id="unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long___isoc23_wcstoul_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">unsigned
   long __isoc23_wcstoul (const wchar_t * str, wchar_t ** endptr, int
   base)</a></h2>
-<p class="Pp">Definition at line <b>103</b> of file
+<p class="Pp">Definition at line <b>119</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>103                                                                                {
-104   return wcstoul(str, endptr, base);
-105 }</pre>
+<pre>119                                                                                {
+120   return wcstoul(str, endptr, base);
+121 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -409,26 +437,26 @@
 <h2 class="Ss" id="unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)"><a class="permalink" href="#unsigned_long_long___isoc23_wcstoull_(const_wchar_t_*_str,_wchar_t_**_endptr,_int_base)">unsigned
   long long __isoc23_wcstoull (const wchar_t * str, wchar_t ** endptr, int
   base)</a></h2>
-<p class="Pp">Definition at line <b>107</b> of file
+<p class="Pp">Definition at line <b>123</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>107                                                                                      {
-108   return wcstoull(str, endptr, base);
-109 }</pre>
+<pre>123                                                                                      {
+124   return wcstoull(str, endptr, base);
+125 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int___isoc23_wscanf_(const_wchar_t_*_format,__"><a class="permalink" href="#int___isoc23_wscanf_(const_wchar_t_*_format,__">int
   __isoc23_wscanf (const wchar_t * format, ...)</a></h2>
-<p class="Pp">Definition at line <b>149</b> of file
+<p class="Pp">Definition at line <b>165</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>149                                                 {
-150   va_list args;
-151   va_start(args, format);
-152   int result = vwscanf(format, args);
-153   va_end(args);
-154   return result;
-155 }</pre>
+<pre>165                                                 {
+166   va_list args;
+167   va_start(args, format);
+168   int result = vwscanf(format, args);
+169   va_end(args);
+170   return result;
+171 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -436,76 +464,89 @@
 <section class="Ss">
 <h2 class="Ss" id="void_arc4random_buf_(void_*_buf,_size_t_nbytes)"><a class="permalink" href="#void_arc4random_buf_(void_*_buf,_size_t_nbytes)">void
   arc4random_buf (void * buf, size_t nbytes)</a></h2>
-<p class="Pp">Definition at line <b>198</b> of file
+<p class="Pp">Definition at line <b>214</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>198                                               {
-199   if (nbytes == 0 || buf == NULL) {
-200     return;
-201   }
-202 
-203   // Try getrandom syscall first (available in Linux 3.17+)
-204   // This is preferred as it doesn't require opening a file descriptor
-205   #ifdef SYS_getrandom
-206   long result = syscall(SYS_getrandom, buf, nbytes, 0);
-207   if (result == (long)nbytes) {
-208     return;
-209   }
-210   #endif
-211 
-212   // Fallback: read from /dev/urandom
-213   int fd = open(&quot;/dev/urandom&quot;, O_RDONLY);
-214   if (fd &gt;= 0) {
-215     ssize_t n = read(fd, buf, nbytes);
-216     close(fd);
-217     if (n == (ssize_t)nbytes) {
-218       return;
-219     }
-220   }
-221 
-222   // Final fallback: fill with simple pseudo-random data
-223   uint8_t *b = (uint8_t *)buf;
-224   for (size_t i = 0; i &lt; nbytes; i++) {
-225     b[i] = (uint8_t)((i + (uintptr_t)buf + i * 13) &amp; 0xFF);
-226   }
-227 }</pre>
+<pre>214                                               {
+215   if (nbytes == 0 || buf == NULL) {
+216     return;
+217   }
+218 
+219   // Try getrandom syscall first (available in Linux 3.17+)
+220   // This is preferred as it doesn't require opening a file descriptor
+221   #ifdef SYS_getrandom
+222   long result = syscall(SYS_getrandom, buf, nbytes, 0);
+223   if (result == (long)nbytes) {
+224     return;
+225   }
+226   #endif
+227 
+228   // Fallback: read from /dev/urandom
+229   int fd = open(&quot;/dev/urandom&quot;, O_RDONLY);
+230   if (fd &gt;= 0) {
+231     ssize_t n = read(fd, buf, nbytes);
+232     close(fd);
+233     if (n == (ssize_t)nbytes) {
+234       return;
+235     }
+236   }
+237 
+238   // Final fallback: fill with simple pseudo-random data
+239   uint8_t *b = (uint8_t *)buf;
+240   for (size_t i = 0; i &lt; nbytes; i++) {
+241     b[i] = (uint8_t)((i + (uintptr_t)buf + i * 13) &amp; 0xFF);
+242   }
+243 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">Referenced by <b>random_r()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)"><a class="permalink" href="#int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)">int
   initstate_r (unsigned int seed, char * statebuf, size_t statelen, struct
   random_data * buf)</a></h2>
-<p class="Pp">Definition at line <b>231</b> of file
+<p class="Pp">Definition at line <b>254</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>232                                          {
-233   if (buf == NULL || statebuf == NULL) {
-234     return -1;
-235   }
-236   if (statelen &lt; 32) {
-237     return -1;
-238   }
-239   *(void **)buf = statebuf;
-240   return 0;
-241 }</pre>
+<pre>255                                          {
+256   // Validate parameters
+257   if (statelen &lt; sizeof(_random_state_t)) {
+258     return -1;
+259   }
+260 
+261   // Initialize state structure with seed
+262   _random_state_t *state = (_random_state_t *)statebuf;
+263   state-&gt;seed = seed;
+264 
+265   // Store pointer to state buffer in the random_data structure
+266   *(void **)buf = statebuf;
+267   return 0;
+268 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>_random_state_t::seed</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)"><a class="permalink" href="#int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)">int
   random_r (struct random_data *restrict buf, int32_t *restrict result)</a></h2>
-<p class="Pp">Definition at line <b>245</b> of file
+<p class="Pp">Definition at line <b>272</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>245                                                                          {
-246   if (buf == NULL || result == NULL) {
-247     return -1;
-248   }
-249   static uint32_t seed = 1;
-250   seed = seed * 1103515245 + 12345;
-251   *result = (int32_t)(seed / 65536) % 32768;
-252   return 0;
-253 }</pre>
+<pre>272                                                                          {
+273   if (buf == NULL || result == NULL) {
+274     return -1;
+275   }
+276 
+277   // Get random bytes from arc4random_buf (cryptographically secure)
+278   uint32_t random_bytes;
+279   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
+280 
+281   // Convert to 31-bit positive integer (matching glibc behavior)
+282   // glibc's random_r returns values in range [0, 2^31)
+283   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
+284 
+285   return 0;
+286 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>arc4random_buf()</b>.</p>
 </section>
 </section>
 <section class="Sh">

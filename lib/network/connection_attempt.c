@@ -271,24 +271,25 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
     log_debug("Set server IP=%s, port=%d for WebSocket crypto handshake", url_parts.host, url_parts.port);
 
     // Set crypto mode before initialization via callback
+    // NOTE: Always initialize crypto context, even in NONE mode!
+    // The server always sends KEY_EXCHANGE_INIT packets, and the context
+    // must be initialized to handle them (even if in disabled/none mode).
     const crypto_context_t *crypto_ctx = NULL;
 
-    if (crypto_mode != ACIP_CRYPTO_NONE) {
-      log_debug("Initializing crypto context for WebSocket...");
+    log_debug("Initializing crypto context for WebSocket with mode 0x%02x...", crypto_mode);
 
-      APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
+    APP_CALLBACK_VOID_UINT8(client_crypto_set_mode, crypto_mode);
 
-      if (APP_CALLBACK_INT(client_crypto_init) != 0) {
-        log_error("Failed to initialize crypto context");
-        url_parts_destroy(&url_parts);
-        return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
-      }
-      log_debug("Crypto context initialized successfully");
+    if (APP_CALLBACK_INT(client_crypto_init) != 0) {
+      log_error("Failed to initialize crypto context");
+      url_parts_destroy(&url_parts);
+      return SET_ERRNO(ERROR_CRYPTO, "Crypto initialization failed");
+    }
+    log_debug("Crypto context initialized successfully");
 
-      // Get crypto context if ready
-      if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
-        crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
-      }
+    // Get crypto context if ready
+    if (APP_CALLBACK_BOOL(crypto_client_is_ready)) {
+      crypto_ctx = APP_CALLBACK_PTR(crypto_client_get_context);
     }
 
     // Create WebSocket client instance

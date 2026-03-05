@@ -220,12 +220,12 @@
 <i>plaintext_len</i> Output length of decrypted data</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">0 on success, -1 on failure</div>
-<p class="Pp">Definition at line <b>802</b> of file
+<p class="Pp">Definition at line <b>796</b> of file
   <b>src/client/crypto.c</b>.</p>
-<pre>803                                                                                {
-804   return crypto_decrypt_packet_or_passthrough(&amp;g_crypto_ctx, crypto_client_is_ready(), ciphertext, ciphertext_len,
-805                                               plaintext, plaintext_size, plaintext_len);
-806 }</pre>
+<pre>797                                                                                {
+798   return crypto_decrypt_packet_or_passthrough(&amp;g_crypto_ctx, crypto_client_is_ready(), ciphertext, ciphertext_len,
+799                                               plaintext, plaintext_size, plaintext_len);
+800 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_client_is_ready()</b>,
@@ -239,15 +239,15 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">crypto context or NULL if not ready</div>
-<p class="Pp">Definition at line <b>764</b> of file
+<p class="Pp">Definition at line <b>758</b> of file
   <b>src/client/crypto.c</b>.</p>
-<pre>764                                                         {
-765   if (!crypto_client_is_ready()) {
-766     return NULL;
-767   }
-768 
-769   return crypto_handshake_get_context(&amp;g_crypto_ctx);
-770 }</pre>
+<pre>758                                                         {
+759   if (!crypto_client_is_ready()) {
+760     return NULL;
+761   }
+762 
+763   return crypto_handshake_get_context(&amp;g_crypto_ctx);
+764 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_client_is_ready()</b>,
@@ -264,15 +264,15 @@
 <p class="Pp"></p>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if encryption is ready, false otherwise</div>
-<p class="Pp">Definition at line <b>749</b> of file
+<p class="Pp">Definition at line <b>743</b> of file
   <b>src/client/crypto.c</b>.</p>
-<pre>749                                   {
-750   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || GET_OPTION(no_encrypt)) {
-751     return false;
-752   }
-753 
-754   return crypto_handshake_is_ready(&amp;g_crypto_ctx);
-755 }</pre>
+<pre>743                                   {
+744   if (!lifecycle_is_initialized(&amp;g_crypto_lc) || GET_OPTION(no_encrypt)) {
+745     return false;
+746   }
+747 
+748   return crypto_handshake_is_ready(&amp;g_crypto_ctx);
+749 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_is_ready()</b>,
