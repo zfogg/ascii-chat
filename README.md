@@ -374,7 +374,7 @@ target_link_libraries(your_project asciichat::asciichat)
 pkg-config --cflags --libs libasciichat
 ```
 
-See the online **[API documentation](https://zfogg.github.io/ascii-chat/)** for detailed function references and architecture guides.
+See the online **[API documentation](https://zfogg.github.io/ascii-chat/)** for detailed function references and architecture guides. The complete C library API is documented in the **[man3 pages](https://ascii-chat.com/man3)** — function references, structures, type definitions, and module documentation.
 
 ## Open Source
 
