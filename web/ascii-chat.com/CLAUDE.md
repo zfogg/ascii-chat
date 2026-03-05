@@ -230,6 +230,39 @@ The Data Fields section in struct documentation is transformed from Doxygen's aw
 
 **Result**: Clean, organized table where each field's complete information appears on one row.
 
+### Auto-Scrolling to Content
+
+When manpage content loads with search results or anchors, the page automatically scrolls to highlight the relevant entry.
+
+**Implementation** (in `Man3.jsx`):
+1. When page content loads, check for `targetLineNumber` or `targetSnippetIndex` state
+2. For line highlighting (source pages with `#l123` anchors):
+   - Extract line number from URL hash (e.g., `#l95`)
+   - Find the element with matching `id="l95"`
+   - Scroll that element into view and apply highlight styling
+3. For search results in the left panel:
+   - When user clicks a search result, scroll the right panel to that location
+   - Highlight the matched line/field in the code
+4. UseEffect hooks monitor content changes and URL hash changes to trigger scrolling
+5. Smooth scroll behavior (CSS `scroll-behavior: smooth`) provides visual feedback
+
+**URL Hash Format**:
+- `#l123` - Scroll to line 123 (source code pages)
+- `#Data_Fields` - Scroll to named section (via standard HTML anchors)
+- Can be combined with query params: `/man3?page=file.c&q=searchterm#l50`
+
+**Search Integration**:
+- Search results show line snippets in the left panel
+- Clicking a result updates the right panel to show full context
+- Page auto-scrolls to position the match in the viewport center (when possible)
+- Current selection is highlighted to distinguish from other matches
+
+**Technical Details**:
+- Uses `useEffect` to monitor `window.location.hash` changes
+- Applies temporary highlight styling to found elements
+- Handles cases where elements don't exist yet (waits for DOM to settle)
+- Respects user scroll position after initial load
+
 ## Environment Variables
 
 - `VERCEL` - Set automatically on Vercel (skips man page build)
