@@ -26,6 +26,11 @@ static void zsh_escape_desc(FILE *output, const char *text) {
     case '\'':
       fprintf(output, "'\\''");
       break;
+    case '[':
+    case ']':
+      // Escape brackets for _arguments syntax
+      fprintf(output, "\\%c", *p);
+      break;
     case '\n':
     case '\t':
       fprintf(output, " ");
@@ -37,9 +42,10 @@ static void zsh_escape_desc(FILE *output, const char *text) {
 }
 
 /**
- * Collect unique group names from options and sort them
+ * Collect unique group names from options and sort them (DEPRECATED: kept for reference)
+ * NOTE: This function is no longer used after switching to _arguments for option parsing.
  */
-static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t count, size_t *out_group_count) {
+__attribute__((unused)) static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t count, size_t *out_group_count) {
   if (!opts || count == 0) {
     *out_group_count = 0;
     return NULL;
@@ -83,49 +89,29 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
- * Write options grouped by category using _describe for proper group headers
+ * Write options using _arguments for native zsh option parsing
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
                                        const char *func_prefix) {
+  (void)func_prefix;  // Parameter not used in _arguments format
   if (!opts || count == 0) return;
 
-  size_t group_count = 0;
-  const char **groups = zsh_collect_groups(opts, count, &group_count);
+  // Use _arguments for proper zsh option completion (avoids "corrections" duplicates)
+  // Format: 'option-name[description]'
+  fprintf(output, "  _arguments \\\n");
 
-  // First pass: declare arrays for each group
-  for (size_t g = 0; g < group_count; g++) {
-    const char *group = groups[g];
-    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
+  for (size_t i = 0; i < count; i++) {
+    fprintf(output, "    '--");
+    fprintf(output, "%s[", opts[i].long_name);
+    zsh_escape_desc(output, opts[i].help_text);
+    fprintf(output, "]'");
 
-    // Write all options in this group
-    for (size_t i = 0; i < count; i++) {
-      if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
-
-      // Short option if present
-      if (opts[i].short_name != '\0') {
-        fprintf(output, "    '-%c:", opts[i].short_name);
-        zsh_escape_desc(output, opts[i].help_text);
-        fprintf(output, "'\n");
-      }
-
-      // Long option
-      fprintf(output, "    '--%s:", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "'\n");
+    // Add backslash for line continuation (except on last item)
+    if (i < count - 1) {
+      fprintf(output, " \\");
     }
-
-    fprintf(output, "  )\n");
+    fprintf(output, "\n");
   }
-
-  // Second pass: call _describe for each group (with lowercase display)
-  for (size_t g = 0; g < group_count; g++) {
-    const char *group = groups[g];
-    fprintf(output, "  _describe -t %s '", group);
-    utf8_write_lowercase(output, group);
-    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
-  }
-
-  SAFE_FREE(groups);
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
@@ -208,20 +194,9 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "      ;;\n"
                   "\n"
                   "    *)\n"
-                  "      # Default mode (discovery) + binary-level options\n"
+                  "      # Default mode (discovery)\n"
                   "      _ascii_chat_discovery\n"
-                  "      # Also show binary-level options\n");
-
-  /* Binary options - grouped by category */
-  size_t binary_count = 0;
-  const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
-
-  if (binary_opts) {
-    zsh_write_options_grouped(output, binary_opts, binary_count, "binary");
-    SAFE_FREE(binary_opts);
-  }
-
-  fprintf(output, "      ;;\n"
+                  "      ;;\n"
                   "  esac\n"
                   "}\n"
                   "\n"

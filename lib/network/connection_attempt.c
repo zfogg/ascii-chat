@@ -310,6 +310,27 @@ asciichat_error_t connection_attempt_tcp(connection_attempt_context_t *ctx, cons
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection failed");
     }
 
+    // CRITICAL: Wait for the WebSocket handshake to actually complete
+    // The transport is created but the TLS/crypto handshake happens in the service thread
+    log_info("WebSocket transport created, waiting for TLS handshake completion...");
+    const int MAX_HANDSHAKE_WAIT_ITERATIONS = 300; // 300 * 50ms = 15 seconds
+    int handshake_wait_count = 0;
+    while (!acip_transport_is_connected(transport) && handshake_wait_count < MAX_HANDSHAKE_WAIT_ITERATIONS) {
+      platform_sleep_us(50000); // Sleep 50ms between checks
+      handshake_wait_count++;
+      if (handshake_wait_count % 20 == 0) {
+        log_info("WebSocket handshake waiting... (%d seconds elapsed)", handshake_wait_count / 20);
+      }
+    }
+
+    if (!acip_transport_is_connected(transport)) {
+      log_error("WebSocket TLS handshake failed or timed out after 15 seconds");
+      websocket_client_destroy(&ws_client);
+      connection_state_transition(ctx, CONN_STATE_FAILED);
+      url_parts_destroy(&url_parts);
+      return SET_ERRNO(ERROR_NETWORK, "WebSocket handshake timeout");
+    }
+
     log_info("WebSocket connection established to %s", ws_url);
     connection_state_transition(ctx, CONN_STATE_CONNECTED);
     ctx->active_transport = transport;

@@ -1559,11 +1559,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.path = path;
   connect_info.host = host;
   connect_info.origin = host;
-  // CRITICAL FIX: Use h1 (HTTP/1.1) protocol for WebSocket upgrade with "acip" as remote subprotocol
-  // - local_protocol_name="h1": Use libwebsockets' built-in HTTP/1.1 handler for WebSocket upgrade
+  // Use h1 (HTTP/1.1) protocol for WebSocket upgrade with acip as the subprotocol
+  // - local_protocol_name="h1": libwebsockets' built-in HTTP/1.1 handler for WebSocket upgrade
   // - protocol="acip": Request this subprotocol from the remote server (Sec-WebSocket-Protocol header)
-  // h1 is the actual HTTP/1.1 protocol that libwebsockets provides for client connections
-  connect_info.local_protocol_name = "h1";  // Use built-in HTTP/1.1 protocol
+  // libwebsockets internally uses h1 regardless of the protocol name, so we use h1 directly
+  connect_info.local_protocol_name = "h1";  // libwebsockets built-in HTTP/1.1
   connect_info.protocol = "acip";  // Remote subprotocol to request from server
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
   connect_info.ssl_connection = use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;

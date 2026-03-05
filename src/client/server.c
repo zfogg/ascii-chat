@@ -424,6 +424,31 @@ int server_connection_establish(const char *address, int port, int reconnect_att
     atomic_store_bool(&g_connection_active, true);
     atomic_store_bool(&g_connection_lost, false);
 
+    // CRITICAL: Wait for WebSocket connection to be established before sending
+    // The service thread is running but may not have completed TLS handshake yet
+    // Don't block indefinitely - use timeout loops to allow responsiveness
+    log_debug("CLIENT_CONNECT: Waiting for WebSocket connection to be established...");
+    const int CONNECT_CHECK_ATTEMPTS = 300; // 300 * 50ms = 15 seconds timeout
+    int connect_attempts = 0;
+    while (!acip_transport_is_connected(g_client_transport) && connect_attempts < CONNECT_CHECK_ATTEMPTS) {
+      platform_sleep_us(50000); // Sleep 50ms between checks
+      connect_attempts++;
+      if (connect_attempts % 20 == 0) { // Log every 1 second (20 * 50ms)
+        log_info("CLIENT_CONNECT: Waiting for connection... (%d seconds elapsed)", connect_attempts / 20);
+      }
+    }
+
+    if (!acip_transport_is_connected(g_client_transport)) {
+      log_error("Failed to establish WebSocket connection within 15 seconds");
+      acip_transport_destroy(g_client_transport);
+      g_client_transport = NULL;
+      url_parts_destroy(&url_parts);
+      atomic_store_bool(&g_connection_active, false);
+      return -1;
+    }
+
+    log_info("CLIENT_CONNECT: WebSocket connection established, proceeding with handshake");
+
     // Send initial terminal capabilities to server
     int result = threaded_send_terminal_size_with_auto_detect((int)terminal_get_effective_width(),
                                                               (int)terminal_get_effective_height());
