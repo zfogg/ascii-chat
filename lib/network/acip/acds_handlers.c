@@ -264,17 +264,6 @@ static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payl
   return ASCIICHAT_OK;
 }
 
-static asciichat_error_t handle_acds_discovery_ping(const void *payload, size_t payload_len, int client_socket,
-                                                    const char *client_ip, const acip_acds_callbacks_t *callbacks) {
-  (void)payload;
-  (void)payload_len;
-
-  if (callbacks->on_discovery_ping) {
-    callbacks->on_discovery_ping(payload, payload_len, client_socket, client_ip, callbacks->app_ctx);
-  }
-  return ASCIICHAT_OK;
-}
-
 static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_len, int client_socket,
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks) {
   (void)payload;
@@ -283,8 +272,15 @@ static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_le
 
   log_debug("ACDS keepalive: Received PING from %s, responding with PONG", client_ip);
 
-  // Respond with PONG to keep connection alive
-  asciichat_error_t result = packet_send(client_socket, PACKET_TYPE_PONG, NULL, 0);
+  // Create temporary transport for sending PONG response
+  acip_transport_t *transport = acip_tcp_transport_create("transport_acds_keepalive", client_socket, NULL);
+  if (!transport) {
+    return SET_ERRNO(ERROR_NETWORK, "Failed to create transport for PONG response to %s", client_ip);
+  }
+
+  asciichat_error_t result = acip_send_pong(transport);
+  acip_transport_destroy(transport);
+
   if (result != ASCIICHAT_OK) {
     log_warn("ACDS keepalive: Failed to send PONG to %s: %s", client_ip, asciichat_error_string(result));
     return result;

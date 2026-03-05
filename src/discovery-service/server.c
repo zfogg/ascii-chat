@@ -715,22 +715,6 @@ static void acds_on_webrtc_ice(const acip_webrtc_ice_t *ice, size_t payload_len,
   }
 }
 
-static void acds_on_discovery_ping(const void *payload, size_t payload_len, int client_socket, const char *client_ip,
-                                   void *app_ctx) {
-  (void)payload;
-  (void)payload_len;
-  (void)app_ctx;
-
-  // Create ACIP transport for PONG response
-  ACDS_CREATE_TRANSPORT(client_socket, transport);
-
-  // Send PONG response
-  log_debug("PING from %s, sending PONG", client_ip);
-  acip_send_pong(transport);
-
-  ACDS_DESTROY_TRANSPORT(transport);
-}
-
 static void acds_on_host_announcement(const acip_host_announcement_t *announcement, int client_socket,
                                       const char *client_ip, void *app_ctx) {
   acds_server_t *server = (acds_server_t *)app_ctx;
@@ -812,7 +796,6 @@ static const acip_acds_callbacks_t g_acds_callbacks = {
     .on_session_leave = acds_on_session_leave,
     .on_webrtc_sdp = acds_on_webrtc_sdp,
     .on_webrtc_ice = acds_on_webrtc_ice,
-    .on_discovery_ping = acds_on_discovery_ping,
     .on_host_announcement = acds_on_host_announcement,
     .on_host_lost = acds_on_host_lost,
     .app_ctx = NULL // Set dynamically to server instance
@@ -944,8 +927,7 @@ void *acds_client_handler(void *arg) {
     // Multi-key session creation protocol: block non-PING/PONG/SESSION_CREATE messages
     if (client_data->in_multikey_session_create) {
       bool allowed =
-          (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_ACIP_DISCOVERY_PING ||
-           packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
+          (packet_type == PACKET_TYPE_ACIP_SESSION_CREATE || packet_type == PACKET_TYPE_PING || packet_type == PACKET_TYPE_PONG);
 
       if (!allowed) {
         log_warn("Client %s sent packet type 0x%02X during multi-key session creation - only SESSION_CREATE/PING/PONG "
