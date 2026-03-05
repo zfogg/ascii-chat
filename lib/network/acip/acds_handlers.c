@@ -70,8 +70,6 @@ static asciichat_error_t handle_acds_webrtc_sdp(const void *payload, size_t payl
                                                 const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_webrtc_ice(const void *payload, size_t payload_len, int client_socket,
                                                 const char *client_ip, const acip_acds_callbacks_t *callbacks);
-static asciichat_error_t handle_acds_discovery_ping(const void *payload, size_t payload_len, int client_socket,
-                                                    const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_ping(const void *payload, size_t payload_len, int client_socket,
                                           const char *client_ip, const acip_acds_callbacks_t *callbacks);
 static asciichat_error_t handle_acds_pong(const void *payload, size_t payload_len, int client_socket,
@@ -91,9 +89,8 @@ static const acip_acds_handler_func_t g_acds_handlers[ACDS_HANDLER_COUNT] = {
     handle_acds_session_leave,     // 5
     handle_acds_webrtc_sdp,        // 6
     handle_acds_webrtc_ice,        // 7
-    handle_acds_discovery_ping,    // 8
-    handle_acds_host_announcement, // 9
-    handle_acds_host_lost,         // 10
+    handle_acds_host_announcement, // 8
+    handle_acds_host_lost,         // 9
 };
 
 // ACDS packet type -> handler index hash table
@@ -101,12 +98,11 @@ static const acip_acds_handler_func_t g_acds_handlers[ACDS_HANDLER_COUNT] = {
 static const acds_hash_entry_t g_acds_handler_hash[ACDS_HASH_SIZE] = {
     [9]  = {PACKET_TYPE_PING,                   0},   // hash(5001)=9
     [10] = {PACKET_TYPE_PONG,                   1},   // hash(5002)=10
-    [13] = {PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, 9},   // hash(6061)=13
+    [13] = {PACKET_TYPE_ACIP_HOST_ANNOUNCEMENT, 8},   // hash(6061)=13
     [16] = {PACKET_TYPE_ACIP_SESSION_CREATE,    2},   // hash(6000)=16
-    [17] = {PACKET_TYPE_ACIP_HOST_LOST,         10},  // hash(6065)=17
+    [17] = {PACKET_TYPE_ACIP_HOST_LOST,         9},   // hash(6065)=17
     [18] = {PACKET_TYPE_ACIP_SESSION_LOOKUP,    3},   // hash(6002)=18
     [20] = {PACKET_TYPE_ACIP_SESSION_JOIN,      4},   // hash(6004)=20
-    [21] = {PACKET_TYPE_ACIP_DISCOVERY_PING,    8},   // hash(6100)=20, probed->21
     [22] = {PACKET_TYPE_ACIP_SESSION_LEAVE,     5},   // hash(6006)=22
     [25] = {PACKET_TYPE_ACIP_WEBRTC_SDP,        6},   // hash(6009)=25
     [26] = {PACKET_TYPE_ACIP_WEBRTC_ICE,        7},   // hash(6010)=26
