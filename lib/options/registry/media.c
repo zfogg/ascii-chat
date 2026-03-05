@@ -138,7 +138,7 @@ const registry_entry_t g_media_entries[] = {
      NULL,
      sizeof(((options_t *)0)->yt_dlp_options),
      "Arbitrary yt-dlp options passed to the extraction subprocess for URL resolution. "
-     "Examples: \"--no-warnings\" or \"--proxy socks5://127.0.0.1:1080\" or \"--cookies-from-browser=firefox\".",
+     "Examples: --no-warnings or --proxy socks5://127.0.0.1:1080 or --cookies-from-browser=firefox.",
      "MEDIA",
      NULL,
      false,
@@ -219,9 +219,9 @@ const registry_entry_t g_media_entries[] = {
      offsetof(options_t, render_font),
      "",
      sizeof(((options_t *)0)->render_font),
-     "Font for render-file output: bundled names (\"matrix\" or \"default\"), system font names, or absolute .ttf/.otf path. "
-     "Default: \"matrix\" (Matrix Resurrected font). Falls back to \"default\" (DejaVu Sans Mono) if unavailable. "
-     "Examples: \"matrix\", \"default\", \"JetBrains Mono\", \"Nerd Font Mono\", \"/path/to/font.ttf\"  "
+     "Font for render-file output: bundled names (matrix or default), system font names, or absolute .ttf/.otf path. "
+     "Default: matrix (Matrix Resurrected font). Falls back to default (DejaVu Sans Mono) if unavailable. "
+     "Examples: matrix, default, JetBrains Mono, Nerd Font Mono, /path/to/font.ttf. "
      "(macOS and Linux only).",
      "MEDIA",
      "FONT",

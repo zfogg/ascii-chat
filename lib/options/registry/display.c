@@ -71,7 +71,7 @@ const registry_entry_t g_display_entries[] = {
      &default_palette_type_value,
      sizeof(palette_type_t),
      "Palette type with which to render images to text art. Values: standard, blocks, digital, minimal, cool, "
-     "custom. All but \"custom\" are built-in presets that all look different and nice. Try them out.",
+     "custom. All but 'custom' are built-in presets that all look different and nice. Try them out.",
      "DISPLAY",
      NULL,
      false,
