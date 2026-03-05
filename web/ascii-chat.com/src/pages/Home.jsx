@@ -364,7 +364,7 @@ man ascii-chat
 # Get help for specific modes
 ascii-chat <mode> --help
 
-# Enable shell completions (zsh shown; bash, fish, and powershell available too)
+# Enable shell completions (bash, fish, zsh, and powershell available)
 source <(ascii-chat --completions zsh)`}
                 </CodeBlock>
               </div>
