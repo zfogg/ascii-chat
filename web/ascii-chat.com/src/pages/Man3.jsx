@@ -716,13 +716,25 @@ export default function Man3() {
       if (!lineMatch) return false;
 
       const lineNum = parseInt(lineMatch[1], 10);
-      const blockId = `code-block-${lineNum}`;
 
-      // Look for the code block with this target line
-      const targetBlock = container.querySelector(`#${blockId}`);
+      // First, try to find by exact ID
+      const blockId = `code-block-${lineNum}`;
+      let targetBlock = container.querySelector(`#${blockId}`);
+
       if (targetBlock) {
         // Scroll the code block to center of viewport
         targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+        return true;
+      }
+
+      // If not found, try to find any code block and scroll to it
+      // (for cases where line numbers don't match exactly)
+      const allCodeBlocks = container.querySelectorAll(
+        "[class*='code-'], .man-page-html pre"
+      );
+      if (allCodeBlocks.length > 0) {
+        // Scroll to the first code block
+        allCodeBlocks[0].scrollIntoView({ behavior: "smooth", block: "center" });
         return true;
       }
 
@@ -1025,7 +1037,7 @@ export default function Man3() {
                   pointer-events: none;
                 }
               `}</style>
-              <CodeBlock searchQuery={searchQuery}>{codeWithLineNumbers}</CodeBlock>
+              <CodeBlock>{codeWithLineNumbers}</CodeBlock>
             </div>,
           );
 
@@ -1363,7 +1375,7 @@ export default function Man3() {
                   <div className="man-page-content">
                     {renderContentWithCodeBlocks(
                       selectedPageContent,
-                      selectedPageName?.endsWith("_source") || false,
+                      selectedPageName?.endsWith("_source") || selectedPageName?.endsWith(".c") || false,
                       searchQuery,
                     )}
                   </div>
