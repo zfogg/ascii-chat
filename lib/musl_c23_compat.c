@@ -18,7 +18,8 @@
 #include <limits.h>
 
 // strtol family - string to integer conversion
-// NOTE: Uses strtoll as backend to avoid infinite recursion, with proper long clamping.
+// NOTE: Manual base-10 parser avoids strtoll recursion in musl static builds.
+// For other bases, try strtoll as fallback (less common use case).
 long __isoc23_strtol(const char *str, char **endptr, int base) {
   if (!str) {
     if (endptr)
@@ -26,16 +27,72 @@ long __isoc23_strtol(const char *str, char **endptr, int base) {
     return 0;
   }
 
-  // Use strtoll which is more robust and handles all bases correctly
-  long long result = strtoll(str, endptr, base);
+  // For base-10 (most common), use manual parser to avoid infinite recursion
+  // in musl where strtoll might redirect back to __isoc23_strtoll
+  if (base == 10 || base == 0) {
+    const char *p = str;
+    int sign = 1;
+    long result = 0;
 
-  // Clamp to long range
-  if (result > LONG_MAX)
-    return LONG_MAX;
-  if (result < LONG_MIN)
-    return LONG_MIN;
+    // Skip whitespace
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' ||
+           *p == '\v' || *p == '\f')
+      p++;
 
-  return (long)result;
+    // Handle optional sign
+    if (*p == '-') {
+      sign = -1;
+      p++;
+    } else if (*p == '+') {
+      p++;
+    }
+
+    // For base-0, detect hex or octal prefix
+    if (base == 0) {
+      if (*p == '0') {
+        if (p[1] == 'x' || p[1] == 'X') {
+          // Hex - fall through to strtoll for proper parsing
+          goto use_strtoll;
+        } else if (p[1] >= '0' && p[1] <= '7') {
+          // Octal - fall through to strtoll for proper parsing
+          goto use_strtoll;
+        }
+      }
+      base = 10; // Default to decimal
+    }
+
+    // Parse decimal digits
+    int has_digits = 0;
+    while (*p >= '0' && *p <= '9') {
+      has_digits = 1;
+      int digit = *p - '0';
+      // Check for overflow before multiplication
+      if (result > (LONG_MAX - digit) / 10) {
+        if (endptr)
+          *endptr = (char *)p;
+        return sign > 0 ? LONG_MAX : LONG_MIN;
+      }
+      result = result * 10 + digit;
+      p++;
+    }
+
+    if (endptr) {
+      *endptr = (char *)(has_digits ? p : str);
+    }
+
+    return sign * result;
+  }
+
+  // For non-base-10, try strtoll (less common path)
+use_strtoll: {
+    long long result = strtoll(str, endptr, base);
+    // Clamp to long range
+    if (result > LONG_MAX)
+      return LONG_MAX;
+    if (result < LONG_MIN)
+      return LONG_MIN;
+    return (long)result;
+  }
 }
 
 long long __isoc23_strtoll(const char *str, char **endptr, int base) {
