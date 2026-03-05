@@ -23,90 +23,93 @@ export default function Man3() {
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
 
-  // Transform Data Fields section into a table
-  const transformDataFieldsToTable = useCallback((html) => {
-    // Find the Data Fields section - very lenient regex
-    const dataFieldsMatch = html.match(
-      /(<[^>]*id="Data_Fields"[^>]*>[\s\S]*?<\/[^>]*>\s*)<p[^>]*>([\s\S]*?)(?=<h[1-6]|$)/i
-    );
+  // Transform Data Fields section into a table using DOM
+  useEffect(() => {
+    const dataFieldsHeading = document.getElementById("Data_Fields");
+    if (!dataFieldsHeading) return;
 
-    if (!dataFieldsMatch) return html;
-
-    const heading = dataFieldsMatch[1];
-    const contentText = dataFieldsMatch[2];
-
-    // Parse fields by finding field names (always in bold tags)
-    // Pattern: type text <b>fieldname</b> followed by description text
-    const fields = [];
-
-    // Use regex to find all field name matches: capture everything up to the field name
-    // Then the next field's start indicates where the description ends
-    const fieldNameRegex = /([^<]*(?:<(?!b>)[^<]*)*?)<b>([^<]+)<\/b>/g;
-    let fieldMatches = [];
-    let m;
-
-    while ((m = fieldNameRegex.exec(contentText)) !== null) {
-      fieldMatches.push({
-        fullMatch: m[0],
-        typeText: m[1].trim(),
-        name: m[2],
-        index: m.index,
-      });
+    // Find the p tag that follows
+    let pTag = dataFieldsHeading.nextElementSibling;
+    while (pTag && pTag.tagName !== "P") {
+      pTag = pTag.nextElementSibling;
     }
 
-    // Now extract descriptions by finding text between one field name and the next
-    for (let i = 0; i < fieldMatches.length; i++) {
-      const currentField = fieldMatches[i];
-      const nextFieldIndex =
-        i + 1 < fieldMatches.length
-          ? fieldMatches[i + 1].index
-          : contentText.length;
+    if (!pTag) return;
 
-      // Get text after this field name until the next field or end
-      const descriptionStart =
-        currentField.index + currentField.fullMatch.length;
-      let description = contentText
-        .substring(descriptionStart, nextFieldIndex)
-        .replace(/<br\s*\/?>/g, " ")
-        .replace(/<b>([^<]+)<\/b>/g, "$1")
-        .trim();
+    // Split by <br> to get sections
+    const html = pTag.innerHTML;
+    const sections = html.split(/<br\s*\/?>/i);
+    if (sections.length < 2) return;
 
-      // Use full typeText as the type (includes qualifiers like "volatile", "struct", etc.)
-      const type = currentField.typeText || "";
+    // Parse each section to extract type, name, and description
+    const rows = [];
+    let prevDescription = "";
 
-      if (currentField.name) {
-        fields.push({
-          type: type || "",
-          name: currentField.name,
-          description: description.split(/\s+/).join(" "),
-        });
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i].trim();
+      if (!section) continue;
+
+      // Create temp element to query b tags within this section
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = section;
+      const bTags = tempDiv.querySelectorAll("b");
+
+      if (bTags.length === 0) continue;
+
+      // Extract type and name based on number of b tags
+      let type, name, description;
+
+      if (bTags.length === 2) {
+        // Two b tags: type and name both have <b> tags
+        type = bTags[0].textContent;
+        name = bTags[1].textContent;
+        // Description is everything before the first b tag in this section
+        const beforeFirstB = section.substring(0, section.indexOf("<b>"));
+        description = (prevDescription ? prevDescription + " " : "") + beforeFirstB.trim();
+        prevDescription = "";
+      } else if (bTags.length === 1) {
+        // One b tag: it's the name
+        name = bTags[0].textContent;
+
+        // Find the last b tag position
+        const lastBStart = section.lastIndexOf("<b>");
+        const beforeLastB = section.substring(0, lastBStart).trim();
+
+        // The last "word" before the b tag is the type
+        const lastSpace = beforeLastB.lastIndexOf(" ");
+        if (lastSpace !== -1) {
+          type = beforeLastB.substring(lastSpace + 1);
+          description = beforeLastB.substring(0, lastSpace).trim();
+        } else {
+          type = beforeLastB;
+          description = prevDescription;
+        }
+        prevDescription = "";
+      }
+
+      if (type && name) {
+        rows.push({ type, name, description: description || "" });
       }
     }
 
-    // Build table HTML
-    const tableRows = fields
-      .map(
-        (field) => `
-      <tr>
-        <td class="man-data-field-type">${field.type}</td>
-        <td class="man-data-field-name">${field.name}</td>
-        <td class="man-data-field-desc">${field.description}</td>
-      </tr>
-    `,
-      )
-      .join("");
+    // Build table from parsed rows
+    if (rows.length === 0) return;
 
-    const table = `
-      <table class="man-data-fields-table">
-        <tbody>
-          ${tableRows}
-        </tbody>
-      </table>
-    `;
+    const tbody = document.createElement("tbody");
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tbody.appendChild(tr);
+    }
 
-    // Replace the original content with the table
-    return html.replace(dataFieldsRegex, heading + table);
-  }, []);
+    if (tbody.children.length > 0) {
+      const table = document.createElement("table");
+      table.className = "man-data-fields-table";
+      table.appendChild(tbody);
+      pTag.innerHTML = "";
+      pTag.appendChild(table);
+    }
+  }, [selectedPageContent]);
 
   // Helper function to process HTML content: convert URLs and highlight matches
   const processPageContent = useCallback((html, searchQuery) => {
