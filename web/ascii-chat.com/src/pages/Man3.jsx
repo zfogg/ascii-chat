@@ -887,36 +887,20 @@ export default function Man3() {
             }
           }
 
-          // If target line(s) exist on source pages, render with yellow background and nice arrows
+          // If target line(s) exist on source pages, use CodeBlock for syntax highlighting
           if (targetLineStart !== null && isSourcePage) {
-            const highlightedHtml = lines
+            const codeWithLineNumbers = lines
               .map((text, idx) => {
                 const lineNum = idx + 1;
                 const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                const isTarget =
-                  lineNum >= targetLineStart && lineNum <= targetLineEnd;
-
-                if (isTarget) {
-                  return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${text} ⟸</span></div>`;
-                }
-                return `<div style="font-family: monospace;"><span>    ${paddedNum}  ${text}</span></div>`;
+                return `    ${paddedNum}  ${text}`;
               })
-              .join("");
+              .join("\n");
 
             elements.push(
-              <div
-                key={`code-${elements.length}`}
-                style={{
-                  fontSize: "0.875rem",
-                  lineHeight: "1.5",
-                  backgroundColor: "#111827",
-                  padding: "1rem",
-                  borderRadius: "0.5rem",
-                  overflow: "auto",
-                  marginBottom: "1rem",
-                }}
-                dangerouslySetInnerHTML={{ __html: highlightedHtml }}
-              />,
+              <CodeBlock key={`code-${elements.length}`} language="c">
+                {codeWithLineNumbers}
+              </CodeBlock>,
             );
           } else {
             // No target line, use CodeBlock for syntax highlighting
