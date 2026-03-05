@@ -68,35 +68,35 @@ export default function Man3() {
 
   // Helper function to add GitHub links to "Definition at line X of file Y"
   // Also converts line number anchors on source pages to GitHub links
-  const processDefinitionLinks = useCallback((html, sourcePath, commitSha, isSourcePage = false) => {
-    if (!sourcePath || !commitSha || commitSha === 'unknown') return html;
+  const processDefinitionLinks = useCallback(
+    (html, sourcePath, commitSha, isSourcePage = false) => {
+      if (!sourcePath || !commitSha || commitSha === "unknown") return html;
 
-    // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
-    // Use \s* to handle whitespace/newlines between "of file" and the filename
-    let result = html.replace(
-      /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
-      (_, lineNum, filename) =>
-        `Definition at <a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
-        `target="_blank" rel="noopener noreferrer"><b class="text-cyan-400">line ${lineNum}</b></a> of file ` +
-        `<a href="/man3?page=${filename}" ` +
-        `<b class="text-cyan-400">${filename}</b></a> ` +
-        `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}" ` +
-        `target="_blank" rel="noopener noreferrer"><span class="text-gray-500">(github@${commitSha})</span></a>`
-    );
-
-    // On source pages, transform line number anchors to GitHub links
-    // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
-    if (isSourcePage) {
-      result = result.replace(
-        /<a\s+id="l(\d+)"[^>]*>(\d+)<\/a>/g,
-        (_, lineNum, displayNum) =>
-          `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
-          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">${displayNum}</a>`
+      // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
+      // Use \s* to handle whitespace/newlines between "of file" and the filename
+      let result = html.replace(
+        /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
+        (_, lineNum, filename) =>
+          `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
+          `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`,
       );
-    }
 
-    return result;
-  }, []);
+      // On source pages, transform line number anchors to GitHub links
+      // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
+      if (isSourcePage) {
+        result = result.replace(
+          /<a\s+id="l(\d+)"[^>]*>(\d+)<\/a>/g,
+          (_, lineNum, displayNum) =>
+            `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+            `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">${displayNum}</a>`,
+        );
+      }
+
+      return result;
+    },
+    [],
+  );
 
   useEffect(() => {
     setBreadcrumbSchema([
@@ -131,51 +131,56 @@ export default function Man3() {
           const filename = page.file;
 
           fetch(`/man3/${filename}`)
-          .then((r) => {
-            if (!r.ok) {
+            .then((r) => {
+              if (!r.ok) {
+                setPageNotFound(true);
+                setSelectedPageContent(null);
+                return null;
+              }
+              return r.text();
+            })
+            .then((html) => {
+              if (!html) return;
+              setPageNotFound(false);
+              // Extract stylesheets from head
+              const stylesheets = [];
+              const styleMatches = html.matchAll(
+                /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
+              );
+              for (const match of styleMatches) {
+                const href = match[1];
+                if (!href.startsWith("/") && !href.startsWith("http")) {
+                  stylesheets.push(
+                    `<link rel="stylesheet" href="/man3/${href}" />`,
+                  );
+                } else {
+                  stylesheets.push(match[0]);
+                }
+              }
+
+              // Process content (URLs and highlighting)
+              let processedContent = processPageContent(html, "");
+
+              // Add GitHub links for "Definition at line X" text and line numbers
+              const page = manPages.find((p) => p.name === pageName);
+              const sourcePath = page?.sourcePath;
+              const isSourcePage = pageName?.endsWith("_source") || false;
+              processedContent = processDefinitionLinks(
+                processedContent,
+                sourcePath,
+                __COMMIT_SHA__,
+                isSourcePage,
+              );
+
+              // Prepend stylesheets
+              const content = stylesheets.join("\n") + processedContent;
+              setSelectedPageContent(content);
+            })
+            .catch((e) => {
+              console.error("Failed to load page:", e);
               setPageNotFound(true);
               setSelectedPageContent(null);
-              return null;
-            }
-            return r.text();
-          })
-          .then((html) => {
-            if (!html) return;
-            setPageNotFound(false);
-            // Extract stylesheets from head
-            const stylesheets = [];
-            const styleMatches = html.matchAll(
-              /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
-            );
-            for (const match of styleMatches) {
-              const href = match[1];
-              if (!href.startsWith("/") && !href.startsWith("http")) {
-                stylesheets.push(
-                  `<link rel="stylesheet" href="/man3/${href}" />`,
-                );
-              } else {
-                stylesheets.push(match[0]);
-              }
-            }
-
-            // Process content (URLs and highlighting)
-            let processedContent = processPageContent(html, "");
-
-            // Add GitHub links for "Definition at line X" text and line numbers
-            const page = manPages.find(p => p.name === pageName);
-            const sourcePath = page?.sourcePath;
-            const isSourcePage = pageName?.endsWith("_source") || false;
-            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__, isSourcePage);
-
-            // Prepend stylesheets
-            const content = stylesheets.join("\n") + processedContent;
-            setSelectedPageContent(content);
-          })
-          .catch((e) => {
-            console.error("Failed to load page:", e);
-            setPageNotFound(true);
-            setSelectedPageContent(null);
-          });
+            });
         }
       } else {
         // manPages not loaded yet, try default filename
@@ -211,10 +216,15 @@ export default function Man3() {
             let processedContent = processPageContent(html, "");
 
             // Add GitHub links for "Definition at line X" text and line numbers
-            const page = manPages.find(p => p.name === pageName);
+            const page = manPages.find((p) => p.name === pageName);
             const sourcePath = page?.sourcePath;
             const isSourcePage = pageName?.endsWith("_source") || false;
-            processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__, isSourcePage);
+            processedContent = processDefinitionLinks(
+              processedContent,
+              sourcePath,
+              __COMMIT_SHA__,
+              isSourcePage,
+            );
 
             // Prepend stylesheets
             const content = stylesheets.join("\n") + processedContent;
@@ -227,7 +237,12 @@ export default function Man3() {
           });
       }
     }
-  }, [processPageContent, processDefinitionLinks, manPages, window.location.search]);
+  }, [
+    processPageContent,
+    processDefinitionLinks,
+    manPages,
+    window.location.search,
+  ]);
 
   // Load man3 index
   useEffect(() => {
@@ -387,7 +402,12 @@ export default function Man3() {
           const page = manPages.find((p) => p.name === pageName);
           const sourcePath = page?.sourcePath;
           const isSourcePage = pageName?.endsWith("_source") || false;
-          processedContent = processDefinitionLinks(processedContent, sourcePath, __COMMIT_SHA__, isSourcePage);
+          processedContent = processDefinitionLinks(
+            processedContent,
+            sourcePath,
+            __COMMIT_SHA__,
+            isSourcePage,
+          );
 
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
@@ -1147,7 +1167,7 @@ export default function Man3() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-800">
-                    {highlightedResults.map((page, index) => (
+                    {highlightedResults.map((page, _index) => (
                       <div
                         key={`${page.file}-${page.name}`}
                         className={`border-l-4 transition-colors ${
@@ -1263,10 +1283,15 @@ export default function Man3() {
                     </p>
                     <div className="text-gray-400 text-lg">
                       <p className="mb-6">
-                        The documentation page for <code className="bg-gray-800 px-3 py-2 rounded text-xl">{selectedPageName}</code> could not be found.
+                        The documentation page for{" "}
+                        <code className="bg-gray-800 px-3 py-2 rounded text-xl">
+                          {selectedPageName}
+                        </code>{" "}
+                        could not be found.
                       </p>
                       <p className="text-gray-500">
-                        Try searching for a different page or check the spelling.
+                        Try searching for a different page or check the
+                        spelling.
                       </p>
                     </div>
                   </div>
