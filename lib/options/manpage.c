@@ -337,17 +337,20 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           section_start++;
 
         const char *section_name_end = section_start;
-        while (section_name_end < line_end && *section_name_end && *section_name_end != '\n') {
+        // Advance until we reach line_end (the newline position)
+        while (section_name_end < line_end) {
           section_name_end++;
         }
 
+        // Trim trailing whitespace
         while (section_name_end > section_start && isspace(*(section_name_end - 1))) {
           section_name_end--;
         }
 
         size_t section_name_len = (size_t)(section_name_end - section_start);
         if (section_name_len > 0 && section_name_len < sizeof(current_merge_section)) {
-          SAFE_STRNCPY(current_merge_section, section_start, section_name_len);
+          // Use memcpy instead of SAFE_STRNCPY because source is not null-terminated
+          memcpy(current_merge_section, section_start, section_name_len);
           current_merge_section[section_name_len] = '\0';
         }
       }
@@ -549,8 +552,9 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           section_start++;
 
         const char *section_name_end = section_start;
-        // Extract section name: everything until end of line, then trim trailing whitespace
-        while (section_name_end < line_end && *section_name_end && *section_name_end != '\n') {
+        // Extract section name: everything from section_start until line_end
+        // Do NOT use a condition based on '\n' - just advance until we reach line_end
+        while (section_name_end < line_end) {
           section_name_end++;
         }
 
@@ -561,8 +565,12 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
 
         size_t section_name_len = (size_t)(section_name_end - section_start);
         if (section_name_len > 0 && section_name_len < sizeof(current_auto_section)) {
-          SAFE_STRNCPY(current_auto_section, section_start, section_name_len);
+          // Use memcpy instead of SAFE_STRNCPY because source is not null-terminated
+          // SAFE_STRNCPY uses strlcpy which only copies size-1 bytes
+          memcpy(current_auto_section, section_start, section_name_len);
           current_auto_section[section_name_len] = '\0';
+          log_debug("[MANPAGE] Found AUTO-START section: '%s' (%zu bytes)", current_auto_section,
+                   section_name_len);
         }
       }
 
