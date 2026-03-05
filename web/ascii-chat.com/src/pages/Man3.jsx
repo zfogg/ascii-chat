@@ -389,6 +389,7 @@ export default function Man3() {
       // If clicking a line number on the same page, just update the hash without fetching
       if (selectedPageName === pageName && lineNumber !== null) {
         setTargetLineNumber(lineNumber);
+        setTargetSnippetIndex(snippetIndex);
         const hash = "#l" + lineNumber.toString().padStart(5, "0");
         window.history.replaceState(
           {},
@@ -567,33 +568,70 @@ export default function Man3() {
     }
   }, [targetSnippetIndex, selectedPageName, searchResults]);
 
-  // Scroll to hash anchor when content loads (for function links, etc.)
+  // Scroll to matching search term in the right panel content
   useEffect(() => {
-    if (!selectedPageContent || !contentViewerRef.current) return;
-
-    // Get hash from URL, removing the leading #
-    const hash = window.location.hash.substring(1);
-    if (!hash) return;
+    if (!selectedPageContent || !contentViewerRef.current || !searchQuery) return;
 
     // Delay scroll to allow content to render
     setTimeout(() => {
       const viewer = contentViewerRef.current;
       if (!viewer) return;
 
-      // Find element with matching id attribute
-      const targetElement = viewer.querySelector(`[id="${hash}"]`);
-      if (targetElement) {
-        // Get element's position relative to the scrollable container
-        const elementTop = targetElement.offsetTop;
+      console.log('[DEBUG] Right panel - searching for matches of:', searchQuery);
+
+      // Check if HTML contains the highlighting span
+      if (viewer.innerHTML.includes('bg-yellow-900')) {
+        console.log('[DEBUG] HTML contains bg-yellow-900 highlighting');
+      } else {
+        console.log('[DEBUG] HTML does NOT contain highlighting - checking selectedPageContent');
+        if (selectedPageContent.includes('bg-yellow-900')) {
+          console.log('[DEBUG] selectedPageContent HAS highlighting but it didn\'t render to DOM');
+        } else {
+          console.log('[DEBUG] selectedPageContent does NOT have highlighting');
+        }
+      }
+
+      // Try multiple selectors - the class is "bg-yellow-900/50" but we need to search for the escaped version
+      let highlightedElements = viewer.querySelectorAll('[class~="bg-yellow-900/50"]');
+      console.log('[DEBUG] Selector 1 ([class~="bg-yellow-900/50"]):', highlightedElements.length);
+
+      if (highlightedElements.length === 0) {
+        // Fallback: search for ANY span with "bg-yellow" in class
+        highlightedElements = viewer.querySelectorAll('span[class*="bg-yellow"]');
+        console.log('[DEBUG] Selector 2 (span[class*="bg-yellow"]):', highlightedElements.length);
+      }
+
+      console.log('[DEBUG] Checking if need manual filter - length:', highlightedElements.length);
+      if (highlightedElements.length === 0) {
+        // Manually search through all spans and find ones with the yellow class
+        const allSpans = viewer.querySelectorAll('span');
+        console.log('[DEBUG] Total spans in right panel:', allSpans.length);
+        highlightedElements = Array.from(allSpans).filter(span => {
+          const hasYellow = span.className && span.className.includes('bg-yellow');
+          if (hasYellow) {
+            console.log('[DEBUG] Found span with bg-yellow:', span.className);
+          }
+          return hasYellow;
+        });
+        console.log('[DEBUG] Manual filter result:', highlightedElements.length);
+      }
+
+      if (highlightedElements.length > 0) {
+        // Scroll to the first highlighted match
+        const firstMatch = highlightedElements[0];
+        const elementTop = firstMatch.offsetTop;
 
         // Center it in the viewport
         const viewportCenter = viewer.clientHeight / 2;
         const scrollTop = Math.max(0, elementTop - viewportCenter);
 
+        console.log('[DEBUG] Scrolling right panel to first match - elementTop:', elementTop, 'scrollTop:', scrollTop);
         viewer.scrollTop = scrollTop;
+      } else {
+        console.log('[DEBUG] No highlighted matches found in right panel');
       }
     }, 100);
-  }, [selectedPageContent, window.location.hash]);
+  }, [selectedPageContent, searchQuery]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
