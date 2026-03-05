@@ -159,7 +159,9 @@ export default function Man3() {
               }
 
               // Process content (URLs and highlighting)
-              let processedContent = processPageContent(html, "");
+              // Use query param from URL if available for highlighting search results
+              const decodedQuery = queryParam ? decodeURIComponent(queryParam) : "";
+              let processedContent = processPageContent(html, decodedQuery);
 
               // Add GitHub links for "Definition at line X" text and line numbers
               const page = manPages.find((p) => p.name === pageName);
@@ -175,6 +177,13 @@ export default function Man3() {
               // Prepend stylesheets
               const content = stylesheets.join("\n") + processedContent;
               setSelectedPageContent(content);
+
+              // If there's a hash indicating a line number, extract and set it for scrolling
+              const hash = window.location.hash.substring(1);
+              if (hash.match(/^l\d+$/)) {
+                const lineNum = parseInt(hash.substring(1), 10);
+                setTargetLineNumber(lineNum);
+              }
             })
             .catch((e) => {
               console.error("Failed to load page:", e);
@@ -213,7 +222,9 @@ export default function Man3() {
             }
 
             // Process content (URLs and highlighting)
-            let processedContent = processPageContent(html, "");
+            // Use query param from URL if available for highlighting search results
+            const decodedQuery = queryParam ? decodeURIComponent(queryParam) : "";
+            let processedContent = processPageContent(html, decodedQuery);
 
             // Add GitHub links for "Definition at line X" text and line numbers
             const page = manPages.find((p) => p.name === pageName);
@@ -229,6 +240,13 @@ export default function Man3() {
             // Prepend stylesheets
             const content = stylesheets.join("\n") + processedContent;
             setSelectedPageContent(content);
+
+            // If there's a hash indicating a line number, extract and set it for scrolling
+            const hash = window.location.hash.substring(1);
+            if (hash.match(/^l\d+$/)) {
+              const lineNum = parseInt(hash.substring(1), 10);
+              setTargetLineNumber(lineNum);
+            }
           })
           .catch((e) => {
             console.error("Failed to load page:", e);
