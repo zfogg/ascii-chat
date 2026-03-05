@@ -667,24 +667,52 @@ export default function Man3() {
             const allSpans = codeBlock.querySelectorAll("span, div, *");
             const lineElements = [];
 
-            // Collect elements on the same line, deduplicating overlapping spans
-            const seenPositions = new Set();
+            // Collect spans on the same line, filtering out empty and duplicate content
+            const lineSpans = [];
             for (const span of allSpans) {
               if (span.offsetTop === targetTop && span.offsetHeight > 0 && span.offsetHeight < 100) {
-                // Create a position key to detect overlapping spans
-                const posKey = `${span.offsetLeft}:${span.offsetTop}`;
-
-                // Skip spans that are at the same position as one we already collected
-                // (likely overlapping duplicates from syntax highlighter)
-                if (seenPositions.has(posKey)) {
-                  console.log("[Man3] Skipping duplicate at position:", posKey, "text:", span.textContent?.substring(0, 20));
-                  continue;
+                const text = span.textContent || "";
+                // Only include spans with non-whitespace content (at least 1 character)
+                // This filters out empty spans and spacing-only spans
+                if (text.trim().length > 0) {
+                  lineSpans.push(span);
                 }
-
-                seenPositions.add(posKey);
-                lineElements.push(span);
-                console.log("[Man3] Found element on same line:", span.tagName, "height:", span.offsetHeight, "offsetLeft:", span.offsetLeft, "text:", span.textContent?.substring(0, 20));
               }
+            }
+
+            // Group spans by offsetLeft to identify and filter out overlapped content
+            const positionMap = {}; // key: offsetLeft (rounded to nearest pixel) -> spans at that position
+            for (const span of lineSpans) {
+              // Round to handle floating point offsetLeft values
+              const key = Math.round(span.offsetLeft);
+              if (!positionMap[key]) {
+                positionMap[key] = [];
+              }
+              positionMap[key].push(span);
+            }
+
+            // For each position, keep only the span with the most content
+            // (overlapping spans at same position - keep the one with longest text)
+            const deduplicatedSpans = [];
+            for (const spansAtPosition of Object.values(positionMap)) {
+              if (spansAtPosition.length === 1) {
+                deduplicatedSpans.push(spansAtPosition[0]);
+              } else {
+                // Multiple spans at same position - keep the one with most content
+                const longest = spansAtPosition.reduce((a, b) =>
+                  (a.textContent?.length || 0) > (b.textContent?.length || 0) ? a : b
+                );
+                deduplicatedSpans.push(longest);
+                console.log("[Man3] Deduplicated", spansAtPosition.length, "overlapping spans at position", Math.round(longest.offsetLeft));
+              }
+            }
+
+            // Sort by offsetLeft to maintain left-to-right order
+            deduplicatedSpans.sort((a, b) => a.offsetLeft - b.offsetLeft);
+
+            for (const span of deduplicatedSpans) {
+              lineElements.push(span);
+              console.log("[Man3] Added span:", span.tagName, "offsetLeft:", span.offsetLeft, "text:", span.textContent?.substring(0, 30));
             }
 
             console.log("[Man3] Found", lineElements.length, "elements on line");
