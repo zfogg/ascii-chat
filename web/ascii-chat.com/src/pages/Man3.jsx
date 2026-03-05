@@ -529,22 +529,18 @@ export default function Man3() {
 
   // Scroll search result snippet to center when selected
   useEffect(() => {
-    if (targetSnippetIndex !== null && searchResults.length > 0) {
+    if (
+      targetSnippetIndex !== null &&
+      selectedPageName &&
+      searchResults.length > 0
+    ) {
       // Find the snippet element in the left panel and scroll it into view
       setTimeout(() => {
-        // Get all snippet divs in the search results panel
-        const snippetElements = document.querySelectorAll(
-          '[data-snippet-index]',
+        // Create unique ID: page-name + snippet-index
+        const snippetId = `${selectedPageName}-${targetSnippetIndex}`;
+        const targetElement = document.querySelector(
+          `[data-snippet-id="${snippetId}"]`,
         );
-
-        // Find the one matching our target index
-        let targetElement = null;
-        for (const el of snippetElements) {
-          if (el.getAttribute('data-snippet-index') === String(targetSnippetIndex)) {
-            targetElement = el;
-            break;
-          }
-        }
 
         if (targetElement) {
           // Find the scrollable parent (the results list container)
@@ -557,7 +553,6 @@ export default function Man3() {
             const elementTop = targetElement.offsetTop;
             const elementHeight = targetElement.clientHeight;
             const scrollParentHeight = scrollParent.clientHeight;
-            const scrollParentTop = scrollParent.scrollTop;
 
             // Center the element in the viewport
             const centerScroll =
@@ -570,7 +565,7 @@ export default function Man3() {
         }
       }, 100);
     }
-  }, [targetSnippetIndex, searchResults]);
+  }, [targetSnippetIndex, selectedPageName, searchResults]);
 
   // Scroll to hash anchor when content loads (for function links, etc.)
   useEffect(() => {
@@ -1227,7 +1222,7 @@ export default function Man3() {
                               return (
                                 <div
                                   key={idx}
-                                  data-snippet-index={idx}
+                                  data-snippet-id={`${page.name}-${idx}`}
                                   onClick={() =>
                                     loadPageContent(
                                       page.name,
