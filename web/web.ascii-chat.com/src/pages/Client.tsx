@@ -91,7 +91,7 @@ class H265Encoder {
 
     const bitrate = Math.max(500_000, width * height * 2 * fps);
 
-    // Test H.265 first
+    // Test H.265 support
     try {
       console.time("[H265Encoder] H.265 isConfigSupported");
       const h265Support = await VideoEncoder.isConfigSupported({
@@ -104,30 +104,13 @@ class H265Encoder {
       console.timeEnd("[H265Encoder] H.265 isConfigSupported");
       console.log("[H265Encoder] H.265 support:", h265Support.supported);
 
-      if (h265Support.supported) {
-        console.log("[H265Encoder] Using H.265 encoding");
-      } else {
-        console.log("[H265Encoder] H.265 not supported, trying H.264...");
-        // Fallback to H.264
-        console.time("[H265Encoder] H.264 isConfigSupported");
-        const h264Support = await VideoEncoder.isConfigSupported({
-          codec: "avc1",
-          width,
-          height,
-          bitrate,
-          framerate: fps,
-        });
-        console.timeEnd("[H265Encoder] H.264 isConfigSupported");
-        console.log("[H265Encoder] H.264 support:", h264Support.supported);
-
-        if (!h264Support.supported) {
-          console.log(
-            "[H265Encoder] H.264 also not supported, will use IMAGE_FRAME packets",
-          );
-          this.isOpen = false;
-          console.timeEnd("[H265Encoder] Total codec check time");
-          return;
-        }
+      if (!h265Support.supported) {
+        console.log(
+          "[H265Encoder] H.265 not supported, will use IMAGE_FRAME packets",
+        );
+        this.isOpen = false;
+        console.timeEnd("[H265Encoder] Total codec check time");
+        return;
       }
     } catch (err) {
       console.log(
@@ -160,7 +143,7 @@ class H265Encoder {
     });
 
     this.encoder.configure({
-      codec: "hvc1", // H.265/HEVC base profile
+      codec: "hvc1", // H.265/HEVC
       width,
       height,
       bitrate,

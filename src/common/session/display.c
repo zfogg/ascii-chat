@@ -23,7 +23,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/video/ascii/ansi_fast.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/anim/digital_rain.h>

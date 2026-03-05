@@ -2,7 +2,7 @@
 #include <string.h>
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/rgba/image.h>
 
 static void ascii_perf_init(void) {

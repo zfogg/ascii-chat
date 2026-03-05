@@ -146,7 +146,7 @@
 #include <ascii-chat/ringbuffer.h>
 #include <ascii-chat/video/rgba/video_frame.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/util/aspect_ratio.h>
 #include <ascii-chat/util/endian.h>

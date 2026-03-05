@@ -46,7 +46,7 @@ EM_JS(void, js_send_raw_packet, (const uint8_t *packet_data, size_t packet_len),
 #include <ascii-chat/network/compression.h>
 #include <ascii-chat/network/acip/send.h>
 #include <ascii-chat/network/acip/transport.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/buffer_pool.h>

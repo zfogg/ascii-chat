@@ -47,6 +47,8 @@
   void <b>backtrace_print_many</b> (const char *label, const backtrace_t *bts,
     int count)
   <br/>
+  void <b>backtrace_symbolize</b> (backtrace_t *bt)
+  <br/>
   <br/>
 </p>
 </section>
@@ -91,6 +93,18 @@
 27   (void)count;
 28   // No-op
 29 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_symbolize_(backtrace_t_*_bt)"><a class="permalink" href="#void_backtrace_symbolize_(backtrace_t_*_bt)">void
+  backtrace_symbolize (backtrace_t * bt)</a></h2>
+<p class="Pp">Definition at line <b>31</b> of file
+    <b>platform/wasm/backtrace.c</b>.</p>
+<pre>31                                           {
+32   (void)bt;
+33   // No-op - symbolization not available in WASM
+34 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

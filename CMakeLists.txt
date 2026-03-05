@@ -381,25 +381,30 @@ else()
 endif()
 
 # WASM build configuration
-# Configured and built via execute_process with Emscripten toolchain during cmake setup phase
+# Configured via execute_process with Emscripten toolchain only during initial CMake configure.
+# Uses a stamp file to ensure configure runs only once, not during cmake --build.
 # WASM is built separately because it requires a different compiler (emcc) than the native project
-if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_CONFIGURED)
-    message(STATUS "Configuring WASM targets with Emscripten toolchain")
+if(EMSCRIPTEN_TOOLCHAIN_FILE)
     set(WASM_SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/web")
     set(WASM_BUILD_DIR "${CMAKE_BINARY_DIR}/web")
-    set(WASM_CMAKE_ARGS
-        -G "${CMAKE_GENERATOR}"
-        -B "${WASM_BUILD_DIR}"
-        "${WASM_SOURCE_DIR}"
-        -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
-        -DASCIICHAT_WEB_DEPS_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/web
-    )
-    execute_process(
-        COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
-        WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
-    )
-    # Mark WASM as configured so we don't run this again
-    set(WASM_CONFIGURED TRUE CACHE BOOL "WASM project has been configured" FORCE)
+    set(WASM_CONFIG_STAMP "${CMAKE_BINARY_DIR}/.wasm_configured")
+
+    if(NOT EXISTS "${WASM_CONFIG_STAMP}")
+        message(STATUS "Configuring WASM targets with Emscripten toolchain")
+        set(WASM_CMAKE_ARGS
+            -G "${CMAKE_GENERATOR}"
+            -B "${WASM_BUILD_DIR}"
+            "${WASM_SOURCE_DIR}"
+            -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
+            -DASCIICHAT_WEB_DEPS_DIR=${ASCIICHAT_DEPS_CACHE_DIR}/web
+        )
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} ${WASM_CMAKE_ARGS}
+            WORKING_DIRECTORY "${WASM_SOURCE_DIR}"
+        )
+        # Create stamp file to mark WASM as configured
+        file(WRITE "${WASM_CONFIG_STAMP}" "WASM configured\n")
+    endif()
 endif()
 
 # Create custom targets to build WASM from main project
@@ -429,6 +434,9 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
     message(STATUS "  mirror-web - Build mirror mode WASM only")
     message(STATUS "  client-web - Build client mode WASM only")
     message(STATUS "  web        - Build all WASM modules")
+
+    # Mark targets as defined to prevent re-definition
+    set(WASM_TARGETS_DEFINED TRUE)
 endif()
 
 add_subdirectory(${CMAKE_SOURCE_DIR}/tests ${CMAKE_BINARY_DIR}/tests)

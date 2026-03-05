@@ -711,7 +711,7 @@ target_link_libraries(myapp libasciichat::libasciichat)`}
                       Include headers:
                     </h4>
                     <CodeBlock language="bash">
-                      {`#include <ascii-chat/video/ascii.h>
+                      {`#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/network/network.h>
 #include <ascii-chat/crypto/crypto.h>`}

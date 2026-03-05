@@ -19,7 +19,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>

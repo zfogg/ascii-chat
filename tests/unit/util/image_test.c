@@ -10,7 +10,7 @@
 #include <ascii-chat/tests/common.h>
 #include <ascii-chat/tests/logging.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/asciichat_errno.h>
 
 // Custom init function

@@ -17,7 +17,7 @@
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/terminal.h>
 
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/util/aspect_ratio.h>

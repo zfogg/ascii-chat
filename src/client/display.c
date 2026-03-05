@@ -82,7 +82,7 @@
 #include <ascii-chat/platform/keyboard.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/options/rcu.h> // For RCU-based options access
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/media/source.h>
 #include <ascii-chat/common.h>
 

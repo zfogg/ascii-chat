@@ -37,7 +37,7 @@ FetchContent_Declare(Sodium
     GIT_TAG e5b985ad0dd235d8c4307ea3a385b45e76c74c6a
 )
 set(SODIUM_DISABLE_TESTS ON)
-if(BUILD_WEB)
+if(BUILD_WEB AND NOT sodium_POPULATED)
     FetchContent_MakeAvailable(Sodium)
 endif()
 
@@ -48,7 +48,7 @@ FetchContent_Declare(pcre2
 )
 set(PCRE2_BUILD_TESTS OFF CACHE BOOL "Build PCRE2 tests")
 set(PCRE2_BUILD_PCRE2GREP OFF CACHE BOOL "Build pcre2grep")
-if(BUILD_WEB)
+if(BUILD_WEB AND NOT pcre2_POPULATED)
     FetchContent_MakeAvailable(pcre2)
 endif()
 
@@ -62,7 +62,7 @@ set(OPUS_BUILD_TESTING OFF CACHE BOOL "Build Opus tests")
 set(OPUS_INSTALL OFF CACHE BOOL "Install Opus")
 # Set minimum CMake version for Opus
 set(CMAKE_POLICY_VERSION_MINIMUM 3.5)
-if(BUILD_WEB)
+if(BUILD_WEB AND NOT opus_POPULATED)
     FetchContent_MakeAvailable(Opus)
 endif()
 
@@ -87,7 +87,7 @@ set(ZSTD_BUILD_TESTS OFF CACHE BOOL "Build zstd tests")
 set(ZSTD_BUILD_SHARED OFF CACHE BOOL "Build shared library")
 set(ZSTD_BUILD_STATIC ON CACHE BOOL "Build static library")
 set(ZSTD_MULTITHREAD_SUPPORT OFF CACHE BOOL "Disable zstd threading for WASM")
-if(BUILD_WEB)
+if(BUILD_WEB AND NOT zstd_POPULATED)
     FetchContent_MakeAvailable(zstd)
 endif()
 

@@ -28,7 +28,7 @@
 #include "session/audio.h"
 #include <ascii-chat/audio/opus.h>
 #include <ascii-chat/util/time.h>
-#include <ascii-chat/video/ascii.h>
+#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/common.h>
 
 #include <string.h>
