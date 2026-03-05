@@ -84,41 +84,57 @@ class H265Encoder {
   }
 
   async initialize(width: number, height: number, fps: number): Promise<void> {
+    console.time("[H265Encoder] Total codec check time");
     this.width = width;
     this.height = height;
     this.frameCount = 0;
 
-    // Check H.265 support first (with 200ms timeout - don't wait for slow hardware checks)
     const bitrate = Math.max(500_000, width * height * 2 * fps);
+
+    // Test H.265 first
     try {
-      const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("H.265 support check timeout")), 200)
-      );
-      const configSupport = await Promise.race([
-        VideoEncoder.isConfigSupported({
-          codec: "hvc1",
+      console.time("[H265Encoder] H.265 isConfigSupported");
+      const h265Support = await VideoEncoder.isConfigSupported({
+        codec: "hvc1",
+        width,
+        height,
+        bitrate,
+        framerate: fps,
+      });
+      console.timeEnd("[H265Encoder] H.265 isConfigSupported");
+      console.log("[H265Encoder] H.265 support:", h265Support.supported);
+
+      if (h265Support.supported) {
+        console.log("[H265Encoder] Using H.265 encoding");
+      } else {
+        console.log("[H265Encoder] H.265 not supported, trying H.264...");
+        // Fallback to H.264
+        console.time("[H265Encoder] H.264 isConfigSupported");
+        const h264Support = await VideoEncoder.isConfigSupported({
+          codec: "avc1",
           width,
           height,
           bitrate,
           framerate: fps,
-        }),
-        timeoutPromise,
-      ]);
-      if (!configSupport.supported) {
-        console.log(
-          "[H265Encoder] H.265 not supported, will use IMAGE_FRAME packets instead",
-        );
-        this.isOpen = false;
-        return; // Skip encoder initialization, will use IMAGE_FRAME fallback
+        });
+        console.timeEnd("[H265Encoder] H.264 isConfigSupported");
+        console.log("[H265Encoder] H.264 support:", h264Support.supported);
+
+        if (!h264Support.supported) {
+          console.log("[H265Encoder] H.264 also not supported, will use IMAGE_FRAME packets");
+          this.isOpen = false;
+          console.timeEnd("[H265Encoder] Total codec check time");
+          return;
+        }
       }
     } catch (err) {
-      console.log(
-        "[H265Encoder] H.265 check failed, will use IMAGE_FRAME packets instead:",
-        err,
-      );
+      console.log("[H265Encoder] Codec check error, will use IMAGE_FRAME packets:", err);
       this.isOpen = false;
-      return; // Skip encoder initialization, will use IMAGE_FRAME fallback
+      console.timeEnd("[H265Encoder] Total codec check time");
+      return;
     }
+
+    console.timeEnd("[H265Encoder] Total codec check time");
 
     this.encoder = new VideoEncoder({
       output: (chunk: EncodedVideoChunk) => {

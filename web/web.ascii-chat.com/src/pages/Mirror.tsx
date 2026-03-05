@@ -271,12 +271,15 @@ export function MirrorPage() {
   );
 
   const startWebcam = useCallback(async () => {
+    console.time("[Mirror] Total startWebcam time");
+
     if (!videoRef.current || !canvasRef.current) {
       setError("Video or canvas element not ready");
       return;
     }
 
     try {
+      console.time("[Mirror] WASM settings");
       // Reapply settings to WASM before starting
       if (isWasmReady()) {
         setColorMode(mapColorMode(settings.colorMode));
@@ -288,7 +291,9 @@ export function MirrorPage() {
         setMatrixRain(settings.matrixRain ?? false);
         setFlipX(settings.flipX ?? isMacOS);
       }
+      console.timeEnd("[Mirror] WASM settings");
 
+      console.time("[Mirror] getUserMedia");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: settings.width },
@@ -297,14 +302,17 @@ export function MirrorPage() {
         },
         audio: false,
       });
+      console.timeEnd("[Mirror] getUserMedia");
 
       streamRef.current = stream;
       videoRef.current.srcObject = stream;
 
+      console.time("[Mirror] loadedmetadata");
       await new Promise<void>((resolve) => {
         videoRef.current!.addEventListener(
           "loadedmetadata",
           () => {
+            console.timeEnd("[Mirror] loadedmetadata");
             const canvas = canvasRef.current!;
             // Use requested dimensions from settings, not video.videoWidth
             // (which are 2x2 when loadedmetadata fires, before actual stream loads)
@@ -322,6 +330,7 @@ export function MirrorPage() {
       lastFrameTimeRef.current = performance.now();
       setIsRunning(true);
       startRenderLoop();
+      console.timeEnd("[Mirror] Total startWebcam time");
     } catch (err) {
       setError(`Failed to start webcam: ${err}`);
     }
