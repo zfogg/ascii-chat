@@ -1480,24 +1480,20 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
 
   // Create libwebsockets context
   // Protocol array must persist for lifetime of context - use static
-  // IMPORTANT: "http" protocol MUST be first for WebSocket upgrade handshake to work
+  // NOTE: Define ONLY "acip" protocol for WebSocket connections
+  // libwebsockets provides built-in "h1" and "http" protocols for WebSocket upgrade handshake.
+  // When local_protocol_name="h1" and protocol="acip" are specified:
+  // 1. libwebsockets uses built-in h1 (HTTP/1.1) for initial connection
+  // 2. HTTP upgrade happens automatically (101 Switching Protocols)
+  // 3. Connection switches to "acip" protocol using our custom callback
   static struct lws_protocols client_protocols[] = {
       {
-          "http", // Required first for WebSocket upgrade
+          "acip", // ACIP protocol - used after WebSocket upgrade handshake completes
           websocket_callback,
-          0,      // Per-session data (unused, using connect_info.userdata instead)
+          0,      // Per-session data - using connect_info.userdata instead
           524288, // RX buffer size
           0,      // ID
-          NULL,   // User pointer (will be set from connect_info.userdata)
-          524288  // TX packet size
-      },
-      {
-          "acip", // ACIP protocol
-          websocket_callback,
-          0,      // Per-session data (unused, using connect_info.userdata instead)
-          524288, // RX buffer size
-          0,      // ID
-          NULL,   // User pointer (will be set from connect_info.userdata)
+          NULL,   // User pointer (set from connect_info.userdata)
           524288  // TX packet size
       },
       {NULL, NULL, 0, 0, 0, NULL, 0} // Terminator
@@ -1554,6 +1550,12 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     return NULL;
   }
 
+  // Initialize connection state flags BEFORE calling lws_client_connect_via_info
+  // The callback might fire immediately, so all fields must be ready
+  ws_data->is_connected = false;      // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
+  ws_data->connection_failed = false; // Set to true in LWS_CALLBACK_CLIENT_CONNECTION_ERROR
+  ws_data->owns_context = true;       // Client transport owns the context
+
   // Connect to WebSocket server
   log_debug("Initiating WebSocket connection to %s:%d%s", host, port, path);
   struct lws_client_connect_info connect_info;
@@ -1564,7 +1566,12 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.path = path;
   connect_info.host = host;
   connect_info.origin = host;
-  connect_info.protocol = "acip";  // WebSocket subprotocol - libwebsockets auto-upgrades from HTTP
+  // CRITICAL FIX: Use h1 (HTTP/1.1) protocol for WebSocket upgrade with "acip" as remote subprotocol
+  // - local_protocol_name="h1": Use libwebsockets' built-in HTTP/1.1 handler for WebSocket upgrade
+  // - protocol="acip": Request this subprotocol from the remote server (Sec-WebSocket-Protocol header)
+  // h1 is the actual HTTP/1.1 protocol that libwebsockets provides for client connections
+  connect_info.local_protocol_name = "h1";  // Use built-in HTTP/1.1 protocol
+  connect_info.protocol = "acip";  // Remote subprotocol to request from server
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
   connect_info.ssl_connection = use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
   connect_info.userdata = ws_data;
@@ -1586,10 +1593,6 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
     SET_ERRNO(ERROR_NETWORK, "Failed to connect to WebSocket server");
     return NULL;
   }
-
-  ws_data->is_connected = false;      // Will be set to true in LWS_CALLBACK_CLIENT_ESTABLISHED
-  ws_data->connection_failed = false; // Set to true in LWS_CALLBACK_CLIENT_CONNECTION_ERROR
-  ws_data->owns_context = true;       // Client transport owns the context
 
   // Initialize transport
   transport->methods = &websocket_methods;
