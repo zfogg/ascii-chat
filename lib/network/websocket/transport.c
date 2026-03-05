@@ -1564,7 +1564,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   connect_info.path = path;
   connect_info.host = host;
   connect_info.origin = host;
-  connect_info.protocol = "acip";
+  connect_info.protocol = "acip";  // WebSocket subprotocol - libwebsockets auto-upgrades from HTTP
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
   connect_info.ssl_connection = use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
   connect_info.userdata = ws_data;
