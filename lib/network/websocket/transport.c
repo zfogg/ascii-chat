@@ -127,7 +127,7 @@ static void *websocket_service_thread(void *arg) {
 
   int loop_count = 0;
   int total_messages_sent = 0;
-  uint64_t last_service_call = time_get_ns();
+  uint64_t last_service_call = 0; // Force lws_service() on first iteration
 
   while (ws_data->service_running) {
     loop_count++;
