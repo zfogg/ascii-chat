@@ -143,6 +143,8 @@ message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT
         COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN3_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
+        COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
+        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_SOURCE_DIR}/cmake/utils/InjectAuthorInfo.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating man(3) API reference pages"
         VERBATIM
@@ -182,6 +184,8 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
         COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
+        COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
+        COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_SOURCE_DIR}/cmake/utils/InjectAuthorInfo.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM
