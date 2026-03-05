@@ -38,7 +38,8 @@ test("client mode: can initialize and connect", async ({ page, context }) => {
   try {
     await context.grantPermissions(["camera", "microphone"]);
     const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
-    await page.goto(clientUrl, { waitUntil: "networkidle" });
+    // Don't use waitUntil: "networkidle" - WebSocket connection happens after page load
+    await page.goto(clientUrl, { waitUntil: "domcontentloaded" });
 
     // Verify connection
     await expect(page.locator(".status")).toContainText("Connected", {
@@ -71,7 +72,8 @@ test("client mode: maintains FPS > 15", async ({ page, context }) => {
   try {
     await context.grantPermissions(["camera", "microphone"]);
     const clientUrl = `${WEB_CLIENT_URL}?testServerUrl=${encodeURIComponent(serverUrl)}`;
-    await page.goto(clientUrl, { waitUntil: "networkidle" });
+    // Don't use waitUntil: "networkidle" - WebSocket connection happens after page load
+    await page.goto(clientUrl, { waitUntil: "domcontentloaded" });
 
     // Wait for connection
     await expect(page.locator(".status")).toContainText("Connected", {
