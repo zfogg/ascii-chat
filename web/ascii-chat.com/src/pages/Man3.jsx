@@ -707,22 +707,31 @@ export default function Man3() {
     const hash = window.location.hash;
     if (!hash || !hash.match(/#l(\d+)/)) return;
 
-    // Try to find and scroll to first code block with an ID (which means it has target lines)
+    // Try to find and scroll to code block matching the hash line number
     const scrollToHash = () => {
       const container = contentViewerRef.current;
 
-      // Look for code blocks that have IDs set (indicating they contain target lines)
-      // These are divs with id="code-block-{index}"
-      const targetBlock = container.querySelector('div[id^="code-block-"]');
+      // Extract line number from hash
+      const lineMatch = hash.match(/#l(\d+)/);
+      if (!lineMatch) return false;
 
+      const targetLineNum = parseInt(lineMatch[1], 10);
+      const blockId = `code-block-${targetLineNum}`;
+
+      // Look for code block with matching line number
+      const targetBlock = container.querySelector(`div[id="${blockId}"]`);
       if (targetBlock) {
         targetBlock.scrollIntoView({ behavior: "smooth", block: "center" });
+        console.log("[scroll-to-hash] Found matching code block:", blockId);
         return true;
       }
+
+      console.log("[scroll-to-hash] No matching code block found for line", targetLineNum);
 
       // Fallback: look for any code block
       const allCodeBlocks = container.querySelectorAll(".code-with-highlight, pre");
       if (allCodeBlocks.length > 0) {
+        console.log("[scroll-to-hash] Scrolling to first code block as fallback");
         allCodeBlocks[0].scrollIntoView({ behavior: "smooth", block: "center" });
         return true;
       }
