@@ -161,7 +161,9 @@ export default function Man3() {
               // Process content (URLs and highlighting)
               // Use query param from URL if available for highlighting search results
               const decodedQuery = queryParam ? decodeURIComponent(queryParam) : "";
+              console.log("[DEBUG] Initial page load - decodedQuery:", decodedQuery);
               let processedContent = processPageContent(html, decodedQuery);
+              console.log("[DEBUG] Initial page load - processedContent includes bg-yellow-900:", processedContent.includes("bg-yellow-900"));
 
               // Add GitHub links for "Definition at line X" text and line numbers
               const page = manPages.find((p) => p.name === pageName);
@@ -634,6 +636,7 @@ export default function Man3() {
     const currentSearchQuery = currentParams.get("q");
 
     console.log("[DEBUG] Right panel scroll effect - currentSearchQuery:", currentSearchQuery);
+    console.log("[DEBUG] selectedPageContent length:", selectedPageContent?.length, "contains bg-yellow-900:", selectedPageContent?.includes("bg-yellow-900"));
 
     if (!currentSearchQuery) return;
 
@@ -641,6 +644,9 @@ export default function Man3() {
     setTimeout(() => {
       const viewer = contentViewerRef.current;
       if (!viewer) return;
+
+      console.log("[DEBUG] Viewer HTML length:", viewer.innerHTML.length);
+      console.log("[DEBUG] Viewer HTML includes bg-yellow-900:", viewer.innerHTML.includes("bg-yellow-900"));
 
       // Search for elements with bg-yellow-900 (includes bg-yellow-900/50)
       let highlightedElements = viewer.querySelectorAll('[class*="bg-yellow-900"]');
