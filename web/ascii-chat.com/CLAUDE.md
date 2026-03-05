@@ -174,6 +174,7 @@ bun run type-check             # Type-check all sites
 - **`/`** - Home page with features, installation, quick start
 - **`/crypto`** - Cryptography documentation and key authentication
 - **`/man`** - Complete man page reference (auto-generated from ascii-chat binary)
+  - See **Man3 Pages** section below for implementation details
 - **`/docs`** - Documentation hub with subpages:
   - `/docs/configuration` - CLI options reference
   - `/docs/hardware` - Hardware requirements
@@ -181,6 +182,53 @@ bun run type-check             # Type-check all sites
   - `/docs/snapshot` - Snapshot mode
   - `/docs/network` - Network protocols
   - `/docs/media` - Media streaming options
+
+## Man3 Pages
+
+The `/man3` route displays auto-generated API documentation from Doxygen. Pages are served as static HTML files from `public/man3/` and processed in React for interactivity.
+
+### How Man3 Pages Work
+
+**Generation (Build Time)**:
+1. Build script (`scripts/manpage-build.sh`) runs the ascii-chat binary to generate man pages
+2. Doxygen-generated HTML is saved to `public/man3/` directory
+3. Pages are indexed in `public/man3/pages.json` for search
+
+**Rendering (Runtime)**:
+1. `Man3.jsx` component fetches HTML from `public/man3/{pageName}.html`
+2. Content is processed to:
+   - Convert relative links to `/man3?page=...` routes
+   - Transform Doxygen HTML structure for better readability
+   - Add GitHub links to "Definition at line X" references
+   - Highlight search query matches with yellow background
+
+**Key Features**:
+- **Search**: Regex-based search across all man pages (case-insensitive by default)
+- **Line Highlighting**: `#l123` anchors highlight specific lines (for source pages)
+- **Interactive**: Links between structs, functions, and file references
+- **Responsive**: Works across all screen sizes
+
+### Data Fields Table Transformation
+
+The Data Fields section in struct documentation is transformed from Doxygen's awkward line-break format into a clean three-column table:
+
+**Problem**: Doxygen generates Data Fields with `<br>` tags separating field type/name from descriptions, making the layout hard to read.
+
+**Solution** (implemented in `Man3.jsx`):
+1. Find the Data_Fields section in the page DOM
+2. Split the HTML content by `<br>` tags to get individual sections
+3. Parse each section using DOM API to extract bold tags (type/name)
+4. Intelligently assign descriptions by looking for text before the last bold tag
+5. Handle retroactive description assignment (description comes AFTER the field name in HTML)
+6. Build a proper HTML table with three columns: Type, Name, Description
+7. Replace the original paragraph with the styled table
+
+**CSS Styling** (`src/styles/man.css`):
+- `.man-data-fields-table`: Table with `border-spacing` for row separation
+- `.man-data-field-type`, `.man-data-field-name`: Column widths with `padding-right`
+- `.man-data-field-desc`: Full-width description column
+
+**Result**: Clean, organized table where each field's complete information appears on one row.
 
 ## Environment Variables
 
