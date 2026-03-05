@@ -15,7 +15,7 @@
 
 /**
  * Escape special characters in completion descriptions for zsh
- * Keep descriptions under 60 characters to avoid zsh parser issues
+ * Keep descriptions under 120 characters to avoid zsh parser issues
  */
 static void zsh_escape_desc(FILE *output, const char *text) {
   if (!text) {
@@ -23,7 +23,7 @@ static void zsh_escape_desc(FILE *output, const char *text) {
   }
 
   size_t chars = 0;
-  const size_t MAX_DESC = 60;
+  const size_t MAX_DESC = 120;
 
   for (const char *p = text; *p && chars < MAX_DESC; p++) {
     switch (*p) {
