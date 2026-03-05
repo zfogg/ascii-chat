@@ -128,35 +128,41 @@
   display: block;
 }
 
-/* Data Fields section - group field type + name + description on one line each */
-#Data_Fields ~ .Pp {
+/* Data Fields table styling */
+.man-data-fields-table {
+  width: 100%;
+  border-collapse: collapse;
   margin: 1rem 0;
-  display: block;
 }
 
-/* Hide br tags */
-#Data_Fields ~ .Pp br {
-  display: none;
+.man-data-fields-table tbody tr {
+  border-bottom: 1px solid #1f2937;
 }
 
-/* Keep all content inline */
-#Data_Fields ~ .Pp b,
-#Data_Fields ~ .Pp b + * {
-  display: inline;
+.man-data-fields-table tbody tr:last-child {
+  border-bottom: none;
 }
 
-/* Style field type names */
-#Data_Fields ~ .Pp b {
+.man-data-field-type {
   color: #f0abfc;
   font-weight: 600;
-  margin-right: 0.25rem;
+  padding: 0.5rem 1rem 0.5rem 0;
+  vertical-align: top;
+  white-space: nowrap;
 }
 
-/* Line break after every second b element (after description text) */
-#Data_Fields ~ .Pp b:nth-of-type(even)::after {
-  content: '\A';
-  white-space: pre;
-  display: inline;
+.man-data-field-name {
+  color: #f0abfc;
+  font-weight: 600;
+  padding: 0.5rem 1rem 0.5rem 0;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.man-data-field-desc {
+  color: #d1d5db;
+  padding: 0.5rem 0;
+  vertical-align: top;
 }
 
 /* Lists */

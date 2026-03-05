@@ -23,10 +23,98 @@ export default function Man3() {
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
 
+  // Transform Data Fields section into a table
+  const transformDataFieldsToTable = useCallback((html) => {
+    // Find the Data Fields section and its content paragraph - more lenient regex
+    const dataFieldsRegex =
+      /(<[^>]*id="Data_Fields"[^>]*>[\s\S]*?<\/[^>]+>\s*)<p[^>]*class="Pp"[^>]*>([\s\S]*?)(?=<h[1-6]|<section|$)/i;
+    const match = html.match(dataFieldsRegex);
+
+    if (!match) return html;
+
+    const heading = match[1];
+    const contentText = match[2];
+
+    // Parse fields by finding field names (always in bold tags)
+    // Pattern: type text <b>fieldname</b> followed by description text
+    const fields = [];
+
+    // Use regex to find all field name matches: capture everything up to the field name
+    // Then the next field's start indicates where the description ends
+    const fieldNameRegex = /([^<]*(?:<(?!b>)[^<]*)*?)<b>([^<]+)<\/b>/g;
+    let fieldMatches = [];
+    let m;
+
+    while ((m = fieldNameRegex.exec(contentText)) !== null) {
+      fieldMatches.push({
+        fullMatch: m[0],
+        typeText: m[1].trim(),
+        name: m[2],
+        index: m.index,
+      });
+    }
+
+    // Now extract descriptions by finding text between one field name and the next
+    for (let i = 0; i < fieldMatches.length; i++) {
+      const currentField = fieldMatches[i];
+      const nextFieldIndex =
+        i + 1 < fieldMatches.length
+          ? fieldMatches[i + 1].index
+          : contentText.length;
+
+      // Get text after this field name until the next field or end
+      const descriptionStart =
+        currentField.index + currentField.fullMatch.length;
+      let description = contentText
+        .substring(descriptionStart, nextFieldIndex)
+        .replace(/<br\s*\/?>/g, " ")
+        .replace(/<b>([^<]+)<\/b>/g, "$1")
+        .trim();
+
+      // Use full typeText as the type (includes qualifiers like "volatile", "struct", etc.)
+      const type = currentField.typeText || "";
+
+      if (currentField.name) {
+        fields.push({
+          type: type || "",
+          name: currentField.name,
+          description: description.split(/\s+/).join(" "),
+        });
+      }
+    }
+
+    // Build table HTML
+    const tableRows = fields
+      .map(
+        (field) => `
+      <tr>
+        <td class="man-data-field-type">${field.type}</td>
+        <td class="man-data-field-name">${field.name}</td>
+        <td class="man-data-field-desc">${field.description}</td>
+      </tr>
+    `,
+      )
+      .join("");
+
+    const table = `
+      <table class="man-data-fields-table">
+        <tbody>
+          ${tableRows}
+        </tbody>
+      </table>
+    `;
+
+    // Replace the original content with the table
+    return html.replace(dataFieldsRegex, heading + table);
+  }, []);
+
   // Helper function to process HTML content: convert URLs and highlight matches
   const processPageContent = useCallback((html, searchQuery) => {
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     let content = bodyMatch ? bodyMatch[1] : html;
+
+    // Transform Data Fields section into table (disabled - use CSS instead)
+    // content = transformDataFieldsToTable(content);
 
     // Fix relative paths to absolute paths for images and links
     content = content.replace(/src="([^"]+)"/g, (match, src) => {
