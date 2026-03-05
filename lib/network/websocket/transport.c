@@ -186,8 +186,9 @@ static void *websocket_service_thread(void *arg) {
           break;
         }
 
-        // Sleep briefly to avoid busy-waiting
-        platform_sleep_us(10000); // 10ms
+        // Do NOT sleep here - let lws_service() loop control timing
+        // During TLS handshake, lws_service() needs to be called every 100us
+        // Sleeping here blocks that and causes the handshake to stall
       } else {
         // This is a CLIENT transport - request WRITEABLE callback to send queued messages
         // lws_write() must be called from within LWS callbacks, not from external threads
