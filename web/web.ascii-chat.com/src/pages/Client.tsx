@@ -88,16 +88,22 @@ class H265Encoder {
     this.height = height;
     this.frameCount = 0;
 
-    // Check H.265 support first
+    // Check H.265 support first (with 200ms timeout - don't wait for slow hardware checks)
     const bitrate = Math.max(500_000, width * height * 2 * fps);
     try {
-      const configSupport = await VideoEncoder.isConfigSupported({
-        codec: "hvc1",
-        width,
-        height,
-        bitrate,
-        framerate: fps,
-      });
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("H.265 support check timeout")), 200)
+      );
+      const configSupport = await Promise.race([
+        VideoEncoder.isConfigSupported({
+          codec: "hvc1",
+          width,
+          height,
+          bitrate,
+          framerate: fps,
+        }),
+        timeoutPromise,
+      ]);
       if (!configSupport.supported) {
         console.log(
           "[H265Encoder] H.265 not supported, will use IMAGE_FRAME packets instead",
