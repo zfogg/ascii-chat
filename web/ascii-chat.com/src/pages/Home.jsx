@@ -548,11 +548,8 @@ cat video.mp4 | ascii-chat mirror --file -`}
                   Pipe ASCII video through FFmpeg
                 </h3>
                 <CodeBlock language="bash">
-                  {`# Pipe ASCII-rendered WebM to FFmpeg for re-encoding
-ascii-chat mirror --file input.mp4 --render-file="-" | ffmpeg -i pipe:0 -c:v libx264 -c:a aac output.mp4
-
-# Pipe ASCII-rendered GIF to FFmpeg
-ascii-chat mirror --file input.mp4 --render-file="-" --render-file-format=gif | ffmpeg -i pipe:0 output.gif
+                  {`# Pipe ASCII-rendered GIF with black bars (400x600 aspect ratio preserved)
+ascii-chat mirror --file input.mp4 --render-file="-" --render-file-format=gif | ffmpeg -i pipe:0 -vf "scale=400:600:force_original_aspect_ratio=1,pad=400:600:(ow-iw)/2:(oh-ih)/2:color=black" output.gif
 
 # Preview ASCII video in real-time with ffplay
 ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
