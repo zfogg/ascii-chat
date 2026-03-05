@@ -33,7 +33,7 @@
 // Simple Monochrome ASCII Function (matches scalar image_print performance)
 //=============================================================================
 
-char *render_ascii_image_monochrome_neon(const image_t *image, const char *ascii_chars) {
+char *render_ascii_mono_neon(const image_t *image, const char *ascii_chars) {
   if (!image || !image->pixels || !ascii_chars) {
     return NULL;
   }

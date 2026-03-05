@@ -34,7 +34,7 @@
 //=============================================================================
 
 // Unified optimized NEON converter (foreground/background + 256-color/truecolor)
-char *render_ascii_neon_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+char *render_ascii_color_neon(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
