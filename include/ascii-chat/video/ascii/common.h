@@ -533,16 +533,16 @@ void simd_caches_destroy_all(void);
 
 // Include architecture-specific implementations
 #if SIMD_SUPPORT_SSE2
-#include <ascii-chat/video/ascii/sse2/foreground.h>
+#include <ascii-chat/video/ascii/sse2.h>
 #endif
 #if SIMD_SUPPORT_SSSE3
-#include <ascii-chat/video/ascii/ssse3/foreground.h>
+#include <ascii-chat/video/ascii/ssse3.h>
 #endif
 #if SIMD_SUPPORT_AVX2
 #include <ascii-chat/video/ascii/avx2.h>
 #endif
 #if SIMD_SUPPORT_SVE
-#include <ascii-chat/video/ascii/sve/foreground.h>
+#include <ascii-chat/video/ascii/sve.h>
 #endif
 #if SIMD_SUPPORT_NEON
 #include <ascii-chat/video/ascii/neon.h>

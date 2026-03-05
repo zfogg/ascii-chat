@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file video/simd/ssse3.h
+ * @file video/ascii/ssse3.h
  * @brief SSSE3-optimized ASCII rendering functions
  * @ingroup video
  * @addtogroup video
@@ -14,18 +14,14 @@
  * @date August 2025
  */
 
-#include <ascii-chat/video/rgba/image.h> // For image_t
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_SSSE3
 #if (!defined(__SSSE3__) && !defined(_M_X64) && !defined(_M_AMD64))
 #error "SSSE3 support required"
-#endif
-#ifdef _WIN32
-// Windows: Use immintrin.h with proper feature detection
-// MSVC doesn't define __SSSE3__ but x64 always has it
-#include <immintrin.h>
-#else
-#include <tmmintrin.h>
 #endif
 
 /**
@@ -34,12 +30,14 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
+ * Matches scalar image_print() interface for compatibility.
+ *
  * @ingroup video
  */
-char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *ascii_chars);
+char *render_ascii_mono_ssse3(const image_t *image, const char *ascii_chars);
 
 /**
- * @brief Render image as ASCII with color using SSSE3 (unified optimized)
+ * @brief Render image as ASCII with color using SSSE3
  * @param image Source image
  * @param use_background Use background colors
  * @param use_256color Use 256-color mode (vs truecolor)
@@ -48,7 +46,7 @@ char *render_ascii_image_monochrome_ssse3(const image_t *image, const char *asci
  *
  * @ingroup video
  */
-char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+char *render_ascii_color_ssse3(const image_t *image, bool use_background, bool use_256color,
                                            const char *ascii_chars);
 
 /**
@@ -57,8 +55,6 @@ char *render_ascii_ssse3_unified_optimized(const image_t *image, bool use_backgr
  * @ingroup video
  */
 void ssse3_caches_destroy(void);
-
-// Legacy row-based functions removed - use image-based API above
 
 #endif /* SIMD_SUPPORT_SSSE3 */
 

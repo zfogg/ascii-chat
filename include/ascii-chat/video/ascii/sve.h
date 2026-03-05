@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file video/simd/sve.h
+ * @file video/ascii/sve.h
  * @brief SVE-optimized ASCII rendering functions
  * @ingroup video
  * @addtogroup video
@@ -15,13 +15,15 @@
  * @date August 2025
  */
 
-#include <ascii-chat/video/rgba/image.h> // For image_t type
+#include <stdint.h>
+#include <stddef.h>
+#include <stdbool.h>
+#include <ascii-chat/video/rgba/image.h>
 
 #if SIMD_SUPPORT_SVE
 #if (defined(__aarch64__) && !defined(__ARM_FEATURE_SVE))
 #error "SVE support required for ARM64"
 #endif
-#include <arm_sve.h>
 
 /**
  * @brief Render image as monochrome ASCII using SVE
@@ -29,12 +31,14 @@
  * @param ascii_chars Character palette
  * @return Allocated ASCII string (caller must free), or NULL on error
  *
+ * Matches scalar image_print() interface for compatibility.
+ *
  * @ingroup video
  */
-char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_chars);
+char *render_ascii_mono_sve(const image_t *image, const char *ascii_chars);
 
 /**
- * @brief Render image as ASCII with color using SVE (unified optimized)
+ * @brief Render image as ASCII with color using SVE
  * @param image Source image
  * @param use_background Use background colors
  * @param use_256color Use 256-color mode (vs truecolor)
@@ -43,7 +47,7 @@ char *render_ascii_image_monochrome_sve(const image_t *image, const char *ascii_
  *
  * @ingroup video
  */
-char *render_ascii_sve_unified_optimized(const image_t *image, bool use_background, bool use_256color,
+char *render_ascii_color_sve(const image_t *image, bool use_background, bool use_256color,
                                          const char *ascii_chars);
 
 /**
