@@ -162,7 +162,7 @@
 115      &quot;Format 1: /pattern/flags (with flags). Format 2: pattern (plain regex, no flags). &quot;
 116      &quot;Flags (format 1 only): i(case-insensitive), m(multiline), s(dotall), x(extended), g(global highlight), &quot;
 117      &quot;I(invert match), F(fixed string), A&lt;n&gt;(n lines after), B&lt;n&gt;(n lines before), C&lt;n&gt;(n lines of context). &quot;
-118      &quot;Examples: '/error/i', 'error', '/panic/C5', 'warn|error', '/buffer pool/Fg'. Multiple --grep allowed (OR).&quot;,
+118      &quot;Multiple --grep allowed (OR).&quot;,
 119      &quot;LOGGING&quot;,
 120      &quot;PATTERN&quot;,
 121      false,
@@ -217,49 +217,45 @@
 170      offsetof(options_t, log_template),
 171      NULL,
 172      sizeof(((options_t *)0)-&gt;log_template),
-173      &quot;Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see 'man 3 strftime' for &quot;
-174      &quot;codes like %Y, %m, %d, %H, %M, %S); &quot;
-175      &quot;%level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5 chars; &quot;
-176      &quot;%file - full file path; %file_relative - file path relative to project root; %line - line number; &quot;
-177      &quot;%func - function name; %tid - thread ID; %message - log message; &quot;
-178      &quot;%color(LEVEL, text) - colorize text using LEVEL's color from current scheme (e.g., %color(INFO, %tid)). &quot;
-179      &quot;Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line %message'. &quot;
-180      &quot;Escape %% for literal %, \\\\ for literal backslash. &quot;
-181      &quot;Default: release mode '[%time(%H:%M:%S)] [%level_aligned] %message' or debug mode '[%time(%H:%M:%S)] &quot;
-182      &quot;[%level_aligned] [tid:%tid] %file_relative:%line in %func(): %message'.&quot;,
-183      &quot;LOGGING&quot;,
-184      &quot;TEMPLATE&quot;,
+173      &quot;Custom log format string. Format specifiers: %time(fmt) - time with strftime format (see man 3 strftime); &quot;
+174      &quot;%level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5 chars; &quot;
+175      &quot;%file - full file path; %file_relative - file path relative to project root; %line - line number; &quot;
+176      &quot;%func - function name; %tid - thread ID; %message - log message; &quot;
+177      &quot;%color(LEVEL, text) - colorize text using LEVEL's color from current scheme. &quot;
+178      &quot;Escape %% for literal %, \\\\ for literal backslash.&quot;,
+179      &quot;LOGGING&quot;,
+180      &quot;TEMPLATE&quot;,
+181      false,
+182      &quot;ASCII_CHAT_LOG_TEMPLATE&quot;,
+183      NULL,
+184      NULL,
 185      false,
-186      &quot;ASCII_CHAT_LOG_TEMPLATE&quot;,
-187      NULL,
-188      NULL,
-189      false,
-190      false,
-191      OPTION_MODE_BINARY,
-192      {.input_type = OPTION_INPUT_STRING},
-193      NULL},
-194     {&quot;log-format-console&quot;,
-195      '\0',
-196      OPTION_TYPE_BOOL,
-197      offsetof(options_t, log_format_console_only),
-198      NULL,
-199      sizeof(bool),
-200      &quot;Apply custom log template (--log-template) only to console output (file logs use default format). See &quot;
-201      &quot;--log-template &quot;
-202      &quot;for supported format specifiers.&quot;,
-203      &quot;LOGGING&quot;,
+186      false,
+187      OPTION_MODE_BINARY,
+188      {.input_type = OPTION_INPUT_STRING},
+189      NULL},
+190     {&quot;log-format-console&quot;,
+191      '\0',
+192      OPTION_TYPE_BOOL,
+193      offsetof(options_t, log_format_console_only),
+194      NULL,
+195      sizeof(bool),
+196      &quot;Apply custom log template (--log-template) only to console output (file logs use default format). See &quot;
+197      &quot;--log-template &quot;
+198      &quot;for supported format specifiers.&quot;,
+199      &quot;LOGGING&quot;,
+200      NULL,
+201      false,
+202      &quot;ASCII_CHAT_LOG_FORMAT_CONSOLE&quot;,
+203      NULL,
 204      NULL,
 205      false,
-206      &quot;ASCII_CHAT_LOG_FORMAT_CONSOLE&quot;,
-207      NULL,
-208      NULL,
-209      false,
-210      false,
-211      OPTION_MODE_BINARY,
-212      {0},
-213      NULL},
-214 
-215     REGISTRY_TERMINATOR()};</pre>
+206      false,
+207      OPTION_MODE_BINARY,
+208      {0},
+209      NULL},
+210 
+211     REGISTRY_TERMINATOR()};</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

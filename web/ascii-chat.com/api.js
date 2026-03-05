@@ -152,6 +152,89 @@ function extractTextContent(html) {
     .join("\n");
 }
 
+// Extract text with preserved line numbers from line number prefixes
+function extractTextWithLineNumbers(html) {
+  let text = html
+    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "\n");
+
+  // Decode entities
+  text = text.replace(/&([a-zA-Z]+|#\d+|#x[0-9A-Fa-f]+);/g, (match) => {
+    const entities = {
+      lt: "<", gt: ">", amp: "&", quot: '"', apos: "'", nbsp: " ",
+    };
+    if (match.startsWith("&#x")) {
+      try { return String.fromCharCode(parseInt(match.slice(3, -1), 16)); }
+      catch { return match; }
+    } else if (match.startsWith("&#")) {
+      try { return String.fromCharCode(parseInt(match.slice(2, -1), 10)); }
+      catch { return match; }
+    } else {
+      return entities[match.slice(1, -1)] || match;
+    }
+  });
+
+  // Keep all lines, but extract line numbers from those that have them
+  const allLines = text.split("\n");
+  const lineNumbers = [];
+
+  for (let i = 0; i < allLines.length; i++) {
+    const trimmed = allLines[i].trim();
+    const lineNumMatch = trimmed.match(/^(\d+)\s+/);
+
+    if (lineNumMatch) {
+      const lineNum = parseInt(lineNumMatch[1], 10);
+      lineNumbers.push(lineNum);
+    } else {
+      // Line without number - mark as -1
+      lineNumbers.push(-1);
+    }
+  }
+
+  // If we found actual code lines, return with preserved line numbers
+  if (lineNumbers.some(ln => ln > 0)) {
+    return {
+      text: text,  // Return text AS-IS with line number prefixes
+      lineNumbers: lineNumbers,  // Array aligned with split text
+    };
+  }
+
+  // Fallback if no numbered lines found
+  const plainLines = text
+    .replace(/\n\s*\n/g, "\n")
+    .split("\n")
+    .map(l => l.trim())
+    .filter(l => l.length > 0);
+  return {
+    text: plainLines.join("\n"),
+    lineNumbers: plainLines.map((_, idx) => idx + 1),
+  };
+}
+
+// Get file text content with line numbers (from cache or disk)
+function getFileContentWithLineNumbers(pageName, fileName) {
+  // In development, read from disk
+  if (process.env.NODE_ENV !== "production") {
+    const man3Dir = path.join(__dirname, "public/man3");
+    // Use the actual filename from pages.json if provided, otherwise construct it
+    const actualFileName = fileName || `${pageName}.html`;
+    const filePath = path.join(man3Dir, actualFileName);
+
+    if (fs.existsSync(filePath)) {
+      const content = fs.readFileSync(filePath, "utf-8");
+      return extractTextWithLineNumbers(content);
+    }
+  }
+
+  // In production, use cached text without line numbers
+  if (fileCache[pageName]) {
+    return { text: fileCache[pageName], lineNumbers: null };
+  }
+
+  return { text: "", lineNumbers: null };
+}
+
 // Get file text content (from cache or disk)
 function getFileContent(pageName, fileName) {
   if (fileCache[pageName]) {
@@ -167,7 +250,8 @@ function getFileContent(pageName, fileName) {
 
     if (fs.existsSync(filePath)) {
       const content = fs.readFileSync(filePath, "utf-8");
-      const text = extractTextContent(content);
+      const result = extractTextWithLineNumbers(content);
+      const text = result.text;
       // Cache in memory for this request cycle
       fileCache[pageName] = text;
       return text;
@@ -178,48 +262,69 @@ function getFileContent(pageName, fileName) {
 }
 
 // Find snippets around matches (centered on match)
-function findSnippets(text, query, maxSnippets = 3) {
+function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
   const allLines = text.split("\n");
-  // Map filtered lines to their original line numbers
-  const lines = [];
-  const lineNumbers = [];
-  for (let i = 0; i < allLines.length; i++) {
-    if (allLines[i].trim()) {
-      lines.push(allLines[i]);
-      lineNumbers.push(i + 1); // 1-indexed line numbers
+  let lines = allLines;
+  let actualLineNumbers = lineNumbers;
+
+  // If lineNumbers are NOT provided, filter and number sequentially
+  if (!lineNumbers) {
+    lines = [];
+    actualLineNumbers = [];
+    for (let i = 0; i < allLines.length; i++) {
+      if (allLines[i].trim()) {
+        lines.push(allLines[i]);
+        actualLineNumbers.push(i + 1);
+      }
     }
   }
 
   const snippets = [];
-  const usedLines = new Set(); // Track which lines we've already used
-  let totalMatches = 0; // Count all matches (not just displayed)
+  const usedLines = new Set();
+  let totalMatches = 0;
 
   try {
     const regex = new RegExp(query, "i");
 
     for (let i = 0; i < lines.length; i++) {
       if (regex.test(lines[i])) {
-        totalMatches++; // Count this match
+        totalMatches++;
 
-        // Only create snippet if we haven't reached max
         if (snippets.length < maxSnippets && !usedLines.has(i)) {
-          // Always show exactly 3 lines with match in the middle
           const before = i > 0 ? lines[i - 1] : "";
           const match = lines[i];
           const after = i < lines.length - 1 ? lines[i + 1] : "";
-
-          // Build snippet: exactly 3 lines with match in middle
           const snippet = [before, match, after].join("\n");
 
-          // Track which lines are used in this snippet to avoid overlaps
           if (i > 0) usedLines.add(i - 1);
           usedLines.add(i);
           if (i < lines.length - 1) usedLines.add(i + 1);
 
-          // Calculate line numbers for all 3 lines
-          const beforeLineNum = i > 0 ? lineNumbers[i - 1] : null;
-          const matchLineNum = lineNumbers[i];
-          const afterLineNum = i < lines.length - 1 ? lineNumbers[i + 1] : null;
+          // Get line numbers, skipping non-code lines (marked with -1)
+          let beforeLineNum = null;
+          if (i > 0) {
+            // Find previous code line
+            for (let j = i - 1; j >= 0; j--) {
+              if (actualLineNumbers[j] > 0) {
+                beforeLineNum = actualLineNumbers[j];
+                break;
+              }
+            }
+          }
+
+          let matchLineNum = actualLineNumbers[i];
+          if (matchLineNum <= 0) matchLineNum = null;
+
+          let afterLineNum = null;
+          if (i < lines.length - 1) {
+            // Find next code line
+            for (let j = i + 1; j < lines.length; j++) {
+              if (actualLineNumbers[j] > 0) {
+                afterLineNum = actualLineNumbers[j];
+                break;
+              }
+            }
+          }
 
           snippets.push({
             text: snippet,
@@ -261,8 +366,9 @@ app.get("/api/man3/search", limiter, (req, res) => {
 
     // Search in content for title matches (get snippets)
     for (const page of titleMatches) {
-      const content = getFileContent(page.name, page.file);
-      const { snippets, totalMatches } = findSnippets(content, query, 3);
+      const { text: content, lineNumbers } = getFileContentWithLineNumbers(page.name, page.file);
+      logger.debug(`[search] Retrieved ${lineNumbers ? lineNumbers.length : 0} line numbers for ${page.name}`);
+      const { snippets, totalMatches } = findSnippets(content, query, 3, lineNumbers);
 
       results.push({
         name: page.name,
@@ -282,8 +388,8 @@ app.get("/api/man3/search", limiter, (req, res) => {
         continue; // Skip source pages and already added matches
       }
 
-      const content = getFileContent(page.name, page.file);
-      const { snippets, totalMatches } = findSnippets(content, query, 3);
+      const { text: content, lineNumbers } = getFileContentWithLineNumbers(page.name, page.file);
+      const { snippets, totalMatches } = findSnippets(content, query, 3, lineNumbers);
 
       if (snippets.length > 0) {
         results.push({

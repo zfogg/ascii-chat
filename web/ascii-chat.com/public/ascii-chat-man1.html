@@ -92,10 +92,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty) start new session
-tender-paddy-tofu
-rural-reporter-holler
-presentable-carver-table
-premature-coin-sexuality</pre>
+phony-beck-slip
+difficult-worship-raise
+subconscious-bun-chi
+lebanese-topic-platoon</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -179,27 +179,27 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat only-geneva-flare</b></dt>
+  <dt><b>ascii-chat parental-bus-shove</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat eager-shan-sixth --file video.mp4</b></dt>
+  <dt><b>ascii-chat waste-instant-cure --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat wildcat-withdrawal-eighth --url
+  <dt><b>ascii-chat tenacious-fundamental-urge --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat obscene-cough-roosevelt -f -</b></dt>
+  <dt><b>ascii-chat offensive-webster-tidy -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat mint-recess-zen --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat rude-lounge-monster --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat inconvenient-card-hall --discovery-service
+  <dt><b>ascii-chat taken-dowry-limo --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat server</b></dt>
+  <dt><b>ascii-chat discovery-service</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
-  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
+  <dt><b>ascii-chat server 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
-  <dt><b>ascii-chat discovery-service 0.0.0.0 ::</b></dt>
+  <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
+  <dt><b>ascii-chat server --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
@@ -209,9 +209,9 @@ https://example.com/stream.m3u8</pre>
   <dd>Stream Ludwig from videogames on Twitch</dd>
   <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat mirror --snapshot</b></dt>
+  <dt><b>ascii-chat client --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
@@ -325,9 +325,8 @@ https://example.com/stream.m3u8</pre>
       regex, no flags). Flags (format 1 only): i(case-insensitive),
       m(multiline), s(dotall), x(extended), g(global highlight), I(invert
       match), F(fixed string), A&lt;n&gt;(n lines after), B&lt;n&gt;(n lines
-      before), C&lt;n&gt;(n lines of context). Examples: '/error/i', 'error',
-      '/panic/C5', 'warn|error', '/buffer pool/Fg'. Multiple --grep allowed
-      (OR). (mode: global)</dd>
+      before), C&lt;n&gt;(n lines of context). Multiple --grep allowed (OR).
+      (mode: global)</dd>
   <dt id="color-scheme"><a class="permalink" href="#color-scheme"><b>--color-scheme
     <i>NAME</i></b></a></dt>
   <dd>Color scheme for logging output. Built-in schemes: pastel, nord,
@@ -341,17 +340,13 @@ https://example.com/stream.m3u8</pre>
   <dt id="log-template"><a class="permalink" href="#log-template"><b>--log-template
     <i>TEMPLATE</i></b></a></dt>
   <dd>Custom log format string. Format specifiers: %time(fmt) - time with
-      strftime format (see 'man 3 strftime' for codes like %Y, %m, %d, %H, %M,
-      %S); %level - log level (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned
-      - level padded to 5 chars; %file - full file path; %file_relative - file
-      path relative to project root; %line - line number; %func - function name;
-      %tid - thread ID; %message - log message; %color(LEVEL, text) - colorize
-      text using LEVEL's color from current scheme (e.g., %color(INFO, %tid)).
-      Example: '[%time(%Y-%m-%d %H:%M:%S)] [%level_aligned] %file_relative:%line
-      %message'. Escape %% for literal %, \ for literal backslash. Default:
-      release mode '[%time(%H:%M:%S)] [%level_aligned] %message' or debug mode
-      '[%time(%H:%M:%S)] [%level_aligned] [tid:%tid] %file_relative:%line in
-      %func(): %message'. (mode: global)</dd>
+      strftime format (see man 3 strftime); %level - log level
+      (DEV/DEBUG/INFO/WARN/ERROR/FATAL); %level_aligned - level padded to 5
+      chars; %file - full file path; %file_relative - file path relative to
+      project root; %line - line number; %func - function name; %tid - thread
+      ID; %message - log message; %color(LEVEL, text) - colorize text using
+      LEVEL's color from current scheme. Escape %% for literal %, \ for literal
+      backslash. (mode: global)</dd>
   <dt id="log-format-console"><a class="permalink" href="#log-format-console"><b>--log-format-console
     <i>BOOLEAN</i></b></a></dt>
   <dd>Apply custom log template (--log-template) only to console output (file
@@ -560,14 +555,14 @@ https://example.com/stream.m3u8</pre>
   <dt id="f,"><a class="permalink" href="#f,"><b>-f, --file
     <i>STRING</i></b></a></dt>
   <dd>Stream from media file or stdin (use '-' for stdin). Supported formats:
-      see man ffmpeg-formats; codecs: see man ffmpeg-codecs (modes: default,
+      see man ffmpeg-formats; codecs: see man ffmpeg-codecs. (modes: default,
       client, mirror)</dd>
   <dt id="u,"><a class="permalink" href="#u,"><b>-u, --url
     <i>STRING</i></b></a></dt>
   <dd>Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg;
       complex sites (YouTube, TikTok, etc.) use yt-dlp. Supported formats: see
       man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp
-      https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites
+      https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites.
       (modes: default, client, mirror)</dd>
   <dt id="l,"><a class="permalink" href="#l,"><b>-l, --loop
     <i>BOOLEAN</i></b></a></dt>
@@ -586,21 +581,21 @@ https://example.com/stream.m3u8</pre>
   <dd>Arbitrary yt-dlp options passed to the extraction subprocess for URL
       resolution. Examples: &quot;--no-warnings&quot; or &quot;--proxy
       socks5://127.0.0.1:1080&quot; or
-      &quot;--cookies-from-browser=firefox&quot; (modes: default, client,
+      &quot;--cookies-from-browser=firefox&quot;. (modes: default, client,
       mirror)</dd>
   <dt id="video-codec"><a class="permalink" href="#video-codec"><b>--video-codec
     <i>CODEC</i></b></a></dt>
   <dd>Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265
-      compression. Default: hevc (default: hevc) (modes: client, mirror)</dd>
+      compression. Default: hevc. (default: hevc) (modes: client, mirror)</dd>
   <dt id="render-file"><a class="permalink" href="#render-file"><b>--render-file
     <i>PATH</i></b></a></dt>
   <dd>Render ASCII frames to stdout or video/image file. Use '-' for stdout;
       extension determines format: .mp4, .mov, .webm, .avi, .gif, .png, .jpg
-      (macOS and Linux only) (modes: default, client, mirror)</dd>
+      (macOS and Linux only). (modes: default, client, mirror)</dd>
   <dt id="render-theme"><a class="permalink" href="#render-theme"><b>--render-theme
     <i>THEME</i></b></a></dt>
   <dd>Terminal color scheme for rendered output: dark, light, auto. (macOS and
-      Linux only) (modes: default, client, mirror)</dd>
+      Linux only). (modes: default, client, mirror)</dd>
   <dt id="render-font"><a class="permalink" href="#render-font"><b>--render-font
     <i>FONT</i></b></a></dt>
   <dd>Font for render-file output: bundled names (&quot;matrix&quot; or
@@ -609,11 +604,11 @@ https://example.com/stream.m3u8</pre>
       &quot;default&quot; (DejaVu Sans Mono) if unavailable. Examples:
       &quot;matrix&quot;, &quot;default&quot;, &quot;JetBrains Mono&quot;,
       &quot;Nerd Font Mono&quot;, &quot;/path/to/font.ttf&quot; (macOS and Linux
-      only) (modes: default, client, mirror)</dd>
+      only). (modes: default, client, mirror)</dd>
   <dt id="render-font-size"><a class="permalink" href="#render-font-size"><b>--render-font-size
     <i>SIZE</i></b></a></dt>
   <dd>Font size in points for render-file output (default: 12.0, must be &gt; 0,
-      fractional sizes supported e.g. 10.5). (macOS and Linux only) (default:
+      fractional sizes supported e.g. 10.5). (macOS and Linux only). (default:
       12.00) (modes: default, client, mirror)</dd>
 </dl>
 </section>

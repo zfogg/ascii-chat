@@ -91,7 +91,7 @@
 45      &quot;&quot;,
 46      0,
 47      &quot;Stream from media file or stdin (use '-' for stdin). Supported formats: see man ffmpeg-formats; codecs: see man &quot;
-48      &quot;ffmpeg-codecs&quot;,
+48      &quot;ffmpeg-codecs.&quot;,
 49      &quot;MEDIA&quot;,
 50      NULL,
 51      false,
@@ -111,7 +111,7 @@
 65      0,
 66      &quot;Stream from network URL. Direct HTTP/HTTPS/RTSP streams use FFmpeg; complex sites (YouTube, TikTok, etc.) use &quot;
 67      &quot;yt-dlp. Supported formats: see man ffmpeg-formats; codecs: see man ffmpeg-codecs; sites: yt-dlp &quot;
-68      &quot;https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites&quot;,
+68      &quot;https://github.com/yt-dlp/yt-dlp/blob/master/README.md#supported-sites.&quot;,
 69      &quot;MEDIA&quot;,
 70      NULL,
 71      false,
@@ -184,7 +184,7 @@
 138      NULL,
 139      sizeof(((options_t *)0)-&gt;yt_dlp_options),
 140      &quot;Arbitrary yt-dlp options passed to the extraction subprocess for URL resolution. &quot;
-141      &quot;Examples: \&quot;--no-warnings\&quot; or \&quot;--proxy socks5://127.0.0.1:1080\&quot; or \&quot;--cookies-from-browser=firefox\&quot;&quot;,
+141      &quot;Examples: \&quot;--no-warnings\&quot; or \&quot;--proxy socks5://127.0.0.1:1080\&quot; or \&quot;--cookies-from-browser=firefox\&quot;.&quot;,
 142      &quot;MEDIA&quot;,
 143      NULL,
 144      false,
@@ -202,7 +202,7 @@
 156      offsetof(options_t, video_codec),
 157      &quot;hevc&quot;,
 158      sizeof(((options_t *)0)-&gt;video_codec),
-159      &quot;Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265 compression. Default: hevc&quot;,
+159      &quot;Video codec for streaming (raw, hevc). raw=uncompressed RGB, hevc=H.265 compression. Default: hevc.&quot;,
 160      &quot;MEDIA&quot;,
 161      &quot;CODEC&quot;,
 162      false,
@@ -225,7 +225,7 @@
 179      &quot;&quot;,
 180      sizeof(((options_t *)0)-&gt;render_file),
 181      &quot;Render ASCII frames to stdout or video/image file. Use '-' for stdout; extension determines format: &quot;
-182      &quot;.mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only)&quot;,
+182      &quot;.mp4, .mov, .webm, .avi, .gif, .png, .jpg  (macOS and Linux only).&quot;,
 183      &quot;MEDIA&quot;,
 184      &quot;PATH&quot;,
 185      false,
@@ -244,7 +244,7 @@
 198      offsetof(options_t, render_theme),
 199      &amp;default_render_theme_value,
 200      sizeof(int),
-201      &quot;Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only)&quot;,
+201      &quot;Terminal color scheme for rendered output: dark, light, auto.  (macOS and Linux only).&quot;,
 202      &quot;MEDIA&quot;,
 203      &quot;THEME&quot;,
 204      false,
@@ -268,7 +268,7 @@
 222      &quot;Font for render-file output: bundled names (\&quot;matrix\&quot; or \&quot;default\&quot;), system font names, or absolute .ttf/.otf path. &quot;
 223      &quot;Default: \&quot;matrix\&quot; (Matrix Resurrected font). Falls back to \&quot;default\&quot; (DejaVu Sans Mono) if unavailable. &quot;
 224      &quot;Examples: \&quot;matrix\&quot;, \&quot;default\&quot;, \&quot;JetBrains Mono\&quot;, \&quot;Nerd Font Mono\&quot;, \&quot;/path/to/font.ttf\&quot;  &quot;
-225      &quot;(macOS and Linux only)&quot;,
+225      &quot;(macOS and Linux only).&quot;,
 226      &quot;MEDIA&quot;,
 227      &quot;FONT&quot;,
 228      false,
@@ -288,7 +288,7 @@
 242      &amp;default_render_font_size_value,
 243      sizeof(double),
 244      &quot;Font size in points for render-file output (default: 12.0, must be &gt; 0, fractional sizes supported e.g. 10.5).  &quot;
-245      &quot;(macOS and Linux only)&quot;,
+245      &quot;(macOS and Linux only).&quot;,
 246      &quot;MEDIA&quot;,
 247      &quot;SIZE&quot;,
 248      false,
