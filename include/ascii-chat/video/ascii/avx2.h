@@ -34,7 +34,7 @@
 char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii_chars);
 
 /**
- * @brief Render image as ASCII with foreground colors using AVX2 (unified optimized)
+ * @brief Render image as ASCII with color using AVX2
  * @param image Source image
  * @param use_background Use background colors
  * @param use_256color Use 256-color mode (vs truecolor)
@@ -45,17 +45,6 @@ char *render_ascii_image_monochrome_avx2(const image_t *image, const char *ascii
  */
 char *render_ascii_avx2_unified_optimized(const image_t *image, bool use_background, bool use_256color,
                                           const char *ascii_chars);
-
-/**
- * @brief Render image as ASCII with background colors using AVX2
- * @param image Source image
- * @param use_256color Use 256-color mode (vs truecolor)
- * @param ascii_chars Character palette
- * @return Allocated ASCII string with ANSI background codes (caller must free), or NULL on error
- *
- * @ingroup video
- */
-char *render_ascii_avx2_background(const image_t *image, bool use_256color, const char *ascii_chars);
 
 #endif
 
