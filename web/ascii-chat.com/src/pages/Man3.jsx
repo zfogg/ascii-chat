@@ -956,10 +956,58 @@ export default function Man3() {
           }
         } else {
           console.log("[Man3] No element found for line number");
+          // For documentation pages without line numbers, search for the matching text
+          // and scroll to the element containing it
+          if (searchQuery && contentViewerRef.current) {
+            try {
+              const searchRegex = new RegExp(searchQuery, "i");
+              const walker = document.createTreeWalker(
+                contentViewerRef.current,
+                NodeFilter.SHOW_TEXT,
+                null,
+                false,
+              );
+
+              let foundNode = null;
+              let node;
+
+              // Find first text node matching the search query
+              while ((node = walker.nextNode())) {
+                if (searchRegex.test(node.textContent)) {
+                  foundNode = node;
+                  break;
+                }
+              }
+
+              if (foundNode) {
+                // Scroll to the parent element of the match
+                let scrollTarget = foundNode.parentElement;
+
+                // Walk up to find a reasonable scrollable parent
+                while (
+                  scrollTarget &&
+                  scrollTarget !== viewer &&
+                  scrollTarget.offsetHeight === 0
+                ) {
+                  scrollTarget = scrollTarget.parentElement;
+                }
+
+                if (scrollTarget && scrollTarget !== viewer) {
+                  scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+                  console.log(
+                    "[Man3] Scrolled to matching text in",
+                    scrollTarget.tagName,
+                  );
+                }
+              }
+            } catch (e) {
+              console.log("[Man3] Error searching for text:", e);
+            }
+          }
         }
       }
     }, 100);
-  }, [selectedPageContent, targetLineNumber]);
+  }, [selectedPageContent, targetLineNumber, searchQuery]);
 
   // Handle Doxygen link interception and line number scrolling
   useEffect(() => {
