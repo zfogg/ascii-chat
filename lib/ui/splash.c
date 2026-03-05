@@ -32,7 +32,7 @@
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/debug/sync.h>
 #include <ascii-chat/video/rgba/image.h>
-#include <ascii-chat/video/ascii/ansi_fast.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/common.h>

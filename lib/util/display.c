@@ -5,7 +5,7 @@
 
 #include <ascii-chat/util/display.h>
 #include <ascii-chat/util/utf8.h>
-#include <ascii-chat/video/ascii/ansi.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/common.h>
 #include <stdlib.h>
 #include <string.h>

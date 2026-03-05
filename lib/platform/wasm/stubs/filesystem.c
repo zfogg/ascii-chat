@@ -35,13 +35,6 @@ FILE *platform_tmpfile(void) {
   return tmpfile();
 }
 
-size_t platform_write_all(int fd, const void *buf, size_t count) {
-  (void)fd;
-  (void)buf;
-  (void)count;
-  return 0; // Not implemented for WASM
-}
-
 asciichat_error_t platform_mkdir_recursive(const char *path, int mode) {
   (void)path;
   (void)mode;

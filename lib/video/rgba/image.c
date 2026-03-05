@@ -24,7 +24,7 @@
 #include <ascii-chat/video/ascii/scalar/halfblock.h>
 #include <ascii-chat/video/ascii/scalar/foreground.h>
 
-#include <ascii-chat/video/ascii/ansi_fast.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/buffer_pool.h> // For buffer pool allocation functions
 #include <ascii-chat/util/overflow.h>

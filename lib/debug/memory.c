@@ -5,6 +5,8 @@
  * @brief 🧠 Memory debugging implementation for ascii-chat debug builds
  */
 
+#include <stdbool.h>
+
 #ifdef DEBUG_MEMORY
 
 #include <stdlib.h>
@@ -36,7 +38,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
-#include <ascii-chat/video/ascii/ansi.h>
+#include <ascii-chat/video/terminal/ansi.h>
 
 typedef struct mem_block {
   void *ptr;

@@ -10,7 +10,7 @@
 bool lifecycle_init(lifecycle_t *lc, const char *name) {
   (void)name;
   if (!lc) return false;
-  atomic_store(&lc->state, LIFECYCLE_INITIALIZED);
+  atomic_store_int(&lc->state, LIFECYCLE_INITIALIZED);
   return true;
 }
 
@@ -19,22 +19,22 @@ bool lifecycle_init_once(lifecycle_t *lc) {
 
   // Try to transition from UNINITIALIZED to INITIALIZING
   int expected = LIFECYCLE_UNINITIALIZED;
-  return atomic_cas_u64(&lc->state, &expected, LIFECYCLE_INITIALIZING);
+  return atomic_cas_int(&lc->state, &expected, LIFECYCLE_INITIALIZING);
 }
 
 void lifecycle_init_commit(lifecycle_t *lc) {
   if (!lc) return;
-  atomic_store(&lc->state, LIFECYCLE_INITIALIZED);
+  atomic_store_int(&lc->state, LIFECYCLE_INITIALIZED);
 }
 
 void lifecycle_init_abort(lifecycle_t *lc) {
   if (!lc) return;
-  atomic_store(&lc->state, LIFECYCLE_UNINITIALIZED);
+  atomic_store_int(&lc->state, LIFECYCLE_UNINITIALIZED);
 }
 
 bool lifecycle_shutdown(lifecycle_t *lc) {
   if (!lc) return false;
-  atomic_store(&lc->state, LIFECYCLE_UNINITIALIZED);
+  atomic_store_int(&lc->state, LIFECYCLE_UNINITIALIZED);
   return true;
 }
 
@@ -44,5 +44,5 @@ bool lifecycle_shutdown_forever(lifecycle_t *lc) {
 
 bool lifecycle_is_initialized(const lifecycle_t *lc) {
   if (!lc) return false;
-  return atomic_load(&((lifecycle_t *)lc)->state) == LIFECYCLE_INITIALIZED;
+  return atomic_load_int((atomic_t *)&lc->state) == LIFECYCLE_INITIALIZED;
 }

@@ -173,7 +173,7 @@ void *buffer_pool_alloc(buffer_pool_t *pool, size_t size) {
 
   // Check if we can allocate more
   size_t total_size = sizeof(buffer_node_t) + size;
-  size_t current = atomic_load_u64(&pool->current_bytes);
+  uint64_t current = atomic_load_u64(&pool->current_bytes);
 
   // Atomically try to reserve space
   while (current + total_size <= pool->max_bytes) {
