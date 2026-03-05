@@ -161,9 +161,7 @@ export default function Man3() {
               // Process content (URLs and highlighting)
               // Use query param from URL if available for highlighting search results
               const decodedQuery = queryParam ? decodeURIComponent(queryParam) : "";
-              console.log("[DEBUG] Initial page load - decodedQuery:", decodedQuery);
               let processedContent = processPageContent(html, decodedQuery);
-              console.log("[DEBUG] Initial page load - processedContent includes bg-yellow-900:", processedContent.includes("bg-yellow-900"));
 
               // Add GitHub links for "Definition at line X" text and line numbers
               const page = manPages.find((p) => p.name === pageName);
@@ -388,7 +386,6 @@ export default function Man3() {
       snippetIndex = null,
       skipHistoryPush = false,
     ) => {
-      console.log("[DEBUG] loadPageContent called:", {
         pageName,
         lineNumber,
         snippetIndex,
@@ -399,7 +396,6 @@ export default function Man3() {
 
       // If clicking a line number on the same page, just update the hash without fetching
       if (selectedPageName === pageName && lineNumber !== null) {
-        console.log("[DEBUG] Same page, updating hash only");
         setTargetLineNumber(lineNumber);
         setTargetSnippetIndex(snippetIndex);
         const hash = "#l" + lineNumber.toString().padStart(5, "0");
@@ -430,7 +426,6 @@ export default function Man3() {
           // Read current search query from URL to ensure we use latest value
           const currentParams = new URLSearchParams(window.location.search);
           const currentSearchQuery = currentParams.get("q") || searchQuery;
-          console.log("[DEBUG] loadPageContent - currentSearchQuery from URL:", currentParams.get("q"), "fallback searchQuery:", searchQuery, "final:", currentSearchQuery);
           let processedContent = processPageContent(html, currentSearchQuery);
 
           // Add GitHub links for "Definition at line X" text and line numbers
@@ -444,7 +439,6 @@ export default function Man3() {
             isSourcePage,
           );
 
-          console.log("[DEBUG] processedContent includes bg-yellow-900:", processedContent.includes("bg-yellow-900"));
           setSelectedPageContent(processedContent);
           setSelectedPageName(pageName);
           if (lineNumber) {
@@ -591,10 +585,8 @@ export default function Man3() {
 
   // Auto-load first search result when search results appear
   useEffect(() => {
-    console.log("[DEBUG] Auto-load effect - searchResults:", searchResults.length, "selectedPageName:", selectedPageName, "searchQuery:", searchQuery);
     if (searchResults.length > 0 && !selectedPageName && searchQuery) {
       // Load first search result's page
-      console.log("[DEBUG] Auto-loading first search result:", searchResults[0].name);
       const pageName = searchResults[0].name;
       const filename = searchResults[0].file || `${pageName}.html`;
 
@@ -635,8 +627,6 @@ export default function Man3() {
     const currentParams = new URLSearchParams(window.location.search);
     const currentSearchQuery = currentParams.get("q");
 
-    console.log("[DEBUG] Right panel scroll effect - currentSearchQuery:", currentSearchQuery);
-    console.log("[DEBUG] selectedPageContent length:", selectedPageContent?.length, "contains bg-yellow-900:", selectedPageContent?.includes("bg-yellow-900"));
 
     if (!currentSearchQuery) return;
 
@@ -645,14 +635,11 @@ export default function Man3() {
       const viewer = contentViewerRef.current;
       if (!viewer) return;
 
-      console.log("[DEBUG] Viewer HTML length:", viewer.innerHTML.length);
-      console.log("[DEBUG] Viewer HTML includes bg-yellow-900:", viewer.innerHTML.includes("bg-yellow-900"));
 
       // Search for spans with bg-yellow-900 classes
       // Using getComputedStyle to find elements that have yellow background
       let highlightedElements = [];
       const allSpans = viewer.querySelectorAll("span");
-      console.log("[DEBUG] Total spans in viewer:", allSpans.length);
 
       for (const span of allSpans) {
         const classes = span.className || "";
@@ -661,7 +648,6 @@ export default function Man3() {
         }
       }
 
-      console.log("[DEBUG] Found highlighted elements:", highlightedElements.length, "by className check");
 
       if (highlightedElements.length > 0) {
         // Scroll to the first highlighted match and center it
@@ -690,13 +676,11 @@ export default function Man3() {
       const href = link.getAttribute("href");
       if (!href) return;
 
-      console.log("[DEBUG] Link clicked, href:", href);
 
       // Match new converted format: /man3?page=filename[#l00123 or %23l00123]
       const newMatch = href.match(
         /^\/man3\?page=([^&#%]+)(?:%23|#)?(l\d+(?:-\d+)?)?/,
       );
-      console.log("[DEBUG] newMatch result:", newMatch);
       if (newMatch) {
         e.preventDefault();
         const pageName = decodeURIComponent(newMatch[1]);
