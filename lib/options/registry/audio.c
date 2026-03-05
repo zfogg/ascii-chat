@@ -116,7 +116,7 @@ const registry_entry_t g_audio_entries[] = {
      offsetof(options_t, speakers_volume),
      &default_speakers_volume_value,
      sizeof(float),
-     "Speakers volume multiplier (0.0-1.0; press ↑/↓ during rendering to adjust).",
+     "Speakers volume multiplier (0.0-1.0; press ^/v during rendering to adjust).",
      "AUDIO",
      NULL,
      false,
