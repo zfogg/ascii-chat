@@ -826,17 +826,8 @@ export function ClientPage() {
 
       // Log render rate every 60 rendered frames (using diagnostic counter)
       if (diagnosticFrameCountRef.current % 60 === 0) {
-        const now = performance.now();
-        const elapsed = now - renderLoopStartTimeRef.current;
-        const renderFps = (diagnosticFrameCountRef.current / elapsed) * 1000;
         const uniqueFrames = Object.keys(frameHashesRef.current).length;
-        console.log(
-          `[Client] Rendered ${diagnosticFrameCountRef.current} frames in ${elapsed.toFixed(
-            0,
-          )}ms = ${renderFps.toFixed(
-            1,
-          )} FPS (${uniqueFrames} unique frame hashes)`,
-        );
+        console.log(`[Client] Rendered ${uniqueFrames} unique frames`);
         console.log(
           `[Client] Frame hash distribution:`,
           frameHashesRef.current,

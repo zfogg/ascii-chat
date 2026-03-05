@@ -59,6 +59,8 @@
     const backtrace_t *bt, int skip_frames, int max_frames,
     backtrace_frame_filter_t filter)
   <br/>
+  void <b>backtrace_log_frames</b> (int num_frames, int skip_frames)
+  <br/>
   <br/>
 </p>
 </section>
@@ -107,7 +109,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>backtrace_capture()</b>, and
     <b>backtrace_symbolize()</b>.</p>
-<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>.</p>
+<p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>, and
+    <b>backtrace_log_frames()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_backtrace_format_(char_*_buf,_size_t_buf_size,_const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#int_backtrace_format_(char_*_buf,_size_t_buf_size,_const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">int
@@ -163,6 +166,22 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>safe_snprintf()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="void_backtrace_log_frames_(int_num_frames,_int_skip_frames)"><a class="permalink" href="#void_backtrace_log_frames_(int_num_frames,_int_skip_frames)">void
+  backtrace_log_frames (int num_frames, int skip_frames)</a></h2>
+<p class="Pp">Definition at line <b>409</b> of file
+  <b>debug/backtrace.c</b>.</p>
+<pre>409                                                            {
+410   backtrace_t bt;
+411   backtrace_capture_and_symbolize(&amp;bt);
+412   backtrace_print(&quot;Backtrace&quot;, &amp;bt, skip_frames, num_frames, NULL);
+413   backtrace_t_free(&amp;bt);
+414 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>backtrace_capture_and_symbolize()</b>,
+    <b>backtrace_print()</b>, and <b>backtrace_t_free()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)"><a class="permalink" href="#void_backtrace_print_(const_char_*_label,_const_backtrace_t_*_bt,_int_skip_frames,_int_max_frames,_backtrace_frame_filter_t_filter)">void
@@ -455,8 +474,8 @@
     <b>log_template_apply()</b>, <b>platform_get_monotonic_time_us()</b>, and
     <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
-    <b>asciichat_print_error_context()</b>, and
-  <b>backtrace_print_many()</b>.</p>
+    <b>asciichat_print_error_context()</b>, <b>backtrace_log_frames()</b>, and
+    <b>backtrace_print_many()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)"><a class="permalink" href="#void_backtrace_print_many_(const_char_*_label,_const_backtrace_t_*_bts,_int_count)">void
@@ -539,8 +558,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_backtrace_symbols_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_clear_errno()</b>,
-    <b>asciichat_errno_destroy()</b>, <b>asciichat_fatal_with_context()</b>, and
-    <b>asciichat_set_errno()</b>.</p>
+    <b>asciichat_errno_destroy()</b>, <b>asciichat_fatal_with_context()</b>,
+    <b>asciichat_set_errno()</b>, and <b>backtrace_log_frames()</b>.</p>
 </section>
 </section>
 <section class="Sh">
