@@ -10,6 +10,7 @@
 #include <ascii-chat/options/completions/zsh.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/registry/mode_defaults.h>
+#include <ascii-chat/options/enums.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 
@@ -106,10 +107,30 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
     for (size_t i = 0; i < count; i++) {
       if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
 
-      // Long option only (short options are less discoverable via TAB)
-      fprintf(output, "    '--%s:", opts[i].long_name);
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "'\n");
+      // Check if this is an enum option
+      size_t enum_count = 0;
+      const char **enum_values = options_get_enum_values(opts[i].long_name, &enum_count);
+
+      fprintf(output, "    '--%s", opts[i].long_name);
+
+      // Enum options need bracket syntax: --option=[desc]:(val1 val2 val3)
+      if (enum_values) {
+        fprintf(output, "=[");
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "]:(");
+        for (size_t j = 0; j < enum_count; j++) {
+          if (j > 0) fprintf(output, " ");
+          fprintf(output, "%s", enum_values[j]);
+        }
+        fprintf(output, ")'");
+        SAFE_FREE(enum_values);
+      } else {
+        // Regular options: --option:description
+        fprintf(output, ":");
+        zsh_escape_desc(output, opts[i].help_text);
+        fprintf(output, "'");
+      }
+      fprintf(output, "\n");
     }
 
     fprintf(output, "  )\n");

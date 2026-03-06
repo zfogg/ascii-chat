@@ -37,9 +37,9 @@ tmux send-keys -t "$SESSION" "C-u"
 sleep 0.1
 
 echo ""
-echo "TEST 3: Server mode with enum option"
-tmux send-keys -t "$SESSION" "./build/bin/ascii-chat server --color-mode=" Tab
+echo "TEST 3: Mirror mode with enum option (palette)"
+tmux send-keys -t "$SESSION" "./build/bin/ascii-chat mirror --palette=" Tab
 sleep 0.3
 
-echo "./build/bin/ascii-chat server --color-mode=<TAB>:"
+echo "./build/bin/ascii-chat mirror --palette=<TAB>:"
 tmux capture-pane -t "$SESSION" -p -S -2
