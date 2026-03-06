@@ -61,7 +61,7 @@ fi
 
 # Clear for next test
 tmux send-keys -t zsh-completion-test "C-u"
-sleep 0.5
+sleep 0.2
 
 # =============================================================================
 # TEST 2: Discovery mode options (discovery --<TAB>)
@@ -95,7 +95,7 @@ fi
 # Clear for next test
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
-sleep 0.5
+sleep 0.2
 
 # =============================================================================
 # TEST 3: Client mode options (client --<TAB>)
@@ -103,7 +103,7 @@ sleep 0.5
 echo ""
 echo "=== TEST 3: ascii-chat client --<TAB> ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat client --" Tab
-sleep 2
+sleep 0.2
 
 # Navigate completion menu
 tmux send-keys -t zsh-completion-test "Down"
@@ -130,7 +130,10 @@ fi
 tmux send-keys -t zsh-completion-test "Escape"
 sleep 0.2
 tmux send-keys -t zsh-completion-test "C-u"
-sleep 0.2
+sleep 0.5
+# Clear the screen to ensure fresh test
+tmux send-keys -t zsh-completion-test "clear" Enter
+sleep 0.5
 
 # =============================================================================
 # TEST 4: Mode completion with partial input (disc)
