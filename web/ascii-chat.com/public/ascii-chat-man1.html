@@ -58,7 +58,8 @@
   <dt id="default"><a class="permalink" href="#default"><b>default</b></a></dt>
   <dd>The default operating mode when running <b>ascii-chat</b> without
       specifying a mode. Starts or joins an ascii-chat Discovery Service session
-      with a session string. Attempts direct TCP and WebRTC connections.</dd>
+      with a session string. Attempts direct TCP and WebRTC connections.
+      Internally known as 'discovery' mode.</dd>
   <dt id="server"><a class="permalink" href="#server"><b>server</b></a></dt>
   <dd>Runs a video chat server that accepts connections from multiple clients,
       mixes their audio and video streams together, and broadcasts the mixed
@@ -92,10 +93,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty) start new session
-mental-science-medicine
-weakly-sonar-way
-sublime-purple-same
-sinful-box-haunt</pre>
+liable-conquest-parasite
+typical-brake-inheritance
+lengthy-dice-blacksmith
+melodramatic-joke-thump</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -179,19 +180,19 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat staple-penguin-liability</b></dt>
+  <dt><b>ascii-chat hardcore-place-super</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat tolerant-asylum-condo --file video.mp4</b></dt>
+  <dt><b>ascii-chat infamous-army-broom --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat furious-neighborhood-hacker --url
+  <dt><b>ascii-chat monetary-law-grief --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat photographic-spite-void -f -</b></dt>
+  <dt><b>ascii-chat autistic-dowry-moonlight -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat consummate-sheridan-last --palette-chars '@%#*+=-:.
+  <dt><b>ascii-chat statistical-overall-name --palette-chars '@%#*+=-:.
     '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat jealous-highway-fuel --discovery-service
+  <dt><b>ascii-chat random-mortal-echo --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
   <dt><b>ascii-chat server</b></dt>
@@ -204,15 +205,15 @@ https://example.com/stream.m3u8</pre>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
-  <dt><b>ascii-chat mirror --url 'https://www.twitch.tv/ludwig'</b></dt>
+  <dt><b>ascii-chat client --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
-  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
+  <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat client --snapshot</b></dt>
+  <dt><b>ascii-chat mirror --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
@@ -905,62 +906,11 @@ https://example.com/stream.m3u8</pre>
 </dl>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="URLS"><a class="permalink" href="#URLS">URLS</a></h1>
-<p class="Pp">URLs are used in several contexts throughout ascii-chat:</p>
-<div class="Bd-indent">
-<dl class="Bl-tag">
-  <dt id="Media"><a class="permalink" href="#Media"><b>Media
-    Streaming</b></a></dt>
-  <dd>The &quot;ascii-chat&quot;, <b>client</b>, and <b>mirror</b> modes accept
-      URLs via the <b>--url</b> option to stream media from the network.</dd>
-  <dt id="Key"><a class="permalink" href="#Key"><b>Key Fetching</b></a></dt>
-  <dd>The <b>--server-key</b>, <b>--client-keys</b>, and
-      <b>--discovery-server-key</b> options accept URLs to fetch public keys
-      from remote servers.</dd>
-</dl>
-</div>
-<p class="Pp">URLs can be specified with or without an explicit scheme.</p>
-<p class="Pp"><b>Explicit Scheme (Recommended)</b></p>
-<div class="Bd-indent">
-<dl class="Bl-tag">
-  <dt id="https://example.com/video.mp4"><a class="permalink" href="#https://example.com/video.mp4"><b>https://example.com/video.mp4</b></a></dt>
-  <dd>Use HTTPS on port 443.</dd>
-  <dt id="http://192.168.1.100:8080/stream.m3u8"><a class="permalink" href="#http://192.168.1.100:8080/stream.m3u8"><b>http://192.168.1.100:8080/stream.m3u8</b></a></dt>
-  <dd>Use HTTP on custom port 8080.</dd>
-</dl>
-</div>
-<p class="Pp"><b>Bare IP Address or Hostname</b></p>
-<div class="Bd-indent">When no scheme is provided, ascii-chat automatically
-  defaults to <b>HTTP on port 80</b>:
-<dl class="Bl-tag">
-  <dt id="example.com/video.mp4"><a class="permalink" href="#example.com/video.mp4"><b>example.com/video.mp4</b></a></dt>
-  <dd>Resolves to <b>http://example.com:80/video.mp4</b></dd>
-  <dt><b>192.168.1.100:8080/stream.m3u8</b></dt>
-  <dd>Resolves to <b>http://192.168.1.100:8080/stream.m3u8</b></dd>
-  <dt id="localhost:3000/file.mp4"><a class="permalink" href="#localhost:3000/file.mp4"><b>localhost:3000/file.mp4</b></a></dt>
-  <dd>Resolves to <b>http://localhost:3000/file.mp4</b></dd>
-</dl>
-</div>
-<p class="Pp"><b>Port Specification</b></p>
-<div class="Bd-indent">Port numbers can be included with bare URLs but are
-  treated as HTTP ports. To use HTTPS on a non-standard port, explicitly specify
-  the scheme:
-<dl class="Bl-tag">
-  <dt id="example.com:8443/video.mp4"><a class="permalink" href="#example.com:8443/video.mp4"><b>example.com:8443/video.mp4</b></a></dt>
-  <dd>Uses HTTP on port 8443 (not HTTPS).</dd>
-  <dt id="https://example.com:8443/video.mp4"><a class="permalink" href="#https://example.com:8443/video.mp4"><b>https://example.com:8443/video.mp4</b></a></dt>
-  <dd>Uses HTTPS on port 8443 (explicit scheme required).</dd>
-</dl>
-</div>
-<p class="Pp"></p>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="KEYBOARD_CONTROLS"><a class="permalink" href="#KEYBOARD_CONTROLS">KEYBOARD
   CONTROLS</a></h1>
 <p class="Pp">Keyboard controls are available when running with local media
     sources (<b>--file</b> or <b>--url</b>). Keyboard controls work in
-    <b>mirror</b>, <b>client</b>, and <b>&quot;ascii-chat&quot;</b> modes. They
-    are <i>not</i> available when a webcam is used as the media source.</p>
+    <b>mirror</b>, <b>client</b>, and <b>default</b> modes.</p>
 <p class="Pp"><b>Media Playback Controls</b></p>
 <dl class="Bl-tag">
   <dt id="LEFT"><a class="permalink" href="#LEFT"><b>LEFT ARROW</b></a></dt>
