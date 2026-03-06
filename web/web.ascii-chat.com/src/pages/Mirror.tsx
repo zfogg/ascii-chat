@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { useEffect, useCallback, useRef, useState } from "react";
 import "xterm/css/xterm.css";
 import {
   initMirrorWasm,
@@ -24,10 +24,7 @@ import {
   getTargetFps,
 } from "../wasm/settings";
 import { Settings, SettingsConfig } from "../components/Settings";
-import {
-  AsciiRenderer,
-  AsciiRendererHandle,
-} from "../components/AsciiRenderer";
+import { AsciiRenderer } from "../components/AsciiRenderer";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
 import { WebClientHead } from "../components/WebClientHead";
@@ -36,219 +33,157 @@ import {
   mapColorModeToWasm,
   mapColorFilterToWasm,
 } from "../utils/colorMappers";
-import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { createWasmOptionsManager } from "../hooks/useWasmOptions";
-import { useRenderLoop } from "../hooks/useRenderLoop";
+import { useClientLike } from "../hooks/useClientLike";
 
 export function MirrorPage() {
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const rendererRef = useRef<AsciiRendererHandle>(null);
-  const { captureFrame } = useCanvasCapture(videoRef, canvasRef);
-  const [isRunning, setIsRunning] = useState(false);
-  const [error, setError] = useState<string>("");
-  const [terminalDimensions, setTerminalDimensions] = useState({
-    cols: 0,
-    rows: 0,
+  // Create options manager
+  const optionsManager = useClientLike({
+    initWasm: () => initMirrorWasm({}),
+    isWasmReady,
+    applyWasmSettings: (settings) => {
+      const om = createWasmOptionsManager(
+        setColorMode,
+        getColorMode,
+        setColorFilter,
+        getColorFilter,
+        setPalette,
+        getPalette,
+        setPaletteChars,
+        getPaletteChars,
+        setMatrixRain,
+        getMatrixRain,
+        setFlipX,
+        getFlipX,
+        setDimensions,
+        getDimensions,
+        setTargetFps,
+        getTargetFps,
+        mapColorModeToWasm,
+        mapColorFilterToWasm,
+      );
+      om?.applySettings(settings);
+    },
+    setWasmDimensions: (cols, rows) => {
+      const om = createWasmOptionsManager(
+        setColorMode,
+        getColorMode,
+        setColorFilter,
+        getColorFilter,
+        setPalette,
+        getPalette,
+        setPaletteChars,
+        getPaletteChars,
+        setMatrixRain,
+        getMatrixRain,
+        setFlipX,
+        getFlipX,
+        setDimensions,
+        getDimensions,
+        setTargetFps,
+        getTargetFps,
+        mapColorModeToWasm,
+        mapColorFilterToWasm,
+      );
+      om?.setDimensions(cols, rows);
+    },
   });
-  const [fps, setFps] = useState<number | undefined>();
-  const streamRef = useRef<MediaStream | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const lastFrameTimeRef = useRef<number>(0);
-  const frameIntervalRef = useRef<number>(1000 / 60);
 
-  // Detect macOS/iOS for webcam flip default
-  const isMacOS = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+  const {
+    videoRef,
+    canvasRef,
+    rendererRef,
+    streamRef,
+    lastFrameTimeRef,
+    frameIntervalRef,
+    isWebcamRunning,
+    setIsWebcamRunning,
+    error,
+    setError,
+    terminalDimensions,
+    fps,
+    setFps,
+    wasmInitialized,
+    showSettings,
+    setShowSettings,
+    settings,
+    setSettings,
+    captureFrame,
+    handleDimensionsChange,
+    stopWebcam,
+    debugCountRef,
+    firstFrameTimeRef,
+  } = optionsManager;
 
-  // Settings state
-  const [settings, setSettings] = useState<SettingsConfig>({
-    width: 640,
-    height: 480,
-    targetFps: 60,
-    colorMode: "truecolor",
-    colorFilter: "none",
-    palette: "standard",
-    paletteChars: " =#░░▒▒▓▓██",
-    matrixRain: false,
-    flipX: isMacOS,
-  });
-  const [showSettings, setShowSettings] = useState(false);
-  const [wasmInitialized, setWasmInitialized] = useState(false);
+  const devAutoStartRef = useRef(false);
   const [permissionGranted, setPermissionGranted] = useState(false);
-
-  const optionsManager = useMemo(() => {
-    if (!wasmInitialized || !isWasmReady()) return null;
-
-    return createWasmOptionsManager(
-      setColorMode,
-      getColorMode,
-      setColorFilter,
-      getColorFilter,
-      setPalette,
-      getPalette,
-      setPaletteChars,
-      getPaletteChars,
-      setMatrixRain,
-      getMatrixRain,
-      setFlipX,
-      getFlipX,
-      setDimensions,
-      getDimensions,
-      setTargetFps,
-      getTargetFps,
-      mapColorModeToWasm,
-      mapColorFilterToWasm,
-    );
-  }, [wasmInitialized]);
 
   // Handle settings change
   const handleSettingsChange = (newSettings: SettingsConfig) => {
-    console.log("[Mirror] handleSettingsChange:", newSettings);
     setSettings(newSettings);
-    frameIntervalRef.current = 1000 / newSettings.targetFps;
-
-    if (optionsManager && isWasmReady()) {
-      try {
-        console.log("[Mirror] Calling optionsManager.applySettings");
-        optionsManager.applySettings({
-          ...newSettings,
-          flipX: newSettings.flipX ?? isMacOS,
-        });
-        console.log("[Mirror] applySettings completed successfully");
-      } catch (err) {
-        console.error("Failed to apply WASM settings:", err);
-      }
-    } else {
-      console.log(
-        "[Mirror] Cannot apply settings - optionsManager or WASM not ready",
-        { optionsManager: !!optionsManager, wasmReady: isWasmReady() },
-      );
-    }
   };
 
-  // Handle dimension changes from AsciiRenderer (terminal display size, not webcam input)
-  const handleDimensionsChange = (dims: { cols: number; rows: number }) => {
-    setTerminalDimensions(dims);
-  };
-
-  // Apply initial settings to WASM after it initializes
+  // Render loop that captures and converts frames to ASCII
   useEffect(() => {
-    if (wasmInitialized && optionsManager && isWasmReady()) {
-      try {
-        optionsManager.applySettings(settings);
-      } catch (err) {
-        console.error("Failed to apply initial WASM settings:", err);
+    if (!isWebcamRunning) return;
+
+    const renderFrame = () => {
+      if (!isWasmReady() || !rendererRef.current) return;
+
+      const now = performance.now();
+      if (firstFrameTimeRef.current === null) {
+        firstFrameTimeRef.current = now;
+        console.time("[Mirror] Time to first frame render");
       }
-    }
-  }, [wasmInitialized, optionsManager, settings]);
 
-  // Update WASM terminal dimensions when terminal size changes
-  useEffect(() => {
-    if (
-      optionsManager &&
-      isWasmReady() &&
-      terminalDimensions.cols > 0 &&
-      terminalDimensions.rows > 0
-    ) {
-      try {
-        optionsManager.setDimensions(
-          terminalDimensions.cols,
-          terminalDimensions.rows,
+      const frame = captureFrame();
+      if (!frame) {
+        if (debugCountRef.current % 300 === 0) {
+          console.log("[Mirror] captureFrame returned null");
+        }
+        return;
+      }
+
+      if (debugCountRef.current === 0) {
+        console.log(
+          `[Mirror] First frame captured at ${now - firstFrameTimeRef.current!}ms: ${frame.width}x${frame.height}, ${frame.data.length} bytes`,
         );
-      } catch (err) {
-        console.error("Failed to set terminal dimensions in WASM:", err);
       }
-    }
-  }, [terminalDimensions, optionsManager]);
 
-  // Initialize WASM on mount
-  useEffect(() => {
-    initMirrorWasm({})
-      .then(() => setWasmInitialized(true))
-      .catch((err) => {
-        console.error("WASM init error:", err);
-        setError(`Failed to load WASM module: ${err}`);
-      });
-  }, []);
-
-  const stopWebcam = useCallback(() => {
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
-    }
-
-    if (streamRef.current) {
-      streamRef.current.getTracks().forEach((track) => track.stop());
-      streamRef.current = null;
-    }
-
-    if (videoRef.current) {
-      videoRef.current.srcObject = null;
-    }
-
-    rendererRef.current?.clear();
-    setIsRunning(false);
-  }, []);
-
-  const debugCountRef = useRef(0);
-  const firstFrameTimeRef = useRef<number | null>(null);
-  const devAutoStartRef = useRef(false);
-
-  const renderFrame = useCallback(() => {
-    if (!isWasmReady() || !rendererRef.current) return;
-
-    const now = performance.now();
-    if (firstFrameTimeRef.current === null) {
-      firstFrameTimeRef.current = now;
-      console.time("[Mirror] Time to first frame render");
-    }
-
-    const frame = captureFrame();
-    if (!frame) {
-      if (debugCountRef.current % 300 === 0) {
-        console.log("[Mirror] captureFrame returned null");
-      }
-      return;
-    }
-
-    if (debugCountRef.current === 0) {
-      console.log(
-        `[Mirror] First frame captured at ${now - firstFrameTimeRef.current!}ms: ${frame.width}x${frame.height}, ${frame.data.length} bytes`,
+      const asciiArt = convertFrameToAscii(
+        frame.data,
+        frame.width,
+        frame.height,
       );
-    }
-
-    const asciiArt = convertFrameToAscii(frame.data, frame.width, frame.height);
-    if (!asciiArt) {
-      if (debugCountRef.current % 300 === 0) {
-        console.log("[Mirror] convertFrameToAscii returned empty");
+      if (!asciiArt) {
+        if (debugCountRef.current % 300 === 0) {
+          console.log("[Mirror] convertFrameToAscii returned empty");
+        }
+        return;
       }
-      return;
-    }
 
-    if (debugCountRef.current === 0) {
-      console.log(
-        `[Mirror] First ASCII art generated at ${performance.now() - firstFrameTimeRef.current!}ms: ${asciiArt.length} chars`,
-      );
-    }
+      if (debugCountRef.current === 0) {
+        console.log(
+          `[Mirror] First ASCII art generated at ${performance.now() - firstFrameTimeRef.current!}ms: ${asciiArt.length} chars`,
+        );
+      }
 
-    rendererRef.current.writeFrame(asciiArt);
+      rendererRef.current!.writeFrame(asciiArt);
 
-    if (debugCountRef.current === 0) {
-      console.timeEnd("[Mirror] Time to first frame render");
-    }
+      if (debugCountRef.current === 0) {
+        console.timeEnd("[Mirror] Time to first frame render");
+      }
 
-    debugCountRef.current++;
-  }, [captureFrame]);
+      debugCountRef.current++;
+    };
 
-  const { startRenderLoop } = useRenderLoop(
-    renderFrame,
-    frameIntervalRef,
-    lastFrameTimeRef,
-    (err) => {
-      setError(`Render error: ${err}`);
-      stopWebcam();
-    },
-  );
+    const interval = setInterval(() => {
+      renderFrame();
+    }, frameIntervalRef.current);
+
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isWebcamRunning, captureFrame]);
 
   const startWebcam = useCallback(async () => {
     const clickTime = performance.now();
@@ -270,6 +205,7 @@ export function MirrorPage() {
           setPaletteChars(settings.paletteChars);
         }
         setMatrixRain(settings.matrixRain ?? false);
+        const isMacOS = /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
         setFlipX(settings.flipX ?? isMacOS);
       }
       console.timeEnd("[Mirror] WASM settings");
@@ -313,13 +249,20 @@ export function MirrorPage() {
       });
 
       lastFrameTimeRef.current = performance.now();
-      setIsRunning(true);
-      startRenderLoop();
+      setIsWebcamRunning(true);
       console.timeEnd("[Mirror] Total startWebcam time");
     } catch (err) {
       setError(`Failed to start webcam: ${err}`);
     }
-  }, [settings, isMacOS, startRenderLoop]);
+  }, [
+    settings,
+    videoRef,
+    canvasRef,
+    streamRef,
+    lastFrameTimeRef,
+    setIsWebcamRunning,
+    setError,
+  ]);
 
   // Request camera permission early on page load (browsers require explicit permission)
   // This helps Firefox and other browsers allow camera access before auto-start
@@ -358,14 +301,14 @@ export function MirrorPage() {
       import.meta.env["NODE_ENV"] !== "production" &&
       wasmInitialized &&
       permissionGranted &&
-      !isRunning &&
+      !isWebcamRunning &&
       !devAutoStartRef.current
     ) {
       devAutoStartRef.current = true;
       console.log("[Mirror] Auto-starting webcam in development mode");
       Promise.resolve().then(() => startWebcam());
     }
-  }, [wasmInitialized, permissionGranted, isRunning, startWebcam]);
+  }, [wasmInitialized, permissionGranted, isWebcamRunning, startWebcam]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -398,7 +341,7 @@ export function MirrorPage() {
             dimensions={terminalDimensions}
             fps={fps}
             targetFps={settings.targetFps}
-            isWebcamRunning={isRunning}
+            isWebcamRunning={isWebcamRunning}
             onStartWebcam={startWebcam}
             onStopWebcam={stopWebcam}
             onSettingsClick={() => setShowSettings(!showSettings)}
@@ -412,7 +355,7 @@ export function MirrorPage() {
             onDimensionsChange={handleDimensionsChange}
             onFpsChange={setFps}
             error={error}
-            showFps={isRunning}
+            showFps={isWebcamRunning}
           />
         }
       />
