@@ -258,7 +258,10 @@ ascii-chat --help`}</CodeBlock>
           >
             💻 Usage Examples
           </Heading>
-          <CodeBlock language="bash">{`# Start a new session
+          <CodeBlock language="bash">{`# Enable shell completions (zsh)
+source <(ascii-chat --completions zsh)
+
+# Start a new session
 ascii-chat
 
 # Copy the session string it outputs and share it with a friend securely
