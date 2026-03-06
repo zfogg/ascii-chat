@@ -25,9 +25,10 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 // Helper to find binary - try multiple locations
 function getBinaryPath() {
   const locations = [
+    path.join(process.cwd(), "dist/bin/ascii-chat-strings"), // Vercel: /var/task/dist/bin
     path.join(ROOT_DIR, "bin/ascii-chat-strings"), // Local: root/bin
-    path.join(process.cwd(), "bin/ascii-chat-strings"), // From cwd (Vercel: /var/task/bin)
-    "../../build/bin/ascii-chat-strings", // Dev build location
+    path.join(process.cwd(), "bin/ascii-chat-strings"), // Dev: process.cwd/bin
+    "../../build/bin/ascii-chat-strings", // Dev build fallback
   ];
 
   logger.debug(
