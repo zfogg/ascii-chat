@@ -36,6 +36,97 @@ if(LIBWEBSOCKETS_FOUND)
 endif()
 
 # =============================================================================
+# iOS build: Build from source for iOS cross-compilation
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}libwebsockets${ColorReset} from source (iOS cross-compile)...")
+
+    include(ExternalProject)
+
+    set(LWS_PREFIX "${IOS_DEPS_CACHE_DIR}/libwebsockets")
+    set(LWS_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libwebsockets-build")
+
+    # Determine iOS platform variant
+    if(BUILD_IOS_SIM)
+        set(LWS_IOS_PLATFORM SIMULATOR64)
+    else()
+        set(LWS_IOS_PLATFORM OS)
+    endif()
+
+    if(NOT EXISTS "${LWS_PREFIX}/lib/libwebsockets.a")
+        message(STATUS "  libwebsockets library not found in cache, will build from source")
+
+        set(LWS_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/LibwebsocketsIOS.cmake")
+
+        ExternalProject_Add(libwebsockets-ios
+            URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${LWS_BUILD_DIR}
+            STAMP_DIR ${LWS_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CMAKE_ARGS
+                -DCMAKE_TOOLCHAIN_FILE=${LWS_TOOLCHAIN_FILE}
+                -DIOS_PLATFORM=${LWS_IOS_PLATFORM}
+                -DIOS_DEPLOYMENT_TARGET=16.0
+                -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_INSTALL_PREFIX=${LWS_PREFIX}
+                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                -DLWS_WITH_SHARED=OFF
+                -DLWS_WITH_STATIC=ON
+                -DLWS_WITHOUT_TESTAPPS=ON
+                -DLWS_WITHOUT_TEST_SERVER=ON
+                -DLWS_WITHOUT_TEST_SERVER_EXTPOLL=ON
+                -DLWS_WITHOUT_TEST_PING=ON
+                -DLWS_WITHOUT_TEST_CLIENT=ON
+                -DLWS_WITH_SSL=OFF
+                -DLWS_WITH_LIBEV=OFF
+                -DLWS_WITH_LIBUV=OFF
+                -DLWS_WITH_LIBEVENT=OFF
+                -DLWS_WITH_GLIB=OFF
+                -DLWS_WITH_SYSTEMD=OFF
+                -DLWS_WITH_LIBCAP=OFF
+                -DLWS_WITH_JOSE=OFF
+                -DLWS_WITH_GENCRYPTO=OFF
+                -DLWS_IPV6=ON
+                -DLWS_WITHOUT_EXTENSIONS=OFF
+                -DLWS_WITH_ZLIB=ON
+            BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}libwebsockets${ColorReset} library found in cache: ${BoldMagenta}${LWS_PREFIX}/lib/libwebsockets.a${ColorReset}")
+        add_custom_target(libwebsockets-ios)
+    endif()
+
+    set(LIBWEBSOCKETS_LIBRARIES "${LWS_PREFIX}/lib/libwebsockets.a")
+    set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_PREFIX}/include")
+    set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-ios)
+    add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+
+    # Create placeholder directories
+    file(MAKE_DIRECTORY "${LIBWEBSOCKETS_INCLUDE_DIRS}")
+
+    # Create imported target for libwebsockets (iOS build)
+    add_library(websockets STATIC IMPORTED GLOBAL)
+    set_target_properties(websockets PROPERTIES
+        IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBWEBSOCKETS_INCLUDE_DIRS}"
+    )
+    add_dependencies(websockets libwebsockets-ios)
+
+    set(LIBWEBSOCKETS_FOUND TRUE)
+
+    message(STATUS "${BoldGreen}✓${ColorReset} libwebsockets configured (iOS cross-compile): ${LWS_PREFIX}/lib/libwebsockets.a")
+
+    return()
+endif()
+
+# =============================================================================
 # Musl build: Build from source
 # =============================================================================
 if(USE_MUSL)
