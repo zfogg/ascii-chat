@@ -57,7 +57,10 @@ export default function Home() {
 
           {/* Installation */}
           <section className="mb-12 sm:mb-16">
-            <Heading level={2} className="text-2xl sm:text-3xl font-bold text-teal-400 mb-4 sm:mb-6 border-b border-teal-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-teal-400 mb-4 sm:mb-6 border-b border-teal-900/50 pb-2"
+            >
               📦 Installation
             </Heading>
 
