@@ -18,7 +18,7 @@ function slugify(text) {
     .replace(/^-+|-+$/g, '');
 }
 
-export default function AnchoredHeading({ level = 2, children, className = '', ...props }) {
+export function AnchoredHeading({ level = 2, children, className = '', ...props }) {
   const id = slugify(typeof children === 'string' ? children : '');
   const HeadingTag = `h${level}`;
 
