@@ -529,6 +529,24 @@ endif()
 check_static_linking(ascii-chat)
 
 # =============================================================================
+# Session String Generator (web utilities)
+# =============================================================================
+
+if(BUILD_WEB)
+    add_executable(ascii-chat-strings ${CMAKE_CURRENT_SOURCE_DIR}/strings/main.c)
+
+    if(ASCIICHAT_ENABLE_IPO)
+        set_property(TARGET ascii-chat-strings PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
+    endif()
+
+    add_dependencies(ascii-chat-strings ascii-chat-shared generate_version)
+    target_link_libraries(ascii-chat-strings ascii-chat-shared)
+
+    # Install to bin directory
+    install(TARGETS ascii-chat-strings DESTINATION bin)
+endif()
+
+# =============================================================================
 # WebAssembly Build Targets
 # =============================================================================
 # WASM is built as a standalone project via src/web/CMakeLists.txt
