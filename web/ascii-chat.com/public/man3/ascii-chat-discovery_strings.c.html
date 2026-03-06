@@ -56,8 +56,8 @@
     multiple times (idempotent). asciichat_error_t <b>acds_string_init</b>
     (void)
   <br/>
-  Session string format validator using PCRE2 singleton. asciichat_error_t
-    <b>acds_string_generate</b> (char *output, size_t output_size)
+  asciichat_error_t <b>acds_string_generate</b> (char *output, size_t
+    output_size)
   <br/>
   <b>bool</b> <b>is_session_string</b> (const char *str)
   <br/>
@@ -82,36 +82,36 @@
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acds_string_generate_(char_*_output,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_acds_string_generate_(char_*_output,_size_t_output_size)">asciichat_error_t
   acds_string_generate (char * output, size_t output_size)</a></h2>
-<p class="Pp">Definition at line <b>121</b> of file
+<p class="Pp">Definition at line <b>208</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>121                                                                          {
-122   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
-123     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
-124                      (size_t)SESSION_STRING_BUFFER_SIZE);
-125   }
-126 
-127   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
-128   // No need to call sodium_init() again (redundant initialization removed)
-129 
-130   // Pick random adjective
-131   uint32_t adj_idx = simple_randombytes_uniform((uint32_t)adjectives_count);
-132   const char *adj = adjectives[adj_idx];
-133 
-134   // Pick two random nouns
-135   uint32_t noun1_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-136   uint32_t noun2_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-137   const char *noun1 = nouns[noun1_idx];
-138   const char *noun2 = nouns[noun2_idx];
-139 
-140   // Format: adjective-noun-noun
-141   int written = safe_snprintf(output, output_size, &quot;%s-%s-%s&quot;, adj, noun1, noun2);
-142   if (written &lt; 0 || (size_t)written &gt;= output_size) {
-143     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Session string too long for buffer&quot;);
-144   }
-145 
-146   log_dev(&quot;Generated session string: %s&quot;, output);
-147   return ASCIICHAT_OK;
-148 }</pre>
+<pre>208                                                                          {
+209   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
+210     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
+211                      (size_t)SESSION_STRING_BUFFER_SIZE);
+212   }
+213 
+214   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
+215   // No need to call sodium_init() again (redundant initialization removed)
+216 
+217   // Pick random adjective
+218   uint32_t adj_idx = simple_randombytes_uniform((uint32_t)adjectives_count);
+219   const char *adj = adjectives[adj_idx];
+220 
+221   // Pick two random nouns
+222   uint32_t noun1_idx = simple_randombytes_uniform((uint32_t)nouns_count);
+223   uint32_t noun2_idx = simple_randombytes_uniform((uint32_t)nouns_count);
+224   const char *noun1 = nouns[noun1_idx];
+225   const char *noun2 = nouns[noun2_idx];
+226 
+227   // Format: adjective-noun-noun
+228   int written = safe_snprintf(output, output_size, &quot;%s-%s-%s&quot;, adj, noun1, noun2);
+229   if (written &lt; 0 || (size_t)written &gt;= output_size) {
+230     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Session string too long for buffer&quot;);
+231   }
+232 
+233   log_dev(&quot;Generated session string: %s&quot;, output);
+234   return ASCIICHAT_OK;
+235 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adjectives</b>, <b>adjectives_count</b>,
@@ -123,24 +123,12 @@
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acds_string_init_(void_)"><a class="permalink" href="#asciichat_error_t_acds_string_init_(void_)">asciichat_error_t
   acds_string_init (void )</a></h2>
-<p class="Pp">Session string format validator using PCRE2 singleton. Validates
-    the format adjective-noun-noun with regex:</p>
-<ul class="Bl-bullet">
-  <li>Each word is 2-12 lowercase letters</li>
-  <li>Exactly 2 hyphens separating 3 words</li>
-  <li>No leading/trailing hyphens</li>
-  <li>No consecutive hyphens</li>
-</ul>
-<p class="Pp">This regex validator handles FORMAT validation only. Dictionary
-    validation (adjective/noun caches) is handled separately. Get compiled
-    session string format regex (lazy initialization) Returns NULL if
-    compilation failed</p>
-<p class="Pp">Definition at line <b>116</b> of file
+<p class="Pp">Definition at line <b>203</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>116                                          {
-117   // No initialization needed - getrandom() works directly
-118   return ASCIICHAT_OK;
-119 }</pre>
+<pre>203                                          {
+204   // No initialization needed - getrandom() works directly
+205   return ASCIICHAT_OK;
+206 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>.</p>
@@ -187,12 +175,12 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> is_session_string (const char * str)</h2>
-<p class="Pp">Definition at line <b>151</b> of file
+<p class="Pp">Definition at line <b>238</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>151                                         {
-152   (void)str; // unused parameter
-153   return true;
-154 }</pre>
+<pre>238                                         {
+239   (void)str; // unused parameter
+240   return true;
+241 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>database_session_create()</b>,
