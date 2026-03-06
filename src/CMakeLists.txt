@@ -48,10 +48,16 @@ include(${CMAKE_SOURCE_DIR}/cmake/utils/CoreDependencies.cmake)
 #   - USE_MIMALLOC, USE_MUSL known
 #
 # Outputs:
-#   - ascii-chat executable target
+#   - ascii-chat executable target (only if BUILD_EXECUTABLES is ON)
 # =============================================================================
 
 # Unified binary with both server and client modes
+# Gated behind BUILD_EXECUTABLES flag for cross-compilation (iOS, WASM, etc.)
+if(NOT DEFINED BUILD_EXECUTABLES)
+    set(BUILD_EXECUTABLES ON)  # Default: build executables
+endif()
+
+if(BUILD_EXECUTABLES)
 add_executable(ascii-chat ${APP_SRCS})
 
 if(ASCIICHAT_ENABLE_UNITY_BUILDS)
@@ -531,11 +537,13 @@ endif()
 # Check static linking for Release builds
 check_static_linking(ascii-chat)
 
+endif()  # BUILD_EXECUTABLES - close ascii-chat executable block
+
 # =============================================================================
 # Session String Generator (web utilities)
 # =============================================================================
 
-if(BUILD_WEB)
+if(BUILD_WEB AND BUILD_EXECUTABLES)
     # Minimal standalone executable: just adjectives, nouns, and main
     add_executable(ascii-chat-strings
         ${CMAKE_CURRENT_SOURCE_DIR}/strings/main.c

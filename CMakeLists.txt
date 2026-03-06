@@ -93,6 +93,11 @@ if(USE_MUSL)
     message(STATUS "Configuring musl build: -fno-lto -ftls-model=global-dynamic -fPIC")
 endif()
 
+# =============================================================================
+# iOS Platform Configuration (must come before project())
+# =============================================================================
+include(${CMAKE_SOURCE_DIR}/cmake/platform/iOS.cmake)
+
 include(${CMAKE_SOURCE_DIR}/cmake/compiler/LLVM.cmake)
 configure_llvm_pre_project()
 
