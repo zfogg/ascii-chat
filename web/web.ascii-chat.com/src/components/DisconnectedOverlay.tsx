@@ -2,7 +2,9 @@ interface DisconnectedOverlayProps {
   isDisconnected: boolean;
 }
 
-export function DisconnectedOverlay({ isDisconnected }: DisconnectedOverlayProps) {
+export function DisconnectedOverlay({
+  isDisconnected,
+}: DisconnectedOverlayProps) {
   if (!isDisconnected) return null;
 
   return (
