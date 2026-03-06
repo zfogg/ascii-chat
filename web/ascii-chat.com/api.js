@@ -450,12 +450,19 @@ app.get("/api/health", (req, res) => {
 
 // Session strings endpoint
 app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
+  // Enable CORS for session strings endpoint
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+
   try {
     const count = parseInt(req.query.count || "1", 10);
 
     // Validate count
     if (isNaN(count) || count < 1) {
-      return res.status(400).json({ error: "count must be a positive integer" });
+      return res
+        .status(400)
+        .json({ error: "count must be a positive integer" });
     }
 
     // Max limit check (2500 * 5000 * 5000 = 62,500,000,000)
@@ -467,7 +474,10 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
     }
 
     // Call the ascii-chat-strings binary
-    const binaryPath = path.join(__dirname, "../../build/bin/ascii-chat-strings");
+    const binaryPath = path.join(
+      __dirname,
+      "../../build/bin/ascii-chat-strings",
+    );
     const output = execSync(`"${binaryPath}" --count ${count}`, {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],

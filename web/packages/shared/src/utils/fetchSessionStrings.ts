@@ -6,8 +6,9 @@
  */
 export async function fetchSessionStrings(count: number = 1): Promise<string[]> {
   try {
+    // Use relative URL so it works in production and with dev proxy
     const response = await fetch(
-      `https://ascii-chat.com/api/session-strings?count=${count}`,
+      `/api/session-strings?count=${count}`,
     );
 
     if (!response.ok) {
