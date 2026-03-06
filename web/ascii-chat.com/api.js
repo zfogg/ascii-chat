@@ -10,10 +10,37 @@ import { execSync } from "child_process";
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// In Vercel, when served through /api/index.js, __dirname is the /api directory
+// We need to find the root directory (parent of /api) for the bin path
+// Also try process.cwd() as a fallback for finding the binary
+const ROOT_DIR = __dirname.endsWith("/api")
+  ? path.dirname(__dirname)
+  : __dirname;
 const app = express();
 const PORT = process.env.API_PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || "development";
+
+// Helper to find binary - try multiple locations
+function getBinaryPath() {
+  const locations = [
+    path.join(ROOT_DIR, "bin/ascii-chat-strings"), // From ROOT_DIR
+    path.join(ROOT_DIR, "dist/bin/ascii-chat-strings"), // From dist output
+    path.join(__dirname, "bin/ascii-chat-strings"), // From current dir
+    path.join(process.cwd(), "bin/ascii-chat-strings"), // From process.cwd()
+    path.join(process.cwd(), "../bin/ascii-chat-strings"), // Up one level
+    "../../build/bin/ascii-chat-strings", // Dev build location
+  ];
+
+  for (const location of locations) {
+    if (fs.existsSync(location)) {
+      return location;
+    }
+  }
+
+  return null; // No binary found
+}
 
 // Configure logger
 const logger = winston.createLogger({
@@ -475,16 +502,27 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
     }
 
     // Call the ascii-chat-strings binary
-    const binaryPath = path.join(
-      __dirname,
-      NODE_ENV === "production"
-        ? "./bin/ascii-chat-strings"
-        : "../../build/bin/ascii-chat-strings",
+    const binaryPath = getBinaryPath();
+
+    if (!binaryPath) {
+      logger.error(
+        `[session-strings] Binary not found. Searched in: ROOT_DIR=${ROOT_DIR}, __dirname=${__dirname}, cwd=${process.cwd()}`,
+      );
+      return res.status(500).json({ error: "Binary not available" });
+    }
+
+    logger.info(
+      `[session-strings] NODE_ENV=${NODE_ENV}, using binary at ${binaryPath}`,
     );
+
     const output = execSync(`"${binaryPath}" --count ${count}`, {
       encoding: "utf-8",
       stdio: ["pipe", "pipe", "pipe"],
     });
+
+    logger.info(
+      `[session-strings] Generated ${output.split("\n").length} strings`,
+    );
 
     const strings = output
       .trim()
@@ -496,7 +534,9 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
       strings: strings,
     });
   } catch (err) {
-    logger.error("Session strings error:", err);
+    logger.error(
+      `Session strings error: ${err.message}, stderr=${err.stderr}, stdout=${err.stdout}`,
+    );
     res.status(500).json({ error: "Failed to generate session strings" });
   }
 });

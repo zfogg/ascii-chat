@@ -35,5 +35,9 @@ concurrently "${build_commands[@]}"
 echo "Copying index.html to 404.html..."
 cp dist/index.html dist/404.html
 
+echo "Copying binary for API functions..."
+mkdir -p dist/bin
+cp bin/ascii-chat-strings dist/bin/
+
 echo "✓ Build complete"
 
