@@ -1,17 +1,18 @@
 import { Heading, Button } from "@ascii-chat/shared/components";
 import { WebClientHead } from "../components/WebClientHead";
+import { Layout } from "../components/Layout";
 
 export function NotFoundPage() {
   return (
-    <>
+    <Layout>
       <WebClientHead
         title="404 - Page Not Found | ascii-chat Web Client"
         description="The page you're looking for doesn't exist or has been moved."
         url="https://web.ascii-chat.com/404"
       />
-      <div className="flex-1 bg-terminal-bg flex items-center justify-center p-4">
+      <div className="flex-1 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <pre className="text-terminal-1 text-6xl font-mono mb-4">404</pre>
+          <pre className="text-terminal-1 text-6xl font-mono mb-4 overflow-hidden">404</pre>
           <Heading
             level={1}
             className="text-2xl font-bold text-terminal-fg mb-2"
@@ -30,6 +31,6 @@ export function NotFoundPage() {
           </Button>
         </div>
       </div>
-    </>
+    </Layout>
   );
 }
