@@ -301,14 +301,14 @@
 946       // Validate --log-level and --log-file require arguments
 947       if (strcmp(argv[i], &quot;--log-level&quot;) == 0) {
 948         if (i + 1 &gt;= argc || argv[i + 1][0] == '-') {
-949           log_plain_stderr(&quot;Error: --log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
+949           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
 950           return ERROR_USAGE;
 951         }
 952         i++; // Skip the argument in this loop
 953       }
 954       if (strcmp(argv[i], &quot;-L&quot;) == 0 || strcmp(argv[i], &quot;--log-file&quot;) == 0) {
 955         if (i + 1 &gt;= argc || argv[i + 1][0] == '-') {
-956           log_plain_stderr(&quot;Error: %s requires a file path&quot;, argv[i]);
+956           log_error(&quot;%s requires a file path&quot;, argv[i]);
 957           return ERROR_USAGE;
 958         }
 959         i++; // Skip the argument in this loop
@@ -367,7 +367,7 @@
 1012       if (strcmp(argv[i], &quot;--check-update&quot;) == 0) {
 1013         check_update_flag_seen = true;
 1014         if (no_check_update_flag_seen) {
-1015           log_plain_stderr(&quot;Error: Cannot specify both --check-update and --no-check-update&quot;);
+1015           log_error(&quot;Cannot specify both --check-update and --no-check-update&quot;);
 1016           return ERROR_USAGE;
 1017         }
 1018         has_action = true;
@@ -378,7 +378,7 @@
 1023       if (strcmp(argv[i], &quot;--no-check-update&quot;) == 0) {
 1024         no_check_update_flag_seen = true;
 1025         if (check_update_flag_seen) {
-1026           log_plain_stderr(&quot;Error: Cannot specify both --check-update and --no-check-update&quot;);
+1026           log_error(&quot;Cannot specify both --check-update and --no-check-update&quot;);
 1027           return ERROR_USAGE;
 1028         }
 1029         // Flag will be parsed normally later
@@ -420,7 +420,7 @@
 1065           action_completions(shell_name, output_file);
 1066           // action_completions() calls _Exit(), so we don't reach here
 1067         } else {
-1068           log_plain_stderr(&quot;Error: --completions requires shell name (bash, fish, zsh, powershell)&quot;);
+1068           log_error(&quot;--completions requires shell name (bash, fish, zsh, powershell)&quot;);
 1069           return ERROR_USAGE;
 1070         }
 1071         break; // Unreachable, but for clarity
@@ -576,11 +576,11 @@
 1221       // Handle --log-level LEVEL (set log threshold)
 1222       if (strcmp(argv[i], &quot;--log-level&quot;) == 0) {
 1223         if (i + 1 &gt;= argc) {
-1224           log_plain_stderr(&quot;Error: --log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
+1224           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
 1225           return ERROR_USAGE;
 1226         }
 1227         if (argv[i + 1][0] == '-') {
-1228           log_plain_stderr(&quot;Error: --log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
+1228           log_error(&quot;--log-level requires a value (dev, debug, info, warn, error, fatal)&quot;);
 1229           return ERROR_USAGE;
 1230         }
 1231         char *error_msg = NULL;
@@ -588,10 +588,10 @@
 1233           i++; // Skip the level argument
 1234         } else {
 1235           if (error_msg) {
-1236             log_plain_stderr(&quot;Error: %s&quot;, error_msg);
+1236             log_error(&quot;%s&quot;, error_msg);
 1237             free(error_msg);
 1238           } else {
-1239             log_plain_stderr(&quot;Error: invalid log level value: %s&quot;, argv[i + 1]);
+1239             log_error(&quot;invalid log level value: %s&quot;, argv[i + 1]);
 1240           }
 1241           return ERROR_USAGE;
 1242         }
@@ -599,11 +599,11 @@
 1244       // Handle -L and --log-file FILE (set log file path)
 1245       if ((strcmp(argv[i], &quot;-L&quot;) == 0 || strcmp(argv[i], &quot;--log-file&quot;) == 0)) {
 1246         if (i + 1 &gt;= argc) {
-1247           log_plain_stderr(&quot;Error: %s requires a file path&quot;, argv[i]);
+1247           log_error(&quot;%s requires a file path&quot;, argv[i]);
 1248           return ERROR_USAGE;
 1249         }
 1250         if (argv[i + 1][0] == '-') {
-1251           log_plain_stderr(&quot;Error: %s requires a file path&quot;, argv[i]);
+1251           log_error(&quot;%s requires a file path&quot;, argv[i]);
 1252           return ERROR_USAGE;
 1253         }
 1254         SAFE_STRNCPY(opts.log_file, argv[i + 1], sizeof(opts.log_file));

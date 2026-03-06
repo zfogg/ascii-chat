@@ -154,13 +154,13 @@
     <b>options/parsing/actions.c</b>.</p>
 <pre>571                                                                          {
 572   if (!shell_name || strlen(shell_name) == 0) {
-573     log_plain_stderr(&quot;Error: --completions requires shell name (bash, fish, zsh, powershell)&quot;);
+573     log_error(&quot;--completions requires shell name (bash, fish, zsh, powershell)&quot;);
 574     action_exit(ERROR_USAGE);
 575   }
 576 
 577   completion_format_t format = completions_parse_shell_name(shell_name);
 578   if (format == COMPLETION_FORMAT_UNKNOWN) {
-579     log_plain_stderr(&quot;Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)&quot;, shell_name);
+579     log_error(&quot;Unknown shell '%s' (supported: bash, fish, zsh, powershell)&quot;, shell_name);
 580     action_exit(ERROR_USAGE);
 581   }
 582 
@@ -186,7 +186,7 @@
 602 
 603     output = platform_fopen(&quot;file_stream&quot;, output_path, &quot;w&quot;);
 604     if (!output) {
-605       log_plain_stderr(&quot;Error: Failed to open %s for writing&quot;, output_path);
+605       log_error(&quot;Failed to open %s for writing&quot;, output_path);
 606       action_exit(ERROR_FILE_OPERATION);
 607     }
 608     should_close = true;
@@ -199,7 +199,7 @@
 615   }
 616 
 617   if (result != ASCIICHAT_OK) {
-618     log_plain_stderr(&quot;Error: Failed to generate %s completions&quot;, completions_get_shell_name(format));
+618     log_error(&quot;Failed to generate %s completions&quot;, completions_get_shell_name(format));
 619     action_exit(ERROR_USAGE);
 620   }
 621 
@@ -246,17 +246,17 @@
 549   if (result != ASCIICHAT_OK) {
 550     asciichat_error_context_t err_ctx;
 551     if (HAS_ERRNO(&amp;err_ctx)) {
-552       log_plain_stderr(&quot;Error creating config: %s&quot;, err_ctx.context_message);
+552       log_error(&quot;Error creating config: %s&quot;, err_ctx.context_message);
 553     } else {
-554       log_plain_stderr(&quot;Error: Failed to create config file&quot;);
+554       log_error(&quot;Failed to create config file&quot;);
 555     }
 556     action_exit(ERROR_CONFIG);
 557   }
 558 
 559   if (config_path) {
-560     log_plain_stderr(&quot;Created default config file at: %s&quot;, config_path);
+560     log_info(&quot;Created default config file at: %s&quot;, config_path);
 561   } else {
-562     log_plain_stderr(&quot;Config written to stdout&quot;);
+562     log_info(&quot;Config written to stdout&quot;);
 563   }
 564   action_exit(0);
 565 }</pre>
@@ -277,7 +277,7 @@
 477   const options_config_t *config = options_preset_unified(NULL, NULL);
 478 
 479   if (!config) {
-480     log_plain_stderr(&quot;Error: Failed to get binary options config&quot;);
+480     log_error(&quot;Failed to get binary options config&quot;);
 481     action_exit(ERROR_FILE_OPERATION);
 482   }
 483 
@@ -301,17 +301,17 @@
 501   if (err != ASCIICHAT_OK) {
 502     asciichat_error_context_t err_ctx;
 503     if (HAS_ERRNO(&amp;err_ctx)) {
-504       log_plain_stderr(&quot;Error: %s&quot;, err_ctx.context_message);
+504       log_error(&quot;%s&quot;, err_ctx.context_message);
 505     } else {
-506       log_plain_stderr(&quot;Error: Failed to generate man page&quot;);
+506       log_error(&quot;Failed to generate man page&quot;);
 507     }
 508     action_exit(ERROR_FILE_OPERATION);
 509   }
 510 
 511   if (path_to_use) {
-512     log_plain_stderr(&quot;Man page written to: %s&quot;, path_to_use);
+512     log_info(&quot;Man page written to: %s&quot;, path_to_use);
 513   } else {
-514     log_plain_stderr(&quot;Man page written to stdout&quot;);
+514     log_info(&quot;Man page written to stdout&quot;);
 515   }
 516 
 517   action_exit(0);

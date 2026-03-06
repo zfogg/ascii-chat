@@ -95,10 +95,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-articulate-now-dip
-pedigree-limp-sculpture
-sweetheart-bash-warmth
-rubber-salsa-tuck</pre>
+sloppy-priest-object
+robotic-fatso-shuffle
+cardiac-elephant-stranger
+korean-voodoo-pace</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -182,23 +182,23 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat chief-rock-hua</b></dt>
+  <dt><b>ascii-chat shady-saw-slug</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat sunset-employ-rope --file video.mp4</b></dt>
+  <dt><b>ascii-chat aerial-zoo-flank --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat wanton-whole-surround --url
+  <dt><b>ascii-chat continuous-padre-fever --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat rigid-portal-language -f -</b></dt>
+  <dt><b>ascii-chat due-newborn-knee -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat legendary-gypsy-tiger --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat seventy-credit-sniper --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat behavioral-snatch-applause --discovery-service
+  <dt><b>ascii-chat stiff-premier-bracelet --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat discovery-service</b></dt>
+  <dt><b>ascii-chat server</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
-  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
+  <dt><b>ascii-chat server 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
   <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
@@ -210,15 +210,15 @@ https://example.com/stream.m3u8</pre>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat mirror --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
-  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
+  <dt><b>ascii-chat client -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
-  <dt><b>ascii-chat mirror --snapshot</b></dt>
+  <dt><b>ascii-chat client --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
-  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
+  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
   <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
@@ -1094,6 +1094,42 @@ https://example.com/stream.m3u8</pre>
     strings, public keys, NAT traversal ICE candidates); your video and audio
     flow peer-to-peer with end-to-end encryption. ACDS never sees your
   media.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="WebSocket_Connections_(Browser_Clients)"><a class="permalink" href="#WebSocket_Connections_(Browser_Clients)">WebSocket
+  Connections (Browser Clients)</a></h2>
+<p class="Pp">When connecting via WebSocket URLs (\fBws://\fR or \fBwss://\fR),
+    ascii-chat handles encryption differently to work efficiently with browser
+    clients.</p>
+<p class="Pp">For \fBwss://\fR connections (WebSocket Secure), ascii-chat
+    disables ACIP application-level encryption by default. Why? Because TLS (the
+    &quot;S&quot; in wss) already encrypts everything in transit&#x2014;adding
+    another layer would be redundant and slow. So TLS handles the transport
+    encryption, and ascii-chat focuses on what matters: authenticating the
+    connection if you want to.</p>
+<p class="Pp">If you specify authentication flags like \fB\-\-key\fR,
+    \fB\-\-server\-key\fR, or \fB\-\-client\-keys\fR, those still work normally
+    with \fBwss://\fR. The authentication handshake happens after the TLS
+    connection is established, so your connection gets both transport encryption
+    and verification.</p>
+<p class="Pp">You can override this behavior with \fB\-\-encrypt\fR and
+    \fB\-\-auth\fR flags:</p>
+<div class="Bd-indent">
+<dl class="Bl-tag">
+  <dt>\fB\-\-encrypt=true\fR</dt>
+  <dd>Force application-level encryption even over \fBwss://\fR</dd>
+  <dt>\fB\-\-encrypt=false\fR</dt>
+  <dd>Disable application-level encryption (the \fBwss://\fR default)</dd>
+  <dt>\fB\-\-auth=true\fR</dt>
+  <dd>Force authentication (default if you specify \fB\-\-key\fR or
+      \fB\-\-server\-key\fR)</dd>
+  <dt>\fB\-\-auth=false\fR</dt>
+  <dd>Skip authentication even if keys are provided</dd>
+</dl>
+</div>
+<p class="Pp">In short: \fBwss://\fR is TLS-encrypted by default, and
+    ascii-chat's application encryption is optional. Authentication still works
+    if you want it, regardless of the transport layer.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="Session_Rekeying_and_Forward_Secrecy"><a class="permalink" href="#Session_Rekeying_and_Forward_Secrecy">Session
