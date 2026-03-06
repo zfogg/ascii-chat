@@ -11,6 +11,65 @@
 #   - ABSEIL_INCLUDE_DIRS: Abseil include directories (PARENT_SCOPE)
 # =============================================================================
 
+# iOS build: Build from source
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}Abseil-cpp${ColorReset} from source (iOS cross-compile)...")
+
+    include(ExternalProject)
+
+    set(ABSEIL_PREFIX "${IOS_DEPS_CACHE_DIR}/abseil")
+    set(ABSEIL_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/abseil-build")
+
+    if(NOT EXISTS "${ABSEIL_PREFIX}/lib/libabsl_base.a")
+        message(STATUS "  Abseil library not found in cache, will build from source")
+
+        # Get iOS SDK path
+        if(BUILD_IOS_SIM)
+            set(LDC_IOS_PLATFORM SIMULATOR64)
+        else()
+            set(LDC_IOS_PLATFORM OS)
+        endif()
+
+        set(ABSEIL_TOOLCHAIN "${CMAKE_SOURCE_DIR}/cmake/toolchains/LibwebsocketsIOS.cmake")
+
+        ExternalProject_Add(abseil-ios
+            URL https://github.com/abseil/abseil-cpp/archive/refs/tags/20250814.1.tar.gz
+            URL_HASH SHA256=1692f77d1739bacf3f94337188b78583cf09bab7e420d2dc6c5605a4f86785a1
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${ABSEIL_BUILD_DIR}
+            STAMP_DIR ${ABSEIL_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CMAKE_ARGS
+                -DCMAKE_TOOLCHAIN_FILE=${ABSEIL_TOOLCHAIN}
+                -DIOS_PLATFORM=${LDC_IOS_PLATFORM}
+                -DIOS_DEPLOYMENT_TARGET=16.0
+                -DIOS_DEPS_CACHE_DIR=${IOS_DEPS_CACHE_DIR}
+                -DCMAKE_BUILD_TYPE=Release
+                -DCMAKE_INSTALL_PREFIX=${ABSEIL_PREFIX}
+                -DBUILD_SHARED_LIBS=OFF
+                -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+                -DCMAKE_CXX_STANDARD=17
+            BUILD_BYPRODUCTS
+                ${ABSEIL_PREFIX}/lib/libabsl_base.a
+                ${ABSEIL_PREFIX}/lib/libabsl_strings.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}Abseil${ColorReset} library found in iOS cache: ${BoldMagenta}${ABSEIL_PREFIX}/lib/libabsl_base.a${ColorReset}")
+        add_custom_target(abseil-ios)
+    endif()
+
+    set(ABSEIL_LIBRARIES "${ABSEIL_PREFIX}/lib")
+    set(ABSEIL_INCLUDE_DIRS "${ABSEIL_PREFIX}/include")
+    message(STATUS "${BoldGreen}✓${ColorReset} Abseil (iOS): ${ABSEIL_PREFIX}/lib")
+    return()
+endif()
+
 # Musl build: Build from source
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}Abseil-cpp${ColorReset} from source (musl)...")

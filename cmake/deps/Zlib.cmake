@@ -16,6 +16,81 @@
 # =============================================================================
 
 # =============================================================================
+# iOS: Build from source for iOS cross-compilation
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}zlib${ColorReset} from source (iOS cross-compile)...")
+
+    set(ZLIB_PREFIX "${IOS_DEPS_CACHE_DIR}/zlib")
+    set(ZLIB_INCLUDE_DIR "${ZLIB_PREFIX}/include")
+    set(ZLIB_LIBRARY "${ZLIB_PREFIX}/lib/libz.a")
+
+    if(NOT EXISTS "${ZLIB_LIBRARY}")
+        message(STATUS "  zlib library not found in cache, will build from source")
+
+        set(ZLIB_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/zlib-build")
+        file(MAKE_DIRECTORY "${ZLIB_BUILD_DIR}")
+
+        # Get iOS SDK path
+        if(BUILD_IOS_SIM)
+            execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        else()
+            execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        endif()
+
+        message(STATUS "  Downloading zlib 1.3.1...")
+        file(DOWNLOAD
+            "https://github.com/madler/zlib/releases/download/v1.3.1/zlib-1.3.1.tar.gz"
+            "${ZLIB_BUILD_DIR}/zlib-1.3.1.tar.gz"
+            TIMEOUT 30
+            SHOW_PROGRESS
+        )
+
+        message(STATUS "  Extracting zlib...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf zlib-1.3.1.tar.gz
+            WORKING_DIRECTORY "${ZLIB_BUILD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract zlib")
+        endif()
+
+        message(STATUS "  Configuring and building zlib for iOS...")
+        execute_process(
+            COMMAND bash -c "cd '${ZLIB_BUILD_DIR}/zlib-1.3.1' && \
+                    CC=clang \
+                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
+                    LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64' \
+                    ./configure --prefix='${ZLIB_PREFIX}' --static && \
+                    make -j && make install"
+            RESULT_VARIABLE BUILD_RESULT
+            OUTPUT_VARIABLE BUILD_OUTPUT
+            ERROR_VARIABLE BUILD_ERROR
+        )
+        if(NOT BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "zlib iOS build failed:\n${BUILD_ERROR}")
+        endif()
+    else()
+        message(STATUS "  ${BoldBlue}zlib${ColorReset} library found in iOS cache: ${BoldMagenta}${ZLIB_LIBRARY}${ColorReset}")
+    endif()
+
+    set(ZLIB_FOUND TRUE)
+
+    # Create imported target
+    if(NOT TARGET ZLIB::zlib)
+        add_library(ZLIB::zlib STATIC IMPORTED GLOBAL)
+        set_target_properties(ZLIB::zlib PROPERTIES
+            IMPORTED_LOCATION "${ZLIB_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
+        )
+    endif()
+
+    message(STATUS "${BoldGreen}✓${ColorReset} zlib (iOS): ${ZLIB_LIBRARY}")
+    return()
+endif()
+
+# =============================================================================
 # musl: Build from source
 # =============================================================================
 if(USE_MUSL)

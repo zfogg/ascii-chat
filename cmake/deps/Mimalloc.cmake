@@ -17,6 +17,14 @@
 #   - Defines: USE_MIMALLOC, MI_STATIC_LIB (via add_compile_definitions)
 # =============================================================================
 
+# iOS: Skip mimalloc (iOS has efficient built-in memory management)
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} (iOS - skipped, using system allocator)...")
+    message(STATUS "  ℹ iOS uses system memory management, mimalloc not needed")
+    add_compile_definitions(USE_MIMALLOC=0)
+    return()
+endif()
+
 if(USE_MIMALLOC)
     message(STATUS "Configuring ${BoldCyan}mimalloc${ColorReset} memory allocator...")
 
