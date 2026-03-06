@@ -205,7 +205,6 @@
 308 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_warn</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -244,7 +243,6 @@
 1082 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_database_session_cleanup_expired_(sqlite3_*_db)"><a class="permalink" href="#void_database_session_cleanup_expired_(sqlite3_*_db)">void
@@ -338,7 +336,7 @@
 974 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_id</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>session_id</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_database_session_create_(sqlite3_*_db,_const_acip_session_create_t_*_req,_const_"><a class="permalink" href="#asciichat_error_t_database_session_create_(sqlite3_*_db,_const_acip_session_create_t_*_req,_const_">asciichat_error_t
@@ -446,8 +444,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_string_generate()</b>,
     <b>is_session_string()</b>, <b>MAX_PARTICIPANTS</b>, <b>session_id</b>,
-    <b>SET_ERRNO</b>, <b>acds_config_t::stun_count</b>, and
-    <b>acds_config_t::turn_count</b>.</p>
+    <b>acds_config_t::stun_count</b>, and <b>acds_config_t::turn_count</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="session_entry_t_*_database_session_find_by_id_(sqlite3_*_db,_const_uint8_t_session_id_16_)"><a class="permalink" href="#session_entry_t_*_database_session_find_by_id_(sqlite3_*_db,_const_uint8_t_session_id_16_)">session_entry_t
@@ -560,7 +557,6 @@
 1162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> database_session_is_migration_ready (sqlite3 * db,
@@ -809,9 +805,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>database_session_find_by_string()</b>,
-    <b>log_warn</b>, <b>participant_id</b>, <b>session_entry_destroy()</b>,
-    <b>SET_ERRNO</b>, <b>turn_generate_credentials()</b>, and
-    <b>acds_config_t::turn_secret</b>.</p>
+    <b>participant_id</b>, <b>session_entry_destroy()</b>,
+    <b>turn_generate_credentials()</b>, and
+  <b>acds_config_t::turn_secret</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_database_session_leave_(sqlite3_*_db,_const_uint8_t_session_id_16_,_const_uint8_t_participant_id_16_)"><a class="permalink" href="#asciichat_error_t_database_session_leave_(sqlite3_*_db,_const_uint8_t_session_id_16_,_const_uint8_t_participant_id_16_)">asciichat_error_t
@@ -939,8 +935,8 @@
 795 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>participant_id</b>, <b>session_id</b>,
-    <b>SESSION_STRING_BUFFER_SIZE</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>participant_id</b>, <b>session_id</b>, and
+    <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_database_session_lookup_(sqlite3_*_db,_const_char_*_session_string,_const_"><a class="permalink" href="#asciichat_error_t_database_session_lookup_(sqlite3_*_db,_const_char_*_session_string,_const_">asciichat_error_t
@@ -1010,8 +1006,8 @@
 480 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acds_config_t::require_client_verify</b>,
-    <b>acds_config_t::require_server_verify</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>acds_config_t::require_client_verify</b>, and
+    <b>acds_config_t::require_server_verify</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_database_session_revoke_key_(sqlite3_*_db,_const_char_*_session_string,_const_uint8_t_identity_pubkey_32_)"><a class="permalink" href="#asciichat_error_t_database_session_revoke_key_(sqlite3_*_db,_const_char_*_session_string,_const_uint8_t_identity_pubkey_32_)">asciichat_error_t
@@ -1046,7 +1042,6 @@
 1109 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_database_session_start_migration_(sqlite3_*_db,_const_uint8_t_session_id_16_)"><a class="permalink" href="#asciichat_error_t_database_session_start_migration_(sqlite3_*_db,_const_uint8_t_session_id_16_)">asciichat_error_t
@@ -1094,8 +1089,8 @@
 1013 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_id</b>, <b>SET_ERRNO</b>, and
-    <b>time_get_realtime_ns()</b>.</p>
+<p class="Pp">References <b>session_id</b>, and
+  <b>time_get_realtime_ns()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_database_session_update_host_(sqlite3_*_db,_const_uint8_t_session_id_16_,_const_uint8_t_host_participant_id_16_,_const_char_*_host_address,_uint16_t_host_port,_uint8_t_connection_type)"><a class="permalink" href="#asciichat_error_t_database_session_update_host_(sqlite3_*_db,_const_uint8_t_session_id_16_,_const_uint8_t_host_participant_id_16_,_const_char_*_host_address,_uint16_t_host_port,_uint8_t_connection_type)">asciichat_error_t
@@ -1152,7 +1147,7 @@
 936 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_id</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>session_id</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> database_session_verify_key (sqlite3 * db, const char

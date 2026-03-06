@@ -47,22 +47,6 @@
 </p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
-<br/>
-<p class="Pp">#define <b>SAFE_MALLOC</b>(size, type)
-  <br/>
-  #define <b>SAFE_FREE</b>(ptr)
-  <br/>
-  #define <b>SET_ERRNO</b>(code, fmt, ...)
-  <br/>
-  #define <b>log_dev</b>(fmt, ...)
-  <br/>
-  #define <b>log_warn</b>(fmt, ...)
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">void <b>acds_strings_destroy</b> (void)
@@ -72,8 +56,8 @@
     multiple times (idempotent). asciichat_error_t <b>acds_string_init</b>
     (void)
   <br/>
-  asciichat_error_t <b>acds_string_generate</b> (char *output, size_t
-    output_size)
+  Session string format validator using PCRE2 singleton. asciichat_error_t
+    <b>acds_string_generate</b> (char *output, size_t output_size)
   <br/>
   <b>bool</b> <b>is_session_string</b> (const char *str)
   <br/>
@@ -93,907 +77,70 @@
 <p class="Pp">Definition in file <b>discovery/strings.c</b>.</p>
 </section>
 <section class="Sh">
-<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
-  Definition Documentation</a></h1>
-<section class="Ss">
-<h2 class="Ss" id="_define_log_dev(_fmt,__"><a class="permalink" href="#_define_log_dev(_fmt,__">#define
-  log_dev( fmt, ...)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((void)0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>30</b> of file
-  <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_string_generate()</b>,
-    <b>acds_strings_destroy()</b>, <b>ascii_convert()</b>,
-    <b>ascii_convert_with_capabilities()</b>, <b>ascii_write_init()</b>,
-    <b>asciichat_mdns_init()</b>, <b>buffer_pool_create()</b>,
-    <b>buffer_pool_init_global()</b>, <b>client_send_thread_func()</b>,
-    <b>consensus_coordinator_on_collection_start()</b>,
-    <b>crypto_derive_password_encryption_key()</b>,
-    <b>crypto_derive_password_key()</b>, <b>crypto_handshake_init()</b>,
-    <b>crypto_init()</b>, <b>crypto_init_with_password()</b>,
-    <b>env_pop_prompt_response()</b>, <b>h265_encode()</b>,
-    <b>h265_encoder_flush()</b>, <b>initialize_client_palette()</b>,
-    <b>lifecycle_destroy_commit()</b>, <b>lifecycle_destroy_once()</b>,
-    <b>lifecycle_init()</b>, <b>lifecycle_init_abort()</b>,
-    <b>lifecycle_init_commit()</b>, <b>lifecycle_init_once()</b>,
-    <b>lifecycle_reset()</b>, <b>lifecycle_shutdown()</b>,
-    <b>lifecycle_shutdown_forever()</b>, <b>main()</b>, <b>options_init()</b>,
-    <b>options_state_init()</b>, <b>parse_ssh_private_key()</b>,
-    <b>platform_enable_keepawake()</b>, <b>platform_is_binary_in_path()</b>,
-    <b>platform_open()</b>, <b>session_display_convert_to_ascii()</b>,
-    <b>session_render_loop()</b>, <b>simd_caches_destroy_all()</b>,
-    <b>splash_wait_for_animation()</b>, <b>ssh_agent_is_available()</b>,
-    <b>symbol_cache_destroy()</b>, <b>symbol_cache_init()</b>,
-    <b>thread_pool_queue_work()</b>, <b>timer_stop()</b>,
-    <b>timer_system_init()</b>, <b>update_dimensions_to_terminal_size()</b>, and
-    <b>webcam_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_log_warn(_fmt,__"><a class="permalink" href="#_define_log_warn(_fmt,__">#define
-  log_warn( fmt, ...)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((void)0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>31</b> of file
-  <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>, <b>acds_main()</b>,
-    <b>acds_server_init()</b>, <b>acds_server_shutdown()</b>,
-    <b>acds_session_join()</b>, <b>acds_validate_timestamp()</b>,
-    <b>acds_verify_session_create()</b>, <b>acds_verify_session_join()</b>,
-    <b>acip_client_receive_and_dispatch()</b>,
-    <b>acip_server_receive_and_dispatch()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>actions_execute_deferred()</b>, <b>add_client()</b>,
-    <b>add_webrtc_client()</b>, <b>ascii_convert_with_capabilities()</b>,
-    <b>ascii_write()</b>, <b>ascii_write_destroy()</b>,
-    <b>ascii_write_init()</b>, <b>asciichat_pcre2_singleton_get_code()</b>,
-    <b>audio_process_received_samples()</b>, <b>audio_start_duplex()</b>,
-    <b>audio_start_thread()</b>, <b>audio_stop_duplex()</b>,
-    <b>audio_stop_thread()</b>, <b>backtrace_print()</b>,
-    <b>broadcast_clear_console_to_all_clients()</b>,
-    <b>broadcast_server_state_to_all_clients()</b>,
-    <b>capture_start_thread()</b>, <b>capture_stop_thread()</b>,
-    <b>check_and_record_rate_limit()</b>, <b>check_gpg_key_expiry()</b>,
-    <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
-    <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_process_duplex()</b>,
-    <b>client_crypto_handshake()</b>, <b>client_crypto_init()</b>,
-    <b>client_main()</b>, <b>client_receive_thread()</b>,
-    <b>client_send_thread_func()</b>, <b>client_video_render_thread()</b>,
-    <b>config_schema_build_from_configs()</b>, <b>connect_with_timeout()</b>,
-    <b>connection_attempt_tcp()</b>, <b>connection_check_timeout()</b>,
-    <b>consensus_coordinator_on_collection_start()</b>,
-    <b>consensus_coordinator_on_election_result()</b>,
-    <b>consensus_coordinator_on_ring_members()</b>,
-    <b>consensus_coordinator_on_stats_update()</b>,
-    <b>consensus_coordinator_process()</b>,
-    <b>create_mixed_ascii_frame_for_client()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_init()</b>,
-    <b>database_init()</b>, <b>database_session_join()</b>,
-    <b>disconnect_client_for_bad_data()</b>, <b>discover_session_parallel()</b>,
-    <b>discovery_keys_verify()</b>, <b>discovery_keys_verify_change()</b>,
-    <b>discovery_mdns_query()</b>, <b>discovery_session_check_host_alive()</b>,
-    <b>discovery_session_create()</b>,
-    <b>discovery_session_handle_host_disconnect()</b>,
-    <b>discovery_session_process()</b>, <b>display_init()</b>,
-    <b>display_mitm_warning()</b>, <b>dns_test_connectivity()</b>,
-    <b>env_pop_prompt_response()</b>, <b>ffmpeg_decoder_create()</b>,
-    <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_decoder_read_audio_samples()</b>, <b>find_client_by_id()</b>,
-    <b>frame_validate_integrity()</b>, <b>gpg_agent_connect()</b>,
-    <b>gpg_agent_sign()</b>, <b>gpg_get_public_key()</b>,
-    <b>gpg_homedir_create()</b>, <b>gpg_homedir_destroy()</b>,
-    <b>h265_decode()</b>, <b>h265_encoder_create()</b>,
-    <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_client_capabilities_packet()</b>,
-    <b>handle_client_leave_packet()</b>,
-    <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
-    <b>handle_protocol_version_packet()</b>, <b>keepalive_start_thread()</b>,
-    <b>keepalive_stop_thread()</b>, <b>log_mmap_init()</b>,
-    <b>log_search_enter_mode()</b>, <b>log_search_exit_mode()</b>,
-    <b>main()</b>, <b>media_source_create()</b>,
-    <b>media_source_read_audio()</b>, <b>media_source_seek()</b>,
-    <b>media_source_set_loop()</b>, <b>mixer_add_source()</b>,
-    <b>nat_measure_bandwidth()</b>, <b>nat_upnp_open()</b>,
-    <b>options_builder_mark_binary_only()</b>,
-    <b>options_config_generate_manpage_merged()</b>, <b>options_init()</b>,
-    <b>options_state_init()</b>, <b>opus_codec_create_encoder()</b>,
-    <b>packet_queue_free_packet()</b>, <b>packet_receive()</b>,
-    <b>packet_send_error()</b>, <b>parse_gpg_keys_from_response()</b>,
-    <b>parse_public_keys()</b>, <b>parse_ssh_private_key()</b>,
-    <b>platform_write_all()</b>, <b>precalc_rgb_palettes()</b>,
-    <b>prompt_password()</b>, <b>prompt_password_simple()</b>,
-    <b>prompt_unknown_host()</b>, <b>prompt_unknown_host_no_identity()</b>,
-    <b>protocol_start_connection()</b>, <b>protocol_stop_connection()</b>,
-    <b>remove_client()</b>, <b>render_file_create()</b>,
-    <b>render_file_write_frame()</b>, <b>select_compatible_palette()</b>,
-    <b>server_connection_establish()</b>,
-    <b>server_connection_set_transport()</b>, <b>server_main()</b>,
-    <b>session_capture_create()</b>, <b>session_client_like_run()</b>,
-    <b>session_display_create()</b>, <b>session_display_encode_frame()</b>,
-    <b>session_display_set_snapshot_actual_duration()</b>,
-    <b>session_host_broadcast_frame()</b>,
-    <b>session_host_set_client_transport()</b>, <b>session_render_loop()</b>,
-    <b>session_settings_apply_to_options()</b>, <b>signaling_broadcast()</b>,
-    <b>socket_configure_buffers()</b>, <b>socket_optimize_for_streaming()</b>,
-    <b>splash_intro_start()</b>, <b>splash_wait_for_animation()</b>,
-    <b>ssh_agent_has_key()</b>, <b>stop_client_render_threads()</b>,
-    <b>stun_servers_parse()</b>, <b>tcp_client_connect()</b>,
-    <b>tcp_server_init()</b>, <b>tcp_server_reject_client()</b>,
-    <b>tcp_server_run()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_stop_all()</b>,
-    <b>threaded_send_terminal_size_with_auto_detect()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>update_dimensions_to_terminal_size()</b>,
-    <b>validate_gpg_key_format()</b>, <b>video_frame_buffer_create()</b>,
-    <b>webcam_cleanup_context()</b>, <b>webrtc_get_gathering_state()</b>,
-    <b>webrtc_get_state()</b>, <b>webrtc_get_user_data()</b>,
-    <b>webrtc_is_gathering_timed_out()</b>,
-    <b>webrtc_peer_manager_handle_ice()</b>, and
-  <b>websocket_server_init()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_FREE(_ptr)"><a class="permalink" href="#_define_SAFE_FREE(_ptr)">#define
-  SAFE_FREE( ptr)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>do { if(ptr) { free(ptr); ptr=NULL; } } while(0)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>28</b> of file
-  <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acds_identity_default_path()</b>, <b>acds_strings_destroy()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_transport_destroy()</b>,
-    <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, <b>add_client()</b>,
-    <b>add_known_host()</b>, <b>add_webrtc_client()</b>,
-    <b>app_client_create()</b>, <b>app_client_destroy()</b>,
-    <b>ascii_convert()</b>, <b>ascii_convert_with_capabilities()</b>,
-    <b>asciichat_clear_errno()</b>, <b>asciichat_errno_destroy()</b>,
-    <b>asciichat_fatal_with_context()</b>,
-    <b>asciichat_instr_runtime_destroy()</b>,
-    <b>asciichat_instr_runtime_get()</b>, <b>asciichat_mdns_destroy()</b>,
-    <b>asciichat_mdns_init()</b>, <b>asciichat_pcre2_cleanup_all()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>,
-    <b>asciichat_pcre2_singleton_free()</b>, <b>asciichat_set_errno()</b>,
-    <b>asciichat_set_errno_with_message()</b>,
-    <b>asciichat_set_errno_with_system_error_and_message()</b>,
-    <b>audio_destroy()</b>, <b>audio_free_device_list()</b>,
-    <b>audio_init()</b>, <b>buffer_pool_create()</b>,
-    <b>buffer_pool_destroy()</b>, <b>buffer_pool_free()</b>,
-    <b>buffer_pool_shrink()</b>, <b>check_known_host()</b>,
-    <b>check_known_host_no_identity()</b>,
-    <b>cleanup_client_media_buffers()</b>,
-    <b>client_audio_pipeline_create()</b>,
-    <b>client_audio_pipeline_destroy()</b>, <b>client_audio_render_thread()</b>,
-    <b>client_dispatch_thread()</b>, <b>client_free_string()</b>,
-    <b>client_send_thread_func()</b>, <b>client_video_render_thread()</b>,
-    <b>colorscheme_cleanup_compiled()</b>,
-    <b>completions_collect_all_modes_unique()</b>,
-    <b>completions_generate_fish()</b>,
-    <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
-    <b>compress_data()</b>, <b>config_create_default()</b>,
-    <b>config_load_and_apply()</b>, <b>config_schema_build_from_configs()</b>,
-    <b>config_schema_destroy()</b>, <b>consensus_coordinator_create()</b>,
-    <b>consensus_coordinator_destroy()</b>,
-    <b>consensus_election_choose_hosts()</b>,
-    <b>consensus_metrics_collection_add()</b>,
-    <b>consensus_metrics_collection_destroy()</b>,
-    <b>consensus_state_destroy()</b>, <b>consensus_topology_create()</b>,
-    <b>consensus_topology_destroy()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>crypto_regex_match_known_hosts()</b>,
-    <b>crypto_regex_match_public_key()</b>, <b>debug_sync_print_state()</b>,
-    <b>detect_client_utf8_support()</b>, <b>detect_default_ssh_key()</b>,
-    <b>digital_rain_destroy()</b>, <b>digital_rain_init()</b>,
-    <b>discover_session_parallel()</b>, <b>discovery_keys_get_cache_path()</b>,
-    <b>discovery_mdns_destroy()</b>, <b>discovery_mdns_query()</b>,
-    <b>discovery_session_destroy()</b>, <b>display_height()</b>,
-    <b>display_width()</b>, <b>ducking_destroy()</b>, <b>ducking_init()</b>,
-    <b>fetch_github_gpg_keys()</b>, <b>fetch_github_ssh_keys()</b>,
-    <b>fetch_gitlab_gpg_keys()</b>, <b>fetch_gitlab_ssh_keys()</b>,
-    <b>ffmpeg_decoder_create()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>ffmpeg_decoder_destroy()</b>, <b>ffmpeg_encoder_create()</b>,
-    <b>ffmpeg_encoder_destroy()</b>, <b>format_message()</b>,
-    <b>fps_counter_destroy()</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer_create()</b>, <b>frame_buffer_destroy()</b>,
-    <b>frame_buffer_printf()</b>, <b>framebuffer_create()</b>,
-    <b>framebuffer_create_multi()</b>, <b>framebuffer_destroy()</b>,
-    <b>framebuffer_read_frame()</b>, <b>get_discovery_database_dir()</b>,
-    <b>get_known_hosts_path()</b>, <b>get_log_dir()</b>,
-    <b>gpg_get_public_key()</b>, <b>gpg_homedir_create()</b>,
-    <b>gpg_homedir_destroy()</b>, <b>grep_destroy()</b>, <b>grep_init()</b>,
-    <b>grep_restore_patterns()</b>, <b>grep_save_patterns()</b>,
-    <b>grep_should_output()</b>, <b>h265_client_context_create()</b>,
-    <b>h265_client_context_destroy()</b>, <b>h265_decoder_create()</b>,
-    <b>h265_decoder_destroy()</b>, <b>h265_encoder_create()</b>,
-    <b>h265_encoder_destroy()</b>, <b>h265_server_context_destroy()</b>,
-    <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_image_frame_h265_packet()</b>, <b>handle_image_frame_packet()</b>,
-    <b>https_get()</b>, <b>image_destroy()</b>, <b>image_new()</b>,
-    <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>keyboard_help_render()</b>, <b>known_hosts_destroy()</b>,
-    <b>layout_print_two_column_row()</b>, <b>levenshtein()</b>,
-    <b>levenshtein_n()</b>, <b>log_labeled()</b>, <b>log_mmap_write()</b>,
-    <b>log_search_gather_and_filter_logs()</b>,
-    <b>manpage_content_free_environment()</b>,
-    <b>manpage_content_free_examples()</b>,
-    <b>manpage_content_free_options()</b>,
-    <b>manpage_content_free_positional()</b>,
-    <b>manpage_content_free_usage()</b>,
-    <b>manpage_content_generate_environment_with_manual()</b>,
-    <b>manpage_content_generate_examples()</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>manpage_merger_free_content()</b>, <b>manpage_parser_free_sections()</b>,
-    <b>manpage_resources_destroy()</b>, <b>media_source_create()</b>,
-    <b>media_source_destroy()</b>, <b>memory_backend_create()</b>,
-    <b>mirror_cleanup()</b>, <b>mirror_convert_frame()</b>,
-    <b>mirror_free_string()</b>, <b>mixer_create()</b>, <b>mixer_destroy()</b>,
-    <b>mixer_remove_source()</b>, <b>mutex_stack_free_all_threads()</b>,
-    <b>mutex_stack_get_all_threads()</b>, <b>nat_measure_bandwidth()</b>,
-    <b>nat_upnp_close()</b>, <b>nat_upnp_open()</b>, <b>node_pool_destroy()</b>,
-    <b>node_pool_put()</b>, <b>openpgp_base64_decode()</b>,
-    <b>openpgp_parse_armored_pubkey()</b>,
-    <b>openpgp_parse_armored_seckey()</b>, <b>options_builder_build()</b>,
-    <b>options_builder_create()</b>, <b>options_builder_destroy()</b>,
-    <b>options_config_destroy()</b>,
-    <b>options_config_generate_manpage_merged()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>, <b>options_init()</b>,
-    <b>options_state_destroy()</b>, <b>opus_codec_create_decoder()</b>,
-    <b>opus_codec_create_encoder()</b>, <b>opus_codec_destroy()</b>,
-    <b>packet_decode_frame_data_malloc()</b>, <b>packet_queue_destroy()</b>,
-    <b>packet_queue_free_packet()</b>, <b>packet_send_error()</b>,
-    <b>packet_send_remote_log()</b>, <b>packet_send_via_transport()</b>,
-    <b>parse_gpg_key_binary()</b>, <b>parse_gpg_keys_from_response()</b>,
-    <b>parse_keys_from_file()</b>, <b>parse_log_file()</b>,
-    <b>parse_private_key()</b>, <b>parse_public_key()</b>,
-    <b>parse_public_keys()</b>, <b>parse_ssh_ed25519_line()</b>,
-    <b>parse_ssh_keys_from_response()</b>, <b>parse_ssh_private_key()</b>,
-    <b>path_validate_user_path()</b>, <b>platform_is_binary_in_path()</b>,
-    <b>read_password_from_stdin()</b>, <b>remove_known_host()</b>,
-    <b>render_file_create()</b>, <b>render_file_destroy()</b>,
-    <b>render_file_write_frame()</b>, <b>ringbuffer_destroy()</b>,
-    <b>sdp_session_destroy()</b>, <b>send_packet_secure()</b>,
-    <b>server_main()</b>, <b>session_audio_create()</b>,
-    <b>session_audio_destroy()</b>, <b>session_capture_create()</b>,
-    <b>session_capture_destroy()</b>, <b>session_client_like_run()</b>,
-    <b>session_consensus_create()</b>, <b>session_consensus_destroy()</b>,
-    <b>session_display_convert_to_ascii()</b>, <b>session_display_destroy()</b>,
-    <b>session_display_encode_frame()</b>, <b>session_display_write_ascii()</b>,
-    <b>session_entry_destroy()</b>, <b>session_host_create()</b>,
-    <b>session_host_destroy()</b>, <b>session_log_buffer_destroy()</b>,
-    <b>session_network_capture_create()</b>,
-    <b>session_participant_destroy()</b>, <b>session_pipeline_create()</b>,
-    <b>session_pipeline_destroy()</b>, <b>session_pipeline_run_main()</b>,
-    <b>session_render_loop()</b>, <b>simd_caches_destroy_all()</b>,
-    <b>simple_frame_swap_destroy()</b>, <b>ssh_agent_sign()</b>,
-    <b>symbol_cache_free_symbols()</b>, <b>symbol_cache_resolve_batch()</b>,
-    <b>tcp_client_create()</b>, <b>tcp_client_destroy()</b>,
-    <b>tcp_server_add_client()</b>, <b>tcp_server_destroy()</b>,
-    <b>tcp_server_remove_client()</b>, <b>tcp_server_run()</b>,
-    <b>term_renderer_create()</b>, <b>term_renderer_destroy()</b>,
-    <b>term_renderer_feed()</b>, <b>terminal_fd_reader_destroy()</b>,
-    <b>terminal_fd_reader_next()</b>, <b>terminal_fd_writer_destroy()</b>,
-    <b>terminal_screen_render()</b>, <b>thread_pool_create()</b>,
-    <b>thread_pool_create_with_workers()</b>, <b>thread_pool_destroy()</b>,
-    <b>thread_pool_spawn()</b>, <b>thread_pool_stop_all()</b>,
-    <b>timer_start()</b>, <b>timer_stop()</b>, <b>timer_system_destroy()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>update_check_save_cache()</b>, <b>url_parse()</b>,
-    <b>url_parts_destroy()</b>, <b>utf8_palette_create()</b>,
-    <b>utf8_palette_destroy()</b>, <b>validate_ssh_key_file()</b>,
-    <b>video_frame_buffer_create()</b>, <b>video_frame_buffer_destroy()</b>,
-    <b>wav_writer_close()</b>, <b>wav_writer_open()</b>,
-    <b>webrtc_close_datachannel()</b>, <b>webrtc_close_peer_connection()</b>,
-    <b>webrtc_create_peer_connection()</b>,
-    <b>webrtc_peer_connection_destroy()</b>,
-    <b>webrtc_peer_manager_create()</b>, <b>webrtc_peer_manager_destroy()</b>,
-    <b>webrtc_peer_manager_handle_sdp()</b>, <b>websocket_client_create()</b>,
-    and <b>websocket_client_destroy()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SAFE_MALLOC(_size,__type)"><a class="permalink" href="#_define_SAFE_MALLOC(_size,__type)">#define
-  SAFE_MALLOC( size, type)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>((type)malloc(size))</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>27</b> of file
-  <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_client_handler()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, <b>add_known_host()</b>,
-    <b>ansi_strip_escapes()</b>, <b>app_client_create()</b>,
-    <b>ascii_create_grid()</b>, <b>ascii_pad_frame_height()</b>,
-    <b>ascii_pad_frame_width()</b>, <b>asciichat_mdns_init()</b>,
-    <b>asciichat_pcre2_extract_group()</b>,
-    <b>asciichat_pcre2_extract_named_group()</b>,
-    <b>asciichat_pcre2_singleton_compile()</b>, <b>asciichat_set_errno()</b>,
-    <b>audio_init()</b>, <b>buffer_pool_alloc()</b>,
-    <b>client_audio_render_thread()</b>, <b>client_dispatch_thread()</b>,
-    <b>client_get_public_key_hex()</b>, <b>client_main()</b>,
-    <b>client_parse_packet()</b>, <b>client_send_thread_func()</b>,
-    <b>colorscheme_compile_scheme()</b>, <b>compress_data()</b>,
-    <b>config_create_default()</b>, <b>config_load_and_apply()</b>,
-    <b>config_schema_build_from_configs()</b>,
-    <b>consensus_coordinator_create()</b>,
-    <b>consensus_election_choose_hosts()</b>,
-    <b>consensus_metrics_collection_add()</b>,
-    <b>consensus_metrics_collection_create()</b>,
-    <b>consensus_state_create()</b>, <b>consensus_topology_create()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_start()</b>, <b>debug_sync_print_state()</b>,
-    <b>digital_rain_apply()</b>, <b>discover_session_parallel()</b>,
-    <b>discovery_mdns_query()</b>, <b>ducking_init()</b>, <b>expand_path()</b>,
-    <b>ffmpeg_decoder_create()</b>, <b>ffmpeg_decoder_create_stdin()</b>,
-    <b>format_message()</b>, <b>frame_buffer_append()</b>,
-    <b>frame_buffer_create()</b>, <b>frame_buffer_printf()</b>,
-    <b>get_discovery_database_dir()</b>, <b>get_known_hosts_path()</b>,
-    <b>get_log_dir()</b>, <b>get_modes_by_group()</b>,
-    <b>get_utf8_palette_cache()</b>, <b>gpg_homedir_create()</b>,
-    <b>grep_highlight_colored_copy()</b>, <b>grep_init()</b>,
-    <b>grep_restore_patterns()</b>, <b>grep_save_patterns()</b>,
-    <b>grep_should_output()</b>, <b>h265_client_context_create()</b>,
-    <b>h265_client_init_media_source()</b>, <b>h265_encoder_create()</b>,
-    <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_image_frame_h265_packet()</b>, <b>https_get()</b>,
-    <b>image_new()</b>, <b>image_print()</b>, <b>image_print_16color()</b>,
-    <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_color()</b>, <b>keyboard_help_render()</b>,
-    <b>levenshtein()</b>, <b>log_search_gather_and_filter_logs()</b>,
-    <b>manpage_content_generate_environment()</b>,
-    <b>manpage_content_generate_environment_with_manual()</b>,
-    <b>manpage_content_generate_examples()</b>,
-    <b>manpage_content_generate_options()</b>,
-    <b>manpage_content_generate_positional()</b>,
-    <b>manpage_content_generate_usage()</b>,
-    <b>manpage_merger_generate_synopsis()</b>,
-    <b>manpage_merger_generate_usage()</b>,
-    <b>manpage_merger_merge_environment()</b>,
-    <b>manpage_merger_merge_options()</b>,
-    <b>manpage_merger_merge_positional()</b>, <b>media_source_create()</b>,
-    <b>memory_backend_create()</b>, <b>mirror_convert_frame()</b>,
-    <b>mixer_add_source()</b>, <b>mixer_create()</b>,
-    <b>mutex_stack_get_all_threads()</b>, <b>nat_measure_bandwidth()</b>,
-    <b>nat_upnp_open()</b>, <b>node_pool_create()</b>, <b>node_pool_get()</b>,
-    <b>openpgp_base64_decode()</b>, <b>options_builder_build()</b>,
-    <b>options_builder_create()</b>,
-    <b>options_config_generate_manpage_merged()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_print_usage()</b>, <b>options_init()</b>,
-    <b>options_registry_get_binary_options()</b>,
-    <b>options_registry_get_for_display()</b>,
-    <b>options_registry_get_for_mode()</b>, <b>options_state_init()</b>,
-    <b>opus_codec_create_decoder()</b>, <b>opus_codec_create_encoder()</b>,
-    <b>packet_decode_frame_data_malloc()</b>,
-    <b>packet_queue_create_with_pools()</b>, <b>packet_queue_try_dequeue()</b>,
-    <b>packet_send_error()</b>, <b>packet_send_remote_log()</b>,
-    <b>packet_send_via_transport()</b>, <b>parse_gpg_key_binary()</b>,
-    <b>parse_gpg_keys_from_response()</b>, <b>parse_private_key()</b>,
-    <b>parse_public_key()</b>, <b>parse_public_keys()</b>,
-    <b>parse_ssh_keys_from_response()</b>, <b>parse_ssh_private_key()</b>,
-    <b>path_validate_user_path()</b>, <b>platform_is_binary_in_path()</b>,
-    <b>rainbow_replace_ansi_colors()</b>, <b>read_password_from_stdin()</b>,
-    <b>render_file_create()</b>, <b>render_file_write_frame()</b>,
-    <b>rgb_to_16color_halfblocks_scalar()</b>,
-    <b>rgb_to_256color_halfblocks_scalar()</b>,
-    <b>rgb_to_halfblocks_scalar()</b>,
-    <b>rgb_to_truecolor_halfblocks_scalar()</b>, <b>sdp_generate_answer()</b>,
-    <b>sdp_generate_offer()</b>, <b>sdp_parse()</b>, <b>server_main()</b>,
-    <b>session_capture_create()</b>, <b>session_client_like_run()</b>,
-    <b>session_display_write_ascii()</b>,
-    <b>session_network_capture_create()</b>, <b>simple_frame_swap_create()</b>,
-    <b>ssh_agent_sign()</b>, <b>symbol_cache_resolve_batch()</b>,
-    <b>tcp_client_create()</b>, <b>tcp_server_add_client()</b>,
-    <b>tcp_server_run()</b>, <b>term_renderer_create()</b>,
-    <b>term_renderer_feed()</b>, <b>terminal_fd_reader_create()</b>,
-    <b>terminal_fd_reader_next()</b>, <b>terminal_screen_render()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
-    <b>thread_pool_queue_work()</b>, <b>thread_pool_spawn()</b>,
-    <b>timer_start()</b>, <b>utf8_palette_create()</b>,
-    <b>video_frame_buffer_create()</b>, <b>wav_writer_open()</b>,
-    <b>webrtc_create_datachannel()</b>, <b>webrtc_create_peer_connection()</b>,
-    <b>webrtc_peer_manager_create()</b>,
-    <b>webrtc_peer_manager_handle_sdp()</b>, and
-    <b>websocket_client_create()</b>.</p>
-</section>
-<section class="Ss">
-<h2 class="Ss" id="_define_SET_ERRNO(_code,__fmt,__"><a class="permalink" href="#_define_SET_ERRNO(_code,__fmt,__">#define
-  SET_ERRNO( code, fmt, ...)</a></h2>
-<p class="Pp"><b>Value:</b></p>
-<pre>(code)</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">Definition at line <b>29</b> of file
-  <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>accept_with_timeout()</b>,
-    <b>acds_client_connect()</b>, <b>acds_identity_default_path()</b>,
-    <b>acds_identity_generate()</b>, <b>acds_identity_load()</b>,
-    <b>acds_identity_save()</b>, <b>acds_server_init()</b>,
-    <b>acds_server_run()</b>, <b>acds_session_create()</b>,
-    <b>acds_session_join()</b>, <b>acds_session_lookup()</b>,
-    <b>acds_sign_session_create()</b>, <b>acds_sign_session_join()</b>,
-    <b>acds_string_generate()</b>, <b>acds_verify_session_create()</b>,
-    <b>acds_verify_session_join()</b>,
-    <b>acip_client_receive_and_dispatch()</b>, <b>acip_handle_acds_packet()</b>,
-    <b>acip_handle_client_packet()</b>, <b>acip_handle_server_packet()</b>,
-    <b>acip_send_ascii_frame()</b>, <b>acip_send_audio_batch()</b>,
-    <b>acip_send_audio_opus()</b>, <b>acip_send_audio_opus_batch()</b>,
-    <b>acip_send_capabilities()</b>, <b>acip_send_clear_console()</b>,
-    <b>acip_send_client_join()</b>, <b>acip_send_client_leave()</b>,
-    <b>acip_send_error()</b>, <b>acip_send_image_frame()</b>,
-    <b>acip_send_image_frame_h265()</b>, <b>acip_send_ping()</b>,
-    <b>acip_send_pong()</b>, <b>acip_send_protocol_version()</b>,
-    <b>acip_send_remote_log()</b>, <b>acip_send_server_state()</b>,
-    <b>acip_send_session_created()</b>, <b>acip_send_session_info()</b>,
-    <b>acip_send_session_joined()</b>, <b>acip_send_stream_start()</b>,
-    <b>acip_send_stream_stop()</b>, <b>acip_server_receive_and_dispatch()</b>,
-    <b>acip_server_send_error()</b>,
-    <b>acip_server_validate_session_create()</b>,
-    <b>acip_server_validate_session_join()</b>,
-    <b>acip_tcp_transport_create()</b>, <b>acip_webrtc_transport_create()</b>,
-    <b>acip_websocket_client_transport_create()</b>,
-    <b>acip_websocket_server_transport_create()</b>, <b>add_client()</b>,
-    <b>add_known_host()</b>, <b>add_webrtc_client()</b>,
-    <b>apply_palette_config()</b>, <b>ascii_create_grid()</b>,
-    <b>ascii_pad_frame_width()</b>, <b>asciichat_mdns_advertise()</b>,
-    <b>asciichat_mdns_init()</b>, <b>asciichat_mdns_query()</b>,
-    <b>asciichat_mdns_unadvertise()</b>, <b>asciichat_mdns_update()</b>,
-    <b>asciichat_shared_init()</b>, <b>audio_dequantize_samples()</b>,
-    <b>audio_init()</b>, <b>audio_parse_batch_header()</b>,
-    <b>audio_process_received_samples()</b>, <b>audio_read_samples()</b>,
-    <b>audio_ring_buffer_available_write()</b>, <b>audio_ring_buffer_read()</b>,
-    <b>audio_ring_buffer_write()</b>, <b>audio_start_duplex()</b>,
-    <b>audio_stop_duplex()</b>, <b>audio_validate_batch_params()</b>,
-    <b>audio_write_samples()</b>, <b>av_send_audio_opus_batch()</b>,
-    <b>backtrace_capture()</b>, <b>backtrace_capture_and_symbolize()</b>,
-    <b>backtrace_format()</b>, <b>backtrace_print()</b>,
-    <b>backtrace_print_many()</b>, <b>backtrace_print_simple()</b>,
-    <b>backtrace_symbolize()</b>, <b>backtrace_t_free()</b>,
-    <b>broadcast_clear_console_to_all_clients()</b>,
-    <b>buffer_pool_create()</b>, <b>build_client_luminance_palette()</b>,
-    <b>build_github_gpg_url()</b>, <b>build_github_ssh_url()</b>,
-    <b>build_gitlab_gpg_url()</b>, <b>build_gitlab_ssh_url()</b>,
-    <b>canonicalize_ipv6()</b>, <b>capture_init()</b>,
-    <b>capture_start_thread()</b>, <b>check_gpg_key_expiry()</b>,
-    <b>check_key_expiry()</b>, <b>check_key_fingerprint()</b>,
-    <b>check_key_patterns()</b>, <b>check_key_strength()</b>,
-    <b>check_known_host()</b>, <b>check_known_host_no_identity()</b>,
-    <b>cleanup_client_media_buffers()</b>, <b>client_send_thread_func()</b>,
-    <b>colorscheme_compile_scheme()</b>, <b>colorscheme_export_scheme()</b>,
-    <b>colorscheme_init()</b>, <b>colorscheme_load_builtin()</b>,
-    <b>colorscheme_load_from_file()</b>, <b>colorscheme_set_active_scheme()</b>,
-    <b>compare_public_keys()</b>, <b>completions_generate_bash()</b>,
-    <b>completions_generate_fish()</b>, <b>completions_generate_for_shell()</b>,
-    <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
-    <b>compress_data()</b>, <b>config_create_default()</b>,
-    <b>config_load_and_apply()</b>, <b>config_schema_build_from_configs()</b>,
-    <b>config_schema_get_all()</b>, <b>config_schema_get_by_category()</b>,
-    <b>config_schema_get_by_toml_key()</b>, <b>connection_attempt_tcp()</b>,
-    <b>connection_attempt_websocket()</b>, <b>connection_context_init()</b>,
-    <b>connection_state_transition()</b>, <b>consensus_coordinator_create()</b>,
-    <b>consensus_coordinator_get_current_host()</b>,
-    <b>consensus_coordinator_on_collection_start()</b>,
-    <b>consensus_coordinator_on_election_result()</b>,
-    <b>consensus_coordinator_on_ring_members()</b>,
-    <b>consensus_coordinator_on_stats_update()</b>,
-    <b>consensus_coordinator_process()</b>,
-    <b>consensus_create_for_discovery()</b>,
-    <b>consensus_election_choose_hosts()</b>,
-    <b>consensus_election_verify()</b>,
-    <b>consensus_get_discovery_callbacks()</b>,
-    <b>consensus_metrics_collection_add()</b>,
-    <b>consensus_metrics_collection_create()</b>,
-    <b>consensus_metrics_collection_get()</b>,
-    <b>consensus_metrics_from_wire()</b>, <b>consensus_metrics_measure()</b>,
-    <b>consensus_metrics_to_wire()</b>, <b>consensus_state_add_metrics()</b>,
-    <b>consensus_state_collection_complete()</b>,
-    <b>consensus_state_compute_election()</b>, <b>consensus_state_create()</b>,
-    <b>consensus_state_get_elected_backup()</b>,
-    <b>consensus_state_get_elected_host()</b>,
-    <b>consensus_state_get_metric_at()</b>,
-    <b>consensus_state_reset_to_idle()</b>,
-    <b>consensus_state_start_collection()</b>,
-    <b>consensus_topology_create()</b>, <b>consensus_topology_get_all()</b>,
-    <b>consensus_topology_get_leader()</b>,
-    <b>consensus_topology_get_next()</b>, <b>consensus_topology_get_prev()</b>,
-    <b>create_mixed_ascii_frame_for_client()</b>,
-    <b>crypto_combine_auth_data()</b>, <b>crypto_compute_auth_response()</b>,
-    <b>crypto_compute_hmac()</b>, <b>crypto_compute_hmac_ex()</b>,
-    <b>crypto_compute_password_hmac()</b>,
-    <b>crypto_create_auth_challenge()</b>,
-    <b>crypto_create_encrypted_packet()</b>,
-    <b>crypto_create_public_key_packet()</b>, <b>crypto_decrypt()</b>,
-    <b>crypto_decrypt_packet_or_passthrough()</b>,
-    <b>crypto_derive_password_encryption_key()</b>,
-    <b>crypto_derive_password_key()</b>, <b>crypto_encrypt()</b>,
-    <b>crypto_encrypt_packet_or_passthrough()</b>,
-    <b>crypto_extract_auth_data()</b>, <b>crypto_generate_keypair()</b>,
-    <b>crypto_generate_nonce()</b>, <b>crypto_get_public_key()</b>,
-    <b>crypto_handshake_client_auth_response()</b>,
-    <b>crypto_handshake_client_auth_response_socket()</b>,
-    <b>crypto_handshake_client_complete()</b>,
-    <b>crypto_handshake_client_complete_socket()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>,
-    <b>crypto_handshake_client_key_exchange_socket()</b>,
-    <b>crypto_handshake_decrypt_packet()</b>,
-    <b>crypto_handshake_encrypt_packet()</b>, <b>crypto_handshake_init()</b>,
-    <b>crypto_handshake_init_with_password()</b>,
-    <b>crypto_handshake_process_rekey_complete()</b>,
-    <b>crypto_handshake_process_rekey_request()</b>,
-    <b>crypto_handshake_process_rekey_response()</b>,
-    <b>crypto_handshake_rekey_complete()</b>,
-    <b>crypto_handshake_rekey_request()</b>,
-    <b>crypto_handshake_rekey_response()</b>,
-    <b>crypto_handshake_server_auth_challenge()</b>,
-    <b>crypto_handshake_server_auth_challenge_socket()</b>,
-    <b>crypto_handshake_server_complete()</b>,
-    <b>crypto_handshake_server_complete_socket()</b>,
-    <b>crypto_handshake_server_start()</b>,
-    <b>crypto_handshake_server_start_socket()</b>,
-    <b>crypto_handshake_set_parameters()</b>,
-    <b>crypto_handshake_validate_packet_size()</b>, <b>crypto_init()</b>,
-    <b>crypto_init_with_password()</b>, <b>crypto_process_auth_challenge()</b>,
-    <b>crypto_process_auth_response()</b>,
-    <b>crypto_process_encrypted_packet()</b>,
-    <b>crypto_process_public_key_packet()</b>, <b>crypto_random_bytes()</b>,
-    <b>crypto_regex_extract_gpg_keygrip()</b>,
-    <b>crypto_regex_extract_pem_base64()</b>,
-    <b>crypto_regex_match_known_hosts()</b>,
-    <b>crypto_regex_match_public_key()</b>, <b>crypto_rekey_commit()</b>,
-    <b>crypto_rekey_init()</b>, <b>crypto_rekey_process_request()</b>,
-    <b>crypto_rekey_process_response()</b>, <b>crypto_set_peer_public_key()</b>,
-    <b>crypto_sign_ephemeral_key()</b>, <b>crypto_validate_password()</b>,
-    <b>crypto_verify_auth_response()</b>, <b>crypto_verify_hmac()</b>,
-    <b>crypto_verify_hmac_ex()</b>, <b>crypto_verify_peer_signature()</b>,
-    <b>database_init()</b>, <b>database_session_add_key()</b>,
-    <b>database_session_clear_host()</b>, <b>database_session_create()</b>,
-    <b>database_session_get_keys()</b>, <b>database_session_join()</b>,
-    <b>database_session_leave()</b>, <b>database_session_lookup()</b>,
-    <b>database_session_revoke_key()</b>,
-    <b>database_session_start_migration()</b>,
-    <b>database_session_update_host()</b>, <b>decompress_data()</b>,
-    <b>detect_default_ssh_key()</b>, <b>discover_session_parallel()</b>,
-    <b>discovery_keys_clear_cache()</b>, <b>discovery_keys_download_https()</b>,
-    <b>discovery_keys_get_cache_path()</b>, <b>discovery_keys_load_cached()</b>,
-    <b>discovery_keys_load_file()</b>, <b>discovery_keys_save_cached()</b>,
-    <b>discovery_keys_verify()</b>, <b>discovery_keys_verify_change()</b>,
-    <b>discovery_mdns_query()</b>, <b>discovery_session_become_host()</b>,
-    <b>discovery_session_connect_to_future_host()</b>,
-    <b>discovery_session_create()</b>, <b>discovery_session_destroy()</b>,
-    <b>discovery_session_get_future_host()</b>,
-    <b>discovery_session_get_host()</b>,
-    <b>discovery_session_get_participant()</b>,
-    <b>discovery_session_get_state()</b>, <b>discovery_session_get_string()</b>,
-    <b>discovery_session_handle_host_disconnect()</b>,
-    <b>discovery_session_init_ring()</b>, <b>discovery_session_is_active()</b>,
-    <b>discovery_session_is_future_host()</b>,
-    <b>discovery_session_is_host()</b>, <b>discovery_session_process()</b>,
-    <b>discovery_session_start()</b>,
-    <b>discovery_session_start_ring_round()</b>,
-    <b>discovery_session_stop()</b>, <b>display_init()</b>,
-    <b>display_render_frame()</b>, <b>ducking_init()</b>,
-    <b>ed25519_sign_message()</b>, <b>ed25519_to_x25519_private()</b>,
-    <b>ed25519_to_x25519_public()</b>, <b>ed25519_verify_signature()</b>,
-    <b>escape_ascii()</b>, <b>escape_path_for_shell()</b>,
-    <b>escape_shell_double_quotes()</b>, <b>escape_shell_single_quotes()</b>,
-    <b>expand_ipv6()</b>, <b>extract_ed25519_from_gpg()</b>,
-    <b>extract_gpg_key_comment()</b>, <b>extract_ipv4_from_mapped_ipv6()</b>,
-    <b>extract_project_relative_path()</b>, <b>fetch_github_gpg_keys()</b>,
-    <b>fetch_github_keys()</b>, <b>fetch_github_ssh_keys()</b>,
-    <b>fetch_gitlab_gpg_keys()</b>, <b>fetch_gitlab_keys()</b>,
-    <b>fetch_gitlab_ssh_keys()</b>, <b>ffmpeg_decoder_create()</b>,
-    <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_rewind()</b>,
-    <b>ffmpeg_decoder_seek_to_timestamp()</b>,
-    <b>ffmpeg_decoder_start_prefetch()</b>, <b>ffmpeg_encoder_create()</b>,
-    <b>ffmpeg_encoder_write_frame()</b>, <b>find_client_by_id()</b>,
-    <b>format_gpg_key_display()</b>, <b>format_ip_address()</b>,
-    <b>format_ip_with_port()</b>, <b>frame_check_size_overflow()</b>,
-    <b>frame_validate_legacy()</b>, <b>frame_validate_new()</b>,
-    <b>framebuffer_clear()</b>, <b>framebuffer_create()</b>,
-    <b>framebuffer_create_multi()</b>, <b>framebuffer_destroy()</b>,
-    <b>framebuffer_peek_latest_multi_frame()</b>,
-    <b>framebuffer_read_frame()</b>, <b>framebuffer_read_multi_frame()</b>,
-    <b>framebuffer_write_frame()</b>, <b>framebuffer_write_multi_frame()</b>,
-    <b>free_ta_contents()</b>, <b>generate_key_fingerprint()</b>,
-    <b>get_gpg_fingerprint()</b>, <b>get_gpg_key_id()</b>,
-    <b>get_manpage_template()</b>, <b>gpg_to_x25519_public()</b>,
-    <b>grep_init()</b>, <b>grep_restore_patterns()</b>,
-    <b>grep_save_patterns()</b>, <b>h265_client_capture_and_encode()</b>,
-    <b>h265_client_context_create()</b>, <b>h265_client_init_media_source()</b>,
-    <b>h265_decode()</b>, <b>h265_decoder_create()</b>, <b>h265_encode()</b>,
-    <b>h265_encoder_create()</b>, <b>h265_encoder_flush()</b>,
-    <b>h265_server_context_create()</b>,
-    <b>h265_server_decode_and_convert()</b>,
-    <b>h265_server_get_client_decoder()</b>, <b>handle_audio_batch_packet()</b>,
-    <b>handle_audio_opus_batch_packet()</b>,
-    <b>handle_client_capabilities_packet()</b>,
-    <b>handle_client_leave_packet()</b>, <b>handle_image_frame_packet()</b>,
-    <b>handle_ping_packet()</b>, <b>hex_decode()</b>, <b>hex_to_pubkey()</b>,
-    <b>ice_add_remote_candidate()</b>, <b>ice_format_candidate()</b>,
-    <b>ice_gather_candidates()</b>, <b>image_calc_pixel_buffer_size()</b>,
-    <b>image_calc_pixel_count()</b>, <b>image_calc_rgb_size()</b>,
-    <b>image_calc_total_allocation()</b>, <b>image_clear()</b>,
-    <b>image_destroy()</b>, <b>image_destroy_to_pool()</b>, <b>image_new()</b>,
-    <b>image_new_copy()</b>, <b>image_new_from_pool()</b>, <b>image_print()</b>,
-    <b>image_print_16color()</b>, <b>image_print_16color_dithered()</b>,
-    <b>image_print_16color_dithered_with_background()</b>,
-    <b>image_print_256color()</b>, <b>image_print_color()</b>,
-    <b>image_resize()</b>, <b>image_resize_interpolation()</b>,
-    <b>image_validate_buffer_size()</b>, <b>image_validate_dimensions()</b>,
-    <b>initialize_client_palette()</b>, <b>ipv4_to_ipv6_mapped()</b>,
-    <b>is_valid_ipv4()</b>, <b>is_valid_ipv6()</b>,
-    <b>keyboard_help_is_active()</b>, <b>keyboard_help_toggle()</b>,
-    <b>log_enable_mmap_sized()</b>, <b>log_mmap_init()</b>,
-    <b>log_search_gather_and_filter_logs()</b>, <b>log_set_format()</b>,
-    <b>log_template_free()</b>, <b>main()</b>,
-    <b>manpage_merger_generate_synopsis()</b>,
-    <b>manpage_merger_generate_usage()</b>, <b>manpage_parser_parse_file()</b>,
-    <b>manpage_parser_parse_memory()</b>, <b>manpage_resources_load()</b>,
-    <b>media_source_create()</b>, <b>media_source_seek()</b>,
-    <b>mixer_create()</b>, <b>nat_detect_quality()</b>,
-    <b>nat_measure_bandwidth()</b>, <b>nat_upnp_get_address()</b>,
-    <b>nat_upnp_open()</b>, <b>nat_upnp_refresh()</b>,
-    <b>negotiate_determine_result()</b>, <b>negotiate_elect_future_host()</b>,
-    <b>negotiate_receive_peer_quality()</b>, <b>negotiate_start_detection()</b>,
-    <b>openpgp_base64_decode()</b>, <b>openpgp_extract_ed25519_from_mpi()</b>,
-    <b>openpgp_parse_armored_pubkey()</b>,
-    <b>openpgp_parse_armored_seckey()</b>, <b>openpgp_parse_packet_header()</b>,
-    <b>openpgp_parse_public_key_packet()</b>,
-    <b>openpgp_parse_secret_key_packet()</b>, <b>option_applies_to_mode()</b>,
-    <b>options_builder_add_descriptor()</b>, <b>options_builder_build()</b>,
-    <b>options_builder_create()</b>, <b>options_builder_from_preset()</b>,
-    <b>options_builder_generate_manpage_template()</b>,
-    <b>options_builder_mark_as_list()</b>,
-    <b>options_builder_set_arg_placeholder()</b>,
-    <b>options_builder_set_default_value_display()</b>,
-    <b>options_builder_set_enum_values()</b>,
-    <b>options_builder_set_examples()</b>,
-    <b>options_builder_set_input_type()</b>,
-    <b>options_builder_set_mode_bitmask()</b>,
-    <b>options_builder_set_numeric_range()</b>,
-    <b>options_collect_identity_keys()</b>,
-    <b>options_config_generate_final_manpage()</b>,
-    <b>options_config_generate_manpage_merged()</b>,
-    <b>options_config_generate_manpage_template()</b>,
-    <b>options_config_parse()</b>, <b>options_config_parse_positional()</b>,
-    <b>options_config_print_options_sections_with_width()</b>,
-    <b>options_config_set_defaults()</b>, <b>options_config_validate()</b>,
-    <b>options_init()</b>, <b>options_preset_unified()</b>,
-    <b>options_print_help_for_mode()</b>,
-    <b>options_registry_add_all_to_builder()</b>,
-    <b>options_registry_find_by_name()</b>,
-    <b>options_registry_find_by_short()</b>,
-    <b>options_registry_get_binary_options()</b>,
-    <b>options_registry_get_enum_values()</b>,
-    <b>options_registry_get_examples()</b>,
-    <b>options_registry_get_for_display()</b>,
-    <b>options_registry_get_for_mode()</b>,
-    <b>options_registry_get_input_type()</b>,
-    <b>options_registry_get_metadata()</b>,
-    <b>options_registry_get_numeric_range()</b>, <b>options_set_bool()</b>,
-    <b>options_set_double()</b>, <b>options_set_int()</b>,
-    <b>options_set_string()</b>, <b>options_state_init()</b>,
-    <b>options_state_set()</b>, <b>opus_codec_create_decoder()</b>,
-    <b>opus_codec_create_encoder()</b>, <b>opus_codec_decode()</b>,
-    <b>opus_codec_encode()</b>, <b>opus_codec_get_bitrate()</b>,
-    <b>opus_codec_set_bitrate()</b>, <b>opus_codec_set_dtx()</b>,
-    <b>packet_decode_frame_data_buffer()</b>,
-    <b>packet_decode_frame_data_malloc()</b>, <b>packet_decrypt_envelope()</b>,
-    <b>packet_parse_error_message()</b>, <b>packet_parse_opus_batch()</b>,
-    <b>packet_parse_remote_log()</b>, <b>packet_queue_enqueue()</b>,
-    <b>packet_queue_enqueue_packet()</b>, <b>packet_queue_stop()</b>,
-    <b>packet_queue_try_dequeue()</b>, <b>packet_queue_validate_packet()</b>,
-    <b>packet_receive()</b>, <b>packet_send()</b>, <b>packet_send_error()</b>,
-    <b>packet_send_remote_log()</b>, <b>packet_send_via_transport()</b>,
-    <b>packet_validate_frame_dimensions()</b>, <b>parallel_connect()</b>,
-    <b>parse_address_with_optional_port()</b>, <b>parse_gpg_key()</b>,
-    <b>parse_gpg_key_binary()</b>, <b>parse_gpg_keys_from_response()</b>,
-    <b>parse_hex_color()</b>, <b>parse_int32()</b>, <b>parse_ip_with_port()</b>,
-    <b>parse_keys_from_file()</b>, <b>parse_long()</b>,
-    <b>parse_manpage_sections()</b>, <b>parse_port()</b>,
-    <b>parse_private_key()</b>, <b>parse_public_key()</b>,
-    <b>parse_public_keys()</b>, <b>parse_ssh_ed25519_line()</b>,
-    <b>parse_ssh_keys_from_response()</b>, <b>parse_ssh_private_key()</b>,
-    <b>parse_uint32()</b>, <b>parse_ulong()</b>, <b>parse_ulonglong()</b>,
-    <b>path_normalize_copy()</b>, <b>path_validate_user_path()</b>,
-    <b>platform_enable_keepawake()</b>, <b>platform_get_executable_path()</b>,
-    <b>platform_is_binary_in_path()</b>, <b>precalc_rgb_palettes()</b>,
-    <b>private_key_to_x25519()</b>, <b>process_encrypted_packet()</b>,
-    <b>prompt_password()</b>, <b>prompt_unknown_host()</b>,
-    <b>prompt_unknown_host_no_identity()</b>, <b>public_key_to_x25519()</b>,
-    <b>quantize_color()</b>, <b>rate_limiter_check()</b>,
-    <b>rate_limiter_prune()</b>, <b>rate_limiter_record()</b>,
-    <b>receive_packet_secure()</b>, <b>registry_entry_applies_to_mode()</b>,
-    <b>registry_find_entry_by_name()</b>,
-    <b>registry_validate_unique_options()</b>, <b>remove_client()</b>,
-    <b>remove_known_host()</b>, <b>rgb_to_ansi_8bit()</b>,
-    <b>ringbuffer_create()</b>, <b>safe_parse_audio_message()</b>,
-    <b>safe_parse_size_message()</b>, <b>sdp_detect_terminal_capabilities()</b>,
-    <b>sdp_generate_answer()</b>, <b>sdp_generate_offer()</b>,
-    <b>sdp_get_selected_video_codec()</b>, <b>sdp_parse()</b>,
-    <b>send_crypto_capabilities_packet()</b>,
-    <b>send_crypto_parameters_packet()</b>, <b>send_error_packet_message()</b>,
-    <b>send_image_frame_packet()</b>, <b>send_packet_secure()</b>,
-    <b>send_protocol_version_packet()</b>, <b>send_server_state_to_client()</b>,
-    <b>server_crypto_handshake()</b>, <b>session_audio_add_source()</b>,
-    <b>session_audio_start_capture()</b>, <b>session_audio_start_duplex()</b>,
-    <b>session_audio_start_playback()</b>,
-    <b>session_audio_write_playback()</b>, <b>session_audio_write_source()</b>,
-    <b>session_capture_create()</b>,
-    <b>session_capture_process_for_transmission()</b>,
-    <b>session_client_like_run()</b>, <b>session_consensus_create()</b>,
-    <b>session_consensus_get_elected_host()</b>,
-    <b>session_consensus_on_collection_start()</b>,
-    <b>session_consensus_on_election_result()</b>,
-    <b>session_consensus_on_stats_update()</b>,
-    <b>session_consensus_process()</b>, <b>session_consensus_set_topology()</b>,
-    <b>session_display_clear()</b>, <b>session_display_convert_to_ascii()</b>,
-    <b>session_display_cursor_home()</b>, <b>session_display_destroy()</b>,
-    <b>session_display_encode_frame()</b>, <b>session_display_get_caps()</b>,
-    <b>session_display_get_luminance_palette()</b>,
-    <b>session_display_get_palette_chars()</b>,
-    <b>session_display_get_palette_len()</b>,
-    <b>session_display_get_stdin_reader()</b>,
-    <b>session_display_get_tty_fd()</b>,
-    <b>session_display_has_audio_playback()</b>,
-    <b>session_display_has_tty()</b>, <b>session_display_render_frame()</b>,
-    <b>session_display_reset()</b>,
-    <b>session_display_set_snapshot_actual_duration()</b>,
-    <b>session_display_set_stdin_reader()</b>,
-    <b>session_display_write_ascii()</b>, <b>session_display_write_audio()</b>,
-    <b>session_display_write_raw()</b>, <b>session_host_add_client()</b>,
-    <b>session_host_add_memory_participant()</b>,
-    <b>session_host_broadcast_frame()</b>, <b>session_host_create()</b>,
-    <b>session_host_find_client()</b>, <b>session_host_inject_audio()</b>,
-    <b>session_host_inject_frame()</b>, <b>session_host_remove_client()</b>,
-    <b>session_host_send_frame()</b>,
-    <b>session_host_set_client_transport()</b>, <b>session_host_start()</b>,
-    <b>session_host_start_render()</b>, <b>session_mirror_capture_create()</b>,
-    <b>session_participant_connect()</b>, <b>session_participant_create()</b>,
-    <b>session_participant_get_settings()</b>,
-    <b>session_participant_request_settings()</b>,
-    <b>session_participant_set_transport()</b>,
-    <b>session_participant_start_audio()</b>,
-    <b>session_participant_start_audio_capture()</b>,
-    <b>session_participant_start_video()</b>,
-    <b>session_participant_start_video_capture()</b>,
-    <b>session_pipeline_create()</b>, <b>session_pipeline_run_main()</b>,
-    <b>session_render_loop()</b>, <b>session_server_like_run()</b>,
-    <b>session_settings_apply_to_options()</b>,
-    <b>session_settings_deserialize()</b>,
-    <b>session_settings_from_options()</b>, <b>session_settings_serialize()</b>,
-    <b>set_socket_keepalive()</b>, <b>set_socket_nonblocking()</b>,
-    <b>set_socket_timeout()</b>, <b>signaling_broadcast()</b>,
-    <b>signaling_relay_ice()</b>, <b>signaling_relay_sdp()</b>,
-    <b>simple_frame_swap_destroy()</b>, <b>simple_frame_swap_get()</b>,
-    <b>simple_frame_swap_update()</b>, <b>ssh_agent_add_key()</b>,
-    <b>ssh_agent_sign()</b>, <b>start_webrtc_client_threads()</b>,
-    <b>stop_client_render_threads()</b>, <b>stop_client_threads()</b>,
-    <b>symbol_cache_init()</b>, <b>tcp_client_connect()</b>,
-    <b>tcp_client_context_get_ip()</b>, <b>tcp_client_context_get_port()</b>,
-    <b>tcp_client_send_packet()</b>, <b>tcp_server_add_client()</b>,
-    <b>tcp_server_get_client()</b>, <b>tcp_server_get_thread_count()</b>,
-    <b>tcp_server_init()</b>, <b>tcp_server_reject_client()</b>,
-    <b>tcp_server_remove_client()</b>, <b>tcp_server_run()</b>,
-    <b>tcp_server_spawn_thread()</b>, <b>tcp_server_stop_client_threads()</b>,
-    <b>term_renderer_create()</b>, <b>term_renderer_feed()</b>,
-    <b>terminal_fd_reader_create()</b>, <b>terminal_fd_reader_next()</b>,
-    <b>terminal_fd_writer_create()</b>, <b>terminal_fd_writer_write()</b>,
-    <b>terminal_get_size()</b>, <b>thread_create_or_fail()</b>,
-    <b>thread_pool_create()</b>, <b>thread_pool_create_with_workers()</b>,
-    <b>thread_pool_interrupt_all()</b>, <b>thread_pool_queue_work()</b>,
-    <b>thread_pool_spawn()</b>, <b>thread_pool_stop_all()</b>,
-    <b>threaded_send_audio_opus()</b>, <b>threaded_send_audio_opus_batch()</b>,
-    <b>threaded_send_image_frame()</b>, <b>threaded_send_image_frame_h265()</b>,
-    <b>threaded_send_packet()</b>, <b>time_format_now()</b>,
-    <b>time_format_safe()</b>, <b>time_ns_to_timespec()</b>,
-    <b>time_timespec_to_ns()</b>, <b>timer_start()</b>, <b>timer_stop()</b>,
-    <b>timer_system_init()</b>, <b>turn_generate_credentials()</b>,
-    <b>ui_mdns_query()</b>, <b>ui_status_gather()</b>,
-    <b>update_check_load_cache()</b>, <b>update_check_perform()</b>,
-    <b>update_check_save_cache()</b>, <b>url_is_tcp()</b>,
-    <b>url_is_tcp_scheme()</b>, <b>url_is_valid()</b>,
-    <b>url_is_websocket()</b>, <b>url_is_websocket_scheme()</b>,
-    <b>url_looks_like_tcp()</b>, <b>url_looks_like_websocket()</b>,
-    <b>url_parse()</b>, <b>url_parts_destroy()</b>, <b>utf8_char_count()</b>,
-    <b>utf8_is_ascii_only()</b>, <b>utf8_is_valid()</b>,
-    <b>utf8_next_char_bytes()</b>, <b>utf8_palette_create()</b>,
-    <b>utf8_read_and_insert_continuation_bytes()</b>, <b>utf8_strcasestr()</b>,
-    <b>utf8_to_codepoints()</b>, <b>validate_gpg_key_format()</b>,
-    <b>validate_key_security()</b>, <b>validate_options_and_report()</b>,
-    <b>validate_palette_chars()</b>, <b>validate_private_key()</b>,
-    <b>validate_public_key()</b>, <b>validate_ssh_key_file()</b>,
-    <b>validate_ssh_key_format()</b>, <b>validate_x25519_key_format()</b>,
-    <b>video_frame_begin_write()</b>, <b>video_frame_buffer_create()</b>,
-    <b>video_frame_buffer_destroy()</b>, <b>video_frame_commit()</b>,
-    <b>video_frame_get_latest()</b>, <b>video_frame_get_stats()</b>,
-    <b>webcam_get_dimensions()</b>, <b>webcam_init()</b>,
-    <b>webcam_init_context()</b>, <b>webcam_list_devices()</b>,
-    <b>webcam_read()</b>, <b>webcam_read_context()</b>,
-    <b>webrtc_add_remote_candidate()</b>, <b>webrtc_close_datachannel()</b>,
-    <b>webrtc_close_peer_connection()</b>, <b>webrtc_create_datachannel()</b>,
-    <b>webrtc_create_offer()</b>, <b>webrtc_create_peer_connection()</b>,
-    <b>webrtc_datachannel_destroy()</b>, <b>webrtc_datachannel_get_label()</b>,
-    <b>webrtc_datachannel_is_open()</b>, <b>webrtc_datachannel_send()</b>,
-    <b>webrtc_datachannel_set_callbacks()</b>,
-    <b>webrtc_datachannel_set_open_state()</b>, <b>webrtc_get_rtc_id()</b>,
-    <b>webrtc_peer_connection_close()</b>,
-    <b>webrtc_peer_connection_destroy()</b>,
-    <b>webrtc_peer_manager_connect()</b>, <b>webrtc_peer_manager_create()</b>,
-    <b>webrtc_peer_manager_handle_ice()</b>,
-    <b>webrtc_peer_manager_handle_sdp()</b>,
-    <b>webrtc_set_remote_description()</b>,
-    <b>websocket_client_send_packet()</b>, <b>websocket_server_init()</b>,
-    <b>websocket_server_run()</b>, and <b>yt_dlp_extract_stream_url()</b>.</p>
-</section>
-</section>
-<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acds_string_generate_(char_*_output,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_acds_string_generate_(char_*_output,_size_t_output_size)">asciichat_error_t
   acds_string_generate (char * output, size_t output_size)</a></h2>
-<p class="Pp">Definition at line <b>216</b> of file
+<p class="Pp">Definition at line <b>121</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>216                                                                          {
-217   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
-218     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
-219                      (size_t)SESSION_STRING_BUFFER_SIZE);
-220   }
-221 
-222   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
-223   // No need to call sodium_init() again (redundant initialization removed)
-224 
-225   // Pick random adjective
-226   uint32_t adj_idx = simple_randombytes_uniform((uint32_t)adjectives_count);
-227   const char *adj = adjectives[adj_idx];
-228 
-229   // Pick two random nouns
-230   uint32_t noun1_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-231   uint32_t noun2_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-232   const char *noun1 = nouns[noun1_idx];
-233   const char *noun2 = nouns[noun2_idx];
-234 
-235   // Format: adjective-noun-noun
-236   int written = safe_snprintf(output, output_size, &quot;%s-%s-%s&quot;, adj, noun1, noun2);
-237   if (written &lt; 0 || (size_t)written &gt;= output_size) {
-238     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Session string too long for buffer&quot;);
-239   }
-240 
-241   log_dev(&quot;Generated session string: %s&quot;, output);
-242   return ASCIICHAT_OK;
-243 }</pre>
+<pre>121                                                                          {
+122   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
+123     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
+124                      (size_t)SESSION_STRING_BUFFER_SIZE);
+125   }
+126 
+127   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
+128   // No need to call sodium_init() again (redundant initialization removed)
+129 
+130   // Pick random adjective
+131   uint32_t adj_idx = simple_randombytes_uniform((uint32_t)adjectives_count);
+132   const char *adj = adjectives[adj_idx];
+133 
+134   // Pick two random nouns
+135   uint32_t noun1_idx = simple_randombytes_uniform((uint32_t)nouns_count);
+136   uint32_t noun2_idx = simple_randombytes_uniform((uint32_t)nouns_count);
+137   const char *noun1 = nouns[noun1_idx];
+138   const char *noun2 = nouns[noun2_idx];
+139 
+140   // Format: adjective-noun-noun
+141   int written = safe_snprintf(output, output_size, &quot;%s-%s-%s&quot;, adj, noun1, noun2);
+142   if (written &lt; 0 || (size_t)written &gt;= output_size) {
+143     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Session string too long for buffer&quot;);
+144   }
+145 
+146   log_dev(&quot;Generated session string: %s&quot;, output);
+147   return ASCIICHAT_OK;
+148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adjectives</b>, <b>adjectives_count</b>,
-    <b>log_dev</b>, <b>nouns</b>, <b>nouns_count</b>, <b>safe_snprintf()</b>,
-    <b>SESSION_STRING_BUFFER_SIZE</b>, and <b>SET_ERRNO</b>.</p>
+    <b>nouns</b>, <b>nouns_count</b>, <b>safe_snprintf()</b>, and
+    <b>SESSION_STRING_BUFFER_SIZE</b>.</p>
 <p class="Pp">Referenced by <b>database_session_create()</b>,
     <b>options_preset_unified()</b>, and <b>server_main()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acds_string_init_(void_)"><a class="permalink" href="#asciichat_error_t_acds_string_init_(void_)">asciichat_error_t
   acds_string_init (void )</a></h2>
-<p class="Pp">Definition at line <b>211</b> of file
+<p class="Pp">Session string format validator using PCRE2 singleton. Validates
+    the format adjective-noun-noun with regex:</p>
+<ul class="Bl-bullet">
+  <li>Each word is 2-12 lowercase letters</li>
+  <li>Exactly 2 hyphens separating 3 words</li>
+  <li>No leading/trailing hyphens</li>
+  <li>No consecutive hyphens</li>
+</ul>
+<p class="Pp">This regex validator handles FORMAT validation only. Dictionary
+    validation (adjective/noun caches) is handled separately. Get compiled
+    session string format regex (lazy initialization) Returns NULL if
+    compilation failed</p>
+<p class="Pp">Definition at line <b>116</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>211                                          {
-212   // No initialization needed - getrandom() works directly
-213   return ASCIICHAT_OK;
-214 }</pre>
+<pre>116                                          {
+117   // No initialization needed - getrandom() works directly
+118   return ASCIICHAT_OK;
+119 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>.</p>
@@ -1004,48 +151,48 @@
 <p class="Pp">Cleanup function for session string cache Called by
     <b>asciichat_shared_destroy()</b> during library cleanup. Safe to call
     multiple times (idempotent).</p>
-<p class="Pp">Definition at line <b>68</b> of file
+<p class="Pp">Definition at line <b>60</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>68                                 {
-69   // Shutdown if initialized
-70   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
-71     return; // Not initialized
+<pre>60                                 {
+61   // Shutdown if initialized
+62   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
+63     return; // Not initialized
+64   }
+65 
+66   // Cleanup adjectives cache
+67   word_cache_entry_t *adj_entry, *adj_tmp;
+68   HASH_ITER(hh, g_adjectives_cache, adj_entry, adj_tmp) {
+69     HASH_DEL(g_adjectives_cache, adj_entry);
+70     SAFE_FREE(adj_entry-&gt;word);
+71     SAFE_FREE(adj_entry);
 72   }
-73 
-74   // Cleanup adjectives cache
-75   word_cache_entry_t *adj_entry, *adj_tmp;
-76   HASH_ITER(hh, g_adjectives_cache, adj_entry, adj_tmp) {
-77     HASH_DEL(g_adjectives_cache, adj_entry);
-78     SAFE_FREE(adj_entry-&gt;word);
-79     SAFE_FREE(adj_entry);
-80   }
-81   g_adjectives_cache = NULL;
-82 
-83   // Cleanup nouns cache
-84   word_cache_entry_t *noun_entry, *noun_tmp;
-85   HASH_ITER(hh, g_nouns_cache, noun_entry, noun_tmp) {
-86     HASH_DEL(g_nouns_cache, noun_entry);
-87     SAFE_FREE(noun_entry-&gt;word);
-88     SAFE_FREE(noun_entry);
-89   }
-90   g_nouns_cache = NULL;
-91 
-92   log_dev(&quot;Session string word cache cleaned up&quot;);
-93 }</pre>
+73   g_adjectives_cache = NULL;
+74 
+75   // Cleanup nouns cache
+76   word_cache_entry_t *noun_entry, *noun_tmp;
+77   HASH_ITER(hh, g_nouns_cache, noun_entry, noun_tmp) {
+78     HASH_DEL(g_nouns_cache, noun_entry);
+79     SAFE_FREE(noun_entry-&gt;word);
+80     SAFE_FREE(noun_entry);
+81   }
+82   g_nouns_cache = NULL;
+83 
+84   log_dev(&quot;Session string word cache cleaned up&quot;);
+85 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_shutdown()</b>, <b>log_dev</b>,
-    <b>SAFE_FREE</b>, and <b>word_cache_entry_t::word</b>.</p>
+<p class="Pp">References <b>lifecycle_shutdown()</b>, and
+    <b>word_cache_entry_t::word</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> is_session_string (const char * str)</h2>
-<p class="Pp">Definition at line <b>246</b> of file
+<p class="Pp">Definition at line <b>151</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>246                                         {
-247   (void)str; // unused parameter
-248   return true;
-249 }</pre>
+<pre>151                                         {
+152   (void)str; // unused parameter
+153   return true;
+154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>database_session_create()</b>,

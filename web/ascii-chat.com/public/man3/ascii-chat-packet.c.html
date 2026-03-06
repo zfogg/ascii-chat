@@ -170,7 +170,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>send_packet_secure()</b>, and <b>SET_ERRNO</b>.</p>
+    and <b>send_packet_secure()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_packet_decrypt_envelope_(packet_envelope_t_*_envelope,_void_*_crypto_ctx)"><a class="permalink" href="#asciichat_error_t_packet_decrypt_envelope_(packet_envelope_t_*_envelope,_void_*_crypto_ctx)">asciichat_error_t
@@ -267,8 +267,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>crypto_decrypt()</b>, <b>crypto_result_to_string()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_decrypt()</b>, and <b>crypto_result_to_string()</b>.</p>
 <p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>.</p>
 </section>
 <section class="Ss">
@@ -318,7 +317,6 @@
 979 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_packet_parse_remote_log_(const_void_*_data,_size_t_len,_"><a class="permalink" href="#asciichat_error_t_packet_parse_remote_log_(const_void_*_data,_size_t_len,_">asciichat_error_t
@@ -382,7 +380,6 @@
 1093 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>handle_remote_log_packet_from_client()</b>.</p>
 </section>
 <section class="Ss">
@@ -471,7 +468,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>log_warn</b>, <b>recv_with_timeout()</b>, and <b>SET_ERRNO</b>.</p>
+    and <b>recv_with_timeout()</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_process()</b>,
     <b>nat_measure_bandwidth()</b>, and <b>receive_packet()</b>.</p>
 </section>
@@ -544,7 +541,7 @@
 338 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>send_with_timeout()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>send_with_timeout()</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_check_host_alive()</b>,
     <b>discovery_session_handle_host_disconnect()</b>,
@@ -607,8 +604,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_is_ready()</b>, <b>error_code</b>,
-    <b>log_warn</b>, <b>packet_send()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>send_packet_secure()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>packet_send()</b>, and <b>send_packet_secure()</b>.</p>
 <p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>.</p>
 </section>
 <section class="Ss">
@@ -674,9 +670,8 @@
 1036 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_is_ready()</b>, <b>packet_send()</b>,
-    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>send_packet_secure()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_is_ready()</b>, <b>packet_send()</b>, and
+    <b>send_packet_secure()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_receive_packet_("><a class="permalink" href="#int_receive_packet_(">int
@@ -916,8 +911,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>crypto_decrypt()</b>, <b>crypto_result_to_string()</b>,
-    <b>recv_with_timeout()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>crypto_decrypt()</b>, <b>crypto_result_to_string()</b>, and
+    <b>recv_with_timeout()</b>.</p>
 <p class="Pp">Referenced by <b>acip_client_receive_and_dispatch()</b>,
     <b>acip_server_receive_and_dispatch()</b>, and <b>add_client()</b>.</p>
 </section>
@@ -942,7 +937,7 @@
 1121 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
     <b>discovery_session_process()</b>.</p>
 </section>
@@ -979,7 +974,7 @@
 1147 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>server_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -1047,7 +1042,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>packet_send()</b>, and <b>SET_ERRNO</b>.</p>
+    and <b>packet_send()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_send_packet_("><a class="permalink" href="#int_send_packet_(">int
@@ -1231,8 +1226,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
     <b>compress_data()</b>, <b>crypto_encrypt()</b>, <b>crypto_is_ready()</b>,
-    <b>crypto_result_to_string()</b>, <b>packet_send()</b>, <b>SAFE_FREE</b>,
-    <b>SET_ERRNO</b>, and <b>should_compress()</b>.</p>
+    <b>crypto_result_to_string()</b>, <b>packet_send()</b>, and
+    <b>should_compress()</b>.</p>
 <p class="Pp">Referenced by <b>av_send_audio_opus_batch()</b>,
     <b>packet_send_error()</b>, and <b>packet_send_remote_log()</b>.</p>
 </section>
@@ -1289,7 +1284,7 @@
 1107 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
     <b>discovery_session_process()</b>, and
   <b>server_crypto_handshake()</b>.</p>

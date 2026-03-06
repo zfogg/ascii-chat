@@ -173,8 +173,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
     <b>pcre2_singleton::code</b>, <b>pcre2_singleton::jit_stack</b>,
-    <b>lifecycle_shutdown()</b>, <b>pcre2_singleton::next</b>,
-    <b>pcre2_singleton::pattern</b>, and <b>SAFE_FREE</b>.</p>
+    <b>lifecycle_shutdown()</b>, <b>pcre2_singleton::next</b>, and
+    <b>pcre2_singleton::pattern</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>, and
     <b>main()</b>.</p>
 </section>
@@ -213,7 +213,6 @@
 329 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_MALLOC</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_asciichat_pcre2_extract_group_ptr_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject,_size_t_*_out_len)"><a class="permalink" href="#const_char_*_asciichat_pcre2_extract_group_ptr_(pcre2_match_data_*_match_data,_int_group_num,_const_char_*_subject,_size_t_*_out_len)">const
@@ -294,7 +293,7 @@
   match_data, const char * group_name, const char * subject)</a></h2>
 <p class="Pp">Extract named substring from PCRE2 match data. Extracts a named
     capture group from match data and returns an allocated string. The caller is
-    responsible for freeing the returned string with <b>SAFE_FREE()</b>.</p>
+    responsible for freeing the returned string with SAFE_FREE().</p>
 <p class="Pp"></p>
 <p class="Pp"><b>Parameters</b></p>
 <div class="Bd-indent"><i>regex</i> Compiled PCRE2 regex with named groups
@@ -344,7 +343,6 @@
 298 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>crypto_regex_extract_gpg_keygrip()</b>,
     <b>crypto_regex_extract_pem_base64()</b>,
     <b>crypto_regex_match_known_hosts()</b>,
@@ -413,9 +411,8 @@
 <p class="Pp">References <b>atomic_store_u64()</b>,
     <b>pcre2_singleton::code</b>, <b>pcre2_singleton::flags</b>,
     <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::lc</b>,
-    <b>lifecycle_init()</b>, <b>pcre2_singleton::next</b>,
-    <b>pcre2_singleton::pattern</b>, <b>SAFE_FREE</b>, and
-  <b>SAFE_MALLOC</b>.</p>
+    <b>lifecycle_init()</b>, <b>pcre2_singleton::next</b>, and
+    <b>pcre2_singleton::pattern</b>.</p>
 <p class="Pp">Referenced by <b>grep_init()</b>, <b>log_search_enter_mode()</b>,
     <b>log_search_exit_mode()</b>, <b>log_search_handle_key()</b>, and
     <b>log_search_init()</b>.</p>
@@ -456,8 +453,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>, <b>pcre2_singleton::code</b>,
-    <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::pattern</b>, and
-    <b>SAFE_FREE</b>.</p>
+    <b>pcre2_singleton::jit_stack</b>, and <b>pcre2_singleton::pattern</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="pcre2_code_*_asciichat_pcre2_singleton_get_code_("><a class="permalink" href="#pcre2_code_*_asciichat_pcre2_singleton_get_code_(">pcre2_code
@@ -545,8 +541,7 @@
     <b>pcre2_singleton::code</b>, <b>pcre2_singleton::flags</b>,
     <b>pcre2_singleton::jit_stack</b>, <b>pcre2_singleton::lc</b>,
     <b>lifecycle_init()</b>, <b>lifecycle_init_commit()</b>,
-    <b>lifecycle_is_initialized()</b>, <b>log_warn</b>, and
-    <b>pcre2_singleton::pattern</b>.</p>
+    <b>lifecycle_is_initialized()</b>, and <b>pcre2_singleton::pattern</b>.</p>
 <p class="Pp">Referenced by <b>grep_highlight()</b>,
     <b>grep_highlight_colored()</b>, <b>grep_init()</b>,
     <b>grep_should_output()</b>, <b>log_search_enter_mode()</b>,

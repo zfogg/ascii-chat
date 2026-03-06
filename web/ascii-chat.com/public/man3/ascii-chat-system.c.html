@@ -64,10 +64,8 @@
 <p class="Pp"><b>bool</b> <b>check_binary_in_path_uncached</b> (const char
     *bin_name)
   <br/>
-  void <b>platform_cleanup_binary_path_cache</b> (void)
-  <br/>
-  Cleanup the binary PATH cache. int <b>safe_snprintf</b> (char *buffer, size_t
-    <b>buffer_size</b>, const char *format,...)
+  int <b>safe_snprintf</b> (char *buffer, size_t <b>buffer_size</b>, const char
+    *format,...)
   <br/>
   Safe formatted string printing to buffer. int <b>safe_fprintf</b> (FILE
     *stream, const char *format,...)
@@ -139,83 +137,54 @@
 <p class="Pp">Referenced by <b>platform_is_binary_in_path()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="void_platform_cleanup_binary_path_cache_(void_)"><a class="permalink" href="#void_platform_cleanup_binary_path_cache_(void_)">void
-  platform_cleanup_binary_path_cache (void )</a></h2>
-<p class="Pp">Cleanup the binary PATH cache.</p>
-<p class="Pp">Definition at line <b>229</b> of file <b>system.c</b>.</p>
-<pre>229                                               {
-230   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
-231     return;
-232   }
-233 
-234   if (g_bin_path_cache) {
-235     rwlock_wrlock(&amp;g_cache_rwlock);
-236 
-237     // Free all cached entries using uthash iteration
-238     bin_cache_entry_t *entry, *tmp;
-239     HASH_ITER(hh, g_bin_path_cache, entry, tmp) {
-240       HASH_DELETE(hh, g_bin_path_cache, entry);
-241       free_cache_entry(entry);
-242     }
-243 
-244     rwlock_wrunlock(&amp;g_cache_rwlock);
-245     rwlock_destroy(&amp;g_cache_rwlock);
-246     g_bin_path_cache = NULL;
-247   }
-248 }</pre>
-<pre></pre>
-<p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_shutdown()</b>.</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="size_t_platform_write_all_(int_fd,_const_void_*_buf,_size_t_count)"><a class="permalink" href="#size_t_platform_write_all_(int_fd,_const_void_*_buf,_size_t_count)">size_t
   platform_write_all (int fd, const void * buf, size_t count)</a></h2>
 <p class="Pp">Write all bytes to a file descriptor, handling partial writes.
     Handles partial writes and EAGAIN errors, retrying up to 1000 times before
     giving up. This ensures that data is fully written even when dealing with
     non-blocking I/O or interrupted syscalls.</p>
-<p class="Pp">Definition at line <b>342</b> of file <b>system.c</b>.</p>
-<pre>342                                                                  {
-343   if (!buf || count == 0) {
-344     return 0;
-345   }
-346 
-347   size_t written_total = 0;
-348   int attempts = 0;
-349   const int MAX_ATTEMPTS = 1000;
-350 
-351   while (written_total &lt; count &amp;&amp; attempts &lt; MAX_ATTEMPTS) {
-352     ssize_t result = platform_write(fd, (const char *)buf + written_total, count - written_total);
-353 
-354     if (result &gt; 0) {
-355       written_total += (size_t)result;
-356       attempts = 0; // Reset attempt counter on successful write
-357     } else if (result &lt; 0) {
-358       // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
-359       if (errno == EAGAIN || errno == EWOULDBLOCK) {
-360         // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
-361         platform_sleep_us(100);
-362       } else {
-363         // Other write errors - log and retry
-364         log_warn(&quot;platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)&quot;, fd, written_total,
-365                  count, errno);
-366       }
-367       attempts++;
-368     } else {
-369       // result == 0: no bytes written, retry
-370       attempts++;
-371     }
-372   }
-373 
-374   if (attempts &gt;= MAX_ATTEMPTS &amp;&amp; written_total &lt; count) {
-375     log_warn(&quot;platform_write_all: Hit retry limit on fd=%d: wrote %zu of %zu bytes&quot;, fd, written_total, count);
-376   }
-377 
-378   return written_total;
-379 }</pre>
+<p class="Pp">Definition at line <b>225</b> of file <b>system.c</b>.</p>
+<pre>225                                                                  {
+226   if (!buf || count == 0) {
+227     return 0;
+228   }
+229 
+230   size_t written_total = 0;
+231   int attempts = 0;
+232   const int MAX_ATTEMPTS = 1000;
+233 
+234   while (written_total &lt; count &amp;&amp; attempts &lt; MAX_ATTEMPTS) {
+235     ssize_t result = platform_write(fd, (const char *)buf + written_total, count - written_total);
+236 
+237     if (result &gt; 0) {
+238       written_total += (size_t)result;
+239       attempts = 0; // Reset attempt counter on successful write
+240     } else if (result &lt; 0) {
+241       // Handle EAGAIN (non-blocking would-block) with sleep instead of tight loop
+242       if (errno == EAGAIN || errno == EWOULDBLOCK) {
+243         // Sleep 100us before retrying to avoid busy-waiting and spinning CPU
+244         platform_sleep_us(100);
+245       } else {
+246         // Other write errors - log and retry
+247         log_warn(&quot;platform_write_all: write() error on fd=%d (wrote %zu/%zu so far, errno=%d)&quot;, fd, written_total,
+248                  count, errno);
+249       }
+250       attempts++;
+251     } else {
+252       // result == 0: no bytes written, retry
+253       attempts++;
+254     }
+255   }
+256 
+257   if (attempts &gt;= MAX_ATTEMPTS &amp;&amp; written_total &lt; count) {
+258     log_warn(&quot;platform_write_all: Hit retry limit on fd=%d: wrote %zu of %zu bytes&quot;, fd, written_total, count);
+259   }
+260 
+261   return written_total;
+262 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>log_warn</b>, <b>platform_sleep_us()</b>, and
+<p class="Pp">References <b>platform_sleep_us()</b>, and
     <b>platform_write()</b>.</p>
 <p class="Pp">Referenced by <b>ascii_write()</b>,
     <b>config_create_default()</b>, <b>frame_buffer_flush()</b>,
@@ -237,19 +206,19 @@
 <div class="Bd-indent">Number of characters written, or -1 on error</div>
 <p class="Pp">Safely formats and prints output to a file stream. Returns the
     number of characters written, or -1 on error.</p>
-<p class="Pp">Definition at line <b>290</b> of file <b>system.c</b>.</p>
-<pre>290                                                         {
-291   if (!stream || !format) {
-292     return -1;
-293   }
-294 
-295   va_list args;
-296   va_start(args, format);
-297   int ret = vfprintf(stream, format, args);
-298   va_end(args);
-299 
-300   return ret;
-301 }</pre>
+<p class="Pp">Definition at line <b>173</b> of file <b>system.c</b>.</p>
+<pre>173                                                         {
+174   if (!stream || !format) {
+175     return -1;
+176   }
+177 
+178   va_list args;
+179   va_start(args, format);
+180   int ret = vfprintf(stream, format, args);
+181   va_end(args);
+182 
+183   return ret;
+184 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>.</p>
@@ -276,21 +245,21 @@
     platform_snprintf for cross-platform implementation. Returns the number of
     characters written (not including null terminator). Returns -1 if buffer is
     too small.</p>
-<p class="Pp">Definition at line <b>266</b> of file <b>system.c</b>.</p>
-<pre>266                                                                              {
-267   if (!buffer || !format || buffer_size == 0) {
-268     return -1;
-269   }
-270 
-271   va_list args;
-272   va_start(args, format);
-273 
-274   /* Delegate to platform_snprintf for actual formatting */
-275   int ret = platform_vsnprintf(buffer, buffer_size, format, args);
-276 
-277   va_end(args);
-278   return ret;
-279 }</pre>
+<p class="Pp">Definition at line <b>149</b> of file <b>system.c</b>.</p>
+<pre>149                                                                              {
+150   if (!buffer || !format || buffer_size == 0) {
+151     return -1;
+152   }
+153 
+154   va_list args;
+155   va_start(args, format);
+156 
+157   /* Delegate to platform_snprintf for actual formatting */
+158   int ret = platform_vsnprintf(buffer, buffer_size, format, args);
+159 
+160   va_end(args);
+161   return ret;
+162 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>args</b>, <b>buffer_size</b>, and
@@ -378,20 +347,20 @@
     case: NULL buffer with size 0 returns required buffer size for size
     calculation. Returns -1 if buffer is too small, format is invalid, or buffer
     is NULL with size &gt; 0.</p>
-<p class="Pp">Definition at line <b>317</b> of file <b>system.c</b>.</p>
-<pre>317                                                                                      {
-318   if (!format) {
-319     return -1;
-320   }
-321 
-322   // Allow NULL buffer with size 0 for size calculation (standard vsnprintf behavior)
-323   if (!buffer &amp;&amp; buffer_size &gt; 0) {
-324     return -1; // Non-NULL buffer required when buffer_size &gt; 0
-325   }
-326 
-327   /* Delegate to platform_vsnprintf for actual formatting */
-328   return platform_vsnprintf(buffer, buffer_size, format, ap);
-329 }</pre>
+<p class="Pp">Definition at line <b>200</b> of file <b>system.c</b>.</p>
+<pre>200                                                                                      {
+201   if (!format) {
+202     return -1;
+203   }
+204 
+205   // Allow NULL buffer with size 0 for size calculation (standard vsnprintf behavior)
+206   if (!buffer &amp;&amp; buffer_size &gt; 0) {
+207     return -1; // Non-NULL buffer required when buffer_size &gt; 0
+208   }
+209 
+210   /* Delegate to platform_vsnprintf for actual formatting */
+211   return platform_vsnprintf(buffer, buffer_size, format, ap);
+212 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, and

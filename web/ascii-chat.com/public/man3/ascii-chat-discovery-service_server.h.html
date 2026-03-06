@@ -276,8 +276,7 @@
     <b>acds_server_t::identity_public</b>,
     <b>acds_server_t::identity_secret</b>,
     <b>acds_client_data_t::in_multikey_session_create</b>,
-    <b>acds_client_data_t::joined_session</b>, <b>log_warn</b>,
-    <b>receive_packet()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>acds_client_data_t::joined_session</b>, <b>receive_packet()</b>,
     <b>tcp_client_context_get_ip()</b>, <b>acds_server_t::tcp_server</b>,
     <b>tcp_server_add_client()</b>, <b>tcp_server_get_client_count()</b>,
     <b>tcp_server_reject_client()</b>, and
@@ -369,10 +368,9 @@
     <b>atomic_store_bool()</b>, <b>acds_server_t::config</b>,
     <b>database_close()</b>, <b>database_init()</b>,
     <b>acds_config_t::database_path</b>, <b>acds_server_t::db</b>,
-    <b>log_warn</b>, <b>acds_config_t::port</b>,
-    <b>acds_server_t::rate_limiter</b>, <b>rate_limiter_create_sqlite()</b>,
-    <b>rate_limiter_destroy()</b>, <b>rate_limiter_set_sqlite_db()</b>,
-    <b>SET_ERRNO</b>, <b>acds_server_t::shutdown</b>,
+    <b>acds_config_t::port</b>, <b>acds_server_t::rate_limiter</b>,
+    <b>rate_limiter_create_sqlite()</b>, <b>rate_limiter_destroy()</b>,
+    <b>rate_limiter_set_sqlite_db()</b>, <b>acds_server_t::shutdown</b>,
     <b>acds_server_t::tcp_server</b>, <b>tcp_server_destroy()</b>,
     <b>tcp_server_init()</b>, <b>thread_pool_create()</b>,
     <b>thread_pool_spawn()</b>, and <b>acds_server_t::worker_pool</b>.</p>
@@ -403,8 +401,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_server_t::config</b>,
-    <b>acds_config_t::port</b>, <b>SET_ERRNO</b>,
-    <b>acds_server_t::tcp_server</b>, and <b>tcp_server_run()</b>.</p>
+    <b>acds_config_t::port</b>, <b>acds_server_t::tcp_server</b>, and
+    <b>tcp_server_run()</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>.</p>
 </section>
 <section class="Ss">
@@ -472,7 +470,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, <b>database_close()</b>,
-    <b>acds_server_t::db</b>, <b>log_warn</b>, <b>platform_sleep_ms()</b>,
+    <b>acds_server_t::db</b>, <b>platform_sleep_ms()</b>,
     <b>acds_server_t::rate_limiter</b>, <b>rate_limiter_destroy()</b>,
     <b>acds_server_t::shutdown</b>, <b>acds_server_t::tcp_server</b>,
     <b>tcp_server_destroy()</b>, <b>tcp_server_get_client_count()</b>,
