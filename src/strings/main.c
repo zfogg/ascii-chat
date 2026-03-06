@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <ascii-chat/common/error_codes.h>
 #include <ascii-chat/discovery/strings.h>
 
 int main(int argc, char *argv[]) {
@@ -26,18 +27,18 @@ int main(int argc, char *argv[]) {
         printf("  -h, --help          Show this help message\n");
         return 0;
       default:
-        return 1;
+        return ERROR_USAGE;
     }
   }
 
   if (count <= 0 || (long long)count > ACDS_MAX_UNIQUE_SESSIONS) {
-    return 1;
+    return ERROR_USAGE;
   }
 
   // Initialize session string system
   asciichat_error_t err = acds_string_init();
   if (err != ASCIICHAT_OK) {
-    return 1;
+    return err;
   }
 
   // Generate session strings
@@ -46,7 +47,7 @@ int main(int argc, char *argv[]) {
     err = acds_string_generate(session_string, sizeof(session_string));
     if (err != ASCIICHAT_OK) {
       acds_strings_destroy();
-      return 1;
+      return err;
     }
     printf("%s\n", session_string);
   }

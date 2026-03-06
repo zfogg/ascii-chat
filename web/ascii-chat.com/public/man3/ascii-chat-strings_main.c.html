@@ -49,57 +49,57 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
   main (int argc, char * argv[])</a></h2>
-<p class="Pp">Definition at line <b>7</b> of file <b>strings/main.c</b>.</p>
-<pre>7                                  {
-8   int count = 1;
-9   static struct option long_options[] = {
-10     {&quot;count&quot;, required_argument, 0, 'n'},
-11     {&quot;help&quot;, no_argument, 0, 'h'},
-12     {0, 0, 0, 0}
-13   };
-14 
-15   int opt;
-16   while ((opt = getopt_long(argc, argv, &quot;n:h&quot;, long_options, NULL)) != -1) {
-17     switch (opt) {
-18       case 'n':
-19         count = atoi(optarg);
-20         break;
-21       case 'h':
-22         printf(&quot;Usage: ascii-chat-strings [-n|--count COUNT]\n&quot;);
-23         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
-24         printf(&quot;\nOptions:\n&quot;);
-25         printf(&quot;  -n, --count COUNT   Generate COUNT session strings (default: 1)\n&quot;);
-26         printf(&quot;  -h, --help          Show this help message\n&quot;);
-27         return 0;
-28       default:
-29         return 1;
-30     }
-31   }
-32 
-33   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
-34     return 1;
-35   }
-36 
-37   // Initialize session string system
-38   asciichat_error_t err = acds_string_init();
-39   if (err != ASCIICHAT_OK) {
-40     return 1;
-41   }
-42 
-43   // Generate session strings
-44   for (int i = 0; i &lt; count; i++) {
-45     char session_string[SESSION_STRING_BUFFER_SIZE];
-46     err = acds_string_generate(session_string, sizeof(session_string));
-47     if (err != ASCIICHAT_OK) {
-48       acds_strings_destroy();
-49       return 1;
-50     }
-51     printf(&quot;%s\n&quot;, session_string);
-52   }
-53 
-54   acds_strings_destroy();
-55   return 0;
-56 }</pre>
+<p class="Pp">Definition at line <b>8</b> of file <b>strings/main.c</b>.</p>
+<pre>8                                  {
+9   long long count = 1;
+10   static struct option long_options[] = {
+11     {&quot;count&quot;, required_argument, 0, 'n'},
+12     {&quot;help&quot;, no_argument, 0, 'h'},
+13     {0, 0, 0, 0}
+14   };
+15 
+16   int opt;
+17   while ((opt = getopt_long(argc, argv, &quot;n:h&quot;, long_options, NULL)) != -1) {
+18     switch (opt) {
+19       case 'n':
+20         count = strtoll(optarg, NULL, 10);
+21         break;
+22       case 'h':
+23         printf(&quot;Usage: ascii-chat-strings [-n|--count COUNT]\n&quot;);
+24         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
+25         printf(&quot;\nOptions:\n&quot;);
+26         printf(&quot;  -n, --count COUNT   Generate COUNT session strings (default: 1)\n&quot;);
+27         printf(&quot;  -h, --help          Show this help message\n&quot;);
+28         return 0;
+29       default:
+30         return ERROR_USAGE;
+31     }
+32   }
+33 
+34   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
+35     return ERROR_USAGE;
+36   }
+37 
+38   // Initialize session string system
+39   asciichat_error_t err = acds_string_init();
+40   if (err != ASCIICHAT_OK) {
+41     return err;
+42   }
+43 
+44   // Generate session strings
+45   for (long long i = 0; i &lt; count; i++) {
+46     char session_string[SESSION_STRING_BUFFER_SIZE];
+47     err = acds_string_generate(session_string, sizeof(session_string));
+48     if (err != ASCIICHAT_OK) {
+49       acds_strings_destroy();
+50       return err;
+51     }
+52     printf(&quot;%s\n&quot;, session_string);
+53   }
+54 
+55   acds_strings_destroy();
+56   return 0;
+57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acds_string_generate()</b>,
