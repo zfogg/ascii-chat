@@ -1601,9 +1601,9 @@ export default function Man3() {
         url="https://ascii-chat.com/man3"
       />
       <div className="w-full h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col px-4 sm:px-6 py-8 sm:py-12 w-full overflow-hidden">
-          {/* Header */}
-          <header className="w-full max-w-4xl mx-auto mb-8 sm:mb-12 flex-shrink-0">
+        {/* Fixed Header */}
+        <div className="fixed top-0 left-0 right-0 bg-gray-950 z-10 border-b border-gray-800">
+          <header className="mx-auto max-w-[2200px] px-4 sm:px-6 py-8 sm:py-12 w-full xl:px-[4rem] max-w-4xl">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="text-purple-400">📚</span> ascii-chat-*(3)
             </h1>
@@ -1689,7 +1689,10 @@ export default function Man3() {
                 : "No results"}
             </p>
           </header>
+        </div>
 
+        {/* Content with top padding for fixed header */}
+        <div className="flex-1 flex flex-col px-4 sm:px-6 pt-80 w-full overflow-hidden">
           {/* Main content area */}
           <div className="flex-1 flex flex-col lg:flex-row gap-8 overflow-y-auto lg:overflow-hidden min-h-0">
             {/* Results list */}
@@ -1919,7 +1922,7 @@ export default function Man3() {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 border-t border-gray-800">
+        <div className="flex-shrink-0 border-t border-gray-800 bg-gray-950">
           <Footer />
         </div>
       </div>
