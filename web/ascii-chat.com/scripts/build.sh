@@ -40,14 +40,15 @@ if [ ! -f bin/ascii-chat-strings ]; then
   ls -la bin/ || echo "bin/ directory doesn't exist"
   exit 1
 fi
-mkdir -p api/bin
-cp bin/ascii-chat-strings api/bin/ || exit 1
-chmod +x api/bin/ascii-chat-strings
-if [ ! -f api/bin/ascii-chat-strings ]; then
-  echo "ERROR: binary copy failed"
+# Copy to public/bin so it's served as static file accessible to function
+mkdir -p public/bin
+cp bin/ascii-chat-strings public/bin/ || exit 1
+chmod +x public/bin/ascii-chat-strings
+if [ ! -f public/bin/ascii-chat-strings ]; then
+  echo "ERROR: binary copy to public/bin failed"
   exit 1
 fi
-echo "Binary copied successfully to api/bin/ascii-chat-strings"
+echo "Binary copied successfully to public/bin/ascii-chat-strings"
 
 echo "✓ Build complete"
 
