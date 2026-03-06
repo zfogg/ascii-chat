@@ -477,7 +477,9 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
     // Call the ascii-chat-strings binary
     const binaryPath = path.join(
       __dirname,
-      "../../build/bin/ascii-chat-strings",
+      NODE_ENV === "production"
+        ? "./bin/ascii-chat-strings"
+        : "../../build/bin/ascii-chat-strings",
     );
     const output = execSync(`"${binaryPath}" --count ${count}`, {
       encoding: "utf-8",
