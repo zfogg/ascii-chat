@@ -41,9 +41,9 @@ if(PLATFORM_IOS)
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)
-        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
     else()
-        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
     endif()
 
     if(EXISTS "${BEARSSL_SOURCE_DIR}")
@@ -62,7 +62,7 @@ if(PLATFORM_IOS)
             # Build the static library for iOS with position-independent code
             # Disable getentropy, use /dev/urandom, disable fortification
             execute_process(
-                COMMAND make -j lib CC=clang AR=ar CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
+                COMMAND bash -c "make -j lib CC=clang AR=ar 'CFLAGS=-DBR_USE_GETENTROPY=0 -DBR_USE_URANDOM=1 -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -fno-stack-protector -fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0'"
                 WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
                 RESULT_VARIABLE BEARSSL_MAKE_RESULT
                 OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT

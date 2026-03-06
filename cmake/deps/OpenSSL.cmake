@@ -60,21 +60,23 @@ if(PLATFORM_IOS)
             file(RENAME "${OPENSSL_BUILD_DIR}/openssl-3.4.0" "${OPENSSL_SOURCE_DIR}")
         endif()
 
-        # Configure OpenSSL for iOS using ios64-cross target
+        # Configure OpenSSL for iOS using clang directly (more reliable than ios64-cross)
         message(STATUS "  Configuring OpenSSL for iOS (arm64)...")
 
-        # Set compiler flags for iOS SDK
-        set(IOS_FLAGS "-arch arm64 -miphoneos-version-min=16.0 -isysroot ${IOS_SDK_PATH} -fPIC")
-
         execute_process(
-            COMMAND bash -c "CC=clang CFLAGS='${IOS_FLAGS}' LDFLAGS='${IOS_FLAGS}' CROSS_COMPILE='' CROSS_TOP='${IOS_SDK_PATH}/..' CROSS_SDK='iPhoneOS.sdk' '${OPENSSL_SOURCE_DIR}/Configure' ios64-cross --prefix=${OPENSSL_PREFIX} no-shared no-tests no-ui-console -fPIC"
+            COMMAND bash -c "
+                export CC=clang
+                export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC'
+                export LDFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -fPIC'
+                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} no-shared no-tests no-ui-console
+            "
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
         )
         if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}\n${CONFIG_OUTPUT}")
+            message(FATAL_ERROR "Failed to configure OpenSSL for iOS:\n${CONFIG_ERROR}\n${CONFIG_OUTPUT}")
         endif()
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")

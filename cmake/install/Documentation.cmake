@@ -17,51 +17,54 @@
 # =============================================================================
 # Man1 Target (User Manual - No Doxygen Required)
 # =============================================================================
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
+# Only generate man pages if executable is built (not for iOS library-only builds)
+if(BUILD_EXECUTABLES)
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
 
-# Determine the executable path (handles Windows .exe extension)
-if(WIN32)
-    set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat.exe")
-else()
-    set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat")
-endif()
+    # Determine the executable path (handles Windows .exe extension)
+    if(WIN32)
+        set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat.exe")
+    else()
+        set(ASCII_CHAT_EXECUTABLE "${CMAKE_BINARY_DIR}/bin/ascii-chat")
+    endif()
 
-# Generate ascii-chat man page at build time using --man-page-create option
-# This merges the template (.1.in) with manual content (.1.content) and auto-generates
-# option documentation from the options builder
-# Note: --man-page-create writes to stdout with no argument or file with argument.
-# Uncompressed .1 generated; packaging compresses at install time
-#
-# First, process the template to substitute version variables
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
+    # Generate ascii-chat man page at build time using --man-page-create option
+    # This merges the template (.1.in) with manual content (.1.content) and auto-generates
+    # option documentation from the options builder
+    # Note: --man-page-create writes to stdout with no argument or file with argument.
+    # Uncompressed .1 generated; packaging compresses at install time
+    #
+    # First, process the template to substitute version variables
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man1")
 
-# Extract year from PROJECT_VERSION_DATE (format: YYYY-MM-DD)
-string(SUBSTRING "${PROJECT_VERSION_DATE}" 0 4 COPYRIGHT_YEAR_END)
+    # Extract year from PROJECT_VERSION_DATE (format: YYYY-MM-DD)
+    string(SUBSTRING "${PROJECT_VERSION_DATE}" 0 4 COPYRIGHT_YEAR_END)
 
-# Configure man1 template first
-configure_file(
-    "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
-    "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
-    @ONLY
-)
-
-add_custom_command(
-    OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMAND bash -c "2>/dev/null ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1'"
-    DEPENDS
-        $<TARGET_FILE:ascii-chat>
+    # Configure man1 template first
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/share/man/man1/ascii-chat.1.in"
         "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
-    COMMENT "Building man page"
-    VERBATIM
-)
+        @ONLY
+    )
 
-# Build man pages target (works for both Debug and Release)
-add_custom_target(man1 ALL
-    DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
-    COMMENT "Man pages build complete"
-)
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        COMMAND bash -c "2>/dev/null ASCII_CHAT_QUESTION_PROMPT_RESPONSE='y' ASCIICHAT_RESOURCE_DIR='${CMAKE_BINARY_DIR}' LSAN_OPTIONS=verbosity=0:halt_on_error=0 ASAN_OPTIONS=verbosity=0:halt_on_error=0 timeout -k 1 1.5 '${ASCII_CHAT_EXECUTABLE}' --man-page-create '${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1'"
+        DEPENDS
+            $<TARGET_FILE:ascii-chat>
+            "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1.in"
+        COMMENT "Building man page"
+        VERBATIM
+    )
 
-message(STATUS "Man1 target ${BoldCyan}'man1'${ColorReset} is available (no Doxygen required). Build with: ${BoldYellow}cmake --build build --target man1${ColorReset}")
+    # Build man pages target (works for both Debug and Release)
+    add_custom_target(man1 ALL
+        DEPENDS "${CMAKE_BINARY_DIR}/share/man/man1/ascii-chat.1"
+        COMMENT "Man pages build complete"
+    )
+
+    message(STATUS "Man1 target ${BoldCyan}'man1'${ColorReset} is available (no Doxygen required). Build with: ${BoldYellow}cmake --build build --target man1${ColorReset}")
+endif()
 
 # =============================================================================
 # Man3 Target (API Reference - Doxygen-generated man pages only)

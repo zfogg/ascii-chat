@@ -4,6 +4,7 @@
 # Finds and configures zstd compression library using CMake's find_package()
 #
 # Platform-specific dependency management:
+#   - iOS: Built from source with iOS cross-compilation
 #   - musl: Built from source in this file with USE_MUSL check
 #   - Linux/macOS (non-musl): Uses pkg-config for system packages
 #   - Windows: Uses vcpkg
@@ -14,6 +15,93 @@
 #   - ZSTD_LIBRARIES - Library paths
 #   - ZSTD_INCLUDE_DIRS - Include directories
 # =============================================================================
+
+# =============================================================================
+# iOS: Build from source
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (iOS cross-compile)...")
+
+    set(ZSTD_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/zstd-ios")
+    set(ZSTD_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/zstd-ios-build")
+
+    # Get iOS SDK path
+    if(BUILD_IOS_SIM)
+        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    else()
+        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+
+    if(NOT EXISTS "${ZSTD_PREFIX}/lib/libzstd.a")
+        message(STATUS "  zstd library not found in cache, will build from source")
+
+        file(MAKE_DIRECTORY "${ZSTD_BUILD_DIR}")
+
+        # Download zstd
+        set(ZSTD_TARBALL "${ZSTD_BUILD_DIR}/zstd-1.5.7.tar.gz")
+        if(NOT EXISTS "${ZSTD_TARBALL}")
+            message(STATUS "  Downloading zstd 1.5.7...")
+            file(DOWNLOAD
+                "https://github.com/facebook/zstd/releases/download/v1.5.7/zstd-1.5.7.tar.gz"
+                "${ZSTD_TARBALL}"
+                EXPECTED_HASH SHA256=eb33e51f49a15e023950cd7825ca74a4a2b43db8354825ac24fc1b7ee09e6fa3
+                SHOW_PROGRESS
+            )
+        endif()
+
+        # Extract
+        if(NOT EXISTS "${ZSTD_BUILD_DIR}/zstd-1.5.7")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xzf "${ZSTD_TARBALL}"
+                WORKING_DIRECTORY "${ZSTD_BUILD_DIR}"
+            )
+        endif()
+
+        # Build
+        execute_process(
+            COMMAND bash -c "make -j lib-release CC=clang 'CFLAGS=-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC' PREFIX=${ZSTD_PREFIX}"
+            WORKING_DIRECTORY "${ZSTD_BUILD_DIR}/zstd-1.5.7"
+            RESULT_VARIABLE ZSTD_BUILD_RESULT
+            ERROR_VARIABLE ZSTD_BUILD_ERROR
+        )
+        if(NOT ZSTD_BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to build zstd for iOS:\n${ZSTD_BUILD_ERROR}")
+        endif()
+
+        # Install
+        execute_process(
+            COMMAND make install PREFIX=${ZSTD_PREFIX}
+            WORKING_DIRECTORY "${ZSTD_BUILD_DIR}/zstd-1.5.7"
+            RESULT_VARIABLE ZSTD_INSTALL_RESULT
+            ERROR_VARIABLE ZSTD_INSTALL_ERROR
+        )
+        if(NOT ZSTD_INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install zstd:\n${ZSTD_INSTALL_ERROR}")
+        endif()
+
+        message(STATUS "  ${BoldBlue}zstd${ColorReset} built and installed successfully")
+    else()
+        message(STATUS "  ${BoldBlue}zstd${ColorReset} library found in cache: ${BoldMagenta}${ZSTD_PREFIX}/lib/libzstd.a${ColorReset}")
+    endif()
+
+    set(ZSTD_LIBRARIES "${ZSTD_PREFIX}/lib/libzstd.a")
+    set(ZSTD_INCLUDE_DIRS "${ZSTD_PREFIX}/include")
+
+    # Create placeholder directories
+    file(MAKE_DIRECTORY "${ZSTD_PREFIX}/include" "${ZSTD_PREFIX}/lib")
+
+    # Create imported target
+    if(NOT TARGET zstd::libzstd)
+        add_library(zstd::libzstd STATIC IMPORTED GLOBAL)
+        set_target_properties(zstd::libzstd PROPERTIES
+            IMPORTED_LOCATION "${ZSTD_PREFIX}/lib/libzstd.a"
+            INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_PREFIX}/include"
+        )
+    endif()
+
+    set(ZSTD_FOUND TRUE)
+    return()
+endif()
 
 # =============================================================================
 # musl: Build from source

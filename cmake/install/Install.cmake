@@ -26,10 +26,13 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release" AND PLATFORM_LINUX AND NOT USE_MUSL)
 endif()
 
 # Install binary (separate export from library to allow library-only installs)
-install(TARGETS ascii-chat
-    RUNTIME DESTINATION bin
-    COMPONENT Runtime
-)
+# Only install if executable was built (iOS builds don't create executables)
+if(BUILD_EXECUTABLES)
+    install(TARGETS ascii-chat
+        RUNTIME DESTINATION bin
+        COMPONENT Runtime
+    )
+endif()
 
 # =============================================================================
 # Start Menu Shortcuts (Windows WiX installer)
@@ -504,7 +507,7 @@ file(MAKE_DIRECTORY
 # CRITICAL: Use $<TARGET_FILE:ascii-chat> for DEPENDS to ensure the actual binary
 # file is built and linked before these commands run. Without this, parallel builds
 # might start the completions generation before linking completes.
-if(WIN32)
+if(BUILD_EXECUTABLES AND WIN32)
     # Windows: Use PowerShell to run commands and redirect output
     add_custom_command(
         OUTPUT
@@ -524,7 +527,7 @@ if(WIN32)
         COMMENT "Building shell completions"
         VERBATIM
     )
-else()
+elseif(BUILD_EXECUTABLES)
     # Unix: Use bash with timeout and environment variables
     # Suppress ASAN output to prevent exit code 1 from memory leak detection during build
     add_custom_command(
@@ -543,13 +546,15 @@ else()
     )
 endif()
 
-add_custom_target(completions ALL
-    DEPENDS
-        "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
-        "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
-        "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
-        "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
-)
+if(BUILD_EXECUTABLES)
+    add_custom_target(completions ALL
+        DEPENDS
+            "${CMAKE_BINARY_DIR}/share/bash-completion/completions/ascii-chat"
+            "${CMAKE_BINARY_DIR}/share/fish/vendor_completions.d/ascii-chat.fish"
+            "${CMAKE_BINARY_DIR}/share/zsh/site-functions/_ascii_chat"
+            "${CMAKE_BINARY_DIR}/share/powershell/Completions/ascii-chat.ps1"
+    )
+endif()
 
 # Shell completions are generated silently as part of the build process
 

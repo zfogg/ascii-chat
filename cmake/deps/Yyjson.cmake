@@ -12,6 +12,45 @@
 #   4. Build as static library
 
 function(configure_yyjson)
+    # iOS builds always use submodule source
+    if(PLATFORM_IOS)
+        message(STATUS "Configuring ${BoldBlue}yyjson${ColorReset} from submodule (iOS)...")
+
+        set(YYJSON_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/yyjson")
+
+        if(NOT EXISTS "${YYJSON_SOURCE_DIR}/CMakeLists.txt")
+            message(FATAL_ERROR "yyjson submodule not found at ${YYJSON_SOURCE_DIR}\n"
+                                "Did you run 'git submodule update --init --recursive'?")
+        endif()
+
+        # Disable extra features to reduce binary size
+        set(YYJSON_DISABLE_READER ON CACHE BOOL "Disable JSON reader (only using writer)" FORCE)
+        set(YYJSON_DISABLE_UTILS ON CACHE BOOL "Disable JSON Pointer/Patch/Merge utilities" FORCE)
+        set(YYJSON_DISABLE_INCR_READER ON CACHE BOOL "Disable incremental reader" FORCE)
+        set(YYJSON_BUILD_TESTS OFF CACHE BOOL "Disable yyjson tests" FORCE)
+        set(YYJSON_BUILD_FUZZER OFF CACHE BOOL "Disable yyjson fuzzer" FORCE)
+        set(YYJSON_BUILD_MISC OFF CACHE BOOL "Disable yyjson misc" FORCE)
+        set(YYJSON_BUILD_DOC OFF CACHE BOOL "Disable yyjson documentation" FORCE)
+        set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build yyjson as static library" FORCE)
+
+        add_subdirectory(
+            "${YYJSON_SOURCE_DIR}"
+            "${CMAKE_CURRENT_BINARY_DIR}/yyjson-build"
+        )
+
+        if(NOT TARGET yyjson)
+            message(FATAL_ERROR "yyjson target not created by subdirectory")
+        endif()
+
+        set(YYJSON_LIBRARIES yyjson PARENT_SCOPE)
+        set(YYJSON_INCLUDE_DIRS "${YYJSON_SOURCE_DIR}/src" PARENT_SCOPE)
+        set(YYJSON_FOUND TRUE PARENT_SCOPE)
+
+        message(STATUS "Configured ${BoldGreen}yyjson${ColorReset} from submodule (iOS)")
+        message(STATUS "  Disabled: READER, UTILS, INCR_READER, TESTS, FUZZER, MISC, DOC")
+        return()
+    endif()
+
     # Musl builds always use submodule source
     if(USE_MUSL)
         message(STATUS "Configuring ${BoldBlue}yyjson${ColorReset} from submodule (musl)...")
