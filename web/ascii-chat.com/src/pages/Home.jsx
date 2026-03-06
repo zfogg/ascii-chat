@@ -1,11 +1,9 @@
 import { useState, useEffect } from "react";
-import { CodeBlock } from "@ascii-chat/shared/components";
-import { fetchSessionStrings } from "@ascii-chat/shared/utils";
+import { CodeBlock, AnchoredHeading } from "@ascii-chat/shared/components";
+import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
-import AnchoredHeading from "../components/AnchoredHeading";
-import { useScrollToHash } from "../utils/anchors";
 
 export default function Home() {
   const [sessionStrings, setSessionStrings] = useState([

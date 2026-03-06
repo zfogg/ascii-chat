@@ -1,5 +1,3 @@
-import { slugify } from '../utils/anchors';
-
 /**
  * AnchoredHeading component - creates headings with auto-generated IDs and clickable anchor links
  *
@@ -7,6 +5,19 @@ import { slugify } from '../utils/anchors';
  *   <AnchoredHeading level={2}>Getting Started</AnchoredHeading>
  *   <AnchoredHeading level={3} className="text-cyan-300">Installation</AnchoredHeading>
  */
+function slugify(text) {
+  if (typeof text !== 'string') {
+    return text.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  return text
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_]+/g, '-')
+    .replace(/--+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export default function AnchoredHeading({ level = 2, children, className = '', ...props }) {
   const id = slugify(typeof children === 'string' ? children : '');
   const HeadingTag = `h${level}`;

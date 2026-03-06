@@ -4,8 +4,8 @@ import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
-import AnchoredHeading from "../../components/AnchoredHeading";
-import { useScrollToHash } from "../../utils/anchors";
+
+
 
 export default function Configuration() {
   useScrollToHash(100);
