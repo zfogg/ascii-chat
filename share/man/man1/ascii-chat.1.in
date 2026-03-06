@@ -284,21 +284,6 @@ This will allow users to customize keyboard shortcuts without rebuilding the app
 .RE
 .\" MANUAL-END: KEYBOARD CONTROLS
 
-.\" MANUAL-START: LIMITS
-.SH LIMITS
-.TP
-.B Maximum Clients
-Default 10 clients per server (configurable 1-32 via \fB\-\-max\-clients\fR).
-Higher values increase server resource requirements.
-.TP
-.B Video Grid Layout
-Clients are arranged in an automatically-sized grid (e.g., 2x2, 3x3).
-The grid size adjusts based on the number of connected clients.
-.TP
-.B Frame Rate
-Default 60 FPS. Configurable from 1-144 FPS.
-.\" MANUAL-END: LIMITS
-
 .\" MANUAL-START: EXIT STATUS
 .SH EXIT STATUS
 Exit codes correspond to the \fBasciichat_error_t\fR enum values:
