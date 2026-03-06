@@ -99,7 +99,7 @@ export default function DocsHub() {
         <div className="flex-1 flex flex-col docs-container">
           {/* Header */}
           <header className="mb-12 sm:mb-16 text-center">
-            <AnchoredHeading level={1} className="heading-1 mb-4">📚 Documentation</AnchoredHeading>
+            <Heading level={1} className="heading-1 mb-4">📚 Documentation</Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               Complete guides for configuring, using, and scripting ascii-chat
             </p>

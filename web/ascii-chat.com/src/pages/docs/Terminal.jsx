@@ -35,7 +35,7 @@ export default function Terminal() {
 
           {/* Important Notes */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-cyan-400">📌 Important Notes</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-cyan-400">📌 Important Notes</Heading>
 
             <div className="space-y-3">
               <div className="info-box-info">
@@ -78,7 +78,7 @@ export default function Terminal() {
 
           {/* Color Control */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-purple-400">🎨 Color Control</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-purple-400">🎨 Color Control</Heading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-purple-300 mb-3">
@@ -173,10 +173,10 @@ export default function Terminal() {
 
           {/* Display Modes */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-green-400">📐 Display Modes</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-green-400">📐 Display Modes</Heading>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-green-300 mb-3">Render Modes</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-green-300 mb-3">Render Modes</Heading>
               <p className="docs-paragraph">
                 Control how ASCII characters are rendered to represent
                 brightness:
@@ -209,7 +209,7 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-pink-300 mb-3">ASCII Palettes</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">ASCII Palettes</Heading>
               <p className="docs-paragraph">
                 Control which ASCII characters represent different brightness
                 levels:
@@ -222,7 +222,7 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-yellow-300 mb-3">Aspect Ratio</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">Aspect Ratio</Heading>
               <p className="docs-paragraph">
                 By default, ascii-chat preserves aspect ratio (terminal
                 characters are ~2:1 height:width). Use <code>--stretch</code> to
@@ -238,7 +238,7 @@ export default function Terminal() {
 
           {/* Terminal Dimensions */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-teal-400">📏 Terminal Dimensions</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-teal-400">📏 Terminal Dimensions</Heading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-teal-300 mb-3">
@@ -323,10 +323,10 @@ export default function Terminal() {
 
           {/* Unicode & Text */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-indigo-400">🌐 Unicode & Text</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-indigo-400">🌐 Unicode & Text</Heading>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-indigo-300 mb-3">UTF-8 Support</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-indigo-300 mb-3">UTF-8 Support</Heading>
               <p className="docs-paragraph">
                 Control UTF-8/Unicode character support for palettes and output:
               </p>
@@ -345,7 +345,7 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-blue-300 mb-3">Strip ANSI Codes</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-blue-300 mb-3">Strip ANSI Codes</Heading>
               <p className="docs-paragraph">
                 Remove ANSI escape sequences from output (for saving to files or
                 processing text):
@@ -360,7 +360,7 @@ export default function Terminal() {
 
           {/* Snapshot Mode */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-orange-400">📸 Snapshot Mode</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-orange-400">📸 Snapshot Mode</Heading>
 
             <p className="docs-paragraph">
               For comprehensive snapshot capture documentation, see the{" "}
@@ -457,7 +457,7 @@ export default function Terminal() {
 
           {/* Option Combinations */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-blue-400">🔗 Option Combinations</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-blue-400">🔗 Option Combinations</Heading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-blue-300 mb-3">
@@ -501,7 +501,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-cyan-300 mb-3">Common Setups</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">Common Setups</Heading>
               <div className="space-y-2">
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">
@@ -556,7 +556,7 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
 
           {/* Tips & Tricks */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-green-400">💡 Tips & Tricks</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-green-400">💡 Tips & Tricks</Heading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-green-300 mb-3">

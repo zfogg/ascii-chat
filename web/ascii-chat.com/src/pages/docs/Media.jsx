@@ -40,7 +40,7 @@ export default function Media() {
             </h2>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-teal-300 mb-3">Video Formats</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">Video Formats</Heading>
               <p className="docs-paragraph">
                 ASCII art rendering supports any video container and codec that
                 FFmpeg supports:
@@ -86,7 +86,7 @@ export default function Media() {
 
           {/* Local Files */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-green-400">💾 Local Files</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-green-400">💾 Local Files</Heading>
             <p className="docs-paragraph">
               ascii-chat uses <strong>FFmpeg</strong> for media decoding and
               format conversion, and optionally <strong>yt-dlp</strong> for
@@ -113,7 +113,7 @@ export default function Media() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-cyan-300 mb-3">Animated GIFs</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">Animated GIFs</Heading>
               <p className="docs-paragraph">
                 Play animated GIF files directly with full control over
                 playback:
@@ -126,7 +126,7 @@ export default function Media() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-yellow-300 mb-3">Image Formats</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">Image Formats</Heading>
               <p className="docs-paragraph">
                 Display and process individual images. Supports PNG, JPEG, WebP,
                 BMP, TIFF, and more:
@@ -154,7 +154,7 @@ export default function Media() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-indigo-300 mb-3">Remote URLs</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-indigo-300 mb-3">Remote URLs</Heading>
               <p className="docs-paragraph">
                 Stream from HTTP/HTTPS, YouTube, and RTMP sources directly
                 without downloading:
@@ -234,7 +234,7 @@ export default function Media() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-yellow-300 mb-3">YouTube Videos</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">YouTube Videos</Heading>
               <p className="docs-paragraph">
                 Stream YouTube videos directly to terminal as ASCII art
                 (requires yt-dlp):
@@ -247,7 +247,7 @@ export default function Media() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-teal-300 mb-3">Live Streams</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">Live Streams</Heading>
               <p className="docs-paragraph">
                 Stream from HLS, DASH, RTMP, and other live protocols:
               </p>
@@ -294,7 +294,7 @@ export default function Media() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <AnchoredHeading level={3} className="heading-3 text-pink-300 mb-3">Webcam Streaming</AnchoredHeading>
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">Webcam Streaming</Heading>
               <CodeBlock language="bash">
                 {
                   "# Linux: V4L2 webcam (direct piping)\nffmpeg -f v4l2 -i /dev/video0 \\\n  -vf 'format=rgb24,scale=160:40' -f rawvideo - | \\\n  ascii-chat mirror -f '-' --width 160 --height 40 --fps 30\n\n# Windows: DirectShow (built-in camera)\nffmpeg -f dshow -i video='Built-in Camera' \\\n  -vf 'format=rgb24,scale=160:40' -f rawvideo - | \\\n  ascii-chat mirror -f '-'"
@@ -363,7 +363,7 @@ export default function Media() {
 
           {/* Advanced Options */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-teal-400">⚙️ Advanced Options</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-teal-400">⚙️ Advanced Options</Heading>
 
             <div className="space-y-3">
               <div className="card-standard accent-cyan">
@@ -516,7 +516,7 @@ export default function Media() {
 
           {/* Performance Tips */}
           <section className="docs-section-spacing">
-            <AnchoredHeading level={2} className="heading-2 text-cyan-400">💡 Performance Tips</AnchoredHeading>
+            <Heading level={2} className="heading-2 text-cyan-400">💡 Performance Tips</Heading>
             <div className="space-y-3">
               <div className="card-standard accent-cyan">
                 <h4 className="text-cyan-300 font-semibold mb-2">
