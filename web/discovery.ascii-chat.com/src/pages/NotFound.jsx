@@ -13,7 +13,7 @@ function NotFoundPage() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-gray-950 text-gray-100">
+    <div className="h-screen flex flex-col bg-gray-950 text-gray-100">
       <ACDSHead
         title="404 - Page Not Found | ascii-chat Discovery Service"
         description="The page you're looking for doesn't exist."
@@ -21,7 +21,8 @@ function NotFoundPage() {
       />
       <Header />
       <NotFound />
-      <Footer
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-950 border-t border-gray-800">
+        <Footer
         links={[
           {
             href: "https://github.com/zfogg/ascii-chat",
@@ -73,6 +74,7 @@ function NotFoundPage() {
         }
         extraLine="ascii-chat Discovery Service"
       />
+      </div>
     </div>
   );
 }
