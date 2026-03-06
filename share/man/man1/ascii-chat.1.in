@@ -282,18 +282,6 @@ Future versions will support custom keyboard bindings via a configuration file.
 Implement remappable keyboard controls via a configuration file (e.g., \fI~/.config/ascii-chat/keybindings.toml\fR).
 This will allow users to customize keyboard shortcuts without rebuilding the application.
 .RE
-.PP
-.B Keyboard Layout Support
-.PP
-The keyboard input system supports all standard POSIX keyboards and terminal emulators.
-The default keybindings use ASCII characters only.
-.PP
-The underlying input system fully supports Unicode, including:
-.RS
-.TP
-.B UTF-8
-Any character in the UTF-8 character set can be used for keyboard shortcuts.
-.RE
 .\" MANUAL-END: KEYBOARD CONTROLS
 
 .\" MANUAL-START: LIMITS
