@@ -73,13 +73,20 @@ message(STATUS "iOS Toolchain: Platform=${IOS_PLATFORM}, Arch=${IOS_ARCH}, SDK=$
 # Set deployment target
 set(CMAKE_OSX_DEPLOYMENT_TARGET ${IOS_DEPLOYMENT_TARGET})
 
-# Set compiler
-set(CMAKE_C_COMPILER clang)
-set(CMAKE_CXX_COMPILER clang++)
+# Set compiler (find clang full path for Objective-C)
+find_program(_CLANG_COMPILER NAMES clang REQUIRED)
+find_program(_CLANGXX_COMPILER NAMES clang++ REQUIRED)
+
+set(CMAKE_C_COMPILER ${_CLANG_COMPILER})
+set(CMAKE_CXX_COMPILER ${_CLANGXX_COMPILER})
+set(CMAKE_OBJC_COMPILER ${_CLANG_COMPILER})
+set(CMAKE_OBJCXX_COMPILER ${_CLANGXX_COMPILER})
 
 # Compiler flags for iOS cross-compilation
 set(CMAKE_C_FLAGS "-fPIC -isysroot ${CMAKE_OSX_SYSROOT} -arch ${IOS_ARCH} -miphoneos-version-min=${IOS_DEPLOYMENT_TARGET}")
 set(CMAKE_CXX_FLAGS "-fPIC -isysroot ${CMAKE_OSX_SYSROOT} -arch ${IOS_ARCH} -miphoneos-version-min=${IOS_DEPLOYMENT_TARGET}")
+set(CMAKE_OBJC_FLAGS "-fPIC -isysroot ${CMAKE_OSX_SYSROOT} -arch ${IOS_ARCH} -miphoneos-version-min=${IOS_DEPLOYMENT_TARGET}")
+set(CMAKE_OBJCXX_FLAGS "-fPIC -isysroot ${CMAKE_OSX_SYSROOT} -arch ${IOS_ARCH} -miphoneos-version-min=${IOS_DEPLOYMENT_TARGET}")
 
 # Linker flags
 set(CMAKE_EXE_LINKER_FLAGS "-isysroot ${CMAKE_OSX_SYSROOT} -arch ${IOS_ARCH}")
@@ -89,9 +96,15 @@ set(CMAKE_MODULE_LINKER_FLAGS "-isysroot ${CMAKE_OSX_SYSROOT} -arch ${IOS_ARCH}"
 # Tell CMake that we're cross-compiling
 set(CMAKE_CROSSCOMPILING ON)
 
+# For cross-compilation, use static library target for compilation tests (not executable)
+# This is needed for check_include_file() and other compile tests to work properly
+set(CMAKE_TRY_COMPILE_TARGET_TYPE STATIC_LIBRARY)
+
 # Disable some checks that don't work well with cross-compilation
 set(CMAKE_C_ABI_COMPILED TRUE)
 set(CMAKE_CXX_ABI_COMPILED TRUE)
+set(CMAKE_OBJC_ABI_COMPILED TRUE)
+set(CMAKE_OBJCXX_ABI_COMPILED TRUE)
 
 # Search paths - only look in iOS SDK
 set(CMAKE_FIND_ROOT_PATH ${CMAKE_OSX_SYSROOT})
@@ -99,6 +112,14 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PROGRAM NEVER)
 set(CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_INCLUDE ONLY)
 set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
+
+# =============================================================================
+# iOS threading support (pthreads are available on iOS)
+# =============================================================================
+# Cross-compilation pthread detection doesn't work, so we explicitly enable it
+set(CMAKE_THREAD_LIBS_INIT "-lpthread")
+set(CMAKE_HAVE_PTHREAD_H ON CACHE BOOL "")
+set(CMAKE_USE_PTHREADS_INIT ON CACHE BOOL "")
 
 # Disable any platform-specific checks that might not work on iOS
 set(CMAKE_SKIP_RPATH ON)
@@ -124,10 +145,28 @@ if(DEFINED IOS_DEPS_CACHE_DIR)
         set(OPENSSL_SSL_LIBRARY "${_OPENSSL_LIB_DIR}/libssl.a" CACHE FILEPATH "OpenSSL SSL" FORCE)
         set(OPENSSL_FOUND TRUE CACHE BOOL "OpenSSL found" FORCE)
 
+        # Create OpenSSL targets for downstream projects
+        if(NOT TARGET OpenSSL::Crypto)
+            add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::Crypto PROPERTIES
+                IMPORTED_LOCATION "${_OPENSSL_LIB_DIR}/libcrypto.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${_OPENSSL_INCLUDE_DIR}"
+            )
+        endif()
+        if(NOT TARGET OpenSSL::SSL)
+            add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
+            set_target_properties(OpenSSL::SSL PROPERTIES
+                IMPORTED_LOCATION "${_OPENSSL_LIB_DIR}/libssl.a"
+                INTERFACE_INCLUDE_DIRECTORIES "${_OPENSSL_INCLUDE_DIR}"
+                INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
+            )
+        endif()
+
         # Add OpenSSL include directory to default include search paths
         # This ensures C++ headers like <openssl/ssl.h> are found
-        list(APPEND CMAKE_CXX_FLAGS "-I${_OPENSSL_INCLUDE_DIR}")
-        list(APPEND CMAKE_C_FLAGS "-I${_OPENSSL_INCLUDE_DIR}")
+        # Use string concatenation (not list append) to avoid semicolon separators
+        string(APPEND CMAKE_CXX_FLAGS " -I${_OPENSSL_INCLUDE_DIR}")
+        string(APPEND CMAKE_C_FLAGS " -I${_OPENSSL_INCLUDE_DIR}")
 
         # Also add to CMAKE_PREFIX_PATH for find_package(OpenSSL)
         list(APPEND CMAKE_PREFIX_PATH "${_OPENSSL_ROOT_DIR}")
