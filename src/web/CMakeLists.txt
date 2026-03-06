@@ -1,8 +1,22 @@
 # WebAssembly Build Configuration (Mirror and Client Modes)
 # Built as a separate project via execute_process with Emscripten toolchain
 
-cmake_minimum_required(VERSION 3.18)
-project(ascii-chat-wasm)
+# Only call project() if being configured as a standalone project (via execute_process with Emscripten)
+# When included as a subdirectory, the parent project() takes care of initialization
+if(NOT CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
+    # Being used as a subdirectory - don't call project() again
+else()
+    # Being used as a standalone project - initialize CMake
+    cmake_minimum_required(VERSION 3.18)
+    project(ascii-chat-wasm)
+
+    # Include sanitizer configuration so apply_sanitizers_to_target() is available
+    # Compute path to cmake/platform relative to this file location
+    get_filename_component(CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../cmake" ABSOLUTE)
+    if(EXISTS "${CMAKE_DIR}/platform/Sanitizers.cmake")
+        include(${CMAKE_DIR}/platform/Sanitizers.cmake)
+    endif()
+endif()
 
 # Export compile commands for IDE integration
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
@@ -22,6 +36,25 @@ endif()
 
 # Fetch and build dependencies for WASM
 include(FetchContent)
+
+# Pass Emscripten toolchain to FetchContent sub-builds via per-package CMAKE_ARGS
+# Only include CMAKE_TOOLCHAIN_FILE if it's actually set (avoid empty -DCMAKE_TOOLCHAIN_FILE=)
+if(DEFINED CMAKE_TOOLCHAIN_FILE AND CMAKE_TOOLCHAIN_FILE)
+    set(FetchContent_Toolchain_Args
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    )
+else()
+    set(FetchContent_Toolchain_Args
+        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+    )
+endif()
+
+# Set CMAKE_ARGS for each dependency using the toolchain args
+set(Sodium_CMAKE_ARGS ${FetchContent_Toolchain_Args})
+set(pcre2_CMAKE_ARGS ${FetchContent_Toolchain_Args})
+set(Opus_CMAKE_ARGS ${FetchContent_Toolchain_Args})
+set(zstd_CMAKE_ARGS ${FetchContent_Toolchain_Args})
 
 # Suppress verbose configure output from all dependency builds
 set(CMAKE_MESSAGE_LOG_LEVEL_BACKUP "${CMAKE_MESSAGE_LOG_LEVEL}")
