@@ -136,28 +136,27 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
                   "\n"
-                  "_ascii_chat() {\n"
-                  "  local curcontext=\"$curcontext\" state line modes\n"
-                  "  if [[ ${words[2]} == -* ]]; then\n"
-                  "    # Binary-level options: use _arguments with state for proper completion context\n"
-                  "    _arguments '1:option:->binary'\n"
-                  "    case $state in\n"
-                  "      binary)\n"
-                  "      local -a binary_opts=(\n");
+                  "_ascii_chat_binary() {\n"
+                  "  local -a binary_opts=(\n");
 
   /* Add discovery options to binary-level completion */
   if (discovery_opts) {
     for (size_t i = 0; i < discovery_count; i++) {
-      fprintf(output, "        '--%s:", discovery_opts[i].long_name);
+      fprintf(output, "    '--%s:", discovery_opts[i].long_name);
       zsh_escape_desc(output, discovery_opts[i].help_text);
       fprintf(output, "'\n");
     }
   }
 
-  fprintf(output, "      )\n"
-                  "      _describe -t options 'options' binary_opts\n"
-                  "      ;;\n"
-                  "    esac\n"
+  fprintf(output, "  )\n"
+                  "  _describe -t options 'options' binary_opts\n"
+                  "}\n"
+                  "\n"
+                  "_ascii_chat() {\n"
+                  "  local curcontext=\"$curcontext\"\n"
+                  "  if [[ ${words[2]} == -* ]]; then\n"
+                  "    # Binary-level options: show discovery mode options\n"
+                  "    _ascii_chat_binary\n"
                   "    return\n"
                   "  else\n"
                   "    # Mode selection or mode options\n"
