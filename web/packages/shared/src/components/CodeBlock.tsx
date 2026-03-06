@@ -9,6 +9,7 @@ interface CodeBlockProps extends Omit<HTMLAttributes<HTMLPreElement>, 'className
   language?: string;
   highlightLines?: { start: number; end: number };
   searchQuery?: string;
+  showLineNumbers?: boolean;
 }
 
 export function CodeBlock({
@@ -18,6 +19,7 @@ export function CodeBlock({
   language = 'bash',
   highlightLines,
   searchQuery,
+  showLineNumbers = false,
   ...props
 }: CodeBlockProps) {
   const codeRef = useRef<HTMLDivElement>(null);
@@ -125,6 +127,7 @@ export function CodeBlock({
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
           }
         }}
+        showLineNumbers={showLineNumbers}
         lineProps={(lineNumber) => {
           const isHighlighted = highlightLines &&
             lineNumber >= highlightLines.start &&

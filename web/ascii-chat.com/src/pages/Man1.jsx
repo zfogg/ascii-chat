@@ -53,7 +53,7 @@ export default function Man1() {
 
           {/* Man page content */}
           <div className="man-page-content">
-            <Man html={manHtml} isSourcePage={false} />
+            <Man html={manHtml} isSourcePage={false} showLineNumbers={false} />
           </div>
 
           {/* Footer */}

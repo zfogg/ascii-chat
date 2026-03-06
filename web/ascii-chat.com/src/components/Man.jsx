@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { CodeBlock } from "@ascii-chat/shared/components";
 
-export default function Man({ html, isSourcePage = false }) {
+export default function Man({ html, isSourcePage = false, showLineNumbers = false }) {
   const decodeHtmlEntities = (text) => {
     const textarea = document.createElement("textarea");
     textarea.innerHTML = text;
@@ -126,7 +126,7 @@ export default function Man({ html, isSourcePage = false }) {
                     lineNum >= targetLineStart && lineNum <= targetLineEnd;
 
                   if (isTarget) {
-                    return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">⟹ ${paddedNum}  ${text} ⟸</span></div>`;
+                    return `<div style="background-color: #fbbf24; padding: 0.125rem 0.5rem;"><span style="font-family: monospace;">${paddedNum}  ${text}</span></div>`;
                   }
                   return `<div style="font-family: monospace;"><span>    ${paddedNum}  ${text}</span></div>`;
                 })
@@ -155,6 +155,9 @@ export default function Man({ html, isSourcePage = false }) {
                   if (hasExistingLineNumbers) {
                     return text;
                   }
+                  if (!showLineNumbers) {
+                    return text;
+                  }
                   // Keep content aligned at same column regardless of line number width
                   const leadingSpace = " ".repeat(
                     Math.max(0, 4 - (maxLineNum - 1)),
@@ -164,7 +167,7 @@ export default function Man({ html, isSourcePage = false }) {
                 .join("\n");
 
               elements.push(
-                <CodeBlock key={`code-${elements.length}`} language="c">
+                <CodeBlock key={`code-${elements.length}`} language="c" showLineNumbers={showLineNumbers}>
                   {codeWithLineNumbers}
                 </CodeBlock>,
               );
@@ -260,9 +263,10 @@ export default function Man({ html, isSourcePage = false }) {
                   line.number <= targetLineEnd;
 
                 if (hasExistingLineNumbers) {
-                  if (isTarget) {
-                    return `⟹ ${line.text} ⟸`;
-                  }
+                  return line.text;
+                }
+
+                if (!showLineNumbers) {
                   return line.text;
                 }
 
@@ -270,9 +274,6 @@ export default function Man({ html, isSourcePage = false }) {
                 const leadingSpace = " ".repeat(
                   Math.max(0, 4 - (maxLineNum - 1)),
                 );
-                if (isTarget) {
-                  return `⟹ ${leadingSpace}${paddedNum}  ${line.text} ⟸`;
-                }
                 return `${leadingSpace}${paddedNum}  ${line.text}`;
               })
               .join("\n");
@@ -297,7 +298,7 @@ export default function Man({ html, isSourcePage = false }) {
                     pointer-events: none;
                   }
                 `}</style>
-                <CodeBlock language="c">{codeWithLineNumbers}</CodeBlock>
+                <CodeBlock language="c" showLineNumbers={showLineNumbers}>{codeWithLineNumbers}</CodeBlock>
               </div>,
             );
 

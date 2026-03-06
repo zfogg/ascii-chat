@@ -1407,13 +1407,7 @@ export default function Man3() {
             }
           }
 
-          const codeWithLineNumbers = lines
-            .map((text, idx) => {
-              const lineNum = idx + 1;
-              const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-              return `    ${paddedNum}  ${text}`;
-            })
-            .join("\n");
+          const codeWithLineNumbers = lines.join("\n");
 
           // Use CodeBlock with line highlighting
           // Add an id to the container if this block has a target line for scrolling
@@ -1436,6 +1430,7 @@ export default function Man3() {
                     : undefined
                 }
                 searchQuery={searchQuery}
+                showLineNumbers={true}
               >
                 {codeWithLineNumbers}
               </CodeBlock>
@@ -1531,21 +1526,9 @@ export default function Man3() {
             }
           }
 
-          // Build code with arrows, then highlight after syntax highlighting
+          // Build code (line numbers handled by CodeBlock)
           const codeWithLineNumbers = codeLines
-            .map((line) => {
-              const lineNum = line.number || "";
-              const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-              const isTarget =
-                targetLineStart !== null &&
-                line.number >= targetLineStart &&
-                line.number <= targetLineEnd;
-
-              if (isTarget) {
-                return `⟹ ${paddedNum}  ${line.text} ⟸`;
-              }
-              return `    ${paddedNum}  ${line.text}`;
-            })
+            .map((line) => line.text)
             .join("\n");
 
           // Add an id to the wrapper if this block has a target line for scrolling
@@ -1583,56 +1566,12 @@ export default function Man3() {
                   pointer-events: none;
                 }
               `}</style>
-              <CodeBlock searchQuery={searchQuery}>
+              <CodeBlock searchQuery={searchQuery} showLineNumbers={true}>
                 {codeWithLineNumbers}
               </CodeBlock>
             </div>,
           );
 
-          // Add JavaScript to highlight the lines with arrows after CodeBlock renders
-          if (targetLineStart !== null && isSourcePage) {
-            setTimeout(() => {
-              const codeBlocks = document.querySelectorAll(
-                ".code-with-highlight pre code",
-              );
-              codeBlocks.forEach((block) => {
-                const allSpans = Array.from(block.querySelectorAll("span"));
-
-                allSpans.forEach((span, spanIdx) => {
-                  if (span.textContent.includes("⟹")) {
-                    // Found arrow, highlight spans until we hit a newline
-                    let highlightCount = 0;
-
-                    // Highlight this span (the arrow)
-                    span.style.backgroundColor = "#fbbf24";
-                    span.style.color = "#000";
-                    highlightCount++;
-
-                    // Highlight following spans until newline
-                    for (let i = spanIdx + 1; i < allSpans.length; i++) {
-                      const nextSpan = allSpans[i];
-                      if (nextSpan.textContent.includes("\n")) {
-                        // Stop at newline, but still highlight this span if it contains the newline
-                        if (nextSpan.textContent.includes("⟸")) {
-                          nextSpan.style.backgroundColor = "#fbbf24";
-                          nextSpan.style.color = "#000";
-                          highlightCount++;
-                        }
-                        break;
-                      }
-                      nextSpan.style.backgroundColor = "#fbbf24";
-                      nextSpan.style.color = "#000";
-                      highlightCount++;
-                    }
-
-                    console.log(
-                      `[highlight] Highlighted ${highlightCount} spans in logical line with arrows`,
-                    );
-                  }
-                });
-              });
-            }, 0);
-          }
         }
 
         // Also render the original fragment HTML hidden so anchors are in DOM for scrolling
@@ -1831,7 +1770,7 @@ export default function Man3() {
                                 >
                                   <div className="flex gap-2">
                                     {/* Line numbers column */}
-                                    <div className="text-gray-600 text-right flex-shrink-0 select-none">
+                                    <div className="text-white text-right flex-shrink-0 select-none">
                                       {snippet.lineNumbers.map(
                                         (lineNum, lineIdx) => (
                                           <div key={lineIdx}>{lineNum}</div>
@@ -1840,19 +1779,22 @@ export default function Man3() {
                                     </div>
                                     {/* Code content */}
                                     <div className="whitespace-pre-wrap break-words flex-1">
-                                      {snippetLines.map((line, lineIdx) => (
-                                        <div
-                                          key={lineIdx}
-                                          className={
-                                            lineIdx ===
-                                            Math.floor(snippetLines.length / 2)
-                                              ? "bg-gray-800/50 px-1 -mx-1"
-                                              : ""
-                                          }
-                                        >
-                                          {highlightMatches(line, searchQuery)}
-                                        </div>
-                                      ))}
+                                      {snippetLines.map((line, lineIdx) => {
+                                        const cleanedLine = line.replace(/^\s*\d+\s+/, "");
+                                        return (
+                                          <div
+                                            key={lineIdx}
+                                            className={
+                                              lineIdx ===
+                                              Math.floor(snippetLines.length / 2)
+                                                ? "bg-gray-800/50 px-1 -mx-1"
+                                                : ""
+                                            }
+                                          >
+                                            {highlightMatches(cleanedLine, searchQuery)}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
                                 </div>

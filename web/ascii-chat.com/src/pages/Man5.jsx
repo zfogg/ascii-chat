@@ -54,7 +54,7 @@ export default function Man5() {
 
           {/* Man page content */}
           <div className="man-page-content">
-            <Man html={manHtml} isSourcePage={false} />
+            <Man html={manHtml} isSourcePage={false} showLineNumbers={true} />
           </div>
 
           {/* Footer */}
