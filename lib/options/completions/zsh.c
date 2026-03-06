@@ -128,18 +128,36 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
+  /* Load discovery options early so we can use them for binary-level completion */
+  size_t discovery_count = 0;
+  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
+
   fprintf(output, "#compdef _ascii_chat ascii-chat\n"
-#ifndef NDEBUG
-                  "#compdef _ascii_chat build/bin/ascii-chat ./build/bin/ascii-chat\n"
-#endif
                   "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
                   "\n"
                   "_ascii_chat() {\n"
                   "  local curcontext=\"$curcontext\" state line modes\n"
                   "  if [[ ${words[2]} == -* ]]; then\n"
-                  "    # Binary-level options: show discovery mode options\n"
-                  "    _ascii_chat_discovery\n"
+                  "    # Binary-level options: use _arguments with state for proper completion context\n"
+                  "    _arguments '1:option:->binary'\n"
+                  "    case $state in\n"
+                  "      binary)\n"
+                  "      local -a binary_opts=(\n");
+
+  /* Add discovery options to binary-level completion */
+  if (discovery_opts) {
+    for (size_t i = 0; i < discovery_count; i++) {
+      fprintf(output, "        '--%s:", discovery_opts[i].long_name);
+      zsh_escape_desc(output, discovery_opts[i].help_text);
+      fprintf(output, "'\n");
+    }
+  }
+
+  fprintf(output, "      )\n"
+                  "      _describe -t options 'options' binary_opts\n"
+                  "      ;;\n"
+                  "    esac\n"
                   "    return\n"
                   "  else\n"
                   "    # Mode selection or mode options\n"
@@ -269,18 +287,16 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n"
                   "_ascii_chat_discovery() {\n");
 
-  /* Discovery options - grouped by category */
-  size_t discovery_count = 0;
-  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
-
+  /* Discovery options - grouped by category (reuse already-loaded options) */
   if (discovery_opts) {
     zsh_write_options_grouped(output, discovery_opts, discovery_count, "discovery");
-    SAFE_FREE(discovery_opts);
   }
 
   fprintf(output, "}\n"
                   "\n"
                   "_ascii_chat \"$@\"\n");
+
+  SAFE_FREE(discovery_opts);
 
   return ASCIICHAT_OK;
 }
