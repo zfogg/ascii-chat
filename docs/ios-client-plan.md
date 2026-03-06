@@ -158,9 +158,10 @@ if(BUILD_IOS OR BUILD_IOS_SIM)
 
     if(BUILD_IOS_SIM)
         set(CMAKE_OSX_SYSROOT "iphonesimulator")
+        message(STATUS "Platform: iOS Simulator (arm64)")
+    else()
+        message(STATUS "Platform: iOS Device (arm64)")
     endif()
-
-    message(STATUS "Platform: iOS ${BUILD_IOS_SIM ? \"Simulator\" : \"Device\"} (arm64)")
 endif()
 ```
 
@@ -307,10 +308,13 @@ Platform module (`lib/platform/ios/`) — only what the platform layer actually 
 
 ```
 lib/platform/ios/
-├── system.c               # platform_write_all() override — routes STDOUT to render bridge
+├── system.c               # platform_write() override — routes STDOUT to render bridge
 ├── render_bridge.c        # libvterm + term_renderer + frame callback management
 ├── render_bridge.h        # Public API for registering callbacks
 ├── stdin_bridge.c         # Thread-safe queue: Swift pushes keystrokes, C reads them
+├── keyboard.c             # keyboard_init/destroy overrides (posix/keyboard.c calls
+│                          # tcgetattr(stdin) and /dev/tty, which don't exist on iOS;
+│                          # iOS keyboard reads from the stdin_bridge queue instead)
 ├── terminal.c             # No TTY — return options-based dimensions, truecolor
 ├── keepawake.m            # UIApplication.idleTimerDisabled (macOS uses IOKit)
 ├── filesystem.m           # Sandbox-aware paths (NSDocumentDirectory, app container)
@@ -325,7 +329,15 @@ lib/log/ios_log.c                      # platform_log_hook() → os_log (#397)
 lib/options/registry/ios_mode_defaults.c  # iOS defaults (truecolor, dimensions)
 ```
 
-That's ~8 platform files + 2 module files vs. the WASM layer's ~22 files.
+That's ~9 platform files + 2 module files vs. the WASM layer's ~22 files.
+
+> **Note on `isatty()` direct calls**: `lib/ui/splash.c` and `lib/ui/status.c` call
+> `isatty(STDOUT_FILENO)` directly (bypassing `platform_isatty()`). On iOS, `fd 1` is
+> not a TTY, so those checks will return 0 and suppress the splash/status screens by
+> default. This is the correct behavior for iOS — the C splash and status screens are
+> redundant when the pixel render bridge is active. If those screens are needed in future
+> (e.g., for a debug overlay), those two `isatty` calls would need to be routed through
+> a platform abstraction that iOS can override.
 
 #### iOS override implementations
 
@@ -467,15 +479,15 @@ Implements the `platform_log_hook()` weak symbol defined in `lib/log/log.c`.
 // lib/log/ios_log.c
 // Overrides the weak symbol platform_log_hook() from lib/log/log.c
 #include <os/log.h>
-#include "ascii-chat/log/types.h"
+#include <ascii-chat/log/log.h>
 
 static os_log_t g_os_log = NULL;
 
-void platform_log_hook(log_level_t level, const char *message) {
-    if (!g_os_log) g_os_log = os_log_create("com.zfogg.ascii-chat", "lib");
-    os_log_with_type(g_os_log, level >= LOG_ERROR ? OS_LOG_TYPE_ERROR
-                              : level >= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
-                              : OS_LOG_TYPE_DEBUG, "%{public}s", message);
+void platform_log_hook(log_level_t level, const char *msg) {
+    if (!ac_log) ac_log = os_log_create("com.zfogg.ascii-chat", "lib");
+    os_log_with_type(ac_log, level >= LOG_ERROR ? OS_LOG_TYPE_ERROR
+                           : level >= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
+                           : OS_LOG_TYPE_DEBUG, "%{public}s", msg);
 }
 ```
 
@@ -798,25 +810,26 @@ void ios_render_bridge_destroy(void) {
 }
 ```
 
-#### 3b. platform_write_all() iOS override
+#### 3b. platform_write() iOS override
 
-In `lib/platform/ios/system.c`, override the write function to route stdout to the
-render bridge:
+In `lib/platform/ios/system.c`, override `platform_write()` (not `platform_write_all()`).
+`platform_write_all()` is defined in the shared `lib/platform/system.c` and calls
+`platform_write()` in a loop — overriding at the inner function is the correct layer,
+and matches what the WASM layer does in `lib/platform/wasm/stubs/filesystem.c`.
 
 ```c
 // lib/platform/ios/system.c
 #include "render_bridge.h"
 #include <unistd.h>
 
-size_t platform_write_all(int fd, const void *buf, size_t count) {
+ssize_t platform_write(int fd, const void *buf, size_t count) {
     if (fd == STDOUT_FILENO) {
         // Route terminal output to libvterm render bridge
         ios_output_feed((const char *)buf, count);
-        return count;
+        return (ssize_t)count;
     }
     // All other FDs (stderr, sockets, files) use real write()
-    // (reuse the POSIX implementation from lib/platform/posix/system.c)
-    return platform_write_all_posix(fd, buf, count);
+    return write(fd, buf, count);
 }
 ```
 
@@ -922,14 +935,19 @@ class AsciiChatEngine {
         ios_render_bridge_init(Int32(cols), Int32(rows),
                                fontPath, fontSize)
 
-        // Register pixel callback
+        // Register pixel callback.
+        // Copy pixel data immediately — the C renderer overwrites the buffer on
+        // the next call to term_renderer_feed(), so the pointer is only valid
+        // for the duration of this callback.
         let ctx = Unmanaged.passUnretained(self).toOpaque()
         ios_register_frame_callback({ pixels, w, h, pitch, ctx in
-            guard let ctx = ctx else { return }
+            guard let ctx = ctx, let pixels = pixels else { return }
+            let size = Int(pitch) * Int(h)
+            let pixelData = Data(bytes: pixels, count: size)
             let engine = Unmanaged<AsciiChatEngine>.fromOpaque(ctx)
                 .takeUnretainedValue()
-            let image = engine.cgImageFromRGB(pixels!, width: Int(w),
-                                              height: Int(h), pitch: Int(pitch))
+            let image = cgImageFromRGB(pixelData, width: Int(w),
+                                       height: Int(h), pitch: Int(pitch))
             DispatchQueue.main.async {
                 engine.frameImage = image
             }
@@ -1008,11 +1026,13 @@ src/ios/
 #### 4b. Key Swift components
 
 **ModeView** — The shared display view for all modes. Since every mode produces
-terminal output that gets rendered to pixels, one view handles them all:
+terminal output that gets rendered to pixels, one view handles them all.
+`AsciiChatEngine` uses `@Observable` (iOS 17+), so views hold a direct `var`
+reference — not `@ObservedObject` (which is for `ObservableObject`/Combine):
 
 ```swift
 struct ModeView: View {
-    @ObservedObject var engine: AsciiChatEngine
+    var engine: AsciiChatEngine  // @Observable — no @ObservedObject needed (iOS 17+)
 
     var body: some View {
         ZStack {
@@ -1040,7 +1060,7 @@ struct ModeView: View {
 
 ```swift
 struct ClientView: View {
-    @ObservedObject var engine: AsciiChatEngine
+    var engine: AsciiChatEngine  // @Observable — direct reference
     @State private var host = "localhost"
     @State private var port = "27224"
     @State private var password = ""
@@ -1162,7 +1182,7 @@ The Swift side is trivial — just display an image that updates every frame:
 
 ```swift
 struct FrameBufferView: View {
-    let pixelData: UnsafePointer<UInt8>  // RGB24 from term_renderer_pixels()
+    let pixelData: Data  // Copied RGB24 from term_renderer_pixels()
     let width: Int
     let height: Int
     let pitch: Int  // from term_renderer_pitch()
@@ -1177,13 +1197,12 @@ struct FrameBufferView: View {
     }
 }
 
-func cgImageFromRGB(_ data: UnsafePointer<UInt8>,
-                     width: Int, height: Int, pitch: Int) -> CGImage? {
+func cgImageFromRGB(_ data: Data, width: Int, height: Int, pitch: Int) -> CGImage? {
     let colorSpace = CGColorSpaceCreateDeviceRGB()
     let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.none.rawValue)
-    guard let provider = CGDataProvider(dataInfo: nil,
-            data: data, size: pitch * height,
-            releaseData: { _, _, _ in }) else { return nil }
+    // CGDataProvider(data:) copies the Data, so the C renderer buffer can be
+    // reused immediately after the frame callback returns.
+    guard let provider = CGDataProvider(data: data as CFData) else { return nil }
     return CGImage(width: width, height: height,
                    bitsPerComponent: 8, bitsPerPixel: 24,
                    bytesPerRow: pitch, space: colorSpace,
@@ -1192,6 +1211,21 @@ func cgImageFromRGB(_ data: UnsafePointer<UInt8>,
                    intent: .defaultIntent)
 }
 ```
+
+The frame callback in `AsciiChatEngine` must copy the pixel data before returning,
+because `term_renderer_pixels()` returns a pointer into the renderer's internal buffer
+that will be overwritten on the next call to `term_renderer_feed()`:
+
+```swift
+ios_register_frame_callback({ pixels, w, h, pitch, ctx in
+    guard let ctx = ctx, let pixels = pixels else { return }
+    // Copy before the C renderer overwrites the buffer on the next frame
+    let size = Int(pitch) * Int(h)
+    let pixelData = Data(bytes: pixels, count: size)
+    let engine = Unmanaged<AsciiChatEngine>.fromOpaque(ctx).takeUnretainedValue()
+    let image = cgImageFromRGB(pixelData, width: Int(w), height: Int(h), pitch: Int(pitch))
+    DispatchQueue.main.async { engine.frameImage = image }
+}, ctx)
 
 For better performance at high frame rates, use a `CALayer` or `MTKView` (Metal) instead
 of SwiftUI `Image` — avoid re-creating CGImage every frame by reusing a
@@ -1273,9 +1307,10 @@ Intentionally minimal. The C library does the heavy lifting.
 - [ ] Add `BUILD_IOS` and `BUILD_IOS_SIM` CMake options
 - [ ] Extend `PlatformDetection.cmake` with `PLATFORM_IOS`
 - [ ] Create `lib/platform/ios/` directory with overrides:
-    - [ ] `system.c` — `platform_write_all()` routes STDOUT to render bridge
+    - [ ] `system.c` — `platform_write()` routes STDOUT to render bridge
     - [ ] `render_bridge.c` — libvterm + term_renderer + frame callback
     - [ ] `terminal.c` — dimensions from options, truecolor, no TTY
+    - [ ] `keyboard.c` — override `keyboard_init()`/`keyboard_destroy()` to skip TTY setup; reads from stdin_bridge queue
     - [ ] `keepawake.m` — UIApplication.idleTimerDisabled
     - [ ] `filesystem.m` — sandbox-aware paths
     - [ ] `process.c` — stub popen/fork
@@ -1358,11 +1393,12 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 8. **FreeType on iOS** - The terminal renderer uses FreeType for font rasterization. Need to
    cross-compile FreeType for iOS (straightforward, widely done) and bundle a monospace font
    or use system fonts via CoreText as a fallback.
-9. **Pixel buffer copy cost** - The frame callback fires from the C render thread. Swift needs
-   to copy the pixel data before `term_renderer_feed()` overwrites it on the next frame.
-   At 80x40 with a ~12pt font that's roughly 640x640 pixels × 3 bytes = ~1.2MB per frame.
-   At 30fps that's ~36MB/s of copies. Probably fine, but profile it. Could use double-buffering
-   in the render bridge to avoid the copy.
+9. **Pixel buffer copy cost** - ~~Resolved~~: The frame callback copies pixel data into a
+   Swift `Data` before returning (see Section 6). The C render thread is unblocked as soon
+   as the copy completes. At 80x40 with a ~12pt font that's roughly 640×640 pixels × 3 bytes
+   = ~1.2MB per frame. At 30fps that's ~36MB/s of copies. Likely fine on arm64, but profile.
+   Could use double-buffering in the render bridge (`ios_render_bridge_swap()`) to allow
+   zero-copy if the copy ever becomes a bottleneck.
 10. **Multiple modes** - Can we run two modes simultaneously (e.g., mirror + discovery)?
    Currently `asciichat_main()` is blocking and uses global state (`g_should_exit`). Probably
    one mode at a time for v1.
