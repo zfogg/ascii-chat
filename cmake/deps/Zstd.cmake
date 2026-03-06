@@ -22,8 +22,8 @@
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}zstd${ColorReset} from source (iOS cross-compile)...")
 
-    set(ZSTD_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/zstd-ios")
-    set(ZSTD_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/zstd-ios-build")
+    set(ZSTD_PREFIX "${IOS_DEPS_CACHE_DIR}/zstd")
+    set(ZSTD_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/zstd-build")
 
     # Get iOS SDK path
     if(BUILD_IOS_SIM)

@@ -7,7 +7,7 @@
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
 
-    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios")
+    set(OPENSSL_PREFIX "${IOS_DEPS_CACHE_DIR}/openssl")
     set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios-build")
     set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
     set(OPENSSL_LIBDIR "lib")

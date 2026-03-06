@@ -31,10 +31,21 @@ if(BUILD_IOS OR BUILD_IOS_SIM)
     set(BUILD_TESTING OFF)
     set(BUILD_EXECUTABLES OFF)
 
+    # Set centralized iOS dependencies cache directory
+    # Used by all iOS dependencies (OpenSSL, BearSSL, zstd, yyjson, libsodium, FreeType, libvterm, WebRTC, etc.)
+    # Note: ASCIICHAT_DEPS_CACHE_DIR already includes CMAKE_BUILD_TYPE, so just append /ios
+    set(IOS_DEPS_CACHE_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/ios")
+    file(MAKE_DIRECTORY "${IOS_DEPS_CACHE_DIR}")
+
     if(BUILD_IOS_SIM)
         set(CMAKE_OSX_SYSROOT "iphonesimulator")
+        set(IOS_BUILD_VARIANT "sim")
         message(STATUS "Platform: iOS Simulator (arm64)")
     else()
+        set(CMAKE_OSX_SYSROOT "iphoneos")
+        set(IOS_BUILD_VARIANT "device")
         message(STATUS "Platform: iOS Device (arm64)")
     endif()
+
+    message(STATUS "iOS deps cache: ${IOS_DEPS_CACHE_DIR}")
 endif()

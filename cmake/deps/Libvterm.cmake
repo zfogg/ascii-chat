@@ -24,8 +24,8 @@ if(PLATFORM_IOS)
 
     include(ExternalProject)
 
-    set(VTERM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm-ios")
-    set(VTERM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm-ios-build")
+    set(VTERM_PREFIX "${IOS_DEPS_CACHE_DIR}/libvterm")
+    set(VTERM_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libvterm-build")
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)

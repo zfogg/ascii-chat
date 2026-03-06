@@ -36,7 +36,7 @@ if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source (iOS cross-compile)...")
 
     set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
-    set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl-ios-build")
+    set(BEARSSL_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/bearssl-build")
     set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
 
     # Determine iOS SDK path

@@ -18,8 +18,8 @@ if(PLATFORM_IOS)
 
     include(ExternalProject)
 
-    set(FREETYPE_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/freetype-ios")
-    set(FREETYPE_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/freetype-ios-build")
+    set(FREETYPE_PREFIX "${IOS_DEPS_CACHE_DIR}/freetype")
+    set(FREETYPE_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/freetype-build")
 
     if(NOT EXISTS "${FREETYPE_PREFIX}/lib/libfreetype.a")
         message(STATUS "  freetype library not found in cache, will build from source")

@@ -27,8 +27,8 @@ if(PLATFORM_IOS)
 
     include(ExternalProject)
 
-    set(LIBSODIUM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libsodium-ios")
-    set(LIBSODIUM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libsodium-ios-build")
+    set(LIBSODIUM_PREFIX "${IOS_DEPS_CACHE_DIR}/libsodium")
+    set(LIBSODIUM_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libsodium-build")
 
     # Determine iOS SDK path
     if(BUILD_IOS_SIM)
