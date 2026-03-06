@@ -35,9 +35,19 @@ echo "Copying index.html to 404.html..."
 cp dist/index.html dist/404.html
 
 echo "Copying binary for API functions..."
+if [ ! -f bin/ascii-chat-strings ]; then
+  echo "ERROR: binary not found at bin/ascii-chat-strings"
+  ls -la bin/ || echo "bin/ directory doesn't exist"
+  exit 1
+fi
 mkdir -p dist/bin
-cp bin/ascii-chat-strings dist/bin/
+cp bin/ascii-chat-strings dist/bin/ || exit 1
 chmod +x dist/bin/ascii-chat-strings
+if [ ! -f dist/bin/ascii-chat-strings ]; then
+  echo "ERROR: binary copy failed"
+  exit 1
+fi
+echo "Binary copied successfully to dist/bin/ascii-chat-strings"
 
 echo "✓ Build complete"
 
