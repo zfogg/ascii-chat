@@ -533,14 +533,27 @@ check_static_linking(ascii-chat)
 # =============================================================================
 
 if(BUILD_WEB)
-    add_executable(ascii-chat-strings ${CMAKE_CURRENT_SOURCE_DIR}/strings/main.c)
+    # Minimal standalone executable: just adjectives, nouns, and main
+    add_executable(ascii-chat-strings
+        ${CMAKE_CURRENT_SOURCE_DIR}/strings/main.c
+        ${CMAKE_SOURCE_DIR}/lib/discovery/adjectives.c
+        ${CMAKE_SOURCE_DIR}/lib/discovery/nouns.c
+    )
 
     if(ASCIICHAT_ENABLE_IPO)
         set_property(TARGET ascii-chat-strings PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
     endif()
 
-    add_dependencies(ascii-chat-strings ascii-chat-shared generate_version)
-    target_link_libraries(ascii-chat-strings ascii-chat-shared)
+    add_dependencies(ascii-chat-strings generate_version)
+
+    # Include paths
+    target_include_directories(ascii-chat-strings PRIVATE
+        ${CMAKE_SOURCE_DIR}/include
+        ${CMAKE_BINARY_DIR}/generated
+    )
+
+    # Compile with optimization
+    target_compile_options(ascii-chat-strings PRIVATE -std=c23 -O3)
 
     # Install to bin directory
     install(TARGETS ascii-chat-strings DESTINATION bin)

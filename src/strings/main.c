@@ -2,8 +2,25 @@
 #include <stdlib.h>
 #include <string.h>
 #include <getopt.h>
+#include <unistd.h>
+#include <sys/random.h>
+#include <time.h>
 #include <ascii-chat/common/error_codes.h>
-#include <ascii-chat/discovery/strings.h>
+#include <ascii-chat/discovery/adjectives.h>
+#include <ascii-chat/discovery/nouns.h>
+
+#define SESSION_STRING_BUFFER_SIZE 40
+#define ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)
+
+// Simple RNG using getrandom
+static uint32_t randombytes_uniform(uint32_t upper_bound) {
+  if (upper_bound == 0) return 0;
+  uint32_t random_val = 0;
+  if (getrandom(&random_val, sizeof(random_val), 0) != sizeof(random_val)) {
+    random_val = (uint32_t)time(NULL) ^ getpid();
+  }
+  return random_val % upper_bound;
+}
 
 int main(int argc, char *argv[]) {
   long long count = 1;
@@ -35,23 +52,17 @@ int main(int argc, char *argv[]) {
     return ERROR_USAGE;
   }
 
-  // Initialize session string system
-  asciichat_error_t err = acds_string_init();
-  if (err != ASCIICHAT_OK) {
-    return err;
-  }
-
   // Generate session strings
   for (long long i = 0; i < count; i++) {
-    char session_string[SESSION_STRING_BUFFER_SIZE];
-    err = acds_string_generate(session_string, sizeof(session_string));
-    if (err != ASCIICHAT_OK) {
-      acds_strings_destroy();
-      return err;
-    }
-    printf("%s\n", session_string);
+    uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
+    uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
+    uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
+
+    printf("%s-%s-%s\n",
+           adjectives[adj_idx],
+           nouns[noun1_idx],
+           nouns[noun2_idx]);
   }
 
-  acds_strings_destroy();
   return 0;
 }
