@@ -1693,7 +1693,7 @@ export default function Man3() {
           {/* Main content area */}
           <div className="flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden min-h-0">
             {/* Results list */}
-            <div className="h-[300px] lg:h-auto lg:w-2/5 flex-shrink-0">
+            <div className="h-[600px] lg:h-auto lg:w-2/5 flex-shrink-0">
               <div className="h-full bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto">
                 {loading
                   ? (
