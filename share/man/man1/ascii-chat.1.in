@@ -178,7 +178,7 @@ Requires UTF-8 support (\fB\-\-show\-capabilities\fR and \fB\-\-utf8\fR).
 .SH KEYBOARD CONTROLS
 Keyboard controls are available when running with local media sources
 (\fB--file\fR or \fB--url\fR).  Keyboard controls work in \fBmirror\fR,
-\fBclient\fR, and \fB"ascii-chat"\fR modes.
+\fBclient\fR, and \fBdefault\fR modes.
 .PP
 .B Media Playback Controls
 .TP
