@@ -21,7 +21,7 @@ function NotFoundPage() {
       />
       <Header />
       <NotFound />
-      <div className="fixed bottom-0 left-0 right-0 bg-gray-950">
+      <div className="fixed bottom-0 left-0 right-0 bg-gray-950 mb-8">
         <Footer
         links={[
           {
