@@ -25,7 +25,7 @@ static void zsh_escape_desc(FILE *output, const char *text) {
   for (const char *p = text; *p; p++) {
     switch (*p) {
     case '\'':
-      // In single-quoted strings, escape single quotes with '\''
+      // Escape single quotes: end quote, escaped quote, start quote
       fprintf(output, "'\\''");
       break;
     case '\n':
