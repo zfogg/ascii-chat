@@ -1,14 +1,14 @@
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   CodeBlock,
-  Heading,
   GettingHelpSection,
+  Heading,
   UsageExamplesSection,
 } from "@ascii-chat/shared/components";
 import {
   fetchSessionStrings,
-  useScrollToHash,
   SITES,
+  useScrollToHash,
 } from "@ascii-chat/shared/utils";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
