@@ -1,9 +1,10 @@
 /**
  * @file getopt.c
  * @ingroup platform
- * @brief TODO: Add Doxygen documentation for Windows getopt implementation
+ * @brief POSIX getopt implementation for Windows
  *
- * Needs documentation for: Cross-platform CLI argument parsing compatibility
+ * Implements getopt() and getopt_long() for Windows command-line argument parsing.
+ * See include/ascii-chat/platform/windows/getopt.h for the public API.
  */
 
 #ifdef _WIN32
