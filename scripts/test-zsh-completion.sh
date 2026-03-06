@@ -26,16 +26,16 @@ sleep 0.2
 # =============================================================================
 # TEST 1: Binary-level options (--sho<TAB>)
 # =============================================================================
-echo "=== TEST 1: ascii-chat --sho<TAB> ==="
-tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --sho" Tab
+echo "=== TEST 1: ascii-chat --<TAB> ==="
+tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --" Tab
 sleep 1
 
-# Navigate menu to display options - press Down multiple times to scroll through menu
-tmux send-keys -t zsh-completion-test "Down Down Down"
+# Navigate menu to display options - press Down multiple times to scroll through menu and trigger all groups
+tmux send-keys -t zsh-completion-test "Down Down Down Down Down"
 sleep 0.5
 
-# Capture and save output
-tmux capture-pane -t zsh-completion-test -p -S -100 > /tmp/test1_output.txt
+# Capture and save output - capture full history to see all group headers
+tmux capture-pane -t zsh-completion-test -p -S -200 > /tmp/test1_output.txt
 
 # Display what we got
 echo "Captured output:"
@@ -128,8 +128,9 @@ fi
 
 # Cleanup
 tmux send-keys -t zsh-completion-test "Escape"
+sleep 0.2
 tmux send-keys -t zsh-completion-test "C-u"
-sleep 0.5
+sleep 0.2
 
 # =============================================================================
 # TEST 4: Mode completion with partial input (disc)
@@ -139,8 +140,8 @@ echo "=== TEST 4: ascii-chat disc<TAB> (checking for correction messages) ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat disc" Tab
 sleep 1
 
-# Capture and save output
-tmux capture-pane -t zsh-completion-test -p > /tmp/test4_output.txt
+# Capture and save output (with last 100 lines like TEST 1)
+tmux capture-pane -t zsh-completion-test -p -S -100 > /tmp/test4_output.txt
 
 # Display what we got
 echo "Captured output:"
