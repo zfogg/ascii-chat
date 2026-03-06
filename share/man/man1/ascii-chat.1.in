@@ -261,8 +261,16 @@ Cycle through color modes: Mono → 16-color → 256-color → truecolor → mon
 .B R
 Cycle through render modes: Foreground → background → half-Block → foreground.
 .TP
+.B -
+Toggle FPS counter overlay in the top-right corner.
+.PP
+.B Video Controls
+.TP
 .B F
 Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
+.TP
+.B 0
+Toggle Matrix-style digital rain effect.
 .PP
 .B Keyboard Configuration
 .RS
