@@ -30,20 +30,35 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">enums.c - Option enum value implementation - single source of
-    truth.</p>
+<p class="Pp">enums.c - Option enum value implementation with dynamic
+    enum-to-string mapping.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
+  Structures</a></h2>
+<br/>
+<p class="Pp">struct <b>enum_to_string_entry_t</b>
+  <br/>
+  Maps a single enum value to its string representation. struct
+    <b>enum_map_descriptor_t</b>
+  <br/>
+  Descriptor for an enum option with its string value mapping.
+  <br/>
+</p>
+</section>
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">const char ** <b>options_get_enum_values</b> (const char
     *option_name, size_t *value_count)
   <br/>
-  <b>bool</b> <b>options_is_enum_option</b> (const char *option_name)
+  Get all unique string values for an option. <b>bool</b>
+    <b>options_is_enum_option</b> (const char *option_name)
   <br/>
+  Check if an option has enum values.
   <br/>
 </p>
 </section>
@@ -51,7 +66,8 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Option enum value implementation - single source of truth.</p>
+<p class="Pp">Option enum value implementation with dynamic enum-to-string
+    mapping.</p>
 <p class="Pp"></p>
 <p class="Pp"></p>
 <p class="Pp">Definition in file <b>enums.c</b>.</p>
@@ -63,43 +79,98 @@
 <h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
   char ** options_get_enum_values (const char * option_name, size_t *
   value_count)</a></h2>
-<p class="Pp">Definition at line <b>49</b> of file <b>enums.c</b>.</p>
-<pre>49                                                                                    {
-50   if (!option_name || !value_count) {
-51     return NULL;
-52   }
-53 
-54   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
-55     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
-56       *value_count = enum_registry[i].value_count;
-57       return enum_registry[i].values;
-58     }
-59   }
-60 
-61   *value_count = 0;
-62   return NULL;
-63 }</pre>
+<p class="Pp">Get all unique string values for an option. Extracts the list of
+    valid string values for an enum option. For options with aliases (like
+    render-mode which has &quot;foreground&quot; and &quot;fg&quot;), both
+    values are included.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
+  &quot;log-level&quot;)
+<br/>
+<i>value_count</i> OUTPUT: Number of values returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of valid string values, or NULL if not an enum
+  option</div>
+<p class="Pp">Definition at line <b>143</b> of file <b>enums.c</b>.</p>
+<pre>143                                                                                    {
+144   if (!option_name || !value_count) {
+145     return NULL;
+146   }
+147 
+148   /* Find the option's mapping in the registry */
+149   const enum_map_descriptor_t *descriptor = NULL;
+150   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+151     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+152       descriptor = &amp;enum_registry[i];
+153       break;
+154     }
+155   }
+156 
+157   if (!descriptor || !descriptor-&gt;map) {
+158     *value_count = 0;
+159     return NULL;
+160   }
+161 
+162   /* Count non-terminator entries */
+163   size_t count = 0;
+164   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
+165     count++;
+166   }
+167 
+168   /* Build array of unique strings (skip duplicates from aliases) */
+169   const char **values = SAFE_MALLOC(count * sizeof(const char *), const char **);
+170   size_t unique_count = 0;
+171 
+172   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
+173     const char *str = descriptor-&gt;map[i].string;
+174 
+175     /* Check if we already have this string (for aliases) */
+176     bool already_added = false;
+177     for (size_t j = 0; j &lt; unique_count; j++) {
+178       if (strcmp(values[j], str) == 0) {
+179         already_added = true;
+180         break;
+181       }
+182     }
+183 
+184     if (!already_added) {
+185       values[unique_count++] = str;
+186     }
+187   }
+188 
+189   *value_count = unique_count;
+190   return values;
+191 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>enum_to_string_entry_t::enum_value</b>,
+    <b>enum_map_descriptor_t::map</b>, <b>SAFE_MALLOC</b>, and
+    <b>enum_to_string_entry_t::string</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> options_is_enum_option (const char *
   option_name)</h2>
-<p class="Pp">Definition at line <b>65</b> of file <b>enums.c</b>.</p>
-<pre>65                                                      {
-66   if (!option_name) {
-67     return false;
-68   }
-69 
-70   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
-71     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
-72       return true;
-73     }
-74   }
-75 
-76   return false;
-77 }</pre>
+<p class="Pp">Check if an option has enum values.</p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">true if option has enum values, false otherwise</div>
+<p class="Pp">Definition at line <b>199</b> of file <b>enums.c</b>.</p>
+<pre>199                                                      {
+200   if (!option_name) {
+201     return false;
+202   }
+203 
+204   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+205     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+206       return true;
+207     }
+208   }
+209 
+210   return false;
+211 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

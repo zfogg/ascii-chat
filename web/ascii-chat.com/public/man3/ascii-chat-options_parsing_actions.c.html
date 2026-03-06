@@ -105,12 +105,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_check_update_(void_)"><a class="permalink" href="#void_action_check_update_(void_)">void
   action_check_update (void )</a></h2>
-<p class="Pp">Definition at line <b>347</b> of file
+<p class="Pp">Definition at line <b>329</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>347                                {
-348   // Defer execution until after options are fully parsed
-349   actions_defer(ACTION_CHECK_UPDATE, NULL);
-350 }</pre>
+<pre>329                                {
+330   // Defer execution until after options are fully parsed
+331   actions_defer(ACTION_CHECK_UPDATE, NULL);
+332 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>actions_defer()</b>.</p>
@@ -121,25 +121,25 @@
   action_check_update_immediate (void )</a></h2>
 <p class="Pp">Execute update check immediately (for early binary-level
     execution).</p>
-<p class="Pp">Definition at line <b>329</b> of file
+<p class="Pp">Definition at line <b>311</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>329                                          {
-330   printf(&quot;Checking for updates...\n&quot;);
-331   update_check_result_t result;
-332   asciichat_error_t err = update_check_perform(&amp;result);
-333   if (err != ASCIICHAT_OK) {
-334     printf(&quot;\nFailed to check for updates.\n\n&quot;);
-335     action_exit(1);
-336   }
-337   if (result.update_available) {
-338     char notification[1024];
-339     update_check_format_notification(&amp;result, notification, sizeof(notification));
-340     printf(&quot;\n%s\n\n&quot;, notification);
-341   } else {
-342     printf(&quot;\nYou are already on the latest version: %s (%.8s)\n\n&quot;, result.current_version, result.current_sha);
-343   }
-344   action_exit(0);
-345 }</pre>
+<pre>311                                          {
+312   printf(&quot;Checking for updates...\n&quot;);
+313   update_check_result_t result;
+314   asciichat_error_t err = update_check_perform(&amp;result);
+315   if (err != ASCIICHAT_OK) {
+316     printf(&quot;\nFailed to check for updates.\n\n&quot;);
+317     action_exit(1);
+318   }
+319   if (result.update_available) {
+320     char notification[1024];
+321     update_check_format_notification(&amp;result, notification, sizeof(notification));
+322     printf(&quot;\n%s\n\n&quot;, notification);
+323   } else {
+324     printf(&quot;\nYou are already on the latest version: %s (%.8s)\n\n&quot;, result.current_version, result.current_sha);
+325   }
+326   action_exit(0);
+327 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>update_check_format_notification()</b>, and
@@ -150,62 +150,62 @@
 <h2 class="Ss" id="void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)"><a class="permalink" href="#void_action_completions_(const_char_*_shell_name,_const_char_*_output_path)">void
   action_completions (const char * shell_name, const char *
   output_path)</a></h2>
-<p class="Pp">Definition at line <b>589</b> of file
+<p class="Pp">Definition at line <b>571</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>589                                                                          {
-590   if (!shell_name || strlen(shell_name) == 0) {
-591     log_plain_stderr(&quot;Error: --completions requires shell name (bash, fish, zsh, powershell)&quot;);
-592     action_exit(ERROR_USAGE);
-593   }
-594 
-595   completion_format_t format = completions_parse_shell_name(shell_name);
-596   if (format == COMPLETION_FORMAT_UNKNOWN) {
-597     log_plain_stderr(&quot;Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)&quot;, shell_name);
-598     action_exit(ERROR_USAGE);
-599   }
-600 
-601   FILE *output = stdout;
-602   bool should_close = false;
-603 
-604   // Determine output: use provided path if given and not &quot;-&quot;, otherwise stdout
-605   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
-606     // Check if file already exists and prompt for confirmation
-607     struct stat st;
-608     if (stat(output_path, &amp;st) == 0) {
-609       // File exists - ask user if they want to overwrite
-610       log_plain(&quot;Completions file already exists: %s&quot;, output_path);
-611 
-612       bool overwrite = platform_prompt_yes_no(&quot;Overwrite&quot;, false); // Default to No
-613       if (!overwrite) {
-614         log_plain(&quot;Completions generation cancelled.&quot;);
-615         action_exit(0);
-616       }
-617 
-618       log_plain(&quot;Overwriting existing completions file...&quot;);
-619     }
-620 
-621     output = platform_fopen(&quot;file_stream&quot;, output_path, &quot;w&quot;);
-622     if (!output) {
-623       log_plain_stderr(&quot;Error: Failed to open %s for writing&quot;, output_path);
-624       action_exit(ERROR_FILE_OPERATION);
-625     }
-626     should_close = true;
-627   }
-628 
-629   asciichat_error_t result = completions_generate_for_shell(format, output);
-630 
-631   if (should_close) {
-632     fclose(output);
-633   }
-634 
-635   if (result != ASCIICHAT_OK) {
-636     log_plain_stderr(&quot;Error: Failed to generate %s completions&quot;, completions_get_shell_name(format));
-637     action_exit(ERROR_USAGE);
-638   }
-639 
-640   // Silently exit - completions are written (either to file or stdout)
-641   action_exit(0);
-642 }</pre>
+<pre>571                                                                          {
+572   if (!shell_name || strlen(shell_name) == 0) {
+573     log_plain_stderr(&quot;Error: --completions requires shell name (bash, fish, zsh, powershell)&quot;);
+574     action_exit(ERROR_USAGE);
+575   }
+576 
+577   completion_format_t format = completions_parse_shell_name(shell_name);
+578   if (format == COMPLETION_FORMAT_UNKNOWN) {
+579     log_plain_stderr(&quot;Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)&quot;, shell_name);
+580     action_exit(ERROR_USAGE);
+581   }
+582 
+583   FILE *output = stdout;
+584   bool should_close = false;
+585 
+586   // Determine output: use provided path if given and not &quot;-&quot;, otherwise stdout
+587   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
+588     // Check if file already exists and prompt for confirmation
+589     struct stat st;
+590     if (stat(output_path, &amp;st) == 0) {
+591       // File exists - ask user if they want to overwrite
+592       log_plain(&quot;Completions file already exists: %s&quot;, output_path);
+593 
+594       bool overwrite = platform_prompt_yes_no(&quot;Overwrite&quot;, false); // Default to No
+595       if (!overwrite) {
+596         log_plain(&quot;Completions generation cancelled.&quot;);
+597         action_exit(0);
+598       }
+599 
+600       log_plain(&quot;Overwriting existing completions file...&quot;);
+601     }
+602 
+603     output = platform_fopen(&quot;file_stream&quot;, output_path, &quot;w&quot;);
+604     if (!output) {
+605       log_plain_stderr(&quot;Error: Failed to open %s for writing&quot;, output_path);
+606       action_exit(ERROR_FILE_OPERATION);
+607     }
+608     should_close = true;
+609   }
+610 
+611   asciichat_error_t result = completions_generate_for_shell(format, output);
+612 
+613   if (should_close) {
+614     fclose(output);
+615   }
+616 
+617   if (result != ASCIICHAT_OK) {
+618     log_plain_stderr(&quot;Error: Failed to generate %s completions&quot;, completions_get_shell_name(format));
+619     action_exit(ERROR_USAGE);
+620   }
+621 
+622   // Silently exit - completions are written (either to file or stdout)
+623   action_exit(0);
+624 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>completions_generate_for_shell()</b>,
@@ -216,50 +216,50 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_create_config_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_config_(const_char_*_output_path)">void
   action_create_config (const char * output_path)</a></h2>
-<p class="Pp">Definition at line <b>542</b> of file
+<p class="Pp">Definition at line <b>524</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>542                                                    {
-543   // Build the schema first so config_create_default can generate options from it
-544   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
-545   if (unified_config) {
-546     asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
-547     if (schema_build_result != ASCIICHAT_OK) {
-548       // Schema build failed, but continue anyway
-549       (void)schema_build_result;
-550     }
-551     // options_config_destroy(unified_config);
-552   }
-553 
-554   const char *config_path = NULL;
-555 
-556   // Determine output path: use provided path, or NULL for stdout
-557   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
-558     // User provided explicit path - use it as-is
-559     config_path = output_path;
-560   } else {
-561     // No path or &quot;-&quot; means stdout
-562     config_path = NULL;
+<pre>524                                                    {
+525   // Build the schema first so config_create_default can generate options from it
+526   const options_config_t *unified_config = options_preset_unified(NULL, NULL);
+527   if (unified_config) {
+528     asciichat_error_t schema_build_result = config_schema_build_from_configs(&amp;unified_config, 1);
+529     if (schema_build_result != ASCIICHAT_OK) {
+530       // Schema build failed, but continue anyway
+531       (void)schema_build_result;
+532     }
+533     // options_config_destroy(unified_config);
+534   }
+535 
+536   const char *config_path = NULL;
+537 
+538   // Determine output path: use provided path, or NULL for stdout
+539   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
+540     // User provided explicit path - use it as-is
+541     config_path = output_path;
+542   } else {
+543     // No path or &quot;-&quot; means stdout
+544     config_path = NULL;
+545   }
+546 
+547   // Create config with default options
+548   asciichat_error_t result = config_create_default(config_path);
+549   if (result != ASCIICHAT_OK) {
+550     asciichat_error_context_t err_ctx;
+551     if (HAS_ERRNO(&amp;err_ctx)) {
+552       log_plain_stderr(&quot;Error creating config: %s&quot;, err_ctx.context_message);
+553     } else {
+554       log_plain_stderr(&quot;Error: Failed to create config file&quot;);
+555     }
+556     action_exit(ERROR_CONFIG);
+557   }
+558 
+559   if (config_path) {
+560     log_plain_stderr(&quot;Created default config file at: %s&quot;, config_path);
+561   } else {
+562     log_plain_stderr(&quot;Config written to stdout&quot;);
 563   }
-564 
-565   // Create config with default options
-566   asciichat_error_t result = config_create_default(config_path);
-567   if (result != ASCIICHAT_OK) {
-568     asciichat_error_context_t err_ctx;
-569     if (HAS_ERRNO(&amp;err_ctx)) {
-570       log_plain_stderr(&quot;Error creating config: %s&quot;, err_ctx.context_message);
-571     } else {
-572       log_plain_stderr(&quot;Error: Failed to create config file&quot;);
-573     }
-574     action_exit(ERROR_CONFIG);
-575   }
-576 
-577   if (config_path) {
-578     log_plain_stderr(&quot;Created default config file at: %s&quot;, config_path);
-579   } else {
-580     log_plain_stderr(&quot;Config written to stdout&quot;);
-581   }
-582   action_exit(0);
-583 }</pre>
+564   action_exit(0);
+565 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>config_create_default()</b>,
@@ -270,52 +270,52 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_create_manpage_(const_char_*_output_path)"><a class="permalink" href="#void_action_create_manpage_(const_char_*_output_path)">void
   action_create_manpage (const char * output_path)</a></h2>
-<p class="Pp">Definition at line <b>493</b> of file
+<p class="Pp">Definition at line <b>475</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>493                                                     {
-494   // Get binary-level config
-495   const options_config_t *config = options_preset_unified(NULL, NULL);
-496 
-497   if (!config) {
-498     log_plain_stderr(&quot;Error: Failed to get binary options config&quot;);
-499     action_exit(ERROR_FILE_OPERATION);
-500   }
-501 
-502   // Determine output path: use provided path, or NULL for stdout
-503   const char *path_to_use = NULL;
-504   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
-505     // User provided explicit path - use it
-506     path_to_use = output_path;
-507   } else {
-508     // No path or &quot;-&quot; means stdout
-509     path_to_use = NULL;
-510   }
-511 
-512   // Generate merged man page from embedded or filesystem resources
-513   // Resources are loaded automatically based on build type:
-514   // - Production (Release): From embedded binary data
-515   // - Development (Debug): From filesystem files
-516   asciichat_error_t err =
-517       options_config_generate_manpage_merged(config, &quot;ascii-chat&quot;, NULL, path_to_use, &quot;Video chat in your terminal&quot;);
-518 
-519   if (err != ASCIICHAT_OK) {
-520     asciichat_error_context_t err_ctx;
-521     if (HAS_ERRNO(&amp;err_ctx)) {
-522       log_plain_stderr(&quot;Error: %s&quot;, err_ctx.context_message);
-523     } else {
-524       log_plain_stderr(&quot;Error: Failed to generate man page&quot;);
-525     }
-526     action_exit(ERROR_FILE_OPERATION);
-527   }
-528 
-529   if (path_to_use) {
-530     log_plain_stderr(&quot;Man page written to: %s&quot;, path_to_use);
-531   } else {
-532     log_plain_stderr(&quot;Man page written to stdout&quot;);
-533   }
-534 
-535   action_exit(0);
-536 }</pre>
+<pre>475                                                     {
+476   // Get binary-level config
+477   const options_config_t *config = options_preset_unified(NULL, NULL);
+478 
+479   if (!config) {
+480     log_plain_stderr(&quot;Error: Failed to get binary options config&quot;);
+481     action_exit(ERROR_FILE_OPERATION);
+482   }
+483 
+484   // Determine output path: use provided path, or NULL for stdout
+485   const char *path_to_use = NULL;
+486   if (output_path &amp;&amp; strlen(output_path) &gt; 0 &amp;&amp; strcmp(output_path, &quot;-&quot;) != 0) {
+487     // User provided explicit path - use it
+488     path_to_use = output_path;
+489   } else {
+490     // No path or &quot;-&quot; means stdout
+491     path_to_use = NULL;
+492   }
+493 
+494   // Generate merged man page from embedded or filesystem resources
+495   // Resources are loaded automatically based on build type:
+496   // - Production (Release): From embedded binary data
+497   // - Development (Debug): From filesystem files
+498   asciichat_error_t err =
+499       options_config_generate_manpage_merged(config, &quot;ascii-chat&quot;, NULL, path_to_use, &quot;Video chat in your terminal&quot;);
+500 
+501   if (err != ASCIICHAT_OK) {
+502     asciichat_error_context_t err_ctx;
+503     if (HAS_ERRNO(&amp;err_ctx)) {
+504       log_plain_stderr(&quot;Error: %s&quot;, err_ctx.context_message);
+505     } else {
+506       log_plain_stderr(&quot;Error: Failed to generate man page&quot;);
+507     }
+508     action_exit(ERROR_FILE_OPERATION);
+509   }
+510 
+511   if (path_to_use) {
+512     log_plain_stderr(&quot;Man page written to: %s&quot;, path_to_use);
+513   } else {
+514     log_plain_stderr(&quot;Man page written to stdout&quot;);
+515   }
+516 
+517   action_exit(0);
+518 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_config_generate_manpage_merged()</b>, and
@@ -325,12 +325,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_acds_(void_)"><a class="permalink" href="#void_action_help_acds_(void_)">void
   action_help_acds (void )</a></h2>
-<p class="Pp">Definition at line <b>479</b> of file
+<p class="Pp">Definition at line <b>461</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>479                             {
-480   usage(stdout, MODE_DISCOVERY_SERVICE);
-481   action_exit(0);
-482 }</pre>
+<pre>461                             {
+462   usage(stdout, MODE_DISCOVERY_SERVICE);
+463   action_exit(0);
+464 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>usage()</b>.</p>
@@ -338,12 +338,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_client_(void_)"><a class="permalink" href="#void_action_help_client_(void_)">void
   action_help_client (void )</a></h2>
-<p class="Pp">Definition at line <b>469</b> of file
+<p class="Pp">Definition at line <b>451</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>469                               {
-470   usage(stdout, MODE_CLIENT);
-471   action_exit(0);
-472 }</pre>
+<pre>451                               {
+452   usage(stdout, MODE_CLIENT);
+453   action_exit(0);
+454 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>usage()</b>.</p>
@@ -351,12 +351,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_discovery_(void_)"><a class="permalink" href="#void_action_help_discovery_(void_)">void
   action_help_discovery (void )</a></h2>
-<p class="Pp">Definition at line <b>484</b> of file
+<p class="Pp">Definition at line <b>466</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>484                                  {
-485   usage(stdout, MODE_DISCOVERY);
-486   action_exit(0);
-487 }</pre>
+<pre>466                                  {
+467   usage(stdout, MODE_DISCOVERY);
+468   action_exit(0);
+469 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>usage()</b>.</p>
@@ -364,12 +364,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_mirror_(void_)"><a class="permalink" href="#void_action_help_mirror_(void_)">void
   action_help_mirror (void )</a></h2>
-<p class="Pp">Definition at line <b>474</b> of file
+<p class="Pp">Definition at line <b>456</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>474                               {
-475   usage(stdout, MODE_MIRROR);
-476   action_exit(0);
-477 }</pre>
+<pre>456                               {
+457   usage(stdout, MODE_MIRROR);
+458   action_exit(0);
+459 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>usage()</b>.</p>
@@ -377,12 +377,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_help_server_(void_)"><a class="permalink" href="#void_action_help_server_(void_)">void
   action_help_server (void )</a></h2>
-<p class="Pp">Definition at line <b>464</b> of file
+<p class="Pp">Definition at line <b>446</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>464                               {
-465   usage(stdout, MODE_SERVER);
-466   action_exit(0);
-467 }</pre>
+<pre>446                               {
+447   usage(stdout, MODE_SERVER);
+448   action_exit(0);
+449 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>usage()</b>.</p>
@@ -390,12 +390,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_list_microphones_(void_)"><a class="permalink" href="#void_action_list_microphones_(void_)">void
   action_list_microphones (void )</a></h2>
-<p class="Pp">Definition at line <b>147</b> of file
+<p class="Pp">Definition at line <b>145</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>147                                    {
-148   // Defer execution until after options are fully parsed
-149   actions_defer(ACTION_LIST_MICROPHONES, NULL);
-150 }</pre>
+<pre>145                                    {
+146   // Defer execution until after options are fully parsed
+147   actions_defer(ACTION_LIST_MICROPHONES, NULL);
+148 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>actions_defer()</b>.</p>
@@ -405,12 +405,12 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_list_speakers_(void_)"><a class="permalink" href="#void_action_list_speakers_(void_)">void
   action_list_speakers (void )</a></h2>
-<p class="Pp">Definition at line <b>193</b> of file
+<p class="Pp">Definition at line <b>183</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>193                                 {
-194   // Defer execution until after options are fully parsed
-195   actions_defer(ACTION_LIST_SPEAKERS, NULL);
-196 }</pre>
+<pre>183                                 {
+184   // Defer execution until after options are fully parsed
+185   actions_defer(ACTION_LIST_SPEAKERS, NULL);
+186 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>actions_defer()</b>.</p>
@@ -435,13 +435,13 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_show_capabilities_(void_)"><a class="permalink" href="#void_action_show_capabilities_(void_)">void
   action_show_capabilities (void )</a></h2>
-<p class="Pp">Definition at line <b>316</b> of file
+<p class="Pp">Definition at line <b>298</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>316                                     {
-317   // Defer execution until after options are fully parsed and dimensions updated
-318   // This ensures --width and --height flags are properly reflected in the output
-319   actions_defer(ACTION_SHOW_CAPABILITIES, NULL);
-320 }</pre>
+<pre>298                                     {
+299   // Defer execution until after options are fully parsed and dimensions updated
+300   // This ensures --width and --height flags are properly reflected in the output
+301   actions_defer(ACTION_SHOW_CAPABILITIES, NULL);
+302 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>actions_defer()</b>.</p>
@@ -452,77 +452,77 @@
   action_show_capabilities_immediate (void )</a></h2>
 <p class="Pp">Execute show capabilities immediately (for early binary-level
     execution).</p>
-<p class="Pp">Definition at line <b>246</b> of file
+<p class="Pp">Definition at line <b>228</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>246                                               {
-247   terminal_capabilities_t caps = detect_terminal_capabilities();
-248 
-249   // Determine if we should use colored output
-250   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
-251 
-252   // Override color level if colors should not be shown
-253   if (!use_colors) {
-254     caps.color_level = TERM_COLOR_NONE;
-255     caps.color_count = 0;
-256     caps.capabilities &amp;= ~((uint32_t)(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16));
-257   }
+<pre>228                                               {
+229   terminal_capabilities_t caps = detect_terminal_capabilities();
+230 
+231   // Determine if we should use colored output
+232   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+233 
+234   // Override color level if colors should not be shown
+235   if (!use_colors) {
+236     caps.color_level = TERM_COLOR_NONE;
+237     caps.color_count = 0;
+238     caps.capabilities &amp;= ~((uint32_t)(TERM_CAP_COLOR_TRUE | TERM_CAP_COLOR_256 | TERM_CAP_COLOR_16));
+239   }
+240 
+241   // Use detected terminal size (immediate execution doesn't have parsed options yet)
+242   terminal_size_t size;
+243   terminal_get_size(&amp;size);
+244   unsigned short width = size.cols;
+245   unsigned short height = size.rows;
+246 
+247   log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
+248   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
+249   log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
+250   log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
+251   log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
+252 
+253   printf(&quot;%s\n&quot;, colored_string(LOG_COLOR_WARN, &quot;Terminal Capabilities:&quot;));
+254 
+255   char size_buf[64];
+256   snprintf(size_buf, sizeof(size_buf), &quot;%ux%u&quot;, width, height);
+257   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Terminal Size&quot;), colored_string(number_color, size_buf));
 258 
-259   // Use detected terminal size (immediate execution doesn't have parsed options yet)
-260   terminal_size_t size;
-261   terminal_get_size(&amp;size);
-262   unsigned short width = size.cols;
-263   unsigned short height = size.rows;
-264 
-265   log_color_t label_color = use_colors ? LOG_COLOR_GREY : LOG_COLOR_GREY;
-266   log_color_t string_color = use_colors ? LOG_COLOR_DEBUG : LOG_COLOR_GREY;
-267   log_color_t good_color = use_colors ? LOG_COLOR_INFO : LOG_COLOR_GREY;
-268   log_color_t bad_color = use_colors ? LOG_COLOR_ERROR : LOG_COLOR_GREY;
-269   log_color_t number_color = use_colors ? LOG_COLOR_FATAL : LOG_COLOR_GREY;
-270 
-271   printf(&quot;%s\n&quot;, colored_string(LOG_COLOR_WARN, &quot;Terminal Capabilities:&quot;));
-272 
-273   char size_buf[64];
-274   snprintf(size_buf, sizeof(size_buf), &quot;%ux%u&quot;, width, height);
-275   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Terminal Size&quot;), colored_string(number_color, size_buf));
-276 
-277   const char *color_level_name = terminal_color_level_name(caps.color_level);
-278   log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
-279   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Color Level&quot;),
-280          colored_string(color_level_color, (char *)color_level_name));
-281 
-282   char colors_buf[64];
-283   snprintf(colors_buf, sizeof(colors_buf), &quot;%u&quot;, caps.color_count);
-284   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Max Colors&quot;), colored_string(number_color, colors_buf));
+259   const char *color_level_name = terminal_color_level_name(caps.color_level);
+260   log_color_t color_level_color = (caps.color_level == TERM_COLOR_NONE) ? bad_color : string_color;
+261   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Color Level&quot;),
+262          colored_string(color_level_color, (char *)color_level_name));
+263 
+264   char colors_buf[64];
+265   snprintf(colors_buf, sizeof(colors_buf), &quot;%u&quot;, caps.color_count);
+266   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Max Colors&quot;), colored_string(number_color, colors_buf));
+267 
+268   log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
+269   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;UTF-8 Support&quot;),
+270          colored_string(utf8_color, (char *)(caps.utf8_support ? &quot;Yes&quot; : &quot;No&quot;)));
+271 
+272   const char *render_mode_str = &quot;unknown&quot;;
+273   if (caps.render_mode == RENDER_MODE_FOREGROUND) {
+274     render_mode_str = &quot;foreground&quot;;
+275   } else if (caps.render_mode == RENDER_MODE_BACKGROUND) {
+276     render_mode_str = &quot;background&quot;;
+277   } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
+278     render_mode_str = &quot;half-block&quot;;
+279   }
+280   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Render Mode&quot;),
+281          colored_string(string_color, (char *)render_mode_str));
+282   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;TERM&quot;), colored_string(string_color, (char *)caps.term_type));
+283   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;COLORTERM&quot;),
+284          colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : &quot;(not set)&quot;)));
 285 
-286   log_color_t utf8_color = caps.utf8_support ? good_color : bad_color;
-287   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;UTF-8 Support&quot;),
-288          colored_string(utf8_color, (char *)(caps.utf8_support ? &quot;Yes&quot; : &quot;No&quot;)));
+286   log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
+287   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Detection Reliable&quot;),
+288          colored_string(reliable_color, (char *)(caps.detection_reliable ? &quot;Yes&quot; : &quot;No&quot;)));
 289 
-290   const char *render_mode_str = &quot;unknown&quot;;
-291   if (caps.render_mode == RENDER_MODE_FOREGROUND) {
-292     render_mode_str = &quot;foreground&quot;;
-293   } else if (caps.render_mode == RENDER_MODE_BACKGROUND) {
-294     render_mode_str = &quot;background&quot;;
-295   } else if (caps.render_mode == RENDER_MODE_HALF_BLOCK) {
-296     render_mode_str = &quot;half-block&quot;;
-297   }
-298   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Render Mode&quot;),
-299          colored_string(string_color, (char *)render_mode_str));
-300   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;TERM&quot;), colored_string(string_color, (char *)caps.term_type));
-301   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;COLORTERM&quot;),
-302          colored_string(string_color, (char *)(strlen(caps.colorterm) ? caps.colorterm : &quot;(not set)&quot;)));
-303 
-304   log_color_t reliable_color = caps.detection_reliable ? good_color : bad_color;
-305   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Detection Reliable&quot;),
-306          colored_string(reliable_color, (char *)(caps.detection_reliable ? &quot;Yes&quot; : &quot;No&quot;)));
-307 
-308   char bitmask_buf[64];
-309   snprintf(bitmask_buf, sizeof(bitmask_buf), &quot;0x%08x&quot;, caps.capabilities);
-310   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Capabilities Bitmask&quot;), colored_string(number_color, bitmask_buf));
-311 
-312   fflush(stdout);
-313   action_exit(0);
-314 }</pre>
+290   char bitmask_buf[64];
+291   snprintf(bitmask_buf, sizeof(bitmask_buf), &quot;0x%08x&quot;, caps.capabilities);
+292   printf(&quot;  %s: %s\n&quot;, colored_string(label_color, &quot;Capabilities Bitmask&quot;), colored_string(number_color, bitmask_buf));
+293 
+294   fflush(stdout);
+295   action_exit(0);
+296 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>,
@@ -533,21 +533,21 @@
 <section class="Ss">
 <h2 class="Ss" id="void_action_show_version_(void_)"><a class="permalink" href="#void_action_show_version_(void_)">void
   action_show_version (void )</a></h2>
-<p class="Pp">Definition at line <b>446</b> of file
+<p class="Pp">Definition at line <b>428</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>446                                {
-447   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
-448   if (use_colors) {
-449     printf(&quot;%s %s (%s, %s)\n&quot;, colored_string(LOG_COLOR_WARN, &quot;ascii-chat&quot;),
-450            colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),
-451            colored_string(LOG_COLOR_DEBUG, (char *)ASCII_CHAT_BUILD_TYPE),
-452            colored_string(LOG_COLOR_GREY, (char *)ASCII_CHAT_BUILD_DATE));
-453   } else {
-454     printf(&quot;ascii-chat %s (%s, %s)\n&quot;, ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
-455   }
-456 
-457   action_exit(0);
-458 }</pre>
+<pre>428                                {
+429   bool use_colors = terminal_should_color_output(STDOUT_FILENO);
+430   if (use_colors) {
+431     printf(&quot;%s %s (%s, %s)\n&quot;, colored_string(LOG_COLOR_WARN, &quot;ascii-chat&quot;),
+432            colored_string(LOG_COLOR_INFO, (char *)ASCII_CHAT_VERSION_FULL),
+433            colored_string(LOG_COLOR_DEBUG, (char *)ASCII_CHAT_BUILD_TYPE),
+434            colored_string(LOG_COLOR_GREY, (char *)ASCII_CHAT_BUILD_DATE));
+435   } else {
+436     printf(&quot;ascii-chat %s (%s, %s)\n&quot;, ASCII_CHAT_VERSION_FULL, ASCII_CHAT_BUILD_TYPE, ASCII_CHAT_BUILD_DATE);
+437   }
+438 
+439   action_exit(0);
+440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colored_string()</b>, and
@@ -585,41 +585,41 @@
 <section class="Ss">
 <h2 class="Ss" id="void_actions_execute_deferred_(void_)"><a class="permalink" href="#void_actions_execute_deferred_(void_)">void
   actions_execute_deferred (void )</a></h2>
-<p class="Pp">Definition at line <b>680</b> of file
+<p class="Pp">Definition at line <b>662</b> of file
     <b>options/parsing/actions.c</b>.</p>
-<pre>680                                     {
-681   deferred_action_t action = actions_get_deferred();
-682 
-683   switch (action) {
-684   case ACTION_NONE:
-685     // No action to execute
-686     break;
-687 
-688   case ACTION_LIST_WEBCAMS:
-689     execute_list_webcams();
-690     break;
-691 
-692   case ACTION_LIST_MICROPHONES:
-693     execute_list_microphones();
-694     break;
-695 
-696   case ACTION_LIST_SPEAKERS:
-697     execute_list_speakers();
-698     break;
-699 
-700   case ACTION_SHOW_CAPABILITIES:
-701     execute_show_capabilities();
-702     break;
-703 
-704   case ACTION_CHECK_UPDATE:
-705     execute_check_update();
-706     break;
-707 
-708   default:
-709     log_warn(&quot;Unknown deferred action: %d&quot;, action);
-710     break;
-711   }
-712 }</pre>
+<pre>662                                     {
+663   deferred_action_t action = actions_get_deferred();
+664 
+665   switch (action) {
+666   case ACTION_NONE:
+667     // No action to execute
+668     break;
+669 
+670   case ACTION_LIST_WEBCAMS:
+671     execute_list_webcams();
+672     break;
+673 
+674   case ACTION_LIST_MICROPHONES:
+675     execute_list_microphones();
+676     break;
+677 
+678   case ACTION_LIST_SPEAKERS:
+679     execute_list_speakers();
+680     break;
+681 
+682   case ACTION_SHOW_CAPABILITIES:
+683     execute_show_capabilities();
+684     break;
+685 
+686   case ACTION_CHECK_UPDATE:
+687     execute_check_update();
+688     break;
+689 
+690   default:
+691     log_warn(&quot;Unknown deferred action: %d&quot;, action);
+692     break;
+693   }
+694 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>action</b>, and <b>actions_get_deferred()</b>.</p>
@@ -682,8 +682,8 @@
     <b>log_mmap_write()</b>, <b>log_msg()</b>, <b>log_net_message()</b>,
     <b>log_network_message()</b>, <b>log_plain_msg()</b>,
     <b>log_plain_stderr_msg()</b>, <b>log_plain_stderr_nonewline_msg()</b>,
-    <b>log_terminal_msg()</b>, <b>main()</b>, <b>named_register_fmt()</b>,
-    <b>options_builder_add_example()</b>,
+    <b>log_plain_stdout_msg()</b>, <b>log_terminal_msg()</b>, <b>main()</b>,
+    <b>named_register_fmt()</b>, <b>options_builder_add_example()</b>,
     <b>options_builder_add_example_utility()</b>, <b>platform_asprintf()</b>,
     <b>platform_open()</b>, <b>safe_fprintf()</b>, and
   <b>safe_snprintf()</b>.</p>

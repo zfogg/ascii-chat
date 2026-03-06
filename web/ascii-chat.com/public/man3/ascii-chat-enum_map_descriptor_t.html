@@ -17,20 +17,21 @@
     code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
       font-family: inherit; }
   </style>
-  <title>word_cache_entry_t(3)</title>
+  <title>enum_map_descriptor_t(3)</title>
 </head>
 <body>
 <table class="head">
   <tr>
-    <td class="head-ltitle">word_cache_entry_t(3)</td>
+    <td class="head-ltitle">enum_map_descriptor_t(3)</td>
     <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">word_cache_entry_t(3)</td>
+    <td class="head-rtitle">enum_map_descriptor_t(3)</td>
   </tr>
 </table>
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">word_cache_entry_t - Hashtable entry for cached word lookups.</p>
+<p class="Pp">enum_map_descriptor_t - Descriptor for an enum option with its
+    string value mapping.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -39,11 +40,12 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">char * <b>word</b>
+<p class="Pp">const char * <b>option_name</b>
   <br/>
-  The word string (key). UT_hash_handle <b>hh</b>
+  Option long name (e.g., <i>log-level&quot;).</i> const
+    <b>enum_to_string_entry_t</b> * <b>map</b>
   <br/>
-  uthash handle
+  Mapping array from enum values to strings.
   <br/>
 </p>
 </section>
@@ -51,27 +53,24 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Hashtable entry for cached word lookups.</p>
-<p class="Pp">Definition at line <b>60</b> of file
-  <b>discovery/strings.c</b>.</p>
+<p class="Pp">Descriptor for an enum option with its string value mapping.</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>enums.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="UT_hash_handle_word_cache_entry_t::hh"><a class="permalink" href="#UT_hash_handle_word_cache_entry_t::hh">UT_hash_handle
-  word_cache_entry_t::hh</a></h2>
-<p class="Pp">uthash handle</p>
-<p class="Pp">Definition at line <b>62</b> of file
-  <b>discovery/strings.c</b>.</p>
+<h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
+  <b>enum_to_string_entry_t</b>* enum_map_descriptor_t::map</a></h2>
+<p class="Pp">Mapping array from enum values to strings.</p>
+<p class="Pp">Definition at line <b>116</b> of file <b>enums.c</b>.</p>
+<p class="Pp">Referenced by <b>options_get_enum_values()</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char*_word_cache_entry_t::word"><a class="permalink" href="#char*_word_cache_entry_t::word">char*
-  word_cache_entry_t::word</a></h2>
-<p class="Pp">The word string (key).</p>
-<p class="Pp">Definition at line <b>61</b> of file
-  <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_strings_destroy()</b>.</p>
+<h2 class="Ss" id="const_char*_enum_map_descriptor_t::option_name"><a class="permalink" href="#const_char*_enum_map_descriptor_t::option_name">const
+  char* enum_map_descriptor_t::option_name</a></h2>
+<p class="Pp">Option long name (e.g., &quot;log-level&quot;).</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>enums.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

@@ -1835,29 +1835,29 @@
   options_config_parse (const options_config_t * config, int argc, char ** argv,
   void * options_struct, option_mode_bitmask_t detected_mode, int *
   remaining_argc, char *** remaining_argv)</a></h2>
-<p class="Pp">Definition at line <b>1813</b> of file <b>builder.c</b>.</p>
-<pre>1815                                                                {
-1816   if (!config || !options_struct) {
-1817     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
-1818   }
-1819 
-1820   // Use the new unified parser that handles mixed positional and flag arguments
-1821   asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct, detected_mode);
-1822   if (result != ASCIICHAT_OK) {
-1823     return result;
-1824   }
-1825 
-1826   // Since unified parser handles all arguments, there are no remaining args
-1827   // (backward compatibility: set remaining_argc to 0)
-1828   if (remaining_argc) {
-1829     *remaining_argc = 0;
-1830   }
-1831   if (remaining_argv) {
-1832     *remaining_argv = NULL;
-1833   }
-1834 
-1835   return ASCIICHAT_OK;
-1836 }</pre>
+<p class="Pp">Definition at line <b>1812</b> of file <b>builder.c</b>.</p>
+<pre>1814                                                                {
+1815   if (!config || !options_struct) {
+1816     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
+1817   }
+1818 
+1819   // Use the new unified parser that handles mixed positional and flag arguments
+1820   asciichat_error_t result = options_config_parse_unified(config, argc, argv, options_struct, detected_mode);
+1821   if (result != ASCIICHAT_OK) {
+1822     return result;
+1823   }
+1824 
+1825   // Since unified parser handles all arguments, there are no remaining args
+1826   // (backward compatibility: set remaining_argc to 0)
+1827   if (remaining_argc) {
+1828     *remaining_argc = 0;
+1829   }
+1830   if (remaining_argv) {
+1831     *remaining_argv = NULL;
+1832   }
+1833 
+1834   return ASCIICHAT_OK;
+1835 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SET_ERRNO</b>.</p>
@@ -1991,111 +1991,111 @@
 <h2 class="Ss" id="asciichat_error_t_options_config_validate_(const_options_config_t_*_config,_const_void_*_options_struct,_char_**_error_message)"><a class="permalink" href="#asciichat_error_t_options_config_validate_(const_options_config_t_*_config,_const_void_*_options_struct,_char_**_error_message)">asciichat_error_t
   options_config_validate (const options_config_t * config, const void *
   options_struct, char ** error_message)</a></h2>
-<p class="Pp">Definition at line <b>1838</b> of file <b>builder.c</b>.</p>
-<pre>1839                                                                 {
-1840   if (!config || !options_struct) {
-1841     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
-1842   }
-1843 
-1844   const char *base = (const char *)options_struct;
-1845 
-1846   // Check required fields
-1847   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1848     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1849     if (!desc-&gt;required)
-1850       continue;
-1851 
-1852     const void *field = base + desc-&gt;offset;
-1853     // Use handler registry to check if option is set (for required field validation)
-1854     bool is_set = true;
-1855     if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
-1856       if (g_builder_handlers[desc-&gt;type].is_set) {
-1857         is_set = g_builder_handlers[desc-&gt;type].is_set(field, desc);
-1858       }
-1859     }
-1860 
-1861     if (!is_set) {
-1862       if (error_message) {
-1863         if (desc-&gt;env_var_name) {
-1864           asprintf(error_message, &quot;Required option --%s is not set (set %s env var or use --%s)&quot;, desc-&gt;long_name,
-1865                    desc-&gt;env_var_name, desc-&gt;long_name);
-1866         } else {
-1867           asprintf(error_message, &quot;Required option --%s is not set&quot;, desc-&gt;long_name);
-1868         }
-1869       }
-1870       return ERROR_USAGE;
-1871     }
-1872   }
-1873 
-1874   // Check dependencies
-1875   for (size_t i = 0; i &lt; config-&gt;num_dependencies; i++) {
-1876     const option_dependency_t *dep = &amp;config-&gt;dependencies[i];
-1877 
-1878     bool option_is_set = is_option_set(config, options_struct, dep-&gt;option_name);
-1879     bool depends_is_set = is_option_set(config, options_struct, dep-&gt;depends_on);
-1880 
-1881     switch (dep-&gt;type) {
-1882     case DEPENDENCY_REQUIRES:
-1883       if (option_is_set &amp;&amp; !depends_is_set) {
-1884         if (error_message) {
-1885           if (dep-&gt;error_message) {
-1886             *error_message = platform_strdup(dep-&gt;error_message);
-1887           } else {
-1888             asprintf(error_message, &quot;Option --%s requires --%s to be set&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1889           }
-1890         }
-1891         return ERROR_USAGE;
-1892       }
-1893       break;
-1894 
-1895     case DEPENDENCY_CONFLICTS:
-1896       if (option_is_set &amp;&amp; depends_is_set) {
-1897         if (error_message) {
-1898           if (dep-&gt;error_message) {
-1899             *error_message = platform_strdup(dep-&gt;error_message);
-1900           } else {
-1901             asprintf(error_message, &quot;Option --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
-1902           }
-1903         }
-1904         return ERROR_USAGE;
-1905       }
-1906       break;
-1907 
-1908     case DEPENDENCY_IMPLIES:
-1909       // Implies is handled during parsing, not validation
-1910       break;
-1911     }
-1912   }
-1913 
-1914   // Run custom validators
-1915   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
-1916     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
-1917     if (!desc-&gt;validate)
-1918       continue;
-1919 
-1920     char *custom_error = NULL;
-1921     if (!desc-&gt;validate(options_struct, &amp;custom_error)) {
-1922       if (error_message) {
-1923         *error_message = custom_error;
-1924       } else {
-1925         free(custom_error);
-1926       }
-1927       return ERROR_USAGE;
-1928     }
-1929   }
-1930 
-1931   // Cross-field validation: Check for conflicting color options
-1932   // Cannot use --color with --color-mode none
-1933   const options_t *opts = (const options_t *)options_struct;
-1934   if (opts-&gt;color &amp;&amp; opts-&gt;color_mode == TERM_COLOR_NONE) {
-1935     if (error_message) {
-1936       asprintf(error_message, &quot;Option --color cannot be used with --color-mode=none (conflicting color settings)&quot;);
-1937     }
-1938     return ERROR_USAGE;
-1939   }
-1940 
-1941   return ASCIICHAT_OK;
-1942 }</pre>
+<p class="Pp">Definition at line <b>1837</b> of file <b>builder.c</b>.</p>
+<pre>1838                                                                 {
+1839   if (!config || !options_struct) {
+1840     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;Config or options struct is NULL&quot;);
+1841   }
+1842 
+1843   const char *base = (const char *)options_struct;
+1844 
+1845   // Check required fields
+1846   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1847     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1848     if (!desc-&gt;required)
+1849       continue;
+1850 
+1851     const void *field = base + desc-&gt;offset;
+1852     // Use handler registry to check if option is set (for required field validation)
+1853     bool is_set = true;
+1854     if (desc-&gt;type &gt;= 0 &amp;&amp; desc-&gt;type &lt; (int)(NUM_OPTION_TYPES)) {
+1855       if (g_builder_handlers[desc-&gt;type].is_set) {
+1856         is_set = g_builder_handlers[desc-&gt;type].is_set(field, desc);
+1857       }
+1858     }
+1859 
+1860     if (!is_set) {
+1861       if (error_message) {
+1862         if (desc-&gt;env_var_name) {
+1863           asprintf(error_message, &quot;Required option --%s is not set (set %s env var or use --%s)&quot;, desc-&gt;long_name,
+1864                    desc-&gt;env_var_name, desc-&gt;long_name);
+1865         } else {
+1866           asprintf(error_message, &quot;Required option --%s is not set&quot;, desc-&gt;long_name);
+1867         }
+1868       }
+1869       return ERROR_USAGE;
+1870     }
+1871   }
+1872 
+1873   // Check dependencies
+1874   for (size_t i = 0; i &lt; config-&gt;num_dependencies; i++) {
+1875     const option_dependency_t *dep = &amp;config-&gt;dependencies[i];
+1876 
+1877     bool option_is_set = is_option_set(config, options_struct, dep-&gt;option_name);
+1878     bool depends_is_set = is_option_set(config, options_struct, dep-&gt;depends_on);
+1879 
+1880     switch (dep-&gt;type) {
+1881     case DEPENDENCY_REQUIRES:
+1882       if (option_is_set &amp;&amp; !depends_is_set) {
+1883         if (error_message) {
+1884           if (dep-&gt;error_message) {
+1885             *error_message = platform_strdup(dep-&gt;error_message);
+1886           } else {
+1887             asprintf(error_message, &quot;Option --%s requires --%s to be set&quot;, dep-&gt;option_name, dep-&gt;depends_on);
+1888           }
+1889         }
+1890         return ERROR_USAGE;
+1891       }
+1892       break;
+1893 
+1894     case DEPENDENCY_CONFLICTS:
+1895       if (option_is_set &amp;&amp; depends_is_set) {
+1896         if (error_message) {
+1897           if (dep-&gt;error_message) {
+1898             *error_message = platform_strdup(dep-&gt;error_message);
+1899           } else {
+1900             asprintf(error_message, &quot;Option --%s conflicts with --%s&quot;, dep-&gt;option_name, dep-&gt;depends_on);
+1901           }
+1902         }
+1903         return ERROR_USAGE;
+1904       }
+1905       break;
+1906 
+1907     case DEPENDENCY_IMPLIES:
+1908       // Implies is handled during parsing, not validation
+1909       break;
+1910     }
+1911   }
+1912 
+1913   // Run custom validators
+1914   for (size_t i = 0; i &lt; config-&gt;num_descriptors; i++) {
+1915     const option_descriptor_t *desc = &amp;config-&gt;descriptors[i];
+1916     if (!desc-&gt;validate)
+1917       continue;
+1918 
+1919     char *custom_error = NULL;
+1920     if (!desc-&gt;validate(options_struct, &amp;custom_error)) {
+1921       if (error_message) {
+1922         *error_message = custom_error;
+1923       } else {
+1924         free(custom_error);
+1925       }
+1926       return ERROR_USAGE;
+1927     }
+1928   }
+1929 
+1930   // Cross-field validation: Check for conflicting color options
+1931   // Cannot use --color with --color-mode none
+1932   const options_t *opts = (const options_t *)options_struct;
+1933   if (opts-&gt;color &amp;&amp; opts-&gt;color_mode == TERM_COLOR_NONE) {
+1934     if (error_message) {
+1935       asprintf(error_message, &quot;Option --color cannot be used with --color-mode=none (conflicting color settings)&quot;);
+1936     }
+1937     return ERROR_USAGE;
+1938   }
+1939 
+1940   return ASCIICHAT_OK;
+1941 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asprintf</b>, <b>g_builder_handlers</b>,

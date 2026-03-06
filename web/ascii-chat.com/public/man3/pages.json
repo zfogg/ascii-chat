@@ -780,6 +780,18 @@
     "sourcePath": "lib/video/h265/encoder.c"
   },
   {
+    "name": "enum_map_descriptor_t",
+    "title": "enum_map_descriptor_t",
+    "file": "ascii-chat-enum_map_descriptor_t.html",
+    "sourcePath": "lib/options/enums.c"
+  },
+  {
+    "name": "enum_to_string_entry_t",
+    "title": "enum_to_string_entry_t",
+    "file": "ascii-chat-enum_to_string_entry_t.html",
+    "sourcePath": "lib/options/enums.c"
+  },
+  {
     "name": "enums.c",
     "title": "enums.c",
     "file": "ascii-chat-enums.c.html",
@@ -2368,12 +2380,6 @@
     "title": "session_settings_t",
     "file": "ascii-chat-session_settings_t.html",
     "sourcePath": "src/common/session/settings.h"
-  },
-  {
-    "name": "session_validator_t",
-    "title": "session_validator_t",
-    "file": "ascii-chat-session_validator_t.html",
-    "sourcePath": null
   },
   {
     "name": "setting_map_entry_t",
