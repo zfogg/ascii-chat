@@ -38,6 +38,195 @@ macro(_libdatachannel_link_platform_libs)
 endmacro()
 
 # =============================================================================
+# iOS build: Build from source for iOS cross-compilation
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "${BoldCyan}libdatachannel${ColorReset}: Building from source (iOS cross-compile)...")
+
+    include(FetchContent)
+
+    set(LIBDATACHANNEL_REPO "https://github.com/paullouisageneau/libdatachannel")
+    set(LIBDATACHANNEL_TAG "v0.22.5")
+
+    # Fetch libdatachannel source
+    FetchContent_Declare(
+        libdatachannel
+        GIT_REPOSITORY ${LIBDATACHANNEL_REPO}
+        GIT_TAG ${LIBDATACHANNEL_TAG}
+        GIT_SHALLOW TRUE
+        GIT_SHALLOW_EXCLUDE_DEPS TRUE
+        GIT_SUBMODULES_RECURSE FALSE
+        UPDATE_DISCONNECTED TRUE
+    )
+
+    cmake_policy(SET CMP0169 OLD)
+    FetchContent_GetProperties(libdatachannel)
+
+    if(NOT libdatachannel_POPULATED)
+        FetchContent_Populate(libdatachannel)
+
+        # Initialize submodules for libdatachannel dependencies
+        message(STATUS "Initializing libdatachannel submodules (iOS)...")
+        execute_process(
+            COMMAND git submodule update --init --recursive --depth 1
+            WORKING_DIRECTORY ${libdatachannel_SOURCE_DIR}
+            RESULT_VARIABLE SUBMODULE_RESULT
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+        if(NOT SUBMODULE_RESULT EQUAL 0)
+            message(WARNING "Failed to initialize libdatachannel submodules")
+        endif()
+
+        # Patch dependency CMakeLists files to require modern CMake
+        # plog
+        set(PLOG_CMAKE_FILE "${libdatachannel_SOURCE_DIR}/deps/plog/CMakeLists.txt")
+        if(EXISTS "${PLOG_CMAKE_FILE}")
+            file(READ "${PLOG_CMAKE_FILE}" PLOG_CMAKE_CONTENT)
+            string(REGEX REPLACE "cmake_minimum_required\\(VERSION [0-9.]+\\)" "cmake_minimum_required(VERSION 3.5)" PLOG_CMAKE_CONTENT "${PLOG_CMAKE_CONTENT}")
+            file(WRITE "${PLOG_CMAKE_FILE}" "${PLOG_CMAKE_CONTENT}")
+            message(STATUS "Patched plog CMakeLists.txt to require CMake 3.5")
+        endif()
+
+        # usrsctp
+        set(USRSCTP_CMAKE_FILE "${libdatachannel_SOURCE_DIR}/deps/usrsctp/CMakeLists.txt")
+        if(EXISTS "${USRSCTP_CMAKE_FILE}")
+            file(READ "${USRSCTP_CMAKE_FILE}" USRSCTP_CMAKE_CONTENT)
+            string(REGEX REPLACE "cmake_minimum_required\\(VERSION [0-9.]+\\)" "cmake_minimum_required(VERSION 3.5)" USRSCTP_CMAKE_CONTENT "${USRSCTP_CMAKE_CONTENT}")
+            file(WRITE "${USRSCTP_CMAKE_FILE}" "${USRSCTP_CMAKE_CONTENT}")
+            message(STATUS "Patched usrsctp CMakeLists.txt to require CMake 3.5")
+        endif()
+    endif()
+
+    # Set up iOS build directory
+    set(LIBDATACHANNEL_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/libdatachannel-build")
+    file(MAKE_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}")
+
+    # Check if cached build exists
+    if(NOT EXISTS "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}")
+        message(STATUS "libdatachannel library not found in cache, will build from source")
+
+        # Get iOS SDK path
+        if(BUILD_IOS_SIM)
+            set(LDC_IOS_PLATFORM SIMULATOR64)
+            execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        else()
+            set(LDC_IOS_PLATFORM OS)
+            execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        endif()
+
+        set(LDC_TOOLCHAIN_FILE "${CMAKE_SOURCE_DIR}/cmake/toolchains/LibwebsocketsIOS.cmake")
+
+        # Configure libdatachannel for iOS
+        set(LIBDATACHANNEL_CMAKE_ARGS
+            -DCMAKE_TOOLCHAIN_FILE=${LDC_TOOLCHAIN_FILE}
+            -DIOS_PLATFORM=${LDC_IOS_PLATFORM}
+            -DIOS_DEPLOYMENT_TARGET=16.0
+            -DCMAKE_BUILD_TYPE=Release
+            -DCMAKE_INSTALL_PREFIX=${LIBDATACHANNEL_BUILD_DIR}
+            -DCMAKE_INSTALL_LIBDIR=lib
+            -DCMAKE_INSTALL_INCLUDEDIR=include
+            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${LIBDATACHANNEL_BUILD_DIR}/lib
+            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${LIBDATACHANNEL_BUILD_DIR}/lib
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${LIBDATACHANNEL_BUILD_DIR}/bin
+            -DCMAKE_SUPPRESS_DEVELOPER_WARNINGS=ON
+            -DUSE_GNUTLS=OFF
+            -DUSE_NICE=OFF
+            -DNO_WEBSOCKET=ON
+            -DNO_MEDIA=ON
+            -DNO_EXAMPLES=ON
+            -DNO_TESTS=ON
+            -DBUILD_SHARED_LIBS=OFF
+            -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+        )
+
+        # Point to iOS-built OpenSSL with proper include paths
+        if(EXISTS "${IOS_DEPS_CACHE_DIR}/openssl/lib/libssl.a")
+            list(APPEND LIBDATACHANNEL_CMAKE_ARGS
+                -DOPENSSL_ROOT_DIR=${IOS_DEPS_CACHE_DIR}/openssl
+                -DOPENSSL_INCLUDE_DIR=${IOS_DEPS_CACHE_DIR}/openssl/include
+                -DOPENSSL_CRYPTO_LIBRARY=${IOS_DEPS_CACHE_DIR}/openssl/lib/libcrypto.a
+                -DOPENSSL_SSL_LIBRARY=${IOS_DEPS_CACHE_DIR}/openssl/lib/libssl.a
+                -DCMAKE_PREFIX_PATH=${IOS_DEPS_CACHE_DIR}/openssl
+                -DCMAKE_C_FLAGS=-I${IOS_DEPS_CACHE_DIR}/openssl/include
+                -DCMAKE_CXX_FLAGS=-I${IOS_DEPS_CACHE_DIR}/openssl/include
+            )
+        endif()
+
+        message(STATUS "Configuring libdatachannel for iOS...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND}
+                ${LIBDATACHANNEL_CMAKE_ARGS}
+                -B ${LIBDATACHANNEL_BUILD_DIR}
+                ${libdatachannel_SOURCE_DIR}
+            RESULT_VARIABLE LIBDATACHANNEL_CONFIG_RESULT
+            OUTPUT_VARIABLE LIBDATACHANNEL_CONFIG_OUTPUT
+            ERROR_VARIABLE LIBDATACHANNEL_CONFIG_ERROR
+            OUTPUT_QUIET
+            ERROR_QUIET
+        )
+
+        if(NOT LIBDATACHANNEL_CONFIG_RESULT EQUAL 0)
+            # Check if there's a CMakeLists.txt in the build directory (successful config despite warnings)
+            if(NOT EXISTS "${LIBDATACHANNEL_BUILD_DIR}/CMakeFiles")
+                message(FATAL_ERROR "libdatachannel iOS configuration failed (exit code: ${LIBDATACHANNEL_CONFIG_RESULT})")
+            endif()
+        endif()
+
+        message(STATUS "Building libdatachannel for iOS...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} --build ${LIBDATACHANNEL_BUILD_DIR} -j
+            RESULT_VARIABLE LIBDATACHANNEL_BUILD_RESULT
+            OUTPUT_VARIABLE LIBDATACHANNEL_BUILD_OUTPUT
+            ERROR_VARIABLE LIBDATACHANNEL_BUILD_ERROR
+        )
+
+        if(NOT LIBDATACHANNEL_BUILD_RESULT EQUAL 0)
+            message(STATUS "libdatachannel build output:\n${LIBDATACHANNEL_BUILD_OUTPUT}")
+            message(FATAL_ERROR "libdatachannel iOS build failed:\n${LIBDATACHANNEL_BUILD_ERROR}")
+        endif()
+
+        message(STATUS "Installing libdatachannel for iOS...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} --install ${LIBDATACHANNEL_BUILD_DIR}
+            RESULT_VARIABLE LIBDATACHANNEL_INSTALL_RESULT
+        )
+
+        if(NOT LIBDATACHANNEL_INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "libdatachannel iOS installation failed")
+        endif()
+
+        message(STATUS "${BoldGreen}✓${ColorReset} libdatachannel built for iOS")
+    else()
+        message(STATUS "${BoldCyan}libdatachannel${ColorReset} found in iOS cache: ${LIBDATACHANNEL_BUILD_DIR}/lib")
+    endif()
+
+    # Create imported library target
+    if(NOT TARGET libdatachannel)
+        add_library(libdatachannel STATIC IMPORTED GLOBAL)
+        set_target_properties(libdatachannel PROPERTIES
+            IMPORTED_LOCATION "${LIBDATACHANNEL_BUILD_DIR}/lib/${CMAKE_STATIC_LIBRARY_PREFIX}datachannel${CMAKE_STATIC_LIBRARY_SUFFIX}"
+            INTERFACE_INCLUDE_DIRECTORIES "${LIBDATACHANNEL_BUILD_DIR}/include"
+        )
+    endif()
+
+    # Link platform libraries for iOS
+    _libdatachannel_link_platform_libs()
+
+    # Link OpenSSL if available
+    if(EXISTS "${IOS_DEPS_CACHE_DIR}/openssl/lib/libssl.a")
+        target_link_libraries(libdatachannel INTERFACE
+            "${IOS_DEPS_CACHE_DIR}/openssl/lib/libssl.a"
+            "${IOS_DEPS_CACHE_DIR}/openssl/lib/libcrypto.a"
+        )
+    endif()
+
+    set(LIBDATACHANNEL_FOUND TRUE)
+    message(STATUS "${BoldGreen}libdatachannel${ColorReset} WebRTC ready (iOS)")
+    return()
+endif()
+
+# =============================================================================
 # Try system CMake config first (skip for musl and Debug builds with custom OpenSSL)
 # =============================================================================
 set(LIBDATACHANNEL_FOUND FALSE)

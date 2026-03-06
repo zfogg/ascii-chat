@@ -86,7 +86,6 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // This is fast enough to keep 60fps (16.6ms per frame budget) while
 // letting the TLS state machine progress incrementally.
 
-
 // =============================================================================
 // Service Thread (Client-side only)
 // =============================================================================
@@ -251,8 +250,8 @@ static void *websocket_service_thread(void *arg) {
     uint64_t service_interval = ws_data->is_connected ? 1000000ULL : 100000ULL; // 1ms : 100us
 
     if (loop_count <= 10) {
-      log_debug("[LOOP %d] Timing check: time_since_last=%lu us, interval=%lu us, will_service=%d",
-                loop_count, time_since_last_service / 1000, service_interval / 1000,
+      log_debug("[LOOP %d] Timing check: time_since_last=%lu us, interval=%lu us, will_service=%d", loop_count,
+                time_since_last_service / 1000, service_interval / 1000,
                 (int)(time_since_last_service >= service_interval));
     }
 
@@ -278,8 +277,8 @@ static void *websocket_service_thread(void *arg) {
         // - timeout=1: select() blocks up to 1ms for socket events, letting TLS negotiate faster
         //   while still being responsive to multiple service calls per frame
         if (loop_count <= 10) {
-          log_info("[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=1ms)",
-                   loop_count, ws_data->is_connected, (void *)ws_data->wsi);
+          log_info("[LOOP %d] >>> CALLING lws_service() NOW (is_connected=%d, wsi=%p, timeout=1ms)", loop_count,
+                   ws_data->is_connected, (void *)ws_data->wsi);
         }
 
         result = lws_service(ws_data->context, 1);
@@ -307,8 +306,8 @@ static void *websocket_service_thread(void *arg) {
       // During transfer: 100us sleep (normal cadence)
       uint64_t sleep_us = ws_data->is_connected ? 100 : 0;
       if (loop_count <= 50) {
-        log_debug("[LOOP %d] Time since service: %lu us, interval: %lu us - sleeping %lu us",
-                  loop_count, time_since_last_service / 1000, service_interval / 1000, sleep_us);
+        log_debug("[LOOP %d] Time since service: %lu us, interval: %lu us - sleeping %lu us", loop_count,
+                  time_since_last_service / 1000, service_interval / 1000, sleep_us);
       }
       if (sleep_us > 0) {
         platform_sleep_us(sleep_us);
@@ -348,8 +347,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       reason == LWS_CALLBACK_CLIENT_WRITEABLE || reason == LWS_CALLBACK_CLIENT_RECEIVE ||
       reason == LWS_CALLBACK_CLIENT_CONNECTION_ERROR || reason == LWS_CALLBACK_CLOSED) {
     callback_count++;
-    log_info(">>> CALLBACK #%lu: reason=%d (0x%x), wsi=%p, len=%zu, timestamp=%llu",
-             callback_count, reason, reason, (void *)wsi, len, (unsigned long long)now_ns);
+    log_info(">>> CALLBACK #%lu: reason=%d (0x%x), wsi=%p, len=%zu, timestamp=%llu", callback_count, reason, reason,
+             (void *)wsi, len, (unsigned long long)now_ns);
   }
 
   // Validate ws_data exists before accessing it (prevents heap-buffer-overflow in TLS callbacks)
@@ -366,8 +365,7 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     }
     uint64_t now_ns = time_get_ns();
     log_fatal("🟢🟢🟢 WebSocket CLIENT_ESTABLISHED! wsi=%p, ws_data=%p, timestamp=%llu, elapsed_from_start=%llu",
-              (void *)wsi, (void *)ws_data,
-              (unsigned long long)now_ns, (unsigned long long)(now_ns / 1000000000ULL));
+              (void *)wsi, (void *)ws_data, (unsigned long long)now_ns, (unsigned long long)(now_ns / 1000000000ULL));
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       log_fatal("    [ESTABLISHED] Setting is_connected=true (was %d)", ws_data->is_connected);
@@ -380,7 +378,8 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
   }
 
   case LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH: {
-    log_info(">>> CALLBACK: LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH (wsi=%p) - WebSocket upgrade starting", (void *)wsi);
+    log_info(">>> CALLBACK: LWS_CALLBACK_CLIENT_FILTER_PRE_ESTABLISH (wsi=%p) - WebSocket upgrade starting",
+             (void *)wsi);
     break;
   }
 
@@ -471,8 +470,10 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       ERR_error_string_n(ssl_err, ssl_err_str, sizeof(ssl_err_str));
     }
 
-    log_fatal("🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, ssl_err=%lu (%s), timestamp=%llu",
-              reason, in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data, ssl_err, ssl_err_str, (unsigned long long)now_ns);
+    log_fatal(
+        "🔴🔴🔴 WebSocket CONNECTION ERROR! reason=%d, error=%s, wsi=%p, ws_data=%p, ssl_err=%lu (%s), timestamp=%llu",
+        reason, in ? (const char *)in : "unknown", (void *)wsi, (void *)ws_data, ssl_err, ssl_err_str,
+        (unsigned long long)now_ns);
     if (ws_data) {
       mutex_lock(&ws_data->state_mutex);
       ws_data->is_connected = false;
@@ -609,8 +610,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       return SET_ERRNO(ERROR_NETWORK, "WebSocket connection not yet established");
     }
 
-    log_dev_every(1000000, "websocket_send (client): is_connected=true, wsi=%p, send_len=%zu",
-                  (void *)ws_data->wsi, len);
+    log_dev_every(1000000, "websocket_send (client): is_connected=true, wsi=%p, send_len=%zu", (void *)ws_data->wsi,
+                  len);
   } else {
     log_info("[WEBSOCKET_SEND_SERVER] ★★★ Server transport send: wsi=%p, len=%zu (bypassing is_connected check)",
              (void *)ws_data->wsi, len);
@@ -1273,11 +1274,8 @@ static void websocket_destroy_impl(acip_transport_t *transport) {
   ws_data->wsi = NULL;
 
   // Destroy WebSocket context (only if we own it - client transports only)
-  // NOTE: Skip lws_context_destroy() to work around mbedTLS/OpenSSL 3.4.0 incompatibility
-  // when libwebsockets is cached with wrong TLS backend. This causes memory leak but prevents crash.
   if (ws_data->context && ws_data->owns_context) {
-    log_debug("Destroying WebSocket context (skipped due to mbedTLS/OpenSSL incompatibility)");
-    // lws_context_destroy(ws_data->context);  // DISABLED: causes crash on mbedTLS-built libwebsockets
+    lws_context_destroy(ws_data->context);
     ws_data->context = NULL;
   }
 
@@ -1633,10 +1631,11 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   // - local_protocol_name="h1": libwebsockets' built-in HTTP/1.1 handler for WebSocket upgrade
   // - protocol="acip": Request this subprotocol from the remote server (Sec-WebSocket-Protocol header)
   // libwebsockets internally uses h1 regardless of the protocol name, so we use h1 directly
-  connect_info.local_protocol_name = "h1";  // libwebsockets built-in HTTP/1.1
-  connect_info.protocol = "acip";  // Remote subprotocol to request from server
+  connect_info.local_protocol_name = "h1"; // libwebsockets built-in HTTP/1.1
+  connect_info.protocol = "acip";          // Remote subprotocol to request from server
   // Use SSL + skip server certificate hostname verification + allow self-signed certs (for development)
-  connect_info.ssl_connection = use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
+  connect_info.ssl_connection =
+      use_ssl ? (LCCSCF_USE_SSL | LCCSCF_SKIP_SERVER_CERT_HOSTNAME_CHECK | LCCSCF_ALLOW_SELFSIGNED) : 0;
   connect_info.userdata = ws_data;
 
   log_debug("Calling lws_client_connect_via_info...");

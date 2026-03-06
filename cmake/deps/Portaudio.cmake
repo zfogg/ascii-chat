@@ -20,6 +20,27 @@
 #   - PORTAUDIO_FOUND: Whether portaudio was found
 # =============================================================================
 
+# =============================================================================
+# iOS build: Skip PortAudio (use AVAudioEngine in platform layer)
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} (iOS - skipped, using AVAudioEngine)...")
+
+    # PortAudio is not suitable for iOS
+    # iOS uses AVAudioEngine for audio I/O, implemented in lib/platform/ios/
+    # Create a stub target for compatibility
+    if(NOT TARGET portaudio)
+        add_library(portaudio INTERFACE)
+    endif()
+
+    set(PORTAUDIO_FOUND FALSE)
+    set(PORTAUDIO_LIBRARIES "")
+    set(PORTAUDIO_INCLUDE_DIRS "")
+
+    message(STATUS "${BoldYellow}⚠${ColorReset} PortAudio skipped for iOS (audio via AVAudioEngine)")
+    return()
+endif()
+
 # Handle musl builds - PortAudio is built from source
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}PortAudio${ColorReset} from source...")

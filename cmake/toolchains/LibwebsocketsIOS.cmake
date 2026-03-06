@@ -38,6 +38,20 @@ endif()
 set(CMAKE_OSX_ARCHITECTURES ${IOS_ARCH})
 set(CMAKE_SYSTEM_PROCESSOR ${IOS_ARCH})
 
+# For GNUInstallDirs compatibility - define the target architecture
+if(IOS_ARCH STREQUAL "arm64")
+    set(_IOS_INSTALL_ARCH "arm64")
+elseif(IOS_ARCH STREQUAL "armv7")
+    set(_IOS_INSTALL_ARCH "armv7")
+elseif(IOS_ARCH STREQUAL "x86_64")
+    set(_IOS_INSTALL_ARCH "x86_64")
+elseif(IOS_ARCH STREQUAL "i386")
+    set(_IOS_INSTALL_ARCH "i386")
+endif()
+
+# Set CMAKE_LIBRARY_ARCHITECTURE for GNUInstallDirs
+set(CMAKE_LIBRARY_ARCHITECTURE "${_IOS_INSTALL_ARCH}-apple-ios")
+
 # Get actual iOS SDK path using xcrun
 if(IOS_PLATFORM STREQUAL "SIMULATOR" OR IOS_PLATFORM STREQUAL "SIMULATOR64")
     set(IOS_SDK_NAME iphonesimulator)

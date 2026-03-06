@@ -24,6 +24,27 @@
 # =============================================================================
 
 # =============================================================================
+# iOS build: Use system SQLite3 (included in iOS SDK)
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}SQLite3${ColorReset} (iOS system library)...")
+
+    # SQLite3 is included in iOS SDK, no build needed
+    # Find it via system paths
+    find_library(SQLITE3_LIBRARIES sqlite3)
+    find_path(SQLITE3_INCLUDE_DIRS sqlite3.h)
+
+    if(SQLITE3_LIBRARIES AND SQLITE3_INCLUDE_DIRS)
+        set(SQLITE3_FOUND TRUE)
+        message(STATUS "${BoldGreen}✓${ColorReset} SQLite3 found (iOS system library): ${SQLITE3_LIBRARIES}")
+    else()
+        message(FATAL_ERROR "SQLite3 not found in iOS SDK")
+    endif()
+
+    return()
+endif()
+
+# =============================================================================
 # Handle musl builds - SQLite3 is built from source at configure time
 # =============================================================================
 if(USE_MUSL)
