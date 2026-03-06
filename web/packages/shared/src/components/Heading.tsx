@@ -5,10 +5,6 @@ import { createElement } from "react";
  * Convert heading text to a URL-friendly ID
  */
 function slugify(text: string): string {
-  if (typeof text !== 'string') {
-    // Handle React elements by extracting text content
-    return text.toString().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-  }
   return text
     .toLowerCase()
     .trim()
