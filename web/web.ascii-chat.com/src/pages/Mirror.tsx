@@ -226,6 +226,7 @@ export function MirrorPage() {
 
   const debugCountRef = useRef(0);
   const firstFrameTimeRef = useRef<number | null>(null);
+  const devAutoStartRef = useRef(false);
 
   const renderFrame = useCallback(() => {
     if (!isWasmReady() || !rendererRef.current) return;

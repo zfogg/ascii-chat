@@ -321,7 +321,8 @@ section {
   padding-top: 0.55rem;
 }
 
-.Bl-tag dd .Bl-tag, dt {
+.Bl-tag dd .Bl-tag,
+dt {
   display: inline;
   line-height: 1.55rem;
 }

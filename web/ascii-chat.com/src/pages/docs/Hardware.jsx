@@ -451,25 +451,20 @@ export default function Hardware() {
               </h3>
               <div className="space-y-3">
                 <div className="card-standard accent-yellow">
-                  <h4 className="text-yellow-300 font-semibold mb-2">
-                    R
-                  </h4>
+                  <h4 className="text-yellow-300 font-semibold mb-2">R</h4>
                   <p className="text-gray-300 text-sm">
-                    Cycle through render modes (foreground, background, half-block)
+                    Cycle through render modes (foreground, background,
+                    half-block)
                   </p>
                 </div>
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">
-                    C
-                  </h4>
+                  <h4 className="text-orange-300 font-semibold mb-2">C</h4>
                   <p className="text-gray-300 text-sm">
                     Cycle through color modes (auto, none, 16, 256, truecolor)
                   </p>
                 </div>
                 <div className="card-standard accent-red">
-                  <h4 className="text-red-300 font-semibold mb-2">
-                    -
-                  </h4>
+                  <h4 className="text-red-300 font-semibold mb-2">-</h4>
                   <p className="text-gray-300 text-sm">
                     Toggle FPS counter overlay in top-right corner
                   </p>
@@ -478,22 +473,16 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
-                Video & Effects
-              </h3>
+              <h3 className="heading-3 text-green-300 mb-3">Video & Effects</h3>
               <div className="space-y-3">
                 <div className="card-standard accent-green">
-                  <h4 className="text-green-300 font-semibold mb-2">
-                    F
-                  </h4>
+                  <h4 className="text-green-300 font-semibold mb-2">F</h4>
                   <p className="text-gray-300 text-sm">
                     Flip video horizontally (mirror webcam or file)
                   </p>
                 </div>
                 <div className="card-standard accent-lime">
-                  <h4 className="text-lime-300 font-semibold mb-2">
-                    0 (Zero)
-                  </h4>
+                  <h4 className="text-lime-300 font-semibold mb-2">0 (Zero)</h4>
                   <p className="text-gray-300 text-sm">
                     Toggle Matrix-style digital rain effect
                   </p>
