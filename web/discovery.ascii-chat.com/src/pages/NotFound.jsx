@@ -12,7 +12,7 @@ function NotFoundPage() {
   };
 
   return (
-    <>
+    <div className="min-h-screen flex flex-col bg-gray-950 text-gray-100">
       <ACDSHead
         title="404 - Page Not Found | ascii-chat Discovery Service"
         description="The page you're looking for doesn't exist."
@@ -73,7 +73,7 @@ function NotFoundPage() {
           extraLine="ascii-chat Discovery Service"
         />
       </div>
-    </>
+    </div>
   );
 }
 

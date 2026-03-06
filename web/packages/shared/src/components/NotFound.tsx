@@ -2,9 +2,9 @@ import { Button } from "./Button";
 
 export function NotFound() {
   return (
-    <div className="bg-gray-950 text-gray-100 flex flex-col items-center pt-[22vh]">
-      <div className="max-w-4xl px-4 sm:px-6 text-center">
-        <header className="mb-12 sm:mb-16">
+    <div className="flex-1 flex items-center justify-center px-4 sm:px-6">
+      <div className="max-w-4xl text-center">
+        <header>
           <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold mb-4">
             <span className="text-red-400">404</span>
           </h1>
