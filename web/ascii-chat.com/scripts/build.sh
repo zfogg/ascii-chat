@@ -40,14 +40,14 @@ if [ ! -f bin/ascii-chat-strings ]; then
   ls -la bin/ || echo "bin/ directory doesn't exist"
   exit 1
 fi
-mkdir -p dist/bin
-cp bin/ascii-chat-strings dist/bin/ || exit 1
-chmod +x dist/bin/ascii-chat-strings
-if [ ! -f dist/bin/ascii-chat-strings ]; then
+mkdir -p api/bin
+cp bin/ascii-chat-strings api/bin/ || exit 1
+chmod +x api/bin/ascii-chat-strings
+if [ ! -f api/bin/ascii-chat-strings ]; then
   echo "ERROR: binary copy failed"
   exit 1
 fi
-echo "Binary copied successfully to dist/bin/ascii-chat-strings"
+echo "Binary copied successfully to api/bin/ascii-chat-strings"
 
 echo "✓ Build complete"
 
