@@ -2,6 +2,119 @@
 # FFmpeg Library Configuration
 # =============================================================================
 # Find FFmpeg libraries for media file decoding
+#
+# For iOS builds: Built from source with iOS cross-compilation
+# For musl builds: Built from source at configure time
+# For Release builds: Built from source with minimal codec set
+# For other builds: Uses system package manager (pkg-config)
+
+# iOS build: Build from source for iOS cross-compilation
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}FFmpeg${ColorReset} from source (iOS cross-compile)...")
+
+    include(ExternalProject)
+
+    set(FFMPEG_VERSION "7.1")
+    set(FFMPEG_PREFIX "${IOS_DEPS_CACHE_DIR}/ffmpeg")
+    set(FFMPEG_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/ffmpeg-build")
+
+    # Determine iOS SDK path
+    if(BUILD_IOS_SIM)
+        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+        set(IOS_SDK_NAME "iphonesimulator")
+    else()
+        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+        set(IOS_SDK_NAME "iphoneos")
+    endif()
+
+    if(NOT EXISTS "${FFMPEG_PREFIX}/lib/libavformat.a" OR
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavcodec.a" OR
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libavutil.a" OR
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libswscale.a" OR
+       NOT EXISTS "${FFMPEG_PREFIX}/lib/libswresample.a")
+
+        message(STATUS "  FFmpeg libraries not found in cache, will build from source")
+
+        ExternalProject_Add(ffmpeg-ios
+            URL https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz
+            URL_HASH SHA256=40973d44970dbc83ef302b0609f2e74982be2d85916dd2ee7472d30678a7abe6
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${FFMPEG_BUILD_DIR}
+            STAMP_DIR ${FFMPEG_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND bash -c "cd <SOURCE_DIR> && ./configure \
+                --prefix=${FFMPEG_PREFIX} \
+                --enable-cross-compile \
+                --arch=arm64 \
+                --cc=clang \
+                --sysroot=${IOS_SDK_PATH} \
+                --enable-static \
+                --disable-shared \
+                --enable-pic \
+                --disable-programs \
+                --disable-doc \
+                --disable-htmlpages \
+                --disable-manpages \
+                --disable-podpages \
+                --disable-txtpages \
+                --disable-debug \
+                --disable-autodetect \
+                --disable-asm \
+                --disable-inline-asm \
+                --enable-protocol=file,http,https,rtsp,rtmp,hls \
+                --enable-demuxer=mov,matroska,avi,gif,image2,mp3,wav,flac,ogg,hls \
+                --enable-decoder=h264,hevc,vp8,vp9,av1,mpeg4,png,gif,mjpeg,mp3,aac,flac,vorbis,opus,pcm_s16le \
+                --enable-parser=h264,hevc,vp8,vp9,av1,mpeg4video,aac,mpegaudio \
+                --enable-swscale \
+                --enable-swresample"
+            BUILD_COMMAND bash -c "cd <SOURCE_DIR> && make -j"
+            INSTALL_COMMAND bash -c "cd <SOURCE_DIR> && make install"
+            BUILD_BYPRODUCTS
+                ${FFMPEG_PREFIX}/lib/libavformat.a
+                ${FFMPEG_PREFIX}/lib/libavcodec.a
+                ${FFMPEG_PREFIX}/lib/libavutil.a
+                ${FFMPEG_PREFIX}/lib/libswscale.a
+                ${FFMPEG_PREFIX}/lib/libswresample.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}FFmpeg${ColorReset} libraries found in cache: ${BoldMagenta}${FFMPEG_PREFIX}/lib/libavformat.a${ColorReset}")
+        add_custom_target(ffmpeg-ios)
+    endif()
+
+    set(FFMPEG_FOUND TRUE)
+    set(FFMPEG_INCLUDE_DIRS "${FFMPEG_PREFIX}/include")
+
+    # iOS frameworks needed for FFmpeg
+    set(FFMPEG_LIBRARIES
+        "${FFMPEG_PREFIX}/lib/libavformat.a"
+        "${FFMPEG_PREFIX}/lib/libavcodec.a"
+        "${FFMPEG_PREFIX}/lib/libavutil.a"
+        "${FFMPEG_PREFIX}/lib/libswscale.a"
+        "${FFMPEG_PREFIX}/lib/libswresample.a"
+        "-framework CoreFoundation"
+        "-framework CoreMedia"
+        "-framework CoreVideo"
+        "-framework VideoToolbox"
+        "-framework AudioToolbox"
+        "-framework Security"
+        "-liconv"
+    )
+
+    message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg configured (iOS cross-compile):")
+    message(STATUS "  - libavformat: ${FFMPEG_PREFIX}/lib/libavformat.a")
+    message(STATUS "  - libavcodec: ${FFMPEG_PREFIX}/lib/libavcodec.a")
+    message(STATUS "  - libavutil: ${FFMPEG_PREFIX}/lib/libavutil.a")
+    message(STATUS "  - libswscale: ${FFMPEG_PREFIX}/lib/libswscale.a")
+    message(STATUS "  - libswresample: ${FFMPEG_PREFIX}/lib/libswresample.a")
+
+    return()
+endif()
 
 # Handle musl builds - FFmpeg is built from source at configure time
 if(USE_MUSL)
