@@ -1367,4 +1367,32 @@ int get_binary_file_address_offsets(const void *addr, platform_binary_match_t *m
   return count;
 }
 
+// ============================================================================
+// Binary Path Detection
+// ============================================================================
+
+/**
+ * @brief Check if a file exists and is executable (Windows)
+ */
+static bool is_executable_file(const char *path) {
+  if (!path) {
+    return false;
+  }
+
+  DWORD attrs = GetFileAttributesA(path);
+  if (attrs == INVALID_FILE_ATTRIBUTES) {
+    return false;
+  }
+  if (attrs & FILE_ATTRIBUTE_DIRECTORY) {
+    return false;
+  }
+
+  HANDLE h = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (h == INVALID_HANDLE_VALUE) {
+    return false;
+  }
+  CloseHandle(h);
+  return true;
+}
+
 #endif // !!_WIN32

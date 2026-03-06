@@ -23,12 +23,22 @@
 
 #include <ascii-chat/util/lifecycle.h>
 
-// Minimal stubs for removed dependencies
+// Minimal stubs for removed dependencies (only define if not already present)
+#ifndef SAFE_MALLOC
 #define SAFE_MALLOC(size, type) ((type)malloc(size))
+#endif
+#ifndef SAFE_FREE
 #define SAFE_FREE(ptr) do { if(ptr) { free(ptr); ptr=NULL; } } while(0)
+#endif
+#ifndef SET_ERRNO
 #define SET_ERRNO(code, fmt, ...) (code)
+#endif
+#ifndef log_dev
 #define log_dev(fmt, ...) ((void)0)
+#endif
+#ifndef log_warn
 #define log_warn(fmt, ...) ((void)0)
+#endif
 
 // Simple RNG using getrandom() - no external dependencies
 static uint32_t simple_randombytes_uniform(uint32_t upper_bound) {
