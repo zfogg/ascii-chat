@@ -72,15 +72,9 @@ export default defineConfig({
             }
             return "vendor";
           }
-          // Man pages and components - separate by type
-          if (id.includes("Man3.jsx")) {
-            return "man3";
-          }
-          if (id.includes("Man5.jsx")) {
-            return "man5";
-          }
-          if (id.includes("Man1.jsx") || id.includes("/Man.jsx")) {
-            return "man-pages";
+          // Man pages and components - all in single chunk
+          if (id.includes("Man") && id.includes(".jsx")) {
+            return "man";
           }
           // Docs pages
           if (id.includes("/docs/")) {
