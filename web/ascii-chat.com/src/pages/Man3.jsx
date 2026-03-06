@@ -1671,7 +1671,7 @@ export default function Man3() {
                       href="/man3"
                       className="text-cyan-400 hover:text-cyan-300 transition-colors"
                     >
-                      Browse all API documentation
+                      Searchable man(3) pages (API documentation)
                     </a>
                   </p>
                 </div>
