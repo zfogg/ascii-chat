@@ -234,8 +234,7 @@ asciichat_error_t discovery_keys_verify_change(const char *acds_server, const ui
     "Verify the new key fingerprint with the server operator before accepting.\n"
     "═══════════════════════════════════════════════════════════════\n";
 
-  // Log to both stderr and file log
-  log_plain_stderr(warning_msg, acds_server, old_fingerprint, new_fingerprint);
+  // Log to both stderr (via log_warn) and file log
   log_warn(warning_msg, acds_server, old_fingerprint, new_fingerprint);
 
   // Ask user to confirm

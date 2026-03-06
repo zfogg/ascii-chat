@@ -2188,33 +2188,29 @@ int server_main(void) {
       bool is_interactive = terminal_can_prompt_user();
 
       if (is_interactive) {
-        log_plain_stderr("");
-        log_plain_stderr("⚠️  WARNING: You are about to allow PUBLIC IP disclosure!");
-        log_plain_stderr("⚠️  Anyone with the session string will be able to see your IP address.");
-        log_plain_stderr("⚠️  This is NOT RECOMMENDED unless you understand the privacy implications.");
-        log_plain_stderr("");
+        log_warn("WARNING: You are about to allow PUBLIC IP disclosure!\n"
+                 "Anyone with the session string will be able to see your IP address.\n"
+                 "This is NOT RECOMMENDED unless you understand the privacy implications.");
 
         if (!platform_prompt_yes_no("Do you want to proceed with public IP disclosure", false)) {
-          log_plain_stderr("");
-          log_plain_stderr("❌ IP disclosure not confirmed. Server will run WITHOUT discovery service.");
+          log_info("IP disclosure not confirmed. Server will run WITHOUT discovery service.");
           goto skip_acds_session;
         }
       }
 
       // User confirmed (or running non-interactively with explicit flag) - proceed with public IP disclosure
       acds_expose_ip_flag = true;
-      log_plain_stderr("");
-      log_plain_stderr("⚠️  Public IP disclosure CONFIRMED");
-      log_plain_stderr("⚠️  Your IP address will be visible to anyone with the session string");
+      log_info("Public IP disclosure CONFIRMED.\n"
+               "Your IP address will be visible to anyone with the session string");
     } else {
       // Security violation: No password, no identity, no explicit opt-in
-      log_plain_stderr("❌ Cannot create ACDS session: No security configured!");
-      log_plain_stderr("   You must either:");
-      log_plain_stderr("   1. Set a password: --password \"your-secret\"");
-      log_plain_stderr("   2. Use identity key: --key ~/.ssh/id_ed25519");
-      log_plain_stderr("   3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)");
-      log_plain_stderr("");
-      log_plain_stderr("Server will run WITHOUT discovery service.");
+      log_error("Cannot create ACDS session: No security configured!\n"
+                "You must either:\n"
+                "1. Set a password: --password \"your-secret\"\n"
+                "2. Use identity key: --key ~/.ssh/id_ed25519\n"
+                "3. Explicitly allow public IP: --acds-expose-ip (NOT RECOMMENDED)\n"
+                "\n"
+                "Server will run WITHOUT discovery service.");
       goto skip_acds_session;
     }
 

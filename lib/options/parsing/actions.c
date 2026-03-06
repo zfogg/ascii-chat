@@ -121,7 +121,7 @@ static void execute_list_webcams(void) {
 
   asciichat_error_t result = webcam_list_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
-    log_plain_stderr("Error: Failed to enumerate webcam devices");
+    log_error("Failed to enumerate webcam devices");
     action_exit(ERROR_WEBCAM);
   }
 
@@ -159,7 +159,7 @@ static void execute_list_microphones(void) {
 
   asciichat_error_t result = audio_list_input_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
-    log_plain_stderr("Error: Failed to enumerate audio input devices");
+    log_error("Failed to enumerate audio input devices");
     action_exit(ERROR_AUDIO);
   }
 
@@ -197,7 +197,7 @@ static void execute_list_speakers(void) {
 
   asciichat_error_t result = audio_list_output_devices(&devices, &device_count);
   if (result != ASCIICHAT_OK) {
-    log_plain_stderr("Error: Failed to enumerate audio output devices");
+    log_error("Failed to enumerate audio output devices");
     action_exit(ERROR_AUDIO);
   }
 
@@ -477,7 +477,7 @@ void action_create_manpage(const char *output_path) {
   const options_config_t *config = options_preset_unified(NULL, NULL);
 
   if (!config) {
-    log_plain_stderr("Error: Failed to get binary options config");
+    log_error("Failed to get binary options config");
     action_exit(ERROR_FILE_OPERATION);
   }
 
@@ -501,17 +501,17 @@ void action_create_manpage(const char *output_path) {
   if (err != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
     if (HAS_ERRNO(&err_ctx)) {
-      log_plain_stderr("Error: %s", err_ctx.context_message);
+      log_error("%s", err_ctx.context_message);
     } else {
-      log_plain_stderr("Error: Failed to generate man page");
+      log_error("Failed to generate man page");
     }
     action_exit(ERROR_FILE_OPERATION);
   }
 
   if (path_to_use) {
-    log_plain_stderr("Man page written to: %s", path_to_use);
+    log_info("Man page written to: %s", path_to_use);
   } else {
-    log_plain_stderr("Man page written to stdout");
+    log_info("Man page written to stdout");
   }
 
   action_exit(0);
@@ -549,17 +549,17 @@ void action_create_config(const char *output_path) {
   if (result != ASCIICHAT_OK) {
     asciichat_error_context_t err_ctx;
     if (HAS_ERRNO(&err_ctx)) {
-      log_plain_stderr("Error creating config: %s", err_ctx.context_message);
+      log_error("Error creating config: %s", err_ctx.context_message);
     } else {
-      log_plain_stderr("Error: Failed to create config file");
+      log_error("Failed to create config file");
     }
     action_exit(ERROR_CONFIG);
   }
 
   if (config_path) {
-    log_plain_stderr("Created default config file at: %s", config_path);
+    log_info("Created default config file at: %s", config_path);
   } else {
-    log_plain_stderr("Config written to stdout");
+    log_info("Config written to stdout");
   }
   action_exit(0);
 }
@@ -570,13 +570,13 @@ void action_create_config(const char *output_path) {
 
 void action_completions(const char *shell_name, const char *output_path) {
   if (!shell_name || strlen(shell_name) == 0) {
-    log_plain_stderr("Error: --completions requires shell name (bash, fish, zsh, powershell)");
+    log_error("--completions requires shell name (bash, fish, zsh, powershell)");
     action_exit(ERROR_USAGE);
   }
 
   completion_format_t format = completions_parse_shell_name(shell_name);
   if (format == COMPLETION_FORMAT_UNKNOWN) {
-    log_plain_stderr("Error: Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
+    log_error("Unknown shell '%s' (supported: bash, fish, zsh, powershell)", shell_name);
     action_exit(ERROR_USAGE);
   }
 
@@ -602,7 +602,7 @@ void action_completions(const char *shell_name, const char *output_path) {
 
     output = platform_fopen("file_stream", output_path, "w");
     if (!output) {
-      log_plain_stderr("Error: Failed to open %s for writing", output_path);
+      log_error("Failed to open %s for writing", output_path);
       action_exit(ERROR_FILE_OPERATION);
     }
     should_close = true;
@@ -615,7 +615,7 @@ void action_completions(const char *shell_name, const char *output_path) {
   }
 
   if (result != ASCIICHAT_OK) {
-    log_plain_stderr("Error: Failed to generate %s completions", completions_get_shell_name(format));
+    log_error("Failed to generate %s completions", completions_get_shell_name(format));
     action_exit(ERROR_USAGE);
   }
 
