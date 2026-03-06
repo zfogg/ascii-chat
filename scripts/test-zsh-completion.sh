@@ -37,6 +37,8 @@ tmux capture-pane -t zsh-completion-test -p | rg audio \
 tmux capture-pane -t zsh-completion-test -p
 
 # clear
+tmux send-keys -t zsh-completion-test "Escape"
+tmux send-keys -t zsh-completion-test "C-u"
 tmux send-keys -t zsh-completion-test "clear" Enter
 sleep 0.1
 
@@ -46,9 +48,14 @@ tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat discovery --" Tab
 sleep 0.2
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
+tmux capture-pane -t zsh-completion-test -p | rg corrections \
+  && echo "🔴 CORRECTIONS FOUND! TEST FAILED" \
+  || echo "🟢 NO CORRECTIONS! TEST PASSED"
 tmux capture-pane -t zsh-completion-test -p
 
 # clear
+tmux send-keys -t zsh-completion-test "Escape"
+tmux send-keys -t zsh-completion-test "C-u"
 tmux send-keys -t zsh-completion-test "clear" Enter
 sleep 0.1
 
@@ -58,6 +65,9 @@ tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat client --" Tab
 sleep 0.2
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
+tmux capture-pane -t zsh-completion-test -p | rg corrections \
+  && echo "🔴 CORRECTIONS FOUND! TEST FAILED" \
+  || echo "🟢 NO CORRECTIONS! TEST PASSED"
 tmux capture-pane -t zsh-completion-test -p
 
 echo ""
