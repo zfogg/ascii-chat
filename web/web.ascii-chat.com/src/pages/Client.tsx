@@ -1305,11 +1305,27 @@ export function ClientPage() {
       frameIntervalRef.current = 1000 / settings.targetFps;
       frameQueueRef.current = [];
 
-      // Skip H.265 encoder - WASM client uses IMAGE_FRAME packets immediately
-      // H.265 support check adds delay without benefit in WASM mode
-      console.log(
-        "[Client] Using IMAGE_FRAME packets (H.265 encoder disabled for WASM)",
-      );
+      // Initialize H.265 encoder if supported
+      if (H265Encoder.isSupported() && canvasRef.current && videoRef.current) {
+        try {
+          const w = canvasRef.current.width || 1280;
+          const h = canvasRef.current.height || 720;
+          console.log(
+            `[Client] Initializing H.265 encoder: ${w}x${h} @ ${settings.targetFps} FPS`,
+          );
+          h265EncoderRef.current = new H265Encoder();
+          await h265EncoderRef.current.initialize(w, h, settings.targetFps);
+          console.log("[Client] H.265 encoder initialized successfully");
+        } catch (err) {
+          console.error("[Client] H.265 encoder initialization failed:", err);
+          h265EncoderRef.current?.destroy();
+          h265EncoderRef.current = null;
+        }
+      } else if (!H265Encoder.isSupported()) {
+        console.log(
+          "[Client] H.265 encoding not supported in this browser, using RGBA fallback",
+        );
+      }
 
       console.log("[Client] Starting render loops...");
       console.log(
