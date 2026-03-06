@@ -217,9 +217,38 @@ function extractTextWithLineNumbers(html) {
 
   // If we found actual code lines, return with preserved line numbers
   if (lineNumbers.some((ln) => ln > 0)) {
+    // Collapse consecutive lines without numbers (artifacts from HTML tag removal)
+    // into the previous line with a line number
+    const collapsedLines = [];
+    const collapsedLineNumbers = [];
+    let currentLine = "";
+    let currentLineNum = null;
+
+    for (let i = 0; i < allLines.length; i++) {
+      if (lineNumbers[i] > 0) {
+        // This line has a line number
+        if (currentLine) {
+          collapsedLines.push(currentLine);
+          collapsedLineNumbers.push(currentLineNum);
+          currentLine = "";
+        }
+        currentLine = allLines[i];
+        currentLineNum = lineNumbers[i];
+      } else {
+        // This line doesn't have a number - append to current line
+        if (currentLine && allLines[i].trim()) {
+          currentLine += " " + allLines[i].trim();
+        }
+      }
+    }
+    if (currentLine) {
+      collapsedLines.push(currentLine);
+      collapsedLineNumbers.push(currentLineNum);
+    }
+
     return {
-      text: text, // Return text AS-IS with line number prefixes
-      lineNumbers: lineNumbers, // Array aligned with split text
+      text: collapsedLines.join("\n"), // Return collapsed text
+      lineNumbers: collapsedLineNumbers, // Array aligned with collapsed lines
     };
   }
 
