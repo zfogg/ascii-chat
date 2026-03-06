@@ -268,6 +268,8 @@ Toggle FPS counter overlay in the top-right corner.
 .TP
 .B F
 Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
+.PP
+.B Animations
 .TP
 .B 0
 Toggle Matrix-style digital rain effect.
