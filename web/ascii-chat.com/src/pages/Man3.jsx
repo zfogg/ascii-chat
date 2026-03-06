@@ -1922,7 +1922,7 @@ export default function Man3() {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 border-t border-gray-800 pt-4 mt-4">
+        <div className="flex-shrink-0 border-t border-gray-800 pt-8 mt-4">
           <Footer />
         </div>
       </div>
