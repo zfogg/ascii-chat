@@ -6,12 +6,6 @@
 
 #define MAX_SESSIONS 1000
 
-void print_usage(const char *prog) {
-  fprintf(stderr, "Usage: %s [-n|--count COUNT] [-h|--help]\n", prog);
-  fprintf(stderr, "  -n, --count COUNT   Generate COUNT session strings (default: 1)\n");
-  fprintf(stderr, "  -h, --help          Show this help message\n");
-}
-
 int main(int argc, char *argv[]) {
   int count = 1;
   static struct option long_options[] = {
@@ -27,28 +21,19 @@ int main(int argc, char *argv[]) {
         count = atoi(optarg);
         break;
       case 'h':
-        print_usage(argv[0]);
         return 0;
       default:
-        print_usage(argv[0]);
         return 1;
     }
   }
 
-  if (count <= 0) {
-    fprintf(stderr, "Error: count must be greater than 0\n");
-    return 1;
-  }
-
-  if (count > MAX_SESSIONS) {
-    fprintf(stderr, "Error: count cannot exceed %d\n", MAX_SESSIONS);
+  if (count <= 0 || count > MAX_SESSIONS) {
     return 1;
   }
 
   // Initialize session string system
   asciichat_error_t err = acds_string_init();
   if (err != ASCIICHAT_OK) {
-    fprintf(stderr, "Error: failed to initialize session string system\n");
     return 1;
   }
 
@@ -57,7 +42,7 @@ int main(int argc, char *argv[]) {
     char session_string[SESSION_STRING_BUFFER_SIZE];
     err = acds_string_generate(session_string, sizeof(session_string));
     if (err != ASCIICHAT_OK) {
-      fprintf(stderr, "Error: failed to generate session string\n");
+      acds_strings_destroy();
       return 1;
     }
     printf("%s\n", session_string);
