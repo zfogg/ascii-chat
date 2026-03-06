@@ -1,10 +1,12 @@
 import { Heading } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 
 export default function Snapshot() {
   useScrollToHash(100);
@@ -20,7 +22,7 @@ export default function Snapshot() {
       <AsciiChatHead
         title="Snapshot Mode - ascii-chat Documentation"
         description="Single-frame capture, scripting, and automation examples with ascii-chat snapshot mode."
-        url="https://ascii-chat.com/docs/snapshot"
+        url={`${SITES.MAIN}/docs/snapshot`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">

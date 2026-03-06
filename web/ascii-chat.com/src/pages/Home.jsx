@@ -5,7 +5,11 @@ import {
   GettingHelpSection,
   UsageExamplesSection,
 } from "@ascii-chat/shared/components";
-import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
+import {
+  fetchSessionStrings,
+  useScrollToHash,
+  SITES,
+} from "@ascii-chat/shared/utils";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
@@ -310,7 +314,7 @@ cmake --preset default && cmake --build build
               </TrackedLink>
 
               <TrackedLink
-                href="https://discovery.ascii-chat.com"
+                href={SITES.DISCOVERY}
                 label="Home - Docs ACDS"
                 target="_blank"
                 rel="noopener noreferrer"

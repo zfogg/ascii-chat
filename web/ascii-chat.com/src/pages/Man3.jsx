@@ -3,7 +3,7 @@ import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
-import { API_RELATIVE } from "@ascii-chat/shared/utils";
+import { API_RELATIVE, SITES } from "@ascii-chat/shared/utils";
 import "../styles/man.css";
 
 export default function Man3() {
@@ -933,10 +933,7 @@ export default function Man3() {
               }
             }
 
-            console.log(
-              "[Man3] Will highlight line at offsetTop",
-              targetTop,
-            );
+            console.log("[Man3] Will highlight line at offsetTop", targetTop);
 
             if (lineSpans.length > 0) {
               // Highlight the ENTIRE LINE by applying background to all spans on it
@@ -1543,7 +1540,7 @@ export default function Man3() {
       <AsciiChatHead
         title="ascii-chat(3) - Library Functions | ascii-chat"
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
-        url="https://ascii-chat.com/man3"
+        url={`${SITES.MAIN}/man3`}
       />
       <div className="w-full min-h-screen lg:h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col w-full overflow-hidden">
@@ -1829,7 +1826,7 @@ export default function Man3() {
                       </h3>
                       <p className="text-sm text-gray-400">
                         <a
-                          href="https://web.ascii-chat.com"
+                          href={SITES.WEB}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="text-cyan-400 hover:text-cyan-300 underline"

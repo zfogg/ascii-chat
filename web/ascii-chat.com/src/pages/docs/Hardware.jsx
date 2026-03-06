@@ -1,4 +1,5 @@
 import { CodeBlock, Heading } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import Footer from "../../components/Footer";
@@ -20,7 +21,7 @@ export default function Hardware() {
       <AsciiChatHead
         title="Hardware - ascii-chat Documentation"
         description="Learn about webcams, microphones, speakers, and keyboard shortcuts in ascii-chat."
-        url="https://ascii-chat.com/docs/hardware"
+        url={`${SITES.MAIN}/docs/hardware`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">

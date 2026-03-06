@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Footer from "../components/Footer";
 import Man from "../components/Man";
+import { SITES } from "@ascii-chat/shared/utils";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
 import { AsciiChatHead } from "../components/AsciiChatHead";
@@ -37,7 +38,7 @@ export default function Man1() {
       <AsciiChatHead
         title="ascii-chat(1) - Man Page | ascii-chat"
         description="Complete command-line reference for ascii-chat. Manual page with all options, modes, and usage examples."
-        url="https://ascii-chat.com/man1"
+        url={`${SITES.MAIN}/man1`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">

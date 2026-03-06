@@ -1,11 +1,11 @@
 import { useEffect } from "react";
-import { Heading } from "@ascii-chat/shared/components";
+import { Heading, CodeBlock } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
-import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Configuration() {
   useScrollToHash(100);
@@ -22,7 +22,7 @@ export default function Configuration() {
       <AsciiChatHead
         title="Configuration - ascii-chat Documentation"
         description="Learn about ascii-chat configuration: config files, command-line options, color schemes, and shell completions."
-        url="https://ascii-chat.com/docs/configuration"
+        url={`${SITES.MAIN}/docs/configuration`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">

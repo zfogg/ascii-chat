@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Heading } from "@ascii-chat/shared/components";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
+import { SITES } from "@ascii-chat/shared/utils";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
@@ -95,7 +96,7 @@ export default function DocsHub() {
       <AsciiChatHead
         title="Documentation - ascii-chat"
         description="Complete guides for configuring, using, and scripting ascii-chat. Learn about configuration, hardware, terminal modes, snapshots, networking, and media."
-        url="https://ascii-chat.com/docs"
+        url={`${SITES.MAIN}/docs`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">

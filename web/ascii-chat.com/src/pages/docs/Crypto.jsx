@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
@@ -19,7 +20,7 @@ export default function Crypto() {
       <AsciiChatHead
         title="Cryptography - ascii-chat"
         description="Encryption, keys, and authentication in ascii-chat. Learn about Ed25519, X25519, and end-to-end encryption."
-        url="https://ascii-chat.com/crypto"
+        url={`${SITES.MAIN}/crypto`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
@@ -41,7 +42,7 @@ export default function Crypto() {
               ascii-chat Discovery Service (ACDS) cryptography details or public
               keys? See the{" "}
               <TrackedLink
-                href="https://discovery.ascii-chat.com"
+                href={SITES.DISCOVERY}
                 label="Crypto - ACDS Docs"
                 target="_blank"
                 rel="noopener noreferrer"
@@ -151,17 +152,17 @@ export default function Crypto() {
                   <li>
                     Client downloads ACDS public key from{" "}
                     <TrackedLink
-                      href="https://discovery.ascii-chat.com/key.pub"
+                      href={`${SITES.DISCOVERY}/key.pub`}
                       label="Crypto - ACDS SSH Key"
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-pink-400 hover:text-pink-300 transition-colors underline"
                     >
-                      https://discovery.ascii-chat.com/key.pub
+                      {`${SITES.DISCOVERY}/key.pub`}
                     </TrackedLink>{" "}
                     (SSH) or{" "}
                     <TrackedLink
-                      href="https://discovery.ascii-chat.com/key.gpg"
+                      href={`${SITES.DISCOVERY}/key.gpg`}
                       label="Crypto - ACDS GPG Key"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -200,7 +201,7 @@ export default function Crypto() {
                     <strong className="text-cyan-300">Note:</strong> For
                     complete ACDS public key information and fingerprints, visit{" "}
                     <TrackedLink
-                      href="https://discovery.ascii-chat.com"
+                      href={SITES.DISCOVERY}
                       label="Crypto - ACDS Homepage"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -989,7 +990,7 @@ ascii-chat client 127.0.0.1 --no-encrypt`}</CodeBlock>
 
             <div className="grid md:grid-cols-2 gap-4">
               <TrackedLink
-                href="https://discovery.ascii-chat.com"
+                href={SITES.DISCOVERY}
                 label="Crypto - ACDS Server"
                 target="_blank"
                 rel="noopener noreferrer"

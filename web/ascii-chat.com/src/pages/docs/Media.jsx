@@ -1,4 +1,5 @@
 import { Heading } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
@@ -6,6 +7,7 @@ import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 
 export default function Media() {
   useScrollToHash(100);
@@ -21,7 +23,7 @@ export default function Media() {
       <AsciiChatHead
         title="Media - ascii-chat Documentation"
         description="Video files, URLs, streaming, and media handling in ascii-chat."
-        url="https://ascii-chat.com/docs/media"
+        url={`${SITES.MAIN}/docs/media`}
       />
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
