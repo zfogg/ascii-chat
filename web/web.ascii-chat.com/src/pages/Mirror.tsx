@@ -23,10 +23,7 @@ import {
   setTargetFps,
   getTargetFps,
 } from "../wasm/settings";
-import {
-  Settings,
-  SettingsConfig,
-} from "../components/Settings";
+import { Settings, SettingsConfig } from "../components/Settings";
 import {
   AsciiRenderer,
   AsciiRendererHandle,
