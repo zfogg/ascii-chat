@@ -30,7 +30,7 @@ sleep 0.2
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
 tmux capture-pane -t zsh-completion-test -p | rg corrections && echo "🔴 CORRECTIONS FOUND! TEST FAILED"
-tmux capture-pane -t zsh-completion-test -p | rg corrections
+tmux capture-pane -t zsh-completion-test -p
 
 # clear
 tmux send-keys -t zsh-completion-test "clear" Enter
