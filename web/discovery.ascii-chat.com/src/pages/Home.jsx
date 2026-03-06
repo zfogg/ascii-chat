@@ -248,7 +248,10 @@ man ascii-chat
 ascii-chat discovery-service --help
 
 # General ascii-chat help
-ascii-chat --help`}</CodeBlock>
+ascii-chat --help
+
+# Enable shell completions (zsh)
+source <(ascii-chat --completions zsh)`}</CodeBlock>
         </section>
 
         <section className="mb-12">
@@ -258,10 +261,7 @@ ascii-chat --help`}</CodeBlock>
           >
             💻 Usage Examples
           </Heading>
-          <CodeBlock language="bash">{`# Enable shell completions (zsh)
-source <(ascii-chat --completions zsh)
-
-# Start a new session
+          <CodeBlock language="bash">{`# Start a new session
 ascii-chat
 
 # Copy the session string it outputs and share it with a friend securely
