@@ -23,10 +23,13 @@ extern "C" {
 /**
  * @brief Maximum edit distance to suggest an option
  *
- * Threshold of 2 catches most typos (single char errors, transpositions)
- * without suggesting unrelated options.
+ * Threshold of 4 catches common typos including:
+ * - Single character errors (e.g., port-forwad → port-forwarding: distance 4)
+ * - Transpositions (e.g., colo-mod → color-mode: distance 2)
+ * - Short option typos (e.g., prot → port: distance 2)
+ * While still filtering out completely unrelated options.
  */
-#define LEVENSHTEIN_SUGGESTION_THRESHOLD 3
+#define LEVENSHTEIN_SUGGESTION_THRESHOLD 4
 
 /**
  * @brief Calculate Levenshtein distance between two strings

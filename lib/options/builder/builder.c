@@ -1581,13 +1581,12 @@ static asciichat_error_t parse_single_flag_with_mode(const options_config_t *con
   if (!desc) {
     // Try to suggest a similar option
     const char *suggestion = find_similar_option_with_mode(arg_for_lookup, config, mode_bitmask);
-    if (suggestion) {
-      log_plain_stderr("Unknown option: %s. %s", arg_for_lookup, suggestion);
-    } else {
-      log_plain_stderr("Unknown option: %s", arg_for_lookup);
-    }
     SAFE_FREE(arg_copy);
-    return ERROR_USAGE;
+    if (suggestion) {
+      return SET_ERRNO(ERROR_USAGE, "Unknown option: %s. %s", arg_for_lookup, suggestion);
+    } else {
+      return SET_ERRNO(ERROR_USAGE, "Unknown option: %s", arg_for_lookup);
+    }
   }
 
   // Check if option applies to current mode based on the passed mode_bitmask
