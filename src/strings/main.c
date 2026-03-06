@@ -5,7 +5,7 @@
 #include <ascii-chat/discovery/strings.h>
 
 int main(int argc, char *argv[]) {
-  int count = 1;
+  long long count = 1;
   static struct option long_options[] = {
     {"count", required_argument, 0, 'n'},
     {"help", no_argument, 0, 'h'},
@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
   while ((opt = getopt_long(argc, argv, "n:h", long_options, NULL)) != -1) {
     switch (opt) {
       case 'n':
-        count = atoi(optarg);
+        count = strtoll(optarg, NULL, 10);
         break;
       case 'h':
         printf("Usage: ascii-chat-strings [-n|--count COUNT]\n");
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
   }
 
   // Generate session strings
-  for (int i = 0; i < count; i++) {
+  for (long long i = 0; i < count; i++) {
     char session_string[SESSION_STRING_BUFFER_SIZE];
     err = acds_string_generate(session_string, sizeof(session_string));
     if (err != ASCIICHAT_OK) {
