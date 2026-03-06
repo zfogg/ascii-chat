@@ -228,8 +228,7 @@ Uses HTTPS on port 8443 (explicit scheme required).
 .SH KEYBOARD CONTROLS
 Keyboard controls are available when running with local media sources
 (\fB--file\fR or \fB--url\fR).  Keyboard controls work in \fBmirror\fR,
-\fBclient\fR, and \fB"ascii-chat"\fR modes.  They are \fInot\fR available when a
-webcam is used as the media source.
+\fBclient\fR, and \fB"ascii-chat"\fR modes.
 .PP
 .B Media Playback Controls
 .TP
