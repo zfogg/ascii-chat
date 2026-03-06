@@ -250,7 +250,7 @@ ascii-chat discovery-service --help
 # General ascii-chat help
 ascii-chat --help
 
-# Enable shell completions (zsh)
+# Enable shell completions (also fish, bash, powershell)
 source <(ascii-chat --completions zsh)`}</CodeBlock>
         </section>
 
