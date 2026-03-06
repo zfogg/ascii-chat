@@ -18,16 +18,6 @@ function slugify(text: string): string {
     .replace(/^-+|-+$/g, '');
 }
 
-/**
- * Copy anchor link to clipboard
- */
-function copyAnchorLink(id: string): void {
-  const url = `${window.location.pathname}#${id}`;
-  navigator.clipboard.writeText(url).then(() => {
-    console.log(`Copied link: ${url}`);
-  });
-}
-
 interface HeadingProps extends Omit<HTMLAttributes<HTMLHeadingElement>, 'className'> {
   level?: 1 | 2 | 3 | 4;
   className?: string;
@@ -43,10 +33,16 @@ export function Heading({ level = 1, children, className = "", id, anchorLink = 
   const combinedClassName = `${baseClass} ${className}`.trim();
 
   const content = anchorLink && headingId ? (
-    <span className="group inline-flex items-center gap-2 cursor-pointer hover:opacity-75 transition-opacity" onClick={() => copyAnchorLink(headingId)} title="Click to copy anchor link">
-      {children}
-      <span className="opacity-0 group-hover:opacity-50 transition-opacity text-xs">🔗</span>
-    </span>
+    createElement(
+      'a',
+      {
+        href: `#${headingId}`,
+        className: 'group inline-flex items-center gap-2 hover:opacity-75 transition-opacity',
+        title: 'Click to go to this section'
+      },
+      children,
+      createElement('span', { className: 'opacity-0 group-hover:opacity-50 transition-opacity text-xs' }, '🔗')
+    )
   ) : (
     children
   );

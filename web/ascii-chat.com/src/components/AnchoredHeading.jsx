@@ -1,4 +1,4 @@
-import { slugify, copyAnchorLink } from '../utils/anchors';
+import { slugify } from '../utils/anchors';
 
 /**
  * AnchoredHeading component - creates headings with auto-generated IDs and clickable anchor links
@@ -14,17 +14,19 @@ export default function AnchoredHeading({ level = 2, children, className = '', .
   return (
     <HeadingTag
       id={id}
-      className={`group cursor-pointer hover:opacity-75 transition-opacity ${className}`}
-      onClick={() => copyAnchorLink(id)}
-      title="Click to copy anchor link"
+      className={className}
       {...props}
     >
-      <span className="inline-flex items-center gap-2">
+      <a
+        href={`#${id}`}
+        className="group inline-flex items-center gap-2 hover:opacity-75 transition-opacity"
+        title="Click to go to this section"
+      >
         {children}
         <span className="opacity-0 group-hover:opacity-50 transition-opacity text-xs">
           🔗
         </span>
-      </span>
+      </a>
     </HeadingTag>
   );
 }
