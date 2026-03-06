@@ -102,65 +102,54 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
- * Write options grouped by category using _describe for proper group headers
+ * Write options grouped by category using _arguments for proper value completion
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
                                        const char *func_prefix) {
   if (!opts || count == 0) return;
 
-  size_t group_count = 0;
-  const char **groups = zsh_collect_groups(opts, count, &group_count);
+  // Use _arguments for proper enum value completion support
+  fprintf(output, "  _arguments -s \\\n");
 
-  // First pass: declare arrays for each group
-  for (size_t g = 0; g < group_count; g++) {
-    const char *group = groups[g];
-    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
-
-    // Write all options in this group (long options only)
-    for (size_t i = 0; i < count; i++) {
-      if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
-
-      // Check if this is an enum option with values to complete
-      size_t value_count = 0;
-      const char **values = NULL;
-      if (options_is_enum_option(opts[i].long_name)) {
-        values = options_get_enum_values(opts[i].long_name, &value_count);
-      }
-
-      fprintf(output, "    \"--%s", opts[i].long_name);
-
-      // If enum option, add value completions
-      if (values && value_count > 0) {
-        fprintf(output, "=");
-        fprintf(output, ":(");
-        for (size_t v = 0; v < value_count; v++) {
-          if (v > 0) fprintf(output, " ");
-          fprintf(output, "%s", values[v]);
-        }
-        fprintf(output, ")");
-        SAFE_FREE(values);
-      }
-
-      fprintf(output, ":");
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "\"\n");
+  // Write all options for _arguments (which handles value completion properly)
+  for (size_t i = 0; i < count; i++) {
+    // Check if this is an enum option with values to complete
+    size_t value_count = 0;
+    const char **values = NULL;
+    if (options_is_enum_option(opts[i].long_name)) {
+      values = options_get_enum_values(opts[i].long_name, &value_count);
     }
 
-    fprintf(output, "  )\n");
+    fprintf(output, "    \"--");
+
+    // For enum options, use _arguments format with value completion
+    if (values && value_count > 0) {
+      fprintf(output, "%s", opts[i].long_name);
+      fprintf(output, "=[");
+      zsh_escape_desc(output, opts[i].help_text);
+      fprintf(output, "]:value:((");
+      for (size_t v = 0; v < value_count; v++) {
+        if (v > 0) fprintf(output, " ");
+        fprintf(output, "%s", values[v]);
+      }
+      fprintf(output, "))");
+      SAFE_FREE(values);
+    } else {
+      // For non-enum options, use simple description format
+      fprintf(output, "%s", opts[i].long_name);
+      fprintf(output, ":[");
+      zsh_escape_desc(output, opts[i].help_text);
+      fprintf(output, "]");
+    }
+
+    fprintf(output, "\" ");
+
+    if (i < count - 1) {
+      fprintf(output, "\\\n");
+    } else {
+      fprintf(output, "\n");
+    }
   }
-
-  // Second pass: call _describe for each group (with lowercase display)
-  for (size_t g = 0; g < group_count; g++) {
-    const char *group = groups[g];
-    fprintf(output, "  _describe -t %s '", group);
-    utf8_write_lowercase(output, group);
-    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
-  }
-
-  // Note: Do NOT add return here - return is added at the end of each mode function
-  // after all option sets (both binary and mode-specific) are described
-
-  SAFE_FREE(groups);
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
