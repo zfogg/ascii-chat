@@ -97,6 +97,33 @@
  * | **ascii-chat** | ✅ Always | Ephemeral DH | Optional (--server-key flag) |
  * | **Zoom** | ✅ Sometimes | Central server | None (trust Zoom) |
  *
+ * @subsection crypto_websocket WebSocket Connections (Browser Clients)
+ *
+ * When connecting via WebSocket URLs (`ws://` or `wss://`), ascii-chat handles encryption
+ * differently to work efficiently with browser clients.
+ *
+ * **For `wss://` connections (WebSocket Secure):**
+ *
+ * By default, ascii-chat disables ACIP application-level encryption when you use a `wss://`
+ * URL. Why? Because TLS (the "S" in wss) already encrypts everything in transit. Adding
+ * another layer of encryption would be redundant and slow. So TLS handles the transport
+ * encryption, and ascii-chat focuses on what matters - authenticating the connection if you
+ * want to.
+ *
+ * If you specify authentication flags like `--key`, `--server-key`, or `--client-keys`, those
+ * still work normally with `wss://`. The authentication handshake happens after the TLS
+ * connection is established, so the connection is both encrypted and verified.
+ *
+ * **You can override this behavior with `--encrypt` and `--auth` flags:**
+ *
+ * - `--encrypt=true` - Force application-level encryption even over `wss://`
+ * - `--encrypt=false` - Disable application-level encryption (the `wss://` default)
+ * - `--auth=true` - Force authentication (default if you specify `--key` or `--server-key`)
+ * - `--auth=false` - Skip authentication even if keys are provided
+ *
+ * In short: `wss://` is TLS-encrypted by default, and ascii-chat's application encryption
+ * is optional. Authentication still works if you want it, regardless of the transport layer.
+ *
  * @section crypto_primitives Cryptographic Primitives
  *
  * ascii-chat uses [libsodium](https://doc.libsodium.org/), a modern, portable,
