@@ -72,17 +72,24 @@ export default defineConfig({
             }
             return "vendor";
           }
+          // Man pages and components
+          if (id.includes("Man3.jsx")) {
+            return "man3";
+          }
+          if (id.includes("Man1.jsx") || id.includes("Man5.jsx") || id.includes("/Man.jsx")) {
+            return "man-pages";
+          }
           // Docs pages
           if (id.includes("/docs/")) {
             return "docs-pages";
           }
-          // Man pages
-          if (id.includes("/Man") || id.includes("/Man3")) {
-            return "man-pages";
-          }
           // Shared components
           if (id.includes("@ascii-chat/shared")) {
             return "shared";
+          }
+          // Home page
+          if (id.includes("/Home.jsx")) {
+            return "home";
           }
         },
       },
