@@ -548,9 +548,10 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
       strings: strings,
     });
   } catch (err) {
-    logger.error(
-      `Session strings error: ${err.message}, stderr=${err.stderr}, stdout=${err.stdout}`,
-    );
+    logger.error(`Session strings error: ${err.message}`);
+    logger.error(`stderr: ${err.stderr || "none"}`);
+    logger.error(`stdout: ${err.stdout || "none"}`);
+    logger.error(`Full error: ${JSON.stringify(err, null, 2)}`);
     res.status(500).json({ error: "Failed to generate session strings" });
   }
 });

@@ -1652,8 +1652,8 @@ export default function Man3() {
                 </p>
               )}
               {!regexError && (
-                <div className="flex flex-col sm:flex-row items-center sm:justify-between gap-4 mt-2">
-                  <p className="text-xs text-gray-500 text-center sm:text-left">
+                <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-4 mt-2">
+                  <p className="text-xs text-gray-500 text-center lg:text-left">
                     Regex search (default case-insensitive). Examples:{" "}
                     <code className="bg-gray-800 px-1 rounded">socket</code>,{" "}
                     <code className="bg-gray-800 px-1 rounded">
@@ -1665,7 +1665,7 @@ export default function Man3() {
                     </code>{" "}
                     for flags
                   </p>
-                  <p className="text-xs text-gray-500 text-center sm:text-right">
+                  <p className="text-xs text-gray-500 text-center lg:text-right">
                     📖{" "}
                     <a
                       href="/man3"
