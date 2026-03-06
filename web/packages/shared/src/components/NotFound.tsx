@@ -1,42 +1,26 @@
-import { ReactNode } from "react";
-import { Heading } from "./Heading";
 import { Button } from "./Button";
 
-interface NotFoundProps {
-  backButtonText?: string;
-  headingText?: string;
-  descriptionText?: string;
-  footer?: ReactNode;
-  containerClassName?: string;
-  headingClassName?: string;
-  descriptionClassName?: string;
-  buttonClassName?: string;
-  preClassName?: string;
-}
-
-export function NotFound({
-  backButtonText = "← Back to home",
-  headingText = "Page not found",
-  descriptionText = "The page you're looking for doesn't exist or has been moved.",
-  footer,
-  containerClassName = "flex-1 flex items-center justify-center p-4",
-  headingClassName = "text-2xl font-bold mb-2",
-  descriptionClassName = "text-gray-400 mb-8",
-  buttonClassName = "inline-block px-6 py-3 bg-cyan-500 text-black rounded hover:opacity-80 transition-opacity font-mono",
-  preClassName = "text-6xl font-mono mb-4 overflow-hidden",
-}: NotFoundProps = {}) {
+export function NotFound() {
   return (
-    <div className={containerClassName}>
-      <div className="text-center max-w-md">
-        <pre className={preClassName}>404</pre>
-        <Heading level={1} className={headingClassName}>
-          {headingText}
-        </Heading>
-        <p className={descriptionClassName}>{descriptionText}</p>
-        <Button href="/" className={buttonClassName}>
-          {backButtonText}
-        </Button>
-        {footer && <div className="mt-8">{footer}</div>}
+    <div className="bg-gray-950 text-gray-100 flex flex-col items-center pt-[22vh]">
+      <div className="max-w-4xl px-4 sm:px-6 text-center">
+        <header className="mb-12 sm:mb-16">
+          <h1 className="text-6xl sm:text-7xl md:text-8xl font-bold mb-4">
+            <span className="text-red-400">404</span>
+          </h1>
+          <p className="text-2xl sm:text-3xl text-gray-300 mb-4">
+            Page Not Found
+          </p>
+          <p className="text-base sm:text-lg text-gray-400 mb-6">
+            The page you&apos;re looking for doesn&apos;t exist or has been moved.
+          </p>
+          <Button
+            href="/"
+            className="inline-block bg-cyan-600 hover:bg-cyan-500 text-white font-semibold px-6 py-3 rounded-lg transition-colors"
+          >
+            ← Back to Home
+          </Button>
+        </header>
       </div>
     </div>
   );
