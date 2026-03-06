@@ -45,6 +45,14 @@ echo "Captured output:"
 cat /tmp/test1_output.txt | tail -20
 echo ""
 
+# Verify we have actual output
+CONTENT_LINES=$(cat /tmp/test1_output.txt | wc -l)
+if [ "$CONTENT_LINES" -lt 10 ]; then
+  echo "🔴 TEST 1 FAILED: Insufficient output captured ($(wc -l < /tmp/test1_output.txt) lines)"
+  TEST1_PASS=0
+  exit 1
+fi
+
 # Check for success indicators
 if cat /tmp/test1_output.txt | rg -q "(--snapshot|--splash|--help|--password)"; then
   echo "🟢 TEST 1 PASSED: Binary-level options showing"
