@@ -65,8 +65,11 @@ export default defineConfig({
           if (id.includes("xterm")) {
             return "xterm";
           }
-          // Dependencies - keep all in single chunk to avoid circular dependencies
+          // Dependencies
           if (id.includes("node_modules")) {
+            if (id.includes("react")) {
+              return "deps-react";
+            }
             return "deps";
           }
         },
