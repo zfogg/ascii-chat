@@ -333,6 +333,31 @@ for known_hosts file format.
 .SS "ascii-chat Discovery Service (ACDS)"
 The ascii-chat Discovery Service bootstraps trust using the existing HTTPS PKI. By default, the public discovery service runs at \fBdiscover-server.ascii-chat.com:27225\fR. ascii-chat automatically downloads and verifies the discovery server's public keys over HTTPS from \fIdiscovery.ascii-chat.com/key.pub\fR (SSH Ed25519) and \fIdiscovery.ascii-chat.com/key.gpg\fR (GPG), verified by system CA certificates. Servers register with ACDS using a discoverable session string (e.g., "purple-mountain-lake"). Clients connect to the discovery service to look up the server's public key by session string, then pin that key for the subsequent TCP connection to the server. This avoids the chicken-and-egg problem of distributing server keys before the connection exists. The discovery service only stores connection metadata (session strings, public keys, NAT traversal ICE candidates); your video and audio flow peer-to-peer with end-to-end encryption. ACDS never sees your media.
 .PP
+.SS "WebSocket Connections (Browser Clients)"
+When connecting via WebSocket URLs (\\fBws://\\fR or \\fBwss://\\fR), ascii-chat handles encryption differently to work efficiently with browser clients.
+.PP
+For \\fBwss://\\fR connections (WebSocket Secure), ascii-chat disables ACIP application-level encryption by default. Why? Because TLS (the "S" in wss) already encrypts everything in transit—adding another layer would be redundant and slow. So TLS handles the transport encryption, and ascii-chat focuses on what matters: authenticating the connection if you want to.
+.PP
+If you specify authentication flags like \\fB\\-\\-key\\fR, \\fB\\-\\-server\\-key\\fR, or \\fB\\-\\-client\\-keys\\fR, those still work normally with \\fBwss://\\fR. The authentication handshake happens after the TLS connection is established, so your connection gets both transport encryption and verification.
+.PP
+You can override this behavior with \\fB\\-\\-encrypt\\fR and \\fB\\-\\-auth\\fR flags:
+.RS
+.TP
+\\fB\\-\\-encrypt=true\\fR
+Force application-level encryption even over \\fBwss://\\fR
+.TP
+\\fB\\-\\-encrypt=false\\fR
+Disable application-level encryption (the \\fBwss://\\fR default)
+.TP
+\\fB\\-\\-auth=true\\fR
+Force authentication (default if you specify \\fB\\-\\-key\\fR or \\fB\\-\\-server\\-key\\fR)
+.TP
+\\fB\\-\\-auth=false\\fR
+Skip authentication even if keys are provided
+.RE
+.PP
+In short: \\fBwss://\\fR is TLS-encrypted by default, and ascii-chat's application encryption is optional. Authentication still works if you want it, regardless of the transport layer.
+.PP
 .SS "Session Rekeying and Forward Secrecy"
 All session keys are rotated automatically after 1 hour or 1 million packets (whichever comes first) to limit exposure from key compromise. The rekey protocol is transparent: both sides generate new ephemeral keys, perform a new DH exchange, and atomically switch to new session keys without interruption. Old keys are securely wiped using \fCsodium_memzero()\fR. Nonces are constructed as \fCsession_id || counter\fR (16-byte random session ID + 8-byte monotonic packet counter), preventing both within-session and cross-session replay attacks. Nonce counter exhaustion (astronomically unlikely at 60 FPS for 9+ years) triggers automatic rekeying.
 .PP
