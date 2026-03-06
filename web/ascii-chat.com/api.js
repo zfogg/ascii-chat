@@ -24,15 +24,17 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 
 // Helper to find binary - try multiple locations
 function getBinaryPath() {
-  // Binary is located at web/ascii-chat.com/bin/ascii-chat-strings
-  // api.js is at web/ascii-chat.com/api.js
-  // So from __dirname, binary is at ./bin/ascii-chat-strings
+  // On Vercel: binary is copied to dist/bin/ during build, deployed to outputDirectory
+  // Locally: binary is at web/ascii-chat.com/bin/ascii-chat-strings
 
   const locations = [
+    // Vercel production: binary in outputDirectory
+    path.join(__dirname, "../bin/ascii-chat-strings"), // From /var/task/api to /var/task/bin
+    path.join(__dirname, "../../bin/ascii-chat-strings"), // Fallback
+    // Development: binary in source directory
     path.join(__dirname, "bin/ascii-chat-strings"), // Same directory level
     "./bin/ascii-chat-strings", // Current dir relative
     "bin/ascii-chat-strings", // Current dir relative (no dot)
-    path.join(ROOT_DIR, "web/ascii-chat.com/bin/ascii-chat-strings"), // Via ROOT_DIR
     "../../build/bin/ascii-chat-strings", // Dev build fallback
   ];
 
