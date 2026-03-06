@@ -323,10 +323,13 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
             }
           }
 
+          // If the match line doesn't have a line number, use the nearest available one
+          const effectiveMatchLineNum = matchLineNum || afterLineNum || beforeLineNum;
+
           snippets.push({
             text: snippet,
             lineNumbers: [beforeLineNum, matchLineNum, afterLineNum],
-            matchLineNumber: matchLineNum,
+            matchLineNumber: effectiveMatchLineNum,
           });
         }
       }
