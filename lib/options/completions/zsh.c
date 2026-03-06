@@ -128,7 +128,13 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
-  /* Load discovery options early so we can use them for binary-level completion */
+  /* Load discovery options early so we can use them for binary-level completion.
+   * Binary-level completion (options before mode name like --color-mode) uses
+   * _arguments with -n -S flags to establish proper zsh completion context.
+   * Without _arguments, completion functions fail with "can only be called from
+   * completion function" error, causing zsh to display "corrections (errors: N)"
+   * messages. The -n flag disables defaults and -S disables short option
+   * processing, allowing safe context establishment. */
   size_t discovery_count = 0;
   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
 
