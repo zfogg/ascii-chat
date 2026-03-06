@@ -1870,6 +1870,16 @@ export default function Man3() {
                       targetLineNumber,
                     )}
                   </div>
+                  <div className="mt-8 pt-6 border-t border-gray-700">
+                    <h3 className="text-sm font-semibold text-cyan-400 mb-2">SEE ALSO</h3>
+                    <p className="text-sm text-gray-400">
+                      <a href="https://web.ascii-chat.com" target="_blank" rel="noopener noreferrer" className="text-cyan-400 hover:text-cyan-300 underline">
+                        Web Client
+                      </a>
+                      {" — "}
+                      Terminal video chat with ASCII art rendering and end-to-end encryption
+                    </p>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center min-h-96 text-center">
