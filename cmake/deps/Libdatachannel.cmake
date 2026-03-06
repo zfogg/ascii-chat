@@ -140,18 +140,11 @@ if(PLATFORM_IOS)
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         )
 
-        # Point to iOS-built OpenSSL with proper include paths
-        if(EXISTS "${IOS_DEPS_CACHE_DIR}/openssl/lib/libssl.a")
-            list(APPEND LIBDATACHANNEL_CMAKE_ARGS
-                -DOPENSSL_ROOT_DIR=${IOS_DEPS_CACHE_DIR}/openssl
-                -DOPENSSL_INCLUDE_DIR=${IOS_DEPS_CACHE_DIR}/openssl/include
-                -DOPENSSL_CRYPTO_LIBRARY=${IOS_DEPS_CACHE_DIR}/openssl/lib/libcrypto.a
-                -DOPENSSL_SSL_LIBRARY=${IOS_DEPS_CACHE_DIR}/openssl/lib/libssl.a
-                -DCMAKE_PREFIX_PATH=${IOS_DEPS_CACHE_DIR}/openssl
-                -DCMAKE_C_FLAGS=-I${IOS_DEPS_CACHE_DIR}/openssl/include
-                -DCMAKE_CXX_FLAGS=-I${IOS_DEPS_CACHE_DIR}/openssl/include
-            )
-        endif()
+        # The iOS toolchain (LibwebsocketsIOS.cmake) will auto-detect OpenSSL
+        # in IOS_DEPS_CACHE_DIR, so we just need to pass the cache dir to the subproject
+        list(APPEND LIBDATACHANNEL_CMAKE_ARGS
+            -DIOS_DEPS_CACHE_DIR=${IOS_DEPS_CACHE_DIR}
+        )
 
         message(STATUS "Configuring libdatachannel for iOS...")
         execute_process(

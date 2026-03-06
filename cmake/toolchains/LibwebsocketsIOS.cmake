@@ -102,3 +102,34 @@ set(CMAKE_FIND_ROOT_PATH_MODE_PACKAGE ONLY)
 
 # Disable any platform-specific checks that might not work on iOS
 set(CMAKE_SKIP_RPATH ON)
+
+# =============================================================================
+# Auto-detect and configure OpenSSL iOS if available in deps cache
+# =============================================================================
+# This allows libdatachannel and other dependencies to find OpenSSL headers
+# when building for iOS in the main project's deps cache
+
+if(DEFINED IOS_DEPS_CACHE_DIR)
+    set(_OPENSSL_ROOT_DIR "${IOS_DEPS_CACHE_DIR}/openssl")
+    set(_OPENSSL_INCLUDE_DIR "${_OPENSSL_ROOT_DIR}/include")
+    set(_OPENSSL_LIB_DIR "${_OPENSSL_ROOT_DIR}/lib")
+
+    if(EXISTS "${_OPENSSL_LIB_DIR}/libssl.a" AND EXISTS "${_OPENSSL_INCLUDE_DIR}/openssl/ssl.h")
+        message(STATUS "iOS Toolchain: Auto-detected OpenSSL at ${_OPENSSL_ROOT_DIR}")
+
+        # Set OpenSSL variables so find_package(OpenSSL) succeeds
+        set(OPENSSL_ROOT_DIR "${_OPENSSL_ROOT_DIR}" CACHE PATH "OpenSSL root" FORCE)
+        set(OPENSSL_INCLUDE_DIR "${_OPENSSL_INCLUDE_DIR}" CACHE PATH "OpenSSL include" FORCE)
+        set(OPENSSL_CRYPTO_LIBRARY "${_OPENSSL_LIB_DIR}/libcrypto.a" CACHE FILEPATH "OpenSSL crypto" FORCE)
+        set(OPENSSL_SSL_LIBRARY "${_OPENSSL_LIB_DIR}/libssl.a" CACHE FILEPATH "OpenSSL SSL" FORCE)
+        set(OPENSSL_FOUND TRUE CACHE BOOL "OpenSSL found" FORCE)
+
+        # Add OpenSSL include directory to default include search paths
+        # This ensures C++ headers like <openssl/ssl.h> are found
+        list(APPEND CMAKE_CXX_FLAGS "-I${_OPENSSL_INCLUDE_DIR}")
+        list(APPEND CMAKE_C_FLAGS "-I${_OPENSSL_INCLUDE_DIR}")
+
+        # Also add to CMAKE_PREFIX_PATH for find_package(OpenSSL)
+        list(APPEND CMAKE_PREFIX_PATH "${_OPENSSL_ROOT_DIR}")
+    endif()
+endif()
