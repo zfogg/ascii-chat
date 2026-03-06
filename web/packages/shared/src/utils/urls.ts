@@ -7,6 +7,7 @@
  * - discovery.ascii-chat.com (port 5174 / discovery subdomain)
  * - web.ascii-chat.com (port 3000 / web subdomain)
  * - API server (port 3001 / api.ascii-chat.com or main domain)
+ * - Discovery service (port 27226 / discovery-service.ascii-chat.com for WebSocket)
  */
 
 const isDev = import.meta.env.DEV;
@@ -49,5 +50,14 @@ export const API_RELATIVE = {
   MAN3_SEARCH: "/api/man3/search",
   HEALTH: "/api/health",
 } as const;
+
+/**
+ * Discovery service WebSocket connection URL
+ * In dev: ws://localhost:27226 (local ACDS server)
+ * In prod: wss://discovery-service.ascii-chat.com:27226 (production ACDS)
+ */
+export const DISCOVERY_SERVICE_URL = isDev
+  ? "ws://localhost:27226"
+  : "wss://discovery-service.ascii-chat.com:27226";
 
 export type SiteKey = keyof typeof SITES;

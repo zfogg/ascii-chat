@@ -57,6 +57,7 @@ import { WebClientHead } from "../components/WebClientHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
+import { DISCOVERY_SERVICE_URL } from "@ascii-chat/shared/utils";
 import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { useRenderLoop } from "../hooks/useRenderLoop";
@@ -422,7 +423,7 @@ export function ClientPage() {
   const [connectionState, setConnectionState] = useState<ConnectionState>(
     ConnectionState.DISCONNECTED,
   );
-  const [serverUrl, setServerUrl] = useState<string>("ws://localhost:27226");
+  const [serverUrl, setServerUrl] = useState<string>(DISCOVERY_SERVICE_URL);
   const [showModal, setShowModal] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [error, setError] = useState<string>("");
