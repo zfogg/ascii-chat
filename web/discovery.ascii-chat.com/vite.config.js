@@ -52,11 +52,8 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Dependencies
+          // Dependencies - keep all in single chunk to avoid circular dependencies
           if (id.includes("node_modules")) {
-            if (id.includes("react")) {
-              return "deps-react";
-            }
             return "deps";
           }
         },
