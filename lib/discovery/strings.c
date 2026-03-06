@@ -12,15 +12,26 @@
 #include <ascii-chat/discovery/strings.h>
 #include <ascii-chat/discovery/adjectives.h>
 #include <ascii-chat/discovery/nouns.h>
-#include <ascii-chat/common.h>
 #include <ascii-chat/uthash.h>
-#include <ascii-chat/util/lifecycle.h>
+#include <ascii-chat/common/error_codes.h>
 #include <string.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/random.h>
 #include <time.h>
 #include <stdio.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+#include <pcre2.h>
+#include <ascii-chat/util/utf8.h>
+#include <ascii-chat/log/log.h>
+
+#include <ascii-chat/util/lifecycle.h>
+
+// Minimal stubs for removed dependencies
+#define SAFE_MALLOC(size, type) ((type)malloc(size))
+#define SAFE_FREE(ptr) do { if(ptr) { free(ptr); ptr=NULL; } } while(0)
+#define SET_ERRNO(code, fmt, ...) (code)
+
 
 // Simple RNG using getrandom() - no external dependencies
 static uint32_t simple_randombytes_uniform(uint32_t upper_bound) {
@@ -173,16 +184,54 @@ static void build_validation_caches(void) {
  * Dictionary validation (adjective/noun caches) is handled separately.
  */
 
-// Pattern commented out - not used for generation
-// static const char *SESSION_STRING_FORMAT_PATTERN = "^(?<adj>[a-z]{2,12})-(?<noun1>[a-z]{2,12})-(?<noun2>[a-z]{2,12})$";
+static const char *SESSION_STRING_FORMAT_PATTERN = "^[a-z]{2,12}-[a-z]{2,12}-[a-z]{2,12}$";
+
+static pcre2_code *g_session_format_regex = NULL;
+static lifecycle_t g_regex_lc = LIFECYCLE_INIT;
+
+/**
+ * Initialize session string regex (called once via lifecycle API)
+ */
+static void session_regex_init_once(void) {
+  int error_code;
+  PCRE2_SIZE error_offset;
+  g_session_format_regex =
+      pcre2_compile((PCRE2_SPTR8)SESSION_STRING_FORMAT_PATTERN, PCRE2_ZERO_TERMINATED, 0, &error_code, &error_offset, NULL);
+
+  if (!g_session_format_regex) {
+    PCRE2_UCHAR error_buf[256];
+    pcre2_get_error_message(error_code, error_buf, sizeof(error_buf));
+    log_error("Failed to compile session string regex at offset %zu: %s", error_offset, (const char *)error_buf);
+    return;
+  }
+
+  // Compile to JIT for 5-10x performance boost
+  int jit_ret = pcre2_jit_compile(g_session_format_regex, PCRE2_JIT_COMPLETE);
+  if (jit_ret < 0) {
+    log_warn("Session string regex JIT compilation failed (code %d), falling back to interpreter", jit_ret);
+  }
+
+  log_dev("Session string format validator initialized");
+}
 
 /**
  * Get compiled session string format regex (lazy initialization)
  * Returns NULL if compilation failed
  */
-// Regex stub - not used for generation
-// static pcre2_singleton_t *g_session_format_regex = NULL;
-// static pcre2_code *session_format_regex_get(void) { return NULL; }
+static pcre2_code *session_format_regex_get(void) {
+  if (!lifecycle_init_once(&g_regex_lc)) {
+    // Already initialized or in progress - spin-wait for completion
+    while (!lifecycle_is_initialized(&g_regex_lc)) {
+      // Spin until initialization completes
+    }
+    return g_session_format_regex;
+  }
+
+  // Winner: do the initialization
+  session_regex_init_once();
+  lifecycle_init_commit(&g_regex_lc);
+  return g_session_format_regex;
+}
 
 // Simple RNG using getrandom() - no external dependencies
 static uint32_t simple_simple_randombytes_uniform(uint32_t upper_bound) {
@@ -234,7 +283,6 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
   return ASCIICHAT_OK;
 }
 
-// Validation function
 bool is_session_string(const char *str) {
   if (!str || str[0] == '\0') {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session string is NULL or empty");
