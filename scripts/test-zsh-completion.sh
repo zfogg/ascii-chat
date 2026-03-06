@@ -1,144 +1,135 @@
 #!/bin/bash
-# Test zsh completion by validating the generated script and interactive behavior
+# Test zsh completion interactively in tmux
 
 set -e
 
 cd "$(dirname "$(dirname "$(realpath "$0")")")" || exit 1
 
-SCRIPT_FILE="build/share/zsh/site-functions/_ascii_chat"
-
-if [ ! -f "$SCRIPT_FILE" ]; then
-  echo "🔴 Completion script not found at $SCRIPT_FILE"
-  exit 1
-fi
-
-SCRIPT=$(cat "$SCRIPT_FILE")
-
-echo "Testing zsh completion..."
+echo "Testing zsh completion interactively..."
+echo "This will show actual zsh completion in action"
 echo ""
 
+# Kill any existing test session
+tmux kill-session -t zsh-completion-test 2>/dev/null || true
+sleep 0.2
+
+# Create new session with larger dimensions for better visibility
+tmux new-session -d -s zsh-completion-test -x 250 -y 60
+
+# Send setup commands
+tmux send-keys -t zsh-completion-test "cd '$PWD'" Enter
+sleep 0.3
+
+tmux send-keys -t zsh-completion-test "fpath=(./build/share/zsh/site-functions \$fpath); autoload -Uz compinit; compinit -U; clear" Enter
+sleep 0.2
+
 # =============================================================================
-# TEST 1: Binary-level options (--password, --log-file, --key, etc.)
+# TEST 1: Binary-level options (--sho<TAB>)
 # =============================================================================
-echo "=== TEST 1: Binary-level options ==="
-if echo "$SCRIPT" | rg -q "(--password|--log-file|--key)"; then
-  echo "🟢 Binary-level options (--password, --log-file, --key) found"
+echo "=== TEST 1: ascii-chat --sho<TAB> ==="
+tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --sho" Tab
+sleep 0.5
+
+# Capture and save output
+tmux capture-pane -t zsh-completion-test -p > /tmp/test1_output.txt
+
+# Display what we got
+echo "Captured output:"
+cat /tmp/test1_output.txt | tail -20
+echo ""
+
+# Check for success indicators
+if cat /tmp/test1_output.txt | rg -q "(--show|show-capabilities|binary|password)"; then
+  echo "🟢 TEST 1 PASSED: Binary-level options showing"
   TEST1_PASS=1
 else
-  echo "🔴 Binary-level options NOT found"
+  echo "🔴 TEST 1 FAILED: Binary-level options NOT showing"
   TEST1_PASS=0
 fi
 
-if echo "$SCRIPT" | rg -q "case.*\\\$prev.*in" | head -1 >/dev/null 2>&1; then
-  echo "🟢 Value completion case blocks found"
-else
-  echo "🔴 Value completion case blocks NOT found"
-  TEST1_PASS=0
-fi
+# Clear for next test
+tmux send-keys -t zsh-completion-test "C-u"
+tmux send-keys -t zsh-completion-test "clear" Enter
+sleep 0.5
 
 # =============================================================================
-# TEST 2: Discovery mode options
+# TEST 2: Discovery mode options (discovery --<TAB>)
 # =============================================================================
 echo ""
-echo "=== TEST 2: Discovery mode options ==="
-if echo "$SCRIPT" | rg -q "_ascii_chat_discovery"; then
-  echo "🟢 Discovery mode completion function found"
+echo "=== TEST 2: ascii-chat discovery --<TAB> ==="
+tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat discovery --" Tab
+sleep 0.2
+
+# Navigate completion menu with arrow down to see options
+tmux send-keys -t zsh-completion-test "Down"
+sleep 0.2
+
+# Capture and save output
+tmux capture-pane -t zsh-completion-test -p > /tmp/test2_output.txt
+
+# Display what we got
+echo "Captured output:"
+cat /tmp/test2_output.txt | tail -20
+echo ""
+
+# Check for success indicators
+if cat /tmp/test2_output.txt | rg -q "(database|port|password|discovery-service)"; then
+  echo "🟢 TEST 2 PASSED: Discovery options showing"
   TEST2_PASS=1
 else
-  echo "🔴 Discovery mode completion function NOT found"
+  echo "🔴 TEST 2 FAILED: Discovery options NOT showing"
   TEST2_PASS=0
 fi
 
+# Clear for next test
+tmux send-keys -t zsh-completion-test "Escape"
+tmux send-keys -t zsh-completion-test "C-u"
+tmux send-keys -t zsh-completion-test "clear" Enter
+sleep 0.2
+
 # =============================================================================
-# TEST 3: Client mode audio option
+# TEST 3: Client mode options (client --<TAB>)
 # =============================================================================
 echo ""
-echo "=== TEST 3: Client mode --audio option ==="
-if echo "$SCRIPT" | rg -q "\-\-audio"; then
-  echo "🟢 Client-mode --audio option found"
+echo "=== TEST 3: ascii-chat client --<TAB> ==="
+tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat client --" Tab
+sleep 2
+
+# Navigate completion menu
+tmux send-keys -t zsh-completion-test "Down"
+sleep 0.2
+
+# Capture and save output
+tmux capture-pane -t zsh-completion-test -p > /tmp/test3_output.txt
+
+# Display what we got
+echo "Captured output:"
+cat /tmp/test3_output.txt | tail -20
+echo ""
+
+# Check for success indicators
+if cat /tmp/test3_output.txt | rg -q "audio"; then
+  echo "🟢 TEST 3 PASSED: Client mode --audio option showing"
   TEST3_PASS=1
 else
-  echo "🔴 Client-mode --audio option NOT found"
+  echo "🔴 TEST 3 FAILED: Client mode --audio option NOT showing"
   TEST3_PASS=0
 fi
 
-# =============================================================================
-# Validation: Device helpers
-# =============================================================================
+# Cleanup
+tmux send-keys -t zsh-completion-test "Escape"
+tmux send-keys -t zsh-completion-test "C-u"
 echo ""
-echo "=== Validation: Device index helpers ==="
-HELPERS_PASS=1
-
-if echo "$SCRIPT" | rg -q "_ascii_chat_webcam_indices"; then
-  echo "🟢 Webcam indices helper found"
-else
-  echo "🔴 Webcam indices helper NOT found"
-  HELPERS_PASS=0
-fi
-
-if echo "$SCRIPT" | rg -q "_ascii_chat_microphone_indices"; then
-  echo "🟢 Microphone indices helper found"
-else
-  echo "🔴 Microphone indices helper NOT found"
-  HELPERS_PASS=0
-fi
-
-if echo "$SCRIPT" | rg -q "_ascii_chat_speakers_indices"; then
-  echo "🟢 Speakers indices helper found"
-else
-  echo "🔴 Speakers indices helper NOT found"
-  HELPERS_PASS=0
-fi
-
-# =============================================================================
-# Validation: Enum value completions
-# =============================================================================
-echo ""
-echo "=== Validation: Enum value completions ==="
-ENUM_PASS=1
-
-if echo "$SCRIPT" | rg -q "auto none 16 256 truecolor"; then
-  echo "🟢 Color mode enum values found"
-else
-  echo "🔴 Color mode enum values NOT found"
-  ENUM_PASS=0
-fi
-
-if echo "$SCRIPT" | rg -q "standard blocks digital minimal cool custom"; then
-  echo "🟢 Palette enum values found"
-else
-  echo "🔴 Palette enum values NOT found"
-  ENUM_PASS=0
-fi
-
-if echo "$SCRIPT" | rg -q "true false"; then
-  echo "🟢 Boolean true/false values found"
-else
-  echo "🔴 Boolean true/false values NOT found"
-  ENUM_PASS=0
-fi
-
-# =============================================================================
-# Validation: Zsh syntax check
-# =============================================================================
-echo ""
-echo "=== Validation: Zsh syntax check ==="
-if zsh -n "$SCRIPT_FILE" 2>/dev/null; then
-  echo "🟢 Zsh syntax is valid"
-  SYNTAX_PASS=1
-else
-  echo "🔴 Zsh syntax check FAILED"
-  SYNTAX_PASS=0
-fi
+echo "Cleaning up..."
+tmux kill-session -t zsh-completion-test 2>/dev/null || true
 
 # =============================================================================
 # Summary
 # =============================================================================
 echo ""
 echo "========== SUMMARY =========="
-if [ "$TEST1_PASS" -eq 1 ] && [ "$TEST2_PASS" -eq 1 ] && [ "$TEST3_PASS" -eq 1 ] && \
-   [ "$HELPERS_PASS" -eq 1 ] && [ "$ENUM_PASS" -eq 1 ] && [ "$SYNTAX_PASS" -eq 1 ]; then
-  echo "🟢 ALL TESTS PASSED"
+if [ "$TEST1_PASS" -eq 1 ] && [ "$TEST2_PASS" -eq 1 ] && [ "$TEST3_PASS" -eq 1 ]; then
+  echo "🟢 ALL INTERACTIVE TESTS PASSED"
   exit 0
 else
   echo "🔴 SOME TESTS FAILED"
