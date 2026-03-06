@@ -286,7 +286,9 @@ This will allow users to customize keyboard shortcuts without rebuilding the app
 
 .\" MANUAL-START: EXIT STATUS
 .SH EXIT STATUS
-Exit codes correspond to the \fBasciichat_error_t\fR enum values:
+Exit codes correspond to the
+.BR asciichat_error_t (3)
+enum values:
 .TP
 .B 0
 Success (ASCIICHAT_OK).
