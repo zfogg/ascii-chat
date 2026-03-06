@@ -1695,7 +1695,7 @@ acip_transport_t *acip_websocket_client_transport_create(const char *name, const
   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
   // Register websocket implementation data with transport as parent
-  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
+  (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
 
   // Return transport immediately - connection will be established by service thread
   // If connection fails, recv() will detect is_connected=false and return error
@@ -1886,7 +1886,7 @@ acip_transport_t *acip_websocket_server_transport_create(const char *name, struc
   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 
   // Register websocket implementation data with transport as parent
-  NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
+  (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, "impl", (uintptr_t)(const void *)(transport));
 
   return transport;
 }

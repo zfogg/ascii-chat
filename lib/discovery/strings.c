@@ -25,11 +25,6 @@
 
 #include <ascii-chat/util/lifecycle.h>
 
-// Minimal stubs for removed dependencies
-#define SAFE_MALLOC(size, type) ((type)malloc(size))
-#define SAFE_FREE(ptr) do { if(ptr) { free(ptr); ptr=NULL; } } while(0)
-#define SET_ERRNO(code, fmt, ...) (code)
-
 
 
 // ============================================================================
