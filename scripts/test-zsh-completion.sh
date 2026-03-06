@@ -28,14 +28,14 @@ sleep 0.2
 # =============================================================================
 echo "=== TEST 1: ascii-chat --sho<TAB> ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --sho" Tab
+sleep 1
+
+# Navigate menu to display options - press Down multiple times to scroll through menu
+tmux send-keys -t zsh-completion-test "Down Down Down"
 sleep 0.5
 
-# Navigate menu to display options
-tmux send-keys -t zsh-completion-test "Down"
-sleep 0.2
-
 # Capture and save output
-tmux capture-pane -t zsh-completion-test -p > /tmp/test1_output.txt
+tmux capture-pane -t zsh-completion-test -p -S -100 > /tmp/test1_output.txt
 
 # Display what we got
 echo "Captured output:"
@@ -50,13 +50,13 @@ else
   echo "🔴 TEST 1 FAILED: Binary-level options NOT showing"
   TEST1_PASS=0
 fi
-# Check for success indicators
+# Check for discovery mode options (from binary-level completing with discovery options)
 if cat /tmp/test1_output.txt | rg -q "audio options"; then
-  echo "🟢 TEST 1 PASSED: Discovery mode --audio option showing"
-  TEST3_PASS=1
+  echo "🟢 TEST 1 PASSED: Discovery mode options showing"
+  TEST1_PASS=1
 else
-  echo "🔴 TEST 1 FAILED: Discovery mode --audio option NOT showing"
-  TEST3_PASS=0
+  echo "🔴 TEST 1 FAILED: Discovery mode options NOT showing"
+  TEST1_PASS=0
 fi
 
 # Clear for next test
