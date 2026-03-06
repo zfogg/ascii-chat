@@ -2,6 +2,7 @@ import { Heading } from "@ascii-chat/shared/components";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
+import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
 

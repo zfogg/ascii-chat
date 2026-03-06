@@ -234,15 +234,8 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
   return ASCIICHAT_OK;
 }
 
-// Validation stub - not used for generation
+// Validation function
 bool is_session_string(const char *str) {
-  (void)str; // unused parameter
-  return true;
-}
-
-// Original validation function removed - not needed for generation
-/*
-bool is_session_string_original(const char *str) {
   if (!str || str[0] == '\0') {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session string is NULL or empty");
     return false;
@@ -351,4 +344,3 @@ bool is_session_string_original(const char *str) {
   log_dev("Valid session string: %s", str);
   return true;
 }
-*/
