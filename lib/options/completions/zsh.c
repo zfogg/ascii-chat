@@ -209,7 +209,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   size_t discovery_count = 0;
   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
 
-  fprintf(output, "#compdef _ascii_chat ascii-chat\n"
+  fprintf(output, "compdef _ascii_chat ascii-chat\n"
                   "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
                   "\n"
@@ -275,10 +275,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "_ascii_chat() {\n"
                   "  local curcontext=\"$curcontext\" state line\n"
                   "  if [[ ${words[2]} == -* ]]; then\n"
-                  "    # Binary-level options: show discovery mode options\n"
-                  "    if _arguments -n -S : '1: :->binary'; then\n"
-                  "      [[ $state == binary ]] && _ascii_chat_binary\n"
-                  "    fi\n"
+                  "    # Binary-level options: directly call binary function\n"
+                  "    _ascii_chat_binary\n"
                   "    return\n"
                   "  else\n"
                   "    # Mode selection or mode options\n"
