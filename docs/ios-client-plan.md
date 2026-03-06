@@ -52,7 +52,7 @@ RGB24 pixel buffer, and a registered Swift callback receives it every frame.
 │  ┌──────┴──────────────────▼───────────────────▼──────────┐ │
 │  │     Swift ↔ C Bridge (module map + callbacks)          │ │
 │  │  ios_register_frame_callback(swift_fn)                  │ │
-│  │  ascii_chat_main(argc, argv) — runs on background thread│ │
+│  │  asciichat_main(argc, argv) — runs on background thread│ │
 │  └──────┬──────────────────┬───────────────────┬──────────┘ │
 └─────────┼──────────────────┼───────────────────┼────────────┘
           │                  │                   │
@@ -354,11 +354,13 @@ asciichat_error_t terminal_cursor_show(void) { return ASCIICHAT_OK; }
 **keepawake.m** — Objective-C for UIKit:
 ```objc
 #import <UIKit/UIKit.h>
+#include "ascii-chat/error.h"
 
-void platform_enable_keepawake(void) {
+asciichat_error_t platform_enable_keepawake(void) {
     dispatch_async(dispatch_get_main_queue(), ^{
         [UIApplication sharedApplication].idleTimerDisabled = YES;
     });
+    return ASCIICHAT_OK;
 }
 
 void platform_disable_keepawake(void) {
@@ -371,6 +373,8 @@ void platform_disable_keepawake(void) {
 **filesystem.m** — sandbox-aware paths:
 ```objc
 #import <Foundation/Foundation.h>
+#include "ascii-chat/error.h"
+#include "ascii-chat/platform/filesystem.h"
 
 const char *platform_get_home_dir(void) {
     static char home[PATH_MAX];
@@ -379,30 +383,36 @@ const char *platform_get_home_dir(void) {
     return home;
 }
 
-const char *platform_get_config_dir(void) {
-    static char config[PATH_MAX];
+// Returns heap-allocated string (caller frees)
+char *platform_get_config_dir(void) {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(
         NSApplicationSupportDirectory, NSUserDomainMask, YES);
-    strlcpy(config, [[paths firstObject] UTF8String], sizeof(config));
-    return config;
+    const char *path = [[paths firstObject] UTF8String];
+    size_t len = strlen(path) + 1;
+    char *result = SAFE_MALLOC(len, char *);
+    strlcpy(result, path, len);
+    return result;
 }
 
-const char *platform_get_data_dir(void) {
-    static char data[PATH_MAX];
+// Returns heap-allocated string (caller frees)
+char *platform_get_data_dir(void) {
     NSArray *paths = NSSearchPathForDirectoriesInDomains(
         NSDocumentDirectory, NSUserDomainMask, YES);
-    strlcpy(data, [[paths firstObject] UTF8String], sizeof(data));
-    return data;
+    const char *path = [[paths firstObject] UTF8String];
+    size_t len = strlen(path) + 1;
+    char *result = SAFE_MALLOC(len, char *);
+    strlcpy(result, path, len);
+    return result;
 }
 
 // Config file search: check app bundle + Documents
 asciichat_error_t platform_find_config_file(const char *filename,
-                                            char *result, size_t result_size) {
+                                            config_file_list_t *list_out) {
     // 1. Check app bundle
     NSString *bundlePath = [[NSBundle mainBundle] pathForResource:
         [NSString stringWithUTF8String:filename] ofType:nil];
     if (bundlePath) {
-        strlcpy(result, [bundlePath UTF8String], result_size);
+        // Add to list_out...
         return ASCIICHAT_OK;
     }
     // 2. Check Documents directory
@@ -434,13 +444,15 @@ bool platform_prompt_yes_no(const char *prompt, bool default_yes) {
 
 **process.c** — stubs for restricted APIs:
 ```c
-#include <errno.h>
+#include "ascii-chat/error.h"
+#include "ascii-chat/platform/process.h"
 
 // iOS doesn't support fork/exec/popen
-int platform_popen(const char *command, const char *mode, FILE **result) {
-    (void)command; (void)mode; (void)result;
-    errno = ENOSYS;
-    return -1;
+asciichat_error_t platform_popen(const char *name, const char *command,
+                                  const char *mode, FILE **out_stream) {
+    (void)name; (void)command; (void)mode; (void)out_stream;
+    return SET_ERRNO(ERROR_NOT_SUPPORTED,
+                     "popen not available on iOS: %s", command);
 }
 
 // yt-dlp subprocess won't work on iOS — media URLs must be
@@ -453,15 +465,17 @@ Implements the `platform_log_hook()` weak symbol defined in `lib/log/log.c`.
 
 ```c
 // lib/log/ios_log.c
+// Overrides the weak symbol platform_log_hook() from lib/log/log.c
 #include <os/log.h>
+#include "ascii-chat/log/types.h"
 
-static os_log_t ac_log = NULL;
+static os_log_t g_os_log = NULL;
 
-void platform_log(int level, const char *msg) {
-    if (!ac_log) ac_log = os_log_create("com.zfogg.ascii-chat", "lib");
-    os_log_with_type(ac_log, level >= LOG_ERROR ? OS_LOG_TYPE_ERROR
-                           : level >= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
-                           : OS_LOG_TYPE_DEBUG, "%{public}s", msg);
+void platform_log_hook(log_level_t level, const char *message) {
+    if (!g_os_log) g_os_log = os_log_create("com.zfogg.ascii-chat", "lib");
+    os_log_with_type(g_os_log, level >= LOG_ERROR ? OS_LOG_TYPE_ERROR
+                              : level >= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
+                              : OS_LOG_TYPE_DEBUG, "%{public}s", message);
 }
 ```
 
@@ -499,10 +513,11 @@ int get_default_port(void) {
     return 27224;  // Same as desktop
 }
 
-void apply_mode_specific_defaults(void) {
-    // iOS defaults: truecolor, UTF-8, reasonable dimensions
-    if (GET_OPTION(color_mode) == 0)
-        SET_OPTION(color_mode, TERM_COLOR_TRUECOLOR);
+void apply_ios_defaults(options_t *opts) {
+    // iOS defaults: truecolor, UTF-8, reasonable dimensions.
+    // Called during option parsing before options_state_set().
+    if (opts->color_mode == 0)
+        opts->color_mode = TERM_COLOR_TRUECOLOR;
 }
 ```
 
@@ -564,7 +579,7 @@ PaError Pa_OpenStream(PaStream **stream,
                       double sampleRate, unsigned long framesPerBuffer,
                       PaStreamFlags flags, PaStreamCallback *callback,
                       void *userData) {
-    pa_ios_stream_t *s = calloc(1, sizeof(pa_ios_stream_t));
+    pa_ios_stream_t *s = SAFE_CALLOC(1, sizeof(pa_ios_stream_t), pa_ios_stream_t *);
     s->engine = [[AVAudioEngine alloc] init];
     s->callback = callback;
     s->user_data = userData;
@@ -741,7 +756,7 @@ void ios_render_bridge_init(int cols, int rows,
 
     // Pre-allocate write buffer
     g_write_cap = 64 * 1024;
-    g_write_buf = malloc(g_write_cap);
+    g_write_buf = SAFE_MALLOC(g_write_cap, char *);
     g_write_len = 0;
 }
 
@@ -749,7 +764,10 @@ void ios_output_feed(const char *data, size_t len) {
     // Accumulate writes (a single frame may involve multiple write() calls)
     if (g_write_len + len > g_write_cap) {
         g_write_cap = (g_write_len + len) * 2;
-        g_write_buf = realloc(g_write_buf, g_write_cap);
+        char *new_buf = SAFE_MALLOC(g_write_cap, char *);
+        memcpy(new_buf, g_write_buf, g_write_len);
+        SAFE_FREE(g_write_buf);
+        g_write_buf = new_buf;
     }
     memcpy(g_write_buf + g_write_len, data, len);
     g_write_len += len;
@@ -775,7 +793,7 @@ void ios_render_bridge_flush(void) {
 void ios_render_bridge_destroy(void) {
     if (g_renderer) term_renderer_destroy(g_renderer);
     g_renderer = NULL;
-    free(g_write_buf);
+    SAFE_FREE(g_write_buf);
     g_write_buf = NULL;
 }
 ```
@@ -790,14 +808,15 @@ render bridge:
 #include "render_bridge.h"
 #include <unistd.h>
 
-ssize_t platform_write_all(int fd, const void *buf, size_t len) {
+size_t platform_write_all(int fd, const void *buf, size_t count) {
     if (fd == STDOUT_FILENO) {
         // Route terminal output to libvterm render bridge
-        ios_output_feed((const char *)buf, len);
-        return (ssize_t)len;
+        ios_output_feed((const char *)buf, count);
+        return count;
     }
     // All other FDs (stderr, sockets, files) use real write()
-    return write(fd, buf, len);
+    // (reuse the POSIX implementation from lib/platform/posix/system.c)
+    return platform_write_all_posix(fd, buf, count);
 }
 ```
 
@@ -808,10 +827,11 @@ a complete frame then flushes. We hook the flush to trigger the render bridge:
 
 ```c
 // In the iOS terminal stub (lib/platform/ios/terminal.c):
-void terminal_flush(int fd) {
+asciichat_error_t terminal_flush(int fd) {
     if (fd == STDOUT_FILENO) {
         ios_render_bridge_flush();  // Render accumulated output → callback
     }
+    return ASCIICHAT_OK;
 }
 ```
 
@@ -857,22 +877,28 @@ typedef bool (*ios_prompt_callback_t)(const char *prompt,
 void ios_register_prompt_callback(ios_prompt_callback_t cb);
 
 // -- Lifecycle --
-// Run a mode (blocks until mode exits). Call on a background thread.
+// NEW WRAPPER: Wraps main() from src/main.c — renamed so it doesn't
+// conflict with Swift's @main entry point. Implementation is just:
+//   int asciichat_main(int argc, char **argv) { return main(argc, argv); }
+// Compiled only when BUILD_IOS is set. Blocks until mode exits.
 // argv[0] = "ascii-chat", argv[1] = mode, argv[2..] = options
-int ascii_chat_main(int argc, char **argv);
+int asciichat_main(int argc, char **argv);
 
-// Request graceful shutdown (sets g_should_exit, mode will exit its loop)
-void ascii_chat_request_exit(void);
+// EXISTING: from src/main.c — sets g_should_exit atomic flag.
+// All mode loops check should_exit() and will exit cleanly.
+void signal_exit(void);
+bool should_exit(void);
 
 // -- Stdin bridge (keyboard/touch input) --
 // Push bytes into the stdin queue (read by the C code via platform_read)
 void ios_stdin_push(const char *data, size_t len);
 
-// -- Options (optional, can also pass via argv) --
-void ac_set_option_int(const char *name, int value);
-int ac_get_option_int(const char *name);
-void ac_set_option_string(const char *name, const char *value);
-const char *ac_get_option_string(const char *name);
+// -- Options (C code uses GET_OPTION(field) macro internally) --
+// Options are set via argv passed to main(). At runtime, the C code
+// accesses them via the RCU-based options system:
+//   const options_t *opts = options_get();
+//   opts->width, opts->height, opts->color_mode, etc.
+// Swift sets options by passing CLI flags in argv to main().
 ```
 
 #### 3e. Swift engine class
@@ -915,7 +941,7 @@ class AsciiChatEngine {
         // Run the actual C main on a background thread
         DispatchQueue.global(qos: .userInteractive).async {
             argv.withCStringArray { cArgs in
-                ascii_chat_main(Int32(cArgs.count), cArgs)
+                asciichat_main(Int32(cArgs.count), cArgs)
             }
             DispatchQueue.main.async {
                 self.isRunning = false
@@ -924,7 +950,7 @@ class AsciiChatEngine {
     }
 
     func stop() {
-        ascii_chat_request_exit()
+        signal_exit()
     }
 
     // Send keyboard input to the C code
@@ -1263,7 +1289,7 @@ Intentionally minimal. The C library does the heavy lifting.
 - [ ] Cross-compile dependencies (libsodium, FFmpeg, Opus, zstd, PCRE2, yyjson, libwebsockets, libvterm, FreeType)
 - [ ] Build `libasciichat.a` for arm64 + arm64-simulator
 - [ ] Package as `.xcframework`
-- [ ] Verify: link into empty Xcode project, call `ascii_chat_main()` with mirror mode
+- [ ] Verify: link into empty Xcode project, call `asciichat_main()` with mirror mode
 
 #### Phase 2: Mirror Mode — First Pixels (1 week)
 
@@ -1282,7 +1308,7 @@ produces pixels on screen.
 #### Phase 3: Client + Server + Discovery Modes (1-2 weeks)
 
 Because the C code runs unmodified, each mode is just a new options form that
-calls `ascii_chat_main()` with different argv. The display is the same ModeView.
+calls `asciichat_main()` with different argv. The display is the same ModeView.
 
 - [ ] `ClientView.swift` — host/port/password form → starts client_main
 - [ ] `ServerView.swift` — port/max-clients form → starts server_main
@@ -1338,7 +1364,7 @@ calls `ascii_chat_main()` with different argv. The display is the same ModeView.
    At 30fps that's ~36MB/s of copies. Probably fine, but profile it. Could use double-buffering
    in the render bridge to avoid the copy.
 10. **Multiple modes** - Can we run two modes simultaneously (e.g., mirror + discovery)?
-   Currently `ascii_chat_main()` is blocking and uses global state (`g_should_exit`). Probably
+   Currently `asciichat_main()` is blocking and uses global state (`g_should_exit`). Probably
    one mode at a time for v1.
 
 ---
