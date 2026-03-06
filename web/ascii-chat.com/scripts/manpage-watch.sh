@@ -8,7 +8,7 @@ cd "$(dirname "$0")/.."
 
 REPO_ROOT="$(cd ../.. && pwd)"
 
-cmake -S "$REPO_ROOT" -B "$REPO_ROOT/build_release" --preset release
+cmake -S "$REPO_ROOT" -B "$REPO_ROOT/build" --preset default
 
 # Watch C sources/headers for man(3) regeneration, plus man(1) and man(5) templates
 command -p ls "$REPO_ROOT"/{src,lib,include,share/man}/**/*.{c,h,1.in,5.in} | entr -rc ./scripts/manpage-build.sh

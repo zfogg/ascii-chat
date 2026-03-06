@@ -1502,6 +1502,7 @@ export function ClientPage() {
             onFpsChange={setFps}
             error={error}
             showFps={isWebcamRunning}
+            connectionState={connectionState}
           />
         }
         modal={

@@ -12,9 +12,14 @@
 #   - FONTCONFIG_INCLUDE_DIRS: Fontconfig include directories
 # =============================================================================
 
-# iOS: Build fontconfig from source (with expat)
+# iOS: Build fontconfig from source (with expat and freetype)
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}fontconfig${ColorReset} from source (iOS cross-compile)...")
+
+    # FreeType must be configured first (via FreeType2.cmake)
+    if(NOT DEFINED FREETYPE_PREFIX)
+        message(FATAL_ERROR "FREETYPE_PREFIX not set - FreeType2.cmake must be included before Fontconfig.cmake")
+    endif()
 
     set(EXPAT_PREFIX "${IOS_DEPS_CACHE_DIR}/expat")
     set(EXPAT_LIBRARY "${EXPAT_PREFIX}/lib/libexpat.a")
@@ -29,6 +34,11 @@ if(PLATFORM_IOS)
         execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
     else()
         execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+
+    # Ensure FreeType is built first
+    if(TARGET freetype-ios)
+        message(STATUS "  fontconfig will depend on freetype-ios build")
     endif()
 
     # Build expat first if needed
@@ -82,6 +92,21 @@ if(PLATFORM_IOS)
         set(FONTCONFIG_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/fontconfig-build")
         file(MAKE_DIRECTORY "${FONTCONFIG_BUILD_DIR}")
 
+        # Create a minimal pkg-config file for FreeType to avoid system FreeType detection
+        set(FREETYPE_PC_FILE "${FREETYPE_PREFIX}/lib/pkgconfig/freetype2.pc")
+        file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/lib/pkgconfig")
+        file(WRITE "${FREETYPE_PC_FILE}" "prefix=${FREETYPE_PREFIX}
+exec_prefix=\${prefix}
+libdir=\${exec_prefix}/lib
+includedir=\${prefix}/include
+
+Name: FreeType
+Description: A free, high-quality, and portable font engine
+Version: 21.0.15
+Libs: -L\${libdir} -lfreetype
+Cflags: -I\${includedir}/freetype2 -I\${includedir}
+")
+
         message(STATUS "  Downloading fontconfig 2.14.2...")
         file(DOWNLOAD
             "https://www.freedesktop.org/software/fontconfig/release/fontconfig-2.14.2.tar.gz"
@@ -108,7 +133,7 @@ if(PLATFORM_IOS)
                     LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64 -L${EXPAT_PREFIX}/lib -L${FREETYPE_PREFIX}/lib' \
                     FREETYPE_CFLAGS='-I${FREETYPE_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2' \
                     FREETYPE_LIBS='-L${FREETYPE_PREFIX}/lib -lfreetype' \
-                    ./configure --prefix='${FONTCONFIG_PREFIX}' --host=aarch64-apple-darwin --disable-shared --enable-static --disable-docs --with-expat='${EXPAT_PREFIX}' && \
+                    ./configure --prefix='${FONTCONFIG_PREFIX}' --host=aarch64-apple-darwin --disable-shared --enable-static --disable-docs --with-expat='${EXPAT_PREFIX}' --with-freetype-config=no && \
                     make -j && make install"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT

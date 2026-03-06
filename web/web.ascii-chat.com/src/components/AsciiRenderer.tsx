@@ -8,6 +8,7 @@ import {
 import type { Terminal } from "xterm";
 import { XTerm, type XTerm as XTermType } from "@pablo-lion/xterm-react";
 import { FitAddon } from "@xterm/addon-fit";
+import { DisconnectedOverlay } from "./DisconnectedOverlay";
 import "xterm/css/xterm.css";
 
 export interface AsciiRendererHandle {
@@ -25,13 +26,14 @@ export interface AsciiRendererProps {
   onFpsChange?: (fps: number) => void;
   error?: string;
   showFps?: boolean;
+  connectionState?: number;
 }
 
 export const AsciiRenderer = forwardRef<
   AsciiRendererHandle,
   AsciiRendererProps
 >(function AsciiRenderer(
-  { onDimensionsChange, onFpsChange, error, showFps = true },
+  { onDimensionsChange, onFpsChange, error, showFps = true, connectionState },
   ref,
 ) {
   const xtermRef = useRef<XTermType | null>(null);
@@ -292,7 +294,7 @@ export const AsciiRenderer = forwardRef<
   return (
     <>
       {/* ASCII terminal output */}
-      <div className="flex flex-col flex-1 px-4 py-2 overflow-hidden min-h-0">
+      <div className="flex flex-col flex-1 px-4 py-2 overflow-hidden min-h-0 relative">
         <style>
           {`
             .xterm {
@@ -325,6 +327,7 @@ export const AsciiRenderer = forwardRef<
           }}
           className="flex flex-1 rounded bg-terminal-bg"
         />
+        <DisconnectedOverlay isDisconnected={connectionState === 0} />
       </div>
 
       {/* FPS counter - hidden, displayed in control bar instead */}

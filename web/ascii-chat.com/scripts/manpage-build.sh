@@ -15,10 +15,10 @@ if [ -d "$REPO_ROOT" ]; then
     echo "TOUCHING options.c"
     touch "$REPO_ROOT/lib/options/options.c"
   fi
-  # Use build directory for man page generation (build_release uses musl and may not be available)
-  BUILD_DIR="$REPO_ROOT/build"
+
+  BUILD_DIR="$REPO_ROOT/build_release"
   if [ ! -d "$BUILD_DIR" ]; then
-    BUILD_DIR="$REPO_ROOT/build_release"
+    BUILD_DIR="$REPO_ROOT/build"
   fi
 
   cmake --build "$BUILD_DIR" --target man1 man5 || true

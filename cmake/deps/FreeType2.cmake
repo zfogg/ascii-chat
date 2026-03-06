@@ -13,6 +13,7 @@
 # =============================================================================
 
 # iOS build: Build from source for iOS cross-compilation
+message(STATUS "FreeType2.cmake: PLATFORM_IOS=${PLATFORM_IOS}, BUILD_IOS=${BUILD_IOS}, CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}freetype${ColorReset} from source (iOS cross-compile)...")
 
@@ -66,8 +67,9 @@ if(PLATFORM_IOS)
         add_custom_target(freetype-ios)
     endif()
 
-    set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a")
-    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2")
+    set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a" PARENT_SCOPE)
+    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2" PARENT_SCOPE)
+    set(FREETYPE_PREFIX "${FREETYPE_PREFIX}" PARENT_SCOPE)
     file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
 
     return()
@@ -120,8 +122,9 @@ if(USE_MUSL)
         add_custom_target(freetype-musl)
     endif()
 
-    set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a")
-    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2")
+    set(FREETYPE_LIBRARIES "${FREETYPE_PREFIX}/lib/libfreetype.a" PARENT_SCOPE)
+    set(FREETYPE_INCLUDE_DIRS "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/include/freetype2" PARENT_SCOPE)
+    set(FREETYPE_PREFIX "${FREETYPE_PREFIX}" PARENT_SCOPE)
     file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
 
     return()
