@@ -67,9 +67,6 @@ export default defineConfig({
         manualChunks(id) {
           // Dependencies
           if (id.includes("node_modules")) {
-            if (id.includes("react")) {
-              return "deps-react";
-            }
             return "deps";
           }
           // Man pages and components - all in single chunk
