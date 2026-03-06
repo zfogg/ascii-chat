@@ -216,6 +216,9 @@ if(USE_MIMALLOC AND MIMALLOC_INCLUDE_DIRS)
     target_include_directories(ascii-chat PRIVATE ${MIMALLOC_INCLUDE_DIRS})
 endif()
 
+# Apply sanitizers to executable
+apply_sanitizers_to_target(ascii-chat)
+
 # Add build timing for ascii-chat executable
 add_custom_command(TARGET ascii-chat PRE_LINK
     COMMAND ${CMAKE_COMMAND} -DACTION=start -DTARGET_NAME=ascii-chat -DSOURCE_DIR=${CMAKE_SOURCE_DIR} -P ${CMAKE_SOURCE_DIR}/cmake/utils/Timer.cmake
@@ -554,6 +557,9 @@ if(BUILD_WEB)
 
     # Compile with optimization
     target_compile_options(ascii-chat-strings PRIVATE -std=c23 -O3)
+
+    # Apply sanitizers
+    apply_sanitizers_to_target(ascii-chat-strings)
 
     # Install to bin directory
     install(TARGETS ascii-chat-strings DESTINATION bin)

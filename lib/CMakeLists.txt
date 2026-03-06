@@ -257,6 +257,9 @@ macro(create_ascii_chat_module MODULE_NAME MODULE_SRCS)
     if(USE_MUSL)
         target_compile_definitions(${MODULE_NAME} PRIVATE USE_MUSL=1)
     endif()
+
+    # Apply sanitizers to module
+    apply_sanitizers_to_target(${MODULE_NAME})
 endmacro()
 
 # -----------------------------------------------------------------------------
@@ -1113,6 +1116,9 @@ endif()
     if(NOT WIN32)
         set_property(TARGET ascii-chat-shared PROPERTY LINKER_LANGUAGE CXX)
     endif()
+
+# Apply sanitizers to shared library
+apply_sanitizers_to_target(ascii-chat-shared)
 
 # Add build timing for ascii-chat-shared library
 add_custom_command(TARGET ascii-chat-shared PRE_LINK

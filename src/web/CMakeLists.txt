@@ -310,6 +310,9 @@ target_link_libraries(wasm-common PRIVATE
     pcre2-8
 )
 
+# Apply sanitizers
+apply_sanitizers_to_target(wasm-common)
+
 # Create WASM mirror module
 message("DEBUG: WEB_SRC_MIRROR=${WEB_SRC_MIRROR}")
 message("DEBUG: LIB_SRC_MIRROR_ONLY=${LIB_SRC_MIRROR_ONLY}")
@@ -332,6 +335,9 @@ target_link_libraries(mirror-web PRIVATE
     sodium
     pcre2-8
 )
+
+# Apply sanitizers
+apply_sanitizers_to_target(mirror-web)
 
 # Source files for WASM client entry point
 set(WEB_SRC_CLIENT
@@ -366,6 +372,9 @@ target_include_directories(client-web PRIVATE
     ${zstd_SOURCE_DIR}/lib
     ${opus_SOURCE_DIR}/include
 )
+
+# Apply sanitizers
+apply_sanitizers_to_target(client-web)
 
 # Exported functions for mirror module (all EMSCRIPTEN_KEEPALIVE functions from mirror.c and common/options.c)
 set(EXPORTED_FUNCTIONS_MIRROR
