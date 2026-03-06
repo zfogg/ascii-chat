@@ -25,8 +25,10 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 // Helper to find binary - try multiple locations
 function getBinaryPath() {
   const locations = [
-    path.join(ROOT_DIR, "public/bin/ascii-chat-strings"), // Vercel: static file
-    path.join(ROOT_DIR, "bin/ascii-chat-strings"), // Local: root/bin
+    "bin/ascii-chat-strings", // From project root
+    "./bin/ascii-chat-strings", // Current dir
+    path.join(ROOT_DIR, "bin/ascii-chat-strings"), // ROOT_DIR/bin
+    path.join(__dirname, "../bin/ascii-chat-strings"), // __dirname relative
     "../../build/bin/ascii-chat-strings", // Dev build fallback
   ];
 
