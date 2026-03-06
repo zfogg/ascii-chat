@@ -78,7 +78,7 @@ export default defineConfig({
           }
           // Docs pages
           if (id.includes("/docs/")) {
-            return "docs-pages";
+            return "docs";
           }
           // Shared components
           if (id.includes("@ascii-chat/shared")) {
