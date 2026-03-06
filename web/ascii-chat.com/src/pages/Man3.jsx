@@ -1663,7 +1663,7 @@ export default function Man3() {
                     </code>{" "}
                     for flags
                   </p>
-                  <p className="text-xs text-gray-500 text-center lg:text-right">
+                  <p className="text-xs text-gray-500 text-center text-right self-end">
                     📖{" "}
                     <a
                       href="https://zfogg.github.io/ascii-chat/"
