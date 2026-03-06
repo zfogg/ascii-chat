@@ -65,12 +65,12 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          // Vendor libraries
+          // Dependencies
           if (id.includes("node_modules")) {
             if (id.includes("react")) {
-              return "vendor-react";
+              return "deps-react";
             }
-            return "vendor";
+            return "deps";
           }
           // Man pages and components - all in single chunk
           if (id.includes("Man") && id.includes(".jsx")) {
