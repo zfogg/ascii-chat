@@ -160,37 +160,58 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
 
     set(AWESOME_CSS_DIR "${CMAKE_SOURCE_DIR}/deps/doxygen-awesome-css")
 
-    # Configure Doxyfile from template
-    set(DOXYFILE_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
-    set(DOXYFILE_OUT "${CMAKE_BINARY_DIR}/Doxyfile")
     set(DOXYLAYOUTFILE_IN "${CMAKE_SOURCE_DIR}/docs/DoxygenLayout.xml.in")
     set(DOXYLAYOUTFILE_OUT "${CMAKE_BINARY_DIR}/DoxygenLayout.xml")
 
-    configure_file(
-        ${DOXYFILE_IN}
-        ${DOXYFILE_OUT}
-        @ONLY
-    )
+    # Create docs directory if it doesn't exist
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/docs")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/doc/html")
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
+
+    # Configure layout file
     configure_file(
         ${DOXYLAYOUTFILE_IN}
         ${DOXYLAYOUTFILE_OUT}
         @ONLY
     )
 
-    # Create docs directory if it doesn't exist
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/docs")
+    # Generate HTML-only Doxyfile (first)
+    set(DOXYFILE_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
+    set(DOXYFILE_HTML "${CMAKE_BINARY_DIR}/Doxyfile.html")
+    set(GENERATE_HTML "YES")
+    set(GENERATE_MAN "NO")
+    configure_file(${DOXYFILE_IN} ${DOXYFILE_HTML} @ONLY)
 
-    # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
-    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/doc/html")
-    add_custom_target(docs
-        COMMAND timeout 10 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+    # Generate man-only Doxyfile (second)
+    set(DOXYFILE_MAN "${CMAKE_BINARY_DIR}/Doxyfile.man")
+    set(GENERATE_HTML "NO")
+    set(GENERATE_MAN "YES")
+    configure_file(${DOXYFILE_IN} ${DOXYFILE_MAN} @ONLY)
+
+    # HTML documentation target (builds first)
+    add_custom_target(docs-html
+        COMMAND timeout 10 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_HTML}
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "Generating HTML documentation with Doxygen"
+        VERBATIM
+    )
+
+    # Man3 documentation target (builds second, depends on HTML completion)
+    add_custom_target(docs-man3
+        COMMAND timeout 10 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_SOURCE_DIR}/cmake/utils/InjectAuthorInfo.cmake
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Generating API documentation with Doxygen"
+        COMMENT "Generating man(3) API reference pages"
         VERBATIM
+    )
+
+    # Combined documentation target (builds all four doc targets without rebuilding)
+    add_custom_target(docs
+        DEPENDS docs-html man1 man3 man5
+        COMMENT "All documentation targets complete (HTML, man1, man3, man5)"
     )
 
     # Create a target to open documentation in browser (cross-platform)

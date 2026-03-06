@@ -185,7 +185,7 @@ IGNORE_PREFIX          =
 # Configuration options related to the HTML output
 #---------------------------------------------------------------------------
 
-GENERATE_HTML          = YES
+GENERATE_HTML          = @GENERATE_HTML@
 HTML_OUTPUT            = doc/html
 HTML_FILE_EXTENSION    = .html
 HTML_HEADER            = @CMAKE_SOURCE_DIR@/docs/header.html
@@ -258,7 +258,7 @@ GENERATE_RTF           = NO
 # Configuration options related to the man page output
 #---------------------------------------------------------------------------
 
-GENERATE_MAN           = YES
+GENERATE_MAN           = @GENERATE_MAN@
 
 #---------------------------------------------------------------------------
 # Configuration options related to the XML output
