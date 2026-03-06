@@ -174,7 +174,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                                           "wss://secure.example.com:443"};
   // Discovery mode: [session-string] - session string or empty to start new session
   // Use simple static examples for positional arguments section (dynamic strings shown in examples section)
-  static const char *discovery_examples[] = {"(empty) start new session", (const char *)example_buf7,
+  static const char *discovery_examples[] = {"(empty/unset) start new session. generates a session string to give someone to connect to you.", (const char *)example_buf7,
                                              (const char *)example_buf8, (const char *)example_buf9,
                                              (const char *)example_buf10};
   options_builder_add_positional(
