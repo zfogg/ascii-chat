@@ -35,8 +35,7 @@ long __isoc23_strtol(const char *str, char **endptr, int base) {
     long result = 0;
 
     // Skip whitespace
-    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' ||
-           *p == '\v' || *p == '\f')
+    while (*p == ' ' || *p == '\t' || *p == '\n' || *p == '\r' || *p == '\v' || *p == '\f')
       p++;
 
     // Handle optional sign
@@ -85,14 +84,14 @@ long __isoc23_strtol(const char *str, char **endptr, int base) {
 
   // For non-base-10, try strtoll (less common path)
 use_strtoll: {
-    long long result = strtoll(str, endptr, base);
-    // Clamp to long range
-    if (result > LONG_MAX)
-      return LONG_MAX;
-    if (result < LONG_MIN)
-      return LONG_MIN;
-    return (long)result;
-  }
+  long long result = strtoll(str, endptr, base);
+  // Clamp to long range
+  if (result > LONG_MAX)
+    return LONG_MAX;
+  if (result < LONG_MIN)
+    return LONG_MIN;
+  return (long)result;
+}
 }
 
 long long __isoc23_strtoll(const char *str, char **endptr, int base) {
@@ -216,14 +215,14 @@ void arc4random_buf(void *buf, size_t nbytes) {
     return;
   }
 
-  // Try getrandom syscall first (available in Linux 3.17+)
-  // This is preferred as it doesn't require opening a file descriptor
-  #ifdef SYS_getrandom
+// Try getrandom syscall first (available in Linux 3.17+)
+// This is preferred as it doesn't require opening a file descriptor
+#ifdef SYS_getrandom
   long result = syscall(SYS_getrandom, buf, nbytes, 0);
   if (result == (long)nbytes) {
     return;
   }
-  #endif
+#endif
 
   // Fallback: read from /dev/urandom
   int fd = open("/dev/urandom", O_RDONLY);
@@ -235,11 +234,8 @@ void arc4random_buf(void *buf, size_t nbytes) {
     }
   }
 
-  // Final fallback: fill with simple pseudo-random data
-  uint8_t *b = (uint8_t *)buf;
-  for (size_t i = 0; i < nbytes; i++) {
-    b[i] = (uint8_t)((i + (uintptr_t)buf + i * 13) & 0xFF);
-  }
+  // We failed.
+  abort();
 }
 
 // Random state structure layout: first 4 bytes store the seed for consistency
@@ -251,8 +247,7 @@ typedef struct {
 
 // initstate_r() - musl doesn't have this glibc-specific reentrant random function
 // Used by fontconfig. Initializes the random state with a seed.
-int initstate_r(unsigned int seed, char *statebuf, size_t statelen,
-                struct random_data *buf) {
+int initstate_r(unsigned int seed, char *statebuf, size_t statelen, struct random_data *buf) {
   // Validate parameters
   if (statelen < sizeof(_random_state_t)) {
     return -1;
