@@ -80,48 +80,83 @@
 <p class="Pp">Definition at line <b>25</b> of file <b>strings/main.c</b>.</p>
 <pre>25                                  {
 26   long long count = 1;
-27   static struct option long_options[] = {
-28     {&quot;count&quot;, required_argument, 0, 'n'},
-29     {&quot;help&quot;, no_argument, 0, 'h'},
-30     {0, 0, 0, 0}
-31   };
-32 
-33   int opt;
-34   while ((opt = getopt_long(argc, argv, &quot;n:h&quot;, long_options, NULL)) != -1) {
-35     switch (opt) {
-36       case 'n':
-37         count = strtoll(optarg, NULL, 10);
-38         break;
-39       case 'h':
-40         printf(&quot;Usage: ascii-chat-strings [-n|--count COUNT]\n&quot;);
-41         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
-42         printf(&quot;\nOptions:\n&quot;);
-43         printf(&quot;  -n, --count COUNT   Generate COUNT session strings (default: 1)\n&quot;);
-44         printf(&quot;  -h, --help          Show this help message\n&quot;);
-45         return 0;
-46       default:
-47         return ERROR_USAGE;
-48     }
-49   }
-50 
-51   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
-52     return ERROR_USAGE;
-53   }
-54 
-55   // Generate session strings
-56   for (long long i = 0; i &lt; count; i++) {
-57     uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
-58     uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
-59     uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
-60 
-61     printf(&quot;%s-%s-%s\n&quot;,
-62            adjectives[adj_idx],
-63            nouns[noun1_idx],
-64            nouns[noun2_idx]);
-65   }
-66 
-67   return 0;
-68 }</pre>
+27   int dump_adjectives = 0;
+28   int dump_nouns = 0;
+29 
+30   static struct option long_options[] = {
+31     {&quot;count&quot;, required_argument, 0, 'n'},
+32     {&quot;dump-adjectives&quot;, no_argument, 0, 'a'},
+33     {&quot;dump-nouns&quot;, no_argument, 0, 'o'},
+34     {&quot;help&quot;, no_argument, 0, 'h'},
+35     {0, 0, 0, 0}
+36   };
+37 
+38   int opt;
+39   while ((opt = getopt_long(argc, argv, &quot;n:aoh&quot;, long_options, NULL)) != -1) {
+40     switch (opt) {
+41       case 'n':
+42         count = strtoll(optarg, NULL, 10);
+43         break;
+44       case 'a':
+45         dump_adjectives = 1;
+46         break;
+47       case 'o':
+48         dump_nouns = 1;
+49         break;
+50       case 'h':
+51         printf(&quot;Usage: ascii-chat-strings [OPTIONS]\n&quot;);
+52         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
+53         printf(&quot;\nOptions:\n&quot;);
+54         printf(&quot;  -n, --count COUNT        Generate COUNT session strings (default: 1)\n&quot;);
+55         printf(&quot;  -a, --dump-adjectives    Dump adjectives list as JavaScript\n&quot;);
+56         printf(&quot;  -o, --dump-nouns         Dump nouns list as JavaScript\n&quot;);
+57         printf(&quot;  -h, --help               Show this help message\n&quot;);
+58         return 0;
+59       default:
+60         return ERROR_USAGE;
+61     }
+62   }
+63 
+64   // Handle dump modes
+65   if (dump_adjectives) {
+66     printf(&quot;export const adjectives = [\n&quot;);
+67     for (size_t i = 0; i &lt; adjectives_count; i++) {
+68       printf(&quot;  \&quot;%s\&quot;%s\n&quot;, adjectives[i], (i &lt; adjectives_count - 1) ? &quot;,&quot; : &quot;&quot;);
+69     }
+70     printf(&quot;];\n&quot;);
+71     printf(&quot;export const adjectives_count = %zu;\n&quot;, adjectives_count);
+72     return 0;
+73   }
+74 
+75   if (dump_nouns) {
+76     printf(&quot;export const nouns = [\n&quot;);
+77     for (size_t i = 0; i &lt; nouns_count; i++) {
+78       printf(&quot;  \&quot;%s\&quot;%s\n&quot;, nouns[i], (i &lt; nouns_count - 1) ? &quot;,&quot; : &quot;&quot;);
+79     }
+80     printf(&quot;];\n&quot;);
+81     printf(&quot;export const nouns_count = %zu;\n&quot;, nouns_count);
+82     return 0;
+83   }
+84 
+85   // Normal session string generation
+86   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
+87     return ERROR_USAGE;
+88   }
+89 
+90   // Generate session strings
+91   for (long long i = 0; i &lt; count; i++) {
+92     uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
+93     uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
+94     uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
+95 
+96     printf(&quot;%s-%s-%s\n&quot;,
+97            adjectives[adj_idx],
+98            nouns[noun1_idx],
+99            nouns[noun2_idx]);
+100   }
+101 
+102   return 0;
+103 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ACDS_MAX_UNIQUE_SESSIONS</b>, <b>adjectives</b>,

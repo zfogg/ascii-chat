@@ -6,55 +6,15 @@ import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import morgan from "morgan";
-import { execSync } from "child_process";
+import { generateSessionStrings } from "./src/utils/strings.js";
 
 dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// In Vercel, when served through /api/index.js, __dirname is the /api directory
-// We need to find the root directory (parent of /api) for the bin path
-// Also try process.cwd() as a fallback for finding the binary
-const ROOT_DIR = __dirname.endsWith("/api")
-  ? path.dirname(__dirname)
-  : __dirname;
 const app = express();
 const PORT = process.env.API_PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || "development";
-
-// Helper to find binary - try multiple locations
-function getBinaryPath() {
-  // On Vercel: binary is copied to dist/bin/ during build, deployed to outputDirectory
-  // Locally: binary is at web/ascii-chat.com/bin/ascii-chat-strings
-
-  const locations = [
-    // Vercel production: binary in outputDirectory
-    path.join(__dirname, "../bin/ascii-chat-strings"), // From /var/task/api to /var/task/bin
-    path.join(__dirname, "../../bin/ascii-chat-strings"), // Fallback
-    // Development: binary in source directory
-    path.join(__dirname, "bin/ascii-chat-strings"), // Same directory level
-    "./bin/ascii-chat-strings", // Current dir relative
-    "bin/ascii-chat-strings", // Current dir relative (no dot)
-    "../../build/bin/ascii-chat-strings", // Dev build fallback
-  ];
-
-  logger.debug(
-    `[getBinaryPath] __dirname=${__dirname}, ROOT_DIR=${ROOT_DIR}, cwd=${process.cwd()}`,
-  );
-  for (const location of locations) {
-    const exists = fs.existsSync(location);
-    logger.debug(
-      `[getBinaryPath] Checking ${location}: ${exists ? "EXISTS" : "NOT FOUND"}`,
-    );
-    if (exists) {
-      logger.info(`[getBinaryPath] Found binary at ${location}`);
-      return location;
-    }
-  }
-
-  logger.error("[getBinaryPath] Binary not found in any location");
-  return null; // No binary found
-}
 
 // Configure logger
 const logger = winston.createLogger({
@@ -515,33 +475,10 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
       });
     }
 
-    // Call the ascii-chat-strings binary
-    const binaryPath = getBinaryPath();
+    // Generate session strings using JavaScript implementation
+    const strings = generateSessionStrings(count);
 
-    if (!binaryPath) {
-      logger.error(
-        `[session-strings] Binary not found. Searched in: ROOT_DIR=${ROOT_DIR}, __dirname=${__dirname}, cwd=${process.cwd()}`,
-      );
-      return res.status(500).json({ error: "Binary not available" });
-    }
-
-    logger.info(
-      `[session-strings] NODE_ENV=${NODE_ENV}, using binary at ${binaryPath}`,
-    );
-
-    const output = execSync(`"${binaryPath}" --count ${count}`, {
-      encoding: "utf-8",
-      stdio: ["pipe", "pipe", "pipe"],
-    });
-
-    logger.info(
-      `[session-strings] Generated ${output.split("\n").length} strings`,
-    );
-
-    const strings = output
-      .trim()
-      .split("\n")
-      .filter((s) => s.length > 0);
+    logger.info(`[session-strings] Generated ${strings.length} strings`);
 
     res.json({
       count: strings.length,
@@ -549,9 +486,6 @@ app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
     });
   } catch (err) {
     logger.error(`Session strings error: ${err.message}`);
-    logger.error(`stderr: ${err.stderr || "none"}`);
-    logger.error(`stdout: ${err.stdout || "none"}`);
-    logger.error(`Full error: ${JSON.stringify(err, null, 2)}`);
     res.status(500).json({ error: "Failed to generate session strings" });
   }
 });
