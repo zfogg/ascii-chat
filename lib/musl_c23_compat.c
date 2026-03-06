@@ -204,6 +204,7 @@ int __isoc23_vswscanf(const wchar_t *str, const wchar_t *format, va_list args) {
 // fontconfig.
 
 #include <stdint.h>
+#include <string.h>
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/syscall.h>
@@ -238,27 +239,18 @@ void arc4random_buf(void *buf, size_t nbytes) {
   abort();
 }
 
-// Random state structure layout: first 4 bytes store the seed for consistency
-typedef struct {
-  uint32_t seed;
-  // Rest of buffer is available for future state tracking
-  char state[28];
-} _random_state_t;
-
 // initstate_r() - musl doesn't have this glibc-specific reentrant random function
-// Used by fontconfig. Initializes the random state with a seed.
+// Used by fontconfig. This is a stub since random_r() ignores the state buffer
+// and uses arc4random_buf() directly for cryptographically secure randomness.
 int initstate_r(unsigned int seed, char *statebuf, size_t statelen, struct random_data *buf) {
   // Validate parameters
-  if (statelen < sizeof(_random_state_t)) {
+  if (!statebuf || !buf || statelen < 32) {
     return -1;
   }
 
-  // Initialize state structure with seed
-  _random_state_t *state = (_random_state_t *)statebuf;
-  state->seed = seed;
+  // Zero out the buffer for consistency (though random_r() won't use it)
+  memset(statebuf, 0, statelen);
 
-  // Store pointer to state buffer in the random_data structure
-  *(void **)buf = statebuf;
   return 0;
 }
 
