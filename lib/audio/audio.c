@@ -88,7 +88,10 @@ void audio_terminate_portaudio_final(void) {
   if (lifecycle_shutdown(&g_pa_lc)) {
     log_debug("[PORTAUDIO_TERM] Calling Pa_Terminate() to release PortAudio");
 
-    PaError err = Pa_Terminate();
+    PaError err;
+    LOG_IO("portaudio", {
+      err = Pa_Terminate();
+    });
 
     log_debug("[PORTAUDIO_TERM] Pa_Terminate() returned: %s", Pa_GetErrorText(err));
   }
@@ -1458,11 +1461,15 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
 
   if (!try_separate) {
     // Try full-duplex first (preferred - perfect AEC3 timing)
-    err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
-                        paClipOff, duplex_callback, ctx);
+    LOG_IO("portaudio", {
+      err = Pa_OpenStream(&ctx->duplex_stream, &inputParams, &outputParams, AUDIO_SAMPLE_RATE, AUDIO_FRAMES_PER_BUFFER,
+                          paClipOff, duplex_callback, ctx);
+    });
 
     if (err == paNoError) {
-      err = Pa_StartStream(ctx->duplex_stream);
+      LOG_IO("portaudio", {
+        err = Pa_StartStream(ctx->duplex_stream);
+      });
       if (err != paNoError) {
         Pa_CloseStream(ctx->duplex_stream);
         ctx->duplex_stream = NULL;
@@ -1514,8 +1521,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
       PaStreamCallback *callback = output_callback;
 
       // Try preferred rate first
-      err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-                          callback, ctx);
+      LOG_IO("portaudio", {
+        err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, preferred_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                            callback, ctx);
+      });
 
       if (err == paNoError) {
         actual_output_rate = preferred_rate;
@@ -1533,8 +1542,10 @@ asciichat_error_t audio_start_duplex(audio_context_t *ctx) {
         }
 
         // Fall back to native rate (still using blocking mode for output-only)
-        err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
-                            callback, ctx);
+        LOG_IO("portaudio", {
+          err = Pa_OpenStream(&ctx->output_stream, NULL, &outputParams, native_rate, AUDIO_FRAMES_PER_BUFFER, paClipOff,
+                              callback, ctx);
+        });
 
         if (err == paNoError) {
           actual_output_rate = native_rate;
