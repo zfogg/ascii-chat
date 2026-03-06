@@ -1600,10 +1600,10 @@ export default function Man3() {
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
         url="https://ascii-chat.com/man3"
       />
-      <div className="w-full min-h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col px-4 sm:px-6 py-8 sm:py-12 w-full">
+      <div className="w-full h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
+        <div className="flex-1 flex flex-col px-4 sm:px-6 py-8 sm:py-12 w-full overflow-hidden">
           {/* Header */}
-          <header className="w-full max-w-4xl mx-auto mb-8 sm:mb-12">
+          <header className="w-full max-w-4xl mx-auto mb-8 sm:mb-12 flex-shrink-0">
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
               <span className="text-purple-400">📚</span> ascii-chat-*(3)
             </h1>
@@ -1689,10 +1689,10 @@ export default function Man3() {
           </header>
 
           {/* Main content area */}
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden min-h-0">
             {/* Results list */}
-            <div className="lg:w-2/5 flex-shrink-0">
-              <div className="bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto max-h-[300px] sm:max-h-full sticky top-20">
+            <div className="h-[300px] lg:h-auto lg:w-2/5 flex-shrink-0">
+              <div className="h-full bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto">
                 {loading
                   ? (
                     <div className="p-4 text-center text-gray-400">
@@ -1858,7 +1858,7 @@ export default function Man3() {
                 ? (
                   <div
                     ref={contentViewerRef}
-                    className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto max-h-[calc(100vh-300px)]"
+                    className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto"
                   >
                     <div className="mb-4 pb-4 border-b border-gray-800">
                       <h2 className="text-2xl font-bold text-purple-400">
@@ -1896,7 +1896,7 @@ export default function Man3() {
                   </div>
                 )
                 : (
-                  <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center min-h-96 text-center">
+                  <div className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center text-center">
                     <div>
                       <p className="text-gray-400 text-lg mb-2">
                         Select a page to view documentation
@@ -1911,11 +1911,11 @@ export default function Man3() {
                 )}
             </div>
           </div>
+        </div>
 
-          {/* Footer */}
-          <div className="mt-8">
-            <Footer />
-          </div>
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t border-gray-800">
+          <Footer />
         </div>
       </div>
     </>
