@@ -1296,7 +1296,7 @@ callback pipeline. The Swift app doesn't need mode-specific rendering logic.
 
 #### App lifecycle
 
-- **Background**: iOS suspends apps aggressively. For server mode, request background audio or location entitlement to stay alive (or accept suspension).
+- **Background**: iOS suspends apps aggressively. Server mode is foreground-only — iOS will kill it when it backgrounds, and that's fine.
 - **Interruptions**: Handle phone calls, notifications gracefully. Pause capture, maintain connection if possible.
 - **Memory**: Monitor memory pressure. The ASCII rendering pipeline is lightweight but video frames can be large.
 
