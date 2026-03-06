@@ -46,6 +46,7 @@ The default operating mode when running
 without specifying a mode.
 Starts or joins an ascii-chat Discovery Service session with a session string.
 Attempts direct TCP and WebRTC connections.
+Internally known as 'discovery' mode.
 .TP
 .B server
 Runs a video chat server that accepts connections from multiple clients,
