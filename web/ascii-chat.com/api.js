@@ -24,16 +24,23 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 
 // Helper to find binary - try multiple locations
 function getBinaryPath() {
+  // Navigate from api.js location to repository root to find binary
+  // api.js is at: web/ascii-chat.com/api.js
+  // binary is at: bin/ascii-chat-strings
+  // So we need to go up 3 levels from api.js directory
+  const repoRoot = path.join(__dirname, "../../..");
+
   const locations = [
-    "bin/ascii-chat-strings", // From project root
-    "./bin/ascii-chat-strings", // Current dir
+    path.join(repoRoot, "bin/ascii-chat-strings"), // From repo root (most reliable)
     path.join(ROOT_DIR, "bin/ascii-chat-strings"), // ROOT_DIR/bin
-    path.join(__dirname, "../bin/ascii-chat-strings"), // __dirname relative
+    path.join(__dirname, "../../../bin/ascii-chat-strings"), // Navigate up 3 levels
+    "bin/ascii-chat-strings", // From cwd (fallback)
+    "./bin/ascii-chat-strings", // Current dir
     "../../build/bin/ascii-chat-strings", // Dev build fallback
   ];
 
   logger.debug(
-    `[getBinaryPath] __dirname=${__dirname}, ROOT_DIR=${ROOT_DIR}, cwd=${process.cwd()}`,
+    `[getBinaryPath] __dirname=${__dirname}, ROOT_DIR=${ROOT_DIR}, repoRoot=${repoRoot}, cwd=${process.cwd()}`,
   );
   for (const location of locations) {
     const exists = fs.existsSync(location);
