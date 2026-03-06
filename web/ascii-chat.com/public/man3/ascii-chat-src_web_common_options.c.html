@@ -99,44 +99,44 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_color_filter_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_color_filter_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_color_filter (void )</a></h2>
-<p class="Pp">Definition at line <b>74</b> of file
+<p class="Pp">Definition at line <b>70</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>74                            {
-75   return GET_OPTION(color_filter);
-76 }</pre>
+<pre>70                            {
+71   return GET_OPTION(color_filter);
+72 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_color_mode_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_color_mode_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_color_mode (void )</a></h2>
-<p class="Pp">Definition at line <b>59</b> of file
+<p class="Pp">Definition at line <b>55</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>59                          {
-60   return GET_OPTION(color_mode);
-61 }</pre>
+<pre>55                          {
+56   return GET_OPTION(color_mode);
+57 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_flip_x_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_flip_x_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_flip_x (void )</a></h2>
-<p class="Pp">Definition at line <b>146</b> of file
+<p class="Pp">Definition at line <b>142</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>146                      {
-147   return GET_OPTION(flip_x) ? 1 : 0;
-148 }</pre>
+<pre>142                      {
+143   return GET_OPTION(flip_x) ? 1 : 0;
+144 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_height_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_height_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_height (void )</a></h2>
-<p class="Pp">Definition at line <b>44</b> of file
+<p class="Pp">Definition at line <b>40</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>44                      {
-45   return GET_OPTION(height);
-46 }</pre>
+<pre>40                      {
+41   return GET_OPTION(height);
+42 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -152,14 +152,14 @@
 <i>option_name</i> The long name of the option</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Help text string or NULL if not applicable</div>
-<p class="Pp">Definition at line <b>195</b> of file
+<p class="Pp">Definition at line <b>189</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>195                                                              {
-196   if (!option_name || !option_name[0])
-197     return NULL;
-198   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
-199   return options_get_help_text(mode_enum, option_name);
-200 }</pre>
+<pre>189                                                              {
+190   if (!option_name || !option_name[0])
+191     return NULL;
+192   asciichat_mode_t mode_enum = (asciichat_mode_t)mode;
+193   return options_get_help_text(mode_enum, option_name);
+194 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_get_help_text()</b>.</p>
@@ -167,78 +167,78 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_matrix_rain_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_matrix_rain_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_matrix_rain (void )</a></h2>
-<p class="Pp">Definition at line <b>131</b> of file
+<p class="Pp">Definition at line <b>127</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>131                           {
-132   return GET_OPTION(matrix_rain) ? 1 : 0;
-133 }</pre>
+<pre>127                           {
+128   return GET_OPTION(matrix_rain) ? 1 : 0;
+129 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_palette_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_palette_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_palette (void )</a></h2>
-<p class="Pp">Definition at line <b>103</b> of file
+<p class="Pp">Definition at line <b>99</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>103                       {
-104   return GET_OPTION(palette_type);
-105 }</pre>
+<pre>99                       {
+100   return GET_OPTION(palette_type);
+101 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_const_char_*_get_palette_chars_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_const_char_*_get_palette_chars_(void_)">EMSCRIPTEN_KEEPALIVE
   const char * get_palette_chars (void )</a></h2>
-<p class="Pp">Definition at line <b>116</b> of file
+<p class="Pp">Definition at line <b>112</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>116                                     {
-117   return GET_OPTION(palette_custom);
-118 }</pre>
+<pre>112                                     {
+113   return GET_OPTION(palette_custom);
+114 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_render_mode_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_render_mode_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_render_mode (void )</a></h2>
-<p class="Pp">Definition at line <b>161</b> of file
+<p class="Pp">Definition at line <b>157</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>161                           {
-162   return GET_OPTION(render_mode);
-163 }</pre>
+<pre>157                           {
+158   return GET_OPTION(render_mode);
+159 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_target_fps_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_target_fps_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_target_fps (void )</a></h2>
-<p class="Pp">Definition at line <b>178</b> of file
+<p class="Pp">Definition at line <b>172</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>178                          {
-179   return GET_OPTION(fps);
-180 }</pre>
+<pre>172                          {
+173   return GET_OPTION(fps);
+174 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_get_width_(void_)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_get_width_(void_)">EMSCRIPTEN_KEEPALIVE
   int get_width (void )</a></h2>
-<p class="Pp">Definition at line <b>31</b> of file
+<p class="Pp">Definition at line <b>29</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>31                     {
-32   return GET_OPTION(width);
-33 }</pre>
+<pre>29                     {
+30   return GET_OPTION(width);
+31 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_color_filter_(int_filter)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_color_filter_(int_filter)">EMSCRIPTEN_KEEPALIVE
   int set_color_filter (int filter)</a></h2>
-<p class="Pp">Definition at line <b>68</b> of file
+<p class="Pp">Definition at line <b>64</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>68                                  {
-69   asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
-70   return (err == ASCIICHAT_OK) ? 0 : -1;
-71 }</pre>
+<pre>64                                  {
+65   asciichat_error_t err = options_set_int(&quot;color_filter&quot;, filter);
+66   return (err == ASCIICHAT_OK) ? 0 : -1;
+67 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>.</p>
@@ -246,12 +246,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_color_mode_(int_mode)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_color_mode_(int_mode)">EMSCRIPTEN_KEEPALIVE
   int set_color_mode (int mode)</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file
+<p class="Pp">Definition at line <b>49</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>53                              {
-54   asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
-55   return (err == ASCIICHAT_OK) ? 0 : -1;
-56 }</pre>
+<pre>49                              {
+50   asciichat_error_t err = options_set_int(&quot;color_mode&quot;, mode);
+51   return (err == ASCIICHAT_OK) ? 0 : -1;
+52 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>.</p>
@@ -259,12 +259,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_flip_x_(int_enabled)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_flip_x_(int_enabled)">EMSCRIPTEN_KEEPALIVE
   int set_flip_x (int enabled)</a></h2>
-<p class="Pp">Definition at line <b>140</b> of file
+<p class="Pp">Definition at line <b>136</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>140                             {
-141   asciichat_error_t err = options_set_bool(&quot;flip_x&quot;, enabled != 0);
-142   return (err == ASCIICHAT_OK) ? 0 : -1;
-143 }</pre>
+<pre>136                             {
+137   asciichat_error_t err = options_set_bool(&quot;flip_x&quot;, enabled != 0);
+138   return (err == ASCIICHAT_OK) ? 0 : -1;
+139 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>enabled</b>, and <b>options_set_bool()</b>.</p>
@@ -272,14 +272,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_height_(int_value)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_height_(int_value)">EMSCRIPTEN_KEEPALIVE
   int set_height (int value)</a></h2>
-<p class="Pp">Definition at line <b>36</b> of file
+<p class="Pp">Definition at line <b>34</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>36                           {
-37   if (value &lt;= 0 || value &gt; 1000)
-38     return -1;
-39   asciichat_error_t err = options_set_int(&quot;height&quot;, value);
-40   return (err == ASCIICHAT_OK) ? 0 : -1;
-41 }</pre>
+<pre>34                           {
+35   asciichat_error_t err = options_set_int(&quot;height&quot;, value);
+36   return (err == ASCIICHAT_OK) ? 0 : -1;
+37 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>.</p>
@@ -287,12 +285,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_matrix_rain_(int_enabled)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_matrix_rain_(int_enabled)">EMSCRIPTEN_KEEPALIVE
   int set_matrix_rain (int enabled)</a></h2>
-<p class="Pp">Definition at line <b>125</b> of file
+<p class="Pp">Definition at line <b>121</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>125                                  {
-126   asciichat_error_t err = options_set_bool(&quot;matrix_rain&quot;, enabled != 0);
-127   return (err == ASCIICHAT_OK) ? 0 : -1;
-128 }</pre>
+<pre>121                                  {
+122   asciichat_error_t err = options_set_bool(&quot;matrix_rain&quot;, enabled != 0);
+123   return (err == ASCIICHAT_OK) ? 0 : -1;
+124 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>enabled</b>, and <b>options_set_bool()</b>.</p>
@@ -300,26 +298,26 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_palette_(const_char_*_palette_name)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_palette_(const_char_*_palette_name)">EMSCRIPTEN_KEEPALIVE
   int set_palette (const char * palette_name)</a></h2>
-<p class="Pp">Definition at line <b>83</b> of file
+<p class="Pp">Definition at line <b>79</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>83                                           {
-84   if (!palette_name)
-85     return -1;
-86 
-87   palette_type_t palette_value;
-88   char *error_msg = NULL;
-89 
-90   if (!parse_palette_type(palette_name, &amp;palette_value, &amp;error_msg)) {
-91     if (error_msg) {
-92       log_error(&quot;Failed to parse palette '%s': %s&quot;, palette_name, error_msg);
-93       free(error_msg);
-94     }
-95     return -1;
-96   }
-97 
-98   asciichat_error_t err = options_set_int(&quot;palette_type&quot;, (int)palette_value);
-99   return (err == ASCIICHAT_OK) ? 0 : -1;
-100 }</pre>
+<pre>79                                           {
+80   if (!palette_name)
+81     return -1;
+82 
+83   palette_type_t palette_value;
+84   char *error_msg = NULL;
+85 
+86   if (!parse_palette_type(palette_name, &amp;palette_value, &amp;error_msg)) {
+87     if (error_msg) {
+88       log_error(&quot;Failed to parse palette '%s': %s&quot;, palette_name, error_msg);
+89       free(error_msg);
+90     }
+91     return -1;
+92   }
+93 
+94   asciichat_error_t err = options_set_int(&quot;palette_type&quot;, (int)palette_value);
+95   return (err == ASCIICHAT_OK) ? 0 : -1;
+96 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>, and
@@ -328,14 +326,14 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_palette_chars_(const_char_*_chars)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_palette_chars_(const_char_*_chars)">EMSCRIPTEN_KEEPALIVE
   int set_palette_chars (const char * chars)</a></h2>
-<p class="Pp">Definition at line <b>108</b> of file
+<p class="Pp">Definition at line <b>104</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>108                                          {
-109   if (!chars)
-110     return -1;
-111   asciichat_error_t err = options_set_string(&quot;palette_custom&quot;, chars);
-112   return (err == ASCIICHAT_OK) ? 0 : -1;
-113 }</pre>
+<pre>104                                          {
+105   if (!chars)
+106     return -1;
+107   asciichat_error_t err = options_set_string(&quot;palette_custom&quot;, chars);
+108   return (err == ASCIICHAT_OK) ? 0 : -1;
+109 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_string()</b>.</p>
@@ -343,12 +341,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_render_mode_(int_mode)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_render_mode_(int_mode)">EMSCRIPTEN_KEEPALIVE
   int set_render_mode (int mode)</a></h2>
-<p class="Pp">Definition at line <b>155</b> of file
+<p class="Pp">Definition at line <b>151</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>155                               {
-156   asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
-157   return (err == ASCIICHAT_OK) ? 0 : -1;
-158 }</pre>
+<pre>151                               {
+152   asciichat_error_t err = options_set_int(&quot;render_mode&quot;, mode);
+153   return (err == ASCIICHAT_OK) ? 0 : -1;
+154 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>.</p>
@@ -356,14 +354,12 @@
 <section class="Ss">
 <h2 class="Ss" id="EMSCRIPTEN_KEEPALIVE_int_set_target_fps_(int_fps)"><a class="permalink" href="#EMSCRIPTEN_KEEPALIVE_int_set_target_fps_(int_fps)">EMSCRIPTEN_KEEPALIVE
   int set_target_fps (int fps)</a></h2>
-<p class="Pp">Definition at line <b>170</b> of file
+<p class="Pp">Definition at line <b>166</b> of file
     <b>src/web/common/options.c</b>.</p>
-<pre>170                             {
-171   if (fps &lt; 15 || fps &gt; 60)
-172     return -1;
-173   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
-174   return (err == ASCIICHAT_OK) ? 0 : -1;
-175 }</pre>
+<pre>166                             {
+167   asciichat_error_t err = options_set_int(&quot;fps&quot;, fps);
+168   return (err == ASCIICHAT_OK) ? 0 : -1;
+169 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>.</p>
@@ -374,11 +370,9 @@
 <p class="Pp">Definition at line <b>23</b> of file
     <b>src/web/common/options.c</b>.</p>
 <pre>23                          {
-24   if (value &lt;= 0 || value &gt; 1000)
-25     return -1;
-26   asciichat_error_t err = options_set_int(&quot;width&quot;, value);
-27   return (err == ASCIICHAT_OK) ? 0 : -1;
-28 }</pre>
+24   asciichat_error_t err = options_set_int(&quot;width&quot;, value);
+25   return (err == ASCIICHAT_OK) ? 0 : -1;
+26 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>options_set_int()</b>.</p>

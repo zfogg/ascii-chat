@@ -17,21 +17,21 @@
     code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
       font-family: inherit; }
   </style>
-  <title>double_field_ctx_t(3)</title>
+  <title>field_option_map_t(3)</title>
 </head>
 <body>
 <table class="head">
   <tr>
-    <td class="head-ltitle">double_field_ctx_t(3)</td>
+    <td class="head-ltitle">field_option_map_t(3)</td>
     <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">double_field_ctx_t(3)</td>
+    <td class="head-rtitle">field_option_map_t(3)</td>
   </tr>
 </table>
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">double_field_ctx_t - Context for double field updates in RCU
-    updater callback.</p>
+<p class="Pp">field_option_map_t - Field name to registry option name
+  mapping.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -40,11 +40,12 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">const char * <b>field_name</b>
+<p class="Pp">const char * <b>field</b>
   <br/>
-  Name of the field to update. double <b>value</b>
+  C struct field name (e.g., <i>color_mode&quot;).</i> const char *
+    <b>option</b>
   <br/>
-  New value to set.
+  Registry option name (e.g., <i>color-mode&quot;).</i>
   <br/>
 </p>
 </section>
@@ -52,23 +53,30 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Context for double field updates in RCU updater callback.</p>
-<p class="Pp">Definition at line <b>1113</b> of file <b>rcu.c</b>.</p>
+<p class="Pp">Field name to registry option name mapping.</p>
+<p class="Pp">Maps C struct field names (underscores) to registry option names
+    (hyphens). Some names don't map by simple substitution:</p>
+<ul class="Bl-bullet">
+  <li>discovery_port &#x2192; discovery-service-port</li>
+  <li>palette_type &#x2192; palette</li>
+  <li>reconnect_attempts &#x2192; reconnect</li>
+</ul>
+<p class="Pp">Definition at line <b>560</b> of file <b>rcu.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="const_char*_double_field_ctx_t::field_name"><a class="permalink" href="#const_char*_double_field_ctx_t::field_name">const
-  char* double_field_ctx_t::field_name</a></h2>
-<p class="Pp">Name of the field to update.</p>
-<p class="Pp">Definition at line <b>1114</b> of file <b>rcu.c</b>.</p>
+<h2 class="Ss" id="const_char*_field_option_map_t::field"><a class="permalink" href="#const_char*_field_option_map_t::field">const
+  char* field_option_map_t::field</a></h2>
+<p class="Pp">C struct field name (e.g., &quot;color_mode&quot;).</p>
+<p class="Pp">Definition at line <b>561</b> of file <b>rcu.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="double_double_field_ctx_t::value"><a class="permalink" href="#double_double_field_ctx_t::value">double
-  double_field_ctx_t::value</a></h2>
-<p class="Pp">New value to set.</p>
-<p class="Pp">Definition at line <b>1115</b> of file <b>rcu.c</b>.</p>
+<h2 class="Ss" id="const_char*_field_option_map_t::option"><a class="permalink" href="#const_char*_field_option_map_t::option">const
+  char* field_option_map_t::option</a></h2>
+<p class="Pp">Registry option name (e.g., &quot;color-mode&quot;).</p>
+<p class="Pp">Definition at line <b>562</b> of file <b>rcu.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

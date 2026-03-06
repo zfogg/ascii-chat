@@ -6,12 +6,6 @@
     "sourcePath": "lib/audio/client_pipeline.cpp"
   },
   {
-    "name": "_random_state_t",
-    "title": "_random_state_t",
-    "file": "ascii-chat-_random_state_t.html",
-    "sourcePath": "lib/musl_c23_compat.c"
-  },
-  {
     "name": "acds_client.c",
     "title": "acds_client.c",
     "file": "ascii-chat-acds_client.c.html",
@@ -786,12 +780,6 @@
     "sourcePath": "lib/options/enums.c"
   },
   {
-    "name": "enum_to_string_entry_t",
-    "title": "enum_to_string_entry_t",
-    "file": "ascii-chat-enum_to_string_entry_t.html",
-    "sourcePath": "lib/options/enums.c"
-  },
-  {
     "name": "enums.c",
     "title": "enums.c",
     "file": "ascii-chat-enums.c.html",
@@ -850,6 +838,12 @@
     "title": "ffmpeg_encoder_s",
     "file": "ascii-chat-ffmpeg_encoder_s.html",
     "sourcePath": "lib/media/ffmpeg_encoder.c"
+  },
+  {
+    "name": "field_option_map_t",
+    "title": "field_option_map_t",
+    "file": "ascii-chat-field_option_map_t.html",
+    "sourcePath": "lib/options/rcu.c"
   },
   {
     "name": "filesystem.c",
