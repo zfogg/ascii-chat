@@ -85,13 +85,11 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
- * Write value completion case blocks for enum and boolean options
+ * Write value completion case blocks for enum, boolean, and device index options
  *
- * Generates case arms that intercept when completing after an enum option:
+ * Generates case arms that intercept when completing after an option:
  *   --color-mode) _values 'color mode' auto none 16 256 truecolor; return ;;
- *   --color-mode=*) _values 'color mode' auto none 16 256 truecolor; return ;;
- *
- * And for boolean options:
+ *   --webcam-index) _ascii_chat_webcam_indices; return ;;
  *   --audio) _values 'value' true false; return ;;
  */
 static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts, size_t count) {
@@ -104,8 +102,18 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
     // Skip action options (they take no value)
     if (opts[i].type == OPTION_TYPE_ACTION) continue;
 
+    // Device index options: call helper functions
+    if (strcmp(opts[i].long_name, "webcam-index") == 0) {
+      fprintf(output, "    --%-30s) _ascii_chat_webcam_indices; return ;;\n", opts[i].long_name);
+    }
+    else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
+      fprintf(output, "    --%-30s) _ascii_chat_microphone_indices; return ;;\n", opts[i].long_name);
+    }
+    else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
+      fprintf(output, "    --%-30s) _ascii_chat_speakers_indices; return ;;\n", opts[i].long_name);
+    }
     // Enum options: emit value completion
-    if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
+    else if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
       fprintf(output, "    --%-30s) _values '%s'", opts[i].long_name, opts[i].long_name);
 
       for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
@@ -121,11 +129,18 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
 
   fprintf(output, "  esac\n\n");
 
-  // Also handle --option=VALUE form
+  // Also handle --option=VALUE form (device indices don't support this form)
   fprintf(output, "  case \"${words[CURRENT]}\" in\n");
 
   for (size_t i = 0; i < count; i++) {
     if (opts[i].type == OPTION_TYPE_ACTION) continue;
+
+    // Skip device index options (they don't support =VALUE form)
+    if (strcmp(opts[i].long_name, "webcam-index") == 0 ||
+        strcmp(opts[i].long_name, "microphone-index") == 0 ||
+        strcmp(opts[i].long_name, "speakers-index") == 0) {
+      continue;
+    }
 
     if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
       fprintf(output, "    '--%-30s=*') _values '%s'", opts[i].long_name, opts[i].long_name);
@@ -202,6 +217,40 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "# when the typed string doesn't match exactly (e.g., --colr-mode -> --color-mode)\n"
                   "zstyle ':completion:*:ascii-chat:*' completer _complete _approximate\n"
                   "zstyle ':completion:*:ascii-chat:*:approximate:*' max-errors 2 numeric\n"
+                  "\n"
+                  "# Device index completion helpers\n"
+                  "_ascii_chat_webcam_indices() {\n"
+                  "  local -a indices\n"
+                  "  local output\n"
+                  "  output=$(\"${words[1]}\" --list-webcams 2>/dev/null) || return\n"
+                  "  while IFS= read -r line; do\n"
+                  "    [[ \"$line\" =~ ^[[:space:]]*([0-9]+)[[:space:]]+(.+)$ ]] && \\\n"
+                  "      indices+=(\"${match[1]}:${match[2]}\")\n"
+                  "  done <<< \"$output\"\n"
+                  "  _describe 'webcam' indices\n"
+                  "}\n"
+                  "\n"
+                  "_ascii_chat_microphone_indices() {\n"
+                  "  local -a indices\n"
+                  "  local output\n"
+                  "  output=$(\"${words[1]}\" --list-microphones 2>/dev/null) || return\n"
+                  "  while IFS= read -r line; do\n"
+                  "    [[ \"$line\" =~ ^[[:space:]]*([0-9-]+)[[:space:]]+(.+)$ ]] && \\\n"
+                  "      indices+=(\"${match[1]}:${match[2]}\")\n"
+                  "  done <<< \"$output\"\n"
+                  "  _describe 'microphone' indices\n"
+                  "}\n"
+                  "\n"
+                  "_ascii_chat_speakers_indices() {\n"
+                  "  local -a indices\n"
+                  "  local output\n"
+                  "  output=$(\"${words[1]}\" --list-speakers 2>/dev/null) || return\n"
+                  "  while IFS= read -r line; do\n"
+                  "    [[ \"$line\" =~ ^[[:space:]]*([0-9-]+)[[:space:]]+(.+)$ ]] && \\\n"
+                  "      indices+=(\"${match[1]}:${match[2]}\")\n"
+                  "  done <<< \"$output\"\n"
+                  "  _describe 'speakers' indices\n"
+                  "}\n"
                   "\n"
                   "_ascii_chat_binary() {\n"
                   "  local -a binary_opts=(\n");
