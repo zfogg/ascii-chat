@@ -95,9 +95,9 @@ void log_io_stop(log_io_t capture, const char *prefix) {
         // Log the line if it's not empty
         if (line_start[0] != '\0') {
           if (prefix) {
-            log_info("[%s] %s", prefix, line_start);
+            log_debug("[%s] %s", prefix, line_start);
           } else {
-            log_info("%s", line_start);
+            log_debug("%s", line_start);
           }
         }
 
@@ -108,9 +108,9 @@ void log_io_stop(log_io_t capture, const char *prefix) {
       // Log any remaining partial line
       if (line_start[0] != '\0') {
         if (prefix) {
-          log_info("[%s] %s", prefix, line_start);
+          log_debug("[%s] %s", prefix, line_start);
         } else {
-          log_info("%s", line_start);
+          log_debug("%s", line_start);
         }
       }
     }
