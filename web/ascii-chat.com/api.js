@@ -263,7 +263,7 @@ function getFileContentWithLineNumbers(pageName, fileName) {
 }
 
 // Find snippets around matches (centered on match)
-function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
+function findSnippets(text, query, maxSnippets = 3, lineNumbers = null, flags = "i") {
   const allLines = text.split("\n");
   let lines = allLines;
   let actualLineNumbers = lineNumbers;
@@ -285,7 +285,7 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
   let totalMatches = 0;
 
   try {
-    const regex = new RegExp(query, "i");
+    const regex = new RegExp(query, flags);
 
     for (let i = 0; i < lines.length; i++) {
       if (regex.test(lines[i])) {
@@ -355,7 +355,26 @@ app.get("/api/man3/search", limiter, (req, res) => {
   }
 
   try {
-    const regex = new RegExp(query, "i");
+    // Parse regex format: /pattern/flags or literal string
+    let regex;
+    let regexForSnippets;
+    let snippetsFlags;
+    const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
+
+    if (regexMatch) {
+      // Extract pattern and flags from /pattern/flags format
+      const pattern = regexMatch[1];
+      const flags = regexMatch[2] || "i";
+      regex = new RegExp(pattern, flags);
+      regexForSnippets = pattern;
+      snippetsFlags = flags;
+    } else {
+      // Treat as literal string with case-insensitive flag
+      regex = new RegExp(query, "i");
+      regexForSnippets = query;
+      snippetsFlags = "i";
+    }
+
     const results = [];
 
     if (!indexCache) {
@@ -380,9 +399,10 @@ app.get("/api/man3/search", limiter, (req, res) => {
       );
       const { snippets, totalMatches } = findSnippets(
         content,
-        query,
+        regexForSnippets,
         3,
         lineNumbers,
+        snippetsFlags,
       );
 
       results.push({
@@ -409,9 +429,10 @@ app.get("/api/man3/search", limiter, (req, res) => {
       );
       const { snippets, totalMatches } = findSnippets(
         content,
-        query,
+        regexForSnippets,
         3,
         lineNumbers,
+        snippetsFlags,
       );
 
       if (snippets.length > 0) {

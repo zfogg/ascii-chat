@@ -145,6 +145,66 @@ export default function Man3() {
     }
   }, [selectedPageContent]);
 
+  // Transform Functions section into a table using DOM
+  useEffect(() => {
+    const functionsHeading = document.getElementById("Functions");
+    if (!functionsHeading) return;
+
+    // Find the P tag with functions
+    let pTag = functionsHeading.nextElementSibling;
+    while (pTag && pTag.tagName !== "P") {
+      pTag = pTag.nextElementSibling;
+    }
+
+    if (!pTag || !pTag.textContent.includes("(")) return;
+
+    // Split the HTML by <br> tags
+    const html = pTag.innerHTML;
+    const sections = html.split(/<br\s*\/?>/i);
+
+    const rows = [];
+
+    // Process sections in pairs: signature + description
+    for (let i = 0; i < sections.length - 1; i += 2) {
+      const sig = sections[i].trim();
+      const desc = i + 1 < sections.length ? sections[i + 1].trim() : "";
+
+      if (!sig) continue;
+
+      // Check if sig section looks like a function signature
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = sig;
+      const sigText = tempDiv.textContent.trim();
+
+      // It's a signature if it contains parentheses and likely starts with a type or contains a bold function name
+      if (sigText.includes("(") && sigText.includes(")")) {
+        rows.push({
+          signature: sig,
+          description: desc,
+        });
+      }
+    }
+
+    // Build table from parsed rows
+    if (rows.length === 0) return;
+
+    const tbody = document.createElement("tbody");
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td class="man-data-field-type" style="font-family: monospace; font-size: 0.85em; word-break: break-word;">${row.signature}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tbody.appendChild(tr);
+    }
+
+    if (tbody.children.length > 0) {
+      const table = document.createElement("table");
+      table.className = "man-data-fields-table";
+      table.appendChild(tbody);
+      pTag.innerHTML = "";
+      pTag.appendChild(table);
+    }
+  }, [selectedPageContent]);
+
   // Helper function to process HTML content: convert URLs and highlight matches
   const processPageContent = useCallback((html, searchQuery) => {
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
@@ -1590,14 +1650,27 @@ export default function Man3() {
               <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-4 mt-2">
                 <p className="text-xs text-gray-500 text-center lg:text-left">
                   Regex search (default case-insensitive). Examples:{" "}
-                  <code className="bg-gray-800 px-1 rounded">socket</code>,{" "}
-                  <code className="bg-gray-800 px-1 rounded">
+                  <code
+                    onClick={() => setSearchQuery("socket_t")}
+                    className="bg-gray-800 px-1 rounded cursor-pointer underline hover:bg-gray-700 hover:text-gray-100 transition-colors"
+                  >
+                    socket_t
+                  </code>
+                  ,{" "}
+                  <code
+                    onClick={() => setSearchQuery("error|crypto")}
+                    className="bg-gray-800 px-1 rounded cursor-pointer underline hover:bg-gray-700 hover:text-gray-100 transition-colors"
+                  >
                     error|crypto
                   </code>
                   , or{" "}
-                  <code className="bg-gray-800 px-1 rounded">
+                  <code
+                    onClick={() => setSearchQuery("/^socket$/gi")}
+                    className="bg-gray-800 px-1 rounded cursor-pointer underline hover:bg-gray-700 hover:text-gray-100 transition-colors"
+                  >
                     /^socket$/gi
-                  </code>{" "}
+                  </code>
+                  {" "}
                   for flags
                 </p>
                 <p className="text-xs text-gray-500 text-center text-right self-end">
@@ -1669,12 +1742,12 @@ export default function Man3() {
                               window.location.hash = "";
                               loadPageContent(page.name);
                             }}
-                            className="w-full text-left px-4 py-3 block cursor-pointer hover:text-purple-200 transition-colors"
+                            className="w-full text-left px-4 py-3 block cursor-pointer transition-colors"
                           >
-                            <div className="font-mono text-sm font-semibold truncate text-purple-300">
+                            <div className="font-mono text-sm font-semibold truncate text-purple-300 underline hover:text-purple-100">
                               {page.highlightedName}
                             </div>
-                            <div className="text-xs text-gray-400 mt-1 line-clamp-2">
+                            <div className="text-xs text-gray-400 mt-1 line-clamp-2 hover:text-gray-300">
                               {page.highlightedTitle}
                             </div>
                           </button>
