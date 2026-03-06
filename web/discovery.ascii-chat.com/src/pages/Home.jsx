@@ -8,10 +8,11 @@ import {
   Button,
   Link,
 } from "@ascii-chat/shared/components";
-import { fetchSessionStrings } from "@ascii-chat/shared/utils";
+import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
 
 function Home() {
+  useScrollToHash(100);
   const [sshKey, setSshKey] = useState("");
   const [gpgKey, setGpgKey] = useState("");
   const [baseUrl] = useState(() => window.location.origin);
@@ -113,7 +114,9 @@ function Home() {
             </Link>
             , a real-time terminal-based video chat application. ACDS enables
             session discovery using memorable three-word strings like{" "}
-            <code className="bg-gray-800 px-1 rounded">{sessionStrings[0]}</code>{" "}
+            <code className="bg-gray-800 px-1 rounded">
+              {sessionStrings[0]}
+            </code>{" "}
             instead of IP addresses. It provides NAT traversal, WebRTC
             signaling, and peer-to-peer connection establishment.
           </p>

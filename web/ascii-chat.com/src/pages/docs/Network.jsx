@@ -6,6 +6,7 @@ import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Network() {
+  useScrollToHash(100);
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -34,10 +35,10 @@ export default function Network() {
 
           {/* ACIP Protocol Overview */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-cyan-400">⚡ ACIP Protocol</h2>
+            <AnchoredHeading level={2} className="heading-2 text-cyan-400">⚡ ACIP Protocol</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">What is ACIP?</h3>
+              <AnchoredHeading level={3} className="heading-3 text-teal-300 mb-3">What is ACIP?</AnchoredHeading>
               <p className="docs-paragraph">
                 ACIP (ascii-chat Internet Protocol) is a custom binary protocol
                 designed specifically for low-latency, encrypted terminal-based
@@ -70,7 +71,7 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">Packet Types</h3>
+              <AnchoredHeading level={3} className="heading-3 text-purple-300 mb-3">Packet Types</AnchoredHeading>
               <div className="space-y-4">
                 {/* Type 1: Protocol Negotiation */}
                 <div className="card-standard accent-blue">
@@ -543,7 +544,7 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">Compression</h3>
+              <AnchoredHeading level={3} className="heading-3 text-pink-300 mb-3">Compression</AnchoredHeading>
               <p className="docs-paragraph">
                 Frames use zstd compression (configurable levels 1-9) to reduce
                 bandwidth. Large frames are automatically compressed. RLE
@@ -554,7 +555,7 @@ export default function Network() {
 
           {/* Connection Flow */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-yellow-400">🔗 Connection Flow</h2>
+            <AnchoredHeading level={2} className="heading-2 text-yellow-400">🔗 Connection Flow</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-yellow-300 mb-3">
@@ -679,7 +680,7 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-red-300 mb-3">Instant Failover</h3>
+              <AnchoredHeading level={3} className="heading-3 text-red-300 mb-3">Instant Failover</AnchoredHeading>
               <p className="docs-paragraph">
                 Host broadcasts backup address every 30-60 seconds. If host
                 dies:
@@ -762,7 +763,7 @@ export default function Network() {
             </h2>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">What is ACDS?</h3>
+              <AnchoredHeading level={3} className="heading-3 text-pink-300 mb-3">What is ACDS?</AnchoredHeading>
               <p className="docs-paragraph">
                 ascii-chat Discovery Service (ACDS) is a rendezvous server that
                 helps clients find each other using memorable session strings.
@@ -774,7 +775,7 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">Session Strings</h3>
+              <AnchoredHeading level={3} className="heading-3 text-teal-300 mb-3">Session Strings</AnchoredHeading>
               <p className="docs-paragraph">
                 Format: <code className="code-inline">adjective-noun-noun</code>
               </p>
@@ -819,10 +820,10 @@ export default function Network() {
 
           {/* NAT Traversal */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-orange-400">🌍 NAT Traversal</h2>
+            <AnchoredHeading level={2} className="heading-2 text-orange-400">🌍 NAT Traversal</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-yellow-300 mb-3">UPnP & NAT-PMP</h3>
+              <AnchoredHeading level={3} className="heading-3 text-yellow-300 mb-3">UPnP & NAT-PMP</AnchoredHeading>
               <p className="docs-paragraph">
                 Works on ~70% of home routers. Automatic port forwarding enables
                 direct TCP connections (lowest latency).
@@ -830,7 +831,7 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">WebRTC STUN/TURN</h3>
+              <AnchoredHeading level={3} className="heading-3 text-cyan-300 mb-3">WebRTC STUN/TURN</AnchoredHeading>
               <p className="docs-paragraph">
                 <strong>STUN:</strong> Discovers public IP:port mapping
                 <br />
@@ -855,7 +856,7 @@ export default function Network() {
 
           {/* Troubleshooting */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-yellow-400">🔧 Troubleshooting</h2>
+            <AnchoredHeading level={2} className="heading-2 text-yellow-400">🔧 Troubleshooting</AnchoredHeading>
 
             <div className="space-y-3">
               <div className="card-standard accent-red">

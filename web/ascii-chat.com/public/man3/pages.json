@@ -357,7 +357,7 @@
     "name": "client_main.c",
     "title": "main.c",
     "file": "ascii-chat-client_main.c.html",
-    "sourcePath": "src/server/main.c"
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "client_main.h",
@@ -669,7 +669,7 @@
     "name": "discovery-service_main.c",
     "title": "main.c",
     "file": "ascii-chat-discovery-service_main.c.html",
-    "sourcePath": "src/server/main.c"
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "discovery-service_main.h",
@@ -711,7 +711,7 @@
     "name": "discovery_main.c",
     "title": "main.c",
     "file": "ascii-chat-discovery_main.c.html",
-    "sourcePath": "src/server/main.c"
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "discovery_main.h",
@@ -1389,7 +1389,7 @@
     "name": "main.c",
     "title": "main.c",
     "file": "ascii-chat-main.c.html",
-    "sourcePath": "src/server/main.c"
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "main.cpp",
@@ -1485,7 +1485,7 @@
     "name": "mirror_main.c",
     "title": "main.c",
     "file": "ascii-chat-mirror_main.c.html",
-    "sourcePath": "src/server/main.c"
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "mirror_main.h",
@@ -2163,7 +2163,7 @@
     "name": "server_main.c",
     "title": "main.c",
     "file": "ascii-chat-server_main.c.html",
-    "sourcePath": "src/server/main.c"
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "server_main.h",
@@ -2668,6 +2668,12 @@
     "title": "string_field_ctx_t",
     "file": "ascii-chat-string_field_ctx_t.html",
     "sourcePath": "lib/options/rcu.c"
+  },
+  {
+    "name": "strings_main.c",
+    "title": "main.c",
+    "file": "ascii-chat-strings_main.c.html",
+    "sourcePath": "src/strings/main.c"
   },
   {
     "name": "stun.c",

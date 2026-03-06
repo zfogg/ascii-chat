@@ -4,6 +4,8 @@ import { fetchSessionStrings } from "@ascii-chat/shared/utils";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
+import AnchoredHeading from "../components/AnchoredHeading";
+import { useScrollToHash } from "../utils/anchors";
 
 export default function Home() {
   const [sessionStrings, setSessionStrings] = useState([
@@ -16,6 +18,8 @@ export default function Home() {
     "online-fame-standby",
     "irritable-cappuccino-smoke",
   ]);
+
+  useScrollToHash(100);
 
   useEffect(() => {
     // Fetch multiple session strings for different examples
@@ -55,9 +59,9 @@ export default function Home() {
 
           {/* Installation */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-teal-400 mb-4 sm:mb-6 border-b border-teal-900/50 pb-2">
+            <AnchoredHeading level={2} className="text-2xl sm:text-3xl font-bold text-teal-400 mb-4 sm:mb-6 border-b border-teal-900/50 pb-2">
               📦 Installation
-            </h2>
+            </AnchoredHeading>
 
             <div className="space-y-6">
               <div>

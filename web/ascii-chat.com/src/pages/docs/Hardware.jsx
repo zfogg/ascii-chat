@@ -6,6 +6,7 @@ import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 
 export default function Hardware() {
+  useScrollToHash(100);
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -34,7 +35,7 @@ export default function Hardware() {
 
           {/* Important Notes */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-cyan-400">📌 Important Notes</h2>
+            <AnchoredHeading level={2} className="heading-2 text-cyan-400">📌 Important Notes</AnchoredHeading>
 
             <div className="space-y-3">
               <div className="info-box-info">
@@ -79,7 +80,7 @@ export default function Hardware() {
 
           {/* Webcam Setup */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-purple-400">🎬 Webcam Setup</h2>
+            <AnchoredHeading level={2} className="heading-2 text-purple-400">🎬 Webcam Setup</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-purple-300 mb-3">
@@ -152,7 +153,7 @@ export default function Hardware() {
 
           {/* Audio Setup */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-teal-400">🎙️ Audio Setup</h2>
+            <AnchoredHeading level={2} className="heading-2 text-teal-400">🎙️ Audio Setup</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-teal-300 mb-3">
@@ -258,7 +259,7 @@ export default function Hardware() {
 
           {/* Media Streaming */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-indigo-400">🎥 Media Streaming</h2>
+            <AnchoredHeading level={2} className="heading-2 text-indigo-400">🎥 Media Streaming</AnchoredHeading>
 
             <p className="docs-paragraph mb-6">
               Stream from local files or URLs instead of (or alongside) webcam
@@ -285,7 +286,7 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-blue-300 mb-3">Stream from URLs</h3>
+              <AnchoredHeading level={3} className="heading-3 text-blue-300 mb-3">Stream from URLs</AnchoredHeading>
               <p className="docs-paragraph">
                 Use <code className="text-cyan-300">--url</code> or{" "}
                 <code className="text-cyan-300">-u</code> to stream from web
@@ -301,7 +302,7 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">Playback Control</h3>
+              <AnchoredHeading level={3} className="heading-3 text-cyan-300 mb-3">Playback Control</AnchoredHeading>
               <CodeBlock language="bash">
                 {
                   "# Loop file playback\nascii-chat mirror -f video.mp4 -l\n\n# Start playback paused (toggle with spacebar)\nascii-chat client example.com -f video.mp4 --pause\n\n# Seek to specific timestamp\nascii-chat mirror -f video.mp4 -s 22:10\nascii-chat mirror -f video.mp4 -s 00:30  # MM:SS format\nascii-chat mirror -f video.mp4 -s 1:23:45  # HH:MM:SS format\n\n# Start at specific time and immediately exit (snapshot)\nascii-chat mirror -f video.mp4 -s 5:12 -S -D 0"
@@ -328,10 +329,10 @@ export default function Hardware() {
 
           {/* Display Options */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-yellow-400">🎨 Display Options</h2>
+            <AnchoredHeading level={2} className="heading-2 text-yellow-400">🎨 Display Options</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-yellow-300 mb-3">Render Modes</h3>
+              <AnchoredHeading level={3} className="heading-3 text-yellow-300 mb-3">Render Modes</AnchoredHeading>
               <p className="docs-paragraph">
                 Choose how ASCII characters are rendered (available in client
                 and mirror):
@@ -351,7 +352,7 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">ASCII Palettes</h3>
+              <AnchoredHeading level={3} className="heading-3 text-purple-300 mb-3">ASCII Palettes</AnchoredHeading>
               <p className="docs-paragraph">
                 Control which characters are used to render brightness levels:
               </p>
@@ -380,7 +381,7 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">Aspect Ratio</h3>
+              <AnchoredHeading level={3} className="heading-3 text-teal-300 mb-3">Aspect Ratio</AnchoredHeading>
               <CodeBlock language="bash">
                 {
                   "# Preserve aspect ratio (DEFAULT)\nascii-chat mirror video.mp4\n\n# Allow stretching to fill terminal (may distort image)\nascii-chat mirror --stretch"
@@ -391,7 +392,7 @@ export default function Hardware() {
 
           {/* Keyboard Shortcuts */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-green-400">⌨️ Keyboard Shortcuts</h2>
+            <AnchoredHeading level={2} className="heading-2 text-green-400">⌨️ Keyboard Shortcuts</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-green-300 mb-3">
@@ -473,7 +474,7 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">Video & Effects</h3>
+              <AnchoredHeading level={3} className="heading-3 text-green-300 mb-3">Video & Effects</AnchoredHeading>
               <div className="space-y-3">
                 <div className="card-standard accent-green">
                   <h4 className="text-green-300 font-semibold mb-2">F</h4>
@@ -653,10 +654,10 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
 
           {/* Tips & Tricks */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-blue-400">💡 Tips & Tricks</h2>
+            <AnchoredHeading level={2} className="heading-2 text-blue-400">💡 Tips & Tricks</AnchoredHeading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-blue-300 mb-3">Device Discovery</h3>
+              <AnchoredHeading level={3} className="heading-3 text-blue-300 mb-3">Device Discovery</AnchoredHeading>
               <CodeBlock language="bash">
                 {
                   "# Always list devices first\nascii-chat --list-webcams\nascii-chat --list-microphones\nascii-chat --list-speakers\n\n# Note the indices for your devices\n# Then use them in your commands"
@@ -673,7 +674,7 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">Common Setups</h3>
+              <AnchoredHeading level={3} className="heading-3 text-cyan-300 mb-3">Common Setups</AnchoredHeading>
               <div className="space-y-3">
                 <div className="card-standard accent-cyan">
                   <h4 className="text-cyan-300 font-semibold mb-2">

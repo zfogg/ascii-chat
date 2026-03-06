@@ -6,6 +6,7 @@ import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 
 export default function Crypto() {
+  useScrollToHash(100);
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },

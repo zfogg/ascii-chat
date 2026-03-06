@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html>
+<!-- This is an automatically generated file.  Do not edit.
+   -*- nroff -*-
+ -->
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    table.head, table.foot { width: 100%; }
+    td.head-rtitle, td.foot-os { text-align: right; }
+    td.head-vol { text-align: center; }
+    .Nd, .Bf, .Op { display: inline; }
+    .Pa, .Ad { font-style: italic; }
+    .Ms { font-weight: bold; }
+    .Bl-diag > dt { font-weight: bold; }
+    code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
+      font-family: inherit; }
+  </style>
+  <title>main.c(3)</title>
+</head>
+<body>
+<table class="head">
+  <tr>
+    <td class="head-ltitle">main.c(3)</td>
+    <td class="head-vol">Library Functions Manual</td>
+    <td class="head-rtitle">main.c(3)</td>
+  </tr>
+</table>
+<div class="manual-text">
+<section class="Sh">
+<h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
+<p class="Pp">main.c</p>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
+<br/>
+<p class="Pp">int <b>main</b> (int argc, char *argv[])
+  <br/>
+  <br/>
+</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
+  Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
+  main (int argc, char * argv[])</a></h2>
+<p class="Pp">Definition at line <b>7</b> of file <b>strings/main.c</b>.</p>
+<pre>7                                  {
+8   int count = 1;
+9   static struct option long_options[] = {
+10     {&quot;count&quot;, required_argument, 0, 'n'},
+11     {&quot;help&quot;, no_argument, 0, 'h'},
+12     {0, 0, 0, 0}
+13   };
+14 
+15   int opt;
+16   while ((opt = getopt_long(argc, argv, &quot;n:h&quot;, long_options, NULL)) != -1) {
+17     switch (opt) {
+18       case 'n':
+19         count = atoi(optarg);
+20         break;
+21       case 'h':
+22         printf(&quot;Usage: ascii-chat-strings [-n|--count COUNT]\n&quot;);
+23         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
+24         printf(&quot;\nOptions:\n&quot;);
+25         printf(&quot;  -n, --count COUNT   Generate COUNT session strings (default: 1)\n&quot;);
+26         printf(&quot;  -h, --help          Show this help message\n&quot;);
+27         return 0;
+28       default:
+29         return 1;
+30     }
+31   }
+32 
+33   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
+34     return 1;
+35   }
+36 
+37   // Initialize session string system
+38   asciichat_error_t err = acds_string_init();
+39   if (err != ASCIICHAT_OK) {
+40     return 1;
+41   }
+42 
+43   // Generate session strings
+44   for (int i = 0; i &lt; count; i++) {
+45     char session_string[SESSION_STRING_BUFFER_SIZE];
+46     err = acds_string_generate(session_string, sizeof(session_string));
+47     if (err != ASCIICHAT_OK) {
+48       acds_strings_destroy();
+49       return 1;
+50     }
+51     printf(&quot;%s\n&quot;, session_string);
+52   }
+53 
+54   acds_strings_destroy();
+55   return 0;
+56 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+<p class="Pp">References <b>acds_string_generate()</b>,
+    <b>acds_string_init()</b>, and <b>acds_strings_destroy()</b>.</p>
+</section>
+</section>
+<section class="Sh">
+<h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>
+<p class="Pp">Zachary Fogg &lt;me@zfo.gg&gt;</p>
+</section>
+</div>
+<table class="foot">
+  <tr>
+    <td class="foot-date">Version 0.9.0</td>
+    <td class="foot-os">ascii-chat</td>
+  </tr>
+</table>
+</body>
+</html>
