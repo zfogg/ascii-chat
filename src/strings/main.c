@@ -21,6 +21,11 @@ int main(int argc, char *argv[]) {
         count = atoi(optarg);
         break;
       case 'h':
+        printf("Usage: ascii-chat-strings [-n|--count COUNT]\n");
+        printf("Generate memorable session strings (adjective-noun-noun format)\n");
+        printf("\nOptions:\n");
+        printf("  -n, --count COUNT   Generate COUNT session strings (default: 1, max: 1000)\n");
+        printf("  -h, --help          Show this help message\n");
         return 0;
       default:
         return 1;
