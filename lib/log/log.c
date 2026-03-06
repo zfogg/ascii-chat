@@ -1341,20 +1341,11 @@ static void log_plain_stderr_internal_atomic(const char *fmt, va_list args, bool
     }
   }
 
-  // Apply colorization for TTY output
-  if (terminal_should_color_output(STDERR_FILENO)) {
-    const char *colorized_msg = colorize_log_message(log_buffer);
-    if (add_newline) {
-      safe_fprintf(stderr, "%s\n", colorized_msg);
-    } else {
-      safe_fprintf(stderr, "%s", colorized_msg);
-    }
+  // Write to stderr without colorization (plain output)
+  if (add_newline) {
+    safe_fprintf(stderr, "%s\n", log_buffer);
   } else {
-    if (add_newline) {
-      safe_fprintf(stderr, "%s\n", log_buffer);
-    } else {
-      safe_fprintf(stderr, "%s", log_buffer);
-    }
+    safe_fprintf(stderr, "%s", log_buffer);
   }
   (void)fflush(stderr);
 }
