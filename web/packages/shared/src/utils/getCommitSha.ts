@@ -1,7 +1,7 @@
 export function getCommitSha(): string {
   // Check for Vercel's built-in environment variable first
-  if (typeof process !== "undefined" && process.env?.VERCEL_GIT_COMMIT_SHA) {
-    return process.env.VERCEL_GIT_COMMIT_SHA.substring(0, 8);
+  if (typeof process !== "undefined" && process.env && process.env["VERCEL_GIT_COMMIT_SHA"]) {
+    return process.env["VERCEL_GIT_COMMIT_SHA"].substring(0, 8);
   }
 
   // Fall back to git command for local development (Node.js only)

@@ -4,8 +4,6 @@ import {
   initMirrorWasm,
   convertFrameToAscii,
   isWasmReady,
-  ColorMode as WasmColorMode,
-  ColorFilter as WasmColorFilter,
 } from "../wasm/mirror";
 import {
   setDimensions,
@@ -28,8 +26,6 @@ import {
 import {
   Settings,
   SettingsConfig,
-  ColorMode,
-  ColorFilter,
 } from "../components/Settings";
 import {
   AsciiRenderer,

@@ -21,8 +21,6 @@ declare global {
 }
 import {
   cleanupClientWasm,
-  ColorFilter as ClientColorFilter,
-  ColorMode as ClientColorMode,
   ConnectionState,
   isWasmReady as isClientWasmReady,
   PacketType,
