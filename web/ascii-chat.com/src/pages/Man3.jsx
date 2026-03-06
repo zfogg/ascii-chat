@@ -1778,7 +1778,7 @@ export default function Man3() {
                                         )}
                                       </div>
                                       {/* Code content */}
-                                      <div className="whitespace-pre-wrap break-words flex-1">
+                                      <div className="whitespace-pre-wrap overflow-x-auto flex-1">
                                         {snippetLines.map((line, lineIdx) => {
                                           const cleanedLine = line.replace(
                                             /^\s*\d+\s+/,
