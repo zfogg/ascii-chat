@@ -401,8 +401,8 @@
     <b>discovery_session_t::is_host</b>, <b>discovery_session_t::migration</b>,
     <b>MIGRATION_STATE_COMPLETE</b>, <b>packet_send()</b>,
     <b>discovery_session_t::participant_id</b>, <b>session_host_create()</b>,
-    <b>session_host_start()</b>, <b>discovery_session_t::session_id</b>,
-    <b>SET_ERRNO</b>, and <b>migration_ctx_t::state</b>.</p>
+    <b>session_host_start()</b>, <b>discovery_session_t::session_id</b>, and
+    <b>migration_ctx_t::state</b>.</p>
 <p class="Pp">Referenced by
   <b>discovery_session_handle_host_disconnect()</b>.</p>
 </section>
@@ -585,7 +585,7 @@
     <b>discovery_session_t::participant_ctx</b>,
     <b>discovery_session_t::ring</b>, <b>session_participant_connect()</b>,
     <b>session_participant_create()</b>, <b>session_participant_destroy()</b>,
-    <b>SET_ERRNO</b>, and <b>migration_ctx_t::state</b>.</p>
+    and <b>migration_ctx_t::state</b>.</p>
 <p class="Pp">Referenced by
   <b>discovery_session_handle_host_disconnect()</b>.</p>
 </section>
@@ -721,7 +721,7 @@
     <b>host_liveness_t::ping_in_flight</b>,
     <b>host_liveness_t::ping_interval_ms</b>,
     <b>discovery_config_t::session_string</b>,
-    <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
+    <b>discovery_session_t::session_string</b>,
     <b>discovery_config_t::should_exit_callback</b>,
     <b>discovery_session_t::should_exit_callback</b>,
     <b>discovery_session_t::state</b>, <b>discovery_session_t::stun_count</b>,
@@ -793,9 +793,9 @@
 <p class="Pp">References <b>discovery_session_t::acds_socket</b>,
     <b>discovery_session_t::host_ctx</b>,
     <b>discovery_session_t::participant_ctx</b>,
-    <b>discovery_session_t::peer_manager</b>, <b>SAFE_FREE</b>,
-    <b>session_host_destroy()</b>, <b>session_participant_destroy()</b>,
-    <b>SET_ERRNO</b>, <b>discovery_session_t::stun_count</b>,
+    <b>discovery_session_t::peer_manager</b>, <b>session_host_destroy()</b>,
+    <b>session_participant_destroy()</b>,
+    <b>discovery_session_t::stun_count</b>,
     <b>discovery_session_t::stun_servers</b>,
     <b>discovery_session_t::turn_count</b>,
     <b>discovery_session_t::turn_servers</b>, and
@@ -845,8 +845,8 @@
 <p class="Pp">References <b>ring_consensus_t::future_host_address</b>,
     <b>ring_consensus_t::future_host_connection_type</b>,
     <b>ring_consensus_t::future_host_id</b>,
-    <b>ring_consensus_t::future_host_port</b>, <b>discovery_session_t::ring</b>,
-    and <b>SET_ERRNO</b>.</p>
+    <b>ring_consensus_t::future_host_port</b>, and
+    <b>discovery_session_t::ring</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_host_t</b> * discovery_session_get_host
@@ -867,8 +867,7 @@
 1811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::host_ctx</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>discovery_session_t::host_ctx</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>session_participant_t</b> * discovery_session_get_participant
@@ -889,8 +888,7 @@
 1819 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::participant_ctx</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>discovery_session_t::participant_ctx</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>discovery_state_t</b> discovery_session_get_state (const
@@ -911,7 +909,7 @@
 1779 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>DISCOVERY_STATE_FAILED</b>, <b>SET_ERRNO</b>, and
+<p class="Pp">References <b>DISCOVERY_STATE_FAILED</b>, and
     <b>discovery_session_t::state</b>.</p>
 </section>
 <section class="Ss">
@@ -934,8 +932,7 @@
 1795 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::session_string</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>discovery_session_t::session_string</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_discovery_session_handle_host_disconnect_("><a class="permalink" href="#asciichat_error_t_discovery_session_handle_host_disconnect_(">asciichat_error_t
@@ -1015,7 +1012,7 @@
     <b>MIGRATION_STATE_DETECTED</b>, <b>MIGRATION_STATE_FAILOVER</b>,
     <b>packet_send()</b>, <b>discovery_session_t::participant_id</b>,
     <b>discovery_session_t::ring</b>, <b>discovery_session_t::session_id</b>,
-    <b>SET_ERRNO</b>, and <b>migration_ctx_t::state</b>.</p>
+    and <b>migration_ctx_t::state</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_process()</b>.</p>
 </section>
 <section class="Ss">
@@ -1050,8 +1047,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ring_consensus_t::am_future_host</b>,
     <b>ring_consensus_t::future_host_id</b>,
-    <b>ring_consensus_t::last_ring_round_ms</b>,
-    <b>discovery_session_t::ring</b>, and <b>SET_ERRNO</b>.</p>
+    <b>ring_consensus_t::last_ring_round_ms</b>, and
+    <b>discovery_session_t::ring</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_session_is_active (const
@@ -1072,7 +1069,7 @@
 1787 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>DISCOVERY_STATE_ACTIVE</b>, <b>SET_ERRNO</b>, and
+<p class="Pp">References <b>DISCOVERY_STATE_ACTIVE</b>, and
     <b>discovery_session_t::state</b>.</p>
 </section>
 <section class="Ss">
@@ -1094,8 +1091,8 @@
 2228 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ring_consensus_t::am_future_host</b>,
-    <b>discovery_session_t::ring</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>ring_consensus_t::am_future_host</b>, and
+    <b>discovery_session_t::ring</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> discovery_session_is_host (const
@@ -1116,8 +1113,7 @@
 1803 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>discovery_session_t::is_host</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>discovery_session_t::is_host</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_discovery_session_process_("><a class="permalink" href="#asciichat_error_t_discovery_session_process_(">asciichat_error_t
@@ -1667,10 +1663,9 @@
     <b>session_participant_get_socket()</b>,
     <b>session_participant_is_connected()</b>,
     <b>discovery_session_t::session_string</b>,
-    <b>discovery_session_t::session_type</b>, <b>SET_ERRNO</b>,
-    <b>socket_set_timeout()</b>, <b>discovery_session_t::state</b>,
-    <b>migration_ctx_t::state</b>, <b>negotiate_ctx_t::state</b>,
-    <b>negotiate_ctx_t::we_are_host</b>,
+    <b>discovery_session_t::session_type</b>, <b>socket_set_timeout()</b>,
+    <b>discovery_session_t::state</b>, <b>migration_ctx_t::state</b>,
+    <b>negotiate_ctx_t::state</b>, <b>negotiate_ctx_t::we_are_host</b>,
     <b>discovery_session_t::webrtc_connection_initiated</b>,
     <b>discovery_session_t::webrtc_last_attempt_time_ms</b>,
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>,
@@ -1741,7 +1736,7 @@
 <p class="Pp">References <b>discovery_session_t::exit_callback_data</b>,
     <b>discovery_session_t::is_initiator</b>,
     <b>discovery_session_t::participant_ctx</b>,
-    <b>discovery_session_t::session_string</b>, <b>SET_ERRNO</b>,
+    <b>discovery_session_t::session_string</b>,
     <b>discovery_session_t::should_exit_callback</b>, and
     <b>discovery_session_t::state</b>.</p>
 <p class="Pp">Referenced by <b>discovery_main()</b>.</p>
@@ -1789,8 +1784,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::is_host</b>,
-    <b>ring_consensus_t::last_ring_round_ms</b>,
-    <b>discovery_session_t::ring</b>, and <b>SET_ERRNO</b>.</p>
+    <b>ring_consensus_t::last_ring_round_ms</b>, and
+    <b>discovery_session_t::ring</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_discovery_session_stop_("><a class="permalink" href="#void_discovery_session_stop_(">void
@@ -1824,8 +1819,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_session_t::acds_socket</b>,
     <b>DISCOVERY_STATE_ENDED</b>, <b>packet_send()</b>,
-    <b>discovery_session_t::participant_id</b>,
-    <b>discovery_session_t::session_id</b>, and <b>SET_ERRNO</b>.</p>
+    <b>discovery_session_t::participant_id</b>, and
+    <b>discovery_session_t::session_id</b>.</p>
 <p class="Pp">Referenced by <b>discovery_main()</b>.</p>
 </section>
 </section>

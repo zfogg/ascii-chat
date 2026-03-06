@@ -140,8 +140,7 @@
 379 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_decrypt_packet()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_handshake_decrypt_packet()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_decrypt_packet()</b>, and
     <b>crypto_server_decrypt_packet()</b>.</p>
 </section>
@@ -169,8 +168,7 @@
 360 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_handshake_encrypt_packet()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_handshake_encrypt_packet()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_encrypt_packet()</b>, and
     <b>crypto_server_encrypt_packet()</b>.</p>
 </section>
@@ -198,8 +196,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_decrypt()</b>,
-    <b>crypto_handshake_is_ready()</b>, <b>crypto_result_to_string()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_handshake_is_ready()</b>, and
+  <b>crypto_result_to_string()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_decrypt_packet_or_passthrough()</b>.</p>
 </section>
 <section class="Ss">
@@ -250,8 +248,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_encrypt()</b>,
-    <b>crypto_handshake_is_ready()</b>, <b>crypto_result_to_string()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_handshake_is_ready()</b>, and
+  <b>crypto_result_to_string()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_encrypt_packet_or_passthrough()</b>.</p>
 </section>
 <section class="Ss">
@@ -325,7 +323,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_init()</b>, <b>crypto_result_to_string()</b>,
-    <b>debug_sync_print_state()</b>, and <b>SET_ERRNO</b>.</p>
+    and <b>debug_sync_print_state()</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>client_crypto_init()</b>, <b>client_generate_keypair()</b>,
     <b>client_handle_key_exchange_init()</b>, and
@@ -374,8 +372,8 @@
 279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_init_with_password()</b>,
-    <b>crypto_result_to_string()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_init_with_password()</b>, and
+    <b>crypto_result_to_string()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -463,8 +461,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_decrypt()</b>,
     <b>crypto_handshake_is_ready()</b>, <b>crypto_rekey_abort()</b>,
-    <b>crypto_rekey_commit()</b>, <b>crypto_result_to_string()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_rekey_commit()</b>, and <b>crypto_result_to_string()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_crypto_handshake_process_rekey_request_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#asciichat_error_t_crypto_handshake_process_rekey_request_(crypto_handshake_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)">asciichat_error_t
@@ -523,8 +520,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_is_ready()</b>,
     <b>crypto_rekey_abort()</b>, <b>crypto_rekey_init()</b>,
-    <b>crypto_rekey_process_request()</b>, <b>crypto_result_to_string()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_rekey_process_request()</b>, and
+  <b>crypto_result_to_string()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_process_rekey_request()</b>.</p>
 </section>
 <section class="Ss">
@@ -566,8 +563,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_process_response()</b>,
-    <b>crypto_result_to_string()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>crypto_rekey_abort()</b>, <b>crypto_rekey_process_response()</b>, and
+    <b>crypto_result_to_string()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_process_rekey_response()</b>.</p>
 </section>
 <section class="Ss">
@@ -633,8 +630,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_encrypt()</b>,
     <b>crypto_handshake_is_ready()</b>, <b>crypto_rekey_abort()</b>,
-    <b>crypto_rekey_commit()</b>, <b>crypto_result_to_string()</b>,
-    <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>crypto_rekey_commit()</b>, <b>crypto_result_to_string()</b>, and
+    <b>send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_send_rekey_complete()</b>.</p>
 </section>
 <section class="Ss">
@@ -673,8 +670,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_is_ready()</b>,
     <b>crypto_rekey_abort()</b>, <b>crypto_rekey_init()</b>,
-    <b>crypto_result_to_string()</b>, <b>send_packet()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_result_to_string()</b>, and <b>send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>, and
     <b>crypto_client_initiate_rekey()</b>.</p>
 </section>
@@ -711,7 +707,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_handshake_is_ready()</b>,
-    <b>crypto_rekey_abort()</b>, <b>send_packet()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>crypto_rekey_abort()</b>, and <b>send_packet()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_client_send_rekey_response()</b>.</p>
 </section>
 <section class="Ss">
@@ -763,7 +759,6 @@
 105 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>, and
     <b>server_crypto_handshake()</b>.</p>
 </section>
@@ -929,7 +924,6 @@
 242 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_auth_response()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>, and

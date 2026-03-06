@@ -530,13 +530,12 @@
     <b>mixer_add_source()</b>, <b>mutex_init()</b>,
     <b>network_error_string()</b>, <b>packet_queue_create_with_pools()</b>,
     <b>packet_queue_destroy()</b>, <b>receive_packet_secure()</b>,
-    <b>remove_client()</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>,
+    <b>remove_client()</b>, <b>safe_snprintf()</b>,
     <b>server_crypto_handshake()</b>, <b>server_crypto_init()</b>,
     <b>server_context_t::session_host</b>, <b>session_host_add_client()</b>,
-    <b>SET_ERRNO</b>, <b>set_socket_timeout()</b>,
-    <b>server_context_t::tcp_server</b>, <b>tcp_server_add_client()</b>,
-    <b>video_frame_buffer_create()</b>, and
-  <b>video_frame_buffer_destroy()</b>.</p>
+    <b>set_socket_timeout()</b>, <b>server_context_t::tcp_server</b>,
+    <b>tcp_server_add_client()</b>, <b>video_frame_buffer_create()</b>, and
+    <b>video_frame_buffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="client_info_t_*_add_webrtc_client_("><a class="permalink" href="#client_info_t_*_add_webrtc_client_(">client_info_t
@@ -861,9 +860,8 @@
     <b>g_client_manager</b>, <b>g_client_manager_rwlock</b>,
     <b>generate_client_id()</b>, <b>mixer_add_source()</b>, <b>mutex_init()</b>,
     <b>packet_queue_create_with_pools()</b>, <b>remove_client()</b>,
-    <b>SAFE_FREE</b>, <b>send_server_state_to_client()</b>,
-    <b>server_context_t::session_host</b>, <b>session_host_add_client()</b>,
-    <b>SET_ERRNO</b>, <b>video_frame_buffer_create()</b>, and
+    <b>send_server_state_to_client()</b>, <b>server_context_t::session_host</b>,
+    <b>session_host_add_client()</b>, <b>video_frame_buffer_create()</b>, and
     <b>video_frame_buffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -927,8 +925,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer_destroy()</b>,
-    <b>opus_codec_destroy()</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and
-    <b>video_frame_buffer_destroy()</b>.</p>
+    <b>opus_codec_destroy()</b>, and <b>video_frame_buffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_cleanup_client_packet_queues_(client_info_t_*_client)"><a class="permalink" href="#void_cleanup_client_packet_queues_(client_info_t_*_client)">void
@@ -1255,8 +1252,8 @@
 405 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>g_client_manager</b>,
-    <b>g_client_manager_rwlock</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>g_client_manager</b>, and
+    <b>g_client_manager_rwlock</b>.</p>
 <p class="Pp">Referenced by <b>broadcast_server_state_to_all_clients()</b>,
     <b>crypto_server_cleanup_client()</b>,
     <b>crypto_server_decrypt_packet()</b>,
@@ -1448,8 +1445,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>crypto_server_decrypt_packet()</b>, <b>crypto_server_is_ready()</b>, and
-    <b>SET_ERRNO</b>.</p>
+    <b>crypto_server_decrypt_packet()</b>, and
+  <b>crypto_server_is_ready()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_remove_client_("><a class="permalink" href="#int_remove_client_(">int
@@ -1757,7 +1754,7 @@
     <b>mixer_remove_source()</b>, <b>mutex_destroy()</b>,
     <b>packet_queue_stop()</b>, <b>platform_sleep_us()</b>,
     <b>server_context_t::session_host</b>, <b>session_host_remove_client()</b>,
-    <b>SET_ERRNO</b>, <b>server_context_t::tcp_server</b>, and
+    <b>server_context_t::tcp_server</b>, and
     <b>tcp_server_stop_client_threads()</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>client_receive_thread()</b>, and <b>server_main()</b>.</p>
@@ -1796,7 +1793,7 @@
 2644 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>find_client_by_id()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>find_client_by_id()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_stop_client_threads_(client_info_t_*_client)"><a class="permalink" href="#void_stop_client_threads_(client_info_t_*_client)">void
@@ -1829,8 +1826,8 @@
 2669 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_join()</b>,
-    <b>atomic_store_bool()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>asciichat_thread_join()</b>, and
+    <b>atomic_store_bool()</b>.</p>
 </section>
 </section>
 <section class="Sh">

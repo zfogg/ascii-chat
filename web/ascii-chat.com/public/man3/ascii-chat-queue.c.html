@@ -124,7 +124,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_store()</b>, <b>atomic_store_u64()</b>,
-    <b>pool</b>, and <b>SAFE_MALLOC</b>.</p>
+    and <b>pool</b>.</p>
 <p class="Pp">Referenced by <b>packet_queue_create_with_pools()</b>.</p>
 </section>
 <section class="Ss">
@@ -143,7 +143,7 @@
 61 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>pool</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>pool</b>.</p>
 <p class="Pp">Referenced by <b>packet_queue_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -183,7 +183,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
     <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
-    <b>atomic_ptr_store()</b>, <b>pool</b>, and <b>SAFE_MALLOC</b>.</p>
+    <b>atomic_ptr_store()</b>, and <b>pool</b>.</p>
 <p class="Pp">Referenced by <b>packet_queue_enqueue()</b>, and
     <b>packet_queue_enqueue_packet()</b>.</p>
 </section>
@@ -220,8 +220,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_sub_u64()</b>, <b>atomic_ptr_cas()</b>,
-    <b>atomic_ptr_load()</b>, <b>atomic_ptr_store()</b>, <b>pool</b>, and
-    <b>SAFE_FREE</b>.</p>
+    <b>atomic_ptr_load()</b>, <b>atomic_ptr_store()</b>, and <b>pool</b>.</p>
 <p class="Pp">Referenced by <b>packet_queue_enqueue()</b>,
     <b>packet_queue_enqueue_packet()</b>, and
   <b>packet_queue_try_dequeue()</b>.</p>
@@ -316,8 +315,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_ptr_store()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>buffer_pool_create()</b>,
-    <b>node_pool_create()</b>, and <b>SAFE_MALLOC</b>.</p>
+    <b>atomic_store_u64()</b>, <b>buffer_pool_create()</b>, and
+    <b>node_pool_create()</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>, and
     <b>packet_queue_create_with_pool()</b>.</p>
 </section>
@@ -376,8 +375,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_destroy()</b>,
     <b>buffer_pool_log_stats()</b>, <b>node_pool_destroy()</b>,
-    <b>packet_queue_clear()</b>, <b>packet_queue_stop()</b>, and
-    <b>SAFE_FREE</b>.</p>
+    <b>packet_queue_clear()</b>, and <b>packet_queue_stop()</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
     <b>cleanup_client_packet_queues()</b>.</p>
 </section>
@@ -528,7 +526,7 @@
     <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
     <b>atomic_ptr_store()</b>, <b>buffer_pool_alloc()</b>,
     <b>buffer_pool_free()</b>, <b>buffer_pool_get_global()</b>,
-    <b>node_pool_get()</b>, <b>node_pool_put()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>node_pool_get()</b>, and <b>node_pool_put()</b>.</p>
 <p class="Pp">Referenced by <b>client_audio_render_thread()</b>,
     <b>client_receive_thread()</b>, and <b>queue_audio_for_client()</b>.</p>
 </section>
@@ -676,8 +674,8 @@
     <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
     <b>atomic_ptr_store()</b>, <b>buffer_pool_alloc()</b>,
     <b>buffer_pool_free()</b>, <b>buffer_pool_get_global()</b>,
-    <b>node_pool_get()</b>, <b>node_pool_put()</b>,
-    <b>packet_queue_validate_packet()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>node_pool_get()</b>, <b>node_pool_put()</b>, and
+    <b>packet_queue_validate_packet()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_packet_queue_free_packet_(queued_packet_t_*_packet)"><a class="permalink" href="#void_packet_queue_free_packet_(queued_packet_t_*_packet)">void
@@ -711,7 +709,7 @@
 593 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_free()</b>, and <b>SAFE_FREE</b>.</p>
+<p class="Pp">References <b>buffer_pool_free()</b>.</p>
 <p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
     <b>client_send_thread_func()</b>, and <b>packet_queue_clear()</b>.</p>
 </section>
@@ -794,7 +792,7 @@
 624 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_u64()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>atomic_store_u64()</b>.</p>
 <p class="Pp">Referenced by <b>disconnect_client_for_bad_data()</b>,
     <b>packet_queue_destroy()</b>, and <b>remove_client()</b>.</p>
 </section>
@@ -890,8 +888,8 @@
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
     <b>atomic_fetch_sub_u64()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_load_u64()</b>, <b>atomic_ptr_cas()</b>, <b>atomic_ptr_load()</b>,
-    <b>atomic_ptr_store()</b>, <b>buffer_pool_free()</b>,
-    <b>node_pool_put()</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
+    <b>atomic_ptr_store()</b>, <b>buffer_pool_free()</b>, and
+    <b>node_pool_put()</b>.</p>
 <p class="Pp">Referenced by <b>client_dispatch_thread()</b>,
     <b>client_send_thread_func()</b>, <b>packet_queue_clear()</b>, and
     <b>packet_queue_dequeue()</b>.</p>
@@ -940,7 +938,6 @@
 687 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>packet_queue_enqueue_packet()</b>.</p>
 </section>
 </section>

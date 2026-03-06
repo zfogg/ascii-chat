@@ -98,8 +98,8 @@
 310 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
-    and <b>SAFE_MALLOC</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and
+    <b>atomic_store_u64()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_simple_frame_swap_destroy_(simple_frame_swap_t_*_sfs)"><a class="permalink" href="#void_simple_frame_swap_destroy_(simple_frame_swap_t_*_sfs)">void
@@ -116,7 +116,6 @@
 320 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_video_frame_t_*_simple_frame_swap_get_(simple_frame_swap_t_*_sfs)"><a class="permalink" href="#const_video_frame_t_*_simple_frame_swap_get_(simple_frame_swap_t_*_sfs)">const
@@ -132,7 +131,7 @@
 353 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_simple_frame_swap_update_(simple_frame_swap_t_*_sfs,_const_void_*_data,_size_t_size)"><a class="permalink" href="#void_simple_frame_swap_update_(simple_frame_swap_t_*_sfs,_const_void_*_data,_size_t_size)">void
@@ -165,7 +164,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>atomic_store_u64()</b>, <b>SET_ERRNO</b>, and <b>time_get_ns()</b>.</p>
+    <b>atomic_store_u64()</b>, and <b>time_get_ns()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="video_frame_t_*_video_frame_begin_write_(video_frame_buffer_t_*_vfb)"><a class="permalink" href="#video_frame_t_*_video_frame_begin_write_(video_frame_buffer_t_*_vfb)">video_frame_t
@@ -186,7 +185,6 @@
 219 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_video_render_thread()</b>,
     <b>handle_image_frame_h265_packet()</b>, and
     <b>handle_image_frame_packet()</b>.</p>
@@ -347,8 +345,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>, <b>atomic_store_u64()</b>,
     <b>buffer_pool_alloc()</b>, <b>buffer_pool_get_global()</b>,
-    <b>mutex_init()</b>, <b>pool</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
-    <b>SET_ERRNO</b>, and <b>video_frame_buffer_destroy()</b>.</p>
+    <b>mutex_init()</b>, <b>pool</b>, and
+  <b>video_frame_buffer_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
   <b>add_webrtc_client()</b>.</p>
 </section>
@@ -399,8 +397,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_free()</b>,
-    <b>buffer_pool_get_global()</b>, <b>mutex_destroy()</b>, <b>pool</b>,
-    <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
+    <b>buffer_pool_get_global()</b>, <b>mutex_destroy()</b>, and
+  <b>pool</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, <b>add_webrtc_client()</b>,
     <b>cleanup_client_media_buffers()</b>, and
     <b>video_frame_buffer_create()</b>.</p>
@@ -447,8 +445,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>, and
-  <b>SET_ERRNO</b>.</p>
+    <b>atomic_load_bool()</b>, and <b>atomic_store_bool()</b>.</p>
 <p class="Pp">Referenced by <b>client_video_render_thread()</b>,
     <b>handle_image_frame_h265_packet()</b>, and
     <b>handle_image_frame_packet()</b>.</p>
@@ -481,7 +478,7 @@
 278 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>.</p>
 </section>
 <section class="Ss">
@@ -507,8 +504,7 @@
 295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, <b>SET_ERRNO</b>, and
-    <b>stats</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>, and <b>stats</b>.</p>
 <p class="Pp">Referenced by <b>stats_logger_thread()</b>, and
     <b>update_server_stats()</b>.</p>
 </section>

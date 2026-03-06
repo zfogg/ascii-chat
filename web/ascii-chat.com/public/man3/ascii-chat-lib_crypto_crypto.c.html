@@ -220,7 +220,6 @@
 1157 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_compute_auth_response_(const_crypto_context_t_*_ctx,_const_uint8_t_nonce_32_,_uint8_t_hmac_out_32_)"><a class="permalink" href="#crypto_result_t_crypto_compute_auth_response_(const_crypto_context_t_*_ctx,_const_uint8_t_nonce_32_,_uint8_t_hmac_out_32_)">crypto_result_t
@@ -260,8 +259,7 @@
 933 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_compute_hmac_ex()</b>, and
-  <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_compute_hmac_ex()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_server_complete()</b>.</p>
 </section>
 <section class="Ss">
@@ -287,7 +285,6 @@
 847 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_compute_hmac_ex_(const_crypto_context_t_*_ctx,_const_uint8_t_key_32_,_const_uint8_t_*_data,_size_t_data_len,_uint8_t_hmac_32_)"><a class="permalink" href="#crypto_result_t_crypto_compute_hmac_ex_(const_crypto_context_t_*_ctx,_const_uint8_t_key_32_,_const_uint8_t_*_data,_size_t_data_len,_uint8_t_hmac_32_)">crypto_result_t
@@ -313,7 +310,6 @@
 865 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_compute_auth_response()</b>, and
     <b>crypto_compute_password_hmac()</b>.</p>
 </section>
@@ -351,8 +347,7 @@
 1102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_compute_hmac_ex()</b>, and
-  <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_compute_hmac_ex()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_create_auth_challenge_(const_crypto_context_t_*_ctx,_uint8_t_*_packet_out,_size_t_packet_size,_size_t_*_packet_len_out)"><a class="permalink" href="#crypto_result_t_crypto_create_auth_challenge_(const_crypto_context_t_*_ctx,_uint8_t_*_packet_out,_size_t_packet_size,_size_t_*_packet_len_out)">crypto_result_t
@@ -392,8 +387,7 @@
 1001 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_generate_nonce()</b>, and
-  <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_generate_nonce()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_create_encrypted_packet_(crypto_context_t_*_ctx,_const_uint8_t_*_data,_size_t_data_len,_uint8_t_*_packet_out,_size_t_packet_size,_size_t_*_packet_len_out)"><a class="permalink" href="#crypto_result_t_crypto_create_encrypted_packet_(crypto_context_t_*_ctx,_const_uint8_t_*_data,_size_t_data_len,_uint8_t_*_packet_out,_size_t_packet_size,_size_t_*_packet_len_out)">crypto_result_t
@@ -464,8 +458,8 @@
 770 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_encrypt()</b>, <b>crypto_is_ready()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_encrypt()</b>, and
+  <b>crypto_is_ready()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_create_public_key_packet_(const_crypto_context_t_*_ctx,_uint8_t_*_packet_out,_size_t_packet_size,_size_t_*_packet_len_out)"><a class="permalink" href="#crypto_result_t_crypto_create_public_key_packet_(const_crypto_context_t_*_ctx,_uint8_t_*_packet_out,_size_t_packet_size,_size_t_*_packet_len_out)">crypto_result_t
@@ -501,7 +495,6 @@
 679 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_decrypt_(crypto_context_t_*_ctx,_const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext_out,_size_t_plaintext_out_size,_size_t_*_plaintext_len_out)"><a class="permalink" href="#crypto_result_t_crypto_decrypt_(crypto_context_t_*_ctx,_const_uint8_t_*_ciphertext,_size_t_ciphertext_len,_uint8_t_*_plaintext_out,_size_t_plaintext_out_size,_size_t_*_plaintext_len_out)">crypto_result_t
@@ -577,7 +570,7 @@
 574 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_is_ready()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_is_ready()</b>.</p>
 <p class="Pp">Referenced by <b>acip_server_receive_and_dispatch()</b>,
     <b>client_decrypt_packet()</b>, <b>client_dispatch_thread()</b>,
     <b>crypto_handshake_decrypt_packet()</b>,
@@ -631,8 +624,7 @@
 429 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_validate_password()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_validate_password()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_derive_password_key_(crypto_context_t_*_ctx,_const_char_*_password)"><a class="permalink" href="#crypto_result_t_crypto_derive_password_key_(crypto_context_t_*_ctx,_const_char_*_password)">crypto_result_t
@@ -680,8 +672,7 @@
 354 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_validate_password()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_validate_password()</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>,
     <b>crypto_handshake_client_auth_response()</b>, and
     <b>crypto_init_with_password()</b>.</p>
@@ -798,7 +789,7 @@
 507 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_is_ready()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_is_ready()</b>.</p>
 <p class="Pp">Referenced by <b>client_encrypt_packet()</b>,
     <b>crypto_create_encrypted_packet()</b>,
     <b>crypto_handshake_encrypt_packet()</b>,
@@ -824,7 +815,6 @@
 1169 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_generate_keypair_(crypto_context_t_*_ctx)"><a class="permalink" href="#crypto_result_t_crypto_generate_keypair_(crypto_context_t_*_ctx)">crypto_result_t
@@ -848,7 +838,6 @@
 225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -872,7 +861,6 @@
 830 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_create_auth_challenge()</b>, and
     <b>crypto_handshake_server_auth_challenge()</b>.</p>
 </section>
@@ -897,7 +885,6 @@
 243 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_crypto_get_rekey_status_(const_crypto_context_t_*_ctx,_char_*_status_buffer,_size_t_buffer_size)"><a class="permalink" href="#void_crypto_get_rekey_status_(const_crypto_context_t_*_ctx,_char_*_status_buffer,_size_t_buffer_size)">void
@@ -1040,7 +1027,7 @@
 158 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_generate_keypair()</b>, <b>SET_ERRNO</b>, and
+<p class="Pp">References <b>crypto_generate_keypair()</b>, and
     <b>time_pretty()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_init()</b>, and
     <b>crypto_init_with_password()</b>.</p>
@@ -1083,7 +1070,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_derive_password_key()</b>,
-    <b>crypto_destroy()</b>, <b>crypto_init()</b>, and <b>SET_ERRNO</b>.</p>
+    <b>crypto_destroy()</b>, and <b>crypto_init()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_init_with_password()</b>.</p>
 </section>
 <section class="Ss">
@@ -1145,7 +1132,6 @@
 1033 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_process_auth_response_(crypto_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#crypto_result_t_crypto_process_auth_response_(crypto_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)">crypto_result_t
@@ -1192,7 +1178,7 @@
 1071 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_verify_hmac()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_verify_hmac()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_process_encrypted_packet_(crypto_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len,_uint8_t_*_data_out,_size_t_data_size,_size_t_*_data_len_out)"><a class="permalink" href="#crypto_result_t_crypto_process_encrypted_packet_(crypto_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len,_uint8_t_*_data_out,_size_t_data_size,_size_t_*_data_len_out)">crypto_result_t
@@ -1242,8 +1228,8 @@
 811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_decrypt()</b>, <b>crypto_is_ready()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_decrypt()</b>, and
+  <b>crypto_is_ready()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_process_public_key_packet_(crypto_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)"><a class="permalink" href="#crypto_result_t_crypto_process_public_key_packet_(crypto_context_t_*_ctx,_const_uint8_t_*_packet,_size_t_packet_len)">crypto_result_t
@@ -1281,8 +1267,7 @@
 708 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_set_peer_public_key()</b>, and
-    <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_set_peer_public_key()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_random_bytes_(uint8_t_*_buffer,_size_t_len)"><a class="permalink" href="#crypto_result_t_crypto_random_bytes_(uint8_t_*_buffer,_size_t_len)">crypto_result_t
@@ -1305,7 +1290,6 @@
 647 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_crypto_rekey_abort_(crypto_context_t_*_ctx)"><a class="permalink" href="#void_crypto_rekey_abort_(crypto_context_t_*_ctx)">void
@@ -1393,7 +1377,6 @@
 1347 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_process_rekey_complete()</b>,
     and <b>crypto_handshake_rekey_complete()</b>.</p>
 </section>
@@ -1447,7 +1430,7 @@
 1251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>, and <b>time_pretty()</b>.</p>
+<p class="Pp">References <b>time_pretty()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_process_rekey_request()</b>, and
     <b>crypto_handshake_rekey_request()</b>.</p>
 </section>
@@ -1486,7 +1469,6 @@
 1279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_process_rekey_request()</b>.</p>
 </section>
 <section class="Ss">
@@ -1520,7 +1502,7 @@
 1303 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_rekey_abort()</b>, and <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_rekey_abort()</b>.</p>
 <p class="Pp">Referenced by
   <b>crypto_handshake_process_rekey_response()</b>.</p>
 </section>
@@ -1612,7 +1594,6 @@
 279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>,
     <b>crypto_handshake_server_auth_challenge()</b>, and
     <b>crypto_process_public_key_packet()</b>.</p>
@@ -1689,7 +1670,6 @@
 1145 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="crypto_result_t_crypto_validate_password_(const_char_*_password)"><a class="permalink" href="#crypto_result_t_crypto_validate_password_(const_char_*_password)">crypto_result_t
@@ -1720,7 +1700,6 @@
 315 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_derive_password_encryption_key()</b>, and
     <b>crypto_derive_password_key()</b>.</p>
 </section>
@@ -1765,8 +1744,7 @@
 969 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_verify_hmac_ex()</b>, and
-  <b>SET_ERRNO</b>.</p>
+<p class="Pp">References <b>crypto_verify_hmac_ex()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_complete()</b>, and
     <b>crypto_handshake_server_complete()</b>.</p>
 </section>
@@ -1791,7 +1769,6 @@
 880 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_process_auth_response()</b>.</p>
 </section>
 <section class="Ss">
@@ -1816,7 +1793,6 @@
 897 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_verify_auth_response()</b>.</p>
 </section>
 <section class="Ss">
@@ -1885,7 +1861,6 @@
 1121 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

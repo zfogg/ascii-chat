@@ -508,7 +508,7 @@ image_t *frame = media_source_read_video(source);
     <b>session_capture_config_t::mic_audio_ctx</b>,
     <b>session_capture_config_t::path</b>,
     <b>session_capture_config_t::resize_for_network</b>, <b>safe_snprintf()</b>,
-    <b>session_capture_create()</b>, <b>SET_ERRNO</b>,
+    <b>session_capture_create()</b>,
     <b>session_capture_config_t::target_fps</b>, and
     <b>session_capture_config_t::type</b>.</p>
 </section>
@@ -653,8 +653,7 @@ image_t *frame = media_source_read_video(source);
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>,
-    <b>g_client_worker_pool</b>, <b>SET_ERRNO</b>, and
-    <b>thread_pool_spawn()</b>.</p>
+    <b>g_client_worker_pool</b>, and <b>thread_pool_spawn()</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
 </section>
 <section class="Ss">
