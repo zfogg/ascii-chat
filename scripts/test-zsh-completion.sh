@@ -37,8 +37,8 @@ sleep 0.5
 tmux send-keys -t zsh-completion-test "Down Down Down Down Down"
 sleep 0.5
 
-# Capture and save output - capture full history to see all group headers
-tmux capture-pane -t zsh-completion-test -p -S -200 > /tmp/test1_output.txt
+# Capture and save output - get scrollback to see full menu
+tmux capture-pane -t zsh-completion-test -p -S -150 > /tmp/test1_output.txt
 
 # Display what we got
 echo "Captured output:"
