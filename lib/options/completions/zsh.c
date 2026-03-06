@@ -199,13 +199,16 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     return SET_ERRNO(ERROR_INVALID_PARAM, "Output stream cannot be NULL");
   }
 
-  /* Load discovery options early so we can use them for binary-level completion.
+  /* Load binary-level and discovery options for binary-level completion.
    * Binary-level completion (options before mode name like --color-mode) uses
    * _arguments with -n -S flags to establish proper zsh completion context.
    * Without _arguments, completion functions fail with "can only be called from
    * completion function" error, causing zsh to display "corrections (errors: N)"
    * messages. The -n flag disables defaults and -S disables short option
    * processing, allowing safe context establishment. */
+  size_t binary_count = 0;
+  const option_descriptor_t *binary_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &binary_count);
+
   size_t discovery_count = 0;
   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
 
@@ -265,37 +268,69 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   }
 
   fprintf(output, "  )\n"
-                  "  _describe -t binary-opts 'binary options' binary_opts\n"
+                  "  _values 'option' \"${binary_opts[@]}\"\n"
                   "}\n"
                   "\n"
+                  "_ascii_chat_binary_grouped() {\n");
+
+  /* Write binary-level options in grouped format */
+  if (binary_opts) {
+    zsh_write_value_cases(output, binary_opts, binary_count);
+    zsh_write_options_grouped(output, binary_opts, binary_count, "binary");
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
                   "_ascii_chat() {\n"
-                  "  local curcontext=\"$curcontext\" state line\n"
-                  "  if [[ ${words[2]} == -* ]]; then\n"
-                  "    # Binary-level options: directly call binary function\n"
-                  "    _ascii_chat_binary\n"
+                  "  if [[ ${words[1]} == -* ]]; then\n"
+                  "    # Binary-level options: show both binary and discovery mode options\n"
+                  "    # (since discovery is the default mode that runs at binary level)\n"
+                  "    _ascii_chat_binary_grouped\n"
+                  "    _ascii_chat_discovery\n"
                   "    return\n"
-                  "  else\n"
-                  "    # Mode selection or mode options\n"
-                  "    _arguments \\\n"
-                  "      '1:mode:->mode' \\\n"
-                  "      '*::args:_ascii_chat_args'\n"
-                  "    case $state in\n"
-                  "      mode)\n"
-                  "      local -a server_modes client_modes\n"
-                  "      server_modes=(\n");
+                  "  fi\n"
+                  "\n"
+                  "  # Mode routing: check words[1] to determine which mode function to call\n"
+                  "  case $words[1] in\n"
+                  "    # Server-like modes\n"
+                  "    server)\n"
+                  "      _ascii_chat_server\n"
+                  "      return\n"
+                  "      ;;\n"
+                  "    discovery-service)\n"
+                  "      _ascii_chat_discovery_service\n"
+                  "      return\n"
+                  "      ;;\n"
+                  "\n"
+                  "    # Client-like modes\n"
+                  "    client)\n"
+                  "      _ascii_chat_client\n"
+                  "      return\n"
+                  "      ;;\n"
+                  "    mirror)\n"
+                  "      _ascii_chat_mirror\n"
+                  "      return\n"
+                  "      ;;\n"
+                  "\n"
+                  "    # Default mode (discovery) or mode selection\n"
+                  "    *)\n"
+                  "      if [[ $CURRENT -eq 2 ]]; then\n"
+                  "        # Completing the mode name itself - show available modes\n"
+                  "        local -a server_modes client_modes\n"
+                  "        server_modes=(\n");
 
   /* Generate server-like modes from registry */
   size_t mode_server_count = 0;
   const mode_descriptor_t *mode_server_descs = get_modes_by_group("server-like", &mode_server_count);
   if (mode_server_descs) {
     for (size_t i = 0; i < mode_server_count; i++) {
-      fprintf(output, "        '%s:%s'\n", mode_server_descs[i].name, mode_server_descs[i].description);
+      fprintf(output, "          '%s:%s'\n", mode_server_descs[i].name, mode_server_descs[i].description);
     }
     SAFE_FREE(mode_server_descs);
   }
 
-  fprintf(output, "      )\n"
-                  "      client_modes=(\n");
+  fprintf(output, "        )\n"
+                  "        client_modes=(\n");
 
   /* Generate client-like modes from registry (exclude discovery since it's the default mode) */
   size_t mode_client_count = 0;
@@ -306,40 +341,18 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
       if (strcmp(mode_client_descs[i].name, "discovery") == 0) {
         continue;
       }
-      fprintf(output, "        '%s:%s'\n", mode_client_descs[i].name, mode_client_descs[i].description);
+      fprintf(output, "          '%s:%s'\n", mode_client_descs[i].name, mode_client_descs[i].description);
     }
     SAFE_FREE(mode_client_descs);
   }
 
-  fprintf(output, "      )\n"
-                  "      _describe -t server-modes 'server-like modes' server_modes\n"
-                  "      _describe -t client-modes 'client-like modes' client_modes\n"
-                  "      ;;\n"
-                  "    esac\n"
-                  "  fi\n"
-                  "}\n"
-                  "\n"
-                  "_ascii_chat_args() {\n"
-                  "  case $words[1] in\n"
-                  "    # Server-like modes\n"
-                  "    server)\n"
-                  "      _ascii_chat_server\n"
-                  "      ;;\n"
-                  "    discovery-service)\n"
-                  "      _ascii_chat_discovery_service\n"
-                  "      ;;\n"
-                  "\n"
-                  "    # Client-like modes\n"
-                  "    client)\n"
-                  "      _ascii_chat_client\n"
-                  "      ;;\n"
-                  "    mirror)\n"
-                  "      _ascii_chat_mirror\n"
-                  "      ;;\n"
-                  "\n"
-                  "    *)\n"
-                  "      # Default mode (discovery)\n"
-                  "      _ascii_chat_discovery\n"
+  fprintf(output, "        )\n"
+                  "        _describe -t server-modes 'server-like modes' server_modes\n"
+                  "        _describe -t client-modes 'client-like modes' client_modes\n"
+                  "      else\n"
+                  "        # Default mode (discovery) - complete its options\n"
+                  "        _ascii_chat_discovery\n"
+                  "      fi\n"
                   "      ;;\n"
                   "  esac\n"
                   "}\n"
@@ -416,6 +429,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "\n"
                   "_ascii_chat \"$@\"\n");
 
+  SAFE_FREE(binary_opts);
   SAFE_FREE(discovery_opts);
 
   return ASCIICHAT_OK;

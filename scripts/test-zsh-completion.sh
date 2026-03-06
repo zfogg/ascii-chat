@@ -30,6 +30,10 @@ echo "=== TEST 1: ascii-chat --sho<TAB> ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --sho" Tab
 sleep 0.5
 
+# Navigate menu to display options
+tmux send-keys -t zsh-completion-test "Down"
+sleep 0.2
+
 # Capture and save output
 tmux capture-pane -t zsh-completion-test -p > /tmp/test1_output.txt
 
@@ -39,12 +43,20 @@ cat /tmp/test1_output.txt | tail -20
 echo ""
 
 # Check for success indicators
-if cat /tmp/test1_output.txt | rg -q "(--show|show-capabilities|binary|password)"; then
+if cat /tmp/test1_output.txt | rg -q "(--snapshot|--splash|--help|--password)"; then
   echo "🟢 TEST 1 PASSED: Binary-level options showing"
   TEST1_PASS=1
 else
   echo "🔴 TEST 1 FAILED: Binary-level options NOT showing"
   TEST1_PASS=0
+fi
+# Check for success indicators
+if cat /tmp/test1_output.txt | rg -q "audio options"; then
+  echo "🟢 TEST 1 PASSED: Discovery mode --audio option showing"
+  TEST3_PASS=1
+else
+  echo "🔴 TEST 1 FAILED: Discovery mode --audio option NOT showing"
+  TEST3_PASS=0
 fi
 
 # Clear for next test
