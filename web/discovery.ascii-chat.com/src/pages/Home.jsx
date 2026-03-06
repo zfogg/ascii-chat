@@ -263,6 +263,7 @@ source <(ascii-chat --completions zsh 2>/dev/null)`}</CodeBlock>
           </Heading>
           <CodeBlock language="bash">{`# Start a new session
 ascii-chat
+# It logs "Session string: happy-sunset-ocean"
 
 # Copy the session string it outputs and share it with a friend securely
 
