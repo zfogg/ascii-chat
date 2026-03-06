@@ -24,8 +24,13 @@ static void zsh_escape_desc(FILE *output, const char *text) {
 
   for (const char *p = text; *p; p++) {
     switch (*p) {
-    case '\'':
-      fprintf(output, "'\\''");
+    case '"':
+      // In double-quoted strings, escape double quotes
+      fprintf(output, "\\\"");
+      break;
+    case '\\':
+      // Escape backslashes in double-quoted strings
+      fprintf(output, "\\\\");
       break;
     case '[':
     case ']':
@@ -108,9 +113,15 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
       if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
 
       // Long option only (short options are less discoverable via TAB)
-      fprintf(output, "    '--%s:", opts[i].long_name);
+      fprintf(output, "    \"--");
+      // Escape option name for double quotes
+      for (const char *p = opts[i].long_name; *p; p++) {
+        if (*p == '"' || *p == '\\') fprintf(output, "\\");
+        fputc(*p, output);
+      }
+      fprintf(output, ":");
       zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "'\n");
+      fprintf(output, "\"\n");
     }
 
     fprintf(output, "  )\n");
@@ -141,11 +152,17 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "\n"
                   "_ascii_chat() {\n"
                   "  local curcontext=\"$curcontext\" state line modes\n"
-                  "  _arguments \\\n"
-                  "    '1:mode:->mode' \\\n"
-                  "    '*::args:_ascii_chat_args'\n"
-                  "  case $state in\n"
-                  "    mode)\n"
+                  "  if [[ ${words[2]} == -* ]]; then\n"
+                  "    # Binary-level options: show discovery mode options without corrections\n"
+                  "    _ascii_chat_discovery 2>/dev/null\n"
+                  "    return\n"
+                  "  else\n"
+                  "    # Mode selection or mode options\n"
+                  "    _arguments \\\n"
+                  "      '1:mode:->mode' \\\n"
+                  "      '*::args:_ascii_chat_args'\n"
+                  "    case $state in\n"
+                  "      mode)\n"
                   "      local -a server_modes client_modes\n"
                   "      server_modes=(\n");
 
@@ -180,7 +197,8 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "      _describe -t server-modes 'server-like modes' server_modes\n"
                   "      _describe -t client-modes 'client-like modes' client_modes\n"
                   "      ;;\n"
-                  "  esac\n"
+                  "    esac\n"
+                  "  fi\n"
                   "}\n"
                   "\n"
                   "_ascii_chat_args() {\n"
