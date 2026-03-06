@@ -1542,12 +1542,10 @@ export default function Man3() {
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
         url={`${SITES.MAIN}/man3`}
       />
-      <div className="w-full min-h-screen lg:h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col w-full overflow-hidden">
-          {/* Scrollable container with header and panels */}
-          <div className="flex-1 flex flex-col overflow-y-auto lg:overflow-hidden min-h-0">
-            {/* Header at top of scrollable area */}
-            <header className="flex-shrink-0 px-4 sm:px-6 py-8 sm:py-12 max-w-4xl mx-auto w-full">
+      <div className="w-full h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
+        <div className="flex-1 flex flex-col w-full overflow-hidden min-h-0">
+          {/* Header - does not scroll */}
+          <header className="flex-shrink-0 px-4 sm:px-6 py-8 sm:py-12 max-w-4xl mx-auto w-full">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
                 <span className="text-purple-400">📚</span> ascii-chat-*(3)
               </h1>
@@ -1631,10 +1629,12 @@ export default function Man3() {
                       }`
                     : "No results"}
               </p>
-            </header>
+          </header>
 
-            {/* Panels container */}
-            <div className="flex-1 flex flex-col lg:flex-row gap-8 px-4 sm:px-6 min-h-0">
+          {/* Scrollable panels container */}
+          <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
+            {/* Panels */}
+            <div className="flex flex-col lg:flex-row gap-8 px-4 sm:px-6 min-h-0">
               {/* Results list */}
               <div className="h-[600px] lg:h-auto lg:w-2/5 flex-shrink-0 flex flex-col">
                 <h3 className="lg:hidden text-xs font-semibold text-gray-400 px-4 py-2 flex-shrink-0">
@@ -1859,7 +1859,7 @@ export default function Man3() {
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 border-t border-gray-800 p-8 mt-8">
+        <div className="flex-shrink-0 border-t border-gray-800 p-8">
           <Footer />
         </div>
       </div>
