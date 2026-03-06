@@ -104,8 +104,10 @@ if(PLATFORM_IOS)
         execute_process(
             COMMAND bash -c "cd '${FONTCONFIG_BUILD_DIR}/fontconfig-2.14.2' && \
                     CC=clang \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 -I${EXPAT_INCLUDE_DIR}' \
-                    LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64 -L${EXPAT_PREFIX}/lib' \
+                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 -I${EXPAT_INCLUDE_DIR} -I${FREETYPE_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2' \
+                    LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64 -L${EXPAT_PREFIX}/lib -L${FREETYPE_PREFIX}/lib' \
+                    FREETYPE_CFLAGS='-I${FREETYPE_PREFIX}/include -I${FREETYPE_PREFIX}/include/freetype2' \
+                    FREETYPE_LIBS='-L${FREETYPE_PREFIX}/lib -lfreetype' \
                     ./configure --prefix='${FONTCONFIG_PREFIX}' --host=aarch64-apple-darwin --disable-shared --enable-static --disable-docs --with-expat='${EXPAT_PREFIX}' && \
                     make -j && make install"
             RESULT_VARIABLE BUILD_RESULT

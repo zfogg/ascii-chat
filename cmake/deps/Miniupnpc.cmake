@@ -69,15 +69,25 @@ if(PLATFORM_IOS)
         message(STATUS "  Building miniupnpc for iOS...")
         execute_process(
             COMMAND bash -c "cd '${MINIUPNPC_BUILD_DIR}/miniupnp-miniupnpc_2_2_7/miniupnpc' && \
-                    env CC=clang \
-                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
-                    LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64' \
-                    make -j && \
+                    mkdir -p build && \
+                    clang -Ibuild -DMINIUPNPC_SET_SOCKET_TIMEOUT -DMINIUPNPC_GET_SRC_ADDR -D_BSD_SOURCE -D_DEFAULT_SOURCE -Iinclude -D_DARWIN_C_SOURCE \
+                    -std=gnu11 -O -Wall -W -Wstrict-prototypes -fno-common -fPIC \
+                    -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 \
+                    -c src/miniupnpc.c -o build/miniupnpc.o && \
+                    clang -Ibuild -DMINIUPNPC_SET_SOCKET_TIMEOUT -DMINIUPNPC_GET_SRC_ADDR -D_BSD_SOURCE -D_DEFAULT_SOURCE -Iinclude -D_DARWIN_C_SOURCE \
+                    -std=gnu11 -O -Wall -W -Wstrict-prototypes -fno-common -fPIC \
+                    -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 \
+                    -c src/upnpcommands.c -o build/upnpcommands.o && \
+                    clang -Ibuild -DMINIUPNPC_SET_SOCKET_TIMEOUT -DMINIUPNPC_GET_SRC_ADDR -D_BSD_SOURCE -D_DEFAULT_SOURCE -Iinclude -D_DARWIN_C_SOURCE \
+                    -std=gnu11 -O -Wall -W -Wstrict-prototypes -fno-common -fPIC \
+                    -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0 \
+                    -c src/upnperrors.c -o build/upnperrors.o && \
+                    ar rcs build/libminiupnpc.a build/miniupnpc.o build/upnpcommands.o build/upnperrors.o && \
                     mkdir -p '${MINIUPNPC_PREFIX}/lib' '${MINIUPNPC_PREFIX}/include' && \
-                    cp libminiupnpc.a '${MINIUPNPC_PREFIX}/lib/' && \
-                    cp miniupnpc.h '${MINIUPNPC_PREFIX}/include/' && \
-                    cp upnpcommands.h '${MINIUPNPC_PREFIX}/include/' && \
-                    cp upnperrors.h '${MINIUPNPC_PREFIX}/include/'"
+                    cp build/libminiupnpc.a '${MINIUPNPC_PREFIX}/lib/' && \
+                    cp include/miniupnpc.h '${MINIUPNPC_PREFIX}/include/' && \
+                    cp include/upnpcommands.h '${MINIUPNPC_PREFIX}/include/' && \
+                    cp include/upnperrors.h '${MINIUPNPC_PREFIX}/include/'"
             RESULT_VARIABLE BUILD_RESULT
             OUTPUT_VARIABLE BUILD_OUTPUT
             ERROR_VARIABLE BUILD_ERROR

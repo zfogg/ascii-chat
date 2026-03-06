@@ -22,6 +22,9 @@ if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}mdns${ColorReset} (iOS, header-only with patching)...")
     set(MDNS_FOUND TRUE)
     message(STATUS "${BoldGreen}✓${ColorReset} mdns configured (iOS, header-only)")
+    # Still define function for potential later calls, but it's a no-op for iOS
+    function(configure_mdns)
+    endfunction()
     return()
 endif()
 
