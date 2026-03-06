@@ -318,69 +318,10 @@ export default function Man3() {
             });
         }
       } else {
-        // manPages not loaded yet, try default filename
-        fetch(`/man3/${pageName}.html`)
-          .then((r) => {
-            if (!r.ok) {
-              setPageNotFound(true);
-              setSelectedPageContent(null);
-              return null;
-            }
-            return r.text();
-          })
-          .then((html) => {
-            if (!html) return;
-            setPageNotFound(false);
-            // Extract stylesheets from head
-            const stylesheets = [];
-            const styleMatches = html.matchAll(
-              /<link[^>]*rel="stylesheet"[^>]*href="([^"]+)"[^>]*>/gi,
-            );
-            for (const match of styleMatches) {
-              const href = match[1];
-              if (!href.startsWith("/") && !href.startsWith("http")) {
-                stylesheets.push(
-                  `<link rel="stylesheet" href="/man3/${href}" />`,
-                );
-              } else {
-                stylesheets.push(match[0]);
-              }
-            }
-
-            // Process content (URLs and highlighting)
-            // Use query param from URL if available for highlighting search results
-            const decodedQuery = queryParam
-              ? decodeURIComponent(queryParam)
-              : "";
-            let processedContent = processPageContent(html, decodedQuery);
-
-            // Add GitHub links for "Definition at line X" text and line numbers
-            const page = manPages.find((p) => p.name === pageName);
-            const sourcePath = page?.sourcePath;
-            const isSourcePage = pageName?.endsWith("_source") || false;
-            processedContent = processDefinitionLinks(
-              processedContent,
-              sourcePath,
-              __COMMIT_SHA__,
-              isSourcePage,
-            );
-
-            // Prepend stylesheets
-            const content = stylesheets.join("\n") + processedContent;
-            setSelectedPageContent(content);
-
-            // If there's a hash indicating a line number, extract and set it for scrolling
-            const hash = window.location.hash.substring(1);
-            if (hash.match(/^l\d+$/)) {
-              const lineNum = parseInt(hash.substring(1), 10);
-              setTargetLineNumber(lineNum);
-            }
-          })
-          .catch((e) => {
-            console.error("Failed to load page:", e);
-            setPageNotFound(true);
-            setSelectedPageContent(null);
-          });
+        // manPages not loaded yet - wait for it to load
+        // pages.json is loaded in parallel, so the file will be loaded
+        // once manPages is updated by the useEffect that fetches pages.json
+        setPageNotFound(false);
       }
     }
   }, [processPageContent, processDefinitionLinks, manPages]);
