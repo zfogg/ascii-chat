@@ -53,22 +53,6 @@ void backtrace_t_free(backtrace_t *bt) {
   }
 }
 
-void backtrace_print_simple(int skip_frames) {
-  void *buffer[32];
-  int size = platform_backtrace(buffer, 32);
-
-  if (size > 0) {
-    char **symbols = platform_backtrace_symbols(buffer, size);
-
-    // Skip platform_print_backtrace itself (1 frame) + any additional frames requested
-    backtrace_print_symbols("Backtrace", symbols, size, 1 + skip_frames, 0, NULL);
-
-    platform_backtrace_symbols_destroy(symbols);
-  } else {
-    SET_ERRNO(ERROR_INVALID_STATE, "Failed to capture backtrace");
-  }
-}
-
 void backtrace_print(const char *label, const backtrace_t *bt, int skip_frames, int max_frames,
                      backtrace_frame_filter_t filter) {
   if (!bt || !bt->symbols || bt->count <= 0) {
@@ -411,6 +395,14 @@ void backtrace_log_frames(int num_frames, int skip_frames) {
   backtrace_capture_and_symbolize(&bt);
   backtrace_print("Backtrace", &bt, skip_frames, num_frames, NULL);
   backtrace_t_free(&bt);
+}
+
+void backtrace_print_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
+                             backtrace_frame_filter_t filter) {
+  backtrace_t bt = {0};
+  bt.symbols = symbols;
+  bt.count = count;
+  backtrace_print(label, &bt, skip_frames, max_frames, filter);
 }
 
 #endif // NDEBUG

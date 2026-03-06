@@ -351,16 +351,6 @@ simd_benchmark_t benchmark_simd_color_conversion_with_source(int width, int heig
 void print_simd_capabilities(void);
 
 /**
- * @brief Print image as ASCII using SIMD (monochrome)
- * @param image Source image
- * @param ascii_chars Character palette
- * @return Allocated ASCII string (caller must free), or NULL on error
- *
- * @ingroup video
- */
-char *image_print_simd(image_t *image, const char *ascii_chars);
-
-/**
  * @brief Print image as ASCII with color using SIMD
  * @param image Source image
  * @param use_background_mode Use background colors
@@ -471,9 +461,9 @@ size_t write_row_rep_from_arrays_enhanced(const uint8_t *fg_r, const uint8_t *fg
  * @ingroup video
  */
 #define RAMP64_SIZE 64
-#define CACHE_FREQUENCY_DECAY_TIME 10000  // 10 seconds in milliseconds
+#define CACHE_FREQUENCY_DECAY_TIME 10000 // 10 seconds in milliseconds
 #define CACHE_RECENCY_SCALE 100
-#define CACHE_MAX_LIFETIME 3600  // 1 hour maximum cache lifetime in seconds
+#define CACHE_MAX_LIFETIME 3600 // 1 hour maximum cache lifetime in seconds
 
 typedef struct {
   uint8_t width;         /**< Character display width (1 or 2) */
@@ -483,22 +473,22 @@ typedef struct {
 } utf8_char_t;
 
 typedef struct utf8_palette_cache {
-  utf8_char_t cache[256];               /**< Cache of all 256 luminance levels */
-  utf8_char_t cache64[64];              /**< Cache of 64 most common characters */
-  uint8_t char_index_ramp[256];         /**< Luminance to character index mapping */
-  atomic_t last_access_time;   /**< Last access timestamp */
-  atomic_t access_count;       /**< Total access count */
-  uint32_t total_age_seconds;           /**< Total age in seconds */
-  uint64_t creation_time;               /**< When this cache was created */
-  double cached_score;                  /**< Eviction score (higher = keep longer) */
-  size_t heap_index;                    /**< Index in the eviction min-heap */
-  uint32_t key;                         /**< Palette string hash (uthash key) */
-  char palette_hash[256];               /**< Original palette string for validation */
-  bool initialized;                     /**< Whether cache is initialized */
-  bool is_valid;                        /**< Whether cache has valid data */
+  utf8_char_t cache[256];       /**< Cache of all 256 luminance levels */
+  utf8_char_t cache64[64];      /**< Cache of 64 most common characters */
+  uint8_t char_index_ramp[256]; /**< Luminance to character index mapping */
+  atomic_t last_access_time;    /**< Last access timestamp */
+  atomic_t access_count;        /**< Total access count */
+  uint32_t total_age_seconds;   /**< Total age in seconds */
+  uint64_t creation_time;       /**< When this cache was created */
+  double cached_score;          /**< Eviction score (higher = keep longer) */
+  size_t heap_index;            /**< Index in the eviction min-heap */
+  uint32_t key;                 /**< Palette string hash (uthash key) */
+  char palette_hash[256];       /**< Original palette string for validation */
+  bool initialized;             /**< Whether cache is initialized */
+  bool is_valid;                /**< Whether cache has valid data */
 
   // uthash handle for hash table
-  UT_hash_handle hh;                    /**< uthash handle */
+  UT_hash_handle hh; /**< uthash handle */
 } utf8_palette_cache_t;
 
 /**

@@ -20,6 +20,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/ascii/neon.h>
+#include <ascii-chat/video/ascii/neon/common.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
@@ -34,8 +35,7 @@
 //=============================================================================
 
 // Unified optimized NEON converter (foreground/background + 256-color/truecolor)
-char *render_ascii_color_neon(const image_t *image, bool use_background, bool use_256color,
-                                          const char *ascii_chars) {
+char *render_ascii_color_neon(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars) {
   if (!image || !image->pixels) {
     return NULL;
   }

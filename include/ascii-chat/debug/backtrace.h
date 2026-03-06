@@ -260,10 +260,6 @@ void backtrace_print_many(const char *label, const backtrace_t *bts, int count);
 int backtrace_format(char *buf, size_t buf_size, const char *label, const backtrace_t *bt, int skip_frames,
                      int max_frames, backtrace_frame_filter_t filter);
 
-/* ============================================================================
- * Low-Level Platform Backtrace Functions
- * ============================================================================ */
-
 /**
  * @brief Print pre-resolved backtrace symbols with consistent formatting
  *
@@ -282,26 +278,6 @@ int backtrace_format(char *buf, size_t buf_size, const char *label, const backtr
  */
 void backtrace_print_symbols(const char *label, char **symbols, int count, int skip_frames, int max_frames,
                              backtrace_frame_filter_t filter);
-
-/**
- * @brief Format pre-resolved backtrace symbols to a buffer
- *
- * Same format as platform_print_backtrace_symbols() but writes to a buffer.
- *
- * @param buffer Output buffer
- * @param buffer_size Size of output buffer
- * @param label Header label (e.g., "Call stack")
- * @param symbols Array of pre-resolved symbol strings
- * @param count Number of symbols in the array
- * @param skip_frames Number of frames to skip from the start
- * @param max_frames Maximum frames to print (-1 = unlimited)
- * @param filter Optional filter callback to skip specific frames (NULL = no filtering)
- * @return Number of bytes written (excluding null terminator)
- *
- * @ingroup debug_util
- */
-int backtrace_format_symbols(char *buffer, size_t buffer_size, const char *label, char **symbols, int count,
-                             int skip_frames, int max_frames, backtrace_frame_filter_t filter);
 
 /**
  * @brief Log N backtrace frames with function name, line number, and file

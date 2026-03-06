@@ -155,11 +155,7 @@ char *ascii_convert(image_t *original, const ssize_t width, const ssize_t height
     }
   } else {
     // Use grayscale/monochrome conversion with client's palette
-#ifdef SIMD_SUPPORT
-    ascii = image_print_simd(resized, luminance_palette);
-#else
     ascii = image_print(resized, palette_chars);
-#endif
   }
 
   if (!ascii) {

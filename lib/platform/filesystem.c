@@ -14,6 +14,10 @@
 #include <string.h>
 #include <stdio.h>
 
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
+
 // Thread-local storage for error messages (avoids allocation)
 static _Thread_local char error_msg_buffer[512];
 

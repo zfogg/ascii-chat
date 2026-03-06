@@ -392,7 +392,7 @@ void *debug_malloc(size_t size, const char *file, int line) {
   atomic_fetch_add_u64(&g_mem.total_allocated, size);
   size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, size) + size;
 
-  size_t peak = atomic_load_u64(&g_mem.peak_usage);
+  uint64_t peak = atomic_load_u64(&g_mem.peak_usage);
   while (new_usage > peak) {
     if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
       break;
@@ -459,7 +459,7 @@ void debug_track_aligned(void *ptr, size_t size, const char *file, int line) {
   atomic_fetch_add_u64(&g_mem.total_allocated, size);
   size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, size) + size;
 
-  size_t peak = atomic_load_u64(&g_mem.peak_usage);
+  uint64_t peak = atomic_load_u64(&g_mem.peak_usage);
   while (new_usage > peak) {
     if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
       break;
@@ -618,7 +618,7 @@ void *debug_calloc(size_t count, size_t size, const char *file, int line) {
   atomic_fetch_add_u64(&g_mem.total_allocated, total);
   size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, total) + total;
 
-  size_t peak = atomic_load_u64(&g_mem.peak_usage);
+  uint64_t peak = atomic_load_u64(&g_mem.peak_usage);
   while (new_usage > peak) {
     if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
       break;
@@ -776,7 +776,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
       size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, delta) + delta;
 
       // Update peak usage if new usage exceeds previous peak
-      size_t peak = atomic_load_u64(&g_mem.peak_usage);
+      uint64_t peak = atomic_load_u64(&g_mem.peak_usage);
       while (new_usage > peak) {
         if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
           break;
@@ -793,7 +793,7 @@ void *debug_realloc(void *ptr, size_t size, const char *file, int line) {
     size_t new_usage = atomic_fetch_add_u64(&g_mem.current_usage, size) + size;
 
     // Update peak usage
-    size_t peak = atomic_load_u64(&g_mem.peak_usage);
+    uint64_t peak = atomic_load_u64(&g_mem.peak_usage);
     while (new_usage > peak) {
       if (atomic_cas_u64(&g_mem.peak_usage, &peak, new_usage))
         break;
@@ -1023,8 +1023,8 @@ void debug_memory_report(void) {
           if (total_bytes != g_suppression_config[i].expected_bytes) {
             size_t len = strlen(mismatch_details);
             if (len > 0) {
-              snprintf(mismatch_details + len, sizeof(mismatch_details) - len, " Bytes mismatch: expected %zu, found %zu",
-                       g_suppression_config[i].expected_bytes, total_bytes);
+              snprintf(mismatch_details + len, sizeof(mismatch_details) - len,
+                       " Bytes mismatch: expected %zu, found %zu", g_suppression_config[i].expected_bytes, total_bytes);
             } else {
               snprintf(mismatch_details, sizeof(mismatch_details), "Bytes mismatch: expected %zu, found %zu",
                        g_suppression_config[i].expected_bytes, total_bytes);

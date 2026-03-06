@@ -594,13 +594,12 @@ void mutex_stack_detect_deadlocks(void) {
         uintptr_t current_waiting = thread_waiting_for_mutex(current_stack);
 
         char thread_name[256], mutex_name[256], held_by_name[256];
-        NAMED_GET_BY_PTR(g_thread_registry[thread_idx].thread_id, thread_name, sizeof(thread_name));
-        NAMED_GET_BY_PTR(current_waiting, mutex_name, sizeof(mutex_name));
-        NAMED_GET_BY_PTR(g_thread_registry[next_thread_idx].thread_id, held_by_name, sizeof(held_by_name));
+        NAMED_GET_BY_PTR((uintptr_t)g_thread_registry[thread_idx].thread_id, thread_name, sizeof(thread_name));
+        NAMED_GET_BY_PTR((uintptr_t)current_waiting, mutex_name, sizeof(mutex_name));
+        NAMED_GET_BY_PTR((uintptr_t)g_thread_registry[next_thread_idx].thread_id, held_by_name, sizeof(held_by_name));
 
-        msg_len +=
-            snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "  T%d: %s waits for %s (held by %s)%s",
-                     k + 1, thread_name, mutex_name, held_by_name, k < cycle_len - 1 ? "\n" : "");
+        msg_len += snprintf(cycle_msg + msg_len, sizeof(cycle_msg) - msg_len, "  T%d: %s waits for %s (held by %s)%s",
+                            k + 1, thread_name, mutex_name, held_by_name, k < cycle_len - 1 ? "\n" : "");
       }
 
       // Log repeated deadlock detections (skip first call, throttle subsequent ones)

@@ -256,7 +256,7 @@ Test(ascii_simd_integration, monochrome_performance_vs_scalar) {
   // Benchmark SIMD implementation
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "SIMD should produce output");
     SAFE_FREE(result);
   }
@@ -351,7 +351,7 @@ Test(ascii_simd_integration, utf8_palette_performance) {
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "ASCII SIMD should produce output");
     SAFE_FREE(result);
   }
@@ -361,7 +361,7 @@ Test(ascii_simd_integration, utf8_palette_performance) {
   // Benchmark UTF-8 emoji palette
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, utf8_palette);
+    char *result = image_print(test_image, utf8_palette);
     cr_assert_not_null(result, "UTF-8 SIMD should produce output");
     SAFE_FREE(result);
   }
@@ -422,7 +422,7 @@ Test(ascii_simd_integration, various_image_sizes_performance) {
     // Benchmark SIMD
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < iterations; i++) {
-      char *result = image_print_simd(test_image, ascii_palette);
+      char *result = image_print(test_image, ascii_palette);
       cr_assert_not_null(result, "SIMD should produce output for %s", test_sizes[size_idx].name);
       SAFE_FREE(result);
     }
@@ -488,7 +488,7 @@ Test(ascii_simd_integration, simd_vs_scalar_output_consistency) {
 
   // Generate outputs
   char *scalar_result = image_print(test_image, ascii_palette);
-  char *simd_result = image_print_simd(test_image, ascii_palette);
+  char *simd_result = image_print(test_image, ascii_palette);
 
   cr_assert_not_null(scalar_result, "Scalar should produce output");
   cr_assert_not_null(simd_result, "SIMD should produce output");
@@ -639,7 +639,7 @@ Test(ascii_simd_integration, utf8_palette_correctness) {
     // Generate test image specifically for this palette to ensure full coverage
     generate_full_palette_test_image(test_image, palette);
 
-    char *result = image_print_simd(test_image, palette);
+    char *result = image_print(test_image, palette);
     cr_assert_not_null(result, "UTF-8 palette %d should produce output", p);
 
     // Check that output contains valid UTF-8 sequences
@@ -766,7 +766,7 @@ Test(ascii_simd_integration, cache_system_efficiency) {
   generate_full_palette_test_image(test_image, ascii_palette);
 
   // First call (cache warming)
-  char *warmup = image_print_simd(test_image, ascii_palette);
+  char *warmup = image_print(test_image, ascii_palette);
   cr_assert_not_null(warmup, "Cache warmup should succeed");
   SAFE_FREE(warmup);
 
@@ -774,7 +774,7 @@ Test(ascii_simd_integration, cache_system_efficiency) {
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Cached call %d should succeed", i);
     SAFE_FREE(result);
   }
@@ -815,7 +815,7 @@ Test(ascii_simd_integration, rwlock_concurrency_simulation) {
   clock_gettime(CLOCK_MONOTONIC, &start);
 
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Concurrent access %d should succeed", i);
 
     // Verify output is consistent
@@ -869,7 +869,7 @@ Test(ascii_simd_integration, extreme_image_sizes) {
 
     // Test both scalar and SIMD work
     char *scalar_result = image_print(test_image, ascii_palette);
-    char *simd_result = image_print_simd(test_image, ascii_palette);
+    char *simd_result = image_print(test_image, ascii_palette);
 
     bool scalar_valid = (scalar_result != NULL);
     bool simd_valid = (simd_result != NULL);
@@ -956,7 +956,7 @@ Test(ascii_simd_integration, memory_safety_stress_test) {
     }
 
     // Test SIMD implementation
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "Test %d: SIMD should handle random size %dx%d", test, width, height);
 
     // Basic output validation
@@ -987,7 +987,7 @@ Test(ascii_simd_integration, null_byte_padding_correctness) {
   generate_full_palette_test_image(test_image, utf8_palette);
 
   // Get SIMD output
-  char *simd_result = image_print_simd(test_image, utf8_palette);
+  char *simd_result = image_print(test_image, utf8_palette);
   bool simd_valid = (simd_result != NULL);
   size_t simd_len = simd_valid ? strlen(simd_result) : 0;
 
@@ -1204,7 +1204,7 @@ Test(ascii_simd_integration, utf8_padding_performance_penalty) {
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "ASCII SIMD should work");
     SAFE_FREE(result);
   }
@@ -1214,7 +1214,7 @@ Test(ascii_simd_integration, utf8_padding_performance_penalty) {
   // Benchmark UTF-8 emoji palette (likely slow due to null padding)
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, emoji_palette);
+    char *result = image_print(test_image, emoji_palette);
     cr_assert_not_null(result, "UTF-8 SIMD should work");
     SAFE_FREE(result);
   }
@@ -1268,7 +1268,7 @@ Test(ascii_simd_integration, palette_system_integration) {
   const int num_palettes = sizeof(builtin_palettes) / sizeof(builtin_palettes[0]);
 
   for (int p = 0; p < num_palettes; p++) {
-    char *result = image_print_simd(test_image, builtin_palettes[p]);
+    char *result = image_print(test_image, builtin_palettes[p]);
     cr_assert_not_null(result, "Palette %d should work with SIMD", p);
 
     size_t len = strlen(result);
@@ -1312,7 +1312,7 @@ Test(ascii_simd_integration, neon_architecture_verification) {
   struct timespec start, end;
   clock_gettime(CLOCK_MONOTONIC, &start);
   for (int i = 0; i < iterations; i++) {
-    char *result = image_print_simd(test_image, ascii_palette);
+    char *result = image_print(test_image, ascii_palette);
     cr_assert_not_null(result, "NEON iteration %d should succeed", i);
     SAFE_FREE(result);
   }
@@ -1346,7 +1346,7 @@ Test(ascii_simd_integration, simd_initialization_and_cleanup) {
     test_image->pixels[i] = (rgb_pixel_t){i % 256, (i * 2) % 256, (i * 3) % 256};
   }
 
-  char *result = image_print_simd(test_image, "   ...',;:clodxkO0KXNWM");
+  char *result = image_print(test_image, "   ...',;:clodxkO0KXNWM");
   cr_assert_not_null(result, "SIMD should work after initialization");
 
   SAFE_FREE(result);
@@ -1463,7 +1463,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
     // Benchmark SIMD implementation
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int i = 0; i < iterations; i++) {
-      char *result = image_print_simd(test_image, palette);
+      char *result = image_print(test_image, palette);
       cr_assert_not_null(result, "SIMD should work with %s", mixed_palettes[p].name);
       SAFE_FREE(result);
     }
@@ -1477,7 +1477,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
               (scalar_vs_simd_ratio < 1.0) ? "✓ Scalar faster" : "❌ SIMD faster");
 
     // PALETTE COVERAGE VERIFICATION: Ensure all characters from mixed UTF-8 palette are used
-    char *coverage_test = image_print_simd(test_image, palette);
+    char *coverage_test = image_print(test_image, palette);
     cr_assert_not_null(coverage_test, "Should generate coverage test output");
 
     // Count actual UTF-8 characters, not bytes
@@ -1581,7 +1581,7 @@ Test(ascii_simd_integration, mixed_utf8_scalar_faster_than_simd) {
 
       clock_gettime(CLOCK_MONOTONIC, &start);
       for (int i = 0; i < 5; i++) {
-        char *result = image_print_simd(test_image, palette);
+        char *result = image_print(test_image, palette);
         SAFE_FREE(result);
       }
       clock_gettime(CLOCK_MONOTONIC, &end);
@@ -1660,7 +1660,7 @@ Test(ascii_simd_integration, mixed_utf8_output_correctness_mono_and_color) {
       } else {
         // Monochrome mode - tests existing NEON shuffle mask
         scalar_result = image_print(test_image, palette);
-        simd_result = image_print_simd(test_image, palette);
+        simd_result = image_print(test_image, palette);
       }
 
       // Save validation results before assertions so cleanup always runs
@@ -1907,7 +1907,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       clock_gettime(CLOCK_MONOTONIC, &simd_cold_start);
 
       for (int i = 0; i < iterations; i++) {
-        char *simd_result = image_print_simd(test_image, palette);
+        char *simd_result = image_print(test_image, palette);
         cr_assert_not_null(simd_result, "SIMD should produce output");
         SAFE_FREE(simd_result);
       }
@@ -1921,7 +1921,7 @@ Test(ascii_simd_integration, neon_monochrome_mixed_byte_comprehensive_performanc
       clock_gettime(CLOCK_MONOTONIC, &simd_hot_start);
 
       for (int i = 0; i < iterations; i++) {
-        char *simd_result = image_print_simd(test_image, palette);
+        char *simd_result = image_print(test_image, palette);
         cr_assert_not_null(simd_result, "SIMD hot should produce output");
         SAFE_FREE(simd_result);
       }

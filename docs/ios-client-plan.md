@@ -1,7 +1,7 @@
 # ascii-chat iOS Client - Implementation Plan (WIP)
 
 > **Status**: Draft / Research Phase
-> **Last Updated**: 2026-03-05
+> **Last Updated**: 2026-03-06
 > **Goal**: Native iOS app in Swift that uses libasciichat (compiled for iOS) to support server, client, mirror, and discovery modes.
 
 ---
@@ -311,7 +311,10 @@ lib/platform/ios/
 ├── system.c               # platform_write() override — routes STDOUT to render bridge
 ├── render_bridge.c        # libvterm + term_renderer + frame callback management
 ├── render_bridge.h        # Public API for registering callbacks
-├── stdin_bridge.c         # Thread-safe queue: Swift pushes keystrokes, C reads them
+├── stdin_bridge.c         # Condvar + ring buffer: Swift pushes keystrokes, C blocks
+│                          # on platform_read(STDIN_FILENO) until data arrives.
+│                          # When C code first reads stdin, triggers a callback to
+│                          # Swift to present the on-screen keyboard UI automatically.
 ├── keyboard.c             # keyboard_init/destroy overrides (posix/keyboard.c calls
 │                          # tcgetattr(stdin) and /dev/tty, which don't exist on iOS;
 │                          # iOS keyboard reads from the stdin_bridge queue instead)
@@ -725,9 +728,9 @@ void ios_render_bridge_init(int cols, int rows,
 // Teardown
 void ios_render_bridge_destroy(void);
 
-// Trigger a frame render (called at frame boundaries)
-// The C render loop already has frame timing — this is called
-// after each complete frame is written to stdout
+// Flush accumulated output → render to pixels → call Swift callback.
+// Called by platform_frame_flush() on iOS (see lib/platform/ios/frame_flush.c).
+// Not called directly by render paths — use platform_frame_flush() instead.
 void ios_render_bridge_flush(void);
 ```
 
@@ -834,20 +837,48 @@ ssize_t platform_write(int fd, const void *buf, size_t count) {
 #### 3c. Frame boundary detection
 
 The C render loop already has frame boundaries — `session_display_render_frame()` writes
-a complete frame then flushes. We hook the flush to trigger the render bridge:
+a complete frame then flushes. Instead of hooking `terminal_flush()` separately and hoping
+it fires exactly once per frame in all modes, we introduce a unified function that all
+render paths call exactly once per frame:
 
 ```c
-// In the iOS terminal stub (lib/platform/ios/terminal.c):
-asciichat_error_t terminal_flush(int fd) {
-    if (fd == STDOUT_FILENO) {
-        ios_render_bridge_flush();  // Render accumulated output → callback
-    }
-    return ASCIICHAT_OK;
+// lib/platform/frame_flush.h
+#pragma once
+
+// Called exactly once per completed frame by all render paths.
+// On desktop: calls terminal_flush(STDOUT_FILENO).
+// On iOS: calls terminal_flush(STDOUT_FILENO) + ios_render_bridge_flush().
+// All platforms go through this single function — no #ifdefs at call sites.
+void platform_frame_flush(void);
+```
+
+```c
+// lib/platform/frame_flush.c (desktop / default implementation)
+#include "frame_flush.h"
+#include "ascii-chat/platform/terminal.h"
+
+void platform_frame_flush(void) {
+    terminal_flush(STDOUT_FILENO);
 }
 ```
 
-This means every time the C code finishes writing a frame and calls `fflush(stdout)` or
-`terminal_flush()`, the accumulated ANSI output is rendered to pixels and delivered to Swift.
+```c
+// lib/platform/ios/frame_flush.c (iOS override)
+#include "frame_flush.h"
+#include "render_bridge.h"
+#include "ascii-chat/platform/terminal.h"
+
+void platform_frame_flush(void) {
+    terminal_flush(STDOUT_FILENO);
+    ios_render_bridge_flush();
+}
+```
+
+Refactor all render paths (`session_display_render_frame()`, splash screen, status screen,
+discovery screen) to call `platform_frame_flush()` instead of `terminal_flush()` directly.
+This is a single call site change per render path and eliminates the question of whether
+`terminal_flush()` fires exactly once per frame — `platform_frame_flush()` is the canonical
+frame boundary, on all platforms.
 
 #### 3d. Module map for Swift imports
 
@@ -901,8 +932,14 @@ void signal_exit(void);
 bool should_exit(void);
 
 // -- Stdin bridge (keyboard/touch input) --
-// Push bytes into the stdin queue (read by the C code via platform_read)
+// Push bytes into the stdin queue (read by the C code via platform_read).
+// Condvar + ring buffer: platform_read(STDIN_FILENO) blocks until data arrives.
 void ios_stdin_push(const char *data, size_t len);
+
+// Register a callback that's invoked when the C code first reads stdin.
+// Swift uses this to automatically present the on-screen keyboard.
+typedef void (*ios_keyboard_request_callback_t)(void *ctx);
+void ios_register_keyboard_request_callback(ios_keyboard_request_callback_t cb, void *ctx);
 
 // -- Options (C code uses GET_OPTION(field) macro internally) --
 // Options are set via argv passed to main(). At runtime, the C code
@@ -1127,9 +1164,8 @@ platform_write_all(STDOUT_FILENO, buf, len)    # iOS OVERRIDE
     ↓
 ios_output_feed(buf, len)              # Accumulates in write buffer
     ↓
-[frame boundary: terminal_flush() or fflush(stdout)]
-    ↓
-ios_render_bridge_flush()
+platform_frame_flush()                 # Unified frame boundary (all platforms)
+    ↓  (on iOS: terminal_flush + ios_render_bridge_flush)
     ↓
 term_renderer_feed(renderer, accumulated_buf, len)   # libvterm parses ANSI
     ↓
@@ -1138,13 +1174,14 @@ FreeType renders glyphs → RGB24 pixel buffer
 ios_frame_callback(pixels, w, h, pitch, ctx)  → Swift UI update
 ```
 
-Zero changes to the C render pipeline. The iOS platform layer just provides a different
-`platform_write_all()` that feeds libvterm instead of calling `write()`.
+Zero changes to the C render pipeline. All render paths call `platform_frame_flush()`
+(replacing direct `terminal_flush()` calls). On desktop, it flushes the terminal. On iOS,
+it also triggers the render bridge.
 
 #### Why this works
 
 1. **Single interception point**: All output goes through `platform_write_all()`. One function override captures everything.
-2. **Frame boundaries are explicit**: The C code already calls `fflush(stdout)` / `terminal_flush()` after each complete frame. We hook this to trigger rendering.
+2. **Frame boundaries are unified**: All render paths call `platform_frame_flush()` exactly once per frame. On iOS this triggers the render bridge. No per-mode verification needed.
 3. **libvterm handles all state**: Cursor positioning, scrolling, colors, attributes — libvterm maintains full terminal state. We don't need to track anything.
 4. **term_renderer is production code**: Already used for render-file mode. Tested, handles all ANSI escape sequences, produces clean RGB24 output.
 5. **Buffering is already disabled**: `setvbuf(stdout, NULL, _IONBF, 0)` ensures writes happen immediately. No surprises from libc buffering.
@@ -1313,10 +1350,13 @@ Intentionally minimal. The C library does the heavy lifting.
     - [ ] `filesystem.m` — sandbox-aware paths
     - [ ] `process.c` — stub popen/fork
     - [ ] `question.c` — delegate prompts to Swift callback
-    - [ ] `stdin_bridge.c` — queue for keyboard input from Swift
+    - [ ] `stdin_bridge.c` — condvar + ring buffer for keyboard input from Swift; auto-triggers keyboard UI on first read
+    - [ ] `frame_flush.c` — iOS override of `platform_frame_flush()` (terminal_flush + render bridge flush)
 - [ ] Create module files:
     - [ ] `lib/log/ios_log.c` — os_log integration
     - [ ] `lib/options/registry/ios_mode_defaults.c`
+- [ ] Add `lib/platform/frame_flush.h` and `lib/platform/frame_flush.c` (desktop default)
+- [ ] Refactor all render paths to call `platform_frame_flush()` instead of `terminal_flush()` directly
 - [ ] Rename `lib/video/webcam/macos/` → `lib/video/webcam/apple/`
 - [ ] Write PortAudio → AVAudioEngine shim (`lib/audio/ios/portaudio_shim.m`)
 - [ ] Cross-compile dependencies (libsodium, FFmpeg, Opus, zstd, PCRE2, yyjson, libwebsockets, libvterm, FreeType)
@@ -1366,40 +1406,38 @@ calls `asciichat_main()` with different argv. The display is the same ModeView.
 
 ---
 
-### 12. Open Questions
+### 12. Resolved Questions
 
-1. **Frame boundary detection** - The current approach hooks `terminal_flush()` to trigger
-   render bridge flush. Need to verify this fires exactly once per frame in all modes
-   (mirror, client, server status, discovery status). If not, may need an explicit
-   `ios_render_bridge_flush()` call in `session_display_render_frame()` behind `#ifdef PLATFORM_IOS`.
-2. **Stdin bridge threading** - The C code reads stdin for keystrokes on a blocking thread.
-   The stdin bridge needs a thread-safe queue (condition variable + ring buffer) that blocks
-   `platform_read(STDIN_FILENO)` until Swift pushes data. Simple but needs to be right.
-3. **Server mode background** - How long can iOS keep a server alive in background? May need
-   to document limitations. Background audio entitlement keeps the process alive but requires
-   actual audio playback.
-4. **FFmpeg on iOS** - Full FFmpeg or just the codecs we need (libavcodec, libavformat,
-   libavutil, libswscale)? Smaller is better for App Store.
-5. **PortAudio shim completeness** - The AVAudioEngine shim needs to handle iOS audio
-   interruptions (phone calls), route changes (Bluetooth connect/disconnect), and
-   `AVAudioSession` reactivation. These have no PortAudio equivalent — may need a small
-   iOS-specific hook in the library's audio init path.
-6. **App Store review** - Server mode accepts inbound connections. Apple may have opinions.
-   May need to document as "local network only" or similar.
-7. **H.265 hardware encoding** - iOS has VideoToolbox for hardware H.265 encoding. Should we
-   use that instead of FFmpeg's software encoder? Would dramatically reduce battery usage.
-8. **FreeType on iOS** - The terminal renderer uses FreeType for font rasterization. Need to
-   cross-compile FreeType for iOS (straightforward, widely done) and bundle a monospace font
-   or use system fonts via CoreText as a fallback.
-9. **Pixel buffer copy cost** - ~~Resolved~~: The frame callback copies pixel data into a
-   Swift `Data` before returning (see Section 6). The C render thread is unblocked as soon
-   as the copy completes. At 80x40 with a ~12pt font that's roughly 640×640 pixels × 3 bytes
-   = ~1.2MB per frame. At 30fps that's ~36MB/s of copies. Likely fine on arm64, but profile.
-   Could use double-buffering in the render bridge (`ios_render_bridge_swap()`) to allow
-   zero-copy if the copy ever becomes a bottleneck.
-10. **Multiple modes** - Can we run two modes simultaneously (e.g., mirror + discovery)?
-   Currently `asciichat_main()` is blocking and uses global state (`g_should_exit`). Probably
-   one mode at a time for v1.
+1. ~~**Frame boundary detection**~~ **Resolved**: Introduced `platform_frame_flush()` — a
+   unified function that all render paths call exactly once per frame. On desktop it calls
+   `terminal_flush(STDOUT_FILENO)`. On iOS it calls `terminal_flush()` +
+   `ios_render_bridge_flush()`. Refactor all render paths (session display, splash, status,
+   discovery) to call `platform_frame_flush()` instead of `terminal_flush()` directly. No
+   per-mode verification needed — one function, one call site per render path, all platforms.
+2. ~~**Stdin bridge threading**~~ **Resolved**: Build with condvar + ring buffer.
+   `platform_read(STDIN_FILENO)` blocks on the condvar until Swift pushes data via
+   `ios_stdin_push()`. When the C code first calls `platform_read(STDIN_FILENO)`, the bridge
+   fires a registered callback (`ios_keyboard_request_callback_t`) so Swift can automatically
+   present the on-screen keyboard UI.
+3. ~~**Server mode background**~~ **Resolved**: iOS will kill the app when it wants to. Server
+   mode is designed for foreground use while the app is open. No background audio tricks.
+4. ~~**FFmpeg on iOS**~~ **Resolved**: Build only what we need — `libavcodec`, `libavformat`,
+   `libavutil`, `libswscale`. Skip `libavfilter`, `libavdevice`, `libpostproc`.
+5. ~~**PortAudio shim completeness**~~ **Resolved**: The AVAudioEngine shim will handle basic
+   audio for v1. iOS audio interruptions (phone calls), route changes (Bluetooth
+   connect/disconnect), and `AVAudioSession` reactivation have no PortAudio equivalent.
+   We may need to redesign the library's audio API to handle these iOS-specific lifecycle
+   events — the current PortAudio callback model doesn't have hooks for session interruption
+   or route change notification. This is deferred to the audio workstream.
+6. ~~**App Store review**~~ **Resolved**: Apps are allowed to use the internet. Server mode
+   accepting inbound connections on a local network is standard networking behavior.
+7. ~~**H.265 hardware encoding**~~ **Deferred**: VideoToolbox hardware H.265 encoding is a
+   future version optimization. Software encoding via FFmpeg for v1.
+8. ~~**FreeType on iOS**~~ **Resolved**: FreeType cross-compiles for iOS without issue. We
+   already bundle a monospace font — same font ships in the iOS app bundle.
+9. ~~**Pixel buffer copy cost**~~ **Resolved**: ~36MB/s of memcpy is nothing on arm64.
+10. ~~**Multiple modes**~~ **No**: One mode at a time. `asciichat_main()` is blocking with
+    global state. Not a goal for the iOS client.
 
 ---
 

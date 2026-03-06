@@ -12,16 +12,10 @@ option(ASCIICHAT_DEFER_PREFER_STATIC "Prefer static Clang libraries for defer to
 set(ASCIICHAT_DEFER_TOOL "" CACHE FILEPATH "Path to pre-built ascii-instr-defer tool (optional)")
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/BuildLLVMTool.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/utils/GenerateCompilationDB.cmake)
 include(${CMAKE_SOURCE_DIR}/cmake/utils/TimerTargets.cmake)
 
 function(ascii_defer_prepare)
-
-    # Defer transformation must run before PCH is available, so disable PCH
-    # The deferred sources will be compiled without PCH anyway
-    if(ASCIICHAT_USE_PCH)
-        message(STATUS "Disabling PCH for defer transformation (defer must run before PCH generation)")
-        set(ASCIICHAT_USE_PCH OFF CACHE BOOL "PCH disabled for defer transformation" FORCE)
-    endif()
 
     # Build extra cmake args for the defer tool
     set(_defer_extra_args "")
@@ -30,16 +24,6 @@ function(ascii_defer_prepare)
     endif()
 
     # Build/find the defer tool using the common utility
-    if(APPLE)
-        # LLVM 22 LibTooling has a macOS header-resolution regression in defer parsing.
-        # Keep the main project on LLVM 22, but build defer tool with llvm@21.
-        if(EXISTS "/opt/homebrew/opt/llvm@21/bin/llvm-config" AND EXISTS "/opt/homebrew/opt/llvm@21/bin/clang++")
-            set(ASCIICHAT_LLVM_CONFIG_EXECUTABLE "/opt/homebrew/opt/llvm@21/bin/llvm-config")
-            set(ASCIICHAT_CLANG_PLUS_PLUS_EXECUTABLE "/opt/homebrew/opt/llvm@21/bin/clang++")
-            message(STATUS "defer tool: Using llvm@21 for macOS parser compatibility")
-        endif()
-    endif()
-
     build_llvm_tool(
         NAME defer
         SOURCE_DIR "${CMAKE_SOURCE_DIR}/src/tooling/defer"
@@ -126,30 +110,37 @@ function(ascii_defer_prepare)
     # Note: With direct code insertion, no runtime library is needed.
     # The defer transformer inserts cleanup code directly at each exit point.
 
-    # Use CMake's standard compilation database
-    # CMake generates compile_commands.json in the build directory
-    set(_ASCII_COMPILE_DB "${CMAKE_BINARY_DIR}/compile_commands.json")
-    set(_defer_runner_script "${CMAKE_SOURCE_DIR}/cmake/utils/run_defer_with_includes.py")
-    if(ASCIICHAT_PYTHON3_EXECUTABLE)
-        set(_defer_runner_cmd "${ASCIICHAT_PYTHON3_EXECUTABLE}" "${_defer_runner_script}")
-    else()
-        set(_defer_runner_cmd "python3" "${_defer_runner_script}")
-    endif()
+    # Detect Clang resource directory for compilation database generation
+    detect_clang_resource_dir(_clang_resource_dir_db)
+    # Using Clang resource directory for compilation database if found (silent for quiet builds)
 
-    # Collect include directories (will be exposed to finalize phase)
-    set(defer_source_dirs "")
-    list(APPEND defer_source_dirs
-        "${CMAKE_SOURCE_DIR}/include"  # Public API headers
-        "${CMAKE_SOURCE_DIR}/lib"      # Private implementation headers
-        "${CMAKE_SOURCE_DIR}/src"      # Application headers
+    # Generate compilation database for the defer tool using the common utility
+    set(_ascii_temp_build_dir "${CMAKE_BINARY_DIR}/compile_db_temp_defer")
+    generate_compilation_database(
+        OUTPUT "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
+        TEMP_DIR "${_ascii_temp_build_dir}"
+        LOG_FILE "${CMAKE_BINARY_DIR}/defer_compile_db.log"
+        COMMENT "Generating compilation database for defer transformation tool"
+        CLANG_RESOURCE_DIR "${_clang_resource_dir_db}"
+        BUILD_TARGETS
+            generate_version
+            ascii-chat-util
+            ascii-chat-data-structures
+            ascii-chat-platform
+            ascii-chat-crypto
+            ascii-chat-simd
+            ascii-chat-video
+            ascii-chat-audio
+            ascii-chat-core
+            ascii-chat-network
+        DISABLE_OPTIONS
+            ASCIICHAT_USE_PCH
+            ASCIICHAT_ENABLE_ANALYZERS
+            ASCIICHAT_BUILD_WITH_PANIC
+            ASCIICHAT_BUILD_WITH_QUERY
+            ASCIICHAT_ENABLE_COVERAGE
+            ASCIICHAT_BUILD_TESTS
     )
-    foreach(rel_path IN LISTS defer_rel_paths)
-        get_filename_component(dir_path "${rel_path}" DIRECTORY)
-        if(dir_path AND NOT "${CMAKE_SOURCE_DIR}/${dir_path}" IN_LIST defer_source_dirs)
-            list(APPEND defer_source_dirs "${CMAKE_SOURCE_DIR}/${dir_path}")
-        endif()
-    endforeach()
-    list(REMOVE_DUPLICATES defer_source_dirs)
 
     # Create timer targets for defer transformation (comments disabled for quiet builds)
     add_timer_targets(
@@ -175,8 +166,9 @@ function(ascii_defer_prepare)
         add_custom_command(
             OUTPUT "${_gen_path}"
             COMMAND ${CMAKE_COMMAND} -E make_directory "${_gen_dir}"
-            COMMAND ${_defer_runner_cmd} ${CMAKE_BINARY_DIR} "${_defer_tool_exe}" "${_abs_path}" --output-dir=${defer_transformed_dir} --input-root=${CMAKE_SOURCE_DIR}
-            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${_ASCII_COMPILE_DB}" "${_defer_runner_script}"
+            COMMAND echo "DEBUG: Transforming ${_rel_path} with compilation db at ${CMAKE_BINARY_DIR}"
+            COMMAND python3 "${CMAKE_SOURCE_DIR}/cmake/utils/run_defer_with_includes.py" "${CMAKE_BINARY_DIR}" "${_defer_tool_exe}" "${_rel_path}" --output-dir=${defer_transformed_dir}
+            DEPENDS defer-all-timer-start ${_defer_tool_depends} "${_abs_path}" "${CMAKE_BINARY_DIR}/compile_commands_defer.json"
             WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
             COMMENT "Defer: ${_rel_path}"
             VERBATIM
@@ -244,6 +236,28 @@ function(ascii_defer_prepare)
         endforeach()
         set(${var} "${updated_list}" PARENT_SCOPE)
     endforeach()
+
+    # Collect unique source directories that contain defer-transformed files
+    # These need to be added as include paths so relative includes work
+    # Use hardcoded paths to support flexible header directory structure
+    set(defer_source_dirs "")
+
+    # Add standard include directories (mirrors Include.cmake exactly)
+    list(APPEND defer_source_dirs
+        "${CMAKE_SOURCE_DIR}/include"  # Public API headers
+        "${CMAKE_SOURCE_DIR}/lib"      # Private implementation headers
+        "${CMAKE_SOURCE_DIR}/src"      # Application headers
+    )
+
+    # Also add directories where defer-transformed sources live
+    # (for local headers in the same directory as .c files)
+    foreach(rel_path IN LISTS defer_rel_paths)
+        get_filename_component(dir_path "${rel_path}" DIRECTORY)
+        if(dir_path AND NOT "${CMAKE_SOURCE_DIR}/${dir_path}" IN_LIST defer_source_dirs)
+            list(APPEND defer_source_dirs "${CMAKE_SOURCE_DIR}/${dir_path}")
+        endif()
+    endforeach()
+    list(REMOVE_DUPLICATES defer_source_dirs)
 
     set(ASCII_DEFER_SOURCE_DIR "${defer_transformed_dir}" PARENT_SCOPE)
     set(ASCII_DEFER_INCLUDE_DIRS "${defer_source_dirs}" PARENT_SCOPE)

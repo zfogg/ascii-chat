@@ -532,9 +532,7 @@ void simd_caches_destroy_all(void) {
   // Call architecture-specific cache cleanup functions
   // Note: Only ONE SIMD implementation is compiled based on highest available instruction set
   // Higher instruction sets (AVX2, SSSE3) handle cleanup for lower ones (SSE2)
-#if SIMD_SUPPORT_NEON
-  neon_caches_destroy();
-#elif SIMD_SUPPORT_SSSE3
+#if SIMD_SUPPORT_SSSE3
   ssse3_caches_destroy();
 #elif SIMD_SUPPORT_SSE2
   sse2_caches_destroy();

@@ -21,7 +21,7 @@
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/platform/abstraction.h>
-#include <ascii-chat/video/ascii/ansi_fast.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/ascii/palette.h>
 #include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/video/ascii/common.h>
@@ -265,8 +265,7 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
   // Initialize render-file if enabled (FFmpeg encodes to stdout when "-" is specified)
   const char *render_file_opt = GET_OPTION(render_file);
   log_info("DISPLAY_CREATE: render-file opt='%s' (len=%zu), will initialize=%s",
-           render_file_opt ? render_file_opt : "(null)",
-           render_file_opt ? strlen(render_file_opt) : 0,
+           render_file_opt ? render_file_opt : "(null)", render_file_opt ? strlen(render_file_opt) : 0,
            (render_file_opt && strlen(render_file_opt) > 0) ? "YES" : "NO");
   if (render_file_opt && strlen(render_file_opt) > 0) {
     int width = (int)GET_OPTION(width);
@@ -293,13 +292,12 @@ session_display_ctx_t *session_display_create(const session_display_config_t *co
     }
     log_info("render-file: Final encoder FPS=%u (config_render_fps=%u, option_fps=%u)", encoder_fps, config->render_fps,
              (uint32_t)GET_OPTION(fps));
-    log_info("render-file: Calling render_file_create with path='%s', %dx%d, fps=%d",
-             render_file_opt, width, height, encoder_fps);
+    log_info("render-file: Calling render_file_create with path='%s', %dx%d, fps=%d", render_file_opt, width, height,
+             encoder_fps);
     asciichat_error_t rf_err = render_file_create(render_file_opt, width, height, (int)encoder_fps,
                                                   GET_OPTION(render_theme), &ctx->render_file);
     if (rf_err != ASCIICHAT_OK) {
-      log_error("render-file: FAILED to create with error %d (ctx->render_file=%p)",
-                rf_err, (void *)ctx->render_file);
+      log_error("render-file: FAILED to create with error %d (ctx->render_file=%p)", rf_err, (void *)ctx->render_file);
     } else {
       log_info("render-file: SUCCESS - encoder initialized, ctx->render_file=%p", (void *)ctx->render_file);
       // Set audio sources if render_file_set_audio_source is available

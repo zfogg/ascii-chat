@@ -65,8 +65,7 @@ char *render_ascii_mono_neon(const image_t *image, const char *ascii_chars);
  *
  * @ingroup video
  */
-char *render_ascii_color_neon(const image_t *image, bool use_background, bool use_256color,
-                                          const char *ascii_chars);
+char *render_ascii_color_neon(const image_t *image, bool use_background, bool use_256color, const char *ascii_chars);
 
 /**
  * @brief Convert RGB to truecolor half-blocks using NEON
@@ -93,12 +92,6 @@ char *rgb_to_truecolor_halfblocks_neon(const uint8_t *rgb, int width, int height
  */
 void image_flip_horizontal_neon(image_t *image);
 
-/**
- * @brief Destroy NEON caches
- *
- * @ingroup video
- */
-void neon_caches_destroy(void);
 #endif
 
 /** @} */

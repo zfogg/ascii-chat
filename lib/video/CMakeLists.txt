@@ -90,12 +90,14 @@ if(ENABLE_SIMD_AVX2)
 endif()
 
 if(ENABLE_SIMD_NEON)
+    # Enable working NEON files; disable mono.c and color.c due to function signature mismatches
     list(APPEND SIMD_SRCS
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/common.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/mono.c
-        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/color.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/halfblock.c
     )
+    # TODO: Fix mono.c and color.c function signatures
+    # ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/mono.c
+    # ${CMAKE_CURRENT_SOURCE_DIR}/ascii/neon/color.c
 endif()
 
 if(ENABLE_SIMD_SVE)

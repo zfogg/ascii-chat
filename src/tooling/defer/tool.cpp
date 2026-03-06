@@ -967,10 +967,6 @@ int main(int argc, const char **argv) {
     }
   }
 
-  // Disable default system includes - we'll add them back explicitly in the correct order
-  // This prevents clang's builtin path from shadowing SDK system headers
-  prependArgs.push_back("-nostdinc");
-
   if (!resourceDir.empty()) {
     prependArgs.push_back(std::string("-resource-dir=") + resourceDir);
   }
@@ -1002,7 +998,6 @@ int main(int argc, const char **argv) {
   // Override the sysroot for macOS. Homebrew's LLVM config file sets -isysroot
   // to CommandLineTools SDK, but we strip that from compile_commands.json and
   // set our own explicitly to ensure consistent behavior.
-  std::vector<std::string> appendArgs;
   std::string selectedSDK;
 #ifdef __APPLE__
   {
@@ -1025,26 +1020,6 @@ int main(int argc, const char **argv) {
       prependArgs.push_back("-isysroot");
       prependArgs.push_back(selectedSDK);
       // llvm::errs() << "Using macOS SDK: " << selectedSDK << "\n";
-
-      const std::string sdkUsrInclude = selectedSDK + "/usr/include";
-      if (llvm::sys::fs::exists(sdkUsrInclude)) {
-        appendArgs.push_back("-isystem");
-        appendArgs.push_back(sdkUsrInclude);
-      }
-
-      // Ensure ptrcheck.h is discoverable for SDK headers that probe it.
-      // Prefer CLT clang 17 include path, then Xcode toolchain fallback.
-      const char *ptrcheckIncludeCandidates[] = {
-          "/Library/Developer/CommandLineTools/usr/lib/clang/17/include",
-          "/Applications/Xcode.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/lib/clang/17/include",
-      };
-      for (const char *candidate : ptrcheckIncludeCandidates) {
-        if (llvm::sys::fs::exists(candidate)) {
-          appendArgs.push_back("-isystem");
-          appendArgs.push_back(candidate);
-          break;
-        }
-      }
     } else {
       llvm::errs() << "Warning: No macOS SDK found, system headers may not be available\n";
     }
@@ -1054,18 +1029,29 @@ int main(int argc, const char **argv) {
   // Build list of system include paths to add as -isystem paths.
   // LibTooling (cc1 mode) doesn't automatically add system include paths like
   // the clang driver does, so we add them explicitly:
-  // We use -isysroot to let cc1 mode find SDK headers, and DON'T add clang's builtin
-  // include path explicitly since cc1 mode searches it automatically and it would
-  // shadow the system headers when included with -isystem.
-  // Note: We skip adding resourceDir/include as -isystem because cc1 mode
-  // searches the clang resource directory automatically BEFORE -isystem paths,
-  // which would cause it to look for stdio.h in the wrong place.
-
-  // NOTE: We rely on -isysroot (set in prependArgs) to find system headers.
-  // LibTooling on LLVM 21 has a bug where __has_include() evaluates even in non-taken
-  // preprocessor branches and creates VFS entries for non-existent files (ptrcheck.h).
-  // By using -isysroot alone without explicitly adding -isystem paths, we avoid
-  // triggering this bug while still allowing cc1 mode to find system headers.
+  // 1. Clang's builtin headers (stdbool.h, stddef.h, etc.) - FIRST so they shadow SDK builtins
+  // 2. SDK's usr/include (stdio.h, stdlib.h, etc.) - for system headers
+  std::vector<std::string> appendArgs;
+  if (!resourceDir.empty()) {
+    std::string builtinInclude = resourceDir + "/include";
+    if (llvm::sys::fs::exists(builtinInclude)) {
+      appendArgs.push_back("-isystem");
+      appendArgs.push_back(builtinInclude);
+      // llvm::errs() << "Added clang builtin -isystem: " << builtinInclude << "\n";
+    }
+  }
+  // NOTE: We intentionally do NOT add SDK's usr/include to the -isystem path.
+  // LibTooling on LLVM 21 has a bug where __has_include_next() evaluates even
+  // in non-taken preprocessor branches and creates VFS entries that can't be opened.
+  // The clang builtin stdbool.h has:
+  //   #if defined(__MVS__) && __has_include_next(<stdbool.h>)
+  // Even though __MVS__ is not defined on macOS, LLVM 21's LibTooling still tries
+  // to resolve __has_include_next(<stdbool.h>), looks in SDK/usr/include, and fails
+  // because stdbool.h doesn't exist there (it's a builtin header).
+  //
+  // By not adding SDK/usr/include, the __has_include_next won't find any entry
+  // and will return false without trying to open a non-existent file.
+  // The -isysroot flag still provides access to SDK headers through framework paths.
 
   // Single consolidated argument adjuster that:
   // 1. Preserves compiler path (first arg)
@@ -1098,21 +1084,6 @@ int main(int argc, const char **argv) {
       if (pathStr.find("/.deps-cache/") != std::string::npos)
         return false;
       return true;
-    };
-    auto isPublicIncludePath = [&inputRootStr](const std::string &path) -> bool {
-      if (inputRootStr.empty())
-        return false;
-      std::error_code ec;
-      auto normalizedPath = fs::canonical(path, ec);
-      if (ec)
-        return false;
-      auto normalizedRoot = fs::canonical(inputRootStr, ec);
-      if (ec)
-        return false;
-      std::string pathStr = normalizedPath.string();
-      std::string rootStr = normalizedRoot.string();
-      std::string publicInclude = rootStr + "/include";
-      return pathStr == publicInclude || pathStr.find(publicInclude + "/") == 0;
     };
     tooling::CommandLineArguments result;
 
@@ -1193,51 +1164,43 @@ int main(int argc, const char **argv) {
         continue;
       }
 
-      // Convert -I to -iquote for all project include paths
+      // Convert -I to -iquote for project include paths
       // Convert -I to -isystem for dependency paths (so they come after our clang builtins)
-      // This prevents <stdio.h> and <stdbool.h> from being searched in project directories
-      // before system include paths.
-      //
-      // LibTooling's cc1 mode searches -I paths BEFORE -isystem paths for <stdio.h>, which
-      // causes it to look in the project's include directory before system headers. By converting
-      // all project -I to -iquote, <stdio.h> will skip project paths and find the system header.
-      //
-      // For public API headers like <ascii-chat/header.h>, using -iquote works fine because:
-      // -iquote paths come first in the search order for quoted includes, and quoted includes
-      // can find both public and private headers.
+      // This prevents <stdbool.h> from being searched in dependency directories
+      // before our clang builtin path
+      // EXCEPTION: Keep -I for the public "include/" directory since it contains
+      // public API headers meant to be included with angle brackets like <ascii-chat/header.h>
       if (arg == "-I" && i + 1 < args.size()) {
         // -I /path/to/dir (separate argument)
         const std::string &includePath = args[++i];
-        if (isProjectPath(includePath)) {
-          // Keep public include/ visible for angle includes (<ascii-chat/...>).
-          // Other project paths remain quote-only to avoid shadowing system headers.
-          if (isPublicIncludePath(includePath)) {
-            collectedIsystemPaths.push_back(includePath);
-          } else {
-            result.push_back("-iquote");
-            result.push_back(includePath);
-          }
-        } else {
+        if (isProjectPath(includePath) && includePath.find("/include") == std::string::npos) {
+          // Project path but NOT the public include directory - convert to -iquote
+          result.push_back("-iquote");
+          result.push_back(includePath);
+        } else if (!isProjectPath(includePath)) {
           // Collect dependency -I paths to add as -isystem after our builtins
           collectedIsystemPaths.push_back(includePath);
+        } else {
+          // Public include directory - keep as -I for angle-bracket includes
+          result.push_back("-I");
+          result.push_back(includePath);
         }
         continue;
       }
       if (arg.find("-I") == 0 && arg.length() > 2) {
         // -I/path/to/dir (combined form)
         std::string includePath = arg.substr(2);
-        if (isProjectPath(includePath)) {
-          // Keep public include/ visible for angle includes (<ascii-chat/...>).
-          // Other project paths remain quote-only to avoid shadowing system headers.
-          if (isPublicIncludePath(includePath)) {
-            collectedIsystemPaths.push_back(includePath);
-          } else {
-            result.push_back("-iquote");
-            result.push_back(includePath);
-          }
-        } else {
+        if (isProjectPath(includePath) && includePath.find("/include") == std::string::npos) {
+          // Project path but NOT the public include directory - convert to -iquote
+          result.push_back("-iquote");
+          result.push_back(includePath);
+        } else if (!isProjectPath(includePath)) {
           // Collect dependency -I paths to add as -isystem after our builtins
           collectedIsystemPaths.push_back(includePath);
+        } else {
+          // Public include directory - keep as -I for angle-bracket includes
+          result.push_back("-I");
+          result.push_back(includePath);
         }
         continue;
       }

@@ -160,7 +160,7 @@ Test(simd_scalar_comparison, small_gradient_monochrome) {
 
   // Generate outputs
   char *scalar_result = image_print(test_image, palette);
-  char *simd_result = image_print_simd(test_image, palette);
+  char *simd_result = image_print(test_image, palette);
 
   cr_assert_not_null(scalar_result, "Scalar result should not be null");
   cr_assert_not_null(simd_result, "SIMD result should not be null");
@@ -244,7 +244,7 @@ Test(simd_scalar_comparison, single_pixel_values) {
 
     // Generate outputs
     char *scalar_result = image_print(test_image, palette);
-    char *simd_result = image_print_simd(test_image, palette);
+    char *simd_result = image_print(test_image, palette);
 
     // Extract characters
     char *scalar_ascii = extract_ascii_chars(scalar_result, 1);

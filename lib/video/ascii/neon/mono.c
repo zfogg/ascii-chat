@@ -20,6 +20,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/lifecycle.h>
 #include <ascii-chat/video/ascii/neon.h>
+#include <ascii-chat/video/ascii/neon/common.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/common.h>
 #include <ascii-chat/video/ascii/output_buffer.h>
