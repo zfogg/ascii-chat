@@ -258,47 +258,11 @@ ascii-chat --help`}</CodeBlock>
           >
             💻 Usage Examples
           </Heading>
+          <CodeBlock language="bash">{`# Start a server (registers with ACDS by default)
+ascii-chat
 
-          <Heading
-            level={3}
-            className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl"
-          >
-            Server: Create a Session
-          </Heading>
-          <CodeBlock language="bash">{`# Start a server and register with ACDS (uses discovery-service.ascii-chat.com by default)
-ascii-chat server --discovery
-
-# ACDS will return a session string like:
-# Session: happy-sunset-ocean`}</CodeBlock>
-
-          <Heading
-            level={3}
-            className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl"
-          >
-            Client: Join a Session
-          </Heading>
-          <CodeBlock language="bash">{`# Connect using the session string (uses discovery-service.ascii-chat.com by default)
-ascii-chat client happy-sunset-ocean
-
-# That's it! No configuration needed - the client automatically:
-# - Connects to discovery-service.ascii-chat.com:27225
-# - Trusts keys from ${window.location.hostname}
-# - Looks up the session and connects to the server`}</CodeBlock>
-
-          <Heading
-            level={3}
-            className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl"
-          >
-            Manual Key Verification (Optional)
-          </Heading>
-          <CodeBlock language="bash">{`# Download and verify SSH public key
-curl -O ${baseUrl}/key.pub
-ssh-keygen -lf key.pub
-
-# Verify fingerprint matches: SHA256:Uvr6k+9VjcC60gbVtcvwiVZDsIfB6jZvMuD4G2FME6w
-
-# Connect with explicit key verification (optional - automatic by default)
-ascii-chat client happy-sunset-ocean --discovery-service-key ./key.pub`}</CodeBlock>
+# Join a session using the session string
+ascii-chat happy-sunset-ocean`}</CodeBlock>
         </section>
 
         <section className="mb-12">
