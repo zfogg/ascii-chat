@@ -322,11 +322,15 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
             }
           }
 
-          // If all three parts are from the same source line, join with spaces instead of newlines
-          // Collect line numbers that are valid (> 0) and check if they're all the same
-          const validLineNums = [beforeLineNum, matchLineNum, afterLineNum].filter(ln => ln && ln > 0);
-          const allOnSameLine = validLineNums.length > 0 &&
-            validLineNums.every(ln => ln === validLineNums[0]);
+          // Determine what line number these parts belong to
+          // If match has no number, it's part of the closest numbered line
+          const matchOrAfterLineNum = matchLineNum || afterLineNum;
+
+          // If all three parts are from the same source line, join with spaces
+          const allOnSameLine = matchOrAfterLineNum &&
+            (!beforeLineNum || beforeLineNum === matchOrAfterLineNum) &&
+            (!matchLineNum || matchLineNum === matchOrAfterLineNum) &&
+            (!afterLineNum || afterLineNum === matchOrAfterLineNum);
           const snippet = [before, match, after].join(allOnSameLine ? " " : "\n");
 
           snippets.push({
