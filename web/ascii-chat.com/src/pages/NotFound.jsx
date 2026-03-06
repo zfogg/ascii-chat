@@ -11,9 +11,7 @@ export default function NotFoundPage() {
         url="https://ascii-chat.com/404"
       />
       <NotFound />
-      <div className="flex justify-center">
-        <Footer />
-      </div>
+      <Footer />
     </div>
   );
 }
