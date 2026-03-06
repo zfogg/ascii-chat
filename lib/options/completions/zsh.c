@@ -265,11 +265,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   }
 
   fprintf(output, "  )\n"
-                  "  local -a descriptions\n"
-                  "  for opt in \"${binary_opts[@]}\"; do\n"
-                  "    descriptions+=(\"${opt%%:*}\")\n"
-                  "  done\n"
-                  "  compadd \"$@\" -- \"${descriptions[@]}\"\n"
+                  "  _describe -t binary-opts 'binary options' binary_opts\n"
                   "}\n"
                   "\n"
                   "_ascii_chat() {\n"
