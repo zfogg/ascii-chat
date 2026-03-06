@@ -30,7 +30,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (count <= 0) {
+  if (count <= 0 || (long long)count > ACDS_MAX_UNIQUE_SESSIONS) {
     return 1;
   }
 
