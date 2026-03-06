@@ -558,6 +558,9 @@ if(BUILD_WEB)
     # Compile with optimization
     target_compile_options(ascii-chat-strings PRIVATE -std=c23 -O3)
 
+    # Link libsodium for randombytes_uniform()
+    target_link_libraries(ascii-chat-strings PRIVATE sodium)
+
     # Apply sanitizers
     apply_sanitizers_to_target(ascii-chat-strings)
 

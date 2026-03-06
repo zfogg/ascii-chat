@@ -16,10 +16,8 @@
 #include <ascii-chat/common/error_codes.h>
 #include <string.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <sys/random.h>
-#include <time.h>
 #include <stdio.h>
+#include <sodium.h>
 #define PCRE2_CODE_UNIT_WIDTH 8
 #include <pcre2.h>
 #include <ascii-chat/util/utf8.h>
@@ -33,22 +31,6 @@
 #define SET_ERRNO(code, fmt, ...) (code)
 
 
-// Simple RNG using getentropy() - works on native platforms and WASM (Emscripten)
-// getentropy() is available in glibc and maps to crypto.getRandomValues() in Emscripten
-static uint32_t simple_randombytes_uniform(uint32_t upper_bound) {
-  if (upper_bound == 0) return 0;
-
-  uint32_t random_val = 0;
-
-  // Try getentropy() first (works on WASM and modern Unix systems)
-  if (getentropy(&random_val, sizeof(random_val)) == 0) {
-    return random_val % upper_bound;
-  }
-
-  // Fallback: time-based seed (for platforms without getentropy)
-  random_val = (uint32_t)time(NULL) ^ getpid();
-  return random_val % upper_bound;
-}
 
 // ============================================================================
 // Word Cache Implementation (Hashtable for O(1) validation)
@@ -240,25 +222,6 @@ static pcre2_code *session_format_regex_get(void) {
   return g_session_format_regex;
 }
 
-// Simple RNG using getentropy() - works on native platforms and WASM (Emscripten)
-// getentropy() is available in glibc and maps to crypto.getRandomValues() in Emscripten
-static uint32_t simple_simple_randombytes_uniform(uint32_t upper_bound) {
-  if (upper_bound == 0) return 0;
-
-  uint32_t random_val = 0;
-
-  // Try getentropy() first (works on WASM and modern Unix systems)
-  if (getentropy(&random_val, sizeof(random_val)) == 0) {
-    return random_val % upper_bound;
-  }
-
-  // Fallback: time-based seed (for platforms without getentropy)
-  random_val = (uint32_t)time(NULL) ^ getpid();
-
-  // Use modulo to get value in range [0, upper_bound)
-  // Note: This has slight bias for non-power-of-2 bounds, but acceptable for our use case
-  return random_val % upper_bound;
-}
 
 asciichat_error_t acds_string_init(void) {
   // No initialization needed - getrandom() works directly
@@ -275,12 +238,12 @@ asciichat_error_t acds_string_generate(char *output, size_t output_size) {
   // No need to call sodium_init() again (redundant initialization removed)
 
   // Pick random adjective
-  uint32_t adj_idx = simple_randombytes_uniform((uint32_t)adjectives_count);
+  uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
   const char *adj = adjectives[adj_idx];
 
   // Pick two random nouns
-  uint32_t noun1_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-  uint32_t noun2_idx = simple_randombytes_uniform((uint32_t)nouns_count);
+  uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
+  uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
   const char *noun1 = nouns[noun1_idx];
   const char *noun2 = nouns[noun2_idx];
 
