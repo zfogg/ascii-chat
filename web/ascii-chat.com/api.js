@@ -14,27 +14,11 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const app = express();
 
-// Development port configuration
+// API server configuration
 // When NODE_ENV != production, api runs on localhost:3001
 // The vite dev servers (port 5173, 5174, 3000) proxy /api requests to this
 const PORT = process.env.API_PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || "development";
-
-// Development site URLs for cross-site linking
-const DEV_SITES = {
-  MAIN: "http://localhost:5173",       // ascii-chat.com dev
-  DISCOVERY: "http://localhost:5174",  // discovery.ascii-chat.com dev
-  WEB: "http://localhost:3000",        // web.ascii-chat.com dev
-};
-
-// Production site URLs
-const PROD_SITES = {
-  MAIN: "https://ascii-chat.com",
-  DISCOVERY: "https://discovery.ascii-chat.com",
-  WEB: "https://web.ascii-chat.com",
-};
-
-const SITES = NODE_ENV === "production" ? PROD_SITES : DEV_SITES;
 
 // Configure logger
 const logger = winston.createLogger({
