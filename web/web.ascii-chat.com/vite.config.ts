@@ -38,6 +38,9 @@ export default defineConfig({
     dedupe: ["react", "react-dom", "react-helmet-async"],
   },
   server: {
+    // Development: http://localhost:3000
+    // Production: https://web.ascii-chat.com
+    // API proxy: /api requests route to localhost:3001 (via API_PORT env var)
     port: 3000,
     headers: {
       "Cross-Origin-Embedder-Policy": "require-corp",

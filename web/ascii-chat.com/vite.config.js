@@ -36,6 +36,9 @@ export default defineConfig({
     dedupe: ["react", "react-dom"],
   },
   server: {
+    // Development: http://localhost:5173
+    // Production: https://ascii-chat.com
+    // API proxy: /api requests route to localhost:3001 (via API_PORT env var)
     proxy: {
       "/api": {
         target: `http://localhost:${process.env.API_PORT || 3001}`,

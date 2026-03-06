@@ -1,3 +1,5 @@
+import { API_RELATIVE } from "./urls";
+
 /**
  * Fetch session strings from the API
  * @param count - Number of session strings to generate (default: 1)
@@ -8,7 +10,7 @@ export async function fetchSessionStrings(count: number = 1): Promise<string[]> 
   try {
     // Use relative URL so it works in production and with dev proxy
     const response = await fetch(
-      `/api/session-strings?count=${count}`,
+      `${API_RELATIVE.SESSION_STRINGS}?count=${count}`,
     );
 
     if (!response.ok) {

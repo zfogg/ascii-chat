@@ -3,6 +3,7 @@ import Footer from "../components/Footer";
 import { setBreadcrumbSchema } from "../utils/breadcrumbs";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
+import { API_RELATIVE } from "@ascii-chat/shared/utils";
 import "../styles/man.css";
 
 export default function Man3() {
@@ -382,7 +383,7 @@ export default function Man3() {
 
       try {
         const response = await fetch(
-          `/api/man3/search?q=${encodeURIComponent(query)}`,
+          `${API_RELATIVE.MAN3_SEARCH}?q=${encodeURIComponent(query)}`,
         );
         const data = await response.json();
 
