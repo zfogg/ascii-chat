@@ -392,10 +392,12 @@ export function MirrorPage() {
       import.meta.env["NODE_ENV"] !== "production" &&
       wasmInitialized &&
       permissionGranted &&
-      !isRunning
+      !isRunning &&
+      !devAutoStartRef.current
     ) {
+      devAutoStartRef.current = true;
       console.log("[Mirror] Auto-starting webcam in development mode");
-      startWebcam();
+      Promise.resolve().then(() => startWebcam());
     }
   }, [wasmInitialized, permissionGranted, isRunning, startWebcam]);
 
