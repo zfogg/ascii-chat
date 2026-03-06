@@ -258,7 +258,7 @@ ascii-chat --help`}</CodeBlock>
           >
             💻 Usage Examples
           </Heading>
-          <CodeBlock language="bash">{`# Start a server (registers with ACDS by default)
+          <CodeBlock language="bash">{`# Start a new session
 ascii-chat
 
 # Join a session using the session string
