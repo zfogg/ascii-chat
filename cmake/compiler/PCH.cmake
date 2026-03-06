@@ -26,7 +26,6 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
         )
 
         set(_ascii_chat_pch_headers
-            <ascii-chat/platform/api.h>
             <ascii-chat/platform/system.h>
             <ascii-chat/platform/init.h>
             <ascii-chat/platform/filesystem.h>
@@ -35,7 +34,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/platform/socket.h>
             <ascii-chat/platform/terminal.h>
 
-            <ascii-chat/log/logging.h>
+            <ascii-chat/log/log.h>
             <ascii-chat/options/options.h>
             <ascii-chat/options/enums.h>
             <ascii-chat/options/layout.h>
@@ -43,7 +42,7 @@ if(CMAKE_VERSION VERSION_GREATER_EQUAL "3.16")
             <ascii-chat/buffer_pool.h>
             <ascii-chat/asciichat_errno.h>
             <ascii-chat/ringbuffer.h>
-            <ascii-chat/video/palette.h>
+            <ascii-chat/video/ascii/palette.h>
 
             <ascii-chat/util/path.h>
             <ascii-chat/util/format.h>

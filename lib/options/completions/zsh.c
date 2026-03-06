@@ -54,7 +54,8 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
   // Collect unique groups
   for (size_t i = 0; i < count; i++) {
     const char *group = opts[i].group;
-    if (!group) continue;
+    if (!group)
+      continue;
 
     // Check if we already have this group
     bool found = false;
@@ -93,23 +94,23 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
  *   --audio) _values 'value' true false; return ;;
  */
 static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts, size_t count) {
-  if (!opts || count == 0) return;
+  if (!opts || count == 0)
+    return;
 
   // Case statement for option name matching
   fprintf(output, "  case \"$prev\" in\n");
 
   for (size_t i = 0; i < count; i++) {
     // Skip action options (they take no value)
-    if (opts[i].type == OPTION_TYPE_ACTION) continue;
+    if (opts[i].type == OPTION_TYPE_ACTION)
+      continue;
 
     // Device index options: call helper functions
     if (strcmp(opts[i].long_name, "webcam-index") == 0) {
       fprintf(output, "    --%-30s) _ascii_chat_webcam_indices; return ;;\n", opts[i].long_name);
-    }
-    else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
+    } else if (strcmp(opts[i].long_name, "microphone-index") == 0) {
       fprintf(output, "    --%-30s) _ascii_chat_microphone_indices; return ;;\n", opts[i].long_name);
-    }
-    else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
+    } else if (strcmp(opts[i].long_name, "speakers-index") == 0) {
       fprintf(output, "    --%-30s) _ascii_chat_speakers_indices; return ;;\n", opts[i].long_name);
     }
     // Enum options: emit value completion
@@ -133,11 +134,11 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
   fprintf(output, "  case \"${words[CURRENT]}\" in\n");
 
   for (size_t i = 0; i < count; i++) {
-    if (opts[i].type == OPTION_TYPE_ACTION) continue;
+    if (opts[i].type == OPTION_TYPE_ACTION)
+      continue;
 
     // Skip device index options (they don't support =VALUE form)
-    if (strcmp(opts[i].long_name, "webcam-index") == 0 ||
-        strcmp(opts[i].long_name, "microphone-index") == 0 ||
+    if (strcmp(opts[i].long_name, "webcam-index") == 0 || strcmp(opts[i].long_name, "microphone-index") == 0 ||
         strcmp(opts[i].long_name, "speakers-index") == 0) {
       continue;
     }
@@ -159,8 +160,9 @@ static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts,
  * Write options grouped by category using _describe for proper group headers
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
-                                       const char *func_prefix) {
-  if (!opts || count == 0) return;
+                                      const char *func_prefix) {
+  if (!opts || count == 0)
+    return;
 
   size_t group_count = 0;
   const char **groups = zsh_collect_groups(opts, count, &group_count);
@@ -172,7 +174,8 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
 
     // Write all options in this group (long options only to avoid "corrections" duplicates)
     for (size_t i = 0; i < count; i++) {
-      if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
+      if (!opts[i].group || strcmp(opts[i].group, group) != 0)
+        continue;
 
       // Long option only (short options are less discoverable via TAB)
       fprintf(output, "    '--%s:", opts[i].long_name);
@@ -213,6 +216,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
 
   fprintf(output, "compdef _ascii_chat ascii-chat\n"
+                  "compdef _ascii_chat 'build/bin/ascii-chat'\n"
                   "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
                   "\n"

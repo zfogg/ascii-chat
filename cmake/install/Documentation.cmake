@@ -139,8 +139,9 @@ message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT
 ")
 
     # Create man3 target (fast, man pages only)
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
     add_custom_target(man3
-        COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN3_OUT}
+        COMMAND timeout 10 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN3_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
@@ -180,8 +181,9 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/docs")
 
     # Create documentation target (Doxygen output suppressed via QUIET = YES in Doxyfile.in)
+    file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/doc/html")
     add_custom_target(docs
-        COMMAND timeout 30 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+        COMMAND timeout 10 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
