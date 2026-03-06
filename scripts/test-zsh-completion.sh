@@ -108,7 +108,7 @@ cat /tmp/test3_output.txt | tail -20
 echo ""
 
 # Check for success indicators
-if cat /tmp/test3_output.txt | rg -q "audio"; then
+if cat /tmp/test3_output.txt | rg -q "audio options"; then
   echo "🟢 TEST 3 PASSED: Client mode --audio option showing"
   TEST3_PASS=1
 else
