@@ -4,6 +4,10 @@
 @source ".";
 @source "../../packages/shared/src";
 
+body {
+  overflow-y: hidden;
+}
+
 /* Mobile overflow fix for docs pages */
 .docs-container {
   max-width: min(64rem, 100vw) !important;
