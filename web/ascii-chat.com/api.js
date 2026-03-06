@@ -291,6 +291,7 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
           const before = i > 0 ? lines[i - 1] : "";
           const match = lines[i];
           const after = i < lines.length - 1 ? lines[i + 1] : "";
+          const snippet = [before, match, after].join("\n");
 
           if (i > 0) usedLines.add(i - 1);
           usedLines.add(i);
@@ -321,18 +322,6 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
               }
             }
           }
-          }
-
-          // Determine what line number these parts belong to
-          // If match has no number, it's part of the closest numbered line
-          const matchOrAfterLineNum = matchLineNum || afterLineNum;
-
-          // If all three parts are from the same source line, join with spaces
-          const allOnSameLine = matchOrAfterLineNum &&
-            (!beforeLineNum || beforeLineNum === matchOrAfterLineNum) &&
-            (!matchLineNum || matchLineNum === matchOrAfterLineNum) &&
-            (!afterLineNum || afterLineNum === matchOrAfterLineNum);
-          const snippet = [before, match, after].join(allOnSameLine ? " " : "\n");
 
           snippets.push({
             text: snippet,
