@@ -49,23 +49,25 @@ Attempts direct TCP and WebRTC connections.
 Internally known as 'discovery' mode.
 .TP
 .B server
-Runs a video chat server that accepts connections from multiple clients,
-mixes their audio and video streams together, and broadcasts the mixed streams
-out to all connected clients.
+Runs a video chat server that accepts connections from multiple clients, renders
+pixels to ascii art, mixes their audio and video streams together, and broadcasts
+the mixed streams out to all connected clients.
 .TP
 .B client
-Connects to an ascii-chat server via TCP or Websocket, captures
+Connects to an ascii-chat server via TCP or Websocket an ip address or domain name, captures
 video from the local webcam, sends it to the server, and displays
 the video feed from all participants that the server sends.
 .TP
 .B mirror
 Displays local webcam or file or URL media as text art without any network
 connection or ascii-chat server.  Use mirror mode if you just want to watch
-a YouTube video or other URL or file as ASCII art, with full audio support.
+a YouTube video or other URL or file as ASCII art, or render ASCII art to
+or from a binary file format, or play with your webcam and the
+different --flags and animation settings that ascii-chat offers.
 .TP
 .B discovery-service
 Runs an ACDS (ascii-chat Discovery Service) server for session discovery.
-Allows clients and servers to discover each other using memorable session
+Allows users of ascii-chat's default mode to discover each other using memorable session
 strings instead of IP addresses. See the SECURITY section for
 notes on the official instance and its keys.
 .\" MANUAL-END: MODES

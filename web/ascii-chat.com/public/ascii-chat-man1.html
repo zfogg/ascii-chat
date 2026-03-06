@@ -62,22 +62,24 @@
       Internally known as 'discovery' mode.</dd>
   <dt id="server"><a class="permalink" href="#server"><b>server</b></a></dt>
   <dd>Runs a video chat server that accepts connections from multiple clients,
-      mixes their audio and video streams together, and broadcasts the mixed
-      streams out to all connected clients.</dd>
+      renders pixels to ascii art, mixes their audio and video streams together,
+      and broadcasts the mixed streams out to all connected clients.</dd>
   <dt id="client"><a class="permalink" href="#client"><b>client</b></a></dt>
-  <dd>Connects to an ascii-chat server via TCP or Websocket, captures video from
-      the local webcam, sends it to the server, and displays the video feed from
-      all participants that the server sends.</dd>
+  <dd>Connects to an ascii-chat server via TCP or Websocket an ip address or
+      domain name, captures video from the local webcam, sends it to the server,
+      and displays the video feed from all participants that the server
+    sends.</dd>
   <dt id="mirror"><a class="permalink" href="#mirror"><b>mirror</b></a></dt>
   <dd>Displays local webcam or file or URL media as text art without any network
       connection or ascii-chat server. Use mirror mode if you just want to watch
-      a YouTube video or other URL or file as ASCII art, with full audio
-      support.</dd>
+      a YouTube video or other URL or file as ASCII art, or render ASCII art to
+      or from a binary file format, or play with your webcam and the different
+      --flags and animation settings that ascii-chat offers.</dd>
   <dt id="discovery-service"><a class="permalink" href="#discovery-service"><b>discovery-service</b></a></dt>
   <dd>Runs an ACDS (ascii-chat Discovery Service) server for session discovery.
-      Allows clients and servers to discover each other using memorable session
-      strings instead of IP addresses. See the SECURITY section for notes on the
-      official instance and its keys.
+      Allows users of ascii-chat's default mode to discover each other using
+      memorable session strings instead of IP addresses. See the SECURITY
+      section for notes on the official instance and its keys.
     <p class="Pp"></p>
   </dd>
 </dl>
@@ -93,10 +95,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty/unset) start new session. generates a session string to give someone to connect to you.
-elect-morse-paragraph
-sticky-mole-bodyguard
-microscopic-list-cartoon
-colonial-bottom-cocksucker</pre>
+articulate-now-dip
+pedigree-limp-sculpture
+sweetheart-bash-warmth
+rubber-salsa-tuck</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -180,21 +182,21 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat subtle-robbery-violin</b></dt>
+  <dt><b>ascii-chat chief-rock-hua</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat negro-backpack-parade --file video.mp4</b></dt>
+  <dt><b>ascii-chat sunset-employ-rope --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat romanian-fudge-immigrant --url
+  <dt><b>ascii-chat wanton-whole-surround --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat majestic-ninja-indian -f -</b></dt>
+  <dt><b>ascii-chat rigid-portal-language -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat above-revolver-former --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat legendary-gypsy-tiger --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat rental-waist-thief --discovery-service
+  <dt><b>ascii-chat behavioral-snatch-applause --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat server</b></dt>
+  <dt><b>ascii-chat discovery-service</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
   <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
@@ -208,9 +210,9 @@ https://example.com/stream.m3u8</pre>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat mirror --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
-  <dt><b>ascii-chat client -f video.mp4</b></dt>
+  <dt><b>ascii-chat mirror -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
   <dt><b>ascii-chat mirror --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
