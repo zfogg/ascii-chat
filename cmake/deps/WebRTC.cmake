@@ -63,8 +63,14 @@ if(PATCH_RESULT)
 endif()
 
 # Continue with cache/build checks after patching the source.
-# Set up build directory in deps cache - use musl-specific dir when USE_MUSL=ON
-if(USE_MUSL AND MUSL_DEPS_DIR_STATIC)
+# Set up build directory in deps cache - use platform-specific dir for iOS, musl-specific for musl
+if(PLATFORM_IOS)
+    if(BUILD_IOS_SIM)
+        set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-ios-sim-build")
+    else()
+        set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-ios-build")
+    endif()
+elseif(USE_MUSL AND MUSL_DEPS_DIR_STATIC)
     set(WEBRTC_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/webrtc_aec3-build")
 else()
     set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
@@ -77,6 +83,8 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
     # Include USE_MUSL so WebRTC is rebuilt with musl target when musl is enabled
     set(WEBRTC_BUILD_CONFIG "BUILD_TYPE=${CMAKE_BUILD_TYPE};MUSL=${USE_MUSL};SSE2=${ENABLE_SIMD_SSE2};SSSE3=${ENABLE_SIMD_SSSE3};AVX2=${ENABLE_SIMD_AVX2};NEON=${ENABLE_SIMD_NEON};SVE=${ENABLE_SIMD_SVE}")
     set(WEBRTC_CONFIG_MARKER "${WEBRTC_BUILD_DIR}/.build_config")
+    # Normalize: strip trailing whitespace from config string
+    string(STRIP "${WEBRTC_BUILD_CONFIG}" WEBRTC_BUILD_CONFIG)
 
     # Determine platform-correct library names for cache check
     if(WIN32)
@@ -374,8 +382,14 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
 
 # Import pre-built libraries as INTERFACE library
 # This way, WebRTC targets are NOT part of the main project's target list
-# Use musl-specific dir when USE_MUSL=ON to match build configuration above
-if(USE_MUSL AND MUSL_DEPS_DIR_STATIC)
+# Use platform-specific dir for iOS, musl-specific for musl to match build configuration above
+if(PLATFORM_IOS)
+    if(BUILD_IOS_SIM)
+        set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-ios-sim-build")
+    else()
+        set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-ios-build")
+    endif()
+elseif(USE_MUSL AND MUSL_DEPS_DIR_STATIC)
     set(WEBRTC_BUILD_DIR "${MUSL_DEPS_DIR_STATIC}/webrtc_aec3-build")
 else()
     set(WEBRTC_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/webrtc_aec3-build")
