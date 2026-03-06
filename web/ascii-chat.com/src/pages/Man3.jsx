@@ -131,8 +131,7 @@ export default function Man3() {
     const tbody = document.createElement("tbody");
     for (const row of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML =
-        `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
       tbody.appendChild(tr);
     }
 
@@ -191,8 +190,7 @@ export default function Man3() {
     const tbody = document.createElement("tbody");
     for (const row of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML =
-        `<td class="man-data-field-type" style="font-family: monospace; font-size: 0.85em; word-break: break-word;">${row.signature}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tr.innerHTML = `<td class="man-data-field-type" style="font-family: monospace; font-size: 0.85em; word-break: break-word;">${row.signature}</td><td class="man-data-field-desc">${row.description}</td>`;
       tbody.appendChild(tr);
     }
 
@@ -609,7 +607,22 @@ export default function Man3() {
     if (!query.trim()) return text;
 
     try {
-      const regex = new RegExp(`(${query})`, "gi");
+      let regex;
+      const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
+
+      if (regexMatch) {
+        // Parse /pattern/flags format
+        const pattern = regexMatch[1];
+        const flags = (regexMatch[2] || "i").includes("g")
+          ? regexMatch[2]
+          : (regexMatch[2] || "i") + "g";
+        regex = new RegExp(`(${pattern})`, flags);
+      } else {
+        // Literal string - escape special chars
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        regex = new RegExp(`(${escaped})`, "gi");
+      }
+
       const parts = text.split(regex);
 
       return parts.map((part, i) => {
@@ -646,7 +659,22 @@ export default function Man3() {
     if (!query.trim()) return html;
 
     try {
-      const regex = new RegExp(`(${query})`, "gi");
+      let regex;
+      const regexMatch = query.match(/^\/(.+)\/([gimuy]*)$/);
+
+      if (regexMatch) {
+        // Parse /pattern/flags format
+        const pattern = regexMatch[1];
+        const flags = (regexMatch[2] || "i").includes("g")
+          ? regexMatch[2]
+          : (regexMatch[2] || "i") + "g";
+        regex = new RegExp(`(${pattern})`, flags);
+      } else {
+        // Literal string - escape special chars
+        const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        regex = new RegExp(`(${escaped})`, "gi");
+      }
+
       // For code blocks: preserve Doxygen syntax highlighting while adding search highlight
       // Wrap matches with highlight span but preserve existing span classes
       return html.replace(
@@ -911,8 +939,8 @@ export default function Man3() {
           );
 
           // Get all spans in the CODE block and find those on the same line
-          const codeBlock = foundElement.closest("code") ||
-            foundElement.closest("pre");
+          const codeBlock =
+            foundElement.closest("code") || foundElement.closest("pre");
           console.log(
             "[Man3] Code block:",
             codeBlock?.tagName,
@@ -1421,9 +1449,11 @@ export default function Man3() {
               data-last-line={lastSourceLineNum}
             >
               <CodeBlock
-                highlightLines={targetLineStart
-                  ? { start: targetLineStart, end: targetLineEnd }
-                  : undefined}
+                highlightLines={
+                  targetLineStart
+                    ? { start: targetLineStart, end: targetLineEnd }
+                    : undefined
+                }
                 searchQuery={searchQuery}
                 showLineNumbers={true}
               >
@@ -1521,12 +1551,12 @@ export default function Man3() {
             ? `code-block-${targetLineStart}`
             : undefined;
           // Also add data attribute to track which source lines are in this block
-          const firstLineNum = codeLines.length > 0
-            ? codeLines[0].number
-            : null;
-          const lastLineNum = codeLines.length > 0
-            ? codeLines[codeLines.length - 1].number
-            : null;
+          const firstLineNum =
+            codeLines.length > 0 ? codeLines[0].number : null;
+          const lastLineNum =
+            codeLines.length > 0
+              ? codeLines[codeLines.length - 1].number
+              : null;
 
           elements.push(
             <div
@@ -1587,9 +1617,11 @@ export default function Man3() {
       break;
     }
 
-    return elements.length > 0
-      ? elements
-      : <div dangerouslySetInnerHTML={{ __html: html }} />;
+    return elements.length > 0 ? (
+      elements
+    ) : (
+      <div dangerouslySetInnerHTML={{ __html: html }} />
+    );
   };
 
   return (
@@ -1669,8 +1701,7 @@ export default function Man3() {
                     className="bg-gray-800 px-1 rounded cursor-pointer underline hover:bg-gray-700 hover:text-gray-100 transition-colors"
                   >
                     /^socket$/gi
-                  </code>
-                  {" "}
+                  </code>{" "}
                   for flags
                 </p>
                 <p className="text-xs text-gray-500 text-center text-right self-end">
@@ -1691,10 +1722,10 @@ export default function Man3() {
             {searching
               ? "Searching..."
               : filesMatched > 0
-              ? `${filesMatched} file${
-                filesMatched !== 1 ? "s" : ""
-              } matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
-              : "No results"}
+                ? `${filesMatched} file${
+                    filesMatched !== 1 ? "s" : ""
+                  } matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
+                : "No results"}
           </p>
         </header>
 
@@ -1708,222 +1739,216 @@ export default function Man3() {
                 {searchQuery ? "Results:" : "Man pages:"}
               </h3>
               <div className="h-full bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto">
-                {loading
-                  ? (
-                    <div className="p-4 text-center text-gray-400">
-                      Loading pages...
-                    </div>
-                  )
-                  : searching && searchResults.length === 0
-                  ? (
-                    <div className="p-4 text-center text-blue-400">
-                      Searching...
-                    </div>
-                  )
-                  : searchResults.length === 0
-                  ? (
-                    <div className="p-4 text-center text-gray-400">
-                      {searchQuery ? "No pages found" : "Search to get started"}
-                    </div>
-                  )
-                  : (
-                    <div className="divide-y divide-gray-800">
-                      {highlightedResults.map((page, _index) => (
-                        <div
-                          key={`${page.file}-${page.name}`}
-                          className={`border-l-4 transition-colors ${
-                            selectedPageName === page.name
-                              ? "bg-purple-900/30 border-purple-500"
-                              : "border-gray-800 hover:bg-gray-800/50"
-                          }`}
+                {loading ? (
+                  <div className="p-4 text-center text-gray-400">
+                    Loading pages...
+                  </div>
+                ) : searching && searchResults.length === 0 ? (
+                  <div className="p-4 text-center text-blue-400">
+                    Searching...
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="p-4 text-center text-gray-400">
+                    {searchQuery ? "No pages found" : "Search to get started"}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-800">
+                    {highlightedResults.map((page, _index) => (
+                      <div
+                        key={`${page.file}-${page.name}`}
+                        className={`border-l-4 transition-colors ${
+                          selectedPageName === page.name
+                            ? "bg-purple-900/30 border-purple-500"
+                            : "border-gray-800 hover:bg-gray-800/50"
+                        }`}
+                      >
+                        <button
+                          onClick={() => {
+                            window.location.hash = "";
+                            loadPageContent(page.name);
+                          }}
+                          className="w-full text-left px-4 py-3 block cursor-pointer transition-colors"
                         >
-                          <button
-                            onClick={() => {
-                              window.location.hash = "";
-                              loadPageContent(page.name);
-                            }}
-                            className="w-full text-left px-4 py-3 block cursor-pointer transition-colors"
-                          >
-                            <div className="font-mono text-sm font-semibold truncate text-purple-300 underline hover:text-purple-100">
-                              {page.highlightedName}
-                            </div>
-                            <div className="text-xs text-gray-400 mt-1 line-clamp-2 hover:text-gray-300">
-                              {page.highlightedTitle}
-                            </div>
-                          </button>
+                          <div className="font-mono text-sm font-semibold truncate text-purple-300 underline hover:text-purple-100">
+                            {page.highlightedName}
+                          </div>
+                          <div className="text-xs text-gray-400 mt-1 line-clamp-2 hover:text-gray-300">
+                            {page.highlightedTitle}
+                          </div>
+                        </button>
 
-                          {/* Snippets in nested boxes */}
-                          {page.snippets && page.snippets.length > 0 && (
-                            <div className="px-4 pb-3 space-y-2">
-                              {page.snippets.map((snippet, idx) => {
-                                const snippetLines = snippet.text.split("\n");
-                                const [
-                                  _beforeLineNum,
-                                  _matchLineNum,
-                                  _afterLineNum,
-                                ] = snippet.lineNumbers;
-                                return (
-                                  <div
-                                    key={idx}
-                                    data-snippet-id={`${page.name}-${idx}`}
-                                    onClick={() =>
-                                      loadPageContent(
-                                        page.name,
-                                        snippet.lineNumbers[1],
-                                        idx,
-                                        false,
-                                        snippet.text,
+                        {/* Snippets in nested boxes */}
+                        {page.snippets && page.snippets.length > 0 && (
+                          <div className="px-4 pb-3 space-y-2">
+                            {page.snippets.map((snippet, idx) => {
+                              const snippetLines = snippet.text.split("\n");
+                              const [
+                                _beforeLineNum,
+                                _matchLineNum,
+                                _afterLineNum,
+                              ] = snippet.lineNumbers;
+                              return (
+                                <div
+                                  key={idx}
+                                  data-snippet-id={`${page.name}-${idx}`}
+                                  onClick={() =>
+                                    loadPageContent(
+                                      page.name,
+                                      snippet.lineNumbers[1],
+                                      idx,
+                                      false,
+                                      snippet.text,
+                                    )
+                                  }
+                                  className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-x-auto cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
+                                >
+                                  <div className="flex gap-2">
+                                    {/* Line numbers column */}
+                                    <div className="text-white text-right flex-shrink-0 select-none">
+                                      {snippet.lineNumbers.map(
+                                        (lineNum, lineIdx) => (
+                                          <div key={lineIdx}>{lineNum}</div>
+                                        ),
                                       )}
-                                    className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-x-auto cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
-                                  >
-                                    <div className="flex gap-2">
-                                      {/* Line numbers column */}
-                                      <div className="text-white text-right flex-shrink-0 select-none">
-                                        {snippet.lineNumbers.map(
-                                          (lineNum, lineIdx) => (
-                                            <div key={lineIdx}>{lineNum}</div>
-                                          ),
-                                        )}
-                                      </div>
-                                      {/* Code content */}
-                                      <div className="whitespace-nowrap overflow-x-auto flex-1">
-                                        {snippetLines.map((line, lineIdx) => {
-                                          const cleanedLine = line.replace(
-                                            /^\s*\d+\s+/,
-                                            "",
-                                          );
-                                          return (
-                                            <div
-                                              key={lineIdx}
-                                              className={lineIdx ===
-                                                  Math.floor(
-                                                    snippetLines.length / 2,
-                                                  )
+                                    </div>
+                                    {/* Code content */}
+                                    <div className="whitespace-nowrap overflow-x-auto flex-1">
+                                      {snippetLines.map((line, lineIdx) => {
+                                        const cleanedLine = line.replace(
+                                          /^\s*\d+\s+/,
+                                          "",
+                                        );
+                                        return (
+                                          <div
+                                            key={lineIdx}
+                                            className={
+                                              lineIdx ===
+                                              Math.floor(
+                                                snippetLines.length / 2,
+                                              )
                                                 ? "bg-gray-800/50 px-1 -mx-1"
-                                                : ""}
-                                            >
-                                              {highlightMatches(
-                                                cleanedLine,
-                                                searchQuery,
-                                              )}
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
+                                                : ""
+                                            }
+                                          >
+                                            {highlightMatches(
+                                              cleanedLine,
+                                              searchQuery,
+                                            )}
+                                          </div>
+                                        );
+                                      })}
                                     </div>
                                   </div>
-                                );
-                              })}
-                              {page.totalMatchesInFile >
-                                  page.snippets.length && (
-                                <div className="bg-yellow-900/50 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-200">
-                                  ... {page.totalMatchesInFile -
-                                    page.snippets.length} more matching result
-                                  {page.totalMatchesInFile -
-                                        page.snippets.length !==
-                                      1
-                                    ? "s"
-                                    : ""} for this file
                                 </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                      {moreFilesCount > 0 && (
-                        <div className="bg-fuchsia-900/50 border border-fuchsia-700/50 rounded px-3 py-2 text-sm font-semibold text-fuchsia-200 m-3">
-                          ... {moreFilesCount} more matching file
-                          {moreFilesCount !== 1 ? "s" : ""}
-                        </div>
-                      )}
-                    </div>
-                  )}
+                              );
+                            })}
+                            {page.totalMatchesInFile > page.snippets.length && (
+                              <div className="bg-yellow-900/50 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-200">
+                                ...{" "}
+                                {page.totalMatchesInFile - page.snippets.length}{" "}
+                                more matching result
+                                {page.totalMatchesInFile -
+                                  page.snippets.length !==
+                                1
+                                  ? "s"
+                                  : ""}{" "}
+                                for this file
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {moreFilesCount > 0 && (
+                      <div className="bg-fuchsia-900/50 border border-fuchsia-700/50 rounded px-3 py-2 text-sm font-semibold text-fuchsia-200 m-3">
+                        ... {moreFilesCount} more matching file
+                        {moreFilesCount !== 1 ? "s" : ""}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Content viewer */}
             <div className="flex-1 min-w-0">
-              {pageNotFound
-                ? (
-                  <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto h-[calc(100vh-300px)] flex flex-col items-center justify-center">
-                    <div className="text-center">
-                      <h2 className="text-7xl font-bold text-red-400 mb-6">
-                        404
-                      </h2>
-                      <p className="text-3xl text-red-400 font-semibold mb-8">
-                        Page Not Found
+              {pageNotFound ? (
+                <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto h-[calc(100vh-300px)] flex flex-col items-center justify-center">
+                  <div className="text-center">
+                    <h2 className="text-7xl font-bold text-red-400 mb-6">
+                      404
+                    </h2>
+                    <p className="text-3xl text-red-400 font-semibold mb-8">
+                      Page Not Found
+                    </p>
+                    <div className="text-gray-400 text-lg">
+                      <p className="mb-6">
+                        The documentation page for{" "}
+                        <code className="bg-gray-800 px-3 py-2 rounded text-xl">
+                          {selectedPageName}
+                        </code>{" "}
+                        could not be found.
                       </p>
-                      <div className="text-gray-400 text-lg">
-                        <p className="mb-6">
-                          The documentation page for{" "}
-                          <code className="bg-gray-800 px-3 py-2 rounded text-xl">
-                            {selectedPageName}
-                          </code>{" "}
-                          could not be found.
-                        </p>
-                        <p className="text-gray-500">
-                          Try searching for a different page or check the
-                          spelling.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )
-                : selectedPageContent
-                ? (
-                  <div
-                    ref={contentViewerRef}
-                    className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto"
-                  >
-                    <div className="mb-4 pb-4 border-b border-gray-800">
-                      <h2 className="text-2xl font-bold text-purple-400">
-                        {selectedPageName}(3)
-                      </h2>
-                    </div>
-                    <div className="man-page-content">
-                      {renderContentWithCodeBlocks(
-                        selectedPageContent,
-                        selectedPageName?.endsWith("_source") ||
-                          selectedPageName?.endsWith(".c") ||
-                          false,
-                        searchQuery,
-                        targetLineNumber,
-                      )}
-                    </div>
-                    <div className="mt-8 pt-6 border-t border-gray-700">
-                      <h3 className="text-sm font-semibold text-cyan-400 mb-2">
-                        SEE ALSO
-                      </h3>
-                      <p className="text-sm text-gray-400">
-                        <a
-                          href={SITES.WEB}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-cyan-400 hover:text-cyan-300 underline"
-                        >
-                          Web Client
-                        </a>
-                        {" — "}
-                        Terminal video chat with ASCII art rendering and
-                        end-to-end encryption
+                      <p className="text-gray-500">
+                        Try searching for a different page or check the
+                        spelling.
                       </p>
                     </div>
                   </div>
-                )
-                : (
-                  <div className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center text-center">
-                    <div>
-                      <p className="text-gray-400 text-lg mb-2">
-                        Select a page to view documentation
-                      </p>
-                      <p className="text-gray-500 text-sm">
-                        {searchResults.length > 0
-                          ? "Click any page name in the list"
-                          : "Search to find API documentation"}
-                      </p>
-                    </div>
+                </div>
+              ) : selectedPageContent ? (
+                <div
+                  ref={contentViewerRef}
+                  className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto"
+                >
+                  <div className="mb-4 pb-4 border-b border-gray-800">
+                    <h2 className="text-2xl font-bold text-purple-400">
+                      {selectedPageName}(3)
+                    </h2>
                   </div>
-                )}
+                  <div className="man-page-content">
+                    {renderContentWithCodeBlocks(
+                      selectedPageContent,
+                      selectedPageName?.endsWith("_source") ||
+                        selectedPageName?.endsWith(".c") ||
+                        false,
+                      searchQuery,
+                      targetLineNumber,
+                    )}
+                  </div>
+                  <div className="mt-8 pt-6 border-t border-gray-700">
+                    <h3 className="text-sm font-semibold text-cyan-400 mb-2">
+                      SEE ALSO
+                    </h3>
+                    <p className="text-sm text-gray-400">
+                      <a
+                        href={SITES.WEB}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-cyan-400 hover:text-cyan-300 underline"
+                      >
+                        Web Client
+                      </a>
+                      {" — "}
+                      Terminal video chat with ASCII art rendering and
+                      end-to-end encryption
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center text-center">
+                  <div>
+                    <p className="text-gray-400 text-lg mb-2">
+                      Select a page to view documentation
+                    </p>
+                    <p className="text-gray-500 text-sm">
+                      {searchResults.length > 0
+                        ? "Click any page name in the list"
+                        : "Search to find API documentation"}
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

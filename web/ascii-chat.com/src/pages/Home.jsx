@@ -561,8 +561,8 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
               <div className="bg-gray-900/50  rounded-lg p-6">
                 <p className="text-gray-300 mb-4">
                   <strong className="text-cyan-400">ascii-chat</strong> and{" "}
-                  <strong className="text-purple-400">libasciichat</strong>{" "}
-                  are free and open source under the{" "}
+                  <strong className="text-purple-400">libasciichat</strong> are
+                  free and open source under the{" "}
                   <strong className="text-teal-400">MIT License</strong>.
                 </p>
                 <p className="text-gray-300 mb-4">
@@ -583,11 +583,11 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
                   Build with libasciichat
                 </h3>
                 <p className="text-gray-300 mb-4">
-                  <strong className="text-purple-400">libasciichat</strong>{" "}
-                  is the core library. It implements{" "}
-                  <strong className="text-pink-400">ACIP</strong>{" "}
-                  (ASCII-Chat Internet Protocol) for encrypted peer-to-peer
-                  video and audio streaming.{" "}
+                  <strong className="text-purple-400">libasciichat</strong> is
+                  the core library. It implements{" "}
+                  <strong className="text-pink-400">ACIP</strong> (ASCII-Chat
+                  Internet Protocol) for encrypted peer-to-peer video and audio
+                  streaming.{" "}
                   <TrackedLink
                     to="/man3"
                     label="Home - libasciichat API Documentation"
@@ -599,21 +599,21 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
 
                 <ul className="list-disc list-inside space-y-2 text-gray-300 mb-4 ml-4">
                   <li>
-                    <strong className="text-cyan-400">Video:</strong>{" "}
-                    Webcam, files, ASCII conversion, palettes, color modes,
-                    H.265 encoding
+                    <strong className="text-cyan-400">Video:</strong> Webcam,
+                    files, ASCII conversion, palettes, color modes, H.265
+                    encoding
                   </li>
                   <li>
-                    <strong className="text-purple-400">Audio:</strong>{" "}
-                    Opus codec, WebRTC AEC3 echo cancellation
+                    <strong className="text-purple-400">Audio:</strong> Opus
+                    codec, WebRTC AEC3 echo cancellation
                   </li>
                   <li>
-                    <strong className="text-teal-400">Crypto:</strong>{" "}
-                    Ed25519, X25519, XSalsa20-Poly1305, Argon2
+                    <strong className="text-teal-400">Crypto:</strong> Ed25519,
+                    X25519, XSalsa20-Poly1305, Argon2
                   </li>
                   <li>
-                    <strong className="text-pink-400">Network:</strong>{" "}
-                    TCP, NAT traversal, WebRTC ICE, ACDS
+                    <strong className="text-pink-400">Network:</strong> TCP, NAT
+                    traversal, WebRTC ICE, ACDS
                   </li>
                   <li>
                     <strong className="text-cyan-400">Protocol:</strong>{" "}

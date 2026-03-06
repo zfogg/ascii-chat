@@ -263,7 +263,13 @@ function getFileContentWithLineNumbers(pageName, fileName) {
 }
 
 // Find snippets around matches (centered on match)
-function findSnippets(text, query, maxSnippets = 3, lineNumbers = null, flags = "i") {
+function findSnippets(
+  text,
+  query,
+  maxSnippets = 3,
+  lineNumbers = null,
+  flags = "i",
+) {
   const allLines = text.split("\n");
   let lines = allLines;
   let actualLineNumbers = lineNumbers;
