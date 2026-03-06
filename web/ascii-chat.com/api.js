@@ -51,10 +51,11 @@ const limiter = rateLimit({
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-// Rate limiting: 10 session string requests per minute per IP
+// Rate limiting: 100 session string requests per minute per IP
+// Higher limit for dev server (React StrictMode runs effects twice)
 const sessionStringLimiter = rateLimit({
   windowMs: 1 * 60 * 1000,
-  max: 10,
+  max: 100,
   message: "Too many session string requests, please try again later",
   standardHeaders: true,
   legacyHeaders: false,
