@@ -103,8 +103,13 @@ section {
   overflow-x: auto;
 }
 
-.man-page-content .Bd-indent {
+.man-page-content .Pp + .Bd-indent {
+  font-size: 1.2rem;
+  margin-top: -1rem;
   margin-left: 2rem;
+}
+.man-page-content .Bd-indent + .Pp:last-child {
+  margin-bottom: 0rem;
 }
 
 /* Definition lists */
@@ -319,4 +324,8 @@ section {
 .Bl-tag dd .Bl-tag, dt {
   display: inline;
   line-height: 1.55rem;
+}
+
+.man-page-html + .code-with-highlight {
+  margin-top: -1rem;
 }
