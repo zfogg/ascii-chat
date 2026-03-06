@@ -1,7 +1,11 @@
 import { useMemo } from "react";
 import { CodeBlock } from "@ascii-chat/shared/components";
 
-export default function Man({ html, isSourcePage = false, showLineNumbers = false }) {
+export default function Man({
+  html,
+  isSourcePage = false,
+  showLineNumbers = false,
+}) {
   const decodeHtmlEntities = (text) => {
     const textarea = document.createElement("textarea");
     textarea.innerHTML = text;
@@ -167,7 +171,11 @@ export default function Man({ html, isSourcePage = false, showLineNumbers = fals
                 .join("\n");
 
               elements.push(
-                <CodeBlock key={`code-${elements.length}`} language="c" showLineNumbers={showLineNumbers}>
+                <CodeBlock
+                  key={`code-${elements.length}`}
+                  language="c"
+                  showLineNumbers={showLineNumbers}
+                >
                   {codeWithLineNumbers}
                 </CodeBlock>,
               );
@@ -257,10 +265,6 @@ export default function Man({ html, isSourcePage = false, showLineNumbers = fals
               .map((line) => {
                 const lineNum = line.number || "";
                 const paddedNum = String(lineNum).padStart(maxLineNum, " ");
-                const isTarget =
-                  targetLineStart !== null &&
-                  line.number >= targetLineStart &&
-                  line.number <= targetLineEnd;
 
                 if (hasExistingLineNumbers) {
                   return line.text;
@@ -298,7 +302,9 @@ export default function Man({ html, isSourcePage = false, showLineNumbers = fals
                     pointer-events: none;
                   }
                 `}</style>
-                <CodeBlock language="c" showLineNumbers={showLineNumbers}>{codeWithLineNumbers}</CodeBlock>
+                <CodeBlock language="c" showLineNumbers={showLineNumbers}>
+                  {codeWithLineNumbers}
+                </CodeBlock>
               </div>,
             );
 
@@ -362,7 +368,7 @@ export default function Man({ html, isSourcePage = false, showLineNumbers = fals
         ? elements
         : [<div dangerouslySetInnerHTML={{ __html: html }} />];
     };
-  }, [html, isSourcePage]);
+  }, [html, isSourcePage, showLineNumbers]);
 
   return <>{renderContentWithCodeBlocks()}</>;
 }

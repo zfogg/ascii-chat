@@ -1390,7 +1390,6 @@ export default function Man3() {
           }
 
           const lines = decodedContent.split("\n");
-          const maxLineNum = lines.length.toString().length;
 
           // Extract source line numbers from pre-tag content (format: "00123 code")
           let firstSourceLineNum = null;
@@ -1489,16 +1488,6 @@ export default function Man3() {
         // Render the code block with line numbers
         const codeLines = extractCodeFromFragment(fragmentHtml);
         if (codeLines.length > 0) {
-          // Calculate max line number width for alignment
-          const maxLineNum =
-            codeLines.length > 0
-              ? Math.max(
-                  ...codeLines.map(
-                    (line) => (line.number || 0).toString().length,
-                  ),
-                )
-              : 1;
-
           // Extract target line number(s) from hash if present
           const hash = window.location.hash;
           let targetLineStart = null;
@@ -1571,7 +1560,6 @@ export default function Man3() {
               </CodeBlock>
             </div>,
           );
-
         }
 
         // Also render the original fragment HTML hidden so anchors are in DOM for scrolling
@@ -1780,18 +1768,26 @@ export default function Man3() {
                                     {/* Code content */}
                                     <div className="whitespace-pre-wrap break-words flex-1">
                                       {snippetLines.map((line, lineIdx) => {
-                                        const cleanedLine = line.replace(/^\s*\d+\s+/, "");
+                                        const cleanedLine = line.replace(
+                                          /^\s*\d+\s+/,
+                                          "",
+                                        );
                                         return (
                                           <div
                                             key={lineIdx}
                                             className={
                                               lineIdx ===
-                                              Math.floor(snippetLines.length / 2)
+                                              Math.floor(
+                                                snippetLines.length / 2,
+                                              )
                                                 ? "bg-gray-800/50 px-1 -mx-1"
                                                 : ""
                                             }
                                           >
-                                            {highlightMatches(cleanedLine, searchQuery)}
+                                            {highlightMatches(
+                                              cleanedLine,
+                                              searchQuery,
+                                            )}
                                           </div>
                                         );
                                       })}
