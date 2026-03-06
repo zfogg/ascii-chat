@@ -1,12 +1,10 @@
-import { Heading } from "@ascii-chat/shared/components";
+import { Heading, CodeBlock } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
-import { CodeBlock } from "@ascii-chat/shared/components";
-import { SITES } from "@ascii-chat/shared/utils";
 
 export default function Snapshot() {
   useScrollToHash(100);
