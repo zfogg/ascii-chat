@@ -96,7 +96,7 @@
 <section class="Ss">
 <h2 class="Ss" id="_define_PCRE2_CODE_UNIT_WIDTH___8"><a class="permalink" href="#_define_PCRE2_CODE_UNIT_WIDTH___8">#define
   PCRE2_CODE_UNIT_WIDTH 8</a></h2>
-<p class="Pp">Definition at line <b>23</b> of file
+<p class="Pp">Definition at line <b>21</b> of file
   <b>discovery/strings.c</b>.</p>
 </section>
 <section class="Ss">
@@ -106,7 +106,7 @@
 <pre>do { if(ptr) { free(ptr); ptr=NULL; } } while(0)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>32</b> of file
+<p class="Pp">Definition at line <b>30</b> of file
   <b>discovery/strings.c</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>acds_identity_default_path()</b>, <b>acds_strings_destroy()</b>,
@@ -270,7 +270,7 @@
 <pre>((type)malloc(size))</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>31</b> of file
+<p class="Pp">Definition at line <b>29</b> of file
   <b>discovery/strings.c</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>,
     <b>acip_tcp_transport_create()</b>, <b>acip_webrtc_transport_create()</b>,
@@ -379,7 +379,7 @@
 <pre>(code)</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">Definition at line <b>33</b> of file
+<p class="Pp">Definition at line <b>31</b> of file
   <b>discovery/strings.c</b>.</p>
 <p class="Pp">Referenced by <b>accept_with_timeout()</b>,
     <b>acds_client_connect()</b>, <b>acds_identity_default_path()</b>,
@@ -809,36 +809,36 @@
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acds_string_generate_(char_*_output,_size_t_output_size)"><a class="permalink" href="#asciichat_error_t_acds_string_generate_(char_*_output,_size_t_output_size)">asciichat_error_t
   acds_string_generate (char * output, size_t output_size)</a></h2>
-<p class="Pp">Definition at line <b>268</b> of file
+<p class="Pp">Definition at line <b>230</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>268                                                                          {
-269   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
-270     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
-271                      (size_t)SESSION_STRING_BUFFER_SIZE);
-272   }
-273 
-274   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
-275   // No need to call sodium_init() again (redundant initialization removed)
-276 
-277   // Pick random adjective
-278   uint32_t adj_idx = simple_randombytes_uniform((uint32_t)adjectives_count);
-279   const char *adj = adjectives[adj_idx];
-280 
-281   // Pick two random nouns
-282   uint32_t noun1_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-283   uint32_t noun2_idx = simple_randombytes_uniform((uint32_t)nouns_count);
-284   const char *noun1 = nouns[noun1_idx];
-285   const char *noun2 = nouns[noun2_idx];
-286 
-287   // Format: adjective-noun-noun
-288   int written = safe_snprintf(output, output_size, &quot;%s-%s-%s&quot;, adj, noun1, noun2);
-289   if (written &lt; 0 || (size_t)written &gt;= output_size) {
-290     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Session string too long for buffer&quot;);
-291   }
-292 
-293   log_dev(&quot;Generated session string: %s&quot;, output);
-294   return ASCIICHAT_OK;
-295 }</pre>
+<pre>230                                                                          {
+231   if (!output || output_size &lt; SESSION_STRING_BUFFER_SIZE) {
+232     return SET_ERRNO(ERROR_INVALID_PARAM, &quot;output buffer must be at least %zu bytes&quot;,
+233                      (size_t)SESSION_STRING_BUFFER_SIZE);
+234   }
+235 
+236   // libsodium is guaranteed to be initialized by acds_string_init() before this is called
+237   // No need to call sodium_init() again (redundant initialization removed)
+238 
+239   // Pick random adjective
+240   uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
+241   const char *adj = adjectives[adj_idx];
+242 
+243   // Pick two random nouns
+244   uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
+245   uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
+246   const char *noun1 = nouns[noun1_idx];
+247   const char *noun2 = nouns[noun2_idx];
+248 
+249   // Format: adjective-noun-noun
+250   int written = safe_snprintf(output, output_size, &quot;%s-%s-%s&quot;, adj, noun1, noun2);
+251   if (written &lt; 0 || (size_t)written &gt;= output_size) {
+252     return SET_ERRNO(ERROR_BUFFER_OVERFLOW, &quot;Session string too long for buffer&quot;);
+253   }
+254 
+255   log_dev(&quot;Generated session string: %s&quot;, output);
+256   return ASCIICHAT_OK;
+257 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>adjectives</b>, <b>adjectives_count</b>,
@@ -850,12 +850,11 @@
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acds_string_init_(void_)"><a class="permalink" href="#asciichat_error_t_acds_string_init_(void_)">asciichat_error_t
   acds_string_init (void )</a></h2>
-<p class="Pp">Definition at line <b>263</b> of file
+<p class="Pp">Definition at line <b>226</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>263                                          {
-264   // No initialization needed - getrandom() works directly
-265   return ASCIICHAT_OK;
-266 }</pre>
+<pre>226                                          {
+227   return ASCIICHAT_OK;
+228 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>acds_main()</b>.</p>
@@ -866,34 +865,34 @@
 <p class="Pp">Cleanup function for session string cache Called by
     <b>asciichat_shared_destroy()</b> during library cleanup. Safe to call
     multiple times (idempotent).</p>
-<p class="Pp">Definition at line <b>78</b> of file
+<p class="Pp">Definition at line <b>60</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>78                                 {
-79   // Shutdown if initialized
-80   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
-81     return; // Not initialized
-82   }
+<pre>60                                 {
+61   // Shutdown if initialized
+62   if (!lifecycle_shutdown(&amp;g_cache_lc)) {
+63     return; // Not initialized
+64   }
+65 
+66   // Cleanup adjectives cache
+67   word_cache_entry_t *adj_entry, *adj_tmp;
+68   HASH_ITER(hh, g_adjectives_cache, adj_entry, adj_tmp) {
+69     HASH_DEL(g_adjectives_cache, adj_entry);
+70     SAFE_FREE(adj_entry-&gt;word);
+71     SAFE_FREE(adj_entry);
+72   }
+73   g_adjectives_cache = NULL;
+74 
+75   // Cleanup nouns cache
+76   word_cache_entry_t *noun_entry, *noun_tmp;
+77   HASH_ITER(hh, g_nouns_cache, noun_entry, noun_tmp) {
+78     HASH_DEL(g_nouns_cache, noun_entry);
+79     SAFE_FREE(noun_entry-&gt;word);
+80     SAFE_FREE(noun_entry);
+81   }
+82   g_nouns_cache = NULL;
 83 
-84   // Cleanup adjectives cache
-85   word_cache_entry_t *adj_entry, *adj_tmp;
-86   HASH_ITER(hh, g_adjectives_cache, adj_entry, adj_tmp) {
-87     HASH_DEL(g_adjectives_cache, adj_entry);
-88     SAFE_FREE(adj_entry-&gt;word);
-89     SAFE_FREE(adj_entry);
-90   }
-91   g_adjectives_cache = NULL;
-92 
-93   // Cleanup nouns cache
-94   word_cache_entry_t *noun_entry, *noun_tmp;
-95   HASH_ITER(hh, g_nouns_cache, noun_entry, noun_tmp) {
-96     HASH_DEL(g_nouns_cache, noun_entry);
-97     SAFE_FREE(noun_entry-&gt;word);
-98     SAFE_FREE(noun_entry);
-99   }
-100   g_nouns_cache = NULL;
-101 
-102   log_dev(&quot;Session string word cache cleaned up&quot;);
-103 }</pre>
+84   log_dev(&quot;Session string word cache cleaned up&quot;);
+85 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_shutdown()</b>, <b>SAFE_FREE</b>, and
@@ -902,117 +901,117 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> is_session_string (const char * str)</h2>
-<p class="Pp">Definition at line <b>297</b> of file
+<p class="Pp">Definition at line <b>259</b> of file
   <b>discovery/strings.c</b>.</p>
-<pre>297                                         {
-298   if (!str || str[0] == '\0') {
-299     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string is NULL or empty&quot;);
-300     return false;
-301   }
-302 
-303   size_t len = strlen(str);
-304 
-305   // Check length bounds (min 4, max defined by SESSION_STRING_MAX_LEN)
-306   if (len &lt; 4 || len &gt; SESSION_STRING_MAX_LEN) {
-307     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string length %zu outside valid range 4-%d&quot;, len, SESSION_STRING_MAX_LEN);
-308     return false;
-309   }
-310 
-311   // Session strings must be ASCII-only (homograph attack prevention)
-312   if (!utf8_is_ascii_only(str)) {
-313     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string contains non-ASCII characters&quot;);
-314     return false;
-315   }
-316 
-317   // Get compiled regex (lazy initialization)
-318   pcre2_code *regex = session_format_regex_get();
-319   if (!regex) {
-320     SET_ERRNO(ERROR_INTERNAL, &quot;Session string PCRE2 regex failed to initialize&quot;);
-321     return false;
-322   }
-323 
-324   // Validate format using PCRE2 regex
-325   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
-326   if (!match_data) {
-327     log_error(&quot;Failed to allocate match data for session string regex&quot;);
-328     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate match data&quot;);
-329     return false;
-330   }
-331 
-332   int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
-333 
-334   pcre2_match_data_free(match_data);
+<pre>259                                         {
+260   if (!str || str[0] == '\0') {
+261     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string is NULL or empty&quot;);
+262     return false;
+263   }
+264 
+265   size_t len = strlen(str);
+266 
+267   // Check length bounds (min 4, max defined by SESSION_STRING_MAX_LEN)
+268   if (len &lt; 4 || len &gt; SESSION_STRING_MAX_LEN) {
+269     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string length %zu outside valid range 4-%d&quot;, len, SESSION_STRING_MAX_LEN);
+270     return false;
+271   }
+272 
+273   // Session strings must be ASCII-only (homograph attack prevention)
+274   if (!utf8_is_ascii_only(str)) {
+275     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string contains non-ASCII characters&quot;);
+276     return false;
+277   }
+278 
+279   // Get compiled regex (lazy initialization)
+280   pcre2_code *regex = session_format_regex_get();
+281   if (!regex) {
+282     SET_ERRNO(ERROR_INTERNAL, &quot;Session string PCRE2 regex failed to initialize&quot;);
+283     return false;
+284   }
+285 
+286   // Validate format using PCRE2 regex
+287   pcre2_match_data *match_data = pcre2_match_data_create_from_pattern(regex, NULL);
+288   if (!match_data) {
+289     log_error(&quot;Failed to allocate match data for session string regex&quot;);
+290     SET_ERRNO(ERROR_MEMORY, &quot;Failed to allocate match data&quot;);
+291     return false;
+292   }
+293 
+294   int match_result = pcre2_jit_match(regex, (PCRE2_SPTR8)str, len, 0, 0, match_data, NULL);
+295 
+296   pcre2_match_data_free(match_data);
+297 
+298   if (match_result &lt; 0) {
+299     // Format validation failed
+300     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string format does not match pattern&quot;);
+301     return false;
+302   }
+303 
+304   // Extract the three words by finding hyphens
+305   // Format is guaranteed to be: word-word-word where each word is 2-12 lowercase letters
+306   const char *hyphen1 = strchr(str, '-');
+307   if (!hyphen1) {
+308     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string missing first hyphen&quot;);
+309     return false;
+310   }
+311 
+312   const char *hyphen2 = strchr(hyphen1 + 1, '-');
+313   if (!hyphen2) {
+314     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string missing second hyphen&quot;);
+315     return false;
+316   }
+317 
+318   // Extract three words
+319   size_t adj_len = hyphen1 - str;
+320   size_t noun1_len = hyphen2 - hyphen1 - 1;
+321   size_t noun2_len = len - (hyphen2 - str) - 1;
+322 
+323   if (adj_len &gt;= 32 || noun1_len &gt;= 32 || noun2_len &gt;= 32) {
+324     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string word length out of bounds&quot;);
+325     return false;
+326   }
+327 
+328   char adj[32], noun1[32], noun2[32];
+329   memcpy(adj, str, adj_len);
+330   adj[adj_len] = '\0';
+331   memcpy(noun1, hyphen1 + 1, noun1_len);
+332   noun1[noun1_len] = '\0';
+333   memcpy(noun2, hyphen2 + 1, noun2_len);
+334   noun2[noun2_len] = '\0';
 335 
-336   if (match_result &lt; 0) {
-337     // Format validation failed
-338     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string format does not match pattern&quot;);
-339     return false;
-340   }
+336   // Lazy initialization: build validation caches on first use
+337   // call_once ensures thread-safe exactly-once execution
+338   build_validation_caches();
+339   // If initialization fails silently (logs warning), hashtables will be empty
+340   // and validation will fail, which is safe behavior
 341 
-342   // Extract the three words by finding hyphens
-343   // Format is guaranteed to be: word-word-word where each word is 2-12 lowercase letters
-344   const char *hyphen1 = strchr(str, '-');
-345   if (!hyphen1) {
-346     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string missing first hyphen&quot;);
+342   // Validate first word is an adjective
+343   word_cache_entry_t *adj_entry = NULL;
+344   HASH_FIND_STR(g_adjectives_cache, adj, adj_entry);
+345   if (!adj_entry) {
+346     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string first word '%s' is not a valid adjective&quot;, adj);
 347     return false;
 348   }
 349 
-350   const char *hyphen2 = strchr(hyphen1 + 1, '-');
-351   if (!hyphen2) {
-352     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string missing second hyphen&quot;);
-353     return false;
-354   }
-355 
-356   // Extract three words
-357   size_t adj_len = hyphen1 - str;
-358   size_t noun1_len = hyphen2 - hyphen1 - 1;
-359   size_t noun2_len = len - (hyphen2 - str) - 1;
-360 
-361   if (adj_len &gt;= 32 || noun1_len &gt;= 32 || noun2_len &gt;= 32) {
-362     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string word length out of bounds&quot;);
-363     return false;
-364   }
-365 
-366   char adj[32], noun1[32], noun2[32];
-367   memcpy(adj, str, adj_len);
-368   adj[adj_len] = '\0';
-369   memcpy(noun1, hyphen1 + 1, noun1_len);
-370   noun1[noun1_len] = '\0';
-371   memcpy(noun2, hyphen2 + 1, noun2_len);
-372   noun2[noun2_len] = '\0';
-373 
-374   // Lazy initialization: build validation caches on first use
-375   // call_once ensures thread-safe exactly-once execution
-376   build_validation_caches();
-377   // If initialization fails silently (logs warning), hashtables will be empty
-378   // and validation will fail, which is safe behavior
-379 
-380   // Validate first word is an adjective
-381   word_cache_entry_t *adj_entry = NULL;
-382   HASH_FIND_STR(g_adjectives_cache, adj, adj_entry);
-383   if (!adj_entry) {
-384     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string first word '%s' is not a valid adjective&quot;, adj);
-385     return false;
-386   }
-387 
-388   // Validate second and third words are nouns
-389   word_cache_entry_t *noun_entry1 = NULL;
-390   HASH_FIND_STR(g_nouns_cache, noun1, noun_entry1);
-391   if (!noun_entry1) {
-392     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string second word '%s' is not a valid noun&quot;, noun1);
-393     return false;
-394   }
-395 
-396   word_cache_entry_t *noun_entry2 = NULL;
-397   HASH_FIND_STR(g_nouns_cache, noun2, noun_entry2);
-398   if (!noun_entry2) {
-399     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string third word '%s' is not a valid noun&quot;, noun2);
-400     return false;
-401   }
-402 
-403   log_dev(&quot;Valid session string: %s&quot;, str);
-404   return true;
-405 }</pre>
+350   // Validate second and third words are nouns
+351   word_cache_entry_t *noun_entry1 = NULL;
+352   HASH_FIND_STR(g_nouns_cache, noun1, noun_entry1);
+353   if (!noun_entry1) {
+354     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string second word '%s' is not a valid noun&quot;, noun1);
+355     return false;
+356   }
+357 
+358   word_cache_entry_t *noun_entry2 = NULL;
+359   HASH_FIND_STR(g_nouns_cache, noun2, noun_entry2);
+360   if (!noun_entry2) {
+361     SET_ERRNO(ERROR_INVALID_PARAM, &quot;Session string third word '%s' is not a valid noun&quot;, noun2);
+362     return false;
+363   }
+364 
+365   log_dev(&quot;Valid session string: %s&quot;, str);
+366   return true;
+367 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>SET_ERRNO</b>, and <b>utf8_is_ascii_only()</b>.</p>

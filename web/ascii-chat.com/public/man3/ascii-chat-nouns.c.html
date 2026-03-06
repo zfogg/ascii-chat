@@ -78,22 +78,21 @@
 741   }
 742 
 743   // Select a random noun
-744   srand((unsigned int)time(NULL) + rand()); // Better randomness with seed
-745   int noun_idx = rand() % (int)nouns_count;
-746   const char *noun = nouns[noun_idx];
-747 
-748   if (!noun) {
-749     return -1;
-750   }
-751 
-752   // Just return the noun, no counter or transport info
-753   int written = snprintf(buffer, buffer_size, &quot;%s&quot;, noun);
-754   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-755     return -1; // Buffer too small
-756   }
-757 
-758   return 0;
-759 }</pre>
+744   uint32_t noun_idx = randombytes_uniform((uint32_t)nouns_count);
+745   const char *noun = nouns[noun_idx];
+746 
+747   if (!noun) {
+748     return -1;
+749   }
+750 
+751   // Just return the noun, no counter or transport info
+752   int written = snprintf(buffer, buffer_size, &quot;%s&quot;, noun);
+753   if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+754     return -1; // Buffer too small
+755   }
+756 
+757   return 0;
+758 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>nouns</b>, and
@@ -109,53 +108,52 @@
     hold write lock on g_client_manager_rwlock before calling. This function
     iterates the existing clients hash to check for duplicate names. Returns the
     full display name format (noun.counter (transport:port)).</p>
-<p class="Pp">Definition at line <b>768</b> of file <b>nouns.c</b>.</p>
-<pre>768                                                                                                                {
-769   if (!buffer || buffer_size &lt; 1 || !nouns_count) {
-770     return -1;
-771   }
-772 
-773   // Select a random noun
-774   srand((unsigned int)time(NULL) + rand()); // Better randomness with seed
-775   int noun_idx = rand() % (int)nouns_count;
-776   const char *noun = nouns[noun_idx];
-777 
-778   if (!noun) {
-779     return -1;
-780   }
+<p class="Pp">Definition at line <b>767</b> of file <b>nouns.c</b>.</p>
+<pre>767                                                                                                                {
+768   if (!buffer || buffer_size &lt; 1 || !nouns_count) {
+769     return -1;
+770   }
+771 
+772   // Select a random noun
+773   uint32_t noun_idx = randombytes_uniform((uint32_t)nouns_count);
+774   const char *noun = nouns[noun_idx];
+775 
+776   if (!noun) {
+777     return -1;
+778   }
+779 
+780   const char *transport_name = is_tcp ? &quot;tcp&quot; : &quot;webrtc&quot;;
 781 
-782   const char *transport_name = is_tcp ? &quot;tcp&quot; : &quot;webrtc&quot;;
-783 
-784   // Try to generate a unique name by appending a counter
-785   // Format: &quot;noun.0 (tcp:48036)&quot;, &quot;noun.1 (webrtc:52441)&quot;, etc.
-786   for (int counter = 0; counter &lt; 100; counter++) {
-787     int written = snprintf(buffer, buffer_size, &quot;%s.%d (%s:%d)&quot;, noun, counter, transport_name, port);
-788     if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
-789       return -1; // Buffer too small
-790     }
-791 
-792     // Check if this name already exists in the clients hash
-793     client_info_t *client, *tmp;
-794     int found = 0;
-795 
-796     HASH_ITER(hh, (client_info_t *)existing_clients_hash, client, tmp) {
-797       if (strcmp(client-&gt;display_name, buffer) == 0) {
-798         found = 1;
-799         break;
-800       }
-801     }
-802 
-803     if (!found) {
-804       // Name is unique, return it
-805       return 0;
-806     }
-807   }
-808 
-809   // Couldn't find a unique name after 100 tries
-810   // Fall back to numeric-only name as last resort
-811   snprintf(buffer, buffer_size, &quot;client_%u (%s:%d)&quot;, (unsigned int)rand() % 10000, transport_name, port);
-812   return 0;
-813 }</pre>
+782   // Try to generate a unique name by appending a counter
+783   // Format: &quot;noun.0 (tcp:48036)&quot;, &quot;noun.1 (webrtc:52441)&quot;, etc.
+784   for (int counter = 0; counter &lt; 100; counter++) {
+785     int written = snprintf(buffer, buffer_size, &quot;%s.%d (%s:%d)&quot;, noun, counter, transport_name, port);
+786     if (written &lt; 0 || (size_t)written &gt;= buffer_size) {
+787       return -1; // Buffer too small
+788     }
+789 
+790     // Check if this name already exists in the clients hash
+791     client_info_t *client, *tmp;
+792     int found = 0;
+793 
+794     HASH_ITER(hh, (client_info_t *)existing_clients_hash, client, tmp) {
+795       if (strcmp(client-&gt;display_name, buffer) == 0) {
+796         found = 1;
+797         break;
+798       }
+799     }
+800 
+801     if (!found) {
+802       // Name is unique, return it
+803       return 0;
+804     }
+805   }
+806 
+807   // Couldn't find a unique name after 100 tries
+808   // Fall back to numeric-only name as last resort
+809   snprintf(buffer, buffer_size, &quot;client_%u (%s:%d)&quot;, randombytes_uniform(10000U), transport_name, port);
+810   return 0;
+811 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_size</b>, <b>nouns</b>, and
