@@ -10,7 +10,6 @@
 #include <ascii-chat/options/completions/zsh.h>
 #include <ascii-chat/options/registry.h>
 #include <ascii-chat/options/registry/mode_defaults.h>
-#include <ascii-chat/options/enums.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/util/utf8.h>
 
@@ -24,26 +23,13 @@ static void zsh_escape_desc(FILE *output, const char *text) {
 
   for (const char *p = text; *p; p++) {
     switch (*p) {
-    case '"':
-      // Escape double quotes for zsh double-quoted strings
-      fprintf(output, "\\\"");
+    case '\'':
+      fprintf(output, "'\\''");
       break;
-    case '\\':
-      // Escape backslashes for zsh double-quoted strings
-      fprintf(output, "\\\\");
-      break;
-    case '$':
-      // Escape dollar signs to prevent variable expansion
-      fprintf(output, "\\$");
-      break;
-    case '`':
-      // Escape backticks to prevent command substitution
-      fprintf(output, "\\`");
-      break;
-    case ':':
-      // Colons don't need escaping in descriptions - they only have special meaning
-      // as field separators before the description, which has already been written
-      fputc(':', output);
+    case '[':
+    case ']':
+      // Escape brackets for _arguments syntax
+      fprintf(output, "\\%c", *p);
       break;
     case '\n':
     case '\t':
@@ -102,139 +88,42 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
- * Format a single option for zsh _arguments command
- */
-static void zsh_format_option_for_arguments(FILE *output, const option_descriptor_t *opt, bool has_more) {
-  if (!opt) return;
-
-  // Check if this is an enum option with values to complete
-  size_t entry_count = 0;
-  const enum_to_string_entry_t *entries = NULL;
-  if (options_is_enum_option(opt->long_name)) {
-    entries = options_get_enum_entries(opt->long_name, &entry_count);
-  }
-
-  // For enum options, use _arguments format matching rg's style
-  if (entries && entry_count > 0) {
-    fprintf(output, "    '--%s=[", opt->long_name);
-    // Escape the help text for the option description
-    for (const char *p = opt->help_text; p && *p; p++) {
-      if (*p == '\'') {
-        fprintf(output, "'\\''");
-      } else if (*p == '\n' || *p == '\t') {
-        fprintf(output, " ");
-      } else {
-        fputc(*p, output);
-      }
-    }
-    fprintf(output, "]:values:((\n");
-    // Write each value with its description on its own line
-    for (size_t v = 0; v < entry_count; v++) {
-      fprintf(output, "      %s\\:\\\"%s\\\"", entries[v].string, entries[v].desc ? entries[v].desc : "");
-      if (v < entry_count - 1) {
-        fprintf(output, "\n");
-      }
-    }
-    fprintf(output, "\n    ))'");
-  } else {
-    // For non-enum options, use simple description format
-    fprintf(output, "    '--%s:", opt->long_name);
-    // Escape help text for single quotes
-    for (const char *p = opt->help_text; p && *p; p++) {
-      if (*p == '\'') {
-        fprintf(output, "'\\''");
-      } else if (*p == '\n' || *p == '\t') {
-        fprintf(output, " ");
-      } else {
-        fputc(*p, output);
-      }
-    }
-    fprintf(output, "'");
-  }
-
-  if (has_more) {
-    fprintf(output, " \\\n");
-  } else {
-    fprintf(output, "\n");
-  }
-}
-
-/**
- * Write options grouped by category using _arguments for proper value completion
+ * Write options grouped by category using _describe for proper group headers
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
                                        const char *func_prefix) {
   if (!opts || count == 0) return;
 
-  // Set up proper context for zsh completion with mode-specific scope
-  fprintf(output, "  local curcontext=\"${curcontext%%%%:*}:%s\"\n", func_prefix);
-  // Use _arguments for proper enum value completion support
-  fprintf(output, "  _arguments -s \\\n");
+  size_t group_count = 0;
+  const char **groups = zsh_collect_groups(opts, count, &group_count);
 
-  // Write all options for _arguments (which handles value completion properly)
-  for (size_t i = 0; i < count; i++) {
-    // Check if this is an enum option with values to complete
-    size_t entry_count = 0;
-    const enum_to_string_entry_t *entries = NULL;
-    if (options_is_enum_option(opts[i].long_name)) {
-      entries = options_get_enum_entries(opts[i].long_name, &entry_count);
+  // First pass: declare arrays for each group
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+    fprintf(output, "  local -a %s_%s_opts=(\n", func_prefix, group);
+
+    // Write all options in this group (long options only to avoid "corrections" duplicates)
+    for (size_t i = 0; i < count; i++) {
+      if (!opts[i].group || strcmp(opts[i].group, group) != 0) continue;
+
+      // Long option only (short options are less discoverable via TAB)
+      fprintf(output, "    '--%s:", opts[i].long_name);
+      zsh_escape_desc(output, opts[i].help_text);
+      fprintf(output, "'\n");
     }
 
-    // For enum options, use _arguments format matching rg's style
-    if (entries && entry_count > 0) {
-      fprintf(output, "    '--");
-      fprintf(output, "%s=[", opts[i].long_name);
-      // Escape the help text for the option description
-      for (const char *p = opts[i].help_text; p && *p; p++) {
-        if (*p == '\'') {
-          fprintf(output, "'\\''");
-        } else if (*p == '\n' || *p == '\t') {
-          fprintf(output, " ");
-        } else {
-          fputc(*p, output);
-        }
-      }
-      fprintf(output, "]:values:((\n");
-      // Write each value with its description on its own line
-      for (size_t v = 0; v < entry_count; v++) {
-        fprintf(output, "      %s\\:\"", entries[v].string);
-        // Escape the description
-        if (entries[v].desc) {
-          for (const char *p = entries[v].desc; *p; p++) {
-            if (*p == '\'') {
-              fprintf(output, "'\\''");
-            } else {
-              fputc(*p, output);
-            }
-          }
-        }
-        fprintf(output, "\"\n");
-      }
-      fprintf(output, "    ))'");
-    } else {
-      // For non-enum options, use simple description format
-      fprintf(output, "    '--");
-      fprintf(output, "%s", opts[i].long_name);
-      fprintf(output, ":");
-      // Escape help text for single quotes
-      for (const char *p = opts[i].help_text; p && *p; p++) {
-        if (*p == '\'') {
-          fprintf(output, "'\\''");
-        } else if (*p == '\n' || *p == '\t') {
-          fprintf(output, " ");
-        } else {
-          fputc(*p, output);
-        }
-      }
-      fprintf(output, "'");
-    }
-
-    if (i < count - 1) {
-      fprintf(output, " \\\n");
-    } else {
-      fprintf(output, "\n");
-    }
+    fprintf(output, "  )\n");
   }
+
+  // Second pass: call _describe for each group (with lowercase display)
+  for (size_t g = 0; g < group_count; g++) {
+    const char *group = groups[g];
+    fprintf(output, "  _describe -t %s '", group);
+    utf8_write_lowercase(output, group);
+    fprintf(output, " options' %s_%s_opts\n", func_prefix, group);
+  }
+
+  SAFE_FREE(groups);
 }
 
 asciichat_error_t completions_generate_zsh(FILE *output) {
@@ -243,132 +132,22 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   }
 
   fprintf(output, "#compdef _ascii_chat ascii-chat\n"
+#ifndef NDEBUG
+                  "#compdef _ascii_chat build/bin/ascii-chat ./build/bin/ascii-chat\n"
+#endif
                   "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
                   "\n"
                   "_ascii_chat() {\n"
-                  "  local curcontext=\"$curcontext\"\n"
-                  "  \n"
-                  "  # Check if second word is an option (starts with -) - default to discovery\n"
-                  "  if [[ \"${words[2]}\" == -* ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:discovery\"\n");
-
-  /* Discovery mode options (includes binary-level options) */
-  size_t discovery_count = 0;
-  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, true, &discovery_count);
-  if (discovery_opts) {
-    fprintf(output, "    _arguments -s \\\n");
-    for (size_t i = 0; i < discovery_count; i++) {
-      zsh_format_option_for_arguments(output, &discovery_opts[i], i < discovery_count - 1);
-    }
-    fprintf(output, "\n");
-    SAFE_FREE(discovery_opts);
-  }
-
-  fprintf(output, "    return 0\n"
+                  "  # If first arg is a flag (starts with -), go straight to args completion\n"
+                  "  if [[ ${words[2]} == -* ]]; then\n"
+                  "    _ascii_chat_args\n"
+                  "    return\n"
                   "  fi\n"
-                  "\n"
-                  "  # Server mode\n"
-                  "  if [[ \"${words[2]}\" == \"server\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:server\"\n"
-                  "    _arguments -s \\\n");
-
-  /* Server options */
-  size_t server_count = 0;
-  const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
-  if (server_opts) {
-    for (size_t i = 0; i < server_count; i++) {
-      zsh_format_option_for_arguments(output, &server_opts[i], i < server_count - 1);
-    }
-    fprintf(output, "\n");
-    SAFE_FREE(server_opts);
-  }
-
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Discovery service mode\n"
-                  "  if [[ \"${words[2]}\" == \"discovery-service\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:discovery-service\"\n"
-                  "    _arguments -s \\\n");
-
-  /* Discovery-service options */
-  size_t discovery_svc_count = 0;
-  const option_descriptor_t *discovery_svc_opts =
-      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
-  if (discovery_svc_opts) {
-    for (size_t i = 0; i < discovery_svc_count; i++) {
-      zsh_format_option_for_arguments(output, &discovery_svc_opts[i], i < discovery_svc_count - 1);
-    }
-    fprintf(output, "\n");
-    SAFE_FREE(discovery_svc_opts);
-  }
-
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Client mode\n"
-                  "  if [[ \"${words[2]}\" == \"client\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:client\"\n"
-                  "    _arguments -s \\\n");
-
-  /* Client options */
-  size_t client_count = 0;
-  const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
-  if (client_opts) {
-    for (size_t i = 0; i < client_count; i++) {
-      zsh_format_option_for_arguments(output, &client_opts[i], i < client_count - 1);
-    }
-    fprintf(output, "\n");
-    SAFE_FREE(client_opts);
-  }
-
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Mirror mode\n"
-                  "  if [[ \"${words[2]}\" == \"mirror\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:mirror\"\n"
-                  "    _arguments -s \\\n");
-
-  /* Mirror options */
-  size_t mirror_count = 0;
-  const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
-  if (mirror_opts) {
-    for (size_t i = 0; i < mirror_count; i++) {
-      zsh_format_option_for_arguments(output, &mirror_opts[i], i < mirror_count - 1);
-    }
-    fprintf(output, "\n");
-    SAFE_FREE(mirror_opts);
-  }
-
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Explicit discovery mode\n"
-                  "  if [[ \"${words[2]}\" == \"discovery\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:discovery\"\n"
-                  "    _arguments -s \\\n");
-
-  /* Discovery mode options for explicit discovery command */
-  size_t discovery_count2 = 0;
-  const option_descriptor_t *discovery_opts2 = options_registry_get_for_display(MODE_DISCOVERY, true, &discovery_count2);
-  if (discovery_opts2) {
-    for (size_t i = 0; i < discovery_count2; i++) {
-      zsh_format_option_for_arguments(output, &discovery_opts2[i], i < discovery_count2 - 1);
-    }
-    fprintf(output, "\n");
-    SAFE_FREE(discovery_opts2);
-  }
-
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # No mode specified - show mode selection\n"
-                  "  local state line modes\n"
-                  "  _arguments -s \\\n"
-                  "    '1: :->mode' && return\n"
-                  "  [[ -n \"$state\" ]] || return 1\n"
+                  "  local curcontext=\"$curcontext\" state line modes\n"
+                  "  _arguments \\\n"
+                  "    '1:mode:->mode' \\\n"
+                  "    '*::args:_ascii_chat_args'\n"
                   "  case $state in\n"
                   "    mode)\n"
                   "      local -a server_modes client_modes\n"
@@ -387,11 +166,12 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   fprintf(output, "      )\n"
                   "      client_modes=(\n");
 
-  /* Generate client-like modes from registry */
+  /* Generate client-like modes from registry (exclude discovery since it's the default mode) */
   size_t mode_client_count = 0;
   const mode_descriptor_t *mode_client_descs = get_modes_by_group("client-like", &mode_client_count);
   if (mode_client_descs) {
     for (size_t i = 0; i < mode_client_count; i++) {
+      /* Skip discovery mode - it's the default when no mode is specified */
       if (strcmp(mode_client_descs[i].name, "discovery") == 0) {
         continue;
       }
@@ -405,7 +185,103 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "      _describe -t client-modes 'client-like modes' client_modes\n"
                   "      ;;\n"
                   "  esac\n"
-                  "}\n");
+                  "}\n"
+                  "\n"
+                  "_ascii_chat_args() {\n"
+                  "  case $words[1] in\n"
+                  "    # Server-like modes\n"
+                  "    server)\n"
+                  "      _ascii_chat_server\n"
+                  "      ;;\n"
+                  "    discovery-service)\n"
+                  "      _ascii_chat_discovery_service\n"
+                  "      ;;\n"
+                  "\n"
+                  "    # Client-like modes\n"
+                  "    client)\n"
+                  "      _ascii_chat_client\n"
+                  "      ;;\n"
+                  "    mirror)\n"
+                  "      _ascii_chat_mirror\n"
+                  "      ;;\n"
+                  "\n"
+                  "    *)\n"
+                  "      # Default mode (discovery)\n"
+                  "      _ascii_chat_discovery\n"
+                  "      ;;\n"
+                  "  esac\n"
+                  "}\n"
+                  "\n"
+                  "# Server-like modes: handle incoming connections and stream management\n"
+                  "_ascii_chat_server() {\n");
+
+  /* Server options - grouped by category */
+  size_t server_count = 0;
+  const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
+
+  if (server_opts) {
+    zsh_write_options_grouped(output, server_opts, server_count, "server");
+    SAFE_FREE(server_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "_ascii_chat_discovery_service() {\n");
+
+  /* Discovery-service options - grouped by category */
+  size_t discovery_svc_count = 0;
+  const option_descriptor_t *discovery_svc_opts =
+      options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
+
+  if (discovery_svc_opts) {
+    zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, "discovery_service");
+    SAFE_FREE(discovery_svc_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "# Client-like modes: connect to servers or render local media\n"
+                  "_ascii_chat_client() {\n");
+
+  /* Client options - grouped by category */
+  size_t client_count = 0;
+  const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
+
+  if (client_opts) {
+    zsh_write_options_grouped(output, client_opts, client_count, "client");
+    SAFE_FREE(client_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "_ascii_chat_mirror() {\n");
+
+  /* Mirror options - grouped by category */
+  size_t mirror_count = 0;
+  const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
+
+  if (mirror_opts) {
+    zsh_write_options_grouped(output, mirror_opts, mirror_count, "mirror");
+    SAFE_FREE(mirror_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "# Discovery mode: find sessions via discovery service (default mode when no mode specified)\n"
+                  "_ascii_chat_discovery() {\n");
+
+  /* Discovery options - grouped by category */
+  size_t discovery_count = 0;
+  const option_descriptor_t *discovery_opts = options_registry_get_for_display(MODE_DISCOVERY, false, &discovery_count);
+
+  if (discovery_opts) {
+    zsh_write_options_grouped(output, discovery_opts, discovery_count, "discovery");
+    SAFE_FREE(discovery_opts);
+  }
+
+  fprintf(output, "}\n"
+                  "\n"
+                  "_ascii_chat \"$@\"\n");
 
   return ASCIICHAT_OK;
 }
