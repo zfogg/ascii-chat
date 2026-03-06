@@ -2,11 +2,12 @@ import { useState, useEffect } from "react";
 import { Analytics } from "@vercel/analytics/react";
 import {
   Footer,
-  CodeBlock,
   PreCode,
   Heading,
   Button,
   Link,
+  GettingHelpSection,
+  UsageExamplesSection,
 } from "@ascii-chat/shared/components";
 import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
@@ -255,17 +256,11 @@ function Home() {
             For complete documentation and options, use the built-in help
             system:
           </p>
-          <CodeBlock language="bash">{`# Read the full ascii-chat manual
-man ascii-chat
-
-# Get ACDS-specific help and options
-ascii-chat discovery-service --help
-
-# General ascii-chat help
-ascii-chat --help
-
-# Enable shell completions (also fish, bash, powershell)
-source <(ascii-chat --completions zsh 2>/dev/null)`}</CodeBlock>
+          <GettingHelpSection
+            modeExample="discovery-service"
+            introText=""
+            headingClassName="sr-only"
+          />
         </section>
 
         <section className="mb-12">
@@ -275,14 +270,10 @@ source <(ascii-chat --completions zsh 2>/dev/null)`}</CodeBlock>
           >
             💻 Usage Examples
           </Heading>
-          <CodeBlock language="bash">{`# Start a new session
-ascii-chat
-# It logs "Session string: ${sessionStrings[0]}"
-
-# Copy the session string it outputs and share it with a friend securely
-
-# Join a session using the session string
-ascii-chat ${sessionStrings[0]}`}</CodeBlock>
+          <UsageExamplesSection
+            sessionString={sessionStrings[0]}
+            headingClassName="sr-only"
+          />
         </section>
 
         <section className="mb-12">

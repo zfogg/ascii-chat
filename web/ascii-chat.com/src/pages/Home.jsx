@@ -1,5 +1,10 @@
 import { useState, useEffect } from "react";
-import { CodeBlock, Heading } from "@ascii-chat/shared/components";
+import {
+  CodeBlock,
+  Heading,
+  GettingHelpSection,
+  UsageExamplesSection,
+} from "@ascii-chat/shared/components";
 import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
@@ -213,31 +218,10 @@ cmake --preset default && cmake --build build
               ⚡ Quick Start
             </h2>
 
-            <div className="space-y-6 sm:space-y-8">
-              <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
-                  Start a server
-                </h3>
-                <CodeBlock language="bash">
-                  {`# Register with ACDS and get a session string
-ascii-chat server
-
-# Session: ${sessionStrings[0]}`}
-                </CodeBlock>
-              </div>
-
-              <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
-                  Join a session
-                </h3>
-                <CodeBlock language="bash">
-                  {`# Connect using the session string
-ascii-chat ${sessionStrings[0]}
-
-# That's it! No configuration needed.`}
-                </CodeBlock>
-              </div>
-            </div>
+            <UsageExamplesSection
+              sessionString={sessionStrings[0]}
+              headingClassName="sr-only"
+            />
           </section>
 
           {/* Links */}
@@ -365,23 +349,11 @@ ascii-chat ${sessionStrings[0]}
 
             <div className="space-y-8">
               <div>
-                <h3 className="text-xl font-semibold text-cyan-300 mb-3">
-                  Getting help
-                </h3>
-                <CodeBlock language="bash">
-                  {`# View built-in help
-ascii-chat --help
-
-# Read the full man page
-man ascii-chat
-
-# Get help for specific modes
-ascii-chat <mode> --help
-
-# Enable shell completions (bash, fish, zsh, and powershell available)
-source <(ascii-chat --completions zsh 2>/dev/null)
-# Then: ascii-chat <tab> | ascii-chat --<tab> | ascii-chat server --<tab>`}
-                </CodeBlock>
+                <GettingHelpSection
+                  modeExample="<mode>"
+                  introText=""
+                  headingClassName="text-xl font-semibold text-cyan-300 mb-3"
+                />
               </div>
 
               <div>
