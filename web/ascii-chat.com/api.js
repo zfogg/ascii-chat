@@ -30,15 +30,26 @@ function getBinaryPath() {
     path.join(__dirname, "bin/ascii-chat-strings"), // From current dir
     path.join(process.cwd(), "bin/ascii-chat-strings"), // From process.cwd()
     path.join(process.cwd(), "../bin/ascii-chat-strings"), // Up one level
+    "/var/task/bin/ascii-chat-strings", // Vercel function env
+    "/var/task/dist/bin/ascii-chat-strings", // Vercel dist directory
     "../../build/bin/ascii-chat-strings", // Dev build location
   ];
 
+  logger.debug(
+    `[getBinaryPath] __dirname=${__dirname}, ROOT_DIR=${ROOT_DIR}, cwd=${process.cwd()}`,
+  );
   for (const location of locations) {
-    if (fs.existsSync(location)) {
+    const exists = fs.existsSync(location);
+    logger.debug(
+      `[getBinaryPath] Checking ${location}: ${exists ? "EXISTS" : "NOT FOUND"}`,
+    );
+    if (exists) {
+      logger.info(`[getBinaryPath] Found binary at ${location}`);
       return location;
     }
   }
 
+  logger.error("[getBinaryPath] Binary not found in any location");
   return null; // No binary found
 }
 
