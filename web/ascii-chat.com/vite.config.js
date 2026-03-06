@@ -60,4 +60,27 @@ export default defineConfig({
       ],
     }),
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Separate docs pages into their own chunks
+          "docs-pages": [
+            "./src/pages/docs/Configuration.jsx",
+            "./src/pages/docs/Hardware.jsx",
+            "./src/pages/docs/Terminal.jsx",
+            "./src/pages/docs/Snapshot.jsx",
+            "./src/pages/docs/Network.jsx",
+            "./src/pages/docs/Media.jsx",
+            "./src/pages/docs/Crypto.jsx",
+            "./src/pages/docs/DocsHub.jsx",
+          ],
+          // Vendor libraries
+          vendor: ["react", "react-dom", "react-router-dom"],
+          // Shared components
+          "shared-components": ["@ascii-chat/shared/components"],
+        },
+      },
+    },
+  },
 });
