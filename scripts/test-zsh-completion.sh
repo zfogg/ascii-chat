@@ -129,6 +129,37 @@ fi
 # Cleanup
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
+sleep 0.5
+
+# =============================================================================
+# TEST 4: Mode completion with partial input (disc)
+# =============================================================================
+echo ""
+echo "=== TEST 4: ascii-chat disc<TAB> (checking for correction messages) ==="
+tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat disc" Tab
+sleep 1
+
+# Capture and save output
+tmux capture-pane -t zsh-completion-test -p > /tmp/test4_output.txt
+
+# Display what we got
+echo "Captured output:"
+cat /tmp/test4_output.txt | tail -20
+echo ""
+
+# Count correction messages
+CORRECTIONS_COUNT=$(cat /tmp/test4_output.txt | rg -c "corrections \(errors: [0-9]\)" || echo 0)
+if [ "$CORRECTIONS_COUNT" -eq 0 ]; then
+  echo "🟢 TEST 4 PASSED: No correction messages found"
+  TEST4_PASS=1
+else
+  echo "🔴 TEST 4 FAILED: Found $CORRECTIONS_COUNT correction message(s)"
+  TEST4_PASS=0
+fi
+
+# Cleanup
+tmux send-keys -t zsh-completion-test "Escape"
+tmux send-keys -t zsh-completion-test "C-u"
 echo ""
 echo "Cleaning up..."
 tmux kill-session -t zsh-completion-test 2>/dev/null || true
@@ -138,7 +169,7 @@ tmux kill-session -t zsh-completion-test 2>/dev/null || true
 # =============================================================================
 echo ""
 echo "========== SUMMARY =========="
-if [ "$TEST1_PASS" -eq 1 ] && [ "$TEST2_PASS" -eq 1 ] && [ "$TEST3_PASS" -eq 1 ]; then
+if [ "$TEST1_PASS" -eq 1 ] && [ "$TEST2_PASS" -eq 1 ] && [ "$TEST3_PASS" -eq 1 ] && [ "$TEST4_PASS" -eq 1 ]; then
   echo "🟢 ALL INTERACTIVE TESTS PASSED"
   exit 0
 else
