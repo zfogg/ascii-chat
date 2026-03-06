@@ -300,6 +300,10 @@ add_library(wasm-common OBJECT
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(wasm-common PRIVATE EMSCRIPTEN_BUILD=1)
 
+# Enable Emscripten's pthread support
+target_compile_options(wasm-common PRIVATE -pthread)
+target_link_options(wasm-common PRIVATE -pthread)
+
 # Link dependencies for shared library
 target_link_libraries(wasm-common PRIVATE
     sodium
@@ -319,8 +323,9 @@ add_executable(mirror-web
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(mirror-web PRIVATE EMSCRIPTEN_BUILD=1)
 
-# Mirror mode uses SIMD for video processing
-target_compile_options(mirror-web PRIVATE -msimd128 -mavx2)
+# Enable Emscripten's pthread support and SIMD for video processing
+target_compile_options(mirror-web PRIVATE -pthread -msimd128 -mavx2)
+target_link_options(mirror-web PRIVATE -pthread)
 
 # Link dependencies (built for WASM via FetchContent)
 target_link_libraries(mirror-web PRIVATE
@@ -343,6 +348,10 @@ add_executable(client-web
 
 # Apply EMSCRIPTEN_BUILD only to WASM targets (not globally)
 target_compile_definitions(client-web PRIVATE EMSCRIPTEN_BUILD=1)
+
+# Enable Emscripten's pthread support
+target_compile_options(client-web PRIVATE -pthread)
+target_link_options(client-web PRIVATE -pthread)
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE

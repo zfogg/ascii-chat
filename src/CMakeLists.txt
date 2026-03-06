@@ -573,6 +573,7 @@ set(WASM_CMAKE_ARGS
     "${WASM_SOURCE_DIR}"
     -DCMAKE_TOOLCHAIN_FILE=${EMSCRIPTEN_TOOLCHAIN_FILE}
     -DASCIICHAT_WEB_DEPS_DIR=${WASM_DEPS_DIR}
+    -DBUILD_WEB=ON
 )
 
 # Configure WASM build directory during CMake configuration (not during build)

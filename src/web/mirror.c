@@ -21,7 +21,7 @@
 #include <ascii-chat/video/rgba/color_filter.h>
 #include <ascii-chat/video/rgba/image.h>
 #include <ascii-chat/video/ascii/palette.h>
-#include <ascii-chat/video/ascii/ansi_fast.h>
+#include <ascii-chat/video/terminal/ansi.h>
 #include <ascii-chat/video/anim/digital_rain.h>
 #include <ascii-chat/common.h>
 
