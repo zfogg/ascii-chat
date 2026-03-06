@@ -1387,6 +1387,84 @@ void log_plain_stderr_nonewline_msg(const char *fmt, ...) {
   va_end(args);
 }
 
+/**
+ * @brief Internal implementation of plain stdout logging with atomic writes
+ *
+ * Writes to stdout and log file without timestamps or log levels.
+ */
+static void log_plain_stdout_internal_atomic(const char *fmt, va_list args, bool add_newline) {
+  char log_buffer[LOG_MSG_BUFFER_SIZE];
+  int msg_len = safe_vsnprintf(log_buffer, sizeof(log_buffer), fmt, args);
+
+  if (msg_len <= 0) {
+    return;
+  }
+
+  // Truncate at whole line boundaries to avoid UTF-8 issues
+  msg_len = truncate_at_whole_line(log_buffer, msg_len, sizeof(log_buffer));
+
+  // Validate UTF-8 in formatted message
+  validate_log_message_utf8(log_buffer, "stdout log");
+
+  // Write to mmap if active
+  if (log_mmap_is_active()) {
+    log_mmap_write(LOG_INFO, NULL, 0, NULL, "%s", log_buffer);
+  } else {
+    // Write to file with headers (atomic write syscall)
+    int file_fd = atomic_load_u64(&g_log.file);
+    if (file_fd >= 0 && file_fd != STDOUT_FILENO) {
+      // Add header with timestamp and log level to file output
+      char time_buf[LOG_TIMESTAMP_BUFFER_SIZE];
+      uint64_t time_ns = time_get_realtime_ns();
+      get_current_time_formatted(time_buf);
+
+      char header_buffer[512];
+      int header_len = format_log_header(header_buffer, sizeof(header_buffer), LOG_INFO, time_buf, "lib/log/logging.c",
+                                         0, "log_plain_stdout_msg", false, time_ns);
+
+      if (header_len > 0) {
+        write_to_log_file_atomic(header_buffer, header_len, NULL);
+      }
+      write_to_log_file_atomic(log_buffer, msg_len, NULL);
+      if (add_newline) {
+        write_to_log_file_atomic("\n", 1, NULL);
+      }
+    }
+  }
+
+  // Terminal output (atomic state checks)
+  if (!atomic_load_u64(&g_log.terminal_output_enabled)) {
+    return;
+  }
+  if (atomic_load_u64(&g_log.terminal_locked)) {
+    uint64_t owner = atomic_load_u64(&g_log.terminal_owner_thread);
+    if (owner != (uint64_t)asciichat_thread_self()) {
+      return;
+    }
+  }
+
+  // Write to stdout without colorization (plain output)
+  if (add_newline) {
+    safe_fprintf(stdout, "%s\n", log_buffer);
+  } else {
+    safe_fprintf(stdout, "%s", log_buffer);
+  }
+}
+
+void log_plain_stdout_msg(const char *fmt, ...) {
+  if (!lifecycle_is_initialized(&g_log.lifecycle)) {
+    return;
+  }
+  if (shutdown_is_requested()) {
+    return;
+  }
+
+  va_list args;
+  va_start(args, fmt);
+  log_plain_stdout_internal_atomic(fmt, args, true);
+  va_end(args);
+}
+
 void log_file_msg(const char *fmt, ...) {
   if (!lifecycle_is_initialized(&g_log.lifecycle)) {
     return;

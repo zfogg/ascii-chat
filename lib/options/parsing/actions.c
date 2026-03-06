@@ -126,11 +126,11 @@ static void execute_list_webcams(void) {
   }
 
   if (device_count == 0) {
-    log_plain_stderr("No webcam devices found.");
+    log_plain_stdout("No webcam devices found.");
   } else {
-    log_plain_stderr("Available Webcam Devices:");
+    log_plain_stdout("Available Webcam Devices:");
     for (unsigned int i = 0; i < device_count; i++) {
-      log_plain_stderr("  %u %s", devices[i].index, devices[i].name);
+      log_plain_stdout("  %u %s", devices[i].index, devices[i].name);
     }
   }
 
@@ -164,14 +164,14 @@ static void execute_list_microphones(void) {
   }
 
   if (device_count == 0) {
-    log_plain_stderr("No microphone devices found.");
+    log_plain_stdout("No microphone devices found.");
   } else {
-    log_plain_stderr("Available Microphone Devices:");
+    log_plain_stdout("Available Microphone Devices:");
     for (unsigned int i = 0; i < device_count; i++) {
       if (devices[i].is_default_input) {
-        log_plain_stderr("  %d %s (default)", devices[i].index, devices[i].name);
+        log_plain_stdout("  %d %s (default)", devices[i].index, devices[i].name);
       } else {
-        log_plain_stderr("  %d %s", devices[i].index, devices[i].name);
+        log_plain_stdout("  %d %s", devices[i].index, devices[i].name);
       }
     }
   }
@@ -202,14 +202,14 @@ static void execute_list_speakers(void) {
   }
 
   if (device_count == 0) {
-    log_plain_stderr("No speaker devices found.");
+    log_plain_stdout("No speaker devices found.");
   } else {
-    log_plain_stderr("Available Speaker Devices:");
+    log_plain_stdout("Available Speaker Devices:");
     for (unsigned int i = 0; i < device_count; i++) {
       if (devices[i].is_default_output) {
-        log_plain_stderr("  %d %s (default)", devices[i].index, devices[i].name);
+        log_plain_stdout("  %d %s (default)", devices[i].index, devices[i].name);
       } else {
-        log_plain_stderr("  %d %s", devices[i].index, devices[i].name);
+        log_plain_stdout("  %d %s", devices[i].index, devices[i].name);
       }
     }
   }

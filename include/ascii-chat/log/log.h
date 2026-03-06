@@ -301,6 +301,17 @@ void log_plain_msg(const char *fmt, ...);
 void log_plain_stderr_msg(const char *fmt, ...);
 
 /**
+ * @brief Plain logging to stdout with newline
+ * @param fmt Format string (printf-style)
+ * @param ... Format arguments
+ *
+ * Writes to both log file and stdout without timestamps or log levels, with trailing newline.
+ * Used for informational output like device listings.
+ * @ingroup logging
+ */
+void log_plain_stdout_msg(const char *fmt, ...);
+
+/**
  * @brief Plain logging to stderr without trailing newline
  * @param fmt Format string (printf-style)
  * @param ... Format arguments
@@ -603,6 +614,13 @@ asciichat_error_t log_net_message(socket_t sockfd, const struct crypto_context_t
  * @ingroup logging
  */
 #define log_plain_stderr(...) log_plain_stderr_msg(__VA_ARGS__)
+
+/**
+ * @brief Plain logging to stdout with newline
+ * @param ... Format string and arguments (printf-style)
+ * @ingroup logging
+ */
+#define log_plain_stdout(...) log_plain_stdout_msg(__VA_ARGS__)
 
 /**
  * @brief Plain logging to stderr without newline - for interactive prompts
