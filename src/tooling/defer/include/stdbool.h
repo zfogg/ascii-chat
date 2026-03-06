@@ -1,12 +1,40 @@
 /**
  * @file tooling/defer/include/stdbool.h
  * @ingroup tooling
- * @brief TODO: Add Doxygen documentation for stdbool workaround header
+ * @brief ClangTool/LibTooling compatibility shim for stdbool.h
  *
- * ClangTool compatibility shim for stdbool.h. Provides workaround for
- * LibTooling __has_include_next bug.
+ * Provides a workaround for a LibTooling bug that prevents use of the standard
+ * clang stdbool.h header. This compatibility shim provides the same interface
+ * without using the problematic `__has_include_next` preprocessor operator.
  *
- * Needs documentation for: Purpose, bug details, compatibility scope
+ * ## Problem Statement
+ *
+ * Clang's LibTooling (used by ascii-instr-panic for code instrumentation) has
+ * a bug where `__has_include_next` errors instead of returning false when a
+ * next header doesn't exist. This causes the standard clang stdbool.h to fail
+ * on macOS and other platforms, breaking instrumentation on any code that
+ * includes stdbool.h.
+ *
+ * ## Solution
+ *
+ * This header provides a simplified stdbool.h implementation that:
+ * - Defines `bool`, `true`, and `false` for C standards before C23
+ * - Handles C++98 and C++11+ compatibility
+ * - Avoids all problematic preprocessor checks
+ * - Maintains compatibility with the standard stdbool.h interface
+ *
+ * ## Usage
+ *
+ * This header is automatically injected into the include path when using
+ * ascii-instr-panic for instrumentation. No explicit includes are needed.
+ *
+ * ## Scope
+ *
+ * Works with:
+ * - C99, C11, C17, C23 (and later standards)
+ * - C++98, C++11, C++14, C++17, C++20, C++23 (and later standards)
+ * - GCC, Clang, and other C-compatible compilers
+ * - macOS, Linux, Windows, and other platforms
  */
 
 /*===---- stdbool.h - ClangTool workaround header --------------------------===

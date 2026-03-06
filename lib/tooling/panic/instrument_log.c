@@ -1,10 +1,11 @@
 /**
  * @file instrument_log.c
  * @ingroup tooling
- * @brief TODO: Add Doxygen documentation for instrumentation logging
+ * @brief Debug instrumentation logging runtime implementation
  *
- * Provides logging integration for runtime instrumentation and debugging.
- * Needs documentation for: Log capture, instrumentation hooks, diagnostic output
+ * Implements the runtime logging infrastructure for source-code instrumentation.
+ * Captures execution traces with filtering, rate limiting, and coverage analysis.
+ * See include/ascii-chat/tooling/panic/instrument_log.h for the public API.
  */
 
 // SPDX-License-Identifier: MIT

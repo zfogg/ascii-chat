@@ -1,14 +1,11 @@
 /**
  * @file tooling/panic/report.c
  * @ingroup tooling
- * @brief TODO: Add Doxygen documentation for panic/crash report generation
+ * @brief Command-line tool for crash report analysis and summarization
  *
  * Generates and summarizes crash reports from instrumentation runtime logs.
- *
- * Needs documentation for:
- * - Report format and content
- * - Error aggregation and analysis
- * - Integration with panic system
+ * Analyzes instrumentation traces to identify error patterns and provide
+ * diagnostic information.
  */
 
 // SPDX-License-Identifier: MIT

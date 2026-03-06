@@ -1,13 +1,17 @@
 /**
  * @file instrument_cov.c
  * @ingroup tooling
- * @brief TODO: Add Doxygen documentation for SanitizerCoverage instrumentation
+ * @brief SanitizerCoverage runtime hooks for code coverage tracking
  *
- * Provides runtime hooks for code coverage tracking via Clang's SanitizerCoverage.
- * Needs documentation for:
- * - Coverage data collection hooks
- * - Integration with logging system
- * - Instrumentation runtime behavior
+ * Implements the runtime interface for Clang's SanitizerCoverage instrumentation.
+ * Provides two hooks that are automatically called by the compiler:
+ * - `__sanitizer_cov_trace_pc_guard()` - Logs execution of each covered instruction
+ * - `__sanitizer_cov_trace_pc_guard_init()` - Initializes coverage tracking state
+ *
+ * Coverage data is logged via the instrumentation logging system for analysis
+ * in post-processing and coverage report generation.
+ *
+ * @see include/ascii-chat/tooling/panic/instrument_log.h
  */
 
 // SPDX-License-Identifier: MIT
