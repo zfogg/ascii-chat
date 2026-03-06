@@ -9,11 +9,13 @@
 #   - Efficient bandwidth usage in multi-client audio chat
 #
 # Build strategy:
+#   - For iOS: Built from source with iOS cross-compilation
 #   - For musl: Built from source in MuslDependencies.cmake
 #   - For vcpkg: Uses vcpkg-installed Opus
 #   - For glibc: Uses system-installed Opus via pkg-config
 #
 # Prerequisites (must be set before including this file):
+#   - PLATFORM_IOS: Whether building for iOS
 #   - USE_MUSL: Whether using musl libc
 #   - USE_VCPKG: Whether using vcpkg
 #   - CMAKE_BUILD_TYPE: Build type
@@ -23,6 +25,70 @@
 #   - OPUS_LIBRARIES: Libraries to link against
 #   - OPUS_INCLUDE_DIRS: Include directories
 # =============================================================================
+
+# iOS build: Build from source for iOS cross-compilation
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}Opus${ColorReset} from source (iOS cross-compile)...")
+
+    include(ExternalProject)
+
+    set(OPUS_PREFIX "${IOS_DEPS_CACHE_DIR}/opus")
+    set(OPUS_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/opus-build")
+
+    # Get actual iOS SDK path using xcrun
+    if(BUILD_IOS_SIM)
+        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    else()
+        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+
+    if(NOT EXISTS "${OPUS_PREFIX}/lib/libopus.a")
+        message(STATUS "  Opus library not found in cache, will build from source")
+
+        ExternalProject_Add(opus-ios
+            URL https://github.com/xiph/opus/releases/download/v1.5.2/opus-1.5.2.tar.gz
+            URL_HASH SHA256=65c1d2f78b9f2fb20082c38cbe47c951ad5839345876e46941612ee87f9a7ce1
+            DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+            PREFIX ${OPUS_BUILD_DIR}
+            STAMP_DIR ${OPUS_BUILD_DIR}/stamps
+            UPDATE_DISCONNECTED 1
+            BUILD_ALWAYS 0
+            CONFIGURE_COMMAND
+                <SOURCE_DIR>/configure
+                --prefix=${OPUS_PREFIX}
+                --enable-static
+                --disable-shared
+                --disable-doc
+                --disable-extra-programs
+                --disable-intrinsics
+                --disable-asm
+                --with-pic
+                --host=arm-apple-darwin
+                CC=clang
+                CFLAGS=-O2\ -fPIC\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
+                LDFLAGS=-isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64
+            BUILD_COMMAND make -j
+            INSTALL_COMMAND make install
+            BUILD_BYPRODUCTS ${OPUS_PREFIX}/lib/libopus.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}Opus${ColorReset} library found in cache: ${BoldMagenta}${OPUS_PREFIX}/lib/libopus.a${ColorReset}")
+        add_custom_target(opus-ios)
+    endif()
+
+    set(OPUS_FOUND TRUE)
+    set(OPUS_LIBRARIES "${OPUS_PREFIX}/lib/libopus.a")
+    set(OPUS_INCLUDE_DIRS "${OPUS_PREFIX}/include")
+
+    message(STATUS "${BoldGreen}✓${ColorReset} Opus configured (iOS cross-compile): ${OPUS_PREFIX}/lib/libopus.a")
+
+    return()
+endif()
 
 # Handle musl builds - Opus is built from source
 if(USE_MUSL)

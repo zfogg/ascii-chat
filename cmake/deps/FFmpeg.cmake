@@ -18,12 +18,12 @@ if(PLATFORM_IOS)
     set(FFMPEG_PREFIX "${IOS_DEPS_CACHE_DIR}/ffmpeg")
     set(FFMPEG_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/ffmpeg-build")
 
-    # Determine iOS SDK path
+    # Get actual iOS SDK path using xcrun
     if(BUILD_IOS_SIM)
-        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
         set(IOS_SDK_NAME "iphonesimulator")
     else()
-        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
         set(IOS_SDK_NAME "iphoneos")
     endif()
 
