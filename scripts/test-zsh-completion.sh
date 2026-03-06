@@ -20,7 +20,7 @@ tmux new-session -d -s zsh-completion-test -x 250 -y 60
 tmux send-keys -t zsh-completion-test "cd '$PWD'" Enter
 sleep 0.3
 
-tmux send-keys -t zsh-completion-test "fpath=(./build/share/zsh/site-functions \$fpath); autoload -Uz compinit; compinit -U; clear" Enter
+tmux send-keys -t zsh-completion-test "fpath=(./build/share/zsh/site-functions \$fpath); autoload -Uz compinit; compinit -U" Enter
 sleep 0.2
 
 # =============================================================================
@@ -61,7 +61,6 @@ fi
 
 # Clear for next test
 tmux send-keys -t zsh-completion-test "C-u"
-tmux send-keys -t zsh-completion-test "clear" Enter
 sleep 0.5
 
 # =============================================================================
@@ -96,8 +95,7 @@ fi
 # Clear for next test
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
-tmux send-keys -t zsh-completion-test "clear" Enter
-sleep 0.2
+sleep 0.5
 
 # =============================================================================
 # TEST 3: Client mode options (client --<TAB>)
