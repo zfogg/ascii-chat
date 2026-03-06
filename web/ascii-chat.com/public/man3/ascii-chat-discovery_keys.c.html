@@ -108,7 +108,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_keys_get_cache_path()</b>,
-    <b>platform_is_regular_file()</b>, and <b>PLATFORM_MAX_PATH_LENGTH</b>.</p>
+    <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_discovery_keys_download_https_(const_char_*_url,_uint8_t_pubkey_out_32_)"><a class="permalink" href="#asciichat_error_t_discovery_keys_download_https_(const_char_*_url,_uint8_t_pubkey_out_32_)">asciichat_error_t
@@ -135,7 +136,7 @@
 75 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>parse_public_key()</b>.</p>
+<p class="Pp">References <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_discovery_keys_get_cache_path_(const_char_*_acds_server,_char_*_path_out,_size_t_path_size)"><a class="permalink" href="#asciichat_error_t_discovery_keys_get_cache_path_(const_char_*_acds_server,_char_*_path_out,_size_t_path_size)">asciichat_error_t
@@ -161,8 +162,8 @@
 116 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>get_config_dir()</b>, and
-  <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>get_config_dir()</b>, <b>SAFE_FREE</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_clear_cache()</b>,
     <b>discovery_keys_load_cached()</b>, and
     <b>discovery_keys_save_cached()</b>.</p>
@@ -194,8 +195,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_keys_get_cache_path()</b>,
-    <b>discovery_keys_load_file()</b>, <b>platform_is_regular_file()</b>, and
-    <b>PLATFORM_MAX_PATH_LENGTH</b>.</p>
+    <b>discovery_keys_load_file()</b>, <b>platform_is_regular_file()</b>,
+    <b>PLATFORM_MAX_PATH_LENGTH</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
@@ -223,7 +224,8 @@
 94 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>file_path</b>, and <b>parse_public_key()</b>.</p>
+<p class="Pp">References <b>file_path</b>, <b>parse_public_key()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_load_cached()</b>.</p>
 </section>
 <section class="Ss">
@@ -281,8 +283,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_keys_get_cache_path()</b>,
-    <b>platform_fopen()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>platform_fopen()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 <section class="Ss">
@@ -384,7 +386,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>discovery_keys_load_cached()</b>,
     <b>discovery_keys_save_cached()</b>, <b>discovery_keys_verify_change()</b>,
-    and <b>parse_public_key()</b>.</p>
+    <b>parse_public_key()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -432,8 +434,8 @@
 249 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>compute_key_fingerprint()</b>, and
-    <b>platform_prompt_yes_no()</b>.</p>
+<p class="Pp">References <b>compute_key_fingerprint()</b>,
+    <b>platform_prompt_yes_no()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_keys_verify()</b>.</p>
 </section>
 </section>

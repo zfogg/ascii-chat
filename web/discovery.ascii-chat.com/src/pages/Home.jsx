@@ -8,12 +8,19 @@ import {
   Button,
   Link,
 } from "@ascii-chat/shared/components";
+import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
 
 function Home() {
+  useScrollToHash(100);
   const [sshKey, setSshKey] = useState("");
   const [gpgKey, setGpgKey] = useState("");
   const [baseUrl] = useState(() => window.location.origin);
+  const [sessionStrings, setSessionStrings] = useState([
+    "hindu-batman-marriage",
+    "jumbo-slayer-sergeant",
+    "shaky-fudge-moron",
+  ]);
 
   useEffect(() => {
     // Fetch public keys
@@ -26,6 +33,11 @@ function Home() {
       .then((r) => r.text())
       .then((text) => setGpgKey(text.trim()))
       .catch((e) => console.error("Failed to load GPG key:", e));
+
+    // Fetch session strings
+    fetchSessionStrings(3)
+      .then((strings) => setSessionStrings(strings))
+      .catch((e) => console.error("Failed to load session strings:", e));
   }, []);
 
   const handleSshDownload = () => {
@@ -102,14 +114,16 @@ function Home() {
             </Link>
             , a real-time terminal-based video chat application. ACDS enables
             session discovery using memorable three-word strings like{" "}
-            <code className="bg-gray-800 px-1 rounded">happy-sunset-ocean</code>{" "}
+            <code className="bg-gray-800 px-1 rounded">
+              {sessionStrings[0]}
+            </code>{" "}
             instead of IP addresses. It provides NAT traversal, WebRTC
             signaling, and peer-to-peer connection establishment.
           </p>
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             <strong>Privacy-first:</strong> ACDS only exchanges connection
-            metadata—your audio and video never pass through our servers. All
-            media flows peer-to-peer with end-to-end encryption.
+            metadata. Your audio and video never pass through our servers. All
+            media flows peer-to-peer with end-to-end encryption by default.
           </p>
 
           <Heading
@@ -248,7 +262,10 @@ man ascii-chat
 ascii-chat discovery-service --help
 
 # General ascii-chat help
-ascii-chat --help`}</CodeBlock>
+ascii-chat --help
+
+# Enable shell completions (also fish, bash, powershell)
+source <(ascii-chat --completions zsh 2>/dev/null)`}</CodeBlock>
         </section>
 
         <section className="mb-12">
@@ -258,47 +275,14 @@ ascii-chat --help`}</CodeBlock>
           >
             💻 Usage Examples
           </Heading>
+          <CodeBlock language="bash">{`# Start a new session
+ascii-chat
+# It logs "Session string: ${sessionStrings[0]}"
 
-          <Heading
-            level={3}
-            className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl"
-          >
-            Server: Create a Session
-          </Heading>
-          <CodeBlock language="bash">{`# Start a server and register with ACDS (uses discovery-service.ascii-chat.com by default)
-ascii-chat server --discovery
+# Copy the session string it outputs and share it with a friend securely
 
-# ACDS will return a session string like:
-# Session: happy-sunset-ocean`}</CodeBlock>
-
-          <Heading
-            level={3}
-            className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl"
-          >
-            Client: Join a Session
-          </Heading>
-          <CodeBlock language="bash">{`# Connect using the session string (uses discovery-service.ascii-chat.com by default)
-ascii-chat client happy-sunset-ocean
-
-# That's it! No configuration needed - the client automatically:
-# - Connects to discovery-service.ascii-chat.com:27225
-# - Trusts keys from ${window.location.hostname}
-# - Looks up the session and connects to the server`}</CodeBlock>
-
-          <Heading
-            level={3}
-            className="text-gray-200 mt-6 mb-2 text-xl md:text-2xl"
-          >
-            Manual Key Verification (Optional)
-          </Heading>
-          <CodeBlock language="bash">{`# Download and verify SSH public key
-curl -O ${baseUrl}/key.pub
-ssh-keygen -lf key.pub
-
-# Verify fingerprint matches: SHA256:Uvr6k+9VjcC60gbVtcvwiVZDsIfB6jZvMuD4G2FME6w
-
-# Connect with explicit key verification (optional - automatic by default)
-ascii-chat client happy-sunset-ocean --discovery-service-key ./key.pub`}</CodeBlock>
+# Join a session using the session string
+ascii-chat ${sessionStrings[0]}`}</CodeBlock>
         </section>
 
         <section className="mb-12">
@@ -370,19 +354,7 @@ ascii-chat client session-name \\
             <strong>Important:</strong> You should share the public key with
             ascii-chatters in a safe way. We recommend pre-sharing them safely
             somehow or hosting them on a website at a domain you control and
-            serving them over HTTPS like we do. See the{" "}
-            <Link
-              href="https://zfogg.github.io/ascii-chat/group__module__acds.html#acds_deployment"
-              onClick={() =>
-                handleLinkClick(
-                  "https://zfogg.github.io/ascii-chat/group__module__acds.html#acds_deployment",
-                  "ACDS deployment documentation",
-                )
-              }
-            >
-              ascii-chat documentation
-            </Link>{" "}
-            for details.
+            serving them over HTTPS like we do.
           </p>
         </section>
 

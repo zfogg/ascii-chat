@@ -1,10 +1,13 @@
 import { useEffect } from "react";
+import { Heading } from "@ascii-chat/shared/components";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
+import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 
 export default function DocsHub() {
+  useScrollToHash(100);
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -98,7 +101,9 @@ export default function DocsHub() {
         <div className="flex-1 flex flex-col docs-container">
           {/* Header */}
           <header className="mb-12 sm:mb-16 text-center">
-            <h1 className="heading-1 mb-4">📚 Documentation</h1>
+            <Heading level={1} className="heading-1 mb-4">
+              📚 Documentation
+            </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               Complete guides for configuring, using, and scripting ascii-chat
             </p>

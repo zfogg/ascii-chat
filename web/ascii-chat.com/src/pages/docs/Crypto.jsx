@@ -3,9 +3,11 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { CodeBlock } from "@ascii-chat/shared/components";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
+import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 
 export default function Crypto() {
+  useScrollToHash(100);
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },

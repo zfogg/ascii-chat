@@ -1,9 +1,35 @@
-import { CodeBlock } from "@ascii-chat/shared/components";
+import { useState, useEffect } from "react";
+import { CodeBlock, Heading } from "@ascii-chat/shared/components";
+import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
 
 export default function Home() {
+  const [sessionStrings, setSessionStrings] = useState([
+    "agricultural-thursday-accidental",
+    "lively-masterpiece-partnership",
+    "tipsy-apron-presence",
+    "everyday-slide-guild",
+    "american-berry-countryside",
+    "paid-martial-forty",
+    "online-fame-standby",
+    "irritable-cappuccino-smoke",
+  ]);
+
+  useScrollToHash(100);
+
+  useEffect(() => {
+    // Fetch multiple session strings for different examples
+    fetchSessionStrings(7)
+      .then((strings) => {
+        if (strings.length > 0) {
+          setSessionStrings(strings);
+        }
+      })
+      .catch((e) => console.error("Failed to load session strings:", e));
+  }, []);
+
   return (
     <>
       <AsciiChatHead />
@@ -31,9 +57,12 @@ export default function Home() {
 
           {/* Installation */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-teal-400 mb-4 sm:mb-6 border-b border-teal-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-teal-400 mb-4 sm:mb-6 border-b border-teal-900/50 pb-2"
+            >
               📦 Installation
-            </h2>
+            </Heading>
 
             <div className="space-y-6">
               <div>
@@ -148,7 +177,7 @@ cmake --preset default && cmake --build build
                 <p className="text-gray-300">
                   Share a memorable three-word string like{" "}
                   <code className="text-pink-400 bg-gray-950 px-2 py-1 rounded">
-                    happy-sunset-ocean
+                    {sessionStrings[1]}
                   </code>{" "}
                   that users can connect with connection and NAT traversal is
                   transparently handled. Support for UPnP, WebRTC, and mDNS.
@@ -193,7 +222,7 @@ cmake --preset default && cmake --build build
                   {`# Register with ACDS and get a session string
 ascii-chat server
 
-# Session: happy-sunset-ocean`}
+# Session: ${sessionStrings[0]}`}
                 </CodeBlock>
               </div>
 
@@ -203,7 +232,7 @@ ascii-chat server
                 </h3>
                 <CodeBlock language="bash">
                   {`# Connect using the session string
-ascii-chat happy-sunset-ocean
+ascii-chat ${sessionStrings[0]}
 
 # That's it! No configuration needed.`}
                 </CodeBlock>
@@ -350,7 +379,7 @@ man ascii-chat
 ascii-chat <mode> --help
 
 # Enable shell completions (bash, fish, zsh, and powershell available)
-source <(ascii-chat --completions zsh)
+source <(ascii-chat --completions zsh 2>/dev/null)
 # Then: ascii-chat <tab> | ascii-chat --<tab> | ascii-chat server --<tab>`}
                 </CodeBlock>
               </div>
@@ -375,10 +404,10 @@ ascii-chat client`}
                 <CodeBlock language="bash">
                   {`# Server registers with official ACDS
 ascii-chat server
-# Session: happy-sunset-ocean
+# Session: ${sessionStrings[1]}
 
 # Client looks up session and connects automatically
-ascii-chat happy-sunset-ocean`}
+ascii-chat ${sessionStrings[1]}`}
                 </CodeBlock>
               </div>
 
@@ -391,7 +420,7 @@ ascii-chat happy-sunset-ocean`}
 ascii-chat server --key ~/.ssh/id_ed25519
 
 # Client authenticates with their key
-ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}
+ascii-chat ${sessionStrings[2]} --key ~/.ssh/id_ed25519`}
                 </CodeBlock>
               </div>
 
@@ -404,7 +433,7 @@ ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys github:zfogg
 
 # Only clients with those keys can connect
-ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}
+ascii-chat ${sessionStrings[3]} --key ~/.ssh/id_ed25519`}
                 </CodeBlock>
               </div>
 
@@ -417,7 +446,7 @@ ascii-chat happy-sunset-ocean --key ~/.ssh/id_ed25519`}
 ascii-chat server --key gpg:897607FA43DC66F6
 
 # Client verifies server against GitHub GPG keys
-ascii-chat happy-sunset-ocean --server-key github:zfogg.gpg`}
+ascii-chat ${sessionStrings[4]} --server-key github:zfogg.gpg`}
                 </CodeBlock>
               </div>
 
@@ -471,7 +500,7 @@ ascii-chat mirror --file video.mp4`}
 ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --color-mode truecolor
 
 # Share YouTube video with others in a call (client mode)
-ascii-chat happy-sunset-ocean --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
+ascii-chat ${sessionStrings[5]} --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
                 </CodeBlock>
               </div>
 
@@ -484,7 +513,7 @@ ascii-chat happy-sunset-ocean --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
 ascii-chat mirror --url 'https://www.twitch.tv/ludwig'
 
 # Share Twitch stream with others in a call (client mode)
-ascii-chat happy-sunset-ocean --url 'https://www.twitch.tv/ludwig'`}
+ascii-chat ${sessionStrings[6]} --url 'https://www.twitch.tv/ludwig'`}
                 </CodeBlock>
               </div>
 

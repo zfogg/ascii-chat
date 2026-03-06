@@ -220,9 +220,9 @@
     <b>consensus_coordinator::has_stored_result</b>,
     <b>consensus_coordinator::last_round_start_ns</b>,
     <b>consensus_coordinator::my_id</b>,
-    <b>consensus_coordinator::next_round_id</b>,
-    <b>consensus_coordinator::state</b>, <b>time_get_ns()</b>, and
-    <b>consensus_coordinator::topology</b>.</p>
+    <b>consensus_coordinator::next_round_id</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>consensus_coordinator::state</b>,
+    <b>time_get_ns()</b>, and <b>consensus_coordinator::topology</b>.</p>
 <p class="Pp">Referenced by <b>session_consensus_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -240,7 +240,7 @@
 98 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_state_destroy()</b>, and
+<p class="Pp">References <b>consensus_state_destroy()</b>, <b>SAFE_FREE</b>, and
     <b>consensus_coordinator::state</b>.</p>
 <p class="Pp">Referenced by <b>session_consensus_destroy()</b>.</p>
 </section>
@@ -281,7 +281,7 @@
 <p class="Pp">References <b>consensus_state_get_current_state()</b>,
     <b>consensus_state_get_elected_backup()</b>,
     <b>consensus_state_get_elected_host()</b>,
-    <b>consensus_coordinator::has_stored_result</b>,
+    <b>consensus_coordinator::has_stored_result</b>, <b>SET_ERRNO</b>,
     <b>consensus_coordinator::state</b>,
     <b>consensus_coordinator::stored_backup_id</b>, and
     <b>consensus_coordinator::stored_host_id</b>.</p>
@@ -365,7 +365,7 @@
 <p class="Pp">References <b>consensus_coordinator::collection_deadline_ns</b>,
     <b>consensus_state_get_current_state()</b>,
     <b>consensus_state_start_collection()</b>,
-    <b>consensus_coordinator::next_round_id</b>,
+    <b>consensus_coordinator::next_round_id</b>, <b>SET_ERRNO</b>,
     <b>consensus_coordinator::state</b>, and <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>session_consensus_on_collection_start()</b>.</p>
 </section>
@@ -402,7 +402,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_state_get_current_state()</b>,
     <b>consensus_state_reset_to_idle()</b>,
-    <b>consensus_coordinator::has_stored_result</b>,
+    <b>consensus_coordinator::has_stored_result</b>, <b>SET_ERRNO</b>,
     <b>consensus_coordinator::state</b>,
     <b>consensus_coordinator::stored_backup_id</b>, and
     <b>consensus_coordinator::stored_host_id</b>.</p>
@@ -443,8 +443,9 @@
 <p class="Pp">References <b>consensus_state_create()</b>,
     <b>consensus_state_destroy()</b>,
     <b>consensus_state_get_current_state()</b>,
-    <b>consensus_coordinator::my_id</b>, <b>consensus_coordinator::state</b>,
-    and <b>consensus_coordinator::topology</b>.</p>
+    <b>consensus_coordinator::my_id</b>, <b>SET_ERRNO</b>,
+    <b>consensus_coordinator::state</b>, and
+    <b>consensus_coordinator::topology</b>.</p>
 <p class="Pp">Referenced by <b>session_consensus_set_topology()</b>.</p>
 </section>
 <section class="Ss">
@@ -479,7 +480,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_state_add_metrics()</b>,
-    <b>consensus_state_get_current_state()</b>, and
+    <b>consensus_state_get_current_state()</b>, <b>SET_ERRNO</b>, and
     <b>consensus_coordinator::state</b>.</p>
 <p class="Pp">Referenced by <b>session_consensus_on_stats_update()</b>.</p>
 </section>
@@ -526,8 +527,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_state_get_current_state()</b>,
-    <b>consensus_topology_am_leader()</b>, <b>consensus_coordinator::state</b>,
-    <b>time_get_ns()</b>, and <b>consensus_coordinator::topology</b>.</p>
+    <b>consensus_topology_am_leader()</b>, <b>SET_ERRNO</b>,
+    <b>consensus_coordinator::state</b>, <b>time_get_ns()</b>, and
+    <b>consensus_coordinator::topology</b>.</p>
 <p class="Pp">Referenced by <b>session_consensus_process()</b>.</p>
 </section>
 <section class="Ss">

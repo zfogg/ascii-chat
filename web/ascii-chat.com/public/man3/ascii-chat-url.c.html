@@ -92,8 +92,8 @@
 355 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>url_is_tcp_scheme()</b>, <b>url_parse()</b>, and
-    <b>url_parts_destroy()</b>.</p>
+<p class="Pp">References <b>SET_ERRNO</b>, <b>url_is_tcp_scheme()</b>,
+    <b>url_parse()</b>, and <b>url_parts_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
 </section>
 <section class="Ss">
@@ -110,6 +110,7 @@
 340 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>url_is_tcp()</b>.</p>
 </section>
 <section class="Ss">
@@ -201,6 +202,7 @@
 164 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
     <b>options_init()</b>, <b>parse_public_key()</b>, and
     <b>yt_dlp_extract_stream_url()</b>.</p>
@@ -224,8 +226,8 @@
 320 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>url_is_websocket_scheme()</b>, <b>url_parse()</b>,
-    and <b>url_parts_destroy()</b>.</p>
+<p class="Pp">References <b>SET_ERRNO</b>, <b>url_is_websocket_scheme()</b>,
+    <b>url_parse()</b>, and <b>url_parts_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>,
     <b>connection_attempt_tcp()</b>, and
   <b>server_connection_establish()</b>.</p>
@@ -244,6 +246,7 @@
 305 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>url_is_websocket()</b>.</p>
 </section>
 <section class="Ss">
@@ -260,6 +263,7 @@
 365 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> url_looks_like_websocket (const char * url)</h2>
@@ -275,6 +279,7 @@
 330 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_url_parse_(const_char_*_url,_url_parts_t_*_parts_out)"><a class="permalink" href="#asciichat_error_t_url_parse_(const_char_*_url,_url_parts_t_*_parts_out)">asciichat_error_t
@@ -396,8 +401,8 @@
 279 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>, and
-    <b>url_parts_destroy()</b>.</p>
+<p class="Pp">References <b>asciichat_pcre2_extract_named_group()</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and <b>url_parts_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
     <b>parse_public_key()</b>, <b>server_connection_establish()</b>,
     <b>url_is_tcp()</b>, and <b>url_is_websocket()</b>.</p>
@@ -423,6 +428,7 @@
 295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
     <b>parse_public_key()</b>, <b>server_connection_establish()</b>,
     <b>url_is_tcp()</b>, <b>url_is_websocket()</b>, and <b>url_parse()</b>.</p>

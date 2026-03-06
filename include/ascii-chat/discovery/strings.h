@@ -38,6 +38,14 @@
 #define SESSION_STRING_BUFFER_SIZE (SESSION_STRING_MAX_LEN + 1)
 
 /**
+ * @brief Maximum number of unique session strings that can be generated
+ *
+ * Calculated from wordlist entropy:
+ * 2500 adjectives × 5000 nouns × 5000 nouns = 62,500,000,000 combinations
+ */
+#define ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)
+
+/**
  * @brief Generate random session string
  * @param output Output buffer for session string
  * @param output_size Size of output buffer (should be at least SESSION_STRING_BUFFER_SIZE bytes)

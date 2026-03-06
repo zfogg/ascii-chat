@@ -183,8 +183,8 @@
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
     <b>append_16color_bg()</b>, <b>append_16color_fg()</b>, <b>emit_rep()</b>,
     <b>emit_reset()</b>, <b>ob_putc()</b>, <b>ob_term()</b>, <b>ob_write()</b>,
-    <b>platform_strdup()</b>, <b>rep_is_profitable()</b>, and
-    <b>rgb_to_16color()</b>.</p>
+    <b>platform_strdup()</b>, <b>rep_is_profitable()</b>,
+    <b>rgb_to_16color()</b>, and <b>SAFE_MALLOC</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_256color_halfblocks_scalar_(const_uint8_t_*_rgb,_int_width,_int_height,_int_stride_bytes,_const_char_*_palette)"><a class="permalink" href="#char_*_rgb_to_256color_halfblocks_scalar_(const_uint8_t_*_rgb,_int_width,_int_height,_int_stride_bytes,_const_char_*_palette)">char
@@ -307,8 +307,8 @@
 <p class="Pp">References <b>ansi_fast_init_256color()</b>,
     <b>append_256color_bg()</b>, <b>append_256color_fg()</b>, <b>emit_rep()</b>,
     <b>emit_reset()</b>, <b>ob_putc()</b>, <b>ob_term()</b>, <b>ob_write()</b>,
-    <b>platform_strdup()</b>, <b>rep_is_profitable()</b>, and
-    <b>rgb_to_256color()</b>.</p>
+    <b>platform_strdup()</b>, <b>rep_is_profitable()</b>,
+    <b>rgb_to_256color()</b>, and <b>SAFE_MALLOC</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_halfblocks_scalar_(const_uint8_t_*_rgb,_int_width,_int_height,_int_stride_bytes,_const_char_*_palette)"><a class="permalink" href="#char_*_rgb_to_halfblocks_scalar_(const_uint8_t_*_rgb,_int_width,_int_height,_int_stride_bytes,_const_char_*_palette)">char
@@ -439,8 +439,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>emit_rep()</b>, <b>ob_putc()</b>, <b>ob_term()</b>,
-    <b>ob_write()</b>, <b>platform_strdup()</b>, and
-  <b>rep_is_profitable()</b>.</p>
+    <b>ob_write()</b>, <b>platform_strdup()</b>, <b>rep_is_profitable()</b>, and
+    <b>SAFE_MALLOC</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_truecolor_halfblocks_scalar_(const_uint8_t_*_rgb,_int_width,_int_height,_int_stride_bytes)"><a class="permalink" href="#char_*_rgb_to_truecolor_halfblocks_scalar_(const_uint8_t_*_rgb,_int_width,_int_height,_int_stride_bytes)">char
@@ -594,8 +594,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>emit_rep()</b>, <b>emit_reset()</b>,
     <b>emit_set_bg()</b>, <b>emit_set_fg()</b>, <b>ob_putc()</b>,
-    <b>ob_term()</b>, <b>ob_write()</b>, <b>platform_strdup()</b>, and
-    <b>rep_is_profitable()</b>.</p>
+    <b>ob_term()</b>, <b>ob_write()</b>, <b>platform_strdup()</b>,
+    <b>rep_is_profitable()</b>, and <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>.</p>
 </section>
 </section>

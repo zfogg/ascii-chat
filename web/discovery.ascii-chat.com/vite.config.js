@@ -33,10 +33,31 @@ export default defineConfig({
     extensions: [".ts", ".tsx", ".js", ".jsx"],
     dedupe: ["react", "react-dom"],
   },
+  server: {
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.API_PORT || 3001}`,
+        changeOrigin: true,
+      },
+    },
+  },
   plugins: [
     react(),
     sitemap({
       hostname: "https://discovery.ascii-chat.com",
     }),
   ],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Dependencies
+          if (id.includes("node_modules")) {
+            return "deps";
+          }
+        },
+      },
+    },
+  },
 });

@@ -1,10 +1,13 @@
+import { Heading } from "@ascii-chat/shared/components";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
+import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Snapshot() {
+  useScrollToHash(100);
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -32,7 +35,9 @@ export default function Snapshot() {
 
           {/* Basic Usage */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-cyan-400">⚡ Quick Start</h2>
+            <Heading level={2} className="heading-2 text-cyan-400">
+              ⚡ Quick Start
+            </Heading>
             <div className="docs-subsection-spacing">
               <h3 className="heading-3 text-teal-300 mb-3">
                 Single Frame Capture
@@ -48,7 +53,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">Timed Capture</h3>
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
+                Timed Capture
+              </Heading>
               <p className="docs-paragraph">
                 Capture for a specific duration, then exit:
               </p>
@@ -123,7 +130,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">Color Snapshots</h3>
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
+                Color Snapshots
+              </Heading>
               <p className="docs-paragraph">
                 By default, colors are only enabled when stdout is connected to
                 a terminal. When piping or redirecting (when{" "}
@@ -164,7 +173,9 @@ export default function Snapshot() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">Warmup Period</h3>
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
+                Warmup Period
+              </Heading>
               <p className="docs-paragraph">
                 By default, <code className="text-cyan-300">--snapshot</code>{" "}
                 waits 4 seconds to allow webcam adjustment. For faster captures:
@@ -419,7 +430,9 @@ export default function Snapshot() {
 
           {/* Use Cases */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-teal-400">💼 Real-World Use Cases</h2>
+            <Heading level={2} className="heading-2 text-teal-400">
+              💼 Real-World Use Cases
+            </Heading>
             <div className="space-y-3">
               <div className="card-standard accent-yellow">
                 <h4 className="text-yellow-300 font-semibold mb-2">

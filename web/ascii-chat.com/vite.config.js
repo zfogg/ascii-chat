@@ -60,4 +60,33 @@ export default defineConfig({
       ],
     }),
   ],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Dependencies
+          if (id.includes("node_modules")) {
+            return "deps";
+          }
+          // Man pages and components - all in single chunk
+          if (id.includes("Man") && id.includes(".jsx")) {
+            return "man";
+          }
+          // Docs pages
+          if (id.includes("/docs/")) {
+            return "docs";
+          }
+          // Shared components
+          if (id.includes("@ascii-chat/shared")) {
+            return "shared";
+          }
+          // Home page
+          if (id.includes("/Home.jsx")) {
+            return "home";
+          }
+        },
+      },
+    },
+  },
 });

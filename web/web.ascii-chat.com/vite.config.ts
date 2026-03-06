@@ -43,18 +43,32 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",
     },
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.API_PORT || 3001}`,
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: "esnext",
     minify: "terser",
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       input: {
         main: "./index.html",
         404: "./404.html",
       },
       output: {
-        manualChunks: {
-          xterm: ["xterm", "@xterm/addon-fit"],
+        manualChunks(id) {
+          // Terminal library
+          if (id.includes("xterm")) {
+            return "xterm";
+          }
+          // Dependencies
+          if (id.includes("node_modules")) {
+            return "deps";
+          }
         },
       },
     },

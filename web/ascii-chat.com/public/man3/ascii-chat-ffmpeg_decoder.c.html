@@ -422,7 +422,8 @@
     <b>ffmpeg_decoder_t::prefetch_mutex</b>,
     <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
     <b>ffmpeg_decoder_t::prefetch_thread_running</b>,
-    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
+    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
     <b>ffmpeg_decoder_t::sws_ctx</b>, <b>TARGET_SAMPLE_RATE</b>,
     <b>url_is_valid()</b>, <b>ffmpeg_decoder_t::video_codec_ctx</b>, and
     <b>ffmpeg_decoder_t::video_stream_idx</b>.</p>
@@ -700,7 +701,8 @@
     <b>ffmpeg_decoder_t::prefetch_image_a</b>,
     <b>ffmpeg_decoder_t::prefetch_image_b</b>,
     <b>ffmpeg_decoder_t::prefetch_mutex</b>,
-    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
+    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
     <b>ffmpeg_decoder_t::sws_ctx</b>, <b>TARGET_SAMPLE_RATE</b>,
     <b>ffmpeg_decoder_t::video_codec_ctx</b>, and
     <b>ffmpeg_decoder_t::video_stream_idx</b>.</p>
@@ -810,8 +812,8 @@
     <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
     <b>ffmpeg_decoder_t::prefetch_thread</b>,
     <b>ffmpeg_decoder_t::prefetch_thread_running</b>,
-    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>ffmpeg_decoder_t::swr_ctx</b>,
-    <b>ffmpeg_decoder_t::sws_ctx</b>, and
+    <b>ffmpeg_decoder_t::read_frame_mutex</b>, <b>SAFE_FREE</b>,
+    <b>ffmpeg_decoder_t::swr_ctx</b>, <b>ffmpeg_decoder_t::sws_ctx</b>, and
     <b>ffmpeg_decoder_t::video_codec_ctx</b>.</p>
 <p class="Pp">Referenced by <b>ffmpeg_decoder_create()</b>,
     <b>ffmpeg_decoder_create_stdin()</b>, <b>media_source_create()</b>, and
@@ -1201,7 +1203,7 @@
     <b>ffmpeg_decoder_t::audio_samples_read</b>,
     <b>ffmpeg_decoder_t::eof_reached</b>, <b>ffmpeg_decoder_t::format_ctx</b>,
     <b>ffmpeg_decoder_t::is_stdin</b>, <b>ffmpeg_decoder_t::last_audio_pts</b>,
-    <b>ffmpeg_decoder_t::last_video_pts</b>, and
+    <b>ffmpeg_decoder_t::last_video_pts</b>, <b>SET_ERRNO</b>, and
     <b>ffmpeg_decoder_t::video_codec_ctx</b>.</p>
 <p class="Pp">Referenced by <b>media_source_rewind()</b>.</p>
 </section>
@@ -1298,7 +1300,7 @@
     <b>ffmpeg_decoder_t::prefetch_cond</b>,
     <b>ffmpeg_decoder_t::prefetch_frame_ready</b>,
     <b>ffmpeg_decoder_t::prefetch_mutex</b>,
-    <b>ffmpeg_decoder_t::seeking_in_progress</b>, and
+    <b>ffmpeg_decoder_t::seeking_in_progress</b>, <b>SET_ERRNO</b>, and
     <b>ffmpeg_decoder_t::video_codec_ctx</b>.</p>
 <p class="Pp">Referenced by <b>media_source_seek()</b>.</p>
 </section>
@@ -1363,7 +1365,7 @@
     <b>ffmpeg_decoder_t::prefetch_image_b</b>,
     <b>ffmpeg_decoder_t::prefetch_should_stop</b>,
     <b>ffmpeg_decoder_t::prefetch_thread</b>,
-    <b>ffmpeg_decoder_t::prefetch_thread_running</b>, and
+    <b>ffmpeg_decoder_t::prefetch_thread_running</b>, <b>SET_ERRNO</b>, and
     <b>ffmpeg_decoder_t::video_stream_idx</b>.</p>
 <p class="Pp">Referenced by <b>media_source_create()</b>.</p>
 </section>

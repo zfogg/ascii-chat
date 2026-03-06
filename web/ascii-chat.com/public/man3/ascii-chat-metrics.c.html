@@ -223,8 +223,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_metrics_collection::capacity</b>,
-    <b>consensus_metrics_collection::count</b>, and
-    <b>consensus_metrics_collection::metrics</b>.</p>
+    <b>consensus_metrics_collection::count</b>,
+    <b>consensus_metrics_collection::metrics</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_consensus_metrics_collection_create_("><a class="permalink" href="#asciichat_error_t_consensus_metrics_collection_create_(">asciichat_error_t
@@ -249,8 +250,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_metrics_collection::capacity</b>,
-    <b>consensus_metrics_collection::count</b>, and
-    <b>consensus_metrics_collection::metrics</b>.</p>
+    <b>consensus_metrics_collection::count</b>,
+    <b>consensus_metrics_collection::metrics</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_consensus_metrics_collection_destroy_("><a class="permalink" href="#void_consensus_metrics_collection_destroy_(">void
@@ -270,7 +272,8 @@
 238 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_metrics_collection::metrics</b>.</p>
+<p class="Pp">References <b>consensus_metrics_collection::metrics</b>, and
+    <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_consensus_metrics_collection_get_(const_"><a class="permalink" href="#asciichat_error_t_consensus_metrics_collection_get_(const_">asciichat_error_t
@@ -290,8 +293,8 @@
 226 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_metrics_collection::count</b>, and
-    <b>consensus_metrics_collection::metrics</b>.</p>
+<p class="Pp">References <b>consensus_metrics_collection::count</b>,
+    <b>consensus_metrics_collection::metrics</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_consensus_metrics_from_wire_(const_participant_metrics_t_*_wire_metrics,_participant_metrics_t_*_out_metrics)"><a class="permalink" href="#asciichat_error_t_consensus_metrics_from_wire_(const_participant_metrics_t_*_wire_metrics,_participant_metrics_t_*_out_metrics)">asciichat_error_t
@@ -317,6 +320,7 @@
 161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_consensus_metrics_measure_(const_uint8_t_my_id_16_,_participant_metrics_t_*_out_metrics)"><a class="permalink" href="#asciichat_error_t_consensus_metrics_measure_(const_uint8_t_my_id_16_,_participant_metrics_t_*_out_metrics)">asciichat_error_t
@@ -365,7 +369,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>DEFAULT_BANDWIDTH_KBPS</b>, <b>DEFAULT_RTT_MS</b>,
-    and <b>time_get_realtime_ns()</b>.</p>
+    <b>SET_ERRNO</b>, and <b>time_get_realtime_ns()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_consensus_metrics_to_wire_(const_participant_metrics_t_*_metrics,_participant_metrics_t_*_out_wire)"><a class="permalink" href="#asciichat_error_t_consensus_metrics_to_wire_(const_participant_metrics_t_*_metrics,_participant_metrics_t_*_out_wire)">asciichat_error_t
@@ -391,6 +395,7 @@
 142 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

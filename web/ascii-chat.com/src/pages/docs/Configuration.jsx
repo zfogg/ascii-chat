@@ -1,11 +1,15 @@
 import { useEffect } from "react";
+import { Heading } from "@ascii-chat/shared/components";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
+import { useScrollToHash } from "../../utils/hooks";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
 import { CodeBlock } from "@ascii-chat/shared/components";
 
 export default function Configuration() {
+  useScrollToHash(100);
+
   useEffect(() => {
     setBreadcrumbSchema([
       { name: "Home", path: "/" },
@@ -136,7 +140,9 @@ export default function Configuration() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-4">Linux / macOS</h3>
+              <Heading level={3} className="heading-3 text-teal-300 mb-4">
+                Linux / macOS
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">
                 Searched in order (first found is used, remaining are skipped):
               </p>
@@ -156,7 +162,9 @@ export default function Configuration() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-4">Windows</h3>
+              <Heading level={3} className="heading-3 text-pink-300 mb-4">
+                Windows
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">Searched in order:</p>
               <CodeBlock language="bash">
                 {
@@ -182,7 +190,9 @@ export default function Configuration() {
 
           {/* Config File Format */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-green-400">📝 Config File Format</h2>
+            <Heading level={2} className="heading-2 text-green-400">
+              📝 Config File Format
+            </Heading>
 
             <p className="docs-paragraph">
               Configuration files use <strong>TOML format</strong>. Each section
@@ -624,7 +634,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
 
           {/* Man Page */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-teal-400">📖 Man Pages</h2>
+            <Heading level={2} className="heading-2 text-teal-400">
+              📖 Man Pages
+            </Heading>
 
             <p className="docs-paragraph">
               The complete reference documentation for ascii-chat is available
@@ -666,7 +678,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-4">View Man Pages</h3>
+              <Heading level={3} className="heading-3 text-teal-300 mb-4">
+                View Man Pages
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">
                 View ascii-chat documentation in your terminal:
               </p>
@@ -756,7 +770,9 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</CodeBlock>
 
           {/* Shell Completions */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-green-400">🐚 Shell Completions</h2>
+            <Heading level={2} className="heading-2 text-green-400">
+              🐚 Shell Completions
+            </Heading>
             <p className="docs-paragraph">
               Generate shell completions for bash, fish, or zsh:
             </p>

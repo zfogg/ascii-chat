@@ -112,8 +112,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_get_home_dir()</b>,
-    <b>platform_normalize_path_separators()</b>, <b>platform_strdup()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>platform_normalize_path_separators()</b>, <b>platform_strdup()</b>,
+    <b>SAFE_MALLOC</b>, and <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>config_create_default()</b>,
     <b>config_load_and_apply()</b>, <b>detect_default_ssh_key()</b>, and
     <b>path_validate_user_path()</b>.</p>
@@ -172,6 +172,7 @@
 482 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
     <b>asciichat_print_error_context()</b>, <b>log_json_async_safe()</b>,
     <b>log_json_write()</b>, and <b>log_template_apply()</b>.</p>
@@ -305,8 +306,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>get_data_dir()</b>, <b>platform_access()</b>,
-    <b>platform_getenv()</b>, <b>platform_mkdir_recursive()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>platform_getenv()</b>, <b>platform_mkdir_recursive()</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>options_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -393,8 +394,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_access()</b>, <b>platform_get_cwd()</b>,
-    <b>platform_get_temp_dir()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>platform_get_temp_dir()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>safe_snprintf()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_path_cleanup_thread_locals_(void_)"><a class="permalink" href="#void_path_cleanup_thread_locals_(void_)">void
@@ -564,6 +565,7 @@
 707 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>path_is_within_base()</b>, and
     <b>path_validate_user_path()</b>.</p>
 </section>
@@ -834,7 +836,8 @@
     <b>platform_get_cwd()</b>, <b>platform_get_home_dir()</b>,
     <b>platform_get_temp_dir()</b>, <b>platform_getenv()</b>,
     <b>platform_is_regular_file()</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>safe_snprintf()</b>, and <b>true</b>.</p>
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+    <b>SET_ERRNO</b>, and <b>true</b>.</p>
 <p class="Pp">Referenced by <b>config_create_default()</b>,
     <b>config_load_and_apply()</b>, <b>parse_keys_from_file()</b>,
     <b>parse_log_file()</b>, <b>parse_private_key()</b>,

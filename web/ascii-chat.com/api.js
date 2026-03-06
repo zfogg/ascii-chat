@@ -6,13 +6,53 @@ import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import morgan from "morgan";
+import { execSync } from "child_process";
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+// In Vercel, when served through /api/index.js, __dirname is the /api directory
+// We need to find the root directory (parent of /api) for the bin path
+// Also try process.cwd() as a fallback for finding the binary
+const ROOT_DIR = __dirname.endsWith("/api")
+  ? path.dirname(__dirname)
+  : __dirname;
 const app = express();
 const PORT = process.env.API_PORT || 3001;
 const NODE_ENV = process.env.NODE_ENV || "development";
+
+// Helper to find binary - try multiple locations
+function getBinaryPath() {
+  // Binary is located at web/ascii-chat.com/bin/ascii-chat-strings
+  // api.js is at web/ascii-chat.com/api.js
+  // So from __dirname, binary is at ./bin/ascii-chat-strings
+
+  const locations = [
+    path.join(__dirname, "bin/ascii-chat-strings"), // Same directory level
+    "./bin/ascii-chat-strings", // Current dir relative
+    "bin/ascii-chat-strings", // Current dir relative (no dot)
+    path.join(ROOT_DIR, "web/ascii-chat.com/bin/ascii-chat-strings"), // Via ROOT_DIR
+    "../../build/bin/ascii-chat-strings", // Dev build fallback
+  ];
+
+  logger.debug(
+    `[getBinaryPath] __dirname=${__dirname}, ROOT_DIR=${ROOT_DIR}, cwd=${process.cwd()}`,
+  );
+  for (const location of locations) {
+    const exists = fs.existsSync(location);
+    logger.debug(
+      `[getBinaryPath] Checking ${location}: ${exists ? "EXISTS" : "NOT FOUND"}`,
+    );
+    if (exists) {
+      logger.info(`[getBinaryPath] Found binary at ${location}`);
+      return location;
+    }
+  }
+
+  logger.error("[getBinaryPath] Binary not found in any location");
+  return null; // No binary found
+}
 
 // Configure logger
 const logger = winston.createLogger({
@@ -48,6 +88,16 @@ const limiter = rateLimit({
   message: "Too many search requests, please try again later",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Rate limiting: 100 session string requests per minute per IP
+// Higher limit for dev server (React StrictMode runs effects twice)
+const sessionStringLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 100,
+  message: "Too many session string requests, please try again later",
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Cache for man3 files and index
@@ -436,6 +486,71 @@ app.get("/api/health", (req, res) => {
     cached: Object.keys(fileCache).length,
     indexSize: indexCache ? indexCache.length : 0,
   });
+});
+
+// Session strings endpoint
+app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
+  // Enable CORS for session strings endpoint
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+
+  try {
+    const count = parseInt(req.query.count || "1", 10);
+
+    // Validate count
+    if (isNaN(count) || count < 1) {
+      return res
+        .status(400)
+        .json({ error: "count must be a positive integer" });
+    }
+
+    // Max limit check (2500 * 5000 * 5000 = 62,500,000,000)
+    const MAX_COUNT = 62500000000;
+    if (count > MAX_COUNT) {
+      return res.status(400).json({
+        error: `count exceeds maximum (${MAX_COUNT} unique combinations)`,
+      });
+    }
+
+    // Call the ascii-chat-strings binary
+    const binaryPath = getBinaryPath();
+
+    if (!binaryPath) {
+      logger.error(
+        `[session-strings] Binary not found. Searched in: ROOT_DIR=${ROOT_DIR}, __dirname=${__dirname}, cwd=${process.cwd()}`,
+      );
+      return res.status(500).json({ error: "Binary not available" });
+    }
+
+    logger.info(
+      `[session-strings] NODE_ENV=${NODE_ENV}, using binary at ${binaryPath}`,
+    );
+
+    const output = execSync(`"${binaryPath}" --count ${count}`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    logger.info(
+      `[session-strings] Generated ${output.split("\n").length} strings`,
+    );
+
+    const strings = output
+      .trim()
+      .split("\n")
+      .filter((s) => s.length > 0);
+
+    res.json({
+      count: strings.length,
+      strings: strings,
+    });
+  } catch (err) {
+    logger.error(
+      `Session strings error: ${err.message}, stderr=${err.stderr}, stdout=${err.stdout}`,
+    );
+    res.status(500).json({ error: "Failed to generate session strings" });
+  }
 });
 
 // Initialize cache

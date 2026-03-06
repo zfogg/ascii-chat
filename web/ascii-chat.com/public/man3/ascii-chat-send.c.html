@@ -150,7 +150,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>packet_send_via_transport()</b>.</p>
+    <b>packet_send_via_transport()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>, and
     <b>threaded_send_audio_batch_packet()</b>.</p>
 </section>
@@ -171,7 +171,8 @@
 167 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_send_audio_opus_batch()</b>.</p>
+<p class="Pp">References <b>acip_send_audio_opus_batch()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_audio_opus_batch_("><a class="permalink" href="#asciichat_error_t_acip_send_audio_opus_batch_(">asciichat_error_t
@@ -223,7 +224,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>packet_send_via_transport()</b>.</p>
+    <b>packet_send_via_transport()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_audio_opus()</b>,
     <b>client_send_thread_func()</b>, and
     <b>threaded_send_audio_opus_batch()</b>.</p>
@@ -272,7 +273,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>error_code</b>, and <b>packet_send_via_transport()</b>.</p>
+    <b>error_code</b>, <b>packet_send_via_transport()</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_client_handler()</b>, and
     <b>disconnect_client_for_bad_data()</b>.</p>
 </section>
@@ -290,7 +292,8 @@
 224 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_pong_("><a class="permalink" href="#asciichat_error_t_acip_send_pong_(">asciichat_error_t
@@ -306,7 +309,8 @@
 233 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>handle_ping_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -346,7 +350,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>packet_send_via_transport()</b>.</p>
+    <b>packet_send_via_transport()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_session_created_("><a class="permalink" href="#asciichat_error_t_acip_send_session_created_(">asciichat_error_t
@@ -362,7 +366,8 @@
 325 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_session_info_("><a class="permalink" href="#asciichat_error_t_acip_send_session_info_(">asciichat_error_t
@@ -378,7 +383,8 @@
 333 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_session_joined_("><a class="permalink" href="#asciichat_error_t_acip_send_session_joined_(">asciichat_error_t
@@ -394,7 +400,8 @@
 341 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_packet_send_via_transport_("><a class="permalink" href="#asciichat_error_t_packet_send_via_transport_(">asciichat_error_t
@@ -494,7 +501,8 @@
 116 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>MAX_REASONABLE_PACKET_SIZE</b>.</p>
+<p class="Pp">References <b>MAX_REASONABLE_PACKET_SIZE</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_send_ascii_frame()</b>,
     <b>acip_send_audio_batch()</b>, <b>acip_send_audio_opus_batch()</b>,
     <b>acip_send_capabilities()</b>, <b>acip_send_clear_console()</b>,

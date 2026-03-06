@@ -241,7 +241,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>crypto_derive_password_key()</b>,
     <b>crypto_handshake_validate_packet_size()</b>,
-    <b>crypto_result_to_string()</b>, and <b>prompt_password()</b>.</p>
+    <b>crypto_result_to_string()</b>, <b>prompt_password()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_handle_auth_challenge()</b>, and
     <b>crypto_handshake_client_auth_response_socket()</b>.</p>
 </section>
@@ -281,8 +282,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>,
-    <b>crypto_handshake_client_auth_response()</b>, and
-  <b>receive_packet()</b>.</p>
+    <b>crypto_handshake_client_auth_response()</b>, <b>receive_packet()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -390,7 +391,8 @@
 864 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>crypto_verify_auth_response()</b>.</p>
+<p class="Pp">References <b>crypto_verify_auth_response()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_handle_handshake_complete()</b>, and
     <b>crypto_handshake_client_complete_socket()</b>.</p>
 </section>
@@ -431,7 +433,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>, <b>crypto_handshake_client_complete()</b>,
-    and <b>receive_packet()</b>.</p>
+    <b>receive_packet()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
 </section>
 <section class="Ss">
@@ -919,7 +921,8 @@
     <b>ed25519_verify_signature()</b>, <b>get_known_hosts_path()</b>,
     <b>packet_send_via_transport()</b>, <b>parse_public_keys()</b>,
     <b>platform_getenv()</b>, <b>prompt_unknown_host()</b>,
-    <b>prompt_unknown_host_no_identity()</b>, and <b>safe_snprintf()</b>.</p>
+    <b>prompt_unknown_host_no_identity()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_handle_key_exchange_init()</b>, and
     <b>crypto_handshake_client_key_exchange_socket()</b>.</p>
 </section>
@@ -963,8 +966,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_tcp_transport_create()</b>,
     <b>acip_transport_destroy()</b>,
-    <b>crypto_handshake_client_key_exchange()</b>, and
-  <b>receive_packet()</b>.</p>
+    <b>crypto_handshake_client_key_exchange()</b>, <b>receive_packet()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>.</p>
 </section>
 </section>
