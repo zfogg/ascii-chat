@@ -18,6 +18,60 @@
 
 # All builds: Try to find libvterm
 
+# iOS builds: Build from source
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}libvterm${ColorReset} from source (iOS cross-compile)...")
+
+    include(ExternalProject)
+
+    set(VTERM_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm-ios")
+    set(VTERM_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/libvterm-ios-build")
+
+    # Determine iOS SDK path
+    if(BUILD_IOS_SIM)
+        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+    else()
+        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+    endif()
+
+    if(NOT EXISTS "${VTERM_PREFIX}/lib/libvterm.a")
+        message(STATUS "  libvterm library not found in cache, will build from source")
+
+        ExternalProject_Add(libvterm-ios
+            GIT_REPOSITORY https://github.com/neovim/libvterm.git
+            GIT_TAG v0.3.3
+            UPDATE_DISCONNECTED 1
+            PREFIX ${VTERM_BUILD_DIR}
+            STAMP_DIR ${VTERM_BUILD_DIR}/stamps
+            SOURCE_DIR ${VTERM_BUILD_DIR}/src/libvterm-ios
+            BINARY_DIR ${VTERM_BUILD_DIR}/src/libvterm-ios
+            BUILD_ALWAYS 0
+            DEPENDS freetype-ios
+            CONFIGURE_COMMAND ""
+            BUILD_COMMAND bash -c "cd <SOURCE_DIR> && make CC=clang CFLAGS='-O2 -fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64' ARFLAGS=rcs"
+            INSTALL_COMMAND bash -c "cd <SOURCE_DIR> && make install PREFIX=${VTERM_PREFIX}"
+            BUILD_BYPRODUCTS ${VTERM_PREFIX}/lib/libvterm.a
+            LOG_DOWNLOAD TRUE
+            LOG_CONFIGURE TRUE
+            LOG_BUILD TRUE
+            LOG_INSTALL TRUE
+            LOG_OUTPUT_ON_FAILURE TRUE
+        )
+    else()
+        message(STATUS "  ${BoldBlue}libvterm${ColorReset} library found in cache: ${BoldMagenta}${VTERM_PREFIX}/lib/libvterm.a${ColorReset}")
+        add_custom_target(libvterm-ios)
+    endif()
+
+    set(VTERM_LDFLAGS "${VTERM_PREFIX}/lib/libvterm.a")
+    set(VTERM_INCLUDE_DIRS "${VTERM_PREFIX}/include")
+    set(RENDER_FILE_LIBS ${VTERM_LDFLAGS} ${FREETYPE_LIBRARIES})
+    set(RENDER_FILE_INCLUDES ${VTERM_INCLUDE_DIRS} ${FREETYPE_INCLUDE_DIRS})
+
+    message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend (iOS): ${BoldCyan}libvterm + FreeType2${ColorReset}")
+
+    return()
+endif()
+
 # musl builds: Build from source
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}libvterm${ColorReset} from source (musl)...")

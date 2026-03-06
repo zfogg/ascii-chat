@@ -31,6 +31,73 @@ if(NPROC EQUAL 0)
     set(NPROC 1)
 endif()
 
+# Handle iOS builds - BearSSL is built from source
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source (iOS cross-compile)...")
+
+    set(BEARSSL_SOURCE_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/bearssl")
+    set(BEARSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/bearssl-ios-build")
+    set(BEARSSL_LIB "${BEARSSL_BUILD_DIR}/libbearssl.a")
+
+    # Determine iOS SDK path
+    if(BUILD_IOS_SIM)
+        set(IOS_SDK_PATH "$(xcrun --sdk iphonesimulator --show-sdk-path)")
+    else()
+        set(IOS_SDK_PATH "$(xcrun --sdk iphoneos --show-sdk-path)")
+    endif()
+
+    if(EXISTS "${BEARSSL_SOURCE_DIR}")
+        if(NOT EXISTS "${BEARSSL_LIB}")
+            message(STATUS "  BearSSL library not found in cache, building from source...")
+            file(MAKE_DIRECTORY "${BEARSSL_BUILD_DIR}")
+
+            # Clean any previous build to avoid leftover targets
+            execute_process(
+                COMMAND make clean
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                OUTPUT_QUIET
+                ERROR_QUIET
+            )
+
+            # Build the static library for iOS with position-independent code
+            # Disable getentropy, use /dev/urandom, disable fortification
+            execute_process(
+                COMMAND make -j lib CC=clang AR=ar CFLAGS=-DBR_USE_GETENTROPY=0\ -DBR_USE_URANDOM=1\ -U_FORTIFY_SOURCE\ -D_FORTIFY_SOURCE=0\ -fno-stack-protector\ -fPIC\ -isysroot\ ${IOS_SDK_PATH}\ -arch\ arm64\ -miphoneos-version-min=16.0
+                WORKING_DIRECTORY "${BEARSSL_SOURCE_DIR}"
+                RESULT_VARIABLE BEARSSL_MAKE_RESULT
+                OUTPUT_VARIABLE BEARSSL_MAKE_OUTPUT
+                ERROR_VARIABLE BEARSSL_MAKE_ERROR
+                OUTPUT_QUIET
+            )
+
+            if(BEARSSL_MAKE_RESULT EQUAL 0)
+                # Copy library to cache
+                file(COPY "${BEARSSL_SOURCE_DIR}/build/libbearssl.a"
+                     DESTINATION "${BEARSSL_BUILD_DIR}")
+                message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library built and cached successfully")
+            else()
+                message(FATAL_ERROR "BearSSL build failed with exit code ${BEARSSL_MAKE_RESULT}\nOutput: ${BEARSSL_MAKE_OUTPUT}\nError: ${BEARSSL_MAKE_ERROR}")
+            endif()
+        else()
+            message(STATUS "  ${BoldBlue}BearSSL${ColorReset} library found in cache: ${BoldMagenta}${BEARSSL_LIB}${ColorReset}")
+        endif()
+
+        # Create an imported library target
+        add_library(bearssl_static STATIC IMPORTED GLOBAL)
+        set_target_properties(bearssl_static PROPERTIES
+            IMPORTED_LOCATION "${BEARSSL_LIB}"
+        )
+
+        set(BEARSSL_LIBRARIES bearssl_static)
+        set(BEARSSL_INCLUDE_DIRS "${BEARSSL_SOURCE_DIR}/inc")
+        set(BEARSSL_FOUND TRUE)
+    else()
+        message(FATAL_ERROR "BearSSL source directory not found: ${BEARSSL_SOURCE_DIR}")
+    endif()
+
+    return()
+endif()
+
 # Handle musl builds - BearSSL is built from source
 if(USE_MUSL)
     message(STATUS "Configuring ${BoldBlue}BearSSL${ColorReset} from source...")

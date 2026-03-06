@@ -3,6 +3,130 @@
 # Provides: OpenSSL::Crypto, OpenSSL::SSL (or static equivalents)
 #
 
+# Handle iOS builds - OpenSSL is built from source at configure time
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}OpenSSL${ColorReset} from source (iOS cross-compile)...")
+
+    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios")
+    set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-ios-build")
+    set(OPENSSL_SOURCE_DIR "${OPENSSL_BUILD_DIR}/src/openssl")
+    set(OPENSSL_LIBDIR "lib")
+
+    # Get actual iOS SDK path using xcrun
+    if(BUILD_IOS_SIM)
+        execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    else()
+        execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+    endif()
+
+    message(STATUS "  iOS SDK path: ${IOS_SDK_PATH}")
+
+    # Build OpenSSL synchronously at configure time if not cached
+    if(NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a" OR NOT EXISTS "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a")
+        message(STATUS "  OpenSSL library not found in cache, will build from source...")
+
+        file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
+        file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
+
+        # Download OpenSSL source
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-3.4.0.tar.gz")
+        if(NOT EXISTS "${OPENSSL_TARBALL}")
+            message(STATUS "  Downloading OpenSSL 3.4.0...")
+            file(DOWNLOAD
+                "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz"
+                "${OPENSSL_TARBALL}"
+                EXPECTED_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
+                STATUS DOWNLOAD_STATUS
+                SHOW_PROGRESS
+            )
+            list(GET DOWNLOAD_STATUS 0 STATUS_CODE)
+            if(NOT STATUS_CODE EQUAL 0)
+                list(GET DOWNLOAD_STATUS 1 ERROR_MSG)
+                message(FATAL_ERROR "Failed to download OpenSSL: ${ERROR_MSG}")
+            endif()
+        endif()
+
+        # Extract tarball
+        if(NOT EXISTS "${OPENSSL_SOURCE_DIR}/Configure")
+            message(STATUS "  Extracting OpenSSL...")
+            execute_process(
+                COMMAND ${CMAKE_COMMAND} -E tar xzf "${OPENSSL_TARBALL}"
+                WORKING_DIRECTORY "${OPENSSL_BUILD_DIR}"
+                RESULT_VARIABLE EXTRACT_RESULT
+            )
+            if(NOT EXTRACT_RESULT EQUAL 0)
+                message(FATAL_ERROR "Failed to extract OpenSSL tarball")
+            endif()
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-3.4.0" "${OPENSSL_SOURCE_DIR}")
+        endif()
+
+        # Configure OpenSSL for iOS using ios64-cross target
+        message(STATUS "  Configuring OpenSSL for iOS (arm64)...")
+
+        # Set compiler flags for iOS SDK
+        set(IOS_FLAGS "-arch arm64 -miphoneos-version-min=16.0 -isysroot ${IOS_SDK_PATH} -fPIC")
+
+        execute_process(
+            COMMAND bash -c "CC=clang CFLAGS='${IOS_FLAGS}' LDFLAGS='${IOS_FLAGS}' CROSS_COMPILE='' CROSS_TOP='${IOS_SDK_PATH}/..' CROSS_SDK='iPhoneOS.sdk' '${OPENSSL_SOURCE_DIR}/Configure' ios64-cross --prefix=${OPENSSL_PREFIX} no-shared no-tests no-ui-console -fPIC"
+            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            RESULT_VARIABLE CONFIG_RESULT
+            OUTPUT_VARIABLE CONFIG_OUTPUT
+            ERROR_VARIABLE CONFIG_ERROR
+        )
+        if(NOT CONFIG_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}\n${CONFIG_OUTPUT}")
+        endif()
+
+        message(STATUS "  Building OpenSSL (this takes a few minutes)...")
+        execute_process(
+            COMMAND make -j
+            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            RESULT_VARIABLE BUILD_RESULT
+            OUTPUT_VARIABLE BUILD_OUTPUT
+            ERROR_VARIABLE BUILD_ERROR
+        )
+        if(NOT BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to build OpenSSL:\n${BUILD_ERROR}\n${BUILD_OUTPUT}")
+        endif()
+
+        message(STATUS "  Installing OpenSSL...")
+        execute_process(
+            COMMAND make install_sw
+            WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            RESULT_VARIABLE INSTALL_RESULT
+            OUTPUT_VARIABLE INSTALL_OUTPUT
+            ERROR_VARIABLE INSTALL_ERROR
+        )
+        if(NOT INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install OpenSSL:\n${INSTALL_ERROR}\n${INSTALL_OUTPUT}")
+        endif()
+
+        message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} built and installed successfully")
+    else()
+        message(STATUS "  ${BoldBlue}OpenSSL${ColorReset} library found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a${ColorReset}")
+    endif()
+
+    # Create CMake targets
+    add_library(OpenSSL::Crypto STATIC IMPORTED GLOBAL)
+    add_library(OpenSSL::SSL STATIC IMPORTED GLOBAL)
+    set_target_properties(OpenSSL::Crypto PROPERTIES
+        IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libcrypto.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
+    )
+    set_target_properties(OpenSSL::SSL PROPERTIES
+        IMPORTED_LOCATION "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl.a"
+        INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_PREFIX}/include"
+        INTERFACE_LINK_LIBRARIES OpenSSL::Crypto
+    )
+
+    set(OPENSSL_FOUND TRUE)
+    set(OPENSSL_CRYPTO_LIBRARY OpenSSL::Crypto)
+    set(OPENSSL_SSL_LIBRARY OpenSSL::SSL)
+    set(OPENSSL_INCLUDE_DIR "${OPENSSL_PREFIX}/include")
+
+    return()
+endif()
+
 # Handle musl builds - OpenSSL is built from source at configure time
 if(USE_MUSL)
     # OpenSSL MUST be built synchronously at configure time because libdatachannel's
