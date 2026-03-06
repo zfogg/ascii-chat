@@ -1693,7 +1693,10 @@ export default function Man3() {
           {/* Main content area */}
           <div className="flex-1 flex flex-col lg:flex-row gap-8 overflow-hidden min-h-0">
             {/* Results list */}
-            <div className="h-[600px] lg:h-auto lg:w-2/5 flex-shrink-0">
+            <div className="h-[600px] lg:h-auto lg:w-2/5 flex-shrink-0 flex flex-col">
+              <h3 className="lg:hidden text-xs font-semibold text-gray-400 px-4 py-2 flex-shrink-0">
+                {searchQuery ? "Results:" : "Man pages:"}
+              </h3>
               <div className="h-full bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto">
                 {loading
                   ? (
