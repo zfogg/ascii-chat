@@ -131,7 +131,8 @@ export default function Man3() {
     const tbody = document.createElement("tbody");
     for (const row of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tr.innerHTML =
+        `<td class="man-data-field-type">${row.type}</td><td class="man-data-field-name">${row.name}</td><td class="man-data-field-desc">${row.description}</td>`;
       tbody.appendChild(tr);
     }
 
@@ -850,8 +851,8 @@ export default function Man3() {
           );
 
           // Get all spans in the CODE block and find those on the same line
-          const codeBlock =
-            foundElement.closest("code") || foundElement.closest("pre");
+          const codeBlock = foundElement.closest("code") ||
+            foundElement.closest("pre");
           console.log(
             "[Man3] Code block:",
             codeBlock?.tagName,
@@ -1360,11 +1361,9 @@ export default function Man3() {
               data-last-line={lastSourceLineNum}
             >
               <CodeBlock
-                highlightLines={
-                  targetLineStart
-                    ? { start: targetLineStart, end: targetLineEnd }
-                    : undefined
-                }
+                highlightLines={targetLineStart
+                  ? { start: targetLineStart, end: targetLineEnd }
+                  : undefined}
                 searchQuery={searchQuery}
                 showLineNumbers={true}
               >
@@ -1462,12 +1461,12 @@ export default function Man3() {
             ? `code-block-${targetLineStart}`
             : undefined;
           // Also add data attribute to track which source lines are in this block
-          const firstLineNum =
-            codeLines.length > 0 ? codeLines[0].number : null;
-          const lastLineNum =
-            codeLines.length > 0
-              ? codeLines[codeLines.length - 1].number
-              : null;
+          const firstLineNum = codeLines.length > 0
+            ? codeLines[0].number
+            : null;
+          const lastLineNum = codeLines.length > 0
+            ? codeLines[codeLines.length - 1].number
+            : null;
 
           elements.push(
             <div
@@ -1528,11 +1527,9 @@ export default function Man3() {
       break;
     }
 
-    return elements.length > 0 ? (
-      elements
-    ) : (
-      <div dangerouslySetInnerHTML={{ __html: html }} />
-    );
+    return elements.length > 0
+      ? elements
+      : <div dangerouslySetInnerHTML={{ __html: html }} />;
   };
 
   return (
@@ -1542,118 +1539,121 @@ export default function Man3() {
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
         url={`${SITES.MAIN}/man3`}
       />
-      <div className="w-full h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col w-full overflow-hidden min-h-0">
-          {/* Header - does not scroll */}
-          <header className="flex-shrink-0 px-4 sm:px-6 py-8 sm:py-12 max-w-4xl mx-auto w-full">
-              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
-                <span className="text-purple-400">📚</span> ascii-chat-*(3)
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-300 mb-6">
-                C API documentation for libasciichat and ascii-chat executables
-              </p>
+      <div className="w-full h-full mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
+        {/* Header - does not scroll */}
+        <header className="flex-shrink-0 px-4 sm:px-6 pb-4 pt-8 sm:pt-12 max-w-4xl mx-auto w-full">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
+            <span className="text-purple-400">📚</span> ascii-chat-*(3)
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-300 mb-6">
+            C API documentation for libasciichat and ascii-chat executables
+          </p>
 
-              {/* Search Box */}
-              <div className="w-full">
-                <div className="flex items-center gap-4">
-                  <label className="text-lg font-medium text-gray-300 whitespace-nowrap">
-                    Search:
-                  </label>
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      placeholder="Search by name or regex (e.g., 'socket' or /^asciichat_.*/ or /error|crypto/)..."
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className={`w-full border rounded-lg px-4 py-3 placeholder-gray-500 focus:outline-none transition-colors ${
-                        regexError
-                          ? "bg-red-900 border-red-500 text-white placeholder-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
-                          : "bg-gray-900 border-gray-700 text-gray-100 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
-                      }`}
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => setSearchQuery("")}
-                        className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
-                          regexError
-                            ? "text-red-200 hover:text-red-100"
-                            : "text-gray-500 hover:text-gray-300"
-                        }`}
-                      >
-                        ✕
-                      </button>
-                    )}
-                  </div>
-                </div>
-                {regexError && (
-                  <p className="text-sm text-red-400 mt-2 font-medium">
-                    ⚠ Regex Error: {regexError}
-                  </p>
-                )}
-                {!regexError && (
-                  <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-4 mt-2">
-                    <p className="text-xs text-gray-500 text-center lg:text-left">
-                      Regex search (default case-insensitive). Examples:{" "}
-                      <code className="bg-gray-800 px-1 rounded">socket</code>,{" "}
-                      <code className="bg-gray-800 px-1 rounded">
-                        error|crypto
-                      </code>
-                      , or{" "}
-                      <code className="bg-gray-800 px-1 rounded">
-                        /^socket$/gi
-                      </code>{" "}
-                      for flags
-                    </p>
-                    <p className="text-xs text-gray-500 text-center text-right self-end">
-                      📖{" "}
-                      <a
-                        href="https://zfogg.github.io/ascii-chat/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-400 hover:text-cyan-300 transition-colors"
-                      >
-                        Doxygen HTML Documentation
-                      </a>
-                    </p>
-                  </div>
+          {/* Search Box */}
+          <div className="w-full">
+            <div className="flex items-center gap-4">
+              <label className="text-lg font-medium text-gray-300 whitespace-nowrap">
+                Search:
+              </label>
+              <div className="relative flex-1">
+                <input
+                  type="text"
+                  placeholder="Search by name or regex (e.g., 'socket' or /^asciichat_.*/ or /error|crypto/)..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className={`w-full border rounded-lg px-4 py-3 placeholder-gray-500 focus:outline-none transition-colors ${
+                    regexError
+                      ? "bg-red-900 border-red-500 text-white placeholder-red-200 focus:border-red-400 focus:ring-2 focus:ring-red-500/20"
+                      : "bg-gray-900 border-gray-700 text-gray-100 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20"
+                  }`}
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className={`absolute right-3 top-1/2 -translate-y-1/2 transition-colors ${
+                      regexError
+                        ? "text-red-200 hover:text-red-100"
+                        : "text-gray-500 hover:text-gray-300"
+                    }`}
+                  >
+                    ✕
+                  </button>
                 )}
               </div>
-              <p className="text-sm text-gray-400 mt-3 text-center">
-                {searching
-                  ? "Searching..."
-                  : filesMatched > 0
-                    ? `${filesMatched} file${
-                        filesMatched !== 1 ? "s" : ""
-                      } matched, ${totalMatches} match${
-                        totalMatches !== 1 ? "es" : ""
-                      }`
-                    : "No results"}
+            </div>
+            {regexError && (
+              <p className="text-sm text-red-400 mt-2 font-medium">
+                ⚠ Regex Error: {regexError}
               </p>
-          </header>
+            )}
+            {!regexError && (
+              <div className="flex flex-col lg:flex-row items-center lg:justify-between gap-4 mt-2">
+                <p className="text-xs text-gray-500 text-center lg:text-left">
+                  Regex search (default case-insensitive). Examples:{" "}
+                  <code className="bg-gray-800 px-1 rounded">socket</code>,{" "}
+                  <code className="bg-gray-800 px-1 rounded">
+                    error|crypto
+                  </code>
+                  , or{" "}
+                  <code className="bg-gray-800 px-1 rounded">
+                    /^socket$/gi
+                  </code>{" "}
+                  for flags
+                </p>
+                <p className="text-xs text-gray-500 text-center text-right self-end">
+                  📖{" "}
+                  <a
+                    href="https://zfogg.github.io/ascii-chat/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-400 hover:text-cyan-300 transition-colors"
+                  >
+                    Doxygen HTML Documentation
+                  </a>
+                </p>
+              </div>
+            )}
+          </div>
+          <p className="text-sm text-gray-400 mt-3 text-center">
+            {searching
+              ? "Searching..."
+              : filesMatched > 0
+              ? `${filesMatched} file${
+                filesMatched !== 1 ? "s" : ""
+              } matched, ${totalMatches} match${totalMatches !== 1 ? "es" : ""}`
+              : "No results"}
+          </p>
+        </header>
 
-          {/* Scrollable panels container */}
-          <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
-            {/* Panels */}
-            <div className="flex flex-col lg:flex-row gap-8 px-4 sm:px-6 min-h-0">
-              {/* Results list */}
-              <div className="h-[600px] lg:h-auto lg:w-2/5 flex-shrink-0 flex flex-col">
-                <h3 className="lg:hidden text-xs font-semibold text-gray-400 px-4 py-2 flex-shrink-0">
-                  {searchQuery ? "Results:" : "Man pages:"}
-                </h3>
-                <div className="h-full bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto">
-                  {loading ? (
+        {/* Scrollable panels container */}
+        <div className="flex-1 flex flex-col overflow-y-auto min-h-0">
+          {/* Panels */}
+          <div className="flex flex-col lg:flex-row gap-8 px-4 sm:px-6 lg:min-h-0">
+            {/* Results list */}
+            <div className="h-[600px] lg:h-auto lg:w-2/7 flex-shrink-0 flex flex-col">
+              <h3 className="lg:hidden text-xs font-semibold text-gray-400 px-4 py-2 flex-shrink-0">
+                {searchQuery ? "Results:" : "Man pages:"}
+              </h3>
+              <div className="h-full bg-gray-900/50 border border-gray-800 rounded-lg overflow-y-auto">
+                {loading
+                  ? (
                     <div className="p-4 text-center text-gray-400">
                       Loading pages...
                     </div>
-                  ) : searching && searchResults.length === 0 ? (
+                  )
+                  : searching && searchResults.length === 0
+                  ? (
                     <div className="p-4 text-center text-blue-400">
                       Searching...
                     </div>
-                  ) : searchResults.length === 0 ? (
+                  )
+                  : searchResults.length === 0
+                  ? (
                     <div className="p-4 text-center text-gray-400">
                       {searchQuery ? "No pages found" : "Search to get started"}
                     </div>
-                  ) : (
+                  )
+                  : (
                     <div className="divide-y divide-gray-800">
                       {highlightedResults.map((page, _index) => (
                         <div
@@ -1700,8 +1700,7 @@ export default function Man3() {
                                         idx,
                                         false,
                                         snippet.text,
-                                      )
-                                    }
+                                      )}
                                     className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-x-auto cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
                                   >
                                     <div className="flex gap-2">
@@ -1723,14 +1722,12 @@ export default function Man3() {
                                           return (
                                             <div
                                               key={lineIdx}
-                                              className={
-                                                lineIdx ===
-                                                Math.floor(
-                                                  snippetLines.length / 2,
-                                                )
-                                                  ? "bg-gray-800/50 px-1 -mx-1"
-                                                  : ""
-                                              }
+                                              className={lineIdx ===
+                                                  Math.floor(
+                                                    snippetLines.length / 2,
+                                                  )
+                                                ? "bg-gray-800/50 px-1 -mx-1"
+                                                : ""}
                                             >
                                               {highlightMatches(
                                                 cleanedLine,
@@ -1745,18 +1742,15 @@ export default function Man3() {
                                 );
                               })}
                               {page.totalMatchesInFile >
-                                page.snippets.length && (
+                                  page.snippets.length && (
                                 <div className="bg-yellow-900/50 border border-yellow-700/50 rounded px-3 py-2 text-sm font-semibold text-yellow-200">
-                                  ...{" "}
+                                  ... {page.totalMatchesInFile -
+                                    page.snippets.length} more matching result
                                   {page.totalMatchesInFile -
-                                    page.snippets.length}{" "}
-                                  more matching result
-                                  {page.totalMatchesInFile -
-                                    page.snippets.length !==
-                                  1
+                                        page.snippets.length !==
+                                      1
                                     ? "s"
-                                    : ""}{" "}
-                                  for this file
+                                    : ""} for this file
                                 </div>
                               )}
                             </div>
@@ -1771,12 +1765,13 @@ export default function Man3() {
                       )}
                     </div>
                   )}
-                </div>
               </div>
+            </div>
 
-              {/* Content viewer */}
-              <div className="flex-1 min-w-0">
-                {pageNotFound ? (
+            {/* Content viewer */}
+            <div className="flex-1 min-w-0">
+              {pageNotFound
+                ? (
                   <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto h-[calc(100vh-300px)] flex flex-col items-center justify-center">
                     <div className="text-center">
                       <h2 className="text-7xl font-bold text-red-400 mb-6">
@@ -1800,7 +1795,9 @@ export default function Man3() {
                       </div>
                     </div>
                   </div>
-                ) : selectedPageContent ? (
+                )
+                : selectedPageContent
+                ? (
                   <div
                     ref={contentViewerRef}
                     className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto"
@@ -1839,7 +1836,8 @@ export default function Man3() {
                       </p>
                     </div>
                   </div>
-                ) : (
+                )
+                : (
                   <div className="h-full bg-gray-900/30 border border-gray-800 rounded-lg p-12 flex items-center justify-center text-center">
                     <div>
                       <p className="text-gray-400 text-lg mb-2">
@@ -1853,13 +1851,12 @@ export default function Man3() {
                     </div>
                   </div>
                 )}
-              </div>
             </div>
           </div>
         </div>
 
         {/* Footer */}
-        <div className="flex-shrink-0 border-t border-gray-800 p-8">
+        <div className="flex-shrink-0 p-8">
           <Footer />
         </div>
       </div>

@@ -492,7 +492,7 @@
 1695   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 1696 
 1697   // Register websocket implementation data with transport as parent
-1698   NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
+1698   (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
 1699 
 1700   // Return transport immediately - connection will be established by service thread
 1701   // If connection fails, recv() will detect is_connected=false and return error
@@ -697,7 +697,7 @@
 1886   NAMED_REGISTER_TRANSPORT(transport, name, NULL);
 1887 
 1888   // Register websocket implementation data with transport as parent
-1889   NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
+1889   (void)NAMED_REGISTER_WEBSOCKET_IMPL(ws_data, &quot;impl&quot;, (uintptr_t)(const void *)(transport));
 1890 
 1891   return transport;
 1892 }</pre>

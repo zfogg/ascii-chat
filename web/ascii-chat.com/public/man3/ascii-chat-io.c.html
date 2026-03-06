@@ -168,9 +168,9 @@
 95         // Log the line if it's not empty
 96         if (line_start[0] != '\0') {
 97           if (prefix) {
-98             log_info(&quot;[%s] %s&quot;, prefix, line_start);
+98             log_debug(&quot;[%s] %s&quot;, prefix, line_start);
 99           } else {
-100             log_info(&quot;%s&quot;, line_start);
+100             log_debug(&quot;%s&quot;, line_start);
 101           }
 102         }
 103 
@@ -181,9 +181,9 @@
 108       // Log any remaining partial line
 109       if (line_start[0] != '\0') {
 110         if (prefix) {
-111           log_info(&quot;[%s] %s&quot;, prefix, line_start);
+111           log_debug(&quot;[%s] %s&quot;, prefix, line_start);
 112         } else {
-113           log_info(&quot;%s&quot;, line_start);
+113           log_debug(&quot;%s&quot;, line_start);
 114         }
 115       }
 116     }
