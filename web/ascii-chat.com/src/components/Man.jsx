@@ -366,7 +366,12 @@ export default function Man({
 
       return elements.length > 0
         ? elements
-        : [<div dangerouslySetInnerHTML={{ __html: html }} />];
+        : [
+            <div
+              key="fallback-html"
+              dangerouslySetInnerHTML={{ __html: html }}
+            />,
+          ];
     };
   }, [html, isSourcePage, showLineNumbers]);
 
