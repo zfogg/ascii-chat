@@ -1778,29 +1778,11 @@ export default function Man3() {
                                         )}
                                       </div>
                                       {/* Code content */}
-                                      <div className="whitespace-pre-wrap overflow-x-auto flex-1">
-                                        {snippetLines.map((line, lineIdx) => {
-                                          const cleanedLine = line.replace(
-                                            /^\s*\d+\s+/,
-                                            "",
-                                          );
-                                          return (
-                                            <div
-                                              key={lineIdx}
-                                              className={lineIdx ===
-                                                  Math.floor(
-                                                    snippetLines.length / 2,
-                                                  )
-                                                ? "bg-gray-800/50 px-1 -mx-1"
-                                                : ""}
-                                            >
-                                              {highlightMatches(
-                                                cleanedLine,
-                                                searchQuery,
-                                              )}
-                                            </div>
-                                          );
-                                        })}
+                                      <div className="whitespace-nowrap overflow-x-auto flex-1">
+                                        {highlightMatches(
+                                          snippet.text.replace(/^\s*\d+\s+/gm, ""),
+                                          searchQuery,
+                                        )}
                                       </div>
                                     </div>
                                   </div>
