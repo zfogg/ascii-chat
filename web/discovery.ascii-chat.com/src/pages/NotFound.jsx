@@ -27,57 +27,57 @@ function NotFoundPage() {
       </div>
       <div className="fixed bottom-0 left-0 right-0 bg-gray-950 z-10">
         <Footer
-        links={[
-          {
-            href: "https://github.com/zfogg/ascii-chat",
-            label: "📦 GitHub",
-            color: "text-cyan-400 hover:text-cyan-300",
-            onClick: () =>
-              handleLinkClick(
-                "https://github.com/zfogg/ascii-chat",
-                "GitHub (footer 404)",
-              ),
-          },
-          {
-            href: "https://zfogg.github.io/ascii-chat/group__module__acds.html",
-            label: "📚 ACDS Documentation",
-            color: "text-teal-400 hover:text-teal-300",
-            onClick: () =>
-              handleLinkClick(
-                "https://zfogg.github.io/ascii-chat/group__module__acds.html",
-                "ACDS Documentation (footer 404)",
-              ),
-          },
-          {
-            href: "https://github.com/zfogg/ascii-chat/issues",
-            label: "🐛 Issues",
-            color: "text-purple-400 hover:text-purple-300",
-            onClick: () =>
-              handleLinkClick(
-                "https://github.com/zfogg/ascii-chat/issues",
-                "Issues (404)",
-              ),
-          },
-          {
-            href: "https://github.com/zfogg/ascii-chat/releases",
-            label: "📦 Releases",
-            color: "text-pink-400 hover:text-pink-300",
-            onClick: () =>
-              handleLinkClick(
-                "https://github.com/zfogg/ascii-chat/releases",
-                "Releases (404)",
-              ),
-          },
-        ]}
-        commitSha={__COMMIT_SHA__}
-        onCommitClick={() =>
-          handleLinkClick(
-            `https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`,
-            "Commit SHA",
-          )
-        }
-        extraLine="ascii-chat Discovery Service"
-      />
+          links={[
+            {
+              href: "https://github.com/zfogg/ascii-chat",
+              label: "📦 GitHub",
+              color: "text-cyan-400 hover:text-cyan-300",
+              onClick: () =>
+                handleLinkClick(
+                  "https://github.com/zfogg/ascii-chat",
+                  "GitHub (footer 404)",
+                ),
+            },
+            {
+              href: "https://zfogg.github.io/ascii-chat/group__module__acds.html",
+              label: "📚 ACDS Documentation",
+              color: "text-teal-400 hover:text-teal-300",
+              onClick: () =>
+                handleLinkClick(
+                  "https://zfogg.github.io/ascii-chat/group__module__acds.html",
+                  "ACDS Documentation (footer 404)",
+                ),
+            },
+            {
+              href: "https://github.com/zfogg/ascii-chat/issues",
+              label: "🐛 Issues",
+              color: "text-purple-400 hover:text-purple-300",
+              onClick: () =>
+                handleLinkClick(
+                  "https://github.com/zfogg/ascii-chat/issues",
+                  "Issues (404)",
+                ),
+            },
+            {
+              href: "https://github.com/zfogg/ascii-chat/releases",
+              label: "📦 Releases",
+              color: "text-pink-400 hover:text-pink-300",
+              onClick: () =>
+                handleLinkClick(
+                  "https://github.com/zfogg/ascii-chat/releases",
+                  "Releases (404)",
+                ),
+            },
+          ]}
+          commitSha={__COMMIT_SHA__}
+          onCommitClick={() =>
+            handleLinkClick(
+              `https://github.com/zfogg/ascii-chat/commit/${__COMMIT_SHA__}`,
+              "Commit SHA",
+            )
+          }
+          extraLine="ascii-chat Discovery Service"
+        />
       </div>
     </div>
   );

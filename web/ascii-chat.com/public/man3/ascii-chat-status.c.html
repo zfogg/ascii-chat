@@ -93,36 +93,37 @@
 204     return;
 205   }
 206 
-207   // Redirect status screen to stderr when stdout is piped (not a TTY)
-208   // This keeps stdout clean for frame data while status goes to stderr
-209   if (!isatty(STDOUT_FILENO)) {
-210     terminal_screen_set_output_fd(STDERR_FILENO);
-211   }
-212 
-213   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
-214   // Only do this once (check if not already entering)
-215   static bool grep_mode_entered = false;
-216   if (!grep_mode_entered &amp;&amp; grep_get_last_pattern() &amp;&amp; grep_get_last_pattern()[0] != '\0') {
-217     log_search_enter_mode();
-218     grep_mode_entered = true;
-219   }
-220 
-221   // Use terminal_screen abstraction for rendering
-222   terminal_screen_config_t config = {
-223       .fixed_header_lines = 4,
-224       .render_header = render_ui_status_header,
-225       .user_data = (void *)status,
-226       .show_logs = true,
-227   };
-228 
-229   terminal_screen_render(&amp;config);
-230 }</pre>
+207   // Redirect status screen to stderr when stdout is piped (not a TTY).
+208   // This keeps stdout clean for frame data while status goes to stderr.
+209   // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
+210   if (!platform_isatty(STDOUT_FILENO)) {
+211     terminal_screen_set_output_fd(STDERR_FILENO);
+212   }
+213 
+214   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+215   // Only do this once (check if not already entering)
+216   static bool grep_mode_entered = false;
+217   if (!grep_mode_entered &amp;&amp; grep_get_last_pattern() &amp;&amp; grep_get_last_pattern()[0] != '\0') {
+218     log_search_enter_mode();
+219     grep_mode_entered = true;
+220   }
+221 
+222   // Use terminal_screen abstraction for rendering
+223   terminal_screen_config_t config = {
+224       .fixed_header_lines = 4,
+225       .render_header = render_ui_status_header,
+226       .user_data = (void *)status,
+227       .show_logs = true,
+228   };
+229 
+230   terminal_screen_render(&amp;config);
+231 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>grep_get_last_pattern()</b>,
-    <b>log_search_enter_mode()</b>, <b>terminal_is_interactive()</b>,
-    <b>terminal_screen_render()</b>, and
-  <b>terminal_screen_set_output_fd()</b>.</p>
+    <b>log_search_enter_mode()</b>, <b>platform_isatty()</b>,
+    <b>terminal_is_interactive()</b>, <b>terminal_screen_render()</b>, and
+    <b>terminal_screen_set_output_fd()</b>.</p>
 <p class="Pp">Referenced by <b>ui_status_update()</b>.</p>
 </section>
 <section class="Ss">
@@ -130,66 +131,66 @@
   status)</h2>
 <p class="Pp">Display status screen with keyboard input support Returns true if
     status screen should continue, false if Escape was pressed to exit.</p>
-<p class="Pp">Definition at line <b>236</b> of file <b>status.c</b>.</p>
-<pre>236                                                               {
-237   if (!status) {
-238     return true;
-239   }
-240 
-241   // Only render the status screen if:
-242   // 1. Terminal is interactive (default behavior), OR
-243   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
-244   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
-245   if (!terminal_is_interactive() &amp;&amp; !GET_OPTION(status_screen_explicitly_set)) {
-246     return true;
-247   }
-248 
-249   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
-250   static bool grep_mode_entered = false;
-251   if (!grep_mode_entered &amp;&amp; grep_get_last_pattern() &amp;&amp; grep_get_last_pattern()[0] != '\0') {
-252     log_search_enter_mode();
-253     grep_mode_entered = true;
-254   }
-255 
-256   // Initialize keyboard for interactive grep
-257   bool keyboard_enabled = false;
-258   if (keyboard_init() == ASCIICHAT_OK) {
-259     keyboard_enabled = true;
-260   }
-261 
-262   // Use terminal_screen abstraction for rendering
-263   terminal_screen_config_t config = {
-264       .fixed_header_lines = 4,
-265       .render_header = render_ui_status_header,
-266       .user_data = (void *)status,
-267       .show_logs = true,
-268   };
-269 
-270   terminal_screen_render(&amp;config);
-271 
-272   // Poll keyboard for Escape to exit or for interactive grep
-273   bool should_exit_status = false;
-274   if (keyboard_enabled) {
-275     keyboard_key_t key = keyboard_read_nonblocking();
-276     if (key == KEY_ESCAPE) {
-277       // Escape key: cancel grep if active, otherwise exit status screen
-278       if (log_search_is_active()) {
-279         log_search_exit_mode(false); // Cancel grep without applying
-280       } else {
-281         should_exit_status = true; // Exit status screen
-282       }
-283     } else if (key != KEY_NONE &amp;&amp; log_search_should_handle(key)) {
-284       log_search_handle_key(key);
-285     }
-286   }
-287 
-288   // Cleanup keyboard
-289   if (keyboard_enabled) {
-290     keyboard_destroy();
-291   }
-292 
-293   return !should_exit_status; // Return false if user wants to exit
-294 }</pre>
+<p class="Pp">Definition at line <b>237</b> of file <b>status.c</b>.</p>
+<pre>237                                                               {
+238   if (!status) {
+239     return true;
+240   }
+241 
+242   // Only render the status screen if:
+243   // 1. Terminal is interactive (default behavior), OR
+244   // 2. User explicitly set --status-screen on command line (force it regardless of terminal)
+245   // In non-interactive mode without explicit flag, logs flow to stdout/stderr normally
+246   if (!terminal_is_interactive() &amp;&amp; !GET_OPTION(status_screen_explicitly_set)) {
+247     return true;
+248   }
+249 
+250   // If --grep pattern was provided, enter interactive grep mode with it pre-populated
+251   static bool grep_mode_entered = false;
+252   if (!grep_mode_entered &amp;&amp; grep_get_last_pattern() &amp;&amp; grep_get_last_pattern()[0] != '\0') {
+253     log_search_enter_mode();
+254     grep_mode_entered = true;
+255   }
+256 
+257   // Initialize keyboard for interactive grep
+258   bool keyboard_enabled = false;
+259   if (keyboard_init() == ASCIICHAT_OK) {
+260     keyboard_enabled = true;
+261   }
+262 
+263   // Use terminal_screen abstraction for rendering
+264   terminal_screen_config_t config = {
+265       .fixed_header_lines = 4,
+266       .render_header = render_ui_status_header,
+267       .user_data = (void *)status,
+268       .show_logs = true,
+269   };
+270 
+271   terminal_screen_render(&amp;config);
+272 
+273   // Poll keyboard for Escape to exit or for interactive grep
+274   bool should_exit_status = false;
+275   if (keyboard_enabled) {
+276     keyboard_key_t key = keyboard_read_nonblocking();
+277     if (key == KEY_ESCAPE) {
+278       // Escape key: cancel grep if active, otherwise exit status screen
+279       if (log_search_is_active()) {
+280         log_search_exit_mode(false); // Cancel grep without applying
+281       } else {
+282         should_exit_status = true; // Exit status screen
+283       }
+284     } else if (key != KEY_NONE &amp;&amp; log_search_should_handle(key)) {
+285       log_search_handle_key(key);
+286     }
+287   }
+288 
+289   // Cleanup keyboard
+290   if (keyboard_enabled) {
+291     keyboard_destroy();
+292   }
+293 
+294   return !should_exit_status; // Return false if user wants to exit
+295 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>grep_get_last_pattern()</b>,
@@ -295,36 +296,36 @@
   char * ipv4_address, const char * ipv6_address, uint16_t port, time_t
   start_time, const char * mode_name, <b>bool</b> session_is_mdns_only, uint64_t
   * last_update_ns)</a></h2>
-<p class="Pp">Definition at line <b>296</b> of file <b>status.c</b>.</p>
-<pre>298                                                                                {
-299   if (!server || !last_update_ns) {
-300     return;
-301   }
-302 
-303   // Update at FPS rate (60 Hz = 16.67ms by default)
-304   uint32_t fps = GET_OPTION(fps);
-305   if (fps == 0) {
-306     fps = 60; // Default
-307   }
-308 
-309   // Calculate frame interval in microseconds
-310   uint64_t frame_interval_us = US_PER_SEC_INT / fps;
-311 
-312   // Get current time in microseconds using platform abstraction
-313   uint64_t now_us = platform_get_monotonic_time_us();
-314 
-315   // Check if enough time has passed
-316   if ((now_us - *last_update_ns) &lt; frame_interval_us) {
-317     return; // Too soon, skip frame
-318   }
-319 
-320   ui_status_t status;
-321   if (ui_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
-322                            session_is_mdns_only, &amp;status) == ASCIICHAT_OK) {
-323     ui_status_display(&amp;status);
-324     *last_update_ns = now_us;
-325   }
-326 }</pre>
+<p class="Pp">Definition at line <b>297</b> of file <b>status.c</b>.</p>
+<pre>299                                                                                {
+300   if (!server || !last_update_ns) {
+301     return;
+302   }
+303 
+304   // Update at FPS rate (60 Hz = 16.67ms by default)
+305   uint32_t fps = GET_OPTION(fps);
+306   if (fps == 0) {
+307     fps = 60; // Default
+308   }
+309 
+310   // Calculate frame interval in microseconds
+311   uint64_t frame_interval_us = US_PER_SEC_INT / fps;
+312 
+313   // Get current time in microseconds using platform abstraction
+314   uint64_t now_us = platform_get_monotonic_time_us();
+315 
+316   // Check if enough time has passed
+317   if ((now_us - *last_update_ns) &lt; frame_interval_us) {
+318     return; // Too soon, skip frame
+319   }
+320 
+321   ui_status_t status;
+322   if (ui_status_gather(server, session_string, ipv4_address, ipv6_address, port, start_time, mode_name,
+323                            session_is_mdns_only, &amp;status) == ASCIICHAT_OK) {
+324     ui_status_display(&amp;status);
+325     *last_update_ns = now_us;
+326   }
+327 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_get_monotonic_time_us()</b>,

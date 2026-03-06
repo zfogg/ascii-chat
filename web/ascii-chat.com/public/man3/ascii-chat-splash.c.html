@@ -131,10 +131,10 @@
 <section class="Ss">
 <h2 class="Ss" id="void_splash_clear_display_context_(void_)"><a class="permalink" href="#void_splash_clear_display_context_(void_)">void
   splash_clear_display_context (void )</a></h2>
-<p class="Pp">Definition at line <b>719</b> of file <b>splash.c</b>.</p>
-<pre>719                                         {
-720   // No-op: display context is no longer cached
-721 }</pre>
+<p class="Pp">Definition at line <b>720</b> of file <b>splash.c</b>.</p>
+<pre>720                                         {
+721   // No-op: display context is no longer cached
+722 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>session_display_destroy()</b>.</p>
@@ -142,29 +142,29 @@
 <section class="Ss">
 <h2 class="Ss" id="int_splash_intro_done_(void_)"><a class="permalink" href="#int_splash_intro_done_(void_)">int
   splash_intro_done (void )</a></h2>
-<p class="Pp">Definition at line <b>691</b> of file <b>splash.c</b>.</p>
-<pre>691                             {
-692   // Record when intro_done was called - animation thread will use this to decide when to stop
-693   // Animation thread needs time to check the flag and perform cleanup, so this must happen
-694   // BEFORE we try to access the terminal for frame rendering
-695   atomic_store_u64(&amp;g_splash_state.intro_done_time_ns, time_get_ns());
-696 
-697   // NOTE: Do NOT modify thread_created flag here!
-698   // splash_wait_for_animation() needs to see thread_created==true to know whether to join the thread.
-699   // If we set thread_created=false here, splash_wait_for_animation() won't join, and the render loop
-700   // will start while the animation thread is still running, causing frame output to conflict with splash.
-701   //
-702   // Instead, just signal the animation thread to stop via intro_done_time_ns, and let
-703   // splash_wait_for_animation() handle the actual thread join.
-704 
-705   // NOTE: DO NOT set is_running = false here! The animation thread sets it to false
-706   // when it actually exits (line 633). If we set it to false here, the render loop
-707   // guard will think splash is done while the animation thread is still running for
-708   // up to 2 more seconds, allowing ASCII frames to render simultaneously with splash.
-709   // The is_running flag MUST only be cleared by the animation thread when it finishes.
-710 
-711   return 0;
-712 }</pre>
+<p class="Pp">Definition at line <b>692</b> of file <b>splash.c</b>.</p>
+<pre>692                             {
+693   // Record when intro_done was called - animation thread will use this to decide when to stop
+694   // Animation thread needs time to check the flag and perform cleanup, so this must happen
+695   // BEFORE we try to access the terminal for frame rendering
+696   atomic_store_u64(&amp;g_splash_state.intro_done_time_ns, time_get_ns());
+697 
+698   // NOTE: Do NOT modify thread_created flag here!
+699   // splash_wait_for_animation() needs to see thread_created==true to know whether to join the thread.
+700   // If we set thread_created=false here, splash_wait_for_animation() won't join, and the render loop
+701   // will start while the animation thread is still running, causing frame output to conflict with splash.
+702   //
+703   // Instead, just signal the animation thread to stop via intro_done_time_ns, and let
+704   // splash_wait_for_animation() handle the actual thread join.
+705 
+706   // NOTE: DO NOT set is_running = false here! The animation thread sets it to false
+707   // when it actually exits (line 633). If we set it to false here, the render loop
+708   // guard will think splash is done while the animation thread is still running for
+709   // up to 2 more seconds, allowing ASCII frames to render simultaneously with splash.
+710   // The is_running flag MUST only be cleared by the animation thread when it finishes.
+711 
+712   return 0;
+713 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>, and
@@ -192,62 +192,63 @@
 650     return 0;
 651   }
 652 
-653   // Redirect splash screen to stderr when stdout is piped (not a TTY)
-654   // This keeps stdout clean for frame data while splash goes to stderr
-655   if (!isatty(STDOUT_FILENO)) {
-656     terminal_screen_set_output_fd(STDERR_FILENO);
-657   }
-658 
-659   // Initialize log buffer (same pattern as server_status)
-660   splash_log_init();
-661 
-662   // Clear screen and show cursor
-663   terminal_clear_screen();
-664   (void)terminal_cursor_show();
-665 
-666   // Clear log buffer for clean slate
-667   splash_log_clear();
-668 
-669   // Set running flag
-670   atomic_store_bool(&amp;g_splash_state.is_running, true);
-671   atomic_store_bool(&amp;g_splash_state.should_stop, false);
-672   g_splash_state.frame = 0;
-673   g_splash_state.start_time_ns = time_get_ns();
-674 
-675   // Start animation thread (only create once)
-676   bool expected_false = false;
-677   if (!atomic_cas_bool(&amp;g_splash_state.thread_created, &amp;expected_false, true)) {
-678     return 0;
-679   }
-680 
-681   int err = asciichat_thread_create(&amp;g_splash_state.anim_thread, &quot;splash_anim&quot;, splash_animation_thread, NULL);
-682   if (err != ASCIICHAT_OK) {
-683     log_warn(&quot;Failed to create splash animation thread: error=%d&quot;, err);
-684     atomic_store_bool(&amp;g_splash_state.thread_created, false);
-685     return 0;
-686   }
-687 
-688   return 0; // ASCIICHAT_OK
-689 }</pre>
+653   // Redirect splash screen to stderr when stdout is piped (not a TTY).
+654   // This keeps stdout clean for frame data while splash goes to stderr.
+655   // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
+656   if (!platform_isatty(STDOUT_FILENO)) {
+657     terminal_screen_set_output_fd(STDERR_FILENO);
+658   }
+659 
+660   // Initialize log buffer (same pattern as server_status)
+661   splash_log_init();
+662 
+663   // Clear screen and show cursor
+664   terminal_clear_screen();
+665   (void)terminal_cursor_show();
+666 
+667   // Clear log buffer for clean slate
+668   splash_log_clear();
+669 
+670   // Set running flag
+671   atomic_store_bool(&amp;g_splash_state.is_running, true);
+672   atomic_store_bool(&amp;g_splash_state.should_stop, false);
+673   g_splash_state.frame = 0;
+674   g_splash_state.start_time_ns = time_get_ns();
+675 
+676   // Start animation thread (only create once)
+677   bool expected_false = false;
+678   if (!atomic_cas_bool(&amp;g_splash_state.thread_created, &amp;expected_false, true)) {
+679     return 0;
+680   }
+681 
+682   int err = asciichat_thread_create(&amp;g_splash_state.anim_thread, &quot;splash_anim&quot;, splash_animation_thread, NULL);
+683   if (err != ASCIICHAT_OK) {
+684     log_warn(&quot;Failed to create splash animation thread: error=%d&quot;, err);
+685     atomic_store_bool(&amp;g_splash_state.thread_created, false);
+686     return 0;
+687   }
+688 
+689   return 0; // ASCIICHAT_OK
+690 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_create()</b>,
     <b>atomic_cas_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>splash_log_clear()</b>, <b>splash_log_init()</b>,
-    <b>splash_should_display()</b>, <b>terminal_cursor_show()</b>,
-    <b>terminal_get_effective_height()</b>,
+    <b>platform_isatty()</b>, <b>splash_log_clear()</b>,
+    <b>splash_log_init()</b>, <b>splash_should_display()</b>,
+    <b>terminal_cursor_show()</b>, <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>,
     <b>terminal_screen_set_output_fd()</b>, and <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> splash_is_running (void )</h2>
-<p class="Pp">Definition at line <b>723</b> of file <b>splash.c</b>.</p>
-<pre>723                              {
-724   // Check if splash animation is currently rendering
-725   // Used to prevent ASCII art from rendering while splash is animating
-726   return atomic_load_bool(&amp;g_splash_state.is_running);
-727 }</pre>
+<p class="Pp">Definition at line <b>724</b> of file <b>splash.c</b>.</p>
+<pre>724                              {
+725   // Check if splash animation is currently rendering
+726   // Used to prevent ASCII art from rendering while splash is animating
+727   return atomic_load_bool(&amp;g_splash_state.is_running);
+728 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>.</p>
@@ -297,11 +298,11 @@
 <section class="Ss">
 <h2 class="Ss" id="void_splash_restore_stderr_(void_)"><a class="permalink" href="#void_splash_restore_stderr_(void_)">void
   splash_restore_stderr (void )</a></h2>
-<p class="Pp">Definition at line <b>714</b> of file <b>splash.c</b>.</p>
-<pre>714                                  {
-715   // No-op: stderr suppression is no longer used
-716   // Logging works naturally through session_log_buffer
-717 }</pre>
+<p class="Pp">Definition at line <b>715</b> of file <b>splash.c</b>.</p>
+<pre>715                                  {
+716   // No-op: stderr suppression is no longer used
+717   // Logging works naturally through session_log_buffer
+718 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
@@ -309,24 +310,24 @@
 <section class="Ss">
 <h2 class="Ss" id="void_splash_set_update_notification_(const_char_*_notification)"><a class="permalink" href="#void_splash_set_update_notification_(const_char_*_notification)">void
   splash_set_update_notification (const char * notification)</a></h2>
-<p class="Pp">Definition at line <b>774</b> of file <b>splash.c</b>.</p>
-<pre>774                                                               {
-775   if (lifecycle_init_once(&amp;g_update_notification_lifecycle)) {
-776     mutex_init(&amp;g_update_notification_mutex, &quot;update_notification&quot;);
-777     lifecycle_init_commit(&amp;g_update_notification_lifecycle);
-778   }
-779   mutex_lock(&amp;g_update_notification_mutex);
-780 
-781   if (!notification || notification[0] == '\0') {
-782     g_update_notification[0] = '\0';
-783     log_debug(&quot;Cleared update notification for splash/status screens&quot;);
-784   } else {
-785     SAFE_STRNCPY(g_update_notification, notification, sizeof(g_update_notification));
-786     log_debug(&quot;Set update notification for splash/status screens: %s&quot;, notification);
-787   }
-788 
-789   mutex_unlock(&amp;g_update_notification_mutex);
-790 }</pre>
+<p class="Pp">Definition at line <b>775</b> of file <b>splash.c</b>.</p>
+<pre>775                                                               {
+776   if (lifecycle_init_once(&amp;g_update_notification_lifecycle)) {
+777     mutex_init(&amp;g_update_notification_mutex, &quot;update_notification&quot;);
+778     lifecycle_init_commit(&amp;g_update_notification_lifecycle);
+779   }
+780   mutex_lock(&amp;g_update_notification_mutex);
+781 
+782   if (!notification || notification[0] == '\0') {
+783     g_update_notification[0] = '\0';
+784     log_debug(&quot;Cleared update notification for splash/status screens&quot;);
+785   } else {
+786     SAFE_STRNCPY(g_update_notification, notification, sizeof(g_update_notification));
+787     log_debug(&quot;Set update notification for splash/status screens: %s&quot;, notification);
+788   }
+789 
+790   mutex_unlock(&amp;g_update_notification_mutex);
+791 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_init_commit()</b>,
@@ -366,51 +367,51 @@
 <section class="Ss">
 <h2 class="Ss" id="void_splash_wait_for_animation_(void_)"><a class="permalink" href="#void_splash_wait_for_animation_(void_)">void
   splash_wait_for_animation (void )</a></h2>
-<p class="Pp">Definition at line <b>729</b> of file <b>splash.c</b>.</p>
-<pre>729                                      {
-730   // Wait for animation thread to fully exit before rendering ASCII art
-731   // This prevents the splash and ASCII art from appearing simultaneously
-732   //
-733   // The animation thread will exit gracefully when:
-734   // - Intro done signal received AND 2 seconds have elapsed, OR
-735   // - 30 seconds have elapsed (safety timeout)
-736   // - OR a shutdown signal is received
-737   //
-738   // We block here indefinitely to ensure the splash animation completes before ASCII art starts
-739 
-740   // Only join if we successfully created the thread
-741   if (atomic_load_bool(&amp;g_splash_state.thread_created)) {
-742     log_dev(&quot;[SPLASH_WAIT] Waiting for animation thread to exit...&quot;);
-743 
-744     // Check if shutdown was requested - handle it specially
-745     bool is_shutting_down = shutdown_is_requested();
-746     if (is_shutting_down) {
-747       log_dev(&quot;[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop&quot;);
-748       atomic_store_bool(&amp;g_splash_state.should_stop, true);
-749       // During shutdown, use a short timeout (100ms)
-750       uint64_t timeout_ns = 100LL * NS_PER_MS_INT;
-751       (void)asciichat_thread_join_timeout(&amp;g_splash_state.anim_thread, NULL, timeout_ns);
-752     } else {
-753       // Normal operation: wait indefinitely for the animation thread to finish
-754       // This ensures splash animation is 100% done before ASCII art rendering starts
-755       asciichat_error_t err = asciichat_thread_join(&amp;g_splash_state.anim_thread, NULL);
-756       if (err == ASCIICHAT_OK) {
-757         log_dev(&quot;[SPLASH_WAIT] Animation thread exited cleanly&quot;);
-758       } else {
-759         log_warn(&quot;[SPLASH_WAIT] Animation thread join failed: %s&quot;, asciichat_error_string(err));
-760         // Force stop the animation thread if join failed
-761         atomic_store_bool(&amp;g_splash_state.should_stop, true);
-762         // Clear any partial splash output left on screen
-763         terminal_clear_screen();
-764         terminal_cursor_home(STDOUT_FILENO);
-765         terminal_flush(STDOUT_FILENO);
-766       }
-767     }
-768 
-769     // Mark that we've joined (safe to call multiple times - only joins once)
-770     atomic_store_bool(&amp;g_splash_state.thread_created, false);
-771   }
-772 }</pre>
+<p class="Pp">Definition at line <b>730</b> of file <b>splash.c</b>.</p>
+<pre>730                                      {
+731   // Wait for animation thread to fully exit before rendering ASCII art
+732   // This prevents the splash and ASCII art from appearing simultaneously
+733   //
+734   // The animation thread will exit gracefully when:
+735   // - Intro done signal received AND 2 seconds have elapsed, OR
+736   // - 30 seconds have elapsed (safety timeout)
+737   // - OR a shutdown signal is received
+738   //
+739   // We block here indefinitely to ensure the splash animation completes before ASCII art starts
+740 
+741   // Only join if we successfully created the thread
+742   if (atomic_load_bool(&amp;g_splash_state.thread_created)) {
+743     log_dev(&quot;[SPLASH_WAIT] Waiting for animation thread to exit...&quot;);
+744 
+745     // Check if shutdown was requested - handle it specially
+746     bool is_shutting_down = shutdown_is_requested();
+747     if (is_shutting_down) {
+748       log_dev(&quot;[SPLASH_WAIT] Shutdown requested, signaling animation thread to stop&quot;);
+749       atomic_store_bool(&amp;g_splash_state.should_stop, true);
+750       // During shutdown, use a short timeout (100ms)
+751       uint64_t timeout_ns = 100LL * NS_PER_MS_INT;
+752       (void)asciichat_thread_join_timeout(&amp;g_splash_state.anim_thread, NULL, timeout_ns);
+753     } else {
+754       // Normal operation: wait indefinitely for the animation thread to finish
+755       // This ensures splash animation is 100% done before ASCII art rendering starts
+756       asciichat_error_t err = asciichat_thread_join(&amp;g_splash_state.anim_thread, NULL);
+757       if (err == ASCIICHAT_OK) {
+758         log_dev(&quot;[SPLASH_WAIT] Animation thread exited cleanly&quot;);
+759       } else {
+760         log_warn(&quot;[SPLASH_WAIT] Animation thread join failed: %s&quot;, asciichat_error_string(err));
+761         // Force stop the animation thread if join failed
+762         atomic_store_bool(&amp;g_splash_state.should_stop, true);
+763         // Clear any partial splash output left on screen
+764         terminal_clear_screen();
+765         terminal_cursor_home(STDOUT_FILENO);
+766         terminal_flush(STDOUT_FILENO);
+767       }
+768     }
+769 
+770     // Mark that we've joined (safe to call multiple times - only joins once)
+771     atomic_store_bool(&amp;g_splash_state.thread_created, false);
+772   }
+773 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,
