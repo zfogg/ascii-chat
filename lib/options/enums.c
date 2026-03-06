@@ -21,12 +21,12 @@
  */
 static const enum_to_string_entry_t log_level_map[] = {
     /* These enum values come from log/log.h */
-    {0, "dev", "development level"},
-    {1, "debug", "debug messages"},
-    {2, "info", "info messages"},
-    {3, "warn", "warnings"},
-    {4, "error", "errors"},
-    {5, "fatal", "fatal errors"},
+    {0, OPT_LOG_LEVEL_DEV, "development level"},
+    {1, OPT_LOG_LEVEL_DEBUG, "debug messages"},
+    {2, OPT_LOG_LEVEL_INFO, "info messages"},
+    {3, OPT_LOG_LEVEL_WARN, "warnings"},
+    {4, OPT_LOG_LEVEL_ERROR, "errors"},
+    {5, OPT_LOG_LEVEL_FATAL, "fatal errors"},
     {-1, NULL, NULL}       /* Terminator */
 };
 
@@ -34,11 +34,11 @@ static const enum_to_string_entry_t log_level_map[] = {
  * @brief Maps color mode enum values to strings
  */
 static const enum_to_string_entry_t color_mode_map[] = {
-    {0, "auto", "auto-detect based on terminal"},
-    {1, "none", "disable colors"},
-    {2, "16", "16 color mode"},
-    {3, "256", "256 color mode"},
-    {4, "truecolor", "true color (24-bit RGB)"},
+    {0, OPT_COLOR_MODE_AUTO, "auto-detect based on terminal"},
+    {1, OPT_COLOR_MODE_NONE, "disable colors"},
+    {2, OPT_COLOR_MODE_16, "16 color mode"},
+    {3, OPT_COLOR_MODE_256, "256 color mode"},
+    {4, OPT_COLOR_MODE_TRUECOLOR, "true color (24-bit RGB)"},
     {-1, NULL, NULL}           /* Terminator */
 };
 
@@ -46,19 +46,19 @@ static const enum_to_string_entry_t color_mode_map[] = {
  * @brief Maps color filter enum values to strings
  */
 static const enum_to_string_entry_t color_filter_map[] = {
-    {COLOR_FILTER_NONE, "none", "no tint"},
-    {COLOR_FILTER_BLACK, "black", "black tint"},
-    {COLOR_FILTER_WHITE, "white", "white tint"},
-    {COLOR_FILTER_GREEN, "green", "green tint"},
-    {COLOR_FILTER_MAGENTA, "magenta", "magenta tint"},
-    {COLOR_FILTER_FUCHSIA, "fuchsia", "fuchsia tint"},
-    {COLOR_FILTER_ORANGE, "orange", "orange tint"},
-    {COLOR_FILTER_TEAL, "teal", "teal tint"},
-    {COLOR_FILTER_CYAN, "cyan", "cyan tint"},
-    {COLOR_FILTER_PINK, "pink", "pink tint"},
-    {COLOR_FILTER_RED, "red", "red tint"},
-    {COLOR_FILTER_YELLOW, "yellow", "yellow tint"},
-    {COLOR_FILTER_RAINBOW, "rainbow", "rainbow tint"},
+    {COLOR_FILTER_NONE, OPT_COLOR_FILTER_NONE, "no tint"},
+    {COLOR_FILTER_BLACK, OPT_COLOR_FILTER_BLACK, "black tint"},
+    {COLOR_FILTER_WHITE, OPT_COLOR_FILTER_WHITE, "white tint"},
+    {COLOR_FILTER_GREEN, OPT_COLOR_FILTER_GREEN, "green tint"},
+    {COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_MAGENTA, "magenta tint"},
+    {COLOR_FILTER_FUCHSIA, OPT_COLOR_FILTER_FUCHSIA, "fuchsia tint"},
+    {COLOR_FILTER_ORANGE, OPT_COLOR_FILTER_ORANGE, "orange tint"},
+    {COLOR_FILTER_TEAL, OPT_COLOR_FILTER_TEAL, "teal tint"},
+    {COLOR_FILTER_CYAN, OPT_COLOR_FILTER_CYAN, "cyan tint"},
+    {COLOR_FILTER_PINK, OPT_COLOR_FILTER_PINK, "pink tint"},
+    {COLOR_FILTER_RED, OPT_COLOR_FILTER_RED, "red tint"},
+    {COLOR_FILTER_YELLOW, OPT_COLOR_FILTER_YELLOW, "yellow tint"},
+    {COLOR_FILTER_RAINBOW, OPT_COLOR_FILTER_RAINBOW, "rainbow tint"},
     {-1, NULL, NULL}  /* Terminator */
 };
 
@@ -66,12 +66,12 @@ static const enum_to_string_entry_t color_filter_map[] = {
  * @brief Maps palette enum values to strings
  */
 static const enum_to_string_entry_t palette_map[] = {
-    {0, "standard", "standard palette"},
-    {1, "blocks", "block characters"},
-    {2, "digital", "digital display"},
-    {3, "minimal", "minimal palette"},
-    {4, "cool", "cool colors"},
-    {5, "custom", "custom palette"},
+    {0, OPT_PALETTE_STANDARD, "standard palette"},
+    {1, OPT_PALETTE_BLOCKS, "block characters"},
+    {2, OPT_PALETTE_DIGITAL, "digital display"},
+    {3, OPT_PALETTE_MINIMAL, "minimal palette"},
+    {4, OPT_PALETTE_COOL, "cool colors"},
+    {5, OPT_PALETTE_CUSTOM, "custom palette"},
     {-1, NULL, NULL}  /* Terminator */
 };
 
@@ -79,11 +79,11 @@ static const enum_to_string_entry_t palette_map[] = {
  * @brief Maps render mode enum values to strings
  */
 static const enum_to_string_entry_t render_mode_map[] = {
-    {RENDER_MODE_FOREGROUND, "foreground", "text foreground"},
-    {RENDER_MODE_FOREGROUND, "fg", "text foreground (short)"},
-    {RENDER_MODE_BACKGROUND, "background", "text background"},
-    {RENDER_MODE_BACKGROUND, "bg", "text background (short)"},
-    {RENDER_MODE_HALF_BLOCK, "half-block", "half-block characters"},
+    {RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FOREGROUND, "text foreground"},
+    {RENDER_MODE_FOREGROUND, OPT_RENDER_MODE_FG, "text foreground (short)"},
+    {RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BACKGROUND, "text background"},
+    {RENDER_MODE_BACKGROUND, OPT_RENDER_MODE_BG, "text background (short)"},
+    {RENDER_MODE_HALF_BLOCK, OPT_RENDER_MODE_HALF_BLOCK, "half-block characters"},
     {-1, NULL, NULL}  /* Terminator */
 };
 
@@ -91,8 +91,8 @@ static const enum_to_string_entry_t render_mode_map[] = {
  * @brief Maps reconnect enum values to strings
  */
 static const enum_to_string_entry_t reconnect_map[] = {
-    {0, "off", "disable auto-reconnect"},
-    {1, "auto", "enable auto-reconnect"},
+    {0, OPT_RECONNECT_OFF, "disable auto-reconnect"},
+    {1, OPT_RECONNECT_AUTO, "enable auto-reconnect"},
     {-1, NULL, NULL}  /* Terminator */
 };
 

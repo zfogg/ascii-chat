@@ -67,6 +67,65 @@ const char **options_get_enum_values(const char *option_name, size_t *value_coun
  */
 bool options_is_enum_option(const char *option_name);
 
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Enum Value Constants - Used throughout the codebase
+ * ═════════════════════════════════════════════════════════════════════════ */
+
+/* log-level values */
+#define OPT_LOG_LEVEL_DEV    "dev"
+#define OPT_LOG_LEVEL_DEBUG  "debug"
+#define OPT_LOG_LEVEL_INFO   "info"
+#define OPT_LOG_LEVEL_WARN   "warn"
+#define OPT_LOG_LEVEL_ERROR  "error"
+#define OPT_LOG_LEVEL_FATAL  "fatal"
+
+/* color-mode values */
+#define OPT_COLOR_MODE_AUTO      "auto"
+#define OPT_COLOR_MODE_NONE      "none"
+#define OPT_COLOR_MODE_16        "16"
+#define OPT_COLOR_MODE_256       "256"
+#define OPT_COLOR_MODE_TRUECOLOR "truecolor"
+
+/* color-filter values */
+#define OPT_COLOR_FILTER_NONE     "none"
+#define OPT_COLOR_FILTER_BLACK    "black"
+#define OPT_COLOR_FILTER_WHITE    "white"
+#define OPT_COLOR_FILTER_GREEN    "green"
+#define OPT_COLOR_FILTER_MAGENTA  "magenta"
+#define OPT_COLOR_FILTER_FUCHSIA  "fuchsia"
+#define OPT_COLOR_FILTER_ORANGE   "orange"
+#define OPT_COLOR_FILTER_TEAL     "teal"
+#define OPT_COLOR_FILTER_CYAN     "cyan"
+#define OPT_COLOR_FILTER_PINK     "pink"
+#define OPT_COLOR_FILTER_RED      "red"
+#define OPT_COLOR_FILTER_YELLOW   "yellow"
+#define OPT_COLOR_FILTER_RAINBOW  "rainbow"
+
+/* palette values */
+#define OPT_PALETTE_STANDARD "standard"
+#define OPT_PALETTE_BLOCKS   "blocks"
+#define OPT_PALETTE_DIGITAL  "digital"
+#define OPT_PALETTE_MINIMAL  "minimal"
+#define OPT_PALETTE_COOL     "cool"
+#define OPT_PALETTE_CUSTOM   "custom"
+
+/* render-mode values */
+#define OPT_RENDER_MODE_FOREGROUND  "foreground"
+#define OPT_RENDER_MODE_FG          "fg"
+#define OPT_RENDER_MODE_BACKGROUND  "background"
+#define OPT_RENDER_MODE_BG          "bg"
+#define OPT_RENDER_MODE_HALF_BLOCK  "half-block"
+
+/* reconnect values */
+#define OPT_RECONNECT_OFF  "off"
+#define OPT_RECONNECT_AUTO "auto"
+
+/* audio-source values */
+#define OPT_AUDIO_SOURCE_AUTO  "auto"
+#define OPT_AUDIO_SOURCE_MIC   "mic"
+#define OPT_AUDIO_SOURCE_MEDIA "media"
+#define OPT_AUDIO_SOURCE_BOTH  "both"
+
 #ifdef __cplusplus
 }
 #endif

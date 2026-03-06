@@ -12,6 +12,7 @@
 #include <ascii-chat/common.h>
 #include <ascii-chat/options/builder.h>
 #include <ascii-chat/options/options.h>
+#include <ascii-chat/options/enums.h>     // For OPT_* enum constants
 #include <ascii-chat/options/strings.h>    // For fuzzy matching suggestions
 #include <ascii-chat/discovery/strings.h>  // For is_session_string() validation
 #include <ascii-chat/util/parsing.h>       // For parse_port() validation
@@ -220,33 +221,33 @@ bool parse_color_mode(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Auto-detect
-  if (strcmp(lower, "auto") == 0 || strcmp(lower, "a") == 0) {
+  if (strcmp(lower, OPT_COLOR_MODE_AUTO) == 0 || strcmp(lower, "a") == 0) {
     *color_mode = TERM_COLOR_AUTO;
     return true;
   }
 
   // Monochrome/None
-  if (strcmp(lower, "none") == 0 || strcmp(lower, "mono") == 0 || strcmp(lower, "monochrome") == 0 ||
+  if (strcmp(lower, OPT_COLOR_MODE_NONE) == 0 || strcmp(lower, "mono") == 0 || strcmp(lower, "monochrome") == 0 ||
       strcmp(lower, "0") == 0) {
     *color_mode = TERM_COLOR_NONE;
     return true;
   }
 
   // 16-color
-  if (strcmp(lower, "16") == 0 || strcmp(lower, "16color") == 0 || strcmp(lower, "ansi") == 0 ||
+  if (strcmp(lower, OPT_COLOR_MODE_16) == 0 || strcmp(lower, "16color") == 0 || strcmp(lower, "ansi") == 0 ||
       strcmp(lower, "1") == 0) {
     *color_mode = TERM_COLOR_16;
     return true;
   }
 
   // 256-color
-  if (strcmp(lower, "256") == 0 || strcmp(lower, "256color") == 0 || strcmp(lower, "2") == 0) {
+  if (strcmp(lower, OPT_COLOR_MODE_256) == 0 || strcmp(lower, "256color") == 0 || strcmp(lower, "2") == 0) {
     *color_mode = TERM_COLOR_256;
     return true;
   }
 
   // Truecolor
-  if (strcmp(lower, "truecolor") == 0 || strcmp(lower, "true") == 0 || strcmp(lower, "tc") == 0 ||
+  if (strcmp(lower, OPT_COLOR_MODE_TRUECOLOR) == 0 || strcmp(lower, "true") == 0 || strcmp(lower, "tc") == 0 ||
       strcmp(lower, "rgb") == 0 || strcmp(lower, "24bit") == 0 || strcmp(lower, "3") == 0) {
     *color_mode = TERM_COLOR_TRUECOLOR;
     return true;
@@ -280,7 +281,7 @@ bool parse_color_filter(const char *arg, void *dest, char **error_msg) {
 
   // Try to match against all known color filters
   *color_filter = color_filter_from_cli_name(lower);
-  if (*color_filter != COLOR_FILTER_NONE || strcmp(lower, "none") == 0) {
+  if (*color_filter != COLOR_FILTER_NONE || strcmp(lower, OPT_COLOR_FILTER_NONE) == 0) {
     return true;
   }
 
@@ -309,19 +310,19 @@ bool parse_render_mode(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Foreground mode
-  if (strcmp(lower, "foreground") == 0 || strcmp(lower, "fg") == 0 || strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_FOREGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_FG) == 0 || strcmp(lower, "0") == 0) {
     *render_mode = RENDER_MODE_FOREGROUND;
     return true;
   }
 
   // Background mode
-  if (strcmp(lower, "background") == 0 || strcmp(lower, "bg") == 0 || strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_BACKGROUND) == 0 || strcmp(lower, OPT_RENDER_MODE_BG) == 0 || strcmp(lower, "1") == 0) {
     *render_mode = RENDER_MODE_BACKGROUND;
     return true;
   }
 
   // Half-block mode
-  if (strcmp(lower, "half-block") == 0 || strcmp(lower, "hb") == 0 || strcmp(lower, "2") == 0) {
+  if (strcmp(lower, OPT_RENDER_MODE_HALF_BLOCK) == 0 || strcmp(lower, "hb") == 0 || strcmp(lower, "2") == 0) {
     *render_mode = RENDER_MODE_HALF_BLOCK;
     return true;
   }
@@ -393,37 +394,37 @@ bool parse_palette_type(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Standard palette
-  if (strcmp(lower, "standard") == 0 || strcmp(lower, "std") == 0 || strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_PALETTE_STANDARD) == 0 || strcmp(lower, "std") == 0 || strcmp(lower, "0") == 0) {
     *palette_type = PALETTE_STANDARD;
     return true;
   }
 
   // Blocks palette
-  if (strcmp(lower, "blocks") == 0 || strcmp(lower, "block") == 0 || strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_PALETTE_BLOCKS) == 0 || strcmp(lower, "block") == 0 || strcmp(lower, "1") == 0) {
     *palette_type = PALETTE_BLOCKS;
     return true;
   }
 
   // Digital palette
-  if (strcmp(lower, "digital") == 0 || strcmp(lower, "dig") == 0 || strcmp(lower, "2") == 0) {
+  if (strcmp(lower, OPT_PALETTE_DIGITAL) == 0 || strcmp(lower, "dig") == 0 || strcmp(lower, "2") == 0) {
     *palette_type = PALETTE_DIGITAL;
     return true;
   }
 
   // Minimal palette
-  if (strcmp(lower, "minimal") == 0 || strcmp(lower, "min") == 0 || strcmp(lower, "3") == 0) {
+  if (strcmp(lower, OPT_PALETTE_MINIMAL) == 0 || strcmp(lower, "min") == 0 || strcmp(lower, "3") == 0) {
     *palette_type = PALETTE_MINIMAL;
     return true;
   }
 
   // Cool palette
-  if (strcmp(lower, "cool") == 0 || strcmp(lower, "4") == 0) {
+  if (strcmp(lower, OPT_PALETTE_COOL) == 0 || strcmp(lower, "4") == 0) {
     *palette_type = PALETTE_COOL;
     return true;
   }
 
   // Custom palette
-  if (strcmp(lower, "custom") == 0 || strcmp(lower, "5") == 0) {
+  if (strcmp(lower, OPT_PALETTE_CUSTOM) == 0 || strcmp(lower, "5") == 0) {
     *palette_type = PALETTE_CUSTOM;
     return true;
   }
@@ -463,37 +464,37 @@ bool parse_log_level(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Development level
-  if (strcmp(lower, "dev") == 0 || strcmp(lower, "development") == 0 || strcmp(lower, "0") == 0) {
+  if (strcmp(lower, OPT_LOG_LEVEL_DEV) == 0 || strcmp(lower, "development") == 0 || strcmp(lower, "0") == 0) {
     *log_level = LOG_DEV;
     return true;
   }
 
   // Debug level
-  if (strcmp(lower, "debug") == 0 || strcmp(lower, "dbg") == 0 || strcmp(lower, "1") == 0) {
+  if (strcmp(lower, OPT_LOG_LEVEL_DEBUG) == 0 || strcmp(lower, "dbg") == 0 || strcmp(lower, "1") == 0) {
     *log_level = LOG_DEBUG;
     return true;
   }
 
   // Info level
-  if (strcmp(lower, "info") == 0 || strcmp(lower, "information") == 0 || strcmp(lower, "2") == 0) {
+  if (strcmp(lower, OPT_LOG_LEVEL_INFO) == 0 || strcmp(lower, "information") == 0 || strcmp(lower, "2") == 0) {
     *log_level = LOG_INFO;
     return true;
   }
 
   // Warning level
-  if (strcmp(lower, "warn") == 0 || strcmp(lower, "warning") == 0 || strcmp(lower, "3") == 0) {
+  if (strcmp(lower, OPT_LOG_LEVEL_WARN) == 0 || strcmp(lower, "warning") == 0 || strcmp(lower, "3") == 0) {
     *log_level = LOG_WARN;
     return true;
   }
 
   // Error level
-  if (strcmp(lower, "error") == 0 || strcmp(lower, "err") == 0 || strcmp(lower, "4") == 0) {
+  if (strcmp(lower, OPT_LOG_LEVEL_ERROR) == 0 || strcmp(lower, "err") == 0 || strcmp(lower, "4") == 0) {
     *log_level = LOG_ERROR;
     return true;
   }
 
   // Fatal level
-  if (strcmp(lower, "fatal") == 0 || strcmp(lower, "5") == 0) {
+  if (strcmp(lower, OPT_LOG_LEVEL_FATAL) == 0 || strcmp(lower, "5") == 0) {
     *log_level = LOG_FATAL;
     return true;
   }
@@ -1159,25 +1160,25 @@ bool parse_audio_source(const char *arg, void *dest, char **error_msg) {
   to_lower(arg, lower, sizeof(lower));
 
   // Auto (smart selection based on media state)
-  if (strcmp(lower, "auto") == 0) {
+  if (strcmp(lower, OPT_AUDIO_SOURCE_AUTO) == 0) {
     *audio_source = AUDIO_SOURCE_AUTO;
     return true;
   }
 
   // Microphone only
-  if (strcmp(lower, "mic") == 0) {
+  if (strcmp(lower, OPT_AUDIO_SOURCE_MIC) == 0) {
     *audio_source = AUDIO_SOURCE_MIC;
     return true;
   }
 
   // Media only
-  if (strcmp(lower, "media") == 0) {
+  if (strcmp(lower, OPT_AUDIO_SOURCE_MEDIA) == 0) {
     *audio_source = AUDIO_SOURCE_MEDIA;
     return true;
   }
 
   // Both microphone and media
-  if (strcmp(lower, "both") == 0) {
+  if (strcmp(lower, OPT_AUDIO_SOURCE_BOTH) == 0) {
     *audio_source = AUDIO_SOURCE_BOTH;
     return true;
   }

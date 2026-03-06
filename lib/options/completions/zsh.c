@@ -85,6 +85,62 @@ static const char **zsh_collect_groups(const option_descriptor_t *opts, size_t c
 }
 
 /**
+ * Write value completion case blocks for enum and boolean options
+ *
+ * Generates case arms that intercept when completing after an enum option:
+ *   --color-mode) _values 'color mode' auto none 16 256 truecolor; return ;;
+ *   --color-mode=*) _values 'color mode' auto none 16 256 truecolor; return ;;
+ *
+ * And for boolean options:
+ *   --audio) _values 'value' true false; return ;;
+ */
+static void zsh_write_value_cases(FILE *output, const option_descriptor_t *opts, size_t count) {
+  if (!opts || count == 0) return;
+
+  // Case statement for option name matching
+  fprintf(output, "  case \"$prev\" in\n");
+
+  for (size_t i = 0; i < count; i++) {
+    // Skip action options (they take no value)
+    if (opts[i].type == OPTION_TYPE_ACTION) continue;
+
+    // Enum options: emit value completion
+    if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
+      fprintf(output, "    --%-30s) _values '%s'", opts[i].long_name, opts[i].long_name);
+
+      for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
+        fprintf(output, " %s", opts[i].metadata.enum_values[j]);
+      }
+      fprintf(output, "; return ;;\n");
+    }
+    // Boolean options: emit true/false completion
+    else if (opts[i].type == OPTION_TYPE_BOOL) {
+      fprintf(output, "    --%-30s) _values 'value' true false; return ;;\n", opts[i].long_name);
+    }
+  }
+
+  fprintf(output, "  esac\n\n");
+
+  // Also handle --option=VALUE form
+  fprintf(output, "  case \"${words[CURRENT]}\" in\n");
+
+  for (size_t i = 0; i < count; i++) {
+    if (opts[i].type == OPTION_TYPE_ACTION) continue;
+
+    if (opts[i].metadata.input_type == OPTION_INPUT_ENUM && opts[i].metadata.enum_values) {
+      fprintf(output, "    '--%-30s=*') _values '%s'", opts[i].long_name, opts[i].long_name);
+
+      for (size_t j = 0; opts[i].metadata.enum_values[j] != NULL; j++) {
+        fprintf(output, " %s", opts[i].metadata.enum_values[j]);
+      }
+      fprintf(output, "; return ;;\n");
+    }
+  }
+
+  fprintf(output, "  esac\n\n");
+}
+
+/**
  * Write options grouped by category using _describe for proper group headers
  */
 static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *opts, size_t count,
@@ -141,6 +197,11 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   fprintf(output, "#compdef _ascii_chat ascii-chat\n"
                   "# Zsh completion script for ascii-chat\n"
                   "# Generated from options registry - DO NOT EDIT MANUALLY\n"
+                  "\n"
+                  "# Enable approximate completion for ascii-chat - suggests close matches\n"
+                  "# when the typed string doesn't match exactly (e.g., --colr-mode -> --color-mode)\n"
+                  "zstyle ':completion:*:ascii-chat:*' completer _complete _approximate\n"
+                  "zstyle ':completion:*:ascii-chat:*:approximate:*' max-errors 2 numeric\n"
                   "\n"
                   "_ascii_chat_binary() {\n"
                   "  local -a binary_opts=(\n");
@@ -248,6 +309,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
 
   if (server_opts) {
+    zsh_write_value_cases(output, server_opts, server_count);
     zsh_write_options_grouped(output, server_opts, server_count, "server");
     SAFE_FREE(server_opts);
   }
@@ -262,6 +324,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
 
   if (discovery_svc_opts) {
+    zsh_write_value_cases(output, discovery_svc_opts, discovery_svc_count);
     zsh_write_options_grouped(output, discovery_svc_opts, discovery_svc_count, "discovery_service");
     SAFE_FREE(discovery_svc_opts);
   }
@@ -276,6 +339,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
 
   if (client_opts) {
+    zsh_write_value_cases(output, client_opts, client_count);
     zsh_write_options_grouped(output, client_opts, client_count, "client");
     SAFE_FREE(client_opts);
   }
@@ -289,6 +353,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
 
   if (mirror_opts) {
+    zsh_write_value_cases(output, mirror_opts, mirror_count);
     zsh_write_options_grouped(output, mirror_opts, mirror_count, "mirror");
     SAFE_FREE(mirror_opts);
   }
@@ -300,6 +365,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
 
   /* Discovery options - grouped by category (reuse already-loaded options) */
   if (discovery_opts) {
+    zsh_write_value_cases(output, discovery_opts, discovery_count);
     zsh_write_options_grouped(output, discovery_opts, discovery_count, "discovery");
   }
 
