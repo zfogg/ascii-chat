@@ -1666,10 +1666,12 @@ export default function Man3() {
                   <p className="text-xs text-gray-500 text-center lg:text-right">
                     📖{" "}
                     <a
-                      href="/man3"
+                      href="https://zfogg.github.io/ascii-chat/"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       className="text-cyan-400 hover:text-cyan-300 transition-colors"
                     >
-                      Searchable man(3) pages (API documentation)
+                      Doxygen HTML Documentation
                     </a>
                   </p>
                 </div>
