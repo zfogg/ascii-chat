@@ -1600,7 +1600,7 @@ export default function Man3() {
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
         url="https://ascii-chat.com/man3"
       />
-      <div className="w-full h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
+      <div className="w-full min-h-screen lg:h-screen mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col w-full overflow-hidden">
           {/* Scrollable container with header and panels */}
           <div className="flex-1 flex flex-col overflow-y-auto lg:overflow-hidden min-h-0">
@@ -1922,7 +1922,7 @@ export default function Man3() {
         </div>
 
         {/* Footer */}
-        <div className="flex-1 lg:flex-shrink-0 border-t border-gray-800 pt-4 mt-4">
+        <div className="flex-shrink-0 border-t border-gray-800 pt-4 mt-4">
           <Footer />
         </div>
       </div>
