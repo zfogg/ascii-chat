@@ -26,7 +26,9 @@ sleep 0.5
 # Test 1: ascii-chat --sho<tab>
 echo "=== TEST 1: ascii-chat --sho<tab> ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --sho" Tab
-sleep 0.2
+sleep 1
+tmux capture-pane -t zsh-completion-test -p
+sleep 0.5
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
 tmux capture-pane -t zsh-completion-test -p | rg corrections \
@@ -62,7 +64,9 @@ sleep 0.1
 echo ""
 echo "=== TEST 3: ascii-chat client --<tab> ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat client --" Tab
-sleep 0.2
+sleep 1
+tmux capture-pane -t zsh-completion-test -p
+sleep 0.5
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
 tmux capture-pane -t zsh-completion-test -p | rg corrections \
