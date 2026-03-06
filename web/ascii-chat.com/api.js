@@ -6,6 +6,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import winston from "winston";
 import morgan from "morgan";
+import { execSync } from "child_process";
 
 dotenv.config();
 
@@ -48,6 +49,15 @@ const limiter = rateLimit({
   message: "Too many search requests, please try again later",
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
+// Rate limiting: 10 session string requests per minute per IP
+const sessionStringLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000,
+  max: 10,
+  message: "Too many session string requests, please try again later",
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Cache for man3 files and index
@@ -436,6 +446,46 @@ app.get("/api/health", (req, res) => {
     cached: Object.keys(fileCache).length,
     indexSize: indexCache ? indexCache.length : 0,
   });
+});
+
+// Session strings endpoint
+app.get("/api/session-strings", sessionStringLimiter, (req, res) => {
+  try {
+    const count = parseInt(req.query.count || "1", 10);
+
+    // Validate count
+    if (isNaN(count) || count < 1) {
+      return res.status(400).json({ error: "count must be a positive integer" });
+    }
+
+    // Max limit check (2500 * 5000 * 5000 = 62,500,000,000)
+    const MAX_COUNT = 62500000000;
+    if (count > MAX_COUNT) {
+      return res.status(400).json({
+        error: `count exceeds maximum (${MAX_COUNT} unique combinations)`,
+      });
+    }
+
+    // Call the ascii-chat-strings binary
+    const binaryPath = path.join(__dirname, "../../build/bin/ascii-chat-strings");
+    const output = execSync(`"${binaryPath}" --count ${count}`, {
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+
+    const strings = output
+      .trim()
+      .split("\n")
+      .filter((s) => s.length > 0);
+
+    res.json({
+      count: strings.length,
+      strings: strings,
+    });
+  } catch (err) {
+    logger.error("Session strings error:", err);
+    res.status(500).json({ error: "Failed to generate session strings" });
+  }
 });
 
 // Initialize cache

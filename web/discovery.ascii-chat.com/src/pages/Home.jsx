@@ -8,12 +8,18 @@ import {
   Button,
   Link,
 } from "@ascii-chat/shared/components";
+import { fetchSessionStrings } from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
 
 function Home() {
   const [sshKey, setSshKey] = useState("");
   const [gpgKey, setGpgKey] = useState("");
   const [baseUrl] = useState(() => window.location.origin);
+  const [sessionStrings, setSessionStrings] = useState([
+    "hindu-batman-marriage",
+    "jumbo-slayer-sergeant",
+    "shaky-fudge-moron",
+  ]);
 
   useEffect(() => {
     // Fetch public keys
@@ -26,6 +32,11 @@ function Home() {
       .then((r) => r.text())
       .then((text) => setGpgKey(text.trim()))
       .catch((e) => console.error("Failed to load GPG key:", e));
+
+    // Fetch session strings
+    fetchSessionStrings(3)
+      .then((strings) => setSessionStrings(strings))
+      .catch((e) => console.error("Failed to load session strings:", e));
   }, []);
 
   const handleSshDownload = () => {
@@ -102,7 +113,7 @@ function Home() {
             </Link>
             , a real-time terminal-based video chat application. ACDS enables
             session discovery using memorable three-word strings like{" "}
-            <code className="bg-gray-800 px-1 rounded">happy-sunset-ocean</code>{" "}
+            <code className="bg-gray-800 px-1 rounded">{sessionStrings[0]}</code>{" "}
             instead of IP addresses. It provides NAT traversal, WebRTC
             signaling, and peer-to-peer connection establishment.
           </p>
@@ -263,12 +274,12 @@ source <(ascii-chat --completions zsh 2>/dev/null)`}</CodeBlock>
           </Heading>
           <CodeBlock language="bash">{`# Start a new session
 ascii-chat
-# It logs "Session string: happy-sunset-ocean"
+# It logs "Session string: ${sessionStrings[0]}"
 
 # Copy the session string it outputs and share it with a friend securely
 
 # Join a session using the session string
-ascii-chat happy-sunset-ocean`}</CodeBlock>
+ascii-chat ${sessionStrings[0]}`}</CodeBlock>
         </section>
 
         <section className="mb-12">
