@@ -237,11 +237,11 @@ cmake --preset default && cmake --build build
             <div className="grid sm:grid-cols-2 gap-4">
               <TrackedLink
                 to="/docs"
-                label="Home - Docs Hub"
+                label="Home - Documentation"
                 className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
               >
                 <h3 className="text-teal-300 font-semibold mb-1">
-                  📚 Docs Hub
+                  📚 Documentation
                 </h3>
                 <p className="text-gray-400 text-sm">
                   Configuration, hardware, terminal, snapshot, network, media
@@ -257,7 +257,7 @@ cmake --preset default && cmake --build build
                   📖 ascii-chat(1)
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  Complete command-line reference
+                  Complete command-line man(1) page reference
                 </p>
               </TrackedLink>
 
@@ -270,7 +270,7 @@ cmake --preset default && cmake --build build
                   📋 ascii-chat(5)
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  File formats and configuration
+                  File formats and configuration man(5) page
                 </p>
               </TrackedLink>
 
@@ -293,23 +293,23 @@ cmake --preset default && cmake --build build
                 className="bg-gray-900/50 border border-pink-900/50 rounded-lg p-4 hover:border-pink-500/50 transition-colors"
               >
                 <h3 className="text-pink-300 font-semibold mb-1">
-                  📚 ascii-chat(3)
+                  📚 ascii-chat-*(3)
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  Library functions and API reference
+                  Documentation for the source code as man(3) pages
                 </p>
               </TrackedLink>
 
               <TrackedLink
-                to="/man1#ENVIRONMENT"
-                label="Home - Docs Environment Variables"
+                to="/man1#OPTIONS"
+                label="Home - Man1 OPTIONS"
                 className="bg-gray-900/50 border border-green-900/50 rounded-lg p-4 hover:border-green-500/50 transition-colors"
               >
                 <h3 className="text-green-300 font-semibold mb-1">
-                  🌍 Environment Variables
+                  🌍 Command Line --options
                 </h3>
                 <p className="text-gray-400 text-sm">
-                  See man page ENVIRONMENT section
+                  See man(1) page OPTIONS section
                 </p>
               </TrackedLink>
 
@@ -345,7 +345,7 @@ cmake --preset default && cmake --build build
                   label="Home - Man Page Reference"
                   className="text-cyan-400 hover:text-cyan-300 transition-colors underline"
                 >
-                  man page
+                  man(1) page
                 </TrackedLink>
                 .
               </p>
@@ -561,8 +561,8 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
               <div className="bg-gray-900/50  rounded-lg p-6">
                 <p className="text-gray-300 mb-4">
                   <strong className="text-cyan-400">ascii-chat</strong> and{" "}
-                  <strong className="text-purple-400">libasciichat</strong> are
-                  free and open source under the{" "}
+                  <strong className="text-purple-400">libasciichat</strong>{" "}
+                  are free and open source under the{" "}
                   <strong className="text-teal-400">MIT License</strong>.
                 </p>
                 <p className="text-gray-300 mb-4">
@@ -583,11 +583,11 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
                   Build with libasciichat
                 </h3>
                 <p className="text-gray-300 mb-4">
-                  <strong className="text-purple-400">libasciichat</strong> is
-                  the core library. It implements{" "}
-                  <strong className="text-pink-400">ACIP</strong> (ASCII-Chat
-                  Internet Protocol) for encrypted peer-to-peer video and audio
-                  streaming.{" "}
+                  <strong className="text-purple-400">libasciichat</strong>{" "}
+                  is the core library. It implements{" "}
+                  <strong className="text-pink-400">ACIP</strong>{" "}
+                  (ASCII-Chat Internet Protocol) for encrypted peer-to-peer
+                  video and audio streaming.{" "}
                   <TrackedLink
                     to="/man3"
                     label="Home - libasciichat API Documentation"
@@ -599,21 +599,21 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
 
                 <ul className="list-disc list-inside space-y-2 text-gray-300 mb-4 ml-4">
                   <li>
-                    <strong className="text-cyan-400">Video:</strong> Webcam,
-                    files, ASCII conversion, palettes, color modes, H.265
-                    encoding
+                    <strong className="text-cyan-400">Video:</strong>{" "}
+                    Webcam, files, ASCII conversion, palettes, color modes,
+                    H.265 encoding
                   </li>
                   <li>
-                    <strong className="text-purple-400">Audio:</strong> Opus
-                    codec, WebRTC AEC3 echo cancellation
+                    <strong className="text-purple-400">Audio:</strong>{" "}
+                    Opus codec, WebRTC AEC3 echo cancellation
                   </li>
                   <li>
-                    <strong className="text-teal-400">Crypto:</strong> Ed25519,
-                    X25519, XSalsa20-Poly1305, Argon2
+                    <strong className="text-teal-400">Crypto:</strong>{" "}
+                    Ed25519, X25519, XSalsa20-Poly1305, Argon2
                   </li>
                   <li>
-                    <strong className="text-pink-400">Network:</strong> TCP, NAT
-                    traversal, WebRTC ICE, ACDS
+                    <strong className="text-pink-400">Network:</strong>{" "}
+                    TCP, NAT traversal, WebRTC ICE, ACDS
                   </li>
                   <li>
                     <strong className="text-cyan-400">Protocol:</strong>{" "}
