@@ -30,7 +30,9 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">instrument_cov.c</p>
+<p class="Pp">instrument_cov.c - TODO: Add Doxygen documentation for
+    SanitizerCoverage instrumentation.</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -47,19 +49,33 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">TODO: Add Doxygen documentation for SanitizerCoverage
+    instrumentation.</p>
+<p class="Pp">Provides runtime hooks for code coverage tracking via Clang's
+    SanitizerCoverage. Needs documentation for:</p>
+<ul class="Bl-bullet">
+  <li>Coverage data collection hooks</li>
+  <li>Integration with logging system</li>
+  <li>Instrumentation runtime behavior</li>
+</ul>
+<p class="Pp">Definition in file <b>instrument_cov.c</b>.</p>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="void___sanitizer_cov_trace_pc_guard_(uint32_t_*_guard)"><a class="permalink" href="#void___sanitizer_cov_trace_pc_guard_(uint32_t_*_guard)">void
   __sanitizer_cov_trace_pc_guard (uint32_t * guard)</a></h2>
-<p class="Pp">Definition at line <b>9</b> of file <b>instrument_cov.c</b>.</p>
-<pre>9                                                      {
-10   if (guard == NULL || *guard == 0U) {
-11     return;
-12   }
-13 
-14   asciichat_instr_log_pc((uintptr_t)__builtin_return_address(0));
-15 }</pre>
+<p class="Pp">Definition at line <b>21</b> of file <b>instrument_cov.c</b>.</p>
+<pre>21                                                      {
+22   if (guard == NULL || *guard == 0U) {
+23     return;
+24   }
+25 
+26   asciichat_instr_log_pc((uintptr_t)__builtin_return_address(0));
+27 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_instr_log_pc()</b>.</p>
@@ -68,23 +84,23 @@
 <h2 class="Ss" id="void___sanitizer_cov_trace_pc_guard_init_(uint32_t_*_start,_uint32_t_*_stop)"><a class="permalink" href="#void___sanitizer_cov_trace_pc_guard_init_(uint32_t_*_start,_uint32_t_*_stop)">void
   __sanitizer_cov_trace_pc_guard_init (uint32_t * start, uint32_t *
   stop)</a></h2>
-<p class="Pp">Definition at line <b>17</b> of file <b>instrument_cov.c</b>.</p>
-<pre>17                                                                           {
-18   if (start == NULL || stop == NULL || start == stop) {
-19     return;
-20   }
-21 
-22   if (*start != 0U) {
-23     return;
-24   }
-25 
-26   uint32_t counter = 1U;
-27   for (uint32_t *it = start; it &lt; stop; ++it) {
-28     if (*it == 0U) {
-29       *it = counter++;
-30     }
-31   }
-32 }</pre>
+<p class="Pp">Definition at line <b>29</b> of file <b>instrument_cov.c</b>.</p>
+<pre>29                                                                           {
+30   if (start == NULL || stop == NULL || start == stop) {
+31     return;
+32   }
+33 
+34   if (*start != 0U) {
+35     return;
+36   }
+37 
+38   uint32_t counter = 1U;
+39   for (uint32_t *it = start; it &lt; stop; ++it) {
+40     if (*it == 0U) {
+41       *it = counter++;
+42     }
+43   }
+44 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>

@@ -30,7 +30,9 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">instrument_log.c</p>
+<p class="Pp">instrument_log.c - TODO: Add Doxygen documentation for
+    instrumentation logging.</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -122,34 +124,43 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">TODO: Add Doxygen documentation for instrumentation logging.</p>
+<p class="Pp">Provides logging integration for runtime instrumentation and
+    debugging. Needs documentation for: Log capture, instrumentation hooks,
+    diagnostic output</p>
+<p class="Pp">Definition in file <b>instrument_log.c</b>.</p>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
   Definition Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME___'ascii">#define
   ASCII_INSTR_SOURCE_PRINT_DEFAULT_BASENAME 'ascii-instr'</a></h2>
-<p class="Pp">Definition at line <b>57</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>66</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX___1">#define
   ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX 1</a></h2>
-<p class="Pp">Definition at line <b>34</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>43</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_LINE___4096">#define
   ASCII_INSTR_SOURCE_PRINT_MAX_LINE 4096</a></h2>
-<p class="Pp">Definition at line <b>61</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>70</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048"><a class="permalink" href="#_define_ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET___2048">#define
   ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET 2048</a></h2>
-<p class="Pp">Definition at line <b>65</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>74</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="_define_posix_write___write"><a class="permalink" href="#_define_posix_write___write">#define
   posix_write write</a></h2>
-<p class="Pp">Definition at line <b>53</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>62</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
 </section>
 </section>
@@ -204,13 +215,13 @@
     </i></b></a></dt>
   <dd></dd>
 </dl>
-<p class="Pp">Definition at line <b>68</b> of file <b>instrument_log.c</b>.</p>
-<pre>68                                            {
-69   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
-70   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
-71   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
-72   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
-73 } asciichat_instr_selector_type_t;</pre>
+<p class="Pp">Definition at line <b>77</b> of file <b>instrument_log.c</b>.</p>
+<pre>77                                            {
+78   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_SUBSTRING = 0,
+79   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FILE_GLOB = 1,
+80   ASCII_INSTR_SOURCE_PRINT_SELECTOR_FUNCTION_GLOB = 2,
+81   ASCII_INSTR_SOURCE_PRINT_SELECTOR_MODULE = 3,
+82 } asciichat_instr_selector_type_t;</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
@@ -220,22 +231,22 @@
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_instr_coverage_enabled (void )</h2>
-<p class="Pp">Definition at line <b>415</b> of file <b>instrument_log.c</b>.</p>
-<pre>415                                             {
-416   if (g_disable_write) {
-417     return false;
-418   }
-419 
-420   // Initialize runtime once using lock-free lifecycle API
-421   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
-422     if (lifecycle_init_once(&amp;g_runtime_lc)) {
-423       asciichat_instr_runtime_init_once();
-424       lifecycle_init_commit(&amp;g_runtime_lc);
-425     }
-426   }
-427 
-428   return g_coverage_enabled;
-429 }</pre>
+<p class="Pp">Definition at line <b>424</b> of file <b>instrument_log.c</b>.</p>
+<pre>424                                             {
+425   if (g_disable_write) {
+426     return false;
+427   }
+428 
+429   // Initialize runtime once using lock-free lifecycle API
+430   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
+431     if (lifecycle_init_once(&amp;g_runtime_lc)) {
+432       asciichat_instr_runtime_init_once();
+433       lifecycle_init_commit(&amp;g_runtime_lc);
+434     }
+435   }
+436 
+437   return g_coverage_enabled;
+438 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>lifecycle_init_commit()</b>,
@@ -247,155 +258,155 @@
   asciichat_instr_log_line (const char * file_path, uint32_t line_number, const
   char * function_name, const char * snippet, uint8_t
   is_macro_expansion)</a></h2>
-<p class="Pp">Definition at line <b>265</b> of file <b>instrument_log.c</b>.</p>
-<pre>266                                                                                {
-267   // Instrumentation is enabled by default when the binary is built with Source Print.
-268   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
-269   if (!g_instrumentation_enabled_checked) {
-270     const char *enable_env = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_ENABLE&quot;);
-271     // Default to enabled (true) - only disable if explicitly set to &quot;0&quot;, &quot;false&quot;, &quot;off&quot;, or &quot;no&quot;
-272     if (enable_env != NULL &amp;&amp; enable_env[0] != '\0') {
-273       g_instrumentation_enabled = asciichat_instr_env_is_enabled(enable_env);
-274     } else {
-275       g_instrumentation_enabled = true; // Default to enabled when instrumented
-276     }
-277     g_instrumentation_enabled_checked = true;
-278   }
-279 
-280   if (!g_instrumentation_enabled) {
-281     return;
-282   }
-283 
-284   if (g_disable_write) {
-285     return;
-286   }
-287 
-288   if (g_logging_reentry_guard) {
-289     return;
-290   }
-291 
-292   g_logging_reentry_guard = true;
-293 
-294   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
-295   if (runtime == NULL) {
-296     goto cleanup;
-297   }
-298 
-299   if (!asciichat_instr_should_log(runtime, file_path, line_number, function_name)) {
-300     goto cleanup;
-301   }
+<p class="Pp">Definition at line <b>274</b> of file <b>instrument_log.c</b>.</p>
+<pre>275                                                                                {
+276   // Instrumentation is enabled by default when the binary is built with Source Print.
+277   // Set ASCII_INSTR_SOURCE_PRINT_ENABLE=0 to disable tracing at runtime.
+278   if (!g_instrumentation_enabled_checked) {
+279     const char *enable_env = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_ENABLE&quot;);
+280     // Default to enabled (true) - only disable if explicitly set to &quot;0&quot;, &quot;false&quot;, &quot;off&quot;, or &quot;no&quot;
+281     if (enable_env != NULL &amp;&amp; enable_env[0] != '\0') {
+282       g_instrumentation_enabled = asciichat_instr_env_is_enabled(enable_env);
+283     } else {
+284       g_instrumentation_enabled = true; // Default to enabled when instrumented
+285     }
+286     g_instrumentation_enabled_checked = true;
+287   }
+288 
+289   if (!g_instrumentation_enabled) {
+290     return;
+291   }
+292 
+293   if (g_disable_write) {
+294     return;
+295   }
+296 
+297   if (g_logging_reentry_guard) {
+298     return;
+299   }
+300 
+301   g_logging_reentry_guard = true;
 302 
-303   runtime-&gt;call_counter++;
-304   if (runtime-&gt;rate_enabled) {
-305     const uint64_t counter = runtime-&gt;call_counter;
-306     if (((counter - 1U) % runtime-&gt;rate) != 0U) {
-307       goto cleanup;
-308     }
-309   }
-310 
-311   if (runtime-&gt;fd &lt; 0) {
-312     if (asciichat_instr_open_log_file(runtime) != 0) {
-313       runtime-&gt;stderr_fallback = true;
-314     }
-315   }
-316 
-317   const int fd = runtime-&gt;stderr_fallback ? STDERR_FILENO : runtime-&gt;fd;
-318   char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
-319   size_t pos = 0;
-320 
-321   uint64_t realtime_ns = time_get_realtime_ns();
-322   time_t sec = (time_t)(realtime_ns / NS_PER_SEC_INT);
-323   long nsec = (long)(realtime_ns % NS_PER_SEC_INT);
-324   struct tm tm_now;
-325   memset(&amp;tm_now, 0, sizeof(tm_now));
-326   if (platform_gtime(&amp;sec, &amp;tm_now) != ASCIICHAT_OK) {
-327     memset(&amp;tm_now, 0, sizeof(tm_now));
-328   }
+303   asciichat_instr_runtime_t *runtime = asciichat_instr_runtime_get();
+304   if (runtime == NULL) {
+305     goto cleanup;
+306   }
+307 
+308   if (!asciichat_instr_should_log(runtime, file_path, line_number, function_name)) {
+309     goto cleanup;
+310   }
+311 
+312   runtime-&gt;call_counter++;
+313   if (runtime-&gt;rate_enabled) {
+314     const uint64_t counter = runtime-&gt;call_counter;
+315     if (((counter - 1U) % runtime-&gt;rate) != 0U) {
+316       goto cleanup;
+317     }
+318   }
+319 
+320   if (runtime-&gt;fd &lt; 0) {
+321     if (asciichat_instr_open_log_file(runtime) != 0) {
+322       runtime-&gt;stderr_fallback = true;
+323     }
+324   }
+325 
+326   const int fd = runtime-&gt;stderr_fallback ? STDERR_FILENO : runtime-&gt;fd;
+327   char buffer[ASCII_INSTR_SOURCE_PRINT_MAX_LINE];
+328   size_t pos = 0;
 329 
-330   char timestamp[32];
-331   size_t ts_len = strftime(timestamp, sizeof(timestamp), &quot;%Y-%m-%dT%H:%M:%S&quot;, &amp;tm_now);
-332   if (ts_len == 0) {
-333     SAFE_STRNCPY(timestamp, &quot;1970-01-01T00:00:00&quot;, sizeof(timestamp));
-334     ts_len = strlen(timestamp);
-335   }
-336 
-337   char elapsed_buf[32];
-338   elapsed_buf[0] = '\0';
-339   if (g_ticks_initialized) {
-340     uint64_t now_ns = time_get_ns();
-341     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
-342     if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) &lt; 0) {
-343       elapsed_buf[0] = '\0';
-344     }
-345   }
-346 
-347   runtime-&gt;sequence++;
-348 
-349   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : &quot;-&quot;;
-350 
-351   const char *safe_file_path = (file_path != NULL) ? file_path : &quot;&lt;unknown&gt;&quot;;
-352   pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
-353                        &quot;pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=&quot;,
-354                        runtime-&gt;pid, (unsigned long long)runtime-&gt;thread_id, (unsigned long long)runtime-&gt;sequence,
-355                        (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
-356                        function_name ? function_name : &quot;&lt;unknown&gt;&quot;, (unsigned)is_macro_expansion);
+330   uint64_t realtime_ns = time_get_realtime_ns();
+331   time_t sec = (time_t)(realtime_ns / NS_PER_SEC_INT);
+332   long nsec = (long)(realtime_ns % NS_PER_SEC_INT);
+333   struct tm tm_now;
+334   memset(&amp;tm_now, 0, sizeof(tm_now));
+335   if (platform_gtime(&amp;sec, &amp;tm_now) != ASCIICHAT_OK) {
+336     memset(&amp;tm_now, 0, sizeof(tm_now));
+337   }
+338 
+339   char timestamp[32];
+340   size_t ts_len = strftime(timestamp, sizeof(timestamp), &quot;%Y-%m-%dT%H:%M:%S&quot;, &amp;tm_now);
+341   if (ts_len == 0) {
+342     SAFE_STRNCPY(timestamp, &quot;1970-01-01T00:00:00&quot;, sizeof(timestamp));
+343     ts_len = strlen(timestamp);
+344   }
+345 
+346   char elapsed_buf[32];
+347   elapsed_buf[0] = '\0';
+348   if (g_ticks_initialized) {
+349     uint64_t now_ns = time_get_ns();
+350     uint64_t elapsed_ns = time_elapsed_ns(g_start_ns, now_ns);
+351     if (time_pretty((uint64_t)elapsed_ns, -1, elapsed_buf, sizeof(elapsed_buf)) &lt; 0) {
+352       elapsed_buf[0] = '\0';
+353     }
+354   }
+355 
+356   runtime-&gt;sequence++;
 357 
-358   if (snippet != NULL) {
-359     size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
-360     for (size_t i = 0; i &lt; snippet_len &amp;&amp; pos &lt; sizeof(buffer) - 2; ++i) {
-361       const char ch = snippet[i];
-362       switch (ch) {
-363       case '\n':
-364         buffer[pos++] = '\\';
-365         buffer[pos++] = 'n';
-366         break;
-367       case '\r':
-368         buffer[pos++] = '\\';
-369         buffer[pos++] = 'r';
-370         break;
-371       case '\t':
-372         buffer[pos++] = '\\';
-373         buffer[pos++] = 't';
-374         break;
-375       default:
-376         buffer[pos++] = ch;
-377         break;
-378       }
-379     }
-380   }
-381 
-382   if (pos &gt;= sizeof(buffer) - 1) {
-383     pos = sizeof(buffer) - 2;
-384   }
-385 
-386   buffer[pos++] = '\n';
-387   buffer[pos] = '\0';
-388 
-389   asciichat_instr_write_full(fd, buffer, pos);
+358   const char *elapsed_field = (elapsed_buf[0] != '\0') ? elapsed_buf : &quot;-&quot;;
+359 
+360   const char *safe_file_path = (file_path != NULL) ? file_path : &quot;&lt;unknown&gt;&quot;;
+361   pos += safe_snprintf(buffer + pos, sizeof(buffer) - pos,
+362                        &quot;pid=%d tid=%llu seq=%llu ts=%.*s.%09ldZ elapsed=%s file=%s line=%u func=%s macro=%u snippet=&quot;,
+363                        runtime-&gt;pid, (unsigned long long)runtime-&gt;thread_id, (unsigned long long)runtime-&gt;sequence,
+364                        (int)ts_len, timestamp, nsec, elapsed_field, safe_file_path, line_number,
+365                        function_name ? function_name : &quot;&lt;unknown&gt;&quot;, (unsigned)is_macro_expansion);
+366 
+367   if (snippet != NULL) {
+368     size_t snippet_len = strnlen(snippet, ASCII_INSTR_SOURCE_PRINT_MAX_SNIPPET);
+369     for (size_t i = 0; i &lt; snippet_len &amp;&amp; pos &lt; sizeof(buffer) - 2; ++i) {
+370       const char ch = snippet[i];
+371       switch (ch) {
+372       case '\n':
+373         buffer[pos++] = '\\';
+374         buffer[pos++] = 'n';
+375         break;
+376       case '\r':
+377         buffer[pos++] = '\\';
+378         buffer[pos++] = 'r';
+379         break;
+380       case '\t':
+381         buffer[pos++] = '\\';
+382         buffer[pos++] = 't';
+383         break;
+384       default:
+385         buffer[pos++] = ch;
+386         break;
+387       }
+388     }
+389   }
 390 
-391   // Also echo to stderr if requested via environment variable
-392   if (!g_echo_to_stderr_initialized) {
-393     const char *echo_env = SAFE_GETENV(&quot;ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR&quot;);
-394     g_echo_to_stderr = asciichat_instr_env_is_enabled(echo_env);
-395     g_echo_to_stderr_initialized = true;
-396   }
+391   if (pos &gt;= sizeof(buffer) - 1) {
+392     pos = sizeof(buffer) - 2;
+393   }
+394 
+395   buffer[pos++] = '\n';
+396   buffer[pos] = '\0';
 397 
-398   if (g_echo_to_stderr &amp;&amp; !runtime-&gt;stderr_fallback) {
-399     // Write to stderr in addition to the log file
-400     // Suppress Windows deprecation warning for POSIX write function
-401 #ifdef _WIN32
-402 #pragma clang diagnostic push
-403 #pragma clang diagnostic ignored &quot;-Wdeprecated-declarations&quot;
-404 #endif
-405     (void)posix_write(STDERR_FILENO, buffer, pos);
-406 #ifdef _WIN32
-407 #pragma clang diagnostic pop
-408 #endif
-409   }
-410 
-411 cleanup:
-412   g_logging_reentry_guard = false;
-413 }</pre>
+398   asciichat_instr_write_full(fd, buffer, pos);
+399 
+400   // Also echo to stderr if requested via environment variable
+401   if (!g_echo_to_stderr_initialized) {
+402     const char *echo_env = SAFE_GETENV(&quot;ASCII_CHAT_DEBUG_SELF_SOURCE_CODE_LOG_STDERR&quot;);
+403     g_echo_to_stderr = asciichat_instr_env_is_enabled(echo_env);
+404     g_echo_to_stderr_initialized = true;
+405   }
+406 
+407   if (g_echo_to_stderr &amp;&amp; !runtime-&gt;stderr_fallback) {
+408     // Write to stderr in addition to the log file
+409     // Suppress Windows deprecation warning for POSIX write function
+410 #ifdef _WIN32
+411 #pragma clang diagnostic push
+412 #pragma clang diagnostic ignored &quot;-Wdeprecated-declarations&quot;
+413 #endif
+414     (void)posix_write(STDERR_FILENO, buffer, pos);
+415 #ifdef _WIN32
+416 #pragma clang diagnostic pop
+417 #endif
+418   }
+419 
+420 cleanup:
+421   g_logging_reentry_guard = false;
+422 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ASCII_INSTR_SOURCE_PRINT_MAX_LINE</b>,
@@ -416,16 +427,16 @@
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_instr_log_pc_(uintptr_t_program_counter)"><a class="permalink" href="#void_asciichat_instr_log_pc_(uintptr_t_program_counter)">void
   asciichat_instr_log_pc (uintptr_t program_counter)</a></h2>
-<p class="Pp">Definition at line <b>431</b> of file <b>instrument_log.c</b>.</p>
-<pre>431                                                        {
-432   if (!asciichat_instr_coverage_enabled()) {
-433     return;
-434   }
-435 
-436   char snippet[64];
-437   safe_snprintf(snippet, sizeof(snippet), &quot;pc=0x%zx&quot;, (size_t)program_counter);
-438   asciichat_instr_log_line(&quot;__coverage__&quot;, 0, &quot;&lt;coverage&gt;&quot;, snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
-439 }</pre>
+<p class="Pp">Definition at line <b>440</b> of file <b>instrument_log.c</b>.</p>
+<pre>440                                                        {
+441   if (!asciichat_instr_coverage_enabled()) {
+442     return;
+443   }
+444 
+445   char snippet[64];
+446   safe_snprintf(snippet, sizeof(snippet), &quot;pc=0x%zx&quot;, (size_t)program_counter);
+447   asciichat_instr_log_line(&quot;__coverage__&quot;, 0, &quot;&lt;coverage&gt;&quot;, snippet, ASCII_INSTR_SOURCE_PRINT_MACRO_NONE);
+448 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_instr_coverage_enabled()</b>,
@@ -436,39 +447,39 @@
 <h2 class="Ss" id="void_asciichat_instr_runtime_destroy_("><a class="permalink" href="#void_asciichat_instr_runtime_destroy_(">void
   asciichat_instr_runtime_destroy (<b>asciichat_instr_runtime_t</b> *
   runtime)</a></h2>
-<p class="Pp">Definition at line <b>213</b> of file <b>instrument_log.c</b>.</p>
-<pre>213                                                                          {
-214   if (runtime == NULL) {
-215     return;
-216   }
-217 
-218   if (runtime-&gt;fd &gt;= 0) {
-219     platform_close(runtime-&gt;fd);
-220     runtime-&gt;fd = -1;
-221   }
-222 
-223 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
-224   if (runtime-&gt;include_regex_valid) {
-225     regfree(&amp;runtime-&gt;include_regex);
-226     runtime-&gt;include_regex_valid = false;
-227   }
-228   if (runtime-&gt;exclude_regex_valid) {
-229     regfree(&amp;runtime-&gt;exclude_regex);
-230     runtime-&gt;exclude_regex_valid = false;
-231   }
-232   if (runtime-&gt;function_include_regex_valid) {
-233     regfree(&amp;runtime-&gt;function_include_regex);
-234     runtime-&gt;function_include_regex_valid = false;
-235   }
-236   if (runtime-&gt;function_exclude_regex_valid) {
-237     regfree(&amp;runtime-&gt;function_exclude_regex);
-238     runtime-&gt;function_exclude_regex_valid = false;
-239   }
-240 #endif
-241 
-242   asciichat_instr_only_list_destroy(&amp;runtime-&gt;only_selectors);
-243   SAFE_FREE(runtime);
-244 }</pre>
+<p class="Pp">Definition at line <b>222</b> of file <b>instrument_log.c</b>.</p>
+<pre>222                                                                          {
+223   if (runtime == NULL) {
+224     return;
+225   }
+226 
+227   if (runtime-&gt;fd &gt;= 0) {
+228     platform_close(runtime-&gt;fd);
+229     runtime-&gt;fd = -1;
+230   }
+231 
+232 #if ASCII_INSTR_SOURCE_PRINT_HAVE_REGEX
+233   if (runtime-&gt;include_regex_valid) {
+234     regfree(&amp;runtime-&gt;include_regex);
+235     runtime-&gt;include_regex_valid = false;
+236   }
+237   if (runtime-&gt;exclude_regex_valid) {
+238     regfree(&amp;runtime-&gt;exclude_regex);
+239     runtime-&gt;exclude_regex_valid = false;
+240   }
+241   if (runtime-&gt;function_include_regex_valid) {
+242     regfree(&amp;runtime-&gt;function_include_regex);
+243     runtime-&gt;function_include_regex_valid = false;
+244   }
+245   if (runtime-&gt;function_exclude_regex_valid) {
+246     regfree(&amp;runtime-&gt;function_exclude_regex);
+247     runtime-&gt;function_exclude_regex_valid = false;
+248   }
+249 #endif
+250 
+251   asciichat_instr_only_list_destroy(&amp;runtime-&gt;only_selectors);
+252   SAFE_FREE(runtime);
+253 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_instr_runtime::exclude_regex</b>,
@@ -486,53 +497,53 @@
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_instr_runtime_t</b> * asciichat_instr_runtime_get
   (void )</h2>
-<p class="Pp">Definition at line <b>166</b> of file <b>instrument_log.c</b>.</p>
-<pre>166                                                              {
-167   if (g_disable_write) {
-168     return NULL;
-169   }
-170 
-171   // Initialize runtime once using lock-free lifecycle API
-172   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
-173     if (lifecycle_init_once(&amp;g_runtime_lc)) {
-174       asciichat_instr_runtime_init_once();
-175       lifecycle_init_commit(&amp;g_runtime_lc);
-176     }
-177   }
-178 
-179   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
-180   if (runtime != NULL) {
-181     return runtime;
-182   }
-183 
-184   runtime = SAFE_CALLOC(1, sizeof(*runtime), asciichat_instr_runtime_t *);
-185   if (runtime == NULL) {
-186     return NULL;
-187   }
-188 
-189   runtime-&gt;pid = platform_get_pid();
-190   runtime-&gt;thread_id = asciichat_thread_current_id();
-191   runtime-&gt;sequence = 0;
-192   runtime-&gt;call_counter = 0;
-193   runtime-&gt;fd = -1;
-194   runtime-&gt;filter_include = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_INCLUDE&quot;);
-195   runtime-&gt;filter_exclude = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_EXCLUDE&quot;);
-196   runtime-&gt;filter_thread = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_THREAD&quot;);
-197   runtime-&gt;filter_function_include = NULL;
-198   runtime-&gt;filter_function_exclude = NULL;
-199   runtime-&gt;filters_enabled = false;
-200   runtime-&gt;rate = 1;
-201   runtime-&gt;rate_enabled = false;
-202 
-203   asciichat_instr_runtime_configure(runtime);
-204 
-205   if (ascii_tls_set(g_runtime_key, runtime) != 0) {
-206     SAFE_FREE(runtime);
-207     return NULL;
-208   }
-209 
-210   return runtime;
-211 }</pre>
+<p class="Pp">Definition at line <b>175</b> of file <b>instrument_log.c</b>.</p>
+<pre>175                                                              {
+176   if (g_disable_write) {
+177     return NULL;
+178   }
+179 
+180   // Initialize runtime once using lock-free lifecycle API
+181   if (!lifecycle_is_initialized(&amp;g_runtime_lc)) {
+182     if (lifecycle_init_once(&amp;g_runtime_lc)) {
+183       asciichat_instr_runtime_init_once();
+184       lifecycle_init_commit(&amp;g_runtime_lc);
+185     }
+186   }
+187 
+188   asciichat_instr_runtime_t *runtime = ascii_tls_get(g_runtime_key);
+189   if (runtime != NULL) {
+190     return runtime;
+191   }
+192 
+193   runtime = SAFE_CALLOC(1, sizeof(*runtime), asciichat_instr_runtime_t *);
+194   if (runtime == NULL) {
+195     return NULL;
+196   }
+197 
+198   runtime-&gt;pid = platform_get_pid();
+199   runtime-&gt;thread_id = asciichat_thread_current_id();
+200   runtime-&gt;sequence = 0;
+201   runtime-&gt;call_counter = 0;
+202   runtime-&gt;fd = -1;
+203   runtime-&gt;filter_include = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_INCLUDE&quot;);
+204   runtime-&gt;filter_exclude = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_EXCLUDE&quot;);
+205   runtime-&gt;filter_thread = SAFE_GETENV(&quot;ASCII_INSTR_SOURCE_PRINT_THREAD&quot;);
+206   runtime-&gt;filter_function_include = NULL;
+207   runtime-&gt;filter_function_exclude = NULL;
+208   runtime-&gt;filters_enabled = false;
+209   runtime-&gt;rate = 1;
+210   runtime-&gt;rate_enabled = false;
+211 
+212   asciichat_instr_runtime_configure(runtime);
+213 
+214   if (ascii_tls_set(g_runtime_key, runtime) != 0) {
+215     SAFE_FREE(runtime);
+216     return NULL;
+217   }
+218 
+219   return runtime;
+220 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_tls_get()</b>, <b>ascii_tls_set()</b>,
@@ -556,25 +567,25 @@
 <section class="Ss">
 <h2 class="Ss" id="void_asciichat_instr_runtime_global_destroy_(void_)"><a class="permalink" href="#void_asciichat_instr_runtime_global_destroy_(void_)">void
   asciichat_instr_runtime_global_destroy (void )</a></h2>
-<p class="Pp">Definition at line <b>246</b> of file <b>instrument_log.c</b>.</p>
-<pre>246                                                   {
-247   if (lifecycle_shutdown(&amp;g_runtime_lc)) {
-248     g_disable_write = true;
-249     ascii_tls_key_delete(g_runtime_key);
-250     g_ticks_initialized = false;
-251     g_start_ns = 0;
-252     g_coverage_enabled = false;
-253     g_output_dir_set = false;
-254     g_output_dir[0] = '\0';
-255     g_instrumentation_enabled_checked = false;
-256     g_instrumentation_enabled = false;
-257     g_echo_to_stderr_initialized = false;
-258     g_echo_to_stderr = false;
-259   }
-260 
-261   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
-262   g_disable_write = false;
-263 }</pre>
+<p class="Pp">Definition at line <b>255</b> of file <b>instrument_log.c</b>.</p>
+<pre>255                                                   {
+256   if (lifecycle_shutdown(&amp;g_runtime_lc)) {
+257     g_disable_write = true;
+258     ascii_tls_key_delete(g_runtime_key);
+259     g_ticks_initialized = false;
+260     g_start_ns = 0;
+261     g_coverage_enabled = false;
+262     g_output_dir_set = false;
+263     g_output_dir[0] = '\0';
+264     g_instrumentation_enabled_checked = false;
+265     g_instrumentation_enabled = false;
+266     g_echo_to_stderr_initialized = false;
+267     g_echo_to_stderr = false;
+268   }
+269 
+270   // Reset g_disable_write so instrumentation can be re-enabled in subsequent tests
+271   g_disable_write = false;
+272 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ascii_tls_key_delete()</b>, and

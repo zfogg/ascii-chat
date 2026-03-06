@@ -30,7 +30,9 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">lifecycle.c</p>
+<p class="Pp">lifecycle.c - TODO: Add Doxygen documentation for module lifecycle
+    management.</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -65,20 +67,29 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">TODO: Add Doxygen documentation for module lifecycle
+  management.</p>
+<p class="Pp">Needs documentation for: Module initialization/cleanup, lifecycle
+    state tracking</p>
+<p class="Pp">Definition in file <b>lifecycle.c</b>.</p>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="void_lifecycle_destroy_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_destroy_commit_(lifecycle_t_*_lc)">void
   lifecycle_destroy_commit (lifecycle_t * lc)</a></h2>
-<p class="Pp">Definition at line <b>215</b> of file <b>lifecycle.c</b>.</p>
-<pre>215                                                {
-216   if (lc == NULL) {
-217     log_dev(&quot;[lifecycle] destroy_commit: NULL lifecycle pointer&quot;);
-218     return;
-219   }
-220   log_dev(&quot;[lifecycle] destroy_commit: transitioning DESTROYING &#x2192; UNINITIALIZED&quot;);
-221   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
-222 }</pre>
+<p class="Pp">Definition at line <b>223</b> of file <b>lifecycle.c</b>.</p>
+<pre>223                                                {
+224   if (lc == NULL) {
+225     log_dev(&quot;[lifecycle] destroy_commit: NULL lifecycle pointer&quot;);
+226     return;
+227   }
+228   log_dev(&quot;[lifecycle] destroy_commit: transitioning DESTROYING &#x2192; UNINITIALIZED&quot;);
+229   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+230 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>.</p>
@@ -86,49 +97,49 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_destroy_once (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>172</b> of file <b>lifecycle.c</b>.</p>
-<pre>172                                              {
-173   if (lc == NULL) {
-174     log_dev(&quot;[lifecycle] destroy_once: NULL lifecycle pointer&quot;);
-175     return false;
-176   }
-177 
-178   uint64_t expected = LIFECYCLE_INITIALIZED;
-179   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_DESTROYING)) {
-180     // If not initialized, nothing to destroy
-181     if (expected == LIFECYCLE_UNINITIALIZED) {
-182       log_dev(&quot;[lifecycle] destroy_once: already uninitialized, nothing to destroy&quot;);
-183       return false;
-184     }
+<p class="Pp">Definition at line <b>180</b> of file <b>lifecycle.c</b>.</p>
+<pre>180                                              {
+181   if (lc == NULL) {
+182     log_dev(&quot;[lifecycle] destroy_once: NULL lifecycle pointer&quot;);
+183     return false;
+184   }
 185 
-186     // If dead, never allow destruction (already permanently shut down)
-187     if (expected == LIFECYCLE_DEAD) {
-188       log_dev(&quot;[lifecycle] destroy_once: module is dead, no destruction allowed&quot;);
-189       return false;
-190     }
-191 
-192     // If already destroying, don't duplicate work (return false, let first destroyer finish)
-193     if (expected == LIFECYCLE_DESTROYING) {
-194       log_dev(&quot;[lifecycle] destroy_once: already destroying, skipping (first destroyer has priority)&quot;);
-195       return false;
-196     }
-197 
-198     // If initializing, skip destruction (init may still be in progress)
-199     if (expected == LIFECYCLE_INITIALIZING) {
-200       log_dev(&quot;[lifecycle] destroy_once: still initializing, skipping destruction&quot;);
-201       return false;
-202     }
-203 
-204     // Unexpected state
-205     log_dev(&quot;[lifecycle] destroy_once: unexpected state: %d&quot;, expected);
-206     return false;
-207   }
-208 
-209   // Winner: state is now LIFECYCLE_DESTROYING
-210   // Caller must call lifecycle_destroy_commit()
-211   log_dev(&quot;[lifecycle] destroy_once: won CAS, transitioned to DESTROYING&quot;);
-212   return true;
-213 }</pre>
+186   uint64_t expected = LIFECYCLE_INITIALIZED;
+187   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_DESTROYING)) {
+188     // If not initialized, nothing to destroy
+189     if (expected == LIFECYCLE_UNINITIALIZED) {
+190       log_dev(&quot;[lifecycle] destroy_once: already uninitialized, nothing to destroy&quot;);
+191       return false;
+192     }
+193 
+194     // If dead, never allow destruction (already permanently shut down)
+195     if (expected == LIFECYCLE_DEAD) {
+196       log_dev(&quot;[lifecycle] destroy_once: module is dead, no destruction allowed&quot;);
+197       return false;
+198     }
+199 
+200     // If already destroying, don't duplicate work (return false, let first destroyer finish)
+201     if (expected == LIFECYCLE_DESTROYING) {
+202       log_dev(&quot;[lifecycle] destroy_once: already destroying, skipping (first destroyer has priority)&quot;);
+203       return false;
+204     }
+205 
+206     // If initializing, skip destruction (init may still be in progress)
+207     if (expected == LIFECYCLE_INITIALIZING) {
+208       log_dev(&quot;[lifecycle] destroy_once: still initializing, skipping destruction&quot;);
+209       return false;
+210     }
+211 
+212     // Unexpected state
+213     log_dev(&quot;[lifecycle] destroy_once: unexpected state: %d&quot;, expected);
+214     return false;
+215   }
+216 
+217   // Winner: state is now LIFECYCLE_DESTROYING
+218   // Caller must call lifecycle_destroy_commit()
+219   log_dev(&quot;[lifecycle] destroy_once: won CAS, transitioned to DESTROYING&quot;);
+220   return true;
+221 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_u64()</b>.</p>
@@ -137,31 +148,31 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_init (lifecycle_t * lc, const char *
   name)</h2>
-<p class="Pp">Definition at line <b>6</b> of file <b>lifecycle.c</b>.</p>
-<pre>6                                                        {
-7   if (lc == NULL) {
-8     log_dev(&quot;[lifecycle] init: NULL lifecycle pointer&quot;);
-9     return false;
-10   }
-11   uint64_t expected = LIFECYCLE_UNINITIALIZED;
-12   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED)) {
-13     log_dev(&quot;[lifecycle] init: %s already initialized (current state: %llu)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;, expected);
-14     return false; // Already initialized or in INITIALIZING/DEAD state
-15   }
-16 
-17   /* Winner: initialize sync primitive if configured */
-18   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
-19     log_dev(&quot;[lifecycle] init: %s initializing mutex&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
-20     mutex_init(lc-&gt;sync.mutex, name);
-21   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
-22     log_dev(&quot;[lifecycle] init: %s initializing rwlock&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
-23     rwlock_init(lc-&gt;sync.rwlock, name);
-24   } else {
-25     log_dev(&quot;[lifecycle] init: %s initialized (no sync primitive)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
-26   }
-27 
-28   return true;
-29 }</pre>
+<p class="Pp">Definition at line <b>14</b> of file <b>lifecycle.c</b>.</p>
+<pre>14                                                        {
+15   if (lc == NULL) {
+16     log_dev(&quot;[lifecycle] init: NULL lifecycle pointer&quot;);
+17     return false;
+18   }
+19   uint64_t expected = LIFECYCLE_UNINITIALIZED;
+20   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZED)) {
+21     log_dev(&quot;[lifecycle] init: %s already initialized (current state: %llu)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;, expected);
+22     return false; // Already initialized or in INITIALIZING/DEAD state
+23   }
+24 
+25   /* Winner: initialize sync primitive if configured */
+26   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+27     log_dev(&quot;[lifecycle] init: %s initializing mutex&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+28     mutex_init(lc-&gt;sync.mutex, name);
+29   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+30     log_dev(&quot;[lifecycle] init: %s initializing rwlock&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+31     rwlock_init(lc-&gt;sync.rwlock, name);
+32   } else {
+33     log_dev(&quot;[lifecycle] init: %s initialized (no sync primitive)&quot;, name ? name : &quot;&lt;unnamed&gt;&quot;);
+34   }
+35 
+36   return true;
+37 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_u64()</b>, <b>mutex_init()</b>, and
@@ -181,15 +192,15 @@
 <section class="Ss">
 <h2 class="Ss" id="void_lifecycle_init_abort_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_abort_(lifecycle_t_*_lc)">void
   lifecycle_init_abort (lifecycle_t * lc)</a></h2>
-<p class="Pp">Definition at line <b>78</b> of file <b>lifecycle.c</b>.</p>
-<pre>78                                            {
-79   if (lc == NULL) {
-80     log_dev(&quot;[lifecycle] init_abort: NULL lifecycle pointer&quot;);
-81     return;
-82   }
-83   log_dev(&quot;[lifecycle] init_abort: transitioning INITIALIZING &#x2192; UNINITIALIZED (retry allowed)&quot;);
-84   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
-85 }</pre>
+<p class="Pp">Definition at line <b>86</b> of file <b>lifecycle.c</b>.</p>
+<pre>86                                            {
+87   if (lc == NULL) {
+88     log_dev(&quot;[lifecycle] init_abort: NULL lifecycle pointer&quot;);
+89     return;
+90   }
+91   log_dev(&quot;[lifecycle] init_abort: transitioning INITIALIZING &#x2192; UNINITIALIZED (retry allowed)&quot;);
+92   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_UNINITIALIZED);
+93 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>.</p>
@@ -199,15 +210,15 @@
 <section class="Ss">
 <h2 class="Ss" id="void_lifecycle_init_commit_(lifecycle_t_*_lc)"><a class="permalink" href="#void_lifecycle_init_commit_(lifecycle_t_*_lc)">void
   lifecycle_init_commit (lifecycle_t * lc)</a></h2>
-<p class="Pp">Definition at line <b>69</b> of file <b>lifecycle.c</b>.</p>
-<pre>69                                             {
-70   if (lc == NULL) {
-71     log_dev(&quot;[lifecycle] init_commit: NULL lifecycle pointer&quot;);
-72     return;
-73   }
-74   log_dev(&quot;[lifecycle] init_commit: transitioning INITIALIZING &#x2192; INITIALIZED&quot;);
-75   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
-76 }</pre>
+<p class="Pp">Definition at line <b>77</b> of file <b>lifecycle.c</b>.</p>
+<pre>77                                             {
+78   if (lc == NULL) {
+79     log_dev(&quot;[lifecycle] init_commit: NULL lifecycle pointer&quot;);
+80     return;
+81   }
+82   log_dev(&quot;[lifecycle] init_commit: transitioning INITIALIZING &#x2192; INITIALIZED&quot;);
+83   atomic_store_u64(&amp;lc-&gt;state, LIFECYCLE_INITIALIZED);
+84 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>.</p>
@@ -219,44 +230,44 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_init_once (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>31</b> of file <b>lifecycle.c</b>.</p>
-<pre>31                                           {
-32   if (lc == NULL) {
-33     log_dev(&quot;[lifecycle] init_once: NULL lifecycle pointer&quot;);
-34     return false;
-35   }
-36 
-37   uint64_t expected = LIFECYCLE_UNINITIALIZED;
-38   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING)) {
-39     // If already initialized, just return false (no work needed)
-40     if (expected == LIFECYCLE_INITIALIZED) {
-41       log_dev(&quot;[lifecycle] init_once: already initialized&quot;);
-42       return false;
-43     }
+<p class="Pp">Definition at line <b>39</b> of file <b>lifecycle.c</b>.</p>
+<pre>39                                           {
+40   if (lc == NULL) {
+41     log_dev(&quot;[lifecycle] init_once: NULL lifecycle pointer&quot;);
+42     return false;
+43   }
 44 
-45     // If dead, never allow re-init
-46     if (expected == LIFECYCLE_DEAD) {
-47       log_dev(&quot;[lifecycle] init_once: module is dead, no re-init allowed&quot;);
-48       return false;
-49     }
-50 
-51     // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
-52     // Just return false to indicate this thread doesn't need to do init work
-53     if (expected == LIFECYCLE_INITIALIZING) {
-54       log_dev(&quot;[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)&quot;);
-55       return false;
-56     }
-57 
-58     // Unexpected state
-59     log_dev(&quot;[lifecycle] init_once: unexpected state: %d&quot;, expected);
-60     return false;
-61   }
-62 
-63   // Winner: state is now LIFECYCLE_INITIALIZING
-64   // Caller must call lifecycle_init_commit() or lifecycle_init_abort()
-65   log_dev(&quot;[lifecycle] init_once: won CAS, transitioned to INITIALIZING&quot;);
-66   return true;
-67 }</pre>
+45   uint64_t expected = LIFECYCLE_UNINITIALIZED;
+46   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_INITIALIZING)) {
+47     // If already initialized, just return false (no work needed)
+48     if (expected == LIFECYCLE_INITIALIZED) {
+49       log_dev(&quot;[lifecycle] init_once: already initialized&quot;);
+50       return false;
+51     }
+52 
+53     // If dead, never allow re-init
+54     if (expected == LIFECYCLE_DEAD) {
+55       log_dev(&quot;[lifecycle] init_once: module is dead, no re-init allowed&quot;);
+56       return false;
+57     }
+58 
+59     // If initializing, don't spin (caller may be retrying or it may complete asynchronously)
+60     // Just return false to indicate this thread doesn't need to do init work
+61     if (expected == LIFECYCLE_INITIALIZING) {
+62       log_dev(&quot;[lifecycle] init_once: already initializing, skipping (will resolve asynchronously)&quot;);
+63       return false;
+64     }
+65 
+66     // Unexpected state
+67     log_dev(&quot;[lifecycle] init_once: unexpected state: %d&quot;, expected);
+68     return false;
+69   }
+70 
+71   // Winner: state is now LIFECYCLE_INITIALIZING
+72   // Caller must call lifecycle_init_commit() or lifecycle_init_abort()
+73   log_dev(&quot;[lifecycle] init_once: won CAS, transitioned to INITIALIZING&quot;);
+74   return true;
+75 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_u64()</b>.</p>
@@ -266,12 +277,12 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_is_dead (const lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>140</b> of file <b>lifecycle.c</b>.</p>
-<pre>140                                               {
-141   if (lc == NULL)
-142     return false;
-143   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_DEAD;
-144 }</pre>
+<p class="Pp">Definition at line <b>148</b> of file <b>lifecycle.c</b>.</p>
+<pre>148                                               {
+149   if (lc == NULL)
+150     return false;
+151   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_DEAD;
+152 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>.</p>
@@ -279,12 +290,12 @@
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_is_initialized (const lifecycle_t *
   lc)</h2>
-<p class="Pp">Definition at line <b>134</b> of file <b>lifecycle.c</b>.</p>
-<pre>134                                                      {
-135   if (lc == NULL)
-136     return false;
-137   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
-138 }</pre>
+<p class="Pp">Definition at line <b>142</b> of file <b>lifecycle.c</b>.</p>
+<pre>142                                                      {
+143   if (lc == NULL)
+144     return false;
+145   return atomic_load_u64(&amp;lc-&gt;state) == LIFECYCLE_INITIALIZED;
+146 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>.</p>
@@ -324,32 +335,32 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_reset (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>146</b> of file <b>lifecycle.c</b>.</p>
-<pre>146                                       {
-147   if (lc == NULL) {
-148     log_dev(&quot;[lifecycle] reset: NULL lifecycle pointer&quot;);
-149     return false;
-150   }
-151 
-152   uint64_t expected = LIFECYCLE_INITIALIZED;
-153   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
-154     log_dev(&quot;[lifecycle] reset: not in INITIALIZED state (current: %d)&quot;, expected);
-155     return false; // Not in INITIALIZED state
-156   }
-157 
-158   /* Winner: destroy sync primitive if configured (reset keeps same primitive) */
-159   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
-160     log_dev(&quot;[lifecycle] reset: destroying and resetting mutex&quot;);
-161     mutex_destroy(lc-&gt;sync.mutex);
-162   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
-163     log_dev(&quot;[lifecycle] reset: destroying and resetting rwlock&quot;);
-164     rwlock_destroy(lc-&gt;sync.rwlock);
-165   } else {
-166     log_dev(&quot;[lifecycle] reset: completed (no sync primitive, allows reinit)&quot;);
-167   }
-168 
-169   return true;
-170 }</pre>
+<p class="Pp">Definition at line <b>154</b> of file <b>lifecycle.c</b>.</p>
+<pre>154                                       {
+155   if (lc == NULL) {
+156     log_dev(&quot;[lifecycle] reset: NULL lifecycle pointer&quot;);
+157     return false;
+158   }
+159 
+160   uint64_t expected = LIFECYCLE_INITIALIZED;
+161   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
+162     log_dev(&quot;[lifecycle] reset: not in INITIALIZED state (current: %d)&quot;, expected);
+163     return false; // Not in INITIALIZED state
+164   }
+165 
+166   /* Winner: destroy sync primitive if configured (reset keeps same primitive) */
+167   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+168     log_dev(&quot;[lifecycle] reset: destroying and resetting mutex&quot;);
+169     mutex_destroy(lc-&gt;sync.mutex);
+170   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+171     log_dev(&quot;[lifecycle] reset: destroying and resetting rwlock&quot;);
+172     rwlock_destroy(lc-&gt;sync.rwlock);
+173   } else {
+174     log_dev(&quot;[lifecycle] reset: completed (no sync primitive, allows reinit)&quot;);
+175   }
+176 
+177   return true;
+178 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_u64()</b>, and
@@ -358,31 +369,31 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_shutdown (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>87</b> of file <b>lifecycle.c</b>.</p>
-<pre>87                                          {
-88   if (lc == NULL) {
-89     log_dev(&quot;[lifecycle] shutdown: NULL lifecycle pointer&quot;);
-90     return false;
-91   }
-92   uint64_t expected = LIFECYCLE_INITIALIZED;
-93   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
-94     log_dev(&quot;[lifecycle] shutdown: not in INITIALIZED state (current: %d)&quot;, expected);
-95     return false; // Not initialized or in unexpected state
-96   }
-97 
-98   /* Winner: destroy sync primitive if configured */
-99   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
-100     log_dev(&quot;[lifecycle] shutdown: destroying mutex&quot;);
-101     mutex_destroy(lc-&gt;sync.mutex);
-102   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
-103     log_dev(&quot;[lifecycle] shutdown: destroying rwlock&quot;);
-104     rwlock_destroy(lc-&gt;sync.rwlock);
-105   } else {
-106     log_dev(&quot;[lifecycle] shutdown: completed (no sync primitive)&quot;);
-107   }
-108 
-109   return true;
-110 }</pre>
+<p class="Pp">Definition at line <b>95</b> of file <b>lifecycle.c</b>.</p>
+<pre>95                                          {
+96   if (lc == NULL) {
+97     log_dev(&quot;[lifecycle] shutdown: NULL lifecycle pointer&quot;);
+98     return false;
+99   }
+100   uint64_t expected = LIFECYCLE_INITIALIZED;
+101   if (!atomic_cas_u64(&amp;lc-&gt;state, &amp;expected, LIFECYCLE_UNINITIALIZED)) {
+102     log_dev(&quot;[lifecycle] shutdown: not in INITIALIZED state (current: %d)&quot;, expected);
+103     return false; // Not initialized or in unexpected state
+104   }
+105 
+106   /* Winner: destroy sync primitive if configured */
+107   if (lc-&gt;sync_type == LIFECYCLE_SYNC_MUTEX &amp;&amp; lc-&gt;sync.mutex != NULL) {
+108     log_dev(&quot;[lifecycle] shutdown: destroying mutex&quot;);
+109     mutex_destroy(lc-&gt;sync.mutex);
+110   } else if (lc-&gt;sync_type == LIFECYCLE_SYNC_RWLOCK &amp;&amp; lc-&gt;sync.rwlock != NULL) {
+111     log_dev(&quot;[lifecycle] shutdown: destroying rwlock&quot;);
+112     rwlock_destroy(lc-&gt;sync.rwlock);
+113   } else {
+114     log_dev(&quot;[lifecycle] shutdown: completed (no sync primitive)&quot;);
+115   }
+116 
+117   return true;
+118 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_u64()</b>, and
@@ -401,28 +412,28 @@
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> lifecycle_shutdown_forever (lifecycle_t * lc)</h2>
-<p class="Pp">Definition at line <b>112</b> of file <b>lifecycle.c</b>.</p>
-<pre>112                                                  {
-113   if (lc == NULL) {
-114     log_dev(&quot;[lifecycle] shutdown_forever: NULL lifecycle pointer&quot;);
-115     return false;
-116   }
-117 
-118   uint64_t current;
-119   do {
-120     current = atomic_load_u64(&amp;lc-&gt;state);
-121     if (current == LIFECYCLE_DEAD) {
-122       log_dev(&quot;[lifecycle] shutdown_forever: already DEAD&quot;);
-123       return false;
-124     }
-125     if (current == LIFECYCLE_INITIALIZING) {
-126       log_dev(&quot;[lifecycle] shutdown_forever: spinning on INITIALIZING&quot;);
-127     }
-128   } while (current == LIFECYCLE_INITIALIZING || !atomic_cas_u64(&amp;lc-&gt;state, &amp;current, LIFECYCLE_DEAD));
-129 
-130   log_dev(&quot;[lifecycle] shutdown_forever: transitioned to DEAD (was in state: %d)&quot;, current);
-131   return current == LIFECYCLE_INITIALIZED;
-132 }</pre>
+<p class="Pp">Definition at line <b>120</b> of file <b>lifecycle.c</b>.</p>
+<pre>120                                                  {
+121   if (lc == NULL) {
+122     log_dev(&quot;[lifecycle] shutdown_forever: NULL lifecycle pointer&quot;);
+123     return false;
+124   }
+125 
+126   uint64_t current;
+127   do {
+128     current = atomic_load_u64(&amp;lc-&gt;state);
+129     if (current == LIFECYCLE_DEAD) {
+130       log_dev(&quot;[lifecycle] shutdown_forever: already DEAD&quot;);
+131       return false;
+132     }
+133     if (current == LIFECYCLE_INITIALIZING) {
+134       log_dev(&quot;[lifecycle] shutdown_forever: spinning on INITIALIZING&quot;);
+135     }
+136   } while (current == LIFECYCLE_INITIALIZING || !atomic_cas_u64(&amp;lc-&gt;state, &amp;current, LIFECYCLE_DEAD));
+137 
+138   log_dev(&quot;[lifecycle] shutdown_forever: transitioned to DEAD (was in state: %d)&quot;, current);
+139   return current == LIFECYCLE_INITIALIZED;
+140 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_u64()</b>, and

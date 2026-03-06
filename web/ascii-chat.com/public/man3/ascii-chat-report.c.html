@@ -30,7 +30,9 @@
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">report.c</p>
+<p class="Pp">report.c - TODO: Add Doxygen documentation for panic/crash report
+    generation.</p>
+<p class="Pp"></p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
@@ -80,6 +82,22 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
+  Description</a></h1>
+<p class="Pp">TODO: Add Doxygen documentation for panic/crash report
+  generation.</p>
+<p class="Pp">Generates and summarizes crash reports from instrumentation
+    runtime logs.</p>
+<p class="Pp"></p>
+<p class="Pp">Needs documentation for:</p>
+<ul class="Bl-bullet">
+  <li>Report format and content</li>
+  <li>Error aggregation and analysis</li>
+  <li>Integration with panic system</li>
+</ul>
+<p class="Pp">Definition in file <b>report.c</b>.</p>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Typedef_Documentation"><a class="permalink" href="#Typedef_Documentation">Typedef
   Documentation</a></h1>
 <section class="Ss">
@@ -110,40 +128,40 @@
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_**_argv)"><a class="permalink" href="#int_main_(int_argc,_char_**_argv)">int
   main (int argc, char ** argv)</a></h2>
-<p class="Pp">Definition at line <b>632</b> of file <b>report.c</b>.</p>
-<pre>632                                 {
-633   report_config_t config = {
-634       .log_dir = NULL,
-635       .log_file = NULL,
-636       .include_filter = NULL,
-637       .exclude_filter = NULL,
-638       .threads = {.values = NULL, .count = 0, .capacity = 0},
-639       .emit_raw_line = false,
-640   };
-641 
-642   log_init(NULL, LOG_INFO, false, false);
-643 
-644   int exit_code = EXIT_SUCCESS;
-645   if (!parse_arguments(argc, argv, &amp;config)) {
-646     exit_code = ERROR_USAGE;
-647     goto cleanup;
-648   }
-649 
-650   thread_entry_t *entries = NULL;
-651   if (!collect_entries(&amp;config, &amp;entries)) {
-652     exit_code = ERROR_GENERAL;
-653     destroy_entries(&amp;entries);
-654     goto cleanup;
-655   }
+<p class="Pp">Definition at line <b>645</b> of file <b>report.c</b>.</p>
+<pre>645                                 {
+646   report_config_t config = {
+647       .log_dir = NULL,
+648       .log_file = NULL,
+649       .include_filter = NULL,
+650       .exclude_filter = NULL,
+651       .threads = {.values = NULL, .count = 0, .capacity = 0},
+652       .emit_raw_line = false,
+653   };
+654 
+655   log_init(NULL, LOG_INFO, false, false);
 656 
-657   print_summary(&amp;config, &amp;entries);
-658   destroy_entries(&amp;entries);
-659 
-660 cleanup:
-661   thread_filter_list_destroy(&amp;config.threads);
-662   log_destroy();
-663   return exit_code;
-664 }</pre>
+657   int exit_code = EXIT_SUCCESS;
+658   if (!parse_arguments(argc, argv, &amp;config)) {
+659     exit_code = ERROR_USAGE;
+660     goto cleanup;
+661   }
+662 
+663   thread_entry_t *entries = NULL;
+664   if (!collect_entries(&amp;config, &amp;entries)) {
+665     exit_code = ERROR_GENERAL;
+666     destroy_entries(&amp;entries);
+667     goto cleanup;
+668   }
+669 
+670   print_summary(&amp;config, &amp;entries);
+671   destroy_entries(&amp;entries);
+672 
+673 cleanup:
+674   thread_filter_list_destroy(&amp;config.threads);
+675   log_destroy();
+676   return exit_code;
+677 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>log_destroy()</b>, <b>log_init()</b>, and

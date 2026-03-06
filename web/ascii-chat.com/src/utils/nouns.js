@@ -4998,6 +4998,6 @@ export const nouns = [
   "zombie",
   "zone",
   "zoo",
-  "zoom"
+  "zoom",
 ];
 export const nouns_count = 5000;

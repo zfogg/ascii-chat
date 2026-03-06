@@ -12,7 +12,10 @@ function randombytes_uniform(upper_bound) {
   if (upper_bound === 0) return 0;
 
   // Use crypto.getRandomValues if available (browser/Node.js)
-  if (typeof globalThis.crypto !== "undefined" && globalThis.crypto.getRandomValues) {
+  if (
+    typeof globalThis.crypto !== "undefined" &&
+    globalThis.crypto.getRandomValues
+  ) {
     const array = new Uint32Array(1);
     globalThis.crypto.getRandomValues(array);
     return array[0] % upper_bound;

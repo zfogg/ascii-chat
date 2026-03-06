@@ -109,7 +109,7 @@
 <p class="Pp">Tracks state for source code instrumentation logging, including
     file descriptors, filter configuration, and rate limiting for the current
     thread.</p>
-<p class="Pp">Definition at line <b>99</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>108</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
@@ -118,7 +118,7 @@
 <h2 class="Ss" id="uint64_t_asciichat_instr_runtime::call_counter"><a class="permalink" href="#uint64_t_asciichat_instr_runtime::call_counter">uint64_t
   asciichat_instr_runtime::call_counter</a></h2>
 <p class="Pp">Total number of instrumentation calls.</p>
-<p class="Pp">Definition at line <b>104</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>113</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
@@ -126,20 +126,20 @@
 <h2 class="Ss" id="regex_t_asciichat_instr_runtime::exclude_regex"><a class="permalink" href="#regex_t_asciichat_instr_runtime::exclude_regex">regex_t
   asciichat_instr_runtime::exclude_regex</a></h2>
 <p class="Pp">Compiled regex for file path exclusion.</p>
-<p class="Pp">Definition at line <b>115</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>124</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_instr_runtime::exclude_regex_valid</h2>
 <p class="Pp">Whether exclude_regex was successfully compiled.</p>
-<p class="Pp">Definition at line <b>116</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>125</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_instr_runtime::fd"><a class="permalink" href="#int_asciichat_instr_runtime::fd">int
   asciichat_instr_runtime::fd</a></h2>
 <p class="Pp">Log file descriptor (-1 if not open).</p>
-<p class="Pp">Definition at line <b>100</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>109</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>,
     <b>asciichat_instr_runtime_destroy()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
@@ -148,102 +148,102 @@
 <h2 class="Ss" id="const_char*_asciichat_instr_runtime::filter_exclude"><a class="permalink" href="#const_char*_asciichat_instr_runtime::filter_exclude">const
   char* asciichat_instr_runtime::filter_exclude</a></h2>
 <p class="Pp">File path substring to exclude (from env var).</p>
-<p class="Pp">Definition at line <b>108</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>117</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_asciichat_instr_runtime::filter_function_exclude"><a class="permalink" href="#const_char*_asciichat_instr_runtime::filter_function_exclude">const
   char* asciichat_instr_runtime::filter_function_exclude</a></h2>
 <p class="Pp">Function name substring to exclude (from env var).</p>
-<p class="Pp">Definition at line <b>110</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>119</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_asciichat_instr_runtime::filter_function_include"><a class="permalink" href="#const_char*_asciichat_instr_runtime::filter_function_include">const
   char* asciichat_instr_runtime::filter_function_include</a></h2>
 <p class="Pp">Function name substring to include (from env var).</p>
-<p class="Pp">Definition at line <b>109</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>118</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_asciichat_instr_runtime::filter_include"><a class="permalink" href="#const_char*_asciichat_instr_runtime::filter_include">const
   char* asciichat_instr_runtime::filter_include</a></h2>
 <p class="Pp">File path substring to include (from env var).</p>
-<p class="Pp">Definition at line <b>107</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>116</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char*_asciichat_instr_runtime::filter_thread"><a class="permalink" href="#const_char*_asciichat_instr_runtime::filter_thread">const
   char* asciichat_instr_runtime::filter_thread</a></h2>
 <p class="Pp">Thread ID filter (from env var).</p>
-<p class="Pp">Definition at line <b>111</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>120</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_instr_runtime::filters_enabled</h2>
 <p class="Pp">Whether any filters are active.</p>
-<p class="Pp">Definition at line <b>106</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>115</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="regex_t_asciichat_instr_runtime::function_exclude_regex"><a class="permalink" href="#regex_t_asciichat_instr_runtime::function_exclude_regex">regex_t
   asciichat_instr_runtime::function_exclude_regex</a></h2>
 <p class="Pp">Compiled regex for function name exclusion.</p>
-<p class="Pp">Definition at line <b>119</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>128</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>
   asciichat_instr_runtime::function_exclude_regex_valid</h2>
 <p class="Pp">Whether function_exclude_regex was successfully compiled.</p>
-<p class="Pp">Definition at line <b>120</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>129</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="regex_t_asciichat_instr_runtime::function_include_regex"><a class="permalink" href="#regex_t_asciichat_instr_runtime::function_include_regex">regex_t
   asciichat_instr_runtime::function_include_regex</a></h2>
 <p class="Pp">Compiled regex for function name inclusion.</p>
-<p class="Pp">Definition at line <b>117</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>126</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b>
   asciichat_instr_runtime::function_include_regex_valid</h2>
 <p class="Pp">Whether function_include_regex was successfully compiled.</p>
-<p class="Pp">Definition at line <b>118</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>127</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="regex_t_asciichat_instr_runtime::include_regex"><a class="permalink" href="#regex_t_asciichat_instr_runtime::include_regex">regex_t
   asciichat_instr_runtime::include_regex</a></h2>
 <p class="Pp">Compiled regex for file path inclusion.</p>
-<p class="Pp">Definition at line <b>113</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>122</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_instr_runtime::include_regex_valid</h2>
 <p class="Pp">Whether include_regex was successfully compiled.</p>
-<p class="Pp">Definition at line <b>114</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>123</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_asciichat_instr_runtime::log_path_PATH_MAX_"><a class="permalink" href="#char_asciichat_instr_runtime::log_path_PATH_MAX_">char
   asciichat_instr_runtime::log_path[PATH_MAX]</a></h2>
 <p class="Pp">Path to log file.</p>
-<p class="Pp">Definition at line <b>105</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>114</b> of file <b>instrument_log.c</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>asciichat_instr_only_list_t</b>
   asciichat_instr_runtime::only_selectors</h2>
 <p class="Pp">List of &quot;only&quot; selectors for filtering.</p>
-<p class="Pp">Definition at line <b>125</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>134</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_runtime_destroy()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_asciichat_instr_runtime::pid"><a class="permalink" href="#int_asciichat_instr_runtime::pid">int
   asciichat_instr_runtime::pid</a></h2>
 <p class="Pp">Process ID.</p>
-<p class="Pp">Definition at line <b>101</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>110</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
@@ -251,14 +251,14 @@
 <h2 class="Ss" id="uint32_t_asciichat_instr_runtime::rate"><a class="permalink" href="#uint32_t_asciichat_instr_runtime::rate">uint32_t
   asciichat_instr_runtime::rate</a></h2>
 <p class="Pp">Rate limiting: log every Nth call.</p>
-<p class="Pp">Definition at line <b>122</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>131</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_instr_runtime::rate_enabled</h2>
 <p class="Pp">Whether rate limiting is enabled.</p>
-<p class="Pp">Definition at line <b>123</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>132</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
@@ -266,21 +266,21 @@
 <h2 class="Ss" id="uint64_t_asciichat_instr_runtime::sequence"><a class="permalink" href="#uint64_t_asciichat_instr_runtime::sequence">uint64_t
   asciichat_instr_runtime::sequence</a></h2>
 <p class="Pp">Sequence number for log entries.</p>
-<p class="Pp">Definition at line <b>103</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>112</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> asciichat_instr_runtime::stderr_fallback</h2>
 <p class="Pp">Use stderr if log file can't be opened.</p>
-<p class="Pp">Definition at line <b>124</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>133</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="uint64_t_asciichat_instr_runtime::thread_id"><a class="permalink" href="#uint64_t_asciichat_instr_runtime::thread_id">uint64_t
   asciichat_instr_runtime::thread_id</a></h2>
 <p class="Pp">Thread ID.</p>
-<p class="Pp">Definition at line <b>102</b> of file <b>instrument_log.c</b>.</p>
+<p class="Pp">Definition at line <b>111</b> of file <b>instrument_log.c</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_instr_log_line()</b>, and
     <b>asciichat_instr_runtime_get()</b>.</p>
 <p class="Pp"></p>

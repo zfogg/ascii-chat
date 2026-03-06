@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLocation } from "react-router-dom";
+import { SITES } from "@ascii-chat/shared/utils";
 import TrackedLink from "./TrackedLink";
 
 export default function Navigation() {
@@ -65,7 +66,7 @@ export default function Navigation() {
               </TrackedLink>
             ))}
             <TrackedLink
-              href="https://web.ascii-chat.com"
+              href={SITES.WEB}
               label="Nav - Web Client"
               className="transition-colors py-1 px-2 rounded text-gray-400 hover:text-fuchsia-300"
               target="_blank"
@@ -121,7 +122,7 @@ export default function Navigation() {
               </TrackedLink>
             ))}
             <TrackedLink
-              href="https://web.ascii-chat.com"
+              href={SITES.WEB}
               label="Nav - Web Client"
               className={getMobileNavLinkClass()}
               target="_blank"

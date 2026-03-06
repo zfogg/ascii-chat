@@ -1,5 +1,6 @@
 import TrackedLink from "./TrackedLink";
 import { Footer as SharedFooter } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 
 export default function Footer() {
   return (
@@ -21,12 +22,12 @@ export default function Footer() {
           color: "text-teal-400 hover:text-teal-300",
         },
         {
-          href: "https://discovery.ascii-chat.com",
+          href: SITES.DISCOVERY,
           label: "🔍 Discovery",
           color: "text-pink-400 hover:text-pink-300",
         },
         {
-          href: "https://web.ascii-chat.com",
+          href: SITES.WEB,
           label: "🌐 Web Client",
           color: "text-yellow-400 hover:text-yellow-300",
         },

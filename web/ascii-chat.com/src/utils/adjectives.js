@@ -2498,6 +2498,6 @@ export const adjectives = [
   "younger",
   "youthful",
   "yummy",
-  "zero"
+  "zero",
 ];
 export const adjectives_count = 2500;

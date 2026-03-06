@@ -10,7 +10,11 @@ import {
   UsageExamplesSection,
   CodeBlock,
 } from "@ascii-chat/shared/components";
-import { fetchSessionStrings, useScrollToHash } from "@ascii-chat/shared/utils";
+import {
+  fetchSessionStrings,
+  useScrollToHash,
+  SITES,
+} from "@ascii-chat/shared/utils";
 import { ACDSHead } from "../components/ACDSHead";
 
 function Home() {
@@ -80,12 +84,9 @@ function Home() {
           <p className="text-gray-400 text-lg md:text-xl m-0">
             Session signalling for{" "}
             <Link
-              href="https://ascii-chat.com"
+              href={SITES.MAIN}
               onClick={() =>
-                handleLinkClick(
-                  "https://ascii-chat.com",
-                  "ascii-chat website (header)",
-                )
+                handleLinkClick(SITES.MAIN, "ascii-chat website (header)")
               }
             >
               ascii-chat
@@ -104,12 +105,9 @@ function Home() {
             The <strong>ascii-chat Discovery Service (ACDS)</strong> is a core
             component of{" "}
             <Link
-              href="https://ascii-chat.com"
+              href={SITES.MAIN}
               onClick={() =>
-                handleLinkClick(
-                  "https://ascii-chat.com",
-                  "ascii-chat website (about)",
-                )
+                handleLinkClick(SITES.MAIN, "ascii-chat website (about)")
               }
             >
               ascii-chat
@@ -373,17 +371,16 @@ ascii-chat client session-name \\
                 ),
             },
             {
-              href: "https://ascii-chat.com",
+              href: SITES.MAIN,
               label: "🌐 www",
               color: "text-pink-400 hover:text-pink-300",
-              onClick: () => handleLinkClick("https://ascii-chat.com", "www"),
+              onClick: () => handleLinkClick(SITES.MAIN, "www"),
             },
             {
-              href: "https://web.ascii-chat.com",
+              href: SITES.WEB,
               label: "🌐 Web Client",
               color: "text-yellow-400 hover:text-yellow-300",
-              onClick: () =>
-                handleLinkClick("https://web.ascii-chat.com", "Web Client"),
+              onClick: () => handleLinkClick(SITES.WEB, "Web Client"),
             },
           ]}
           commitSha={__COMMIT_SHA__}
