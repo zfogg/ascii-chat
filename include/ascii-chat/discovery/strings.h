@@ -41,12 +41,9 @@
  * @brief Maximum number of unique session strings that can be generated
  *
  * Calculated from wordlist entropy:
- * 2500 adjectives × 5000 nouns × 5000 nouns
- * = 2500 × 5000 × 5000
- * = 12,500,000 × 5000
- * = 62,500,000,000 combinations
+ * 2500 adjectives × 5000 nouns × 5000 nouns = 62,500,000,000 combinations
  */
-#define ACDS_MAX_UNIQUE_SESSIONS 62500000000LL
+#define ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)
 
 /**
  * @brief Generate random session string
