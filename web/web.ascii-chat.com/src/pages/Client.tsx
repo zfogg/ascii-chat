@@ -55,6 +55,10 @@ import { ConnectionPanelModal } from "../components/ConnectionPanelModal";
 import { Settings, SettingsConfig } from "../components/Settings";
 import { WebClientHead } from "../components/WebClientHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
+import {
+  mapColorModeToClient,
+  mapColorFilterToClient,
+} from "../utils/colorMappers";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
 import { DISCOVERY_SERVICE_URL } from "@ascii-chat/shared/utils";
@@ -212,36 +216,6 @@ const AUDIO_CODEC_CAP_OPUS = 1 << 1; // Bit 1: Opus support
 const AUDIO_CODEC_CAP_ALL = AUDIO_CODEC_CAP_RAW | AUDIO_CODEC_CAP_OPUS;
 
 // Helper functions to map Settings types to WASM enums
-function mapColorMode(mode: string): ClientColorMode {
-  const mapping: Record<string, ClientColorMode> = {
-    auto: ClientColorMode.AUTO,
-    none: ClientColorMode.NONE,
-    "16": ClientColorMode.COLOR_16,
-    "256": ClientColorMode.COLOR_256,
-    truecolor: ClientColorMode.TRUECOLOR,
-  };
-  return mapping[mode] || ClientColorMode.AUTO;
-}
-
-function mapColorFilter(filter: string): ClientColorFilter {
-  const mapping: Record<string, ClientColorFilter> = {
-    none: ClientColorFilter.NONE,
-    black: ClientColorFilter.BLACK,
-    white: ClientColorFilter.WHITE,
-    green: ClientColorFilter.GREEN,
-    magenta: ClientColorFilter.MAGENTA,
-    fuchsia: ClientColorFilter.FUCHSIA,
-    orange: ClientColorFilter.ORANGE,
-    teal: ClientColorFilter.TEAL,
-    cyan: ClientColorFilter.CYAN,
-    pink: ClientColorFilter.PINK,
-    red: ClientColorFilter.RED,
-    yellow: ClientColorFilter.YELLOW,
-    rainbow: ClientColorFilter.RAINBOW,
-  };
-  return mapping[filter] || ClientColorFilter.NONE;
-}
-
 function buildStreamStartPacket(includeAudio: boolean = false): Uint8Array {
   const streamType = includeAudio
     ? STREAM_TYPE_VIDEO | STREAM_TYPE_AUDIO
@@ -456,8 +430,8 @@ export function ClientPage() {
       getDimensions,
       setTargetFps,
       getTargetFps,
-      mapColorMode,
-      mapColorFilter,
+      mapColorModeToClient,
+      mapColorFilterToClient,
     );
   }, [wasmInitialized]);
 

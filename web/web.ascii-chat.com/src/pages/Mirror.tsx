@@ -39,40 +39,13 @@ import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
 import { WebClientHead } from "../components/WebClientHead";
 import { AsciiChatMode } from "../utils/optionsHelp";
+import {
+  mapColorModeToWasm,
+  mapColorFilterToWasm,
+} from "../utils/colorMappers";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useRenderLoop } from "../hooks/useRenderLoop";
-
-// Helper functions to map Settings types to WASM enums
-function mapColorMode(mode: ColorMode): WasmColorMode {
-  const mapping: Record<ColorMode, WasmColorMode> = {
-    auto: WasmColorMode.AUTO,
-    none: WasmColorMode.NONE,
-    "16": WasmColorMode.COLOR_16,
-    "256": WasmColorMode.COLOR_256,
-    truecolor: WasmColorMode.TRUECOLOR,
-  };
-  return mapping[mode];
-}
-
-function mapColorFilter(filter: ColorFilter): WasmColorFilter {
-  const mapping: Record<ColorFilter, WasmColorFilter> = {
-    none: WasmColorFilter.NONE,
-    black: WasmColorFilter.BLACK,
-    white: WasmColorFilter.WHITE,
-    green: WasmColorFilter.GREEN,
-    magenta: WasmColorFilter.MAGENTA,
-    fuchsia: WasmColorFilter.FUCHSIA,
-    orange: WasmColorFilter.ORANGE,
-    teal: WasmColorFilter.TEAL,
-    cyan: WasmColorFilter.CYAN,
-    pink: WasmColorFilter.PINK,
-    red: WasmColorFilter.RED,
-    yellow: WasmColorFilter.YELLOW,
-    rainbow: WasmColorFilter.RAINBOW,
-  };
-  return mapping[filter];
-}
 
 export function MirrorPage() {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -130,8 +103,8 @@ export function MirrorPage() {
       getDimensions,
       setTargetFps,
       getTargetFps,
-      mapColorMode,
-      mapColorFilter,
+      mapColorModeToWasm,
+      mapColorFilterToWasm,
     );
   }, [wasmInitialized]);
 
@@ -297,8 +270,8 @@ export function MirrorPage() {
     try {
       console.time("[Mirror] WASM settings");
       if (isWasmReady()) {
-        setColorMode(mapColorMode(settings.colorMode));
-        setColorFilter(mapColorFilter(settings.colorFilter));
+        setColorMode(mapColorModeToWasm(settings.colorMode));
+        setColorFilter(mapColorFilterToWasm(settings.colorFilter));
         setPalette(settings.palette);
         if (settings.palette === "custom" && settings.paletteChars) {
           setPaletteChars(settings.paletteChars);
