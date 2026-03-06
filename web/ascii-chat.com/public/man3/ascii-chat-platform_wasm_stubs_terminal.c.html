@@ -45,6 +45,10 @@
   <br/>
   asciichat_error_t <b>terminal_cursor_show</b> (void)
   <br/>
+  unsigned short int <b>terminal_get_effective_width</b> (void)
+  <br/>
+  unsigned short int <b>terminal_get_effective_height</b> (void)
+  <br/>
   <br/>
 </p>
 </section>
@@ -63,11 +67,11 @@
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_terminal_cursor_hide_(void_)"><a class="permalink" href="#asciichat_error_t_terminal_cursor_hide_(void_)">asciichat_error_t
   terminal_cursor_hide (void )</a></h2>
-<p class="Pp">Definition at line <b>15</b> of file
+<p class="Pp">Definition at line <b>16</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>15                                              {
-16   return ASCIICHAT_OK;
-17 }</pre>
+<pre>16                                              {
+17   return ASCIICHAT_OK;
+18 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>ascii_write_init()</b>, and
@@ -76,11 +80,11 @@
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_terminal_cursor_show_(void_)"><a class="permalink" href="#asciichat_error_t_terminal_cursor_show_(void_)">asciichat_error_t
   terminal_cursor_show (void )</a></h2>
-<p class="Pp">Definition at line <b>19</b> of file
+<p class="Pp">Definition at line <b>20</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>19                                              {
-20   return ASCIICHAT_OK;
-21 }</pre>
+<pre>20                                              {
+21   return ASCIICHAT_OK;
+22 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>ascii_write_destroy()</b>,
@@ -89,14 +93,46 @@
     <b>splash_intro_start()</b>, and <b>terminal_screen_render()</b>.</p>
 </section>
 <section class="Ss">
+<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_height_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_height_(void_)">unsigned
+  short int terminal_get_effective_height (void )</a></h2>
+<p class="Pp">Definition at line <b>35</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>35                                                        {
+36   int height = GET_OPTION(height);
+37   if (height &gt; 0) {
+38     return (unsigned short int)height;
+39   }
+40   // For WASM, use default since terminal detection is stubbed
+41   return OPT_HEIGHT_DEFAULT;
+42 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="unsigned_short_int_terminal_get_effective_width_(void_)"><a class="permalink" href="#unsigned_short_int_terminal_get_effective_width_(void_)">unsigned
+  short int terminal_get_effective_width (void )</a></h2>
+<p class="Pp">Definition at line <b>25</b> of file
+    <b>platform/wasm/stubs/terminal.c</b>.</p>
+<pre>25                                                       {
+26   int width = GET_OPTION(width);
+27   if (width &gt; 0) {
+28     return (unsigned short int)width;
+29   }
+30   // For WASM, use default since terminal detection is stubbed
+31   return OPT_WIDTH_DEFAULT;
+32 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_terminal_get_size_(terminal_size_t_*_size)"><a class="permalink" href="#asciichat_error_t_terminal_get_size_(terminal_size_t_*_size)">asciichat_error_t
   terminal_get_size (terminal_size_t * size)</a></h2>
-<p class="Pp">Definition at line <b>10</b> of file
+<p class="Pp">Definition at line <b>11</b> of file
     <b>platform/wasm/stubs/terminal.c</b>.</p>
-<pre>10                                                            {
-11   (void)size;
-12   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Terminal operations not supported in WASM&quot;);
-13 }</pre>
+<pre>11                                                            {
+12   (void)size;
+13   return SET_ERRNO(ERROR_NOT_SUPPORTED, &quot;Terminal operations not supported in WASM&quot;);
+14 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>action_show_capabilities_immediate()</b>,

@@ -92,10 +92,10 @@
 <div class="Bd-indent"><b>Examples:</b>
 <div class="Bd-indent">
 <pre>(empty) start new session
-shot-rembrandt-chow
-magic-usa-routine
-confederate-camp-microphone
-all-mate-meteor</pre>
+mental-science-medicine
+weakly-sonar-way
+sublime-purple-same
+sinful-box-haunt</pre>
 </div>
 </div>
 <dl class="Bl-tag">
@@ -179,43 +179,44 @@ https://example.com/stream.m3u8</pre>
 <dl class="Bl-tag">
   <dt id="ascii-chat"><a class="permalink" href="#ascii-chat"><b>ascii-chat</b></a></dt>
   <dd>Start new session (share the session string)</dd>
-  <dt><b>ascii-chat ideological-frost-championship</b></dt>
+  <dt><b>ascii-chat staple-penguin-liability</b></dt>
   <dd>Join a session using the session string</dd>
-  <dt><b>ascii-chat compulsory-iron-form --file video.mp4</b></dt>
+  <dt><b>ascii-chat tolerant-asylum-condo --file video.mp4</b></dt>
   <dd>Join session and stream from local video file</dd>
-  <dt><b>ascii-chat greater-costume-godfather --url
+  <dt><b>ascii-chat furious-neighborhood-hacker --url
     'https://www.youtube.com/watch?v=dQw4w9WgXcQ'</b></dt>
   <dd>Join session and stream from YouTube video</dd>
-  <dt><b>ascii-chat editorial-lay-tall -f -</b></dt>
+  <dt><b>ascii-chat photographic-spite-void -f -</b></dt>
   <dd>Join session and stream media from stdin</dd>
-  <dt><b>ascii-chat sarcastic-shy-ballroom --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat consummate-sheridan-last --palette-chars '@%#*+=-:.
+    '</b></dt>
   <dd>Join session with custom ASCII palette characters</dd>
-  <dt><b>ascii-chat authentic-form-three --discovery-service
+  <dt><b>ascii-chat jealous-highway-fuel --discovery-service
     --discovery-service-port 27225</b></dt>
   <dd>Join session via custom discovery server</dd>
-  <dt><b>ascii-chat discovery-service</b></dt>
+  <dt><b>ascii-chat server</b></dt>
   <dd>Start on localhost (127.0.0.1 and ::1)</dd>
-  <dt><b>ascii-chat discovery-service 0.0.0.0</b></dt>
+  <dt><b>ascii-chat server 0.0.0.0</b></dt>
   <dd>Start on all IPv4 interfaces</dd>
   <dt><b>ascii-chat server 0.0.0.0 ::</b></dt>
   <dd>Start on all IPv4 and IPv6 interfaces (dual-stack)</dd>
-  <dt><b>ascii-chat server --port 8080</b></dt>
+  <dt><b>ascii-chat discovery-service --port 8080</b></dt>
   <dd>Start on custom port</dd>
   <dt><b>ascii-chat server --key ~/.ssh/id_ed25519 --discovery</b></dt>
   <dd>Start with identity key and discovery registration</dd>
-  <dt><b>ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
+  <dt><b>ascii-chat client --url 'https://youtu.be/7ynHVGCehoM'</b></dt>
   <dd>Stream from YouTube URL (also supports RTSP, HTTP, and HTTPS URLs)</dd>
   <dt><b>ascii-chat mirror --url 'https://www.twitch.tv/ludwig'</b></dt>
   <dd>Stream Ludwig from videogames on Twitch</dd>
   <dt><b>ascii-chat mirror -f video.mp4</b></dt>
   <dd>Stream from local video file</dd>
-  <dt><b>ascii-chat client --palette-chars '@%#*+=-:. '</b></dt>
+  <dt><b>ascii-chat mirror --palette-chars '@%#*+=-:. '</b></dt>
   <dd>Custom palette characters to use. UTF-8 is allowed.</dd>
   <dt><b>ascii-chat client --snapshot</b></dt>
   <dd>Print ascii art for --snapshot-delay's value of seconds then print the
       last frame and exit. In snapshot mode, --width, --height, and --color are
       NOT autodetected when piping stdin in or redirecting output.</dd>
-  <dt><b>ascii-chat mirror --color-filter cyan --palette cool</b></dt>
+  <dt><b>ascii-chat client --color-filter cyan --palette cool</b></dt>
   <dd>Apply cyan color filter and cool palette</dd>
   <dt><b>ascii-chat client example.com</b></dt>
   <dd>Connect to remote server</dd>
@@ -986,9 +987,16 @@ https://example.com/stream.m3u8</pre>
   <dt id="R"><a class="permalink" href="#R"><b>R</b></a></dt>
   <dd>Cycle through render modes: Foreground &#x2192; background &#x2192;
       half-Block &#x2192; foreground.</dd>
+  <dt><b>-</b></dt>
+  <dd>Toggle FPS counter overlay in the top-right corner.</dd>
   <dt id="F"><a class="permalink" href="#F"><b>F</b></a></dt>
   <dd>Toggle webcam flip (horizontal mirror). Only works when using a webcam
       source.</dd>
+</dl>
+<p class="Pp"><b>Animations</b></p>
+<dl class="Bl-tag">
+  <dt><b>0</b></dt>
+  <dd>Toggle Matrix-style digital rain effect.</dd>
 </dl>
 <p class="Pp"><b>Keyboard Configuration</b></p>
 <div class="Bd-indent">
@@ -1000,43 +1008,13 @@ https://example.com/stream.m3u8</pre>
     This will allow users to customize keyboard shortcuts without rebuilding the
     application.</p>
 </div>
-<p class="Pp"><b>Keyboard Layout Support</b></p>
-<p class="Pp">The keyboard input system supports all standard POSIX keyboards
-    and terminal emulators. The default keybindings use ASCII characters
-  only.</p>
-<p class="Pp">The underlying input system fully supports Unicode, including:</p>
-<div class="Bd-indent">
-<dl class="Bl-tag">
-  <dt id="UTF-8"><a class="permalink" href="#UTF-8"><b>UTF-8</b></a></dt>
-  <dd>Any character in the UTF-8 character set can be used for keyboard
-      shortcuts.</dd>
-</dl>
-</div>
 <p class="Pp"></p>
-</section>
-<section class="Sh">
-<h1 class="Sh" id="LIMITS"><a class="permalink" href="#LIMITS">LIMITS</a></h1>
-<dl class="Bl-tag">
-  <dt id="Maximum"><a class="permalink" href="#Maximum"><b>Maximum
-    Clients</b></a></dt>
-  <dd>Default 10 clients per server (configurable 1-32 via
-      <b>--max-clients</b>). Higher values increase server resource
-      requirements.</dd>
-  <dt id="Video"><a class="permalink" href="#Video"><b>Video Grid
-    Layout</b></a></dt>
-  <dd>Clients are arranged in an automatically-sized grid (e.g., 2x2, 3x3). The
-      grid size adjusts based on the number of connected clients.</dd>
-  <dt id="Frame"><a class="permalink" href="#Frame"><b>Frame Rate</b></a></dt>
-  <dd>Default 60 FPS. Configurable from 1-144 FPS.
-    <p class="Pp"></p>
-  </dd>
-</dl>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="EXIT_STATUS"><a class="permalink" href="#EXIT_STATUS">EXIT
   STATUS</a></h1>
-<p class="Pp">Exit codes correspond to the <b>asciichat_error_t</b> enum
-  values:</p>
+<p class="Pp">Exit codes correspond to the <b>asciichat_error_t</b>(3) enum
+    values:</p>
 <dl class="Bl-tag">
   <dt><b>0</b></dt>
   <dd>Success (ASCIICHAT_OK).</dd>
@@ -1196,9 +1174,9 @@ https://example.com/stream.m3u8</pre>
 <section class="Sh">
 <h1 class="Sh" id="ENVIRONMENT"><a class="permalink" href="#ENVIRONMENT">ENVIRONMENT</a></h1>
 <dl class="Bl-tag">
-  <dt id="APPDAT"><a class="permalink" href="#APPDAT"><b>APPDAT</b></a></dt>
+  <dt id="APPDATA"><a class="permalink" href="#APPDATA"><b>APPDATA</b></a></dt>
   <dd>Windows configuration directory for user-specific application data
-      (%APPDATA%\ascii-chat). Primary location for config files on Windows</dd>
+      (%APPDATA%\ascii-chat). Primary location for config files on Windows.</dd>
   <dt id="ASCII_CHAT_AUDIO"><a class="permalink" href="#ASCII_CHAT_AUDIO"><b>ASCII_CHAT_AUDIO</b></a></dt>
   <dd>See: <b>--audio</b></dd>
   <dt id="ASCII_CHAT_AUDIO_ANALYSIS"><a class="permalink" href="#ASCII_CHAT_AUDIO_ANALYSIS"><b>ASCII_CHAT_AUDIO_ANALYSIS</b></a></dt>
@@ -1257,9 +1235,9 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--keepawake</b></dd>
   <dt id="ASCII_CHAT_KEY"><a class="permalink" href="#ASCII_CHAT_KEY"><b>ASCII_CHAT_KEY</b></a></dt>
   <dd>See: <b>--key</b></dd>
-  <dt id="ASCII_CHAT_KEY_PASSWOR"><a class="permalink" href="#ASCII_CHAT_KEY_PASSWOR"><b>ASCII_CHAT_KEY_PASSWOR</b></a></dt>
+  <dt id="ASCII_CHAT_KEY_PASSWORD"><a class="permalink" href="#ASCII_CHAT_KEY_PASSWORD"><b>ASCII_CHAT_KEY_PASSWORD</b></a></dt>
   <dd>Passphrase for encrypted SSH or GPG private keys. Prefer to use ssh-agent
-      or gpg-agent</dd>
+      or gpg-agent.</dd>
   <dt id="ASCII_CHAT_LOG_FILE"><a class="permalink" href="#ASCII_CHAT_LOG_FILE"><b>ASCII_CHAT_LOG_FILE</b></a></dt>
   <dd>See: <b>--log-file</b></dd>
   <dt id="ASCII_CHAT_LOG_FORMAT_CONSOLE"><a class="permalink" href="#ASCII_CHAT_LOG_FORMAT_CONSOLE"><b>ASCII_CHAT_LOG_FORMAT_CONSOLE</b></a></dt>
@@ -1310,13 +1288,13 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--port-forwarding</b></dd>
   <dt id="ASCII_CHAT_PREFER_WEBRTC"><a class="permalink" href="#ASCII_CHAT_PREFER_WEBRTC"><b>ASCII_CHAT_PREFER_WEBRTC</b></a></dt>
   <dd>See: <b>--prefer-webrtc</b></dd>
-  <dt id="ASCII_CHAT_QUESTION_PROMPT_RESPONS"><a class="permalink" href="#ASCII_CHAT_QUESTION_PROMPT_RESPONS"><b>ASCII_CHAT_QUESTION_PROMPT_RESPONS</b></a></dt>
+  <dt id="ASCII_CHAT_QUESTION_PROMPT_RESPONSE"><a class="permalink" href="#ASCII_CHAT_QUESTION_PROMPT_RESPONSE"><b>ASCII_CHAT_QUESTION_PROMPT_RESPONSE</b></a></dt>
   <dd>Stack-based automated responses for interactive prompts. Format:
       semicolon-separated values like 'y;n;password'. Supports escaping: \; for
       literal semicolon, \\ for backslash. Useful for scripting. Examples:
       'pass\;word;y' sends &quot;pass;word&quot; then &quot;y&quot;. Invalid
       formats (';', ';;', ';y') are rejected and fall back to interactive
-      prompting with warning logs</dd>
+      prompting with warning logs.</dd>
   <dt id="ASCII_CHAT_QUIET"><a class="permalink" href="#ASCII_CHAT_QUIET"><b>ASCII_CHAT_QUIET</b></a></dt>
   <dd>See: <b>--quiet</b></dd>
   <dt id="ASCII_CHAT_RECONNECT_ATTEMPTS"><a class="permalink" href="#ASCII_CHAT_RECONNECT_ATTEMPTS"><b>ASCII_CHAT_RECONNECT_ATTEMPTS</b></a></dt>
@@ -1403,54 +1381,54 @@ https://example.com/stream.m3u8</pre>
   <dd>See: <b>--width</b></dd>
   <dt id="ASCII_CHAT_YT_DLP_OPTIONS"><a class="permalink" href="#ASCII_CHAT_YT_DLP_OPTIONS"><b>ASCII_CHAT_YT_DLP_OPTIONS</b></a></dt>
   <dd>See: <b>--yt-dlp-options</b></dd>
-  <dt id="COLORTER"><a class="permalink" href="#COLORTER"><b>COLORTER</b></a></dt>
+  <dt id="COLORTERM"><a class="permalink" href="#COLORTERM"><b>COLORTERM</b></a></dt>
   <dd>Terminal color capability indicator. Set by your terminal emulator to
-      indicat</dd>
-  <dt id="GNUPGHOM"><a class="permalink" href="#GNUPGHOM"><b>GNUPGHOM</b></a></dt>
+      indicate</dd>
+  <dt id="GNUPGHOME"><a class="permalink" href="#GNUPGHOME"><b>GNUPGHOME</b></a></dt>
   <dd>GPG home directory for gpg-agent and key management. Defaults to ~/.gnupg
-      if not set. Used when authenticating with GPG keys</dd>
-  <dt id="HOM"><a class="permalink" href="#HOM"><b>HOM</b></a></dt>
+      if not set. Used when authenticating with GPG keys.</dd>
+  <dt id="HOME"><a class="permalink" href="#HOME"><b>HOME</b></a></dt>
   <dd>User home directory on Unix/macOS and Windows. Used to locate config files
       (.ascii-chat/ on Unix, third fallback on Windows), SSH keys (.ssh/), and
-      GPG keys. Required for path expansion</dd>
-  <dt id="LLVM_SYMBOLIZER_PAT"><a class="permalink" href="#LLVM_SYMBOLIZER_PAT"><b>LLVM_SYMBOLIZER_PAT</b></a></dt>
+      GPG keys. Required for path expansion.</dd>
+  <dt id="LLVM_SYMBOLIZER_PATH"><a class="permalink" href="#LLVM_SYMBOLIZER_PATH"><b>LLVM_SYMBOLIZER_PATH</b></a></dt>
   <dd>Path to llvm-symbolizer executable (debug builds only). When set, enables
       line-by-line stack traces in crash reports and panic messages. Improves
-      debugging information quality</dd>
-  <dt id="LOG_LEVE"><a class="permalink" href="#LOG_LEVE"><b>LOG_LEVE</b></a></dt>
+      debugging information quality.</dd>
+  <dt id="LOG_LEVEL"><a class="permalink" href="#LOG_LEVEL"><b>LOG_LEVEL</b></a></dt>
   <dd>Override log level via environment variable. Values: dev, debug, info,
-      warn</dd>
-  <dt id="POR"><a class="permalink" href="#POR"><b>POR</b></a></dt>
+      warn,</dd>
+  <dt id="PORT"><a class="permalink" href="#PORT"><b>PORT</b></a></dt>
   <dd>Alternative name for <b>ASCII_CHAT_PORT</b>. Sets the server or client
       port. Takes lower priority than <b>ASCII_CHAT_PORT</b>. See
-    <b>--port</b></dd>
-  <dt id="PROGRAMDAT"><a class="permalink" href="#PROGRAMDAT"><b>PROGRAMDAT</b></a></dt>
+    <b>--port</b>.</dd>
+  <dt id="PROGRAMDATA"><a class="permalink" href="#PROGRAMDATA"><b>PROGRAMDATA</b></a></dt>
   <dd>Windows program data directory for shared application data. Used as
-      fallback directory for global configuration on Windows</dd>
-  <dt id="SSH_AUTH_SOC"><a class="permalink" href="#SSH_AUTH_SOC"><b>SSH_AUTH_SOC</b></a></dt>
+      fallback directory for global configuration on Windows.</dd>
+  <dt id="SSH_AUTH_SOCK"><a class="permalink" href="#SSH_AUTH_SOCK"><b>SSH_AUTH_SOCK</b></a></dt>
   <dd>Path to the SSH agent socket. Set automatically by ssh-agent. Use this
-    fo</dd>
-  <dt id="TER"><a class="permalink" href="#TER"><b>TER</b></a></dt>
+    for</dd>
+  <dt id="TERM"><a class="permalink" href="#TERM"><b>TERM</b></a></dt>
   <dd>Terminal type identifier. Used for terminal capability detection and color
-      mod</dd>
-  <dt id="USE"><a class="permalink" href="#USE"><b>USE</b></a></dt>
+      mode</dd>
+  <dt id="USER"><a class="permalink" href="#USER"><b>USER</b></a></dt>
   <dd>Current user identifier on Unix/macOS. Used for TOFU host verification to
-      associate server keys with specific users</dd>
-  <dt id="USERNAM"><a class="permalink" href="#USERNAM"><b>USERNAM</b></a></dt>
+      associate server keys with specific users.</dd>
+  <dt id="USERNAME"><a class="permalink" href="#USERNAME"><b>USERNAME</b></a></dt>
   <dd>Current user identifier on Windows. Used for TOFU host verification and
-      user identification</dd>
-  <dt id="USERPROFIL"><a class="permalink" href="#USERPROFIL"><b>USERPROFIL</b></a></dt>
+      user identification.</dd>
+  <dt id="USERPROFILE"><a class="permalink" href="#USERPROFILE"><b>USERPROFILE</b></a></dt>
   <dd>Windows user home directory (%USERPROFILE% or %HOMEDRIVE%%HOMEPATH%). Used
       for expanding ~ in paths. When APPDATA is not set,
       %USERPROFILE%\AppData\Roaming\ascii-chat\ is used for config files (first
-      fallback in the chain)</dd>
+      fallback in the chain).</dd>
   <dt id="WEBCAM_DISABLED"><a class="permalink" href="#WEBCAM_DISABLED"><b>WEBCAM_DISABLED</b></a></dt>
   <dd>See: <b>--test-pattern</b></dd>
-  <dt id="WS_POR"><a class="permalink" href="#WS_POR"><b>WS_POR</b></a></dt>
+  <dt id="WS_PORT"><a class="permalink" href="#WS_PORT"><b>WS_PORT</b></a></dt>
   <dd>Alternative name for <b>ASCII_CHAT_WEBSOCKET_PORT</b>. Sets the WebSocket
       server port. Takes lower priority than <b>ASCII_CHAT_WEBSOCKET_PORT</b>.
-      See <b>--websocket-port</b></dd>
-  <dt id="XDG_CONFIG_DIR"><a class="permalink" href="#XDG_CONFIG_DIR"><b>XDG_CONFIG_DIR</b></a></dt>
+      See <b>--websocket-port</b>.</dd>
+  <dt id="XDG_CONFIG_DIRS"><a class="permalink" href="#XDG_CONFIG_DIRS"><b>XDG_CONFIG_DIRS</b></a></dt>
   <dd>Colon-separated list of additional system configuration directories
       (default: /etc/xdg). ascii-chat searches these directories (in order) for
       config files at $XDG_CONFIG_DIRS/ascii-chat/ after checking
@@ -1458,16 +1436,16 @@ https://example.com/stream.m3u8</pre>
       first match wins for override semantics, all matched files are cascaded
       for config.toml, or all matched files are searched for known_hosts.
       Example: /etc/xdg:/opt/xdg</dd>
-  <dt id="XDG_CONFIG_HOM"><a class="permalink" href="#XDG_CONFIG_HOM"><b>XDG_CONFIG_HOM</b></a></dt>
+  <dt id="XDG_CONFIG_HOME"><a class="permalink" href="#XDG_CONFIG_HOME"><b>XDG_CONFIG_HOME</b></a></dt>
   <dd>XDG Base Directory specification config directory on Linux (default:
       ~/.config). When set, ascii-chat searches for config files in
       $XDG_CONFIG_HOME/ascii-chat/ instead of ~/.config/ascii-chat/. Follows the
-      freedesktop.org XDG specification for application configuration</dd>
-  <dt id="XDG_DATA_HOM"><a class="permalink" href="#XDG_DATA_HOM"><b>XDG_DATA_HOM</b></a></dt>
+      freedesktop.org XDG specification for application configuration.</dd>
+  <dt id="XDG_DATA_HOME"><a class="permalink" href="#XDG_DATA_HOME"><b>XDG_DATA_HOME</b></a></dt>
   <dd>XDG Base Directory specification data directory on Linux (default:
       ~/.local/share). Can be used for application data storage following XDG
-      conventions</dd>
-  <dt><b>_NT_SYMBOL_PAT</b></dt>
+      conventions.</dd>
+  <dt><b>_NT_SYMBOL_PATH</b></dt>
   <dd>Windows NT symbol path for debugging symbols (debug builds only). Helps
       locate PDB files for better crash reports. Example:
       srv*C:\\symbols*https://msdl.microsoft.com/download/symbols</dd>

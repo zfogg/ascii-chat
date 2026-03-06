@@ -466,7 +466,7 @@
 465           size_t var_len = (size_t)(var_end - var_start);
 466           if (var_len &gt; 0) {
 467             char *var_name = SAFE_MALLOC(var_len + 1, char *);
-468             SAFE_STRNCPY(var_name, var_start, var_len);
+468             memcpy(var_name, var_start, var_len);
 469             var_name[var_len] = '\0';
 470 
 471             // Trim trailing whitespace
@@ -497,7 +497,7 @@
 496           size_t desc_len = (size_t)(line_end - desc_start);
 497           if (desc_len &gt; 0 &amp;&amp; manual_env_descs[manual_env_count - 1] == NULL) {
 498             char *desc = SAFE_MALLOC(desc_len + 1, char *);
-499             SAFE_STRNCPY(desc, desc_start, desc_len);
+499             memcpy(desc, desc_start, desc_len);
 500             desc[desc_len] = '\0';
 501 
 502             // Trim trailing whitespace
