@@ -109,7 +109,7 @@ function Home() {
           <p className="leading-relaxed mb-4 text-base md:text-lg">
             <strong>Privacy-first:</strong> ACDS only exchanges connection
             metadata. Your audio and video never pass through our servers. All
-            media flows peer-to-peer with end-to-end encryption.
+            media flows peer-to-peer with end-to-end encryption by default.
           </p>
 
           <Heading
