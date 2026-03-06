@@ -125,14 +125,21 @@ static void execute_list_webcams(void) {
     action_exit(ERROR_WEBCAM);
   }
 
+  bool use_colors = terminal_should_color_output(STDERR_FILENO);
+
   if (device_count == 0) {
-    log_plain_stderr("%s", colored_string(LOG_COLOR_ERROR, "No webcam devices found."));
+    const char *message = use_colors ? colored_string(LOG_COLOR_ERROR, "No webcam devices found.")
+                                      : "No webcam devices found.";
+    log_plain_stderr("%s", message);
   } else {
-    log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Webcam Devices:"));
+    const char *header = use_colors ? colored_string(LOG_COLOR_DEV, "Available Webcam Devices:")
+                                     : "Available Webcam Devices:";
+    log_plain_stderr("%s", header);
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       safe_snprintf(index_str, sizeof(index_str), "%u", devices[i].index);
-      log_plain_stderr("  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      const char *colored_index = use_colors ? colored_string(LOG_COLOR_GREY, index_str) : index_str;
+      log_plain_stderr("  %s %s", colored_index, devices[i].name);
     }
   }
 
@@ -165,22 +172,30 @@ static void execute_list_microphones(void) {
     action_exit(ERROR_AUDIO);
   }
 
+  bool use_colors = terminal_should_color_output(STDERR_FILENO);
+
   if (device_count == 0) {
-    log_plain_stderr("%s", colored_string(LOG_COLOR_ERROR, "No microphone devices found."));
+    const char *message = use_colors ? colored_string(LOG_COLOR_ERROR, "No microphone devices found.")
+                                      : "No microphone devices found.";
+    log_plain_stderr("%s", message);
   } else {
-    log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Microphone Devices:"));
+    const char *header = use_colors ? colored_string(LOG_COLOR_DEV, "Available Microphone Devices:")
+                                     : "Available Microphone Devices:";
+    log_plain_stderr("%s", header);
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       safe_snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
       char device_line[512];
       char *line_ptr = device_line;
       int remaining = sizeof(device_line);
-      safe_snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      const char *colored_index = use_colors ? colored_string(LOG_COLOR_GREY, index_str) : index_str;
+      safe_snprintf(line_ptr, remaining, "  %s %s", colored_index, devices[i].name);
       if (devices[i].is_default_input) {
         size_t len = strlen(device_line);
         line_ptr = device_line + len;
         remaining = sizeof(device_line) - (int)len;
-        safe_snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
+        const char *colored_default = use_colors ? colored_string(LOG_COLOR_INFO, "(default)") : "(default)";
+        safe_snprintf(line_ptr, remaining, " %s", colored_default);
       }
       log_plain_stderr("%s", device_line);
     }
@@ -211,22 +226,30 @@ static void execute_list_speakers(void) {
     action_exit(ERROR_AUDIO);
   }
 
+  bool use_colors = terminal_should_color_output(STDERR_FILENO);
+
   if (device_count == 0) {
-    log_plain_stderr("%s", colored_string(LOG_COLOR_ERROR, "No speaker devices found."));
+    const char *message = use_colors ? colored_string(LOG_COLOR_ERROR, "No speaker devices found.")
+                                      : "No speaker devices found.";
+    log_plain_stderr("%s", message);
   } else {
-    log_plain_stderr("%s", colored_string(LOG_COLOR_DEV, "Available Speaker Devices:"));
+    const char *header = use_colors ? colored_string(LOG_COLOR_DEV, "Available Speaker Devices:")
+                                     : "Available Speaker Devices:";
+    log_plain_stderr("%s", header);
     for (unsigned int i = 0; i < device_count; i++) {
       char index_str[32];
       safe_snprintf(index_str, sizeof(index_str), "%d", devices[i].index);
       char device_line[512];
       char *line_ptr = device_line;
       int remaining = sizeof(device_line);
-      safe_snprintf(line_ptr, remaining, "  %s %s", colored_string(LOG_COLOR_GREY, index_str), devices[i].name);
+      const char *colored_index = use_colors ? colored_string(LOG_COLOR_GREY, index_str) : index_str;
+      safe_snprintf(line_ptr, remaining, "  %s %s", colored_index, devices[i].name);
       if (devices[i].is_default_output) {
         size_t len = strlen(device_line);
         line_ptr = device_line + len;
         remaining = sizeof(device_line) - (int)len;
-        safe_snprintf(line_ptr, remaining, " %s", colored_string(LOG_COLOR_INFO, "(default)"));
+        const char *colored_default = use_colors ? colored_string(LOG_COLOR_INFO, "(default)") : "(default)";
+        safe_snprintf(line_ptr, remaining, " %s", colored_default);
       }
       log_plain_stderr("%s", device_line);
     }
