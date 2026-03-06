@@ -4,7 +4,7 @@ import { AsciiChatHead } from "../components/AsciiChatHead";
 
 export default function NotFoundPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-gray-950 text-gray-100">
+    <div className="h-full flex flex-col bg-gray-950 text-gray-100">
       <AsciiChatHead
         title="404 - Page Not Found | ascii-chat"
         description="The page you're looking for doesn't exist or has been moved."
