@@ -61,24 +61,29 @@ export default defineConfig({
     }),
   ],
   build: {
+    chunkSizeWarningLimit: 600,
     rollupOptions: {
       output: {
-        manualChunks: {
-          // Separate docs pages into their own chunks
-          "docs-pages": [
-            "./src/pages/docs/Configuration.jsx",
-            "./src/pages/docs/Hardware.jsx",
-            "./src/pages/docs/Terminal.jsx",
-            "./src/pages/docs/Snapshot.jsx",
-            "./src/pages/docs/Network.jsx",
-            "./src/pages/docs/Media.jsx",
-            "./src/pages/docs/Crypto.jsx",
-            "./src/pages/docs/DocsHub.jsx",
-          ],
+        manualChunks(id) {
           // Vendor libraries
-          vendor: ["react", "react-dom", "react-router-dom"],
+          if (id.includes("node_modules")) {
+            if (id.includes("react")) {
+              return "vendor-react";
+            }
+            return "vendor";
+          }
+          // Docs pages
+          if (id.includes("/docs/")) {
+            return "docs-pages";
+          }
+          // Man pages
+          if (id.includes("/Man") || id.includes("/Man3")) {
+            return "man-pages";
+          }
           // Shared components
-          "shared-components": ["@ascii-chat/shared/components"],
+          if (id.includes("@ascii-chat/shared")) {
+            return "shared";
+          }
         },
       },
     },
