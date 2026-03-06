@@ -148,6 +148,7 @@
 338 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_compile_scheme()</b>, and
     <b>log_cleanup_colors()</b>.</p>
 </section>
@@ -244,7 +245,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>colorscheme_cleanup_compiled()</b>,
     <b>rgb_to_16color()</b>, <b>rgb_to_256color()</b>,
-    <b>rgb_to_truecolor_ansi()</b>, and <b>safe_snprintf()</b>.</p>
+    <b>rgb_to_truecolor_ansi()</b>, <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>log_init_colors()</b>, and
     <b>log_set_color_scheme()</b>.</p>
 </section>
@@ -352,7 +354,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colorscheme_load_builtin()</b>, <b>file_path</b>,
-    <b>platform_fopen()</b>, and <b>safe_snprintf()</b>.</p>
+    <b>platform_fopen()</b>, <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_"><a class="permalink" href="#const_">const
@@ -416,7 +418,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>g_colorscheme_mutex</b>, <b>lifecycle_init()</b>,
-    <b>lifecycle_is_initialized()</b>, and <b>mutex_init()</b>.</p>
+    <b>lifecycle_is_initialized()</b>, <b>mutex_init()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_get_active_scheme()</b>,
     <b>colorscheme_set_active_scheme()</b>, and
     <b>options_colorscheme_init_early()</b>.</p>
@@ -441,6 +444,7 @@
 422 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_export_scheme()</b>, and
     <b>main()</b>.</p>
 </section>
@@ -525,7 +529,7 @@
 497 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>parse_hex_color()</b>.</p>
+<p class="Pp">References <b>parse_hex_color()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_set_active_scheme()</b>.</p>
 </section>
 <section class="Ss">
@@ -569,8 +573,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>colorscheme_init()</b>,
-    <b>colorscheme_load_from_file()</b>, <b>g_colorscheme_mutex</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
+    <b>colorscheme_load_from_file()</b>, <b>g_colorscheme_mutex</b>,
+    <b>lifecycle_is_initialized()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>options_colorscheme_init_early()</b>, and
     <b>options_init()</b>.</p>
 </section>
@@ -712,6 +716,7 @@
 529 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>colorscheme_load_from_file()</b>.</p>
 </section>
 <section class="Ss">

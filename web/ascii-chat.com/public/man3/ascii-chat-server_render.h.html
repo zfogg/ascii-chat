@@ -608,7 +608,8 @@
     <b>mixer_process_excluding_source()</b>, <b>opus_codec_create_encoder()</b>,
     <b>opus_codec_destroy()</b>, <b>opus_codec_encode()</b>,
     <b>OPUS_FRAME_SAMPLES</b>, <b>packet_queue_enqueue()</b>,
-    <b>packet_queue_size()</b>, and <b>time_get_ns()</b>.</p>
+    <b>packet_queue_size()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>time_get_ns()</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
 <section class="Ss">
 <h2 class="Ss" id="void_*_client_video_render_thread_(void_*_arg)"><a class="permalink" href="#void_*_client_video_render_thread_(void_*_arg)">void
@@ -1131,7 +1132,8 @@
     <b>asciichat_errno_destroy()</b>, <b>atomic_load_bool()</b>,
     <b>atomic_store_bool()</b>, <b>create_mixed_ascii_frame_for_client()</b>,
     <b>fps_frame_ns()</b>, <b>fps_init()</b>, <b>g_should_exit</b>,
-    <b>platform_sleep_ms()</b>, <b>time_get_ns()</b>, <b>time_pretty()</b>,
+    <b>log_warn</b>, <b>platform_sleep_ms()</b>, <b>SAFE_FREE</b>,
+    <b>time_get_ns()</b>, <b>time_pretty()</b>,
     <b>video_frame_begin_write()</b>, <b>video_frame_commit()</b>, and
     <b>VIDEO_RENDER_FPS</b>.</p>
 <p class="Pp">Referenced by <b>create_client_render_threads()</b>.</p>
@@ -1518,8 +1520,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,
-    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>, and
-    <b>g_should_exit</b>.</p>
+    <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>, <b>g_should_exit</b>,
+    <b>log_warn</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Author"><a class="permalink" href="#Author">Author</a></h1>

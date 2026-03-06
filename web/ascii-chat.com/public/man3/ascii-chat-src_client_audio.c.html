@@ -631,8 +631,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_analysis_track_received_sample()</b>,
-    <b>audio_ring_buffer_available_read()</b>, <b>audio_write_samples()</b>, and
-    <b>wav_writer_write()</b>.</p>
+    <b>audio_ring_buffer_available_read()</b>, <b>audio_write_samples()</b>,
+    <b>log_warn</b>, <b>SET_ERRNO</b>, and <b>wav_writer_write()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_audio_sender_cleanup_(void_)"><a class="permalink" href="#void_audio_sender_cleanup_(void_)">void
@@ -793,7 +793,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
-    <b>g_client_worker_pool</b>, and <b>thread_pool_spawn()</b>.</p>
+    <b>g_client_worker_pool</b>, <b>log_warn</b>, and
+    <b>thread_pool_spawn()</b>.</p>
 <p class="Pp">Referenced by <b>protocol_start_connection()</b>.</p>
 </section>
 <section class="Ss">
@@ -912,8 +913,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>atomic_store_bool()</b>,
     <b>lifecycle_destroy_commit()</b>, <b>lifecycle_destroy_once()</b>,
-    <b>lifecycle_init()</b>, <b>lifecycle_is_initialized()</b>, and
-    <b>platform_sleep_us()</b>.</p>
+    <b>lifecycle_init()</b>, <b>lifecycle_is_initialized()</b>, <b>log_warn</b>,
+    and <b>platform_sleep_us()</b>.</p>
 <p class="Pp">Referenced by <b>audio_cleanup()</b>,
     <b>protocol_stop_connection()</b>, and <b>session_client_like_run()</b>.</p>
 </section>

@@ -189,6 +189,7 @@
 1928 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -253,7 +254,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_destroy()</b>,
-    <b>audio_stop_duplex()</b>, and <b>mutex_destroy()</b>.</p>
+    <b>audio_stop_duplex()</b>, <b>mutex_destroy()</b>, and
+  <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>audio_cleanup()</b>, <b>audio_client_init()</b>,
     <b>session_audio_destroy()</b>, and <b>session_client_like_run()</b>.</p>
 </section>
@@ -295,6 +297,7 @@
 1912 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_audio_init_(audio_context_t_*_ctx)"><a class="permalink" href="#asciichat_error_t_audio_init_(audio_context_t_*_ctx)">asciichat_error_t
@@ -457,7 +460,8 @@
     <b>audio_ring_buffer_create()</b>,
     <b>audio_ring_buffer_create_for_capture()</b>,
     <b>audio_ring_buffer_destroy()</b>, <b>mutex_destroy()</b>,
-    <b>mutex_init()</b>, and <b>WORKER_BATCH_SAMPLES</b>.</p>
+    <b>mutex_init()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>,
+    and <b>WORKER_BATCH_SAMPLES</b>.</p>
 <p class="Pp">Referenced by <b>audio_client_init()</b>,
     <b>session_audio_create()</b>, and <b>session_client_like_run()</b>.</p>
 </section>
@@ -550,7 +554,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_batch_info_t::batch_count</b>,
     <b>audio_batch_info_t::channels</b>, <b>audio_batch_info_t::sample_rate</b>,
-    and <b>audio_batch_info_t::total_samples</b>.</p>
+    <b>SET_ERRNO</b>, and <b>audio_batch_info_t::total_samples</b>.</p>
 <p class="Pp">Referenced by <b>handle_audio_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -571,7 +575,8 @@
 1803 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_ring_buffer_read()</b>.</p>
+<p class="Pp">References <b>audio_ring_buffer_read()</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_read_captured()</b>.</p>
 </section>
 <section class="Ss">
@@ -616,7 +621,8 @@
 1132 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>audio_ring_buffer_available_read()</b>.</p>
+<p class="Pp">References <b>audio_ring_buffer_available_read()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_audio_ring_buffer_clear_(audio_ring_buffer_t_*_rb)"><a class="permalink" href="#void_audio_ring_buffer_clear_(audio_ring_buffer_t_*_rb)">void
@@ -880,7 +886,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_fetch_add_u64()</b>,
-    <b>atomic_load_u64()</b>, and <b>atomic_store_u64()</b>.</p>
+    <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>audio_read_samples()</b>,
     <b>client_audio_render_thread()</b>, <b>mixer_process()</b>,
     <b>mixer_process_excluding_source()</b>, <b>render_file_write_frame()</b>,
@@ -1028,8 +1035,8 @@
 939 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_u64()</b>, and
-    <b>atomic_store_u64()</b>.</p>
+<p class="Pp">References <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>audio_write_samples()</b>,
     <b>handle_audio_batch_packet()</b>, <b>handle_audio_opus_batch_packet()</b>,
     <b>handle_audio_opus_packet()</b>, <b>handle_audio_packet()</b>, and
@@ -1447,7 +1454,7 @@
 <p class="Pp">References <b>asciichat_thread_create()</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_create_for_capture()</b>,
     <b>audio_ring_buffer_destroy()</b>, <b>audio_set_realtime_priority()</b>,
-    and <b>paNoError</b>.</p>
+    <b>log_warn</b>, <b>paNoError</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>audio_client_init()</b>,
     <b>session_audio_start_duplex()</b>, and
   <b>session_client_like_run()</b>.</p>
@@ -1546,7 +1553,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_join()</b>,
     <b>atomic_store_bool()</b>, <b>audio_ring_buffer_clear()</b>,
-    <b>audio_ring_buffer_destroy()</b>, and <b>paNoError</b>.</p>
+    <b>audio_ring_buffer_destroy()</b>, <b>log_warn</b>, <b>paNoError</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>audio_cleanup()</b>, <b>audio_destroy()</b>,
     <b>session_audio_stop()</b>, and <b>session_client_like_run()</b>.</p>
 </section>
@@ -1622,7 +1630,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_is_supported_sample_rate()</b>,
     <b>audio_batch_info_t::batch_count</b>, <b>audio_batch_info_t::channels</b>,
-    <b>audio_batch_info_t::sample_rate</b>, and
+    <b>audio_batch_info_t::sample_rate</b>, <b>SET_ERRNO</b>, and
     <b>audio_batch_info_t::total_samples</b>.</p>
 </section>
 <section class="Ss">
@@ -1648,8 +1656,8 @@
 1819 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>audio_ring_buffer_write()</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>,
+    <b>audio_ring_buffer_write()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>audio_process_received_samples()</b>, and
     <b>session_audio_write_playback()</b>.</p>
 </section>

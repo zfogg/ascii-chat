@@ -312,9 +312,9 @@
 137 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>file_read_error_message()</b>,
-    <b>platform_fopen()</b>, <b>version_compare()</b>, and
-    <b>version_parse()</b>.</p>
+<p class="Pp">References <b>file_read_error_message()</b>, <b>log_warn</b>,
+    <b>platform_fopen()</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+    <b>version_compare()</b>, and <b>version_parse()</b>.</p>
 <p class="Pp">Referenced by <b>update_check_startup()</b>.</p>
 </section>
 <section class="Ss">
@@ -402,6 +402,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>dns_test_connectivity()</b>,
     <b>GITHUB_API_HOSTNAME</b>, <b>GITHUB_RELEASES_PATH</b>, <b>https_get()</b>,
+    <b>log_warn</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
     <b>update_check_save_cache()</b>, <b>version_compare()</b>, and
     <b>version_parse()</b>.</p>
 <p class="Pp">Referenced by <b>action_check_update_immediate()</b>, and
@@ -444,8 +445,8 @@
 169 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>file_write_error_message()</b>, and
-    <b>platform_fopen()</b>.</p>
+<p class="Pp">References <b>file_write_error_message()</b>,
+    <b>platform_fopen()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>update_check_perform()</b>.</p>
 </section>
 <section class="Ss">

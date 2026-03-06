@@ -156,7 +156,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>packet_send_via_transport()</b>.</p>
+    <b>packet_send_via_transport()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>.</p>
 </section>
 <section class="Ss">
@@ -173,7 +173,8 @@
 261 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_send_thread_func()</b>.</p>
 </section>
 <section class="Ss">
@@ -191,7 +192,8 @@
 269 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>add_webrtc_client()</b>,
     <b>broadcast_server_state_to_all_clients()</b>, and
     <b>send_server_state_to_client()</b>.</p>
@@ -359,8 +361,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_handle_server_packet()</b>,
     <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>crypto_decrypt()</b>, <b>crypto_result_to_string()</b>,
-    <b>receive_packet_secure()</b>, <b>time_get_ns()</b>, and
+    <b>crypto_decrypt()</b>, <b>crypto_result_to_string()</b>, <b>log_warn</b>,
+    <b>receive_packet_secure()</b>, <b>SET_ERRNO</b>, <b>time_get_ns()</b>, and
     <b>time_pretty()</b>.</p>
 <p class="Pp">Referenced by <b>client_receive_thread()</b>.</p>
 </section>

@@ -121,7 +121,8 @@
 110 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_init()</b>, and <b>pool</b>.</p>
+<p class="Pp">References <b>mutex_init()</b>, <b>pool</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>, <b>server_main()</b>, and
     <b>tcp_server_add_client()</b>.</p>
 </section>
@@ -228,8 +229,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_create()</b>,
-    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>pool</b>, and
-    <b>thread_pool_destroy()</b>.</p>
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>, <b>pool</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, and <b>thread_pool_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>websocket_server_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -282,8 +283,8 @@
 251 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>, <b>pool</b>, and
-    <b>thread_pool_stop_all()</b>.</p>
+<p class="Pp">References <b>mutex_destroy()</b>, <b>pool</b>, <b>SAFE_FREE</b>,
+    and <b>thread_pool_stop_all()</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_shutdown()</b>, <b>server_main()</b>,
     <b>tcp_server_destroy()</b>, <b>tcp_server_remove_client()</b>,
     <b>thread_pool_create_with_workers()</b>, and
@@ -376,7 +377,7 @@
 506 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>pool</b>.</p>
+<p class="Pp">References <b>log_warn</b>, <b>pool</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_thread_pool_queue_work_(const_char_*_name,_thread_pool_t_*_pool,_void_*(*_work_func_)(void_*),_void_*_work_arg)"><a class="permalink" href="#asciichat_error_t_thread_pool_queue_work_(const_char_*_name,_thread_pool_t_*_pool,_void_*(*_work_func_)(void_*),_void_*_work_arg)">asciichat_error_t
@@ -437,7 +438,8 @@
 305 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>pool</b>.</p>
+<p class="Pp">References <b>log_dev</b>, <b>pool</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_thread_pool_spawn_(thread_pool_t_*_pool,_void_*(*_thread_func_)(void_*),_void_*_thread_arg,_int_stop_id,_const_char_*_thread_name)"><a class="permalink" href="#asciichat_error_t_thread_pool_spawn_(thread_pool_t_*_pool,_void_*(*_thread_func_)(void_*),_void_*_thread_arg,_int_stop_id,_const_char_*_thread_name)">asciichat_error_t
@@ -513,7 +515,8 @@
 374 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>asciichat_thread_create()</b>, and <b>pool</b>.</p>
+<p class="Pp">References <b>asciichat_thread_create()</b>, <b>pool</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_server_init()</b>,
     <b>audio_sender_init()</b>, <b>audio_start_thread()</b>,
     <b>capture_start_thread()</b>, <b>keepalive_start_thread()</b>,
@@ -591,7 +594,8 @@
 440 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>pool</b>.</p>
+<p class="Pp">References <b>log_warn</b>, <b>pool</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>protocol_stop_connection()</b>,
     <b>tcp_server_stop_client_threads()</b>, and
   <b>thread_pool_destroy()</b>.</p>

@@ -389,8 +389,9 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>client_audio_pipeline_default_config()</b>,
     <b>compressor_init()</b>, <b>compressor_set_params()</b>,
-    <b>highpass_filter_init()</b>, <b>lowpass_filter_init()</b>,
-    <b>noise_gate_init()</b>, <b>noise_gate_set_params()</b>, and
+    <b>highpass_filter_init()</b>, <b>log_warn</b>,
+    <b>lowpass_filter_init()</b>, <b>noise_gate_init()</b>,
+    <b>noise_gate_set_params()</b>, <b>SAFE_FREE</b>, and
     <b>wav_writer_open()</b>.</p>
 <p class="Pp">Referenced by <b>audio_client_init()</b>.</p>
 </section>
@@ -494,7 +495,7 @@
 408 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>wav_writer_close()</b>.</p>
+<p class="Pp">References <b>SAFE_FREE</b>, and <b>wav_writer_close()</b>.</p>
 <p class="Pp">Referenced by <b>audio_cleanup()</b>, and
     <b>audio_client_init()</b>.</p>
 </section>
@@ -785,7 +786,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_analysis_set_aec3_metrics()</b>,
     <b>compressor_process_sample()</b>, <b>copy_buffer_with_gain()</b>,
-    <b>highpass_filter_process_buffer()</b>,
+    <b>highpass_filter_process_buffer()</b>, <b>log_warn</b>,
     <b>lowpass_filter_process_buffer()</b>, <b>noise_gate_process_buffer()</b>,
     <b>platform_getenv()</b>, <b>smoothstep()</b>, <b>soft_clip()</b>,
     <b>soft_clip_buffer()</b>, and <b>wav_writer_write()</b>.</p>

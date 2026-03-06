@@ -90,7 +90,7 @@
 23 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace()</b>.</p>
+<p class="Pp">References <b>platform_backtrace()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>backtrace_capture_and_symbolize()</b>.</p>
 </section>
 <section class="Ss">
@@ -107,8 +107,8 @@
 43 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_capture()</b>, and
-    <b>backtrace_symbolize()</b>.</p>
+<p class="Pp">References <b>backtrace_capture()</b>,
+    <b>backtrace_symbolize()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>, and
     <b>backtrace_log_frames()</b>.</p>
 </section>
@@ -165,7 +165,7 @@
 407 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_log_frames_(int_num_frames,_int_skip_frames)"><a class="permalink" href="#void_backtrace_log_frames_(int_num_frames,_int_skip_frames)">void
@@ -471,8 +471,9 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>asciichat_thread_self()</b>,
     <b>colored_string()</b>, <b>log_file_msg()</b>, <b>log_get_template()</b>,
-    <b>log_template_apply()</b>, <b>platform_get_monotonic_time_us()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>log_template_apply()</b>, <b>log_warn</b>,
+    <b>platform_get_monotonic_time_us()</b>, <b>safe_snprintf()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_fatal_with_context()</b>,
     <b>asciichat_print_error_context()</b>, <b>backtrace_log_frames()</b>, and
     <b>backtrace_print_many()</b>.</p>
@@ -494,7 +495,7 @@
 361 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>backtrace_print()</b>.</p>
+<p class="Pp">References <b>backtrace_print()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_backtrace_print_simple_(int_skip_frames)"><a class="permalink" href="#void_backtrace_print_simple_(int_skip_frames)">void
@@ -518,8 +519,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>platform_backtrace()</b>,
-    <b>platform_backtrace_symbols()</b>, and
-    <b>platform_backtrace_symbols_destroy()</b>.</p>
+    <b>platform_backtrace_symbols()</b>,
+    <b>platform_backtrace_symbols_destroy()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>main()</b>.</p>
 </section>
 <section class="Ss">
@@ -536,7 +537,8 @@
 34 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace_symbols()</b>.</p>
+<p class="Pp">References <b>platform_backtrace_symbols()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_print_error_context()</b>, and
     <b>backtrace_capture_and_symbolize()</b>.</p>
 </section>
@@ -556,7 +558,8 @@
 54 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_backtrace_symbols_destroy()</b>.</p>
+<p class="Pp">References <b>platform_backtrace_symbols_destroy()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_clear_errno()</b>,
     <b>asciichat_errno_destroy()</b>, <b>asciichat_fatal_with_context()</b>,
     <b>asciichat_set_errno()</b>, and <b>backtrace_log_frames()</b>.</p>

@@ -92,8 +92,8 @@
 526 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>fetch_github_gpg_keys()</b>, and
-    <b>fetch_github_ssh_keys()</b>.</p>
+<p class="Pp">References <b>fetch_github_gpg_keys()</b>,
+    <b>fetch_github_ssh_keys()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_fetch_gitlab_keys_(const_char_*_username,_char_***_keys_out,_size_t_*_num_keys,_"><a class="permalink" href="#asciichat_error_t_fetch_gitlab_keys_(const_char_*_username,_char_***_keys_out,_size_t_*_num_keys,_">asciichat_error_t
@@ -113,8 +113,8 @@
 538 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>fetch_gitlab_gpg_keys()</b>, and
-    <b>fetch_gitlab_ssh_keys()</b>.</p>
+<p class="Pp">References <b>fetch_gitlab_gpg_keys()</b>,
+    <b>fetch_gitlab_ssh_keys()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_format_public_key_(const_public_key_t_*_key,_char_*_output,_size_t_output_size)"><a class="permalink" href="#void_format_public_key_(const_public_key_t_*_key,_char_*_output,_size_t_output_size)">void
@@ -195,6 +195,7 @@
 656 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>parse_public_key()</b>.</p>
 </section>
 <section class="Ss">
@@ -248,8 +249,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>parse_public_key()</b>,
-    <b>path_looks_like_path()</b>, <b>path_validate_user_path()</b>, and
-    <b>platform_fopen()</b>.</p>
+    <b>path_looks_like_path()</b>, <b>path_validate_user_path()</b>,
+    <b>platform_fopen()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>parse_public_keys()</b>.</p>
 </section>
 <section class="Ss">
@@ -406,8 +407,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>gpg_get_public_key()</b>,
     <b>openpgp_parse_armored_seckey()</b>, <b>parse_ssh_private_key()</b>,
-    <b>path_validate_user_path()</b>, <b>platform_fopen()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>path_validate_user_path()</b>, <b>platform_fopen()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -584,9 +585,9 @@
     <b>parse_gpg_key()</b>, <b>parse_gpg_key_binary()</b>,
     <b>parse_public_key()</b>, <b>parse_public_keys()</b>,
     <b>parse_ssh_ed25519_line()</b>, <b>path_looks_like_path()</b>,
-    <b>path_validate_user_path()</b>, <b>platform_fopen()</b>,
-    <b>url_is_valid()</b>, <b>url_parse()</b>, and
-  <b>url_parts_destroy()</b>.</p>
+    <b>path_validate_user_path()</b>, <b>platform_fopen()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>SET_ERRNO</b>, <b>url_is_valid()</b>,
+    <b>url_parse()</b>, and <b>url_parts_destroy()</b>.</p>
 <p class="Pp">Referenced by <b>check_known_host()</b>,
     <b>discovery_keys_download_https()</b>, <b>discovery_keys_load_file()</b>,
     <b>discovery_keys_verify()</b>, <b>parse_keys_from_file()</b>,
@@ -726,9 +727,10 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>fetch_github_gpg_keys()</b>,
     <b>fetch_github_ssh_keys()</b>, <b>fetch_gitlab_gpg_keys()</b>,
-    <b>fetch_gitlab_ssh_keys()</b>, <b>parse_keys_from_file()</b>,
-    <b>parse_public_key()</b>, <b>parse_public_keys()</b>, and
-    <b>path_looks_like_path()</b>.</p>
+    <b>fetch_gitlab_ssh_keys()</b>, <b>log_warn</b>,
+    <b>parse_keys_from_file()</b>, <b>parse_public_key()</b>,
+    <b>parse_public_keys()</b>, <b>path_looks_like_path()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>client_crypto_handshake()</b>,
     <b>crypto_handshake_client_key_exchange()</b>, <b>parse_public_key()</b>,
     and <b>parse_public_keys()</b>.</p>
@@ -758,7 +760,8 @@
 510 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ed25519_to_x25519_private()</b>.</p>
+<p class="Pp">References <b>ed25519_to_x25519_private()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_public_key_to_x25519_(const_public_key_t_*_key,_uint8_t_x25519_pk_32_)"><a class="permalink" href="#asciichat_error_t_public_key_to_x25519_(const_public_key_t_*_key,_uint8_t_x25519_pk_32_)">asciichat_error_t
@@ -785,7 +788,8 @@
 491 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>ed25519_to_x25519_public()</b>.</p>
+<p class="Pp">References <b>ed25519_to_x25519_public()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

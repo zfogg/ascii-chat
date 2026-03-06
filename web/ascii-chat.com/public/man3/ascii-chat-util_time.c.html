@@ -414,7 +414,7 @@
 806 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_localtime()</b>, and
+<p class="Pp">References <b>platform_localtime()</b>, <b>SET_ERRNO</b>, and
     <b>time_get_realtime_ns()</b>.</p>
 <p class="Pp">Referenced by <b>log_template_apply()</b>, and
     <b>time_format_safe()</b>.</p>
@@ -454,8 +454,8 @@
 835 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>time_format_is_valid_strftime()</b>, and
-    <b>time_format_now()</b>.</p>
+<p class="Pp">References <b>SET_ERRNO</b>,
+    <b>time_format_is_valid_strftime()</b>, and <b>time_format_now()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="uint64_t_time_get_ns_(void_)"><a class="permalink" href="#uint64_t_time_get_ns_(void_)">uint64_t
@@ -647,6 +647,7 @@
 179 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_time_pretty_(uint64_t_nanoseconds,_int_decimals,_char_*_buffer,_size_t_buffer_size)"><a class="permalink" href="#int_time_pretty_(uint64_t_nanoseconds,_int_decimals,_char_*_buffer,_size_t_buffer_size)">int
@@ -832,6 +833,7 @@
 170 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>time_get_realtime_ns()</b>.</p>
 </section>
 <section class="Ss">
@@ -899,7 +901,8 @@
 283 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="double_timer_stop_(const_char_*_name)"><a class="permalink" href="#double_timer_stop_(const_char_*_name)">double
@@ -961,8 +964,8 @@
 338 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
-    <b>time_pretty()</b>.</p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>log_dev</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and <b>time_pretty()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_timer_system_destroy_(void_)"><a class="permalink" href="#void_timer_system_destroy_(void_)">void
@@ -996,8 +999,8 @@
 232 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_is_initialized()</b>, and
-    <b>lifecycle_shutdown()</b>.</p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>,
+    <b>lifecycle_shutdown()</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -1026,8 +1029,8 @@
 205 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_init()</b>, and
-    <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>lifecycle_init()</b>,
+    <b>lifecycle_is_initialized()</b>, <b>log_dev</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
 </section>
 </section>

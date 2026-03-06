@@ -111,7 +111,7 @@
 131 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_github_gpg_keys()</b>.</p>
 </section>
 <section class="Ss">
@@ -141,7 +141,7 @@
 81 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_github_ssh_keys()</b>.</p>
 </section>
 <section class="Ss">
@@ -179,7 +179,7 @@
 160 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_gitlab_gpg_keys()</b>.</p>
 </section>
 <section class="Ss">
@@ -209,7 +209,7 @@
 102 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_gitlab_ssh_keys()</b>.</p>
 </section>
 <section class="Ss">
@@ -250,8 +250,9 @@
 260 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>build_github_gpg_url()</b>, and
-    <b>parse_gpg_keys_from_response()</b>.</p>
+<p class="Pp">References <b>build_github_gpg_url()</b>,
+    <b>parse_gpg_keys_from_response()</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_github_keys()</b>, and
     <b>parse_public_keys()</b>.</p>
 </section>
@@ -293,8 +294,9 @@
 196 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>build_github_ssh_url()</b>, and
-    <b>parse_ssh_keys_from_response()</b>.</p>
+<p class="Pp">References <b>build_github_ssh_url()</b>,
+    <b>parse_ssh_keys_from_response()</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_github_keys()</b>, and
     <b>parse_public_keys()</b>.</p>
 </section>
@@ -336,8 +338,9 @@
 292 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>build_gitlab_gpg_url()</b>, and
-    <b>parse_gpg_keys_from_response()</b>.</p>
+<p class="Pp">References <b>build_gitlab_gpg_url()</b>,
+    <b>parse_gpg_keys_from_response()</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_gitlab_keys()</b>, and
     <b>parse_public_keys()</b>.</p>
 </section>
@@ -379,8 +382,9 @@
 228 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>build_gitlab_ssh_url()</b>, and
-    <b>parse_ssh_keys_from_response()</b>.</p>
+<p class="Pp">References <b>build_gitlab_ssh_url()</b>,
+    <b>parse_ssh_keys_from_response()</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_gitlab_keys()</b>, and
     <b>parse_public_keys()</b>.</p>
 </section>
@@ -569,8 +573,9 @@
 574 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>platform_open()</b>, and <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>log_warn</b>, <b>PLATFORM_MAX_PATH_LENGTH</b>,
+    <b>platform_open()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_github_gpg_keys()</b>, and
     <b>fetch_gitlab_gpg_keys()</b>.</p>
 </section>
@@ -677,6 +682,8 @@
 394 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>fetch_github_ssh_keys()</b>, and
     <b>fetch_gitlab_ssh_keys()</b>.</p>
 </section>

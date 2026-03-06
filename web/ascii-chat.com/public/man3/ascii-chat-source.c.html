@@ -404,10 +404,12 @@
     <b>ffmpeg_decoder_create_stdin()</b>, <b>ffmpeg_decoder_destroy()</b>,
     <b>ffmpeg_decoder_start_prefetch()</b>, <b>media_source_t::file_path</b>,
     <b>media_source_t::is_paused</b>, <b>media_source_t::is_shared_decoder</b>,
-    <b>media_source_t::loop_enabled</b>, <b>mutex_destroy()</b>,
-    <b>mutex_init()</b>, <b>media_source_t::original_youtube_url</b>,
+    <b>log_warn</b>, <b>media_source_t::loop_enabled</b>,
+    <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>media_source_t::original_youtube_url</b>,
     <b>media_source_t::pause_mutex</b>, <b>platform_strdup()</b>,
-    <b>media_source_t::seek_access_mutex</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>media_source_t::seek_access_mutex</b>, <b>SET_ERRNO</b>,
     <b>media_source_t::test_frame_counter</b>,
     <b>media_source_t::test_pattern_frame</b>, <b>media_source_t::type</b>,
     <b>media_source_t::video_decoder</b>, <b>media_source_t::webcam_ctx</b>,
@@ -475,7 +477,7 @@
     <b>media_source_t::file_path</b>, <b>image_destroy()</b>,
     <b>media_source_t::is_shared_decoder</b>, <b>mutex_destroy()</b>,
     <b>media_source_t::original_youtube_url</b>,
-    <b>media_source_t::pause_mutex</b>,
+    <b>media_source_t::pause_mutex</b>, <b>SAFE_FREE</b>,
     <b>media_source_t::seek_access_mutex</b>,
     <b>media_source_t::test_pattern_frame</b>,
     <b>media_source_t::video_decoder</b>, <b>webcam_cleanup_context()</b>, and
@@ -777,8 +779,8 @@
     <b>ffmpeg_decoder_get_position()</b>,
     <b>ffmpeg_decoder_read_audio_samples()</b>,
     <b>media_source_t::is_paused</b>, <b>media_source_t::is_shared_decoder</b>,
-    <b>media_source_t::loop_enabled</b>, <b>media_source_rewind()</b>,
-    <b>media_source_t::pause_mutex</b>,
+    <b>log_warn</b>, <b>media_source_t::loop_enabled</b>,
+    <b>media_source_rewind()</b>, <b>media_source_t::pause_mutex</b>,
     <b>media_source_t::seek_access_mutex</b>, and
   <b>media_source_t::type</b>.</p>
 <p class="Pp">Referenced by <b>render_file_write_frame()</b>, and
@@ -1115,9 +1117,9 @@
     <b>media_source_t::audio_decoder</b>, <b>audio_ring_buffer_clear()</b>,
     <b>ffmpeg_decoder_get_position()</b>,
     <b>ffmpeg_decoder_seek_to_timestamp()</b>,
-    <b>media_source_t::is_shared_decoder</b>, <b>time_elapsed_ns()</b>,
-    <b>time_get_ns()</b>, <b>time_pretty()</b>, <b>media_source_t::type</b>, and
-    <b>media_source_t::video_decoder</b>.</p>
+    <b>media_source_t::is_shared_decoder</b>, <b>log_warn</b>, <b>SET_ERRNO</b>,
+    <b>time_elapsed_ns()</b>, <b>time_get_ns()</b>, <b>time_pretty()</b>,
+    <b>media_source_t::type</b>, and <b>media_source_t::video_decoder</b>.</p>
 <p class="Pp">Referenced by <b>session_capture_create()</b>, and
     <b>session_handle_keyboard_input()</b>.</p>
 </section>
@@ -1181,8 +1183,8 @@
 764 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>media_source_t::loop_enabled</b>, and
-    <b>media_source_t::type</b>.</p>
+<p class="Pp">References <b>log_warn</b>, <b>media_source_t::loop_enabled</b>,
+    and <b>media_source_t::type</b>.</p>
 <p class="Pp">Referenced by <b>session_capture_create()</b>.</p>
 </section>
 <section class="Ss">

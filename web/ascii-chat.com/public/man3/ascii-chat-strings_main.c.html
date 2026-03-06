@@ -35,6 +35,16 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="Macros"><a class="permalink" href="#Macros">Macros</a></h2>
+<br/>
+<p class="Pp">#define <b>SESSION_STRING_BUFFER_SIZE</b> 40
+  <br/>
+  #define <b>ACDS_MAX_UNIQUE_SESSIONS</b> (2500LL * 5000LL * 5000LL)
+  <br/>
+  <br/>
+</p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">int <b>main</b> (int argc, char *argv[])
@@ -44,66 +54,78 @@
 </section>
 </section>
 <section class="Sh">
+<h1 class="Sh" id="Macro_Definition_Documentation"><a class="permalink" href="#Macro_Definition_Documentation">Macro
+  Definition Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)"><a class="permalink" href="#_define_ACDS_MAX_UNIQUE_SESSIONS___(2500LL_*_5000LL_*_5000LL)">#define
+  ACDS_MAX_UNIQUE_SESSIONS (2500LL * 5000LL * 5000LL)</a></h2>
+<p class="Pp">Definition at line <b>13</b> of file <b>strings/main.c</b>.</p>
+<p class="Pp">Referenced by <b>main()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="_define_SESSION_STRING_BUFFER_SIZE___40"><a class="permalink" href="#_define_SESSION_STRING_BUFFER_SIZE___40">#define
+  SESSION_STRING_BUFFER_SIZE 40</a></h2>
+<p class="Pp">Definition at line <b>12</b> of file <b>strings/main.c</b>.</p>
+<p class="Pp">Referenced by <b>acds_string_generate()</b>,
+    <b>database_session_leave()</b>, <b>options_init()</b>,
+    <b>options_preset_unified()</b>, and <b>parse_client_address()</b>.</p>
+</section>
+</section>
+<section class="Sh">
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
 <h2 class="Ss" id="int_main_(int_argc,_char_*_argv__)"><a class="permalink" href="#int_main_(int_argc,_char_*_argv__)">int
   main (int argc, char * argv[])</a></h2>
-<p class="Pp">Definition at line <b>8</b> of file <b>strings/main.c</b>.</p>
-<pre>8                                  {
-9   long long count = 1;
-10   static struct option long_options[] = {
-11     {&quot;count&quot;, required_argument, 0, 'n'},
-12     {&quot;help&quot;, no_argument, 0, 'h'},
-13     {0, 0, 0, 0}
-14   };
-15 
-16   int opt;
-17   while ((opt = getopt_long(argc, argv, &quot;n:h&quot;, long_options, NULL)) != -1) {
-18     switch (opt) {
-19       case 'n':
-20         count = strtoll(optarg, NULL, 10);
-21         break;
-22       case 'h':
-23         printf(&quot;Usage: ascii-chat-strings [-n|--count COUNT]\n&quot;);
-24         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
-25         printf(&quot;\nOptions:\n&quot;);
-26         printf(&quot;  -n, --count COUNT   Generate COUNT session strings (default: 1)\n&quot;);
-27         printf(&quot;  -h, --help          Show this help message\n&quot;);
-28         return 0;
-29       default:
-30         return ERROR_USAGE;
-31     }
-32   }
-33 
-34   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
-35     return ERROR_USAGE;
-36   }
-37 
-38   // Initialize session string system
-39   asciichat_error_t err = acds_string_init();
-40   if (err != ASCIICHAT_OK) {
-41     return err;
-42   }
-43 
-44   // Generate session strings
-45   for (long long i = 0; i &lt; count; i++) {
-46     char session_string[SESSION_STRING_BUFFER_SIZE];
-47     err = acds_string_generate(session_string, sizeof(session_string));
-48     if (err != ASCIICHAT_OK) {
-49       acds_strings_destroy();
-50       return err;
-51     }
-52     printf(&quot;%s\n&quot;, session_string);
+<p class="Pp">Definition at line <b>25</b> of file <b>strings/main.c</b>.</p>
+<pre>25                                  {
+26   long long count = 1;
+27   static struct option long_options[] = {
+28     {&quot;count&quot;, required_argument, 0, 'n'},
+29     {&quot;help&quot;, no_argument, 0, 'h'},
+30     {0, 0, 0, 0}
+31   };
+32 
+33   int opt;
+34   while ((opt = getopt_long(argc, argv, &quot;n:h&quot;, long_options, NULL)) != -1) {
+35     switch (opt) {
+36       case 'n':
+37         count = strtoll(optarg, NULL, 10);
+38         break;
+39       case 'h':
+40         printf(&quot;Usage: ascii-chat-strings [-n|--count COUNT]\n&quot;);
+41         printf(&quot;Generate memorable session strings (adjective-noun-noun format)\n&quot;);
+42         printf(&quot;\nOptions:\n&quot;);
+43         printf(&quot;  -n, --count COUNT   Generate COUNT session strings (default: 1)\n&quot;);
+44         printf(&quot;  -h, --help          Show this help message\n&quot;);
+45         return 0;
+46       default:
+47         return ERROR_USAGE;
+48     }
+49   }
+50 
+51   if (count &lt;= 0 || (long long)count &gt; ACDS_MAX_UNIQUE_SESSIONS) {
+52     return ERROR_USAGE;
 53   }
 54 
-55   acds_strings_destroy();
-56   return 0;
-57 }</pre>
+55   // Generate session strings
+56   for (long long i = 0; i &lt; count; i++) {
+57     uint32_t adj_idx = randombytes_uniform((uint32_t)adjectives_count);
+58     uint32_t noun1_idx = randombytes_uniform((uint32_t)nouns_count);
+59     uint32_t noun2_idx = randombytes_uniform((uint32_t)nouns_count);
+60 
+61     printf(&quot;%s-%s-%s\n&quot;,
+62            adjectives[adj_idx],
+63            nouns[noun1_idx],
+64            nouns[noun2_idx]);
+65   }
+66 
+67   return 0;
+68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acds_string_generate()</b>,
-    <b>acds_string_init()</b>, and <b>acds_strings_destroy()</b>.</p>
+<p class="Pp">References <b>ACDS_MAX_UNIQUE_SESSIONS</b>, <b>adjectives</b>,
+    <b>adjectives_count</b>, <b>nouns</b>, and <b>nouns_count</b>.</p>
 </section>
 </section>
 <section class="Sh">

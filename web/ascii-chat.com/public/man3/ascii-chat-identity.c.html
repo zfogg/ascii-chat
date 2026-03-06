@@ -86,8 +86,8 @@
 140 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_get_config_dir()</b>, and
-    <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>platform_get_config_dir()</b>, <b>SAFE_FREE</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -137,6 +137,7 @@
 29 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>, and
     <b>discovery_session_create()</b>.</p>
 </section>
@@ -175,7 +176,7 @@
 58 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_fopen()</b>.</p>
+<p class="Pp">References <b>platform_fopen()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>, and
     <b>discovery_session_create()</b>.</p>
 </section>
@@ -229,7 +230,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>PLATFORM_MAX_PATH_LENGTH</b>,
-    <b>platform_mkdir_recursive()</b>, and <b>platform_open()</b>.</p>
+    <b>platform_mkdir_recursive()</b>, <b>platform_open()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acds_main()</b>, and
     <b>discovery_session_create()</b>.</p>
 </section>

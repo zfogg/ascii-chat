@@ -241,8 +241,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_handle_client_packet()</b>,
-    <b>buffer_pool_free()</b>, <b>packet_decrypt_envelope()</b>, and
-    <b>receive_packet_secure()</b>.</p>
+    <b>buffer_pool_free()</b>, <b>log_warn</b>,
+    <b>packet_decrypt_envelope()</b>, <b>receive_packet_secure()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_capabilities_("><a class="permalink" href="#asciichat_error_t_acip_send_capabilities_(">asciichat_error_t
@@ -259,7 +260,8 @@
 325 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_client_join_("><a class="permalink" href="#asciichat_error_t_acip_send_client_join_(">asciichat_error_t
@@ -277,7 +279,8 @@
 288 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_client_leave_("><a class="permalink" href="#asciichat_error_t_acip_send_client_leave_(">asciichat_error_t
@@ -294,7 +297,8 @@
 297 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_image_frame_("><a class="permalink" href="#asciichat_error_t_acip_send_image_frame_(">asciichat_error_t
@@ -356,7 +360,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>packet_send_via_transport()</b>.</p>
+    <b>packet_send_via_transport()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_image_frame()</b>.</p>
 </section>
 <section class="Ss">
@@ -430,7 +434,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>h265_encode()</b>, and <b>packet_send_via_transport()</b>.</p>
+    <b>h265_encode()</b>, <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_image_frame_h265()</b>.</p>
 </section>
 <section class="Ss">
@@ -448,7 +453,8 @@
 333 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_stream_start_("><a class="permalink" href="#asciichat_error_t_acip_send_stream_start_(">asciichat_error_t
@@ -467,7 +473,8 @@
 307 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_acip_send_stream_stop_("><a class="permalink" href="#asciichat_error_t_acip_send_stream_stop_(">asciichat_error_t
@@ -486,7 +493,8 @@
 317 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>packet_send_via_transport()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

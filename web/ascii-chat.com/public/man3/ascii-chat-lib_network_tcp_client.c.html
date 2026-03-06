@@ -367,9 +367,9 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_bool()</b>,
     <b>connect_with_timeout()</b>, <b>format_ip_address()</b>,
-    <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>,
-    <b>named_update_name()</b>, <b>network_error_string()</b>, and
-    <b>socket_configure_buffers()</b>.</p>
+    <b>is_localhost_ipv4()</b>, <b>is_localhost_ipv6()</b>, <b>log_warn</b>,
+    <b>named_update_name()</b>, <b>network_error_string()</b>, <b>SET_ERRNO</b>,
+    and <b>socket_configure_buffers()</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>.</p>
 </section>
 <section class="Ss">
@@ -413,8 +413,8 @@
 128 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-  <b>mutex_init()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>mutex_init()</b>,
+    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>client_main()</b>, and
     <b>connection_attempt_tcp()</b>.</p>
 </section>
@@ -450,7 +450,7 @@
 157 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>.</p>
+<p class="Pp">References <b>mutex_destroy()</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
     <b>connection_context_cleanup()</b>, and
   <b>session_client_like_run()</b>.</p>
@@ -545,8 +545,8 @@
 283 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-  <b>send_packet()</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>, <b>send_packet()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>tcp_client_send_ping()</b>, and
     <b>tcp_client_send_pong()</b>.</p>
 </section>

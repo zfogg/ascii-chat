@@ -158,7 +158,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_free()</b>, <b>buffer_size</b>,
-    <b>frame</b>, <b>ringbuffer_clear()</b>, and <b>ringbuffer_read()</b>.</p>
+    <b>frame</b>, <b>ringbuffer_clear()</b>, <b>ringbuffer_read()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>framebuffer_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -194,8 +195,8 @@
 172 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>, and
-    <b>ringbuffer_create()</b>.</p>
+<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>ringbuffer_create()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="framebuffer_t_*_framebuffer_create_multi_(size_t_capacity)"><a class="permalink" href="#framebuffer_t_*_framebuffer_create_multi_(size_t_capacity)">framebuffer_t
@@ -230,8 +231,8 @@
 200 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>, and
-    <b>ringbuffer_create()</b>.</p>
+<p class="Pp">References <b>mutex_destroy()</b>, <b>mutex_init()</b>,
+    <b>ringbuffer_create()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_framebuffer_destroy_(framebuffer_t_*_fb)"><a class="permalink" href="#void_framebuffer_destroy_(framebuffer_t_*_fb)">void
@@ -257,8 +258,8 @@
 219 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>framebuffer_clear()</b>, <b>mutex_destroy()</b>, and
-    <b>ringbuffer_destroy()</b>.</p>
+<p class="Pp">References <b>framebuffer_clear()</b>, <b>mutex_destroy()</b>,
+    <b>ringbuffer_destroy()</b>, <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> framebuffer_peek_latest_multi_frame (framebuffer_t *
@@ -314,8 +315,8 @@
 506 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>frame</b>, and
-    <b>ringbuffer_peek()</b>.</p>
+<p class="Pp">References <b>buffer_pool_alloc()</b>, <b>frame</b>,
+    <b>ringbuffer_peek()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> framebuffer_read_frame (framebuffer_t * fb, frame_t *
@@ -369,7 +370,8 @@
 320 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>frame</b>, and <b>ringbuffer_read()</b>.</p>
+<p class="Pp">References <b>frame</b>, <b>ringbuffer_read()</b>,
+    <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> framebuffer_read_multi_frame (framebuffer_t * fb,
@@ -411,7 +413,8 @@
 457 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>frame</b>, and <b>ringbuffer_read()</b>.</p>
+<p class="Pp">References <b>frame</b>, <b>ringbuffer_read()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> framebuffer_write_frame (framebuffer_t * fb, const
@@ -473,8 +476,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    <b>frame</b>, <b>ringbuffer_read()</b>, <b>ringbuffer_size()</b>, and
-    <b>ringbuffer_write()</b>.</p>
+    <b>frame</b>, <b>ringbuffer_read()</b>, <b>ringbuffer_size()</b>,
+    <b>ringbuffer_write()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> framebuffer_write_multi_frame (framebuffer_t * fb,
@@ -528,7 +531,7 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>buffer_pool_alloc()</b>, <b>buffer_pool_free()</b>,
-    and <b>ringbuffer_write()</b>.</p>
+    <b>ringbuffer_write()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_ringbuffer_clear_(ringbuffer_t_*_rb)"><a class="permalink" href="#void_ringbuffer_clear_(ringbuffer_t_*_rb)">void
@@ -575,6 +578,7 @@
 51 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>,
     <b>acip_websocket_client_transport_create()</b>,
     <b>acip_websocket_server_transport_create()</b>,
@@ -594,6 +598,7 @@
 58 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>,
     <b>acip_websocket_client_transport_create()</b>,
     <b>acip_websocket_server_transport_create()</b>,

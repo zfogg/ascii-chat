@@ -134,6 +134,7 @@
 589 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>ice_add_remote_candidate()</b>, and
     <b>webrtc_peer_manager_handle_ice()</b>.</p>
 </section>
@@ -158,6 +159,7 @@
 712 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_close_peer_connection()</b>, and
     <b>webrtc_datachannel_destroy()</b>.</p>
 </section>
@@ -186,7 +188,8 @@
 484 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>webrtc_close_datachannel()</b>.</p>
+<p class="Pp">References <b>SAFE_FREE</b>, <b>SET_ERRNO</b>, and
+    <b>webrtc_close_datachannel()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_create_datachannel_(webrtc_peer_connection_t_*_pc,_const_char_*_label,_webrtc_data_channel_t_**_dc_out)"><a class="permalink" href="#asciichat_error_t_webrtc_create_datachannel_(webrtc_peer_connection_t_*_pc,_const_char_*_label,_webrtc_data_channel_t_**_dc_out)">asciichat_error_t
@@ -233,6 +236,7 @@
 632 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_create_offer_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#asciichat_error_t_webrtc_create_offer_(webrtc_peer_connection_t_*_pc)">asciichat_error_t
@@ -255,6 +259,7 @@
 554 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_create_peer_connection_(const_webrtc_config_t_*_config,_webrtc_peer_connection_t_**_pc_out)"><a class="permalink" href="#asciichat_error_t_webrtc_create_peer_connection_(const_webrtc_config_t_*_config,_webrtc_peer_connection_t_**_pc_out)">asciichat_error_t
@@ -349,7 +354,8 @@
 465 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>lifecycle_is_initialized()</b>.</p>
+<p class="Pp">References <b>lifecycle_is_initialized()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_webrtc_datachannel_destroy_(webrtc_data_channel_t_*_dc)"><a class="permalink" href="#void_webrtc_datachannel_destroy_(webrtc_data_channel_t_*_dc)">void
@@ -368,7 +374,8 @@
 769 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>webrtc_close_datachannel()</b>.</p>
+<p class="Pp">References <b>SET_ERRNO</b>, and
+    <b>webrtc_close_datachannel()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_webrtc_datachannel_get_label_(webrtc_data_channel_t_*_dc)"><a class="permalink" href="#const_char_*_webrtc_datachannel_get_label_(webrtc_data_channel_t_*_dc)">const
@@ -391,6 +398,7 @@
 697 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> webrtc_datachannel_is_open (webrtc_data_channel_t *
@@ -406,6 +414,7 @@
 674 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_datachannel_send_(webrtc_data_channel_t_*_dc,_const_uint8_t_*_data,_size_t_size)"><a class="permalink" href="#asciichat_error_t_webrtc_datachannel_send_(webrtc_data_channel_t_*_dc,_const_uint8_t_*_data,_size_t_size)">asciichat_error_t
@@ -448,6 +457,7 @@
 666 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_datachannel_set_callbacks_(webrtc_data_channel_t_*_dc,_const_webrtc_datachannel_callbacks_t_*_callbacks)"><a class="permalink" href="#asciichat_error_t_webrtc_datachannel_set_callbacks_(webrtc_data_channel_t_*_dc,_const_webrtc_datachannel_callbacks_t_*_callbacks)">asciichat_error_t
@@ -497,6 +507,7 @@
 758 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -514,6 +525,7 @@
 682 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>acip_webrtc_transport_create()</b>.</p>
 </section>
 <section class="Ss">
@@ -541,6 +553,7 @@
 500 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_warn</b>.</p>
 <p class="Pp">Referenced by
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
 </section>
@@ -567,6 +580,7 @@
 813 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>ice_get_selected_pair_impl()</b>.</p>
 </section>
 <section class="Ss">
@@ -583,6 +597,7 @@
 492 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_warn</b>.</p>
 <p class="Pp">Referenced by <b>ice_is_connected()</b>.</p>
 </section>
 <section class="Ss">
@@ -599,6 +614,7 @@
 535 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>log_warn</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_init_(void_)"><a class="permalink" href="#asciichat_error_t_webrtc_init_(void_)">asciichat_error_t
@@ -645,7 +661,8 @@
 527 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>platform_get_monotonic_time_us()</b>.</p>
+<p class="Pp">References <b>log_warn</b>, and
+    <b>platform_get_monotonic_time_us()</b>.</p>
 <p class="Pp">Referenced by
     <b>webrtc_peer_manager_check_gathering_timeouts()</b>.</p>
 </section>
@@ -665,6 +682,7 @@
 783 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_webrtc_peer_connection_destroy_(webrtc_peer_connection_t_*_pc)"><a class="permalink" href="#void_webrtc_peer_connection_destroy_(webrtc_peer_connection_t_*_pc)">void
@@ -685,6 +703,7 @@
 796 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_webrtc_set_remote_description_(webrtc_peer_connection_t_*_pc,_const_char_*_sdp,_const_char_*_type)"><a class="permalink" href="#asciichat_error_t_webrtc_set_remote_description_(webrtc_peer_connection_t_*_pc,_const_char_*_sdp,_const_char_*_type)">asciichat_error_t
@@ -707,6 +726,7 @@
 568 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>webrtc_peer_manager_handle_sdp()</b>.</p>
 </section>
 </section>

@@ -1223,7 +1223,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp">References <b>session_audio_source_t::active</b>,
     <b>audio_ring_buffer_create()</b>, <b>session_audio_source_t::buffer</b>,
     <b>session_audio_ctx::initialized</b>, <b>session_audio_ctx::is_host</b>,
-    <b>SESSION_AUDIO_MAX_SOURCES</b>, <b>session_audio_ctx::source_count</b>,
+    <b>SESSION_AUDIO_MAX_SOURCES</b>, <b>SET_ERRNO</b>,
+    <b>session_audio_ctx::source_count</b>,
     <b>session_audio_source_t::source_id</b>, and
     <b>session_audio_ctx::sources</b>.</p>
 </section>
@@ -1289,8 +1290,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_audio_ctx::initialized</b>, <b>session_audio_ctx::is_host</b>,
     <b>session_audio_ctx::mix_buffer</b>,
     <b>session_audio_ctx::mix_buffer_size</b>,
-    <b>session_audio_ctx::running</b>, <b>SESSION_AUDIO_MAX_SOURCES</b>,
-    <b>session_audio_ctx::source_count</b>,
+    <b>session_audio_ctx::running</b>, <b>SAFE_FREE</b>,
+    <b>SESSION_AUDIO_MAX_SOURCES</b>, <b>session_audio_ctx::source_count</b>,
     <b>session_audio_source_t::source_id</b>, and
     <b>session_audio_ctx::sources</b>.</p>
 <p class="Pp">Referenced by <b>session_host_start_render()</b>, and
@@ -1346,8 +1347,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_audio_source_t::buffer</b>,
     <b>session_audio_ctx::initialized</b>, <b>session_audio_ctx::is_host</b>,
     <b>session_audio_ctx::mix_buffer</b>, <b>session_audio_ctx::running</b>,
-    <b>SESSION_AUDIO_MAX_SOURCES</b>, <b>session_audio_stop()</b>, and
-    <b>session_audio_ctx::sources</b>.</p>
+    <b>SAFE_FREE</b>, <b>SESSION_AUDIO_MAX_SOURCES</b>,
+    <b>session_audio_stop()</b>, and <b>session_audio_ctx::sources</b>.</p>
 <p class="Pp">Referenced by <b>session_host_destroy()</b>,
     <b>session_host_start_render()</b>, <b>session_host_stop_render()</b>, and
     <b>session_participant_destroy()</b>.</p>
@@ -1574,8 +1575,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 152 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_audio_ctx::initialized</b>, and
-    <b>session_audio_start_duplex()</b>.</p>
+<p class="Pp">References <b>session_audio_ctx::initialized</b>,
+    <b>session_audio_start_duplex()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_audio_start_duplex_("><a class="permalink" href="#asciichat_error_t_session_audio_start_duplex_(">asciichat_error_t
@@ -1610,8 +1611,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_audio_ctx::audio_ctx</b>,
-    <b>audio_start_duplex()</b>, <b>session_audio_ctx::initialized</b>, and
-    <b>session_audio_ctx::running</b>.</p>
+    <b>audio_start_duplex()</b>, <b>session_audio_ctx::initialized</b>,
+    <b>session_audio_ctx::running</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>session_audio_start_capture()</b>,
     <b>session_audio_start_playback()</b>, and
     <b>session_participant_start_audio_capture()</b>.</p>
@@ -1639,8 +1640,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 161 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_audio_ctx::initialized</b>, and
-    <b>session_audio_start_duplex()</b>.</p>
+<p class="Pp">References <b>session_audio_ctx::initialized</b>,
+    <b>session_audio_start_duplex()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_audio_stop_("><a class="permalink" href="#void_session_audio_stop_(">void
@@ -1697,7 +1698,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_audio_ctx::audio_ctx</b>,
-    <b>audio_write_samples()</b>, and <b>session_audio_ctx::initialized</b>.</p>
+    <b>audio_write_samples()</b>, <b>session_audio_ctx::initialized</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_audio_write_source_("><a class="permalink" href="#asciichat_error_t_session_audio_write_source_(">asciichat_error_t
@@ -1749,8 +1751,9 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp">References <b>session_audio_source_t::active</b>,
     <b>audio_ring_buffer_write()</b>, <b>session_audio_source_t::buffer</b>,
     <b>session_audio_ctx::initialized</b>, <b>session_audio_ctx::is_host</b>,
-    <b>SESSION_AUDIO_MAX_SOURCES</b>, <b>session_audio_source_t::source_id</b>,
-    and <b>session_audio_ctx::sources</b>.</p>
+    <b>SESSION_AUDIO_MAX_SOURCES</b>, <b>SET_ERRNO</b>,
+    <b>session_audio_source_t::source_id</b>, and
+    <b>session_audio_ctx::sources</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_capture_at_end (<b>session_capture_ctx_t</b>
@@ -1967,7 +1970,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_capture_ctx::fps_tracker</b>,
     <b>session_capture_ctx::frame_count</b>,
     <b>session_capture_config_t::initial_seek_timestamp</b>,
-    <b>session_capture_ctx::initialized</b>,
+    <b>session_capture_ctx::initialized</b>, <b>log_warn</b>,
     <b>session_capture_config_t::loop</b>, <b>media_source_create()</b>,
     <b>media_source_destroy()</b>, <b>media_source_has_audio()</b>,
     <b>media_source_seek()</b>, <b>media_source_set_exit_callback()</b>,
@@ -1976,7 +1979,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_capture_ctx::mic_audio_ctx</b>,
     <b>session_capture_config_t::path</b>, <b>platform_sleep_us()</b>,
     <b>session_capture_config_t::resize_for_network</b>,
-    <b>session_capture_ctx::resize_for_network</b>, <b>safe_snprintf()</b>,
+    <b>session_capture_ctx::resize_for_network</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>, <b>SET_ERRNO</b>,
     <b>session_capture_config_t::should_exit_callback</b>,
     <b>session_capture_ctx::should_pause_after_first_frame</b>,
     <b>session_capture_ctx::sleep_state</b>, <b>session_capture_ctx::source</b>,
@@ -2023,8 +2027,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_capture_ctx::fps_tracker</b>,
-    <b>session_capture_ctx::initialized</b>, <b>media_source_destroy()</b>, and
-    <b>session_capture_ctx::source</b>.</p>
+    <b>session_capture_ctx::initialized</b>, <b>media_source_destroy()</b>,
+    <b>SAFE_FREE</b>, and <b>session_capture_ctx::source</b>.</p>
 <p class="Pp">Referenced by <b>capture_cleanup()</b>, <b>display_cleanup()</b>,
     <b>session_client_like_run()</b>, and
   <b>session_participant_destroy()</b>.</p>
@@ -2241,7 +2245,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp"></p>
 <p class="Pp">References <b>frame</b>, <b>image_new()</b>,
     <b>image_resize()</b>, <b>session_capture_ctx::resize_for_network</b>,
-    <b>SESSION_MAX_FRAME_HEIGHT</b>, and <b>SESSION_MAX_FRAME_WIDTH</b>.</p>
+    <b>SESSION_MAX_FRAME_HEIGHT</b>, <b>SESSION_MAX_FRAME_WIDTH</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_session_capture_read_audio_("><a class="permalink" href="#size_t_session_capture_read_audio_(">size_t
@@ -2478,7 +2483,7 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::has_tty</b>,
-    <b>session_display_ctx::initialized</b>,
+    <b>session_display_ctx::initialized</b>, <b>SET_ERRNO</b>,
     <b>session_display_ctx::snapshot_mode</b>, and
     <b>session_display_ctx::tty_info</b>.</p>
 </section>
@@ -2505,7 +2510,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     callers don't need to manage palette, terminal capabilities, or conversion
     options.</p>
 <p class="Pp"></p>
-<p class="Pp">The returned string must be freed by caller with SAFE_FREE().</p>
+<p class="Pp">The returned string must be freed by caller with
+    <b>SAFE_FREE()</b>.</p>
 <p class="Pp">Definition at line <b>493</b> of file
     <b>src/common/session/display.c</b>.</p>
 <pre>493                                                                                          {
@@ -2728,9 +2734,9 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>digital_rain_destroy()</b>, <b>digital_rain_init()</b>,
     <b>digital_rain_set_color_from_filter()</b>, <b>image_destroy()</b>,
     <b>image_new()</b>, <b>session_display_ctx::initialized</b>,
-    <b>session_display_ctx::last_frame_time_ns</b>,
+    <b>session_display_ctx::last_frame_time_ns</b>, <b>log_dev</b>,
     <b>session_display_ctx::palette_chars</b>,
-    <b>rainbow_replace_ansi_colors()</b>,
+    <b>rainbow_replace_ansi_colors()</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
     <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>, <b>time_get_ns()</b>, and
     <b>time_pretty()</b>.</p>
@@ -2981,7 +2987,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>initialize_client_palette()</b>, <b>session_display_ctx::initialized</b>,
     <b>session_display_ctx::keyboard_help_active</b>,
     <b>session_display_ctx::last_frame_time_ns</b>,
-    <b>log_set_force_stderr()</b>,
+    <b>log_set_force_stderr()</b>, <b>log_warn</b>,
     <b>session_display_ctx::luminance_palette</b>,
     <b>session_display_ctx::palette_chars</b>,
     <b>session_display_ctx::palette_len</b>,
@@ -3027,7 +3033,7 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::has_tty</b>,
-    <b>session_display_ctx::initialized</b>, and
+    <b>session_display_ctx::initialized</b>, <b>SET_ERRNO</b>, and
     <b>session_display_ctx::tty_info</b>.</p>
 </section>
 <section class="Ss">
@@ -3096,6 +3102,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_display_ctx::has_tty</b>,
     <b>session_display_ctx::initialized</b>, <b>platform_close()</b>,
     <b>session_display_ctx::render_file</b>, <b>render_file_destroy()</b>,
+    <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
     <b>session_display_ctx::snapshot_mode</b>,
     <b>splash_clear_display_context()</b>, and
     <b>session_display_ctx::tty_info</b>.</p>
@@ -3159,8 +3166,9 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::initialized</b>,
-    <b>session_display_ctx::render_file</b>, <b>render_file_write_frame()</b>,
-    and <b>session_display_convert_to_ascii()</b>.</p>
+    <b>log_warn</b>, <b>session_display_ctx::render_file</b>,
+    <b>render_file_write_frame()</b>, <b>SAFE_FREE</b>,
+    <b>session_display_convert_to_ascii()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_terminal_capabilities_t_*_session_display_get_caps_("><a class="permalink" href="#const_terminal_capabilities_t_*_session_display_get_caps_(">const
@@ -3188,8 +3196,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 404 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::caps</b>, and
-    <b>session_display_ctx::initialized</b>.</p>
+<p class="Pp">References <b>session_display_ctx::caps</b>,
+    <b>session_display_ctx::initialized</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_session_display_get_luminance_palette_("><a class="permalink" href="#const_char_*_session_display_get_luminance_palette_(">const
@@ -3214,8 +3222,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 428 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::initialized</b>, and
-    <b>session_display_ctx::luminance_palette</b>.</p>
+<p class="Pp">References <b>session_display_ctx::initialized</b>,
+    <b>session_display_ctx::luminance_palette</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="const_char_*_session_display_get_palette_chars_("><a class="permalink" href="#const_char_*_session_display_get_palette_chars_(">const
@@ -3240,8 +3248,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 412 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::initialized</b>, and
-    <b>session_display_ctx::palette_chars</b>.</p>
+<p class="Pp">References <b>session_display_ctx::initialized</b>,
+    <b>session_display_ctx::palette_chars</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="size_t_session_display_get_palette_len_("><a class="permalink" href="#size_t_session_display_get_palette_len_(">size_t
@@ -3263,8 +3271,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 420 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::initialized</b>, and
-    <b>session_display_ctx::palette_len</b>.</p>
+<p class="Pp">References <b>session_display_ctx::initialized</b>,
+    <b>session_display_ctx::palette_len</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="uint32_t_session_display_get_render_fps_("><a class="permalink" href="#uint32_t_session_display_get_render_fps_(">uint32_t
@@ -3313,8 +3321,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 449 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::initialized</b>, and
-    <b>session_display_ctx::stdin_reader</b>.</p>
+<p class="Pp">References <b>session_display_ctx::initialized</b>,
+    <b>SET_ERRNO</b>, and <b>session_display_ctx::stdin_reader</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_display_get_tty_fd_("><a class="permalink" href="#int_session_display_get_tty_fd_(">int
@@ -3336,8 +3344,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 436 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::initialized</b>, and
-    <b>session_display_ctx::tty_info</b>.</p>
+<p class="Pp">References <b>session_display_ctx::initialized</b>,
+    <b>SET_ERRNO</b>, and <b>session_display_ctx::tty_info</b>.</p>
 <p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
 </section>
 <section class="Ss">
@@ -3361,8 +3369,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 1054 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::audio_playback_enabled</b>, and
-    <b>session_display_ctx::initialized</b>.</p>
+<p class="Pp">References <b>session_display_ctx::audio_playback_enabled</b>,
+    <b>session_display_ctx::initialized</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_display_has_first_frame
@@ -3432,8 +3440,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 396 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::has_tty</b>, and
-    <b>session_display_ctx::initialized</b>.</p>
+<p class="Pp">References <b>session_display_ctx::has_tty</b>,
+    <b>session_display_ctx::initialized</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>display_has_tty()</b>, and
     <b>keyboard_help_render()</b>.</p>
 </section>
@@ -3523,7 +3531,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 724 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_write_ascii()</b>.</p>
+<p class="Pp">References <b>session_display_write_ascii()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>display_render_frame()</b>, and
     <b>session_render_loop()</b>.</p>
 </section>
@@ -3559,7 +3568,7 @@ if (session_settings_needs_update(local_version, received.version)) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::has_tty</b>,
-    <b>session_display_ctx::initialized</b>,
+    <b>session_display_ctx::initialized</b>, <b>SET_ERRNO</b>,
     <b>session_display_ctx::snapshot_mode</b>, <b>terminal_cursor_show()</b>,
     <b>terminal_flush()</b>, and <b>session_display_ctx::tty_info</b>.</p>
 <p class="Pp">Referenced by <b>display_full_reset()</b>.</p>
@@ -3657,8 +3666,9 @@ if (session_settings_needs_update(local_version, received.version)) {
 1168 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::render_file</b>, and
-    <b>render_file_set_snapshot_actual_duration()</b>.</p>
+<p class="Pp">References <b>log_warn</b>,
+    <b>session_display_ctx::render_file</b>,
+    <b>render_file_set_snapshot_actual_duration()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>session_render_loop()</b>.</p>
 </section>
 <section class="Ss">
@@ -3689,7 +3699,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 384 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_display_ctx::stdin_reader</b>.</p>
+<p class="Pp">References <b>SET_ERRNO</b>, and
+    <b>session_display_ctx::stdin_reader</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
@@ -3899,13 +3910,13 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_display_ctx::initialized</b>,
     <b>session_display_ctx::keyboard_help_active</b>,
     <b>session_display_ctx::last_frame_time_ns</b>, <b>platform_write_all()</b>,
-    <b>session_display_ctx::render_file</b>,
-    <b>session_display_render_fps_overlay()</b>,
-    <b>session_display_ctx::snapshot_mode</b>, <b>splash_intro_done()</b>,
-    <b>terminal_cursor_hide()</b>, <b>terminal_cursor_show()</b>,
-    <b>terminal_flush()</b>, <b>terminal_is_interactive()</b>,
-    <b>time_get_ns()</b>, <b>time_pretty()</b>, and
-    <b>session_display_ctx::tty_info</b>.</p>
+    <b>session_display_ctx::render_file</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>session_display_render_fps_overlay()</b>,
+    <b>SET_ERRNO</b>, <b>session_display_ctx::snapshot_mode</b>,
+    <b>splash_intro_done()</b>, <b>terminal_cursor_hide()</b>,
+    <b>terminal_cursor_show()</b>, <b>terminal_flush()</b>,
+    <b>terminal_is_interactive()</b>, <b>time_get_ns()</b>,
+    <b>time_pretty()</b>, and <b>session_display_ctx::tty_info</b>.</p>
 <p class="Pp">Referenced by <b>session_display_render_frame()</b>, and
     <b>session_pipeline_run_main()</b>.</p>
 </section>
@@ -3982,8 +3993,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_u64()</b>, <b>atomic_store_u64()</b>,
     <b>session_display_ctx::audio_ctx</b>,
-    <b>session_display_ctx::audio_playback_enabled</b>, and
-    <b>session_display_ctx::initialized</b>.</p>
+    <b>session_display_ctx::audio_playback_enabled</b>,
+    <b>session_display_ctx::initialized</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_display_write_raw_("><a class="permalink" href="#void_session_display_write_raw_(">void
@@ -4024,7 +4035,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp"></p>
 <p class="Pp">References <b>session_display_ctx::has_tty</b>,
     <b>session_display_ctx::initialized</b>, <b>platform_write_all()</b>,
-    <b>terminal_flush()</b>, and <b>session_display_ctx::tty_info</b>.</p>
+    <b>SET_ERRNO</b>, <b>terminal_flush()</b>, and
+    <b>session_display_ctx::tty_info</b>.</p>
 <p class="Pp">Referenced by <b>keyboard_help_render()</b>.</p>
 </section>
 <section class="Ss">
@@ -4475,7 +4487,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host_callbacks_t::on_client_join</b>,
     <b>session_host_client_t::participant_type</b>,
     <b>session_host_client_t::port</b>, <b>ringbuffer_create()</b>,
-    <b>ringbuffer_destroy()</b>, <b>session_host_client_t::socket</b>,
+    <b>ringbuffer_destroy()</b>, <b>SET_ERRNO</b>,
+    <b>session_host_client_t::socket</b>,
     <b>session_host_client_t::transport</b>, <b>session_host::user_data</b>, and
     <b>session_host_client_t::video_active</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>, and
@@ -4591,7 +4604,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host_callbacks_t::on_client_join</b>, <b>participant_id</b>,
     <b>session_host_client_t::participant_type</b>,
     <b>session_host_client_t::port</b>, <b>ringbuffer_create()</b>,
-    <b>ringbuffer_destroy()</b>, <b>session_host_client_t::socket</b>,
+    <b>ringbuffer_destroy()</b>, <b>SET_ERRNO</b>,
+    <b>session_host_client_t::socket</b>,
     <b>session_host_client_t::transport</b>, <b>session_host::user_data</b>, and
     <b>session_host_client_t::video_active</b>.</p>
 </section>
@@ -4642,8 +4656,9 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp">References <b>session_host_client_t::active</b>,
     <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
     <b>session_host::clients_mutex</b>, <b>frame</b>,
-    <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
-    <b>packet_send()</b>, <b>session_host::running</b>, and
+    <b>session_host::initialized</b>, <b>log_warn</b>,
+    <b>session_host::max_clients</b>, <b>packet_send()</b>,
+    <b>session_host::running</b>, <b>SET_ERRNO</b>, and
     <b>session_host_client_t::socket</b>.</p>
 </section>
 <section class="Ss">
@@ -4779,9 +4794,10 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host::next_client_id</b>, <b>session_host::password</b>,
     <b>session_host_config_t::password</b>, <b>session_host::port</b>,
     <b>session_host_config_t::port</b>, <b>session_host::running</b>,
-    <b>SESSION_HOST_DEFAULT_MAX_CLIENTS</b>, <b>session_host::socket_v4</b>,
-    <b>session_host::socket_v6</b>, <b>session_host::user_data</b>, and
-    <b>session_host_config_t::user_data</b>.</p>
+    <b>SAFE_FREE</b>, <b>SESSION_HOST_DEFAULT_MAX_CLIENTS</b>, <b>SET_ERRNO</b>,
+    <b>session_host::socket_v4</b>, <b>session_host::socket_v6</b>,
+    <b>session_host::user_data</b>, and
+  <b>session_host_config_t::user_data</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>,
     <b>discovery_session_process()</b>, and <b>server_main()</b>.</p>
 </section>
@@ -4858,7 +4874,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
     <b>mutex_destroy()</b>, <b>opus_codec_destroy()</b>,
     <b>session_host::opus_decoder</b>, <b>session_host::password</b>,
-    <b>ringbuffer_destroy()</b>, <b>session_host::running</b>,
+    <b>ringbuffer_destroy()</b>, <b>session_host::running</b>, <b>SAFE_FREE</b>,
     <b>session_audio_destroy()</b>, <b>session_host_stop()</b>,
     <b>session_host::socket_v4</b>, and <b>session_host::socket_v6</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_destroy()</b>, and
@@ -4919,7 +4935,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host_client_info_t::ip_address</b>,
     <b>session_host_client_t::ip_address</b>, <b>session_host::max_clients</b>,
     <b>session_host_client_info_t::port</b>, <b>session_host_client_t::port</b>,
-    <b>session_host_client_info_t::video_active</b>, and
+    <b>SET_ERRNO</b>, <b>session_host_client_info_t::video_active</b>, and
     <b>session_host_client_t::video_active</b>.</p>
 </section>
 <section class="Ss">
@@ -5097,8 +5113,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host::clients_mutex</b>,
     <b>session_host_client_t::incoming_audio</b>,
     <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
-    <b>participant_id</b>, <b>session_host_client_t::participant_type</b>, and
-    <b>ringbuffer_write()</b>.</p>
+    <b>participant_id</b>, <b>session_host_client_t::participant_type</b>,
+    <b>ringbuffer_write()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_host_inject_frame_("><a class="permalink" href="#asciichat_error_t_session_host_inject_frame_(">asciichat_error_t
@@ -5172,8 +5188,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host::clients_mutex</b>, <b>frame</b>, <b>image_destroy()</b>,
     <b>image_new()</b>, <b>session_host_client_t::incoming_video</b>,
     <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
-    <b>participant_id</b>, <b>session_host_client_t::participant_type</b>, and
-    <b>session_host_client_t::video_active</b>.</p>
+    <b>participant_id</b>, <b>session_host_client_t::participant_type</b>,
+    <b>SET_ERRNO</b>, and <b>session_host_client_t::video_active</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_host_is_running (<b>session_host_t</b> *
@@ -5266,8 +5282,9 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host_client_t::incoming_video</b>,
     <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
     <b>session_host_callbacks_t::on_client_leave</b>,
-    <b>ringbuffer_destroy()</b>, <b>session_host_client_t::socket</b>, and
-    <b>session_host::user_data</b>.</p>
+    <b>ringbuffer_destroy()</b>, <b>SET_ERRNO</b>,
+    <b>session_host_client_t::socket</b>, and
+  <b>session_host::user_data</b>.</p>
 <p class="Pp">Referenced by <b>remove_client()</b>.</p>
 </section>
 <section class="Ss">
@@ -5317,7 +5334,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
     <b>session_host::clients_mutex</b>, <b>frame</b>,
     <b>session_host::initialized</b>, <b>session_host::max_clients</b>,
-    <b>packet_send()</b>, <b>session_host::running</b>, and
+    <b>packet_send()</b>, <b>session_host::running</b>, <b>SET_ERRNO</b>, and
     <b>session_host_client_t::socket</b>.</p>
 </section>
 <section class="Ss">
@@ -5384,7 +5401,7 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp">References <b>session_host_client_t::active</b>,
     <b>session_host_client_t::client_id</b>, <b>session_host::clients</b>,
     <b>session_host::clients_mutex</b>, <b>session_host::initialized</b>,
-    <b>session_host::max_clients</b>, and
+    <b>log_warn</b>, <b>session_host::max_clients</b>, <b>SET_ERRNO</b>, and
     <b>session_host_client_t::transport</b>.</p>
 </section>
 <section class="Ss">
@@ -5468,7 +5485,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_host_callbacks_t::on_error</b>, <b>session_host::port</b>,
     <b>session_host::receive_thread</b>,
     <b>session_host::receive_thread_running</b>, <b>session_host::running</b>,
-    <b>session_host::socket_v4</b>, and <b>session_host::user_data</b>.</p>
+    <b>SET_ERRNO</b>, <b>session_host::socket_v4</b>, and
+    <b>session_host::user_data</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_become_host()</b>, and
     <b>discovery_session_process()</b>.</p>
 </section>
@@ -5555,7 +5573,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>opus_codec_destroy()</b>, <b>session_host::opus_decoder</b>,
     <b>session_host::opus_encoder</b>, <b>session_host::render_thread</b>,
     <b>session_host::render_thread_running</b>, <b>session_host::running</b>,
-    <b>session_audio_create()</b>, and <b>session_audio_destroy()</b>.</p>
+    <b>session_audio_create()</b>, <b>session_audio_destroy()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_host_stop_("><a class="permalink" href="#void_session_host_stop_(">void
@@ -5744,7 +5763,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 151 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_capture_create()</b>.</p>
+<p class="Pp">References <b>session_capture_create()</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>session_client_like_run()</b>.</p>
 </section>
 <section class="Ss">
@@ -5814,7 +5834,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_capture_ctx::audio_enabled</b>, <b>fps_init()</b>,
     <b>session_capture_ctx::fps_tracker</b>,
     <b>session_capture_ctx::initialized</b>,
-    <b>session_capture_ctx::resize_for_network</b>, <b>safe_snprintf()</b>,
+    <b>session_capture_ctx::resize_for_network</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>safe_snprintf()</b>,
     <b>session_capture_ctx::sleep_state</b>, <b>session_capture_ctx::source</b>,
     <b>session_capture_ctx::start_time_ns</b>,
     <b>session_capture_ctx::target_fps</b>, and <b>time_get_ns()</b>.</p>
@@ -5893,7 +5914,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_participant::initialized</b>,
     <b>session_participant_callbacks_t::on_connected</b>,
     <b>session_participant_callbacks_t::on_error</b>,
-    <b>session_participant::port</b>, <b>session_participant::socket</b>, and
+    <b>session_participant::port</b>, <b>SET_ERRNO</b>,
+    <b>session_participant::socket</b>, and
     <b>session_participant::user_data</b>.</p>
 <p class="Pp">Referenced by <b>discovery_session_connect_to_future_host()</b>,
     and <b>discovery_session_process()</b>.</p>
@@ -5995,8 +6017,9 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_participant::port</b>, <b>session_participant_config_t::port</b>,
     <b>session_participant::server_key</b>,
     <b>session_participant_config_t::server_key</b>,
-    <b>session_settings_init()</b>, <b>session_participant::settings</b>,
-    <b>session_participant::socket</b>, <b>session_participant::transport</b>,
+    <b>session_settings_init()</b>, <b>SET_ERRNO</b>,
+    <b>session_participant::settings</b>, <b>session_participant::socket</b>,
+    <b>session_participant::transport</b>,
     <b>session_participant::user_data</b>,
     <b>session_participant_config_t::user_data</b>, and
     <b>session_participant::video_active</b>.</p>
@@ -6066,7 +6089,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_participant::connected</b>,
     <b>session_participant::initialized</b>, <b>opus_codec_destroy()</b>,
     <b>session_participant::opus_encoder</b>,
-    <b>session_participant::password</b>,
+    <b>session_participant::password</b>, <b>SAFE_FREE</b>,
     <b>session_participant::server_key</b>, <b>session_audio_destroy()</b>,
     <b>session_capture_destroy()</b>, <b>session_participant_disconnect()</b>,
     <b>session_participant_stop_audio_capture()</b>,
@@ -6184,8 +6207,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 473 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_participant::initialized</b>, and
-    <b>session_participant::settings</b>.</p>
+<p class="Pp">References <b>session_participant::initialized</b>,
+    <b>SET_ERRNO</b>, and <b>session_participant::settings</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>socket_t</b> session_participant_get_socket
@@ -6367,8 +6390,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 487 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_participant::connected</b>, and
-    <b>session_participant::initialized</b>.</p>
+<p class="Pp">References <b>session_participant::connected</b>,
+    <b>session_participant::initialized</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_participant_set_transport_("><a class="permalink" href="#asciichat_error_t_session_participant_set_transport_(">asciichat_error_t
@@ -6416,8 +6439,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 742 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_participant::initialized</b>, and
-    <b>session_participant::transport</b>.</p>
+<p class="Pp">References <b>session_participant::initialized</b>,
+    <b>SET_ERRNO</b>, and <b>session_participant::transport</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_participant_start_audio_("><a class="permalink" href="#asciichat_error_t_session_participant_start_audio_(">asciichat_error_t
@@ -6459,8 +6482,8 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::audio_active</b>,
     <b>session_participant::connected</b>,
-    <b>session_participant::enable_audio</b>, and
-    <b>session_participant::initialized</b>.</p>
+    <b>session_participant::enable_audio</b>,
+    <b>session_participant::initialized</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_participant_start_audio_capture_("><a class="permalink" href="#asciichat_error_t_session_participant_start_audio_capture_(">asciichat_error_t
@@ -6552,7 +6575,8 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_participant::enable_audio</b>,
     <b>session_participant::initialized</b>, <b>opus_codec_create_encoder()</b>,
     <b>session_participant::opus_encoder</b>, <b>session_audio_create()</b>,
-    <b>session_audio_start_duplex()</b>, and <b>session_audio_stop()</b>.</p>
+    <b>session_audio_start_duplex()</b>, <b>session_audio_stop()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_participant_start_video_("><a class="permalink" href="#asciichat_error_t_session_participant_start_video_(">asciichat_error_t
@@ -6593,7 +6617,7 @@ if (session_settings_needs_update(local_version, received.version)) {
 <p class="Pp"></p>
 <p class="Pp">References <b>session_participant::connected</b>,
     <b>session_participant::enable_video</b>,
-    <b>session_participant::initialized</b>, and
+    <b>session_participant::initialized</b>, <b>SET_ERRNO</b>, and
     <b>session_participant::video_active</b>.</p>
 </section>
 <section class="Ss">
@@ -6673,7 +6697,7 @@ if (session_settings_needs_update(local_version, received.version)) {
     <b>session_participant::connected</b>,
     <b>session_participant::enable_video</b>,
     <b>session_participant::initialized</b>, <b>session_capture_create()</b>,
-    <b>session_participant::video_capture</b>,
+    <b>SET_ERRNO</b>, <b>session_participant::video_capture</b>,
     <b>session_participant::video_capture_running</b>, and
     <b>session_participant::video_capture_thread</b>.</p>
 </section>
@@ -6834,7 +6858,7 @@ if (session_settings_needs_update(local_version, received.version)) {
   <li>ASCII conversion via <b>session_display_convert_to_ascii()</b></li>
   <li>Terminal rendering via <b>session_display_render_frame()</b></li>
   <li>Keyboard input polling and handling (if handler provided)</li>
-  <li>Memory cleanup with SAFE_FREE()</li>
+  <li>Memory cleanup with <b>SAFE_FREE()</b></li>
 </ul>
 <p class="Pp">Used by: mirror mode, discovery participant mode</p>
 <p class="Pp"></p>
@@ -6846,7 +6870,7 @@ if (session_settings_needs_update(local_version, received.version)) {
   <li>ASCII conversion via <b>session_display_convert_to_ascii()</b></li>
   <li>Terminal rendering via <b>session_display_render_frame()</b></li>
   <li>Keyboard input polling and handling (if handler provided)</li>
-  <li>Memory cleanup with SAFE_FREE()</li>
+  <li>Memory cleanup with <b>SAFE_FREE()</b></li>
 </ul>
 <p class="Pp">Used by: client mode, async frame sources</p>
 <p class="Pp"></p>
@@ -7434,13 +7458,14 @@ int main(void) {
     <b>g_snapshot_first_capture_ns</b>, <b>g_snapshot_first_frame_rendered</b>,
     <b>g_snapshot_first_frame_rendered_ns</b>, <b>get_terminal_size()</b>,
     <b>keyboard_help_is_active()</b>, <b>keyboard_help_render()</b>,
-    <b>log_search_handle_key()</b>, <b>log_search_should_handle()</b>,
-    <b>log_set_terminal_output()</b>, <b>options_set_int()</b>,
+    <b>log_dev</b>, <b>log_search_handle_key()</b>,
+    <b>log_search_should_handle()</b>, <b>log_set_terminal_output()</b>,
+    <b>log_warn</b>, <b>options_set_int()</b>, <b>SAFE_FREE</b>,
     <b>session_display_convert_to_ascii()</b>,
     <b>session_display_render_frame()</b>,
     <b>session_display_set_snapshot_actual_duration()</b>,
     <b>session_pipeline_create()</b>, <b>session_pipeline_destroy()</b>,
-    <b>session_pipeline_run_main()</b>, <b>should_exit()</b>,
+    <b>session_pipeline_run_main()</b>, <b>SET_ERRNO</b>, <b>should_exit()</b>,
     <b>signal_exit()</b>, <b>splash_is_running()</b>,
     <b>splash_wait_for_animation()</b>, <b>terminal_get_effective_height()</b>,
     <b>terminal_get_effective_width()</b>, <b>terminal_is_interactive()</b>,
@@ -7591,8 +7616,8 @@ int main(void) {
     <b>session_server_like_config::init_user_data</b>,
     <b>session_server_like_config::interrupt_fn</b>,
     <b>platform_disable_keepawake()</b>, <b>platform_enable_keepawake()</b>,
-    <b>session_server_like_config::run_fn</b>, and
-    <b>session_server_like_config::run_user_data</b>.</p>
+    <b>session_server_like_config::run_fn</b>,
+    <b>session_server_like_config::run_user_data</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_settings_apply_to_options_(const_"><a class="permalink" href="#asciichat_error_t_session_settings_apply_to_options_(const_">asciichat_error_t
@@ -7630,8 +7655,9 @@ int main(void) {
 217 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>session_settings_t::height</b>,
-    <b>options_set_int()</b>, and <b>session_settings_t::width</b>.</p>
+<p class="Pp">References <b>session_settings_t::height</b>, <b>log_warn</b>,
+    <b>options_set_int()</b>, <b>SET_ERRNO</b>, and
+    <b>session_settings_t::width</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_settings_deserialize_(const_uint8_t_*_buffer,_size_t_len,_"><a class="permalink" href="#asciichat_error_t_session_settings_deserialize_(const_uint8_t_*_buffer,_size_t_len,_">asciichat_error_t
@@ -7720,8 +7746,9 @@ int main(void) {
     <b>session_settings_t::palette_custom</b>,
     <b>session_settings_t::palette_type</b>,
     <b>session_settings_t::render_mode</b>, <b>session_settings_t::reserved</b>,
-    <b>SESSION_SETTINGS_SERIALIZED_SIZE</b>, <b>session_settings_t::version</b>,
-    and <b>session_settings_t::width</b>.</p>
+    <b>SESSION_SETTINGS_SERIALIZED_SIZE</b>, <b>SET_ERRNO</b>,
+    <b>session_settings_t::version</b>, and
+  <b>session_settings_t::width</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss"><b>bool</b> session_settings_equal (const
@@ -7817,8 +7844,8 @@ int main(void) {
     <b>session_settings_t::palette_custom</b>,
     <b>session_settings_t::palette_type</b>,
     <b>session_settings_t::render_mode</b>, <b>session_settings_init()</b>,
-    <b>session_settings_t::version</b>, and
-  <b>session_settings_t::width</b>.</p>
+    <b>SET_ERRNO</b>, <b>session_settings_t::version</b>, and
+    <b>session_settings_t::width</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_session_settings_init_("><a class="permalink" href="#void_session_settings_init_(">void
@@ -7976,8 +8003,8 @@ int main(void) {
     <b>session_settings_t::palette_custom</b>,
     <b>session_settings_t::palette_type</b>,
     <b>session_settings_t::render_mode</b>, <b>session_settings_t::reserved</b>,
-    <b>session_settings_t::version</b>, and
-  <b>session_settings_t::width</b>.</p>
+    <b>SET_ERRNO</b>, <b>session_settings_t::version</b>, and
+    <b>session_settings_t::width</b>.</p>
 </section>
 </section>
 <section class="Sh">
