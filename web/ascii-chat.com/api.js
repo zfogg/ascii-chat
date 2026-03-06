@@ -291,7 +291,6 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
           const before = i > 0 ? lines[i - 1] : "";
           const match = lines[i];
           const after = i < lines.length - 1 ? lines[i + 1] : "";
-          const snippet = [before, match, after].join("\n");
 
           if (i > 0) usedLines.add(i - 1);
           usedLines.add(i);
@@ -322,6 +321,13 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
               }
             }
           }
+
+          // If all three parts are from the same source line, join with spaces instead of newlines
+          // Collect line numbers that are valid (> 0) and check if they're all the same
+          const validLineNums = [beforeLineNum, matchLineNum, afterLineNum].filter(ln => ln && ln > 0);
+          const allOnSameLine = validLineNums.length > 0 &&
+            validLineNums.every(ln => ln === validLineNums[0]);
+          const snippet = [before, match, after].join(allOnSameLine ? " " : "\n");
 
           snippets.push({
             text: snippet,
