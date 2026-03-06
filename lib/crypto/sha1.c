@@ -14,17 +14,6 @@
  *   34AA973C D4C4DAA4 F61EEB2B DBAD2731 6534016F
  */
 
-/**
- * @file sha1.c
- * @ingroup crypto
- * @brief TODO: Add Doxygen documentation for SHA-1 implementation
- *
- * OpenBSD SHA-1 wrapper implementation. Needs documentation for:
- * - Module purpose and usage
- * - Function descriptions with @param, @return tags
- * - Integration points with crypto context
- */
-
 /* #define LITTLE_ENDIAN * This should be #define'd already, if true. */
 /* #define SHA1HANDSOFF * Copies data before messing with it. */
 
