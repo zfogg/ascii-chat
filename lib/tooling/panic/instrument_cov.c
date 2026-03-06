@@ -1,3 +1,15 @@
+/**
+ * @file instrument_cov.c
+ * @ingroup tooling
+ * @brief TODO: Add Doxygen documentation for SanitizerCoverage instrumentation
+ *
+ * Provides runtime hooks for code coverage tracking via Clang's SanitizerCoverage.
+ * Needs documentation for:
+ * - Coverage data collection hooks
+ * - Integration with logging system
+ * - Instrumentation runtime behavior
+ */
+
 // SPDX-License-Identifier: MIT
 // SanitizerCoverage hooks for ascii-chat instrumentation runtime
 

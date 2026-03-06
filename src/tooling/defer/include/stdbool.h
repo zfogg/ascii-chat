@@ -1,3 +1,14 @@
+/**
+ * @file tooling/defer/include/stdbool.h
+ * @ingroup tooling
+ * @brief TODO: Add Doxygen documentation for stdbool workaround header
+ *
+ * ClangTool compatibility shim for stdbool.h. Provides workaround for
+ * LibTooling __has_include_next bug.
+ *
+ * Needs documentation for: Purpose, bug details, compatibility scope
+ */
+
 /*===---- stdbool.h - ClangTool workaround header --------------------------===
  *
  * This is a simplified stdbool.h that doesn't use __has_include_next.

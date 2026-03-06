@@ -1,3 +1,11 @@
+/**
+ * @file lifecycle.c
+ * @ingroup core
+ * @brief TODO: Add Doxygen documentation for module lifecycle management
+ *
+ * Needs documentation for: Module initialization/cleanup, lifecycle state tracking
+ */
+
 #include "ascii-chat/util/lifecycle.h"
 #include <ascii-chat/platform/mutex.h>
 #include <ascii-chat/log/log.h>

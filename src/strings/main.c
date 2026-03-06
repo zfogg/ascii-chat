@@ -1,3 +1,18 @@
+/**
+ * @file strings/main.c
+ * @ingroup tools
+ * @brief TODO: Add Doxygen documentation for session string generation utility
+ *
+ * Command-line tool for generating memorable session identifiers (adjective-noun-noun).
+ * Also exports wordlists as JavaScript for web client compatibility.
+ *
+ * Needs documentation for:
+ * - CLI interface and options
+ * - Session string format and constraints
+ * - Wordlist export functionality
+ * - Integration with ACDS
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
