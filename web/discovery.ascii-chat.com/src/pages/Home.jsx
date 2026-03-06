@@ -261,6 +261,8 @@ ascii-chat --help`}</CodeBlock>
           <CodeBlock language="bash">{`# Start a new session
 ascii-chat
 
+# Copy the session string it outputs and share it with a friend securely
+
 # Join a session using the session string
 ascii-chat happy-sunset-ocean`}</CodeBlock>
         </section>
