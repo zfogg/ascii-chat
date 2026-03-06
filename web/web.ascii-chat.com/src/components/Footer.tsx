@@ -1,16 +1,17 @@
 import { Footer as SharedFooter } from "@ascii-chat/shared/components";
+import { SITES } from "@ascii-chat/shared/utils";
 
 export function Footer() {
   return (
     <SharedFooter
       links={[
         {
-          href: "https://ascii-chat.com",
+          href: SITES.MAIN,
           label: "🖥️ www",
           color: "text-terminal-green hover:text-terminal-brightGreen",
         },
         {
-          href: "https://discovery.ascii-chat.com",
+          href: SITES.DISCOVERY,
           label: "🔍 discovery",
           color: "text-terminal-magenta hover:text-terminal-brightMagenta",
         },

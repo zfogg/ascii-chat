@@ -23,6 +23,7 @@ import {
   setTargetFps,
   getTargetFps,
 } from "../wasm/settings";
+import { SITES } from "@ascii-chat/shared/utils";
 import { Settings, SettingsConfig } from "../components/Settings";
 import { AsciiRenderer } from "../components/AsciiRenderer";
 import { PageControlBar } from "../components/PageControlBar";
@@ -322,7 +323,7 @@ export function MirrorPage() {
       <WebClientHead
         title="Mirror Mode - ascii-chat Web Client"
         description="Test your webcam with real-time ASCII art rendering. See yourself in terminal-style graphics."
-        url="https://web.ascii-chat.com/mirror"
+        url={`${SITES.WEB}/mirror`}
       />
       <PageLayout
         videoRef={videoRef}

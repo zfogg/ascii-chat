@@ -1,6 +1,7 @@
 import { NotFound, Footer } from "@ascii-chat/shared/components";
 import { ACDSHead } from "../components/ACDSHead";
 import Header from "../components/Header";
+import { SITES } from "@ascii-chat/shared/utils";
 
 function NotFoundPage() {
   const handleLinkClick = (url, text) => {
@@ -17,7 +18,7 @@ function NotFoundPage() {
       <ACDSHead
         title="404 - Page Not Found | ascii-chat Discovery Service"
         description="The page you're looking for doesn't exist."
-        url="https://discovery.ascii-chat.com/404"
+        url={`${SITES.DISCOVERY}/404`}
       />
       <div className="fixed top-0 left-0 right-0 bg-gray-950 z-10">
         <Header />

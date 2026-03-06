@@ -1,3 +1,4 @@
+import { SITES } from "@ascii-chat/shared/utils";
 import { WebClientHead } from "../components/WebClientHead";
 
 export function DiscoveryPage() {
@@ -6,7 +7,7 @@ export function DiscoveryPage() {
       <WebClientHead
         title="Discovery Mode - ascii-chat Web Client"
         description="WebRTC P2P connections for ascii-chat. Connect directly with peers using session discovery."
-        url="https://web.ascii-chat.com/discovery"
+        url={`${SITES.WEB}/discovery`}
       />
       <div className="flex-1 flex items-center justify-center">
         <div className="text-center">

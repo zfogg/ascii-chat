@@ -59,7 +59,7 @@ import {
 } from "../utils/colorMappers";
 import { PageControlBar } from "../components/PageControlBar";
 import { PageLayout } from "../components/PageLayout";
-import { DISCOVERY_SERVICE_URL } from "@ascii-chat/shared/utils";
+import { DISCOVERY_SERVICE_URL, SITES } from "@ascii-chat/shared/utils";
 import { createWasmOptionsManager } from "../hooks/useWasmOptions";
 import { useCanvasCapture } from "../hooks/useCanvasCapture";
 import { useRenderLoop } from "../hooks/useRenderLoop";
@@ -1461,7 +1461,7 @@ export function ClientPage() {
       <WebClientHead
         title="Client - ascii-chat Web Client"
         description="Connect to an ascii-chat server. Real-time encrypted video chat rendered as ASCII art in your browser."
-        url="https://web.ascii-chat.com/client"
+        url={`${SITES.WEB}/client`}
       />
       <PageLayout
         videoRef={videoRef}
