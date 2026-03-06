@@ -47,4 +47,20 @@ export default defineConfig({
       hostname: "https://discovery.ascii-chat.com",
     }),
   ],
+  build: {
+    chunkSizeWarningLimit: 600,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          // Dependencies
+          if (id.includes("node_modules")) {
+            if (id.includes("react")) {
+              return "deps-react";
+            }
+            return "deps";
+          }
+        },
+      },
+    },
+  },
 });
