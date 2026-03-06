@@ -5,6 +5,9 @@
 
 #include <ascii-chat/options/rcu.h>
 #include <ascii-chat/options/schema.h>
+#include <ascii-chat/options/registry/core.h>
+#include <ascii-chat/options/registry/common.h>
+#include <ascii-chat/options/builder.h>
 #include <ascii-chat/asciichat_errno.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/log/log.h>
@@ -546,6 +549,117 @@ static asciichat_error_t options_update(void (*updater)(options_t *, void *), vo
 // ============================================================================
 
 /**
+ * @brief Field name to registry option name mapping
+ *
+ * Maps C struct field names (underscores) to registry option names (hyphens).
+ * Some names don't map by simple substitution:
+ * - discovery_port → discovery-service-port
+ * - palette_type → palette
+ * - reconnect_attempts → reconnect
+ */
+typedef struct {
+  const char *field;  ///< C struct field name (e.g., "color_mode")
+  const char *option; ///< Registry option name (e.g., "color-mode")
+} field_option_map_t;
+
+static const field_option_map_t g_field_to_option[] = {
+    // INT fields
+    {"width", "width"},
+    {"height", "height"},
+    {"max_clients", "max-clients"},
+    {"compression_level", "compression-level"},
+    {"reconnect_attempts", "reconnect"},
+    {"microphone_index", "microphone-index"},
+    {"speakers_index", "speakers-index"},
+    {"discovery_port", "discovery-service-port"},
+    {"port", "port"},
+    {"fps", "fps"},
+    {"color_mode", "color-mode"},
+    {"color_filter", "color-filter"},
+    {"render_mode", "render-mode"},
+    {"log_level", "log-level"},
+    {"palette_type", "palette"},
+    // DOUBLE fields
+    {"snapshot_delay", "snapshot-delay"},
+    {"microphone_sensitivity", "microphone-volume"},
+    {"speakers_volume", "speakers-volume"},
+    // STRING fields with registry entries
+    {"address", "address"},
+    {"log_file", "log-file"},
+    {"password", "password"},
+    {NULL, NULL}};
+
+/**
+ * @brief Validate an option value against registry metadata
+ *
+ * Performs pre-validation before setting options:
+ * 1. Looks up the registry entry by option name
+ * 2. Checks numeric range (min/max) for INT fields
+ * 3. Checks enum bounds for ENUM fields
+ * 4. Calls cross-field validator if set
+ *
+ * @param field_name C struct field name (e.g., "fps")
+ * @param new_opts The new options struct with updated value
+ * @return ASCIICHAT_OK if valid, error otherwise
+ */
+static asciichat_error_t rcu_validate_field(const char *field_name, const options_t *new_opts) {
+  // Look up option name from field name
+  const char *opt_name = NULL;
+  for (int i = 0; g_field_to_option[i].field; i++) {
+    if (strcmp(g_field_to_option[i].field, field_name) == 0) {
+      opt_name = g_field_to_option[i].option;
+      break;
+    }
+  }
+  if (!opt_name) return ASCIICHAT_OK; // No mapping → skip validation
+
+  const registry_entry_t *entry = registry_find_entry_by_name(opt_name);
+  if (!entry) return ASCIICHAT_OK; // Not in registry → skip
+
+  // Cross-field validate_fn (future-proofing)
+  if (entry->validate_fn) {
+    char *error_msg = NULL;
+    if (!entry->validate_fn(new_opts, &error_msg)) {
+      log_error("Option '%s' rejected by validator: %s", opt_name, error_msg ? error_msg : "unknown error");
+      SAFE_FREE(error_msg);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' failed validation", opt_name);
+    }
+    SAFE_FREE(error_msg);
+  }
+
+  // Numeric range check
+  int min = entry->metadata.numeric_range.min;
+  int max = entry->metadata.numeric_range.max;
+  if (min != 0 || max != 0) {
+    // Read the int value at the field's offset
+    int val = *(const int *)((const char *)new_opts + entry->offset);
+    if (val < min || val > max) {
+      log_error("Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d out of range [%d, %d]", opt_name, val, min, max);
+    }
+  }
+
+  // Enum count check (0 <= value < enum_count)
+  // Count enum values by iterating null-terminated array
+  size_t enum_count = 0;
+  if (entry->metadata.enum_values) {
+    for (size_t i = 0; entry->metadata.enum_values[i]; i++) {
+      enum_count++;
+    }
+  }
+
+  if (enum_count > 0 && entry->metadata.input_type == OPTION_INPUT_ENUM) {
+    int val = *(const int *)((const char *)new_opts + entry->offset);
+    if (val < 0 || (size_t)val >= enum_count) {
+      log_error("Option '%s' value %d is not a valid enum (0..%zu)", opt_name, val, enum_count - 1);
+      return SET_ERRNO(ERROR_INVALID_PARAM, "Option '%s' value %d is not a valid enum", opt_name, val);
+    }
+  }
+
+  return ASCIICHAT_OK;
+}
+
+/**
  * @brief Context for integer field updates in RCU updater callback
  */
 typedef struct {
@@ -602,6 +716,46 @@ asciichat_error_t options_set_int(const char *field_name, int value) {
       strcmp(field_name, "palette_type") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown integer field: %s", field_name);
     return ERROR_INVALID_PARAM;
+  }
+
+  // Pre-validate against registry metadata
+  {
+    const options_t *cur = options_get();
+    options_t temp = *cur;
+    // Manually set the field in temp to validate
+    if (strcmp(field_name, "width") == 0)
+      temp.width = value;
+    else if (strcmp(field_name, "height") == 0)
+      temp.height = value;
+    else if (strcmp(field_name, "max_clients") == 0)
+      temp.max_clients = value;
+    else if (strcmp(field_name, "compression_level") == 0)
+      temp.compression_level = value;
+    else if (strcmp(field_name, "reconnect_attempts") == 0)
+      temp.reconnect_attempts = value;
+    else if (strcmp(field_name, "microphone_index") == 0)
+      temp.microphone_index = value;
+    else if (strcmp(field_name, "speakers_index") == 0)
+      temp.speakers_index = value;
+    else if (strcmp(field_name, "discovery_port") == 0)
+      temp.discovery_port = value;
+    else if (strcmp(field_name, "port") == 0)
+      temp.port = value;
+    else if (strcmp(field_name, "fps") == 0)
+      temp.fps = value;
+    else if (strcmp(field_name, "color_mode") == 0)
+      temp.color_mode = (terminal_color_mode_t)value;
+    else if (strcmp(field_name, "color_filter") == 0)
+      temp.color_filter = (color_filter_t)value;
+    else if (strcmp(field_name, "render_mode") == 0)
+      temp.render_mode = (render_mode_t)value;
+    else if (strcmp(field_name, "log_level") == 0)
+      temp.log_level = (log_level_t)value;
+    else if (strcmp(field_name, "palette_type") == 0)
+      temp.palette_type = (palette_type_t)value;
+
+    asciichat_error_t err = rcu_validate_field(field_name, &temp);
+    if (err != ASCIICHAT_OK) return err;
   }
 
   int_field_ctx_t ctx = {.field_name = field_name, .value = value};
@@ -731,6 +885,96 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
     return ERROR_INVALID_PARAM;
   }
 
+  // Pre-validate against registry metadata (for cross-field validators)
+  {
+    const options_t *cur = options_get();
+    options_t temp = *cur;
+    // Manually set the field in temp to validate
+    if (strcmp(field_name, "no_compress") == 0)
+      temp.no_compress = value;
+    else if (strcmp(field_name, "encode_audio") == 0)
+      temp.encode_audio = value;
+    else if (strcmp(field_name, "flip_x") == 0)
+      temp.flip_x = value;
+    else if (strcmp(field_name, "flip_y") == 0)
+      temp.flip_y = value;
+    else if (strcmp(field_name, "test_pattern") == 0)
+      temp.test_pattern = value;
+    else if (strcmp(field_name, "no_audio_mixer") == 0)
+      temp.no_audio_mixer = value;
+    else if (strcmp(field_name, "show_capabilities") == 0)
+      temp.show_capabilities = value;
+    else if (strcmp(field_name, "force_utf8") == 0)
+      temp.force_utf8 = value;
+    else if (strcmp(field_name, "audio_enabled") == 0)
+      temp.audio_enabled = value;
+    else if (strcmp(field_name, "audio_analysis_enabled") == 0)
+      temp.audio_analysis_enabled = value;
+    else if (strcmp(field_name, "audio_no_playback") == 0)
+      temp.audio_no_playback = value;
+    else if (strcmp(field_name, "stretch") == 0)
+      temp.stretch = value;
+    else if (strcmp(field_name, "snapshot_mode") == 0)
+      temp.snapshot_mode = value;
+    else if (strcmp(field_name, "strip_ansi") == 0)
+      temp.strip_ansi = value;
+    else if (strcmp(field_name, "quiet") == 0)
+      temp.quiet = value;
+    else if (strcmp(field_name, "encrypt_enabled") == 0)
+      temp.encrypt_enabled = value;
+    else if (strcmp(field_name, "no_encrypt") == 0)
+      temp.no_encrypt = value;
+    else if (strcmp(field_name, "discovery") == 0)
+      temp.discovery = value;
+    else if (strcmp(field_name, "discovery_expose_ip") == 0)
+      temp.discovery_expose_ip = value;
+    else if (strcmp(field_name, "discovery_insecure") == 0)
+      temp.discovery_insecure = value;
+    else if (strcmp(field_name, "webrtc") == 0)
+      temp.webrtc = value;
+    else if (strcmp(field_name, "lan_discovery") == 0)
+      temp.lan_discovery = value;
+    else if (strcmp(field_name, "no_mdns_advertise") == 0)
+      temp.no_mdns_advertise = value;
+    else if (strcmp(field_name, "prefer_webrtc") == 0)
+      temp.prefer_webrtc = value;
+    else if (strcmp(field_name, "no_webrtc") == 0)
+      temp.no_webrtc = value;
+    else if (strcmp(field_name, "webrtc_skip_stun") == 0)
+      temp.webrtc_skip_stun = value;
+    else if (strcmp(field_name, "webrtc_disable_turn") == 0)
+      temp.webrtc_disable_turn = value;
+    else if (strcmp(field_name, "enable_upnp") == 0)
+      temp.enable_upnp = value;
+    else if (strcmp(field_name, "require_server_identity") == 0)
+      temp.require_server_identity = value;
+    else if (strcmp(field_name, "require_client_identity") == 0)
+      temp.require_client_identity = value;
+    else if (strcmp(field_name, "require_server_verify") == 0)
+      temp.require_server_verify = value;
+    else if (strcmp(field_name, "require_client_verify") == 0)
+      temp.require_client_verify = value;
+    else if (strcmp(field_name, "palette_custom_set") == 0)
+      temp.palette_custom_set = value;
+    else if (strcmp(field_name, "media_loop") == 0)
+      temp.media_loop = value;
+    else if (strcmp(field_name, "media_from_stdin") == 0)
+      temp.media_from_stdin = value;
+    else if (strcmp(field_name, "auto_width") == 0)
+      temp.auto_width = value;
+    else if (strcmp(field_name, "auto_height") == 0)
+      temp.auto_height = value;
+    else if (strcmp(field_name, "splash_screen") == 0)
+      temp.splash_screen = value;
+    else if (strcmp(field_name, "status_screen") == 0)
+      temp.status_screen = value;
+    else if (strcmp(field_name, "matrix_rain") == 0)
+      temp.matrix_rain = value;
+
+    asciichat_error_t err = rcu_validate_field(field_name, &temp);
+    if (err != ASCIICHAT_OK) return err;
+  }
+
   bool_field_ctx_t ctx = {.field_name = field_name, .value = value};
   return options_update(bool_field_updater, &ctx);
 }
@@ -811,6 +1055,54 @@ asciichat_error_t options_set_string(const char *field_name, const char *value) 
     return ERROR_INVALID_PARAM;
   }
 
+  // Pre-validate against registry metadata (for cross-field validators)
+  {
+    const options_t *cur = options_get();
+    options_t temp = *cur;
+    // Manually set the field in temp to validate
+    if (strcmp(field_name, "address") == 0)
+      SAFE_STRNCPY(temp.address, value, sizeof(temp.address));
+    else if (strcmp(field_name, "address6") == 0)
+      SAFE_STRNCPY(temp.address6, value, sizeof(temp.address6));
+    else if (strcmp(field_name, "encrypt_key") == 0)
+      SAFE_STRNCPY(temp.encrypt_key, value, sizeof(temp.encrypt_key));
+    else if (strcmp(field_name, "password") == 0)
+      SAFE_STRNCPY(temp.password, value, sizeof(temp.password));
+    else if (strcmp(field_name, "encrypt_keyfile") == 0)
+      SAFE_STRNCPY(temp.encrypt_keyfile, value, sizeof(temp.encrypt_keyfile));
+    else if (strcmp(field_name, "server_key") == 0)
+      SAFE_STRNCPY(temp.server_key, value, sizeof(temp.server_key));
+    else if (strcmp(field_name, "client_keys") == 0)
+      SAFE_STRNCPY(temp.client_keys, value, sizeof(temp.client_keys));
+    else if (strcmp(field_name, "discovery_server") == 0)
+      SAFE_STRNCPY(temp.discovery_server, value, sizeof(temp.discovery_server));
+    else if (strcmp(field_name, "discovery_service_key") == 0)
+      SAFE_STRNCPY(temp.discovery_service_key, value, sizeof(temp.discovery_service_key));
+    else if (strcmp(field_name, "discovery_database_path") == 0)
+      SAFE_STRNCPY(temp.discovery_database_path, value, sizeof(temp.discovery_database_path));
+    else if (strcmp(field_name, "log_file") == 0)
+      SAFE_STRNCPY(temp.log_file, value, sizeof(temp.log_file));
+    else if (strcmp(field_name, "media_file") == 0)
+      SAFE_STRNCPY(temp.media_file, value, sizeof(temp.media_file));
+    else if (strcmp(field_name, "palette_custom") == 0)
+      SAFE_STRNCPY(temp.palette_custom, value, sizeof(temp.palette_custom));
+    else if (strcmp(field_name, "stun_servers") == 0)
+      SAFE_STRNCPY(temp.stun_servers, value, sizeof(temp.stun_servers));
+    else if (strcmp(field_name, "turn_servers") == 0)
+      SAFE_STRNCPY(temp.turn_servers, value, sizeof(temp.turn_servers));
+    else if (strcmp(field_name, "turn_username") == 0)
+      SAFE_STRNCPY(temp.turn_username, value, sizeof(temp.turn_username));
+    else if (strcmp(field_name, "turn_credential") == 0)
+      SAFE_STRNCPY(temp.turn_credential, value, sizeof(temp.turn_credential));
+    else if (strcmp(field_name, "turn_secret") == 0)
+      SAFE_STRNCPY(temp.turn_secret, value, sizeof(temp.turn_secret));
+    else if (strcmp(field_name, "session_string") == 0)
+      SAFE_STRNCPY(temp.session_string, value, sizeof(temp.session_string));
+
+    asciichat_error_t err = rcu_validate_field(field_name, &temp);
+    if (err != ASCIICHAT_OK) return err;
+  }
+
   string_field_ctx_t ctx = {.field_name = field_name, .value = value};
   return options_update(string_field_updater, &ctx);
 }
@@ -851,6 +1143,22 @@ asciichat_error_t options_set_double(const char *field_name, double value) {
       strcmp(internal_name, "speakers_volume") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown double field: %s", field_name);
     return ERROR_INVALID_PARAM;
+  }
+
+  // Pre-validate against registry metadata (if available)
+  {
+    const options_t *cur = options_get();
+    options_t temp = *cur;
+    // Manually set the field in temp to validate
+    if (strcmp(internal_name, "snapshot_delay") == 0)
+      temp.snapshot_delay = value;
+    else if (strcmp(internal_name, "microphone_sensitivity") == 0)
+      temp.microphone_sensitivity = value;
+    else if (strcmp(internal_name, "speakers_volume") == 0)
+      temp.speakers_volume = value;
+
+    asciichat_error_t err = rcu_validate_field(internal_name, &temp);
+    if (err != ASCIICHAT_OK) return err;
   }
 
   double_field_ctx_t ctx = {.field_name = internal_name, .value = value};
