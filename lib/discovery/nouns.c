@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <sodium.h>
 #include <ascii-chat/discovery/nouns.h>
 #include <ascii-chat/network/client.h>
 #include <ascii-chat/uthash.h>
@@ -741,8 +741,7 @@ int generate_client_id(char *buffer, size_t buffer_size) {
   }
 
   // Select a random noun
-  srand((unsigned int)time(NULL) + rand()); // Better randomness with seed
-  int noun_idx = rand() % (int)nouns_count;
+  uint32_t noun_idx = randombytes_uniform((uint32_t)nouns_count);
   const char *noun = nouns[noun_idx];
 
   if (!noun) {
@@ -771,8 +770,7 @@ int generate_client_name(char *buffer, size_t buffer_size, void *existing_client
   }
 
   // Select a random noun
-  srand((unsigned int)time(NULL) + rand()); // Better randomness with seed
-  int noun_idx = rand() % (int)nouns_count;
+  uint32_t noun_idx = randombytes_uniform((uint32_t)nouns_count);
   const char *noun = nouns[noun_idx];
 
   if (!noun) {
@@ -808,6 +806,6 @@ int generate_client_name(char *buffer, size_t buffer_size, void *existing_client
 
   // Couldn't find a unique name after 100 tries
   // Fall back to numeric-only name as last resort
-  snprintf(buffer, buffer_size, "client_%u (%s:%d)", (unsigned int)rand() % 10000, transport_name, port);
+  snprintf(buffer, buffer_size, "client_%u (%s:%d)", randombytes_uniform(10000U), transport_name, port);
   return 0;
 }

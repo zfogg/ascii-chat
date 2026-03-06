@@ -11,7 +11,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <time.h>
+#include <sodium.h>
 
 /**
  * @brief Mode name mapping for bitmask extraction
@@ -93,9 +93,6 @@ char *manpage_content_generate_examples(const options_config_t *config) {
     return buffer;
   }
 
-  // Seed random number generator for mode selection
-  // Use config pointer address for deterministic-but-varied seed
-  srand((unsigned int)((uintptr_t)config));
 
   // Allocate growing buffer for examples section
   size_t buffer_capacity = 8192;
@@ -121,7 +118,7 @@ char *manpage_content_generate_examples(const options_config_t *config) {
 
     // Add mode name if applicable (randomly select one mode for multi-mode examples)
     if (num_modes > 0) {
-      size_t selected_mode = (size_t)rand() % num_modes;
+      size_t selected_mode = randombytes_uniform((uint32_t)num_modes);
       if (mode_names[selected_mode]) {
         offset += safe_snprintf(buffer + offset, buffer_capacity - offset, " %s", mode_names[selected_mode]);
       }
