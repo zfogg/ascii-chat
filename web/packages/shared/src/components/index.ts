@@ -9,4 +9,5 @@ export type { HeadProps } from "./Head";
 export { Heading } from "./Heading";
 export { InfoBox } from "./InfoBox";
 export { Link } from "./Link";
+export { NotFound } from "./NotFound";
 export { PreCode } from "./PreCode";
