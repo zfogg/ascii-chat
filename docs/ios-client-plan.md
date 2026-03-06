@@ -331,13 +331,11 @@ lib/options/registry/ios_mode_defaults.c  # iOS defaults (truecolor, dimensions)
 
 That's ~9 platform files + 2 module files vs. the WASM layer's ~22 files.
 
-> **Note on `isatty()` direct calls**: `lib/ui/splash.c` and `lib/ui/status.c` call
-> `isatty(STDOUT_FILENO)` directly (bypassing `platform_isatty()`). On iOS, `fd 1` is
-> not a TTY, so those checks will return 0 and suppress the splash/status screens by
-> default. This is the correct behavior for iOS — the C splash and status screens are
-> redundant when the pixel render bridge is active. If those screens are needed in future
-> (e.g., for a debug overlay), those two `isatty` calls would need to be routed through
-> a platform abstraction that iOS can override.
+> **`isatty()` routing**: All `isatty()` calls in `lib/ui/splash.c`, `lib/ui/status.c`,
+> `lib/platform/posix/keyboard.c`, and `lib/platform/posix/terminal.c` now go through
+> `platform_isatty()`. On iOS, the platform layer can override this to control which
+> screens display. By default, `fd 1` is not a TTY on iOS, so splash/status screens
+> will suppress themselves — correct behavior since the pixel render bridge handles display.
 
 #### iOS override implementations
 
@@ -483,11 +481,11 @@ Implements the `platform_log_hook()` weak symbol defined in `lib/log/log.c`.
 
 static os_log_t g_os_log = NULL;
 
-void platform_log_hook(log_level_t level, const char *msg) {
-    if (!ac_log) ac_log = os_log_create("com.zfogg.ascii-chat", "lib");
-    os_log_with_type(ac_log, level >= LOG_ERROR ? OS_LOG_TYPE_ERROR
-                           : level >= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
-                           : OS_LOG_TYPE_DEBUG, "%{public}s", msg);
+void platform_log_hook(log_level_t level, const char *message) {
+    if (!g_os_log) g_os_log = os_log_create("com.ascii-chat", "lib");
+    os_log_with_type(g_os_log, level >= LOG_ERROR ? OS_LOG_TYPE_ERROR
+                              : level >= LOG_WARN  ? OS_LOG_TYPE_DEFAULT
+                              : OS_LOG_TYPE_DEBUG, "%{public}s", message);
 }
 ```
 
@@ -503,7 +501,7 @@ idevicesyslog | grep ascii-chat
 idevicesyslog --process ascii-chat
 
 # Simulator
-xcrun simctl spawn booted log stream --predicate 'subsystem == "com.zfogg.ascii-chat"'
+xcrun simctl spawn booted log stream --predicate 'subsystem == "com.ascii-chat"'
 
 # Xcode's devicectl
 xcrun devicectl device syslog --device <UDID> | grep ascii-chat
