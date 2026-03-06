@@ -18,9 +18,12 @@ tmux new-session -d -s zsh-completion-test -x 250 -y 60
 
 # Send setup commands
 tmux send-keys -t zsh-completion-test "cd '$PWD'" Enter
-sleep 0.3
+sleep 0.2
 
 tmux send-keys -t zsh-completion-test "fpath=(./build/share/zsh/site-functions \$fpath); autoload -Uz compinit; compinit -U" Enter
+sleep 0.2
+
+tmux send-keys -t zsh-completion-test "clear" Enter
 sleep 0.2
 
 # =============================================================================
@@ -28,7 +31,7 @@ sleep 0.2
 # =============================================================================
 echo "=== TEST 1: ascii-chat --<TAB> ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --" Tab
-sleep 1
+sleep 0.5
 
 # Navigate menu to display options - press Down multiple times to scroll through menu and trigger all groups
 tmux send-keys -t zsh-completion-test "Down Down Down Down Down"
@@ -130,10 +133,7 @@ fi
 tmux send-keys -t zsh-completion-test "Escape"
 sleep 0.2
 tmux send-keys -t zsh-completion-test "C-u"
-sleep 0.5
-# Clear the screen to ensure fresh test
-tmux send-keys -t zsh-completion-test "clear" Enter
-sleep 0.5
+sleep 0.2
 
 # =============================================================================
 # TEST 4: Mode completion with partial input (disc)
@@ -141,7 +141,7 @@ sleep 0.5
 echo ""
 echo "=== TEST 4: ascii-chat disc<TAB> (checking for correction messages) ==="
 tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat disc" Tab
-sleep 1
+sleep 0.2
 
 # Capture and save output (with last 100 lines like TEST 1)
 tmux capture-pane -t zsh-completion-test -p -S -100 > /tmp/test4_output.txt
@@ -151,9 +151,13 @@ echo "Captured output:"
 cat /tmp/test4_output.txt | tail -20
 echo ""
 
-# Count correction messages
+# Count correction messages and verify we have actual output
 CORRECTIONS_COUNT=$(cat /tmp/test4_output.txt | rg -c "corrections \(errors: [0-9]\)" || echo 0)
-if [ "$CORRECTIONS_COUNT" -eq 0 ]; then
+CONTENT_LINES=$(cat /tmp/test4_output.txt | wc -l)
+if [ "$CONTENT_LINES" -lt 5 ]; then
+  echo "🔴 TEST 4 FAILED: No output captured (clear may have wiped screen)"
+  TEST4_PASS=0
+elif [ "$CORRECTIONS_COUNT" -eq 0 ]; then
   echo "🟢 TEST 4 PASSED: No correction messages found"
   TEST4_PASS=1
 else
