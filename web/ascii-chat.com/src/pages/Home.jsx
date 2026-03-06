@@ -350,7 +350,7 @@ man ascii-chat
 ascii-chat <mode> --help
 
 # Enable shell completions (bash, fish, zsh, and powershell available)
-source <(ascii-chat --completions zsh)
+source <(ascii-chat --completions zsh 2>/dev/null)
 # Then: ascii-chat <tab> | ascii-chat --<tab> | ascii-chat server --<tab>`}
                 </CodeBlock>
               </div>
