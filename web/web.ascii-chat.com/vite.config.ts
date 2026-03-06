@@ -43,6 +43,12 @@ export default defineConfig({
       "Cross-Origin-Embedder-Policy": "require-corp",
       "Cross-Origin-Opener-Policy": "same-origin",
     },
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.API_PORT || 3001}`,
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     target: "esnext",
