@@ -339,19 +339,7 @@ ascii-chat client session-name \\
             <strong>Important:</strong> You should share the public key with
             ascii-chatters in a safe way. We recommend pre-sharing them safely
             somehow or hosting them on a website at a domain you control and
-            serving them over HTTPS like we do. See the{" "}
-            <Link
-              href="https://zfogg.github.io/ascii-chat/group__module__acds.html#acds_deployment"
-              onClick={() =>
-                handleLinkClick(
-                  "https://zfogg.github.io/ascii-chat/group__module__acds.html#acds_deployment",
-                  "ACDS deployment documentation",
-                )
-              }
-            >
-              ascii-chat documentation
-            </Link>{" "}
-            for details.
+            serving them over HTTPS like we do.
           </p>
         </section>
 
