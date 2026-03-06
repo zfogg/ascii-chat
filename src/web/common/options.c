@@ -21,8 +21,6 @@
 
 EMSCRIPTEN_KEEPALIVE
 int set_width(int value) {
-  if (value <= 0 || value > 1000)
-    return -1;
   asciichat_error_t err = options_set_int("width", value);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
@@ -34,8 +32,6 @@ int get_width(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int set_height(int value) {
-  if (value <= 0 || value > 1000)
-    return -1;
   asciichat_error_t err = options_set_int("height", value);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
@@ -168,8 +164,6 @@ int get_render_mode(void) {
 
 EMSCRIPTEN_KEEPALIVE
 int set_target_fps(int fps) {
-  if (fps < 15 || fps > 60)
-    return -1;
   asciichat_error_t err = options_set_int("fps", fps);
   return (err == ASCIICHAT_OK) ? 0 : -1;
 }
