@@ -19,8 +19,12 @@
 # which is included before this file
 
 # Global list to store sanitizer flags (applied only to project targets, not dependencies)
-set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "")
-set(ASCIICHAT_SANITIZER_LINK_FLAGS "")
+# Use CACHE variables so they're accessible across all function scopes
+set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "" CACHE INTERNAL "Sanitizer compile flags")
+set(ASCIICHAT_SANITIZER_LINK_FLAGS "" CACHE INTERNAL "Sanitizer link flags")
+set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "" CACHE INTERNAL "Windows ASan DLL import library")
+set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "" CACHE INTERNAL "Windows ASan runtime thunk library")
+set(ASCIICHAT_SANITIZER_RUNTIME_DIR "" CACHE INTERNAL "Sanitizer runtime directory")
 
 # Configure sanitizers based on platform, compiler, and options
 # Args:
@@ -313,12 +317,12 @@ function(configure_asan_ubsan_sanitizers)
         message(STATUS "Debug build: Sanitizers configured for ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} (GCC, will apply to project targets only)")
     endif()
 
-    # Propagate sanitizer flags to parent scope
-    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}" PARENT_SCOPE)
-    set(ASCIICHAT_SANITIZER_LINK_FLAGS "${ASCIICHAT_SANITIZER_LINK_FLAGS}" PARENT_SCOPE)
-    set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "${ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB}" PARENT_SCOPE)
-    set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "${ASCIICHAT_ASAN_RUNTIME_THUNK_LIB}" PARENT_SCOPE)
-    set(ASCIICHAT_SANITIZER_RUNTIME_DIR "${ASCIICHAT_SANITIZER_RUNTIME_DIR}" PARENT_SCOPE)
+    # Update CACHE variables so they're accessible globally
+    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}" CACHE INTERNAL "Sanitizer compile flags" FORCE)
+    set(ASCIICHAT_SANITIZER_LINK_FLAGS "${ASCIICHAT_SANITIZER_LINK_FLAGS}" CACHE INTERNAL "Sanitizer link flags" FORCE)
+    set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "${ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB}" CACHE INTERNAL "Windows ASan DLL import library" FORCE)
+    set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "${ASCIICHAT_ASAN_RUNTIME_THUNK_LIB}" CACHE INTERNAL "Windows ASan runtime thunk library" FORCE)
+    set(ASCIICHAT_SANITIZER_RUNTIME_DIR "${ASCIICHAT_SANITIZER_RUNTIME_DIR}" CACHE INTERNAL "Sanitizer runtime directory" FORCE)
 endfunction()
 
 # Configure ThreadSanitizer
@@ -345,9 +349,9 @@ function(configure_tsan_sanitizer)
         message(STATUS "Consider using Clang or GCC on Linux/macOS for ThreadSanitizer support")
     endif()
 
-    # Propagate sanitizer flags to parent scope
-    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}" PARENT_SCOPE)
-    set(ASCIICHAT_SANITIZER_LINK_FLAGS "${ASCIICHAT_SANITIZER_LINK_FLAGS}" PARENT_SCOPE)
+    # Update CACHE variables so they're accessible globally
+    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}" CACHE INTERNAL "Sanitizer compile flags" FORCE)
+    set(ASCIICHAT_SANITIZER_LINK_FLAGS "${ASCIICHAT_SANITIZER_LINK_FLAGS}" CACHE INTERNAL "Sanitizer link flags" FORCE)
 endfunction()
 
 # Copy ASAN runtime DLL on Windows (for Clang)
