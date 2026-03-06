@@ -37,15 +37,6 @@
 <section class="Sh">
 <h1 class="Sh" id="SYNOPSIS"><a class="permalink" href="#SYNOPSIS">SYNOPSIS</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
-  Structures</a></h2>
-<br/>
-<p class="Pp">struct <b>_random_state_t</b>
-  <br/>
-  <br/>
-</p>
-</section>
-<section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
 <p class="Pp">long <b>__isoc23_strtol</b> (const char *str, char **endptr, int
@@ -463,35 +454,35 @@
 <section class="Ss">
 <h2 class="Ss" id="void_arc4random_buf_(void_*_buf,_size_t_nbytes)"><a class="permalink" href="#void_arc4random_buf_(void_*_buf,_size_t_nbytes)">void
   arc4random_buf (void * buf, size_t nbytes)</a></h2>
-<p class="Pp">Definition at line <b>213</b> of file
+<p class="Pp">Definition at line <b>214</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>213                                               {
-214   if (nbytes == 0 || buf == NULL) {
-215     return;
-216   }
-217 
-218 // Try getrandom syscall first (available in Linux 3.17+)
-219 // This is preferred as it doesn't require opening a file descriptor
-220 #ifdef SYS_getrandom
-221   long result = syscall(SYS_getrandom, buf, nbytes, 0);
-222   if (result == (long)nbytes) {
-223     return;
-224   }
-225 #endif
-226 
-227   // Fallback: read from /dev/urandom
-228   int fd = open(&quot;/dev/urandom&quot;, O_RDONLY);
-229   if (fd &gt;= 0) {
-230     ssize_t n = read(fd, buf, nbytes);
-231     close(fd);
-232     if (n == (ssize_t)nbytes) {
-233       return;
-234     }
-235   }
-236 
-237   // We failed.
-238   abort();
-239 }</pre>
+<pre>214                                               {
+215   if (nbytes == 0 || buf == NULL) {
+216     return;
+217   }
+218 
+219 // Try getrandom syscall first (available in Linux 3.17+)
+220 // This is preferred as it doesn't require opening a file descriptor
+221 #ifdef SYS_getrandom
+222   long result = syscall(SYS_getrandom, buf, nbytes, 0);
+223   if (result == (long)nbytes) {
+224     return;
+225   }
+226 #endif
+227 
+228   // Fallback: read from /dev/urandom
+229   int fd = open(&quot;/dev/urandom&quot;, O_RDONLY);
+230   if (fd &gt;= 0) {
+231     ssize_t n = read(fd, buf, nbytes);
+232     close(fd);
+233     if (n == (ssize_t)nbytes) {
+234       return;
+235     }
+236   }
+237 
+238   // We failed.
+239   abort();
+240 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">Referenced by <b>random_r()</b>.</p>
@@ -500,46 +491,42 @@
 <h2 class="Ss" id="int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)"><a class="permalink" href="#int_initstate_r_(unsigned_int_seed,_char_*_statebuf,_size_t_statelen,_struct_random_data_*_buf)">int
   initstate_r (unsigned int seed, char * statebuf, size_t statelen, struct
   random_data * buf)</a></h2>
-<p class="Pp">Definition at line <b>250</b> of file
+<p class="Pp">Definition at line <b>245</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>250                                                                                              {
-251   // Validate parameters
-252   if (statelen &lt; sizeof(_random_state_t)) {
-253     return -1;
-254   }
-255 
-256   // Initialize state structure with seed
-257   _random_state_t *state = (_random_state_t *)statebuf;
-258   state-&gt;seed = seed;
-259 
-260   // Store pointer to state buffer in the random_data structure
-261   *(void **)buf = statebuf;
-262   return 0;
-263 }</pre>
+<pre>245                                                                                              {
+246   // Validate parameters
+247   if (!statebuf || !buf || statelen &lt; 32) {
+248     return -1;
+249   }
+250 
+251   // Zero out the buffer for consistency (though random_r() won't use it)
+252   memset(statebuf, 0, statelen);
+253 
+254   return 0;
+255 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>_random_state_t::seed</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)"><a class="permalink" href="#int_random_r_(struct_random_data_*restrict_buf,_int32_t_*restrict_result)">int
   random_r (struct random_data *restrict buf, int32_t *restrict result)</a></h2>
-<p class="Pp">Definition at line <b>267</b> of file
+<p class="Pp">Definition at line <b>259</b> of file
   <b>musl_c23_compat.c</b>.</p>
-<pre>267                                                                          {
-268   if (buf == NULL || result == NULL) {
-269     return -1;
-270   }
+<pre>259                                                                          {
+260   if (buf == NULL || result == NULL) {
+261     return -1;
+262   }
+263 
+264   // Get random bytes from arc4random_buf (cryptographically secure)
+265   uint32_t random_bytes;
+266   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
+267 
+268   // Convert to 31-bit positive integer (matching glibc behavior)
+269   // glibc's random_r returns values in range [0, 2^31)
+270   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
 271 
-272   // Get random bytes from arc4random_buf (cryptographically secure)
-273   uint32_t random_bytes;
-274   arc4random_buf(&amp;random_bytes, sizeof(random_bytes));
-275 
-276   // Convert to 31-bit positive integer (matching glibc behavior)
-277   // glibc's random_r returns values in range [0, 2^31)
-278   *result = (int32_t)((random_bytes &gt;&gt; 1) &amp; 0x7FFFFFFF);
-279 
-280   return 0;
-281 }</pre>
+272   return 0;
+273 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>arc4random_buf()</b>.</p>

@@ -31,7 +31,7 @@
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
 <p class="Pp">enum_to_string_entry_t - Maps a single enum value to its string
-    representation.</p>
+    representation and description.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -44,7 +44,9 @@
   <br/>
   The numeric enum value. const char * <b>string</b>
   <br/>
-  The string representation of that enum value.
+  The string representation of that enum value. const char * <b>desc</b>
+  <br/>
+  Description for shell completion.
   <br/>
 </p>
 </section>
@@ -52,12 +54,19 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Maps a single enum value to its string representation.</p>
+<p class="Pp">Maps a single enum value to its string representation and
+    description.</p>
 <p class="Pp">Definition at line <b>22</b> of file <b>enums.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
+<section class="Ss">
+<h2 class="Ss" id="const_char*_enum_to_string_entry_t::desc"><a class="permalink" href="#const_char*_enum_to_string_entry_t::desc">const
+  char* enum_to_string_entry_t::desc</a></h2>
+<p class="Pp">Description for shell completion.</p>
+<p class="Pp">Definition at line <b>25</b> of file <b>enums.c</b>.</p>
+</section>
 <section class="Ss">
 <h2 class="Ss" id="int_enum_to_string_entry_t::enum_value"><a class="permalink" href="#int_enum_to_string_entry_t::enum_value">int
   enum_to_string_entry_t::enum_value</a></h2>

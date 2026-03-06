@@ -40,10 +40,7 @@
 <h2 class="Ss" id="Data_Structures"><a class="permalink" href="#Data_Structures">Data
   Structures</a></h2>
 <br/>
-<p class="Pp">struct <b>enum_to_string_entry_t</b>
-  <br/>
-  Maps a single enum value to its string representation. struct
-    <b>enum_map_descriptor_t</b>
+<p class="Pp">struct <b>enum_map_descriptor_t</b>
   <br/>
   Descriptor for an enum option with its string value mapping.
   <br/>
@@ -52,8 +49,12 @@
 <section class="Ss">
 <h2 class="Ss" id="Functions"><a class="permalink" href="#Functions">Functions</a></h2>
 <br/>
-<p class="Pp">const char ** <b>options_get_enum_values</b> (const char
-    *option_name, size_t *value_count)
+<p class="Pp">const enum_to_string_entry_t * <b>options_get_enum_entries</b>
+    (const char *option_name, size_t *entry_count)
+  <br/>
+  Get all enum entries with descriptions for an option. const char **
+    <b>options_get_enum_values</b> (const char *option_name, size_t
+    *value_count)
   <br/>
   Get all unique string values for an option. <b>bool</b>
     <b>options_is_enum_option</b> (const char *option_name)
@@ -76,6 +77,46 @@
 <h1 class="Sh" id="Function_Documentation"><a class="permalink" href="#Function_Documentation">Function
   Documentation</a></h1>
 <section class="Ss">
+<h2 class="Ss" id="const_enum_to_string_entry_t_*_options_get_enum_entries_(const_char_*_option_name,_size_t_*_entry_count)"><a class="permalink" href="#const_enum_to_string_entry_t_*_options_get_enum_entries_(const_char_*_option_name,_size_t_*_entry_count)">const
+  enum_to_string_entry_t * options_get_enum_entries (const char * option_name,
+  size_t * entry_count)</a></h2>
+<p class="Pp">Get all enum entries with descriptions for an option. Returns
+    entries containing both string values and descriptions for shell completion.
+    Used by zsh completion to show descriptions alongside values.</p>
+<p class="Pp"></p>
+<p class="Pp"><b>Parameters</b></p>
+<div class="Bd-indent"><i>option_name</i> Option long name (e.g.,
+  &quot;log-level&quot;)
+<br/>
+<i>entry_count</i> OUTPUT: Number of entries returned</div>
+<p class="Pp"><b>Returns</b></p>
+<div class="Bd-indent">Array of enum entries, or NULL if not an enum
+  option</div>
+<p class="Pp">Definition at line <b>134</b> of file <b>enums.c</b>.</p>
+<pre>134                                                                                                      {
+135   if (!option_name || !entry_count) {
+136     return NULL;
+137   }
+138 
+139   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+140     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+141       /* Count entries up to terminator */
+142       size_t count = 0;
+143       for (size_t j = 0; enum_registry[i].map[j].enum_value != -1; j++) {
+144         count++;
+145       }
+146       *entry_count = count;
+147       return enum_registry[i].map;
+148     }
+149   }
+150 
+151   *entry_count = 0;
+152   return NULL;
+153 }</pre>
+<pre></pre>
+<p class="Pp"></p>
+</section>
+<section class="Ss">
 <h2 class="Ss" id="const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)"><a class="permalink" href="#const_char_**_options_get_enum_values_(const_char_*_option_name,_size_t_*_value_count)">const
   char ** options_get_enum_values (const char * option_name, size_t *
   value_count)</a></h2>
@@ -92,61 +133,60 @@
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">Array of valid string values, or NULL if not an enum
   option</div>
-<p class="Pp">Definition at line <b>143</b> of file <b>enums.c</b>.</p>
-<pre>143                                                                                    {
-144   if (!option_name || !value_count) {
-145     return NULL;
-146   }
-147 
-148   /* Find the option's mapping in the registry */
-149   const enum_map_descriptor_t *descriptor = NULL;
-150   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
-151     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
-152       descriptor = &amp;enum_registry[i];
-153       break;
-154     }
-155   }
-156 
-157   if (!descriptor || !descriptor-&gt;map) {
-158     *value_count = 0;
-159     return NULL;
-160   }
-161 
-162   /* Count non-terminator entries */
-163   size_t count = 0;
-164   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
-165     count++;
-166   }
-167 
-168   /* Build array of unique strings (skip duplicates from aliases) */
-169   const char **values = SAFE_MALLOC(count * sizeof(const char *), const char **);
-170   size_t unique_count = 0;
-171 
-172   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
-173     const char *str = descriptor-&gt;map[i].string;
-174 
-175     /* Check if we already have this string (for aliases) */
-176     bool already_added = false;
-177     for (size_t j = 0; j &lt; unique_count; j++) {
-178       if (strcmp(values[j], str) == 0) {
-179         already_added = true;
-180         break;
-181       }
-182     }
-183 
-184     if (!already_added) {
-185       values[unique_count++] = str;
-186     }
-187   }
-188 
-189   *value_count = unique_count;
-190   return values;
-191 }</pre>
+<p class="Pp">Definition at line <b>166</b> of file <b>enums.c</b>.</p>
+<pre>166                                                                                    {
+167   if (!option_name || !value_count) {
+168     return NULL;
+169   }
+170 
+171   /* Find the option's mapping in the registry */
+172   const enum_map_descriptor_t *descriptor = NULL;
+173   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+174     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+175       descriptor = &amp;enum_registry[i];
+176       break;
+177     }
+178   }
+179 
+180   if (!descriptor || !descriptor-&gt;map) {
+181     *value_count = 0;
+182     return NULL;
+183   }
+184 
+185   /* Count non-terminator entries */
+186   size_t count = 0;
+187   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
+188     count++;
+189   }
+190 
+191   /* Build array of unique strings (skip duplicates from aliases) */
+192   const char **values = SAFE_MALLOC(count * sizeof(const char *), const char **);
+193   size_t unique_count = 0;
+194 
+195   for (size_t i = 0; descriptor-&gt;map[i].enum_value != -1; i++) {
+196     const char *str = descriptor-&gt;map[i].string;
+197 
+198     /* Check if we already have this string (for aliases) */
+199     bool already_added = false;
+200     for (size_t j = 0; j &lt; unique_count; j++) {
+201       if (strcmp(values[j], str) == 0) {
+202         already_added = true;
+203         break;
+204       }
+205     }
+206 
+207     if (!already_added) {
+208       values[unique_count++] = str;
+209     }
+210   }
+211 
+212   *value_count = unique_count;
+213   return values;
+214 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>enum_to_string_entry_t::enum_value</b>,
-    <b>enum_map_descriptor_t::map</b>, <b>SAFE_MALLOC</b>, and
-    <b>enum_to_string_entry_t::string</b>.</p>
+<p class="Pp">References <b>enum_map_descriptor_t::map</b>, and
+    <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_suggest_enum_value()</b>.</p>
 </section>
 <section class="Ss">
@@ -157,20 +197,20 @@
 <div class="Bd-indent"><i>option_name</i> Option long name</div>
 <p class="Pp"><b>Returns</b></p>
 <div class="Bd-indent">true if option has enum values, false otherwise</div>
-<p class="Pp">Definition at line <b>199</b> of file <b>enums.c</b>.</p>
-<pre>199                                                      {
-200   if (!option_name) {
-201     return false;
-202   }
-203 
-204   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
-205     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
-206       return true;
-207     }
-208   }
-209 
-210   return false;
-211 }</pre>
+<p class="Pp">Definition at line <b>222</b> of file <b>enums.c</b>.</p>
+<pre>222                                                      {
+223   if (!option_name) {
+224     return false;
+225   }
+226 
+227   for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+228     if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+229       return true;
+230     }
+231   }
+232 
+233   return false;
+234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
 </section>
