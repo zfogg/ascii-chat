@@ -1,21 +1,21 @@
 export function getCommitSha(): string {
-  // Check for Vercel's built-in environment variable first
-  if (typeof process !== "undefined") {
-    const proc = process as typeof process & { env?: Record<string, string | undefined> };
-    if (proc.env?.["VERCEL_GIT_COMMIT_SHA"]) {
-      return proc.env["VERCEL_GIT_COMMIT_SHA"].substring(0, 8);
-    }
+  // Check for Node.js process global via globalThis (cast to any to handle browser/node differences)
+  const proc = (globalThis as any).process as any;
 
-    // Fall back to git command for local development (Node.js only)
-    const procWithVersions = process as typeof process & { versions?: { node?: string } };
-    if (procWithVersions.versions?.node) {
-      try {
-        // Dynamic import to avoid bundling child_process in browser
-        const { execSync } = require("child_process") as typeof import("child_process");
-        return execSync("git rev-parse HEAD").toString().trim().substring(0, 8);
-      } catch {
-        return "unknown";
-      }
+  // Check for Vercel's built-in environment variable first
+  if (proc?.env?.["VERCEL_GIT_COMMIT_SHA"]) {
+    return proc.env["VERCEL_GIT_COMMIT_SHA"].substring(0, 8);
+  }
+
+  // Fall back to git command for local development (Node.js only)
+  if (proc?.versions?.node) {
+    try {
+      // Use indirect require to get execSync from child_process
+      const mod = (globalThis as any).require as any;
+      const { execSync } = mod("child_process");
+      return execSync("git rev-parse HEAD").toString().trim().substring(0, 8);
+    } catch {
+      return "unknown";
     }
   }
 
