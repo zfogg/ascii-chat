@@ -3,9 +3,24 @@
 # =============================================================================
 # This module provides unified sanitizer configuration for all platforms
 # and handles conflicts with mimalloc's malloc override and spinlock issues.
-
+#
+# IMPORTANT: Sanitizers are now applied PER-TARGET, not globally
+# This ensures dependencies are not instrumented, only project code is.
+#
+# Usage in CMakeLists.txt:
+#   After creating a target, apply sanitizers with:
+#   apply_sanitizers_to_target(my_target_name)
+#
+# Example:
+#   add_executable(my_app main.c)
+#   apply_sanitizers_to_target(my_app)
+#
 # Note: add_compiler_flag_if_supported() is defined in CompilerFlags.cmake
 # which is included before this file
+
+# Global list to store sanitizer flags (applied only to project targets, not dependencies)
+set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "")
+set(ASCIICHAT_SANITIZER_LINK_FLAGS "")
 
 # Configure sanitizers based on platform, compiler, and options
 # Args:
@@ -18,11 +33,8 @@ function(configure_sanitizers USE_MIMALLOC_ARG BUILD_TYPE_ARG)
     # Therefore, we disable ALL sanitizers when mimalloc is enabled
 
     if(USE_MIMALLOC_ARG)
-        # No sanitizers with mimalloc, but preserve frame pointers for profiling
-        add_compile_options(
-            -fno-omit-frame-pointer
-            -fno-optimize-sibling-calls
-        )
+        # No sanitizers with mimalloc, but preserve frame pointers for profiling (applied per-target)
+        set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "-fno-omit-frame-pointer;-fno-optimize-sibling-calls" PARENT_SCOPE)
         message(STATUS "${BUILD_TYPE_ARG} build: Disabled all sanitizers due to mimalloc conflicts (malloc override + spinlock instrumentation)")
         return()
     endif()
@@ -31,10 +43,7 @@ function(configure_sanitizers USE_MIMALLOC_ARG BUILD_TYPE_ARG)
     # Sanitizers require glibc-specific symbols like gnu_get_libc_version, dlvsym, _DYNAMIC, etc.
     # which are not available in musl. This is a known limitation.
     if(USE_MUSL)
-        add_compile_options(
-            -fno-omit-frame-pointer
-            -fno-optimize-sibling-calls
-        )
+        set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "-fno-omit-frame-pointer;-fno-optimize-sibling-calls" PARENT_SCOPE)
         message(STATUS "${BUILD_TYPE_ARG} build: Disabled all sanitizers - incompatible with static musl builds")
         return()
     endif()
@@ -132,17 +141,29 @@ function(configure_asan_ubsan_sanitizers)
             endif()
         endif()
 
-        # Base debug flags (always supported)
-        add_compile_options(-g -fno-omit-frame-pointer)
+        # Base debug flags (always supported) - append to global sanitizer flags
+        list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -g -fno-omit-frame-pointer)
 
         # INFO: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#silencing-unsigned-integer-overflow
         # Check for -fno-sanitize-merge support (not available in all Clang versions)
-        add_compiler_flag_if_supported(-fno-sanitize-merge)
+        # These will be conditionally added to sanitizer flags if supported
+        include(CheckCCompilerFlag)
+        check_c_compiler_flag(-fno-sanitize-merge HAS_FNOASAN_MERGE)
+        if(HAS_FNOASAN_MERGE)
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -fno-sanitize-merge)
+        endif()
 
         # INFO: https://clang.llvm.org/docs/UndefinedBehaviorSanitizer.html#disabling-instrumentation-for-common-overflow-patterns
         # Check for overflow pattern flags (newer Clang feature)
-        add_compiler_flag_if_supported(-fsanitize-recover=unsigned-integer-overflow)
-        add_compiler_flag_if_supported(-fsanitize-undefined-ignore-overflow-pattern=all)
+        check_c_compiler_flag(-fsanitize-recover=unsigned-integer-overflow HAS_SANITIZE_RECOVER)
+        if(HAS_SANITIZE_RECOVER)
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -fsanitize-recover=unsigned-integer-overflow)
+        endif()
+
+        check_c_compiler_flag(-fsanitize-undefined-ignore-overflow-pattern=all HAS_SANITIZE_OVERFLOW_PATTERN)
+        if(HAS_SANITIZE_OVERFLOW_PATTERN)
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -fsanitize-undefined-ignore-overflow-pattern=all)
+        endif()
         if(WIN32)
             # Windows with Clang - use RELEASE CRT (/MD) with ASan
             # ASan does NOT support the debug CRT (/MDd) because debug CRT's memory tracking
@@ -155,7 +176,7 @@ function(configure_asan_ubsan_sanitizers)
             # - Better memory error detection (use-after-free, buffer overflows, etc.)
             # - Full debug symbols (-g) preserved
             # - Stack traces for all memory errors
-            add_compile_options(
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
                 -fsanitize=address
                 -fsanitize=undefined
                 -fsanitize=integer
@@ -169,37 +190,30 @@ function(configure_asan_ubsan_sanitizers)
                 -D_DLL
             )
 
-            # Link the ASan import library FIRST to ensure it's first in the Import Directory Table
-            # This makes Windows load the ASan DLL before other DLLs like MSVCP140D.dll
-            # Without this, allocations made during MSVCP140D.dll initialization are missed by ASan,
-            # causing "bad-free" errors when those allocations are freed at exit
+            # Store Windows-specific ASan linking info in global variables (will be applied per-target)
+            set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "${ASAN_DYNAMIC_IMPORT_LIB}" PARENT_SCOPE)
+            set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "${ASAN_RUNTIME_THUNK_LIB}" PARENT_SCOPE)
+
             if(ASAN_DYNAMIC_IMPORT_LIB)
-                # Use link_libraries() to add ASan lib BEFORE other link dependencies
-                # This affects all targets defined after this point
-                link_libraries("${ASAN_DYNAMIC_IMPORT_LIB}")
-                message(STATUS "  ASan import library (linked first): ${ASAN_DYNAMIC_IMPORT_LIB}")
+                message(STATUS "  ASan import library (will be linked first on per-target basis): ${ASAN_DYNAMIC_IMPORT_LIB}")
             endif()
 
-            # Link the runtime thunk with /wholearchive to ensure ASan init routines are included
             if(ASAN_RUNTIME_THUNK_LIB)
-                add_link_options("-Xlinker" "/wholearchive:${ASAN_RUNTIME_THUNK_LIB}")
-                message(STATUS "  ASan runtime thunk (wholearchive): ${ASAN_RUNTIME_THUNK_LIB}")
+                message(STATUS "  ASan runtime thunk (will be linked with wholearchive on per-target basis): ${ASAN_RUNTIME_THUNK_LIB}")
             endif()
 
-            # Don't pass -fsanitize=address to the linker - it adds the static
-            # runtime thunk which conflicts with the dynamic thunk linked above.
-            # The ASan runtime is already handled by the manual import lib + thunk linking.
-            add_link_options(
+            # Link options for target-specific application
+            list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS
                 -fsanitize=undefined
                 -fsanitize=integer
                 -fsanitize=nullability
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
             )
-            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (debug CRT)")
+            message(STATUS "Debug build: Sanitizers configured for ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} (will apply to project targets only)")
         elseif(APPLE)
             # macOS - sanitizers except thread and leak (not supported on ARM64)
-            add_compile_options(
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
                 -fsanitize=address
                 -fsanitize=undefined
                 -fsanitize=integer
@@ -210,7 +224,7 @@ function(configure_asan_ubsan_sanitizers)
                 -fno-omit-frame-pointer
                 -fno-optimize-sibling-calls
             )
-            add_link_options(
+            list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS
                 -fsanitize=address
                 -fsanitize=undefined
                 -fsanitize=integer
@@ -218,12 +232,12 @@ function(configure_asan_ubsan_sanitizers)
                 -fsanitize=implicit-conversion
                 -fsanitize=float-divide-by-zero
             )
-            message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers")
+            message(STATUS "Debug build: Sanitizers configured for ${BoldGreen}ASan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} (will apply to project targets only)")
         else()
             # Linux - includes LeakSanitizer
             # Use -shared-libsan to link sanitizer runtimes as shared libraries
             # This is required when the main binary loads shared libraries that are also sanitized
-            add_compile_options(
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
                 -fsanitize=address
                 -fsanitize=undefined
                 -fsanitize=leak
@@ -257,7 +271,7 @@ function(configure_asan_ubsan_sanitizers)
                 endif()
             endif()
             if(CLANG_RUNTIME_DIR AND EXISTS "${CLANG_RUNTIME_DIR}")
-                add_link_options(
+                list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS
                     -fsanitize=address
                     -fsanitize=undefined
                     -fsanitize=leak
@@ -268,7 +282,9 @@ function(configure_asan_ubsan_sanitizers)
                     -shared-libsan
                     "LINKER:-rpath,${CLANG_RUNTIME_DIR}"
                 )
-                message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} sanitizers (shared runtimes)")
+                # Store runtime dir for per-target application
+                set(ASCIICHAT_SANITIZER_RUNTIME_DIR "${CLANG_RUNTIME_DIR}" PARENT_SCOPE)
+                message(STATUS "Debug build: Sanitizers configured for ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} + ${BoldGreen}Integer${ColorReset} + ${BoldGreen}Nullability${ColorReset} + ${BoldGreen}ImplicitConversion${ColorReset} (will apply to project targets only)")
                 message(STATUS "  Sanitizer runtime: ${CLANG_RUNTIME_DIR}")
             else()
                 message(FATAL_ERROR "Could not find Clang sanitizer runtime directory.\n"
@@ -281,7 +297,7 @@ function(configure_asan_ubsan_sanitizers)
     elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
         # GCC on Unix - disable ALL sanitizers if mimalloc is enabled (same spinlock issue as Clang)
         # Note: This is handled by the USE_MIMALLOC check at the top of configure_sanitizers()
-        add_compile_options(
+        list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS
             -fsanitize=address
             -fsanitize=undefined
             -fsanitize=leak
@@ -289,13 +305,20 @@ function(configure_asan_ubsan_sanitizers)
             -fno-omit-frame-pointer
             -fno-optimize-sibling-calls
         )
-        add_link_options(
+        list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS
             -fsanitize=address
             -fsanitize=undefined
             -fsanitize=leak
         )
-        message(STATUS "Debug build: Enabled ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} (GCC)")
+        message(STATUS "Debug build: Sanitizers configured for ${BoldGreen}ASan${ColorReset} + ${BoldGreen}LeakSan${ColorReset} + ${BoldGreen}UBSan${ColorReset} (GCC, will apply to project targets only)")
     endif()
+
+    # Propagate sanitizer flags to parent scope
+    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}" PARENT_SCOPE)
+    set(ASCIICHAT_SANITIZER_LINK_FLAGS "${ASCIICHAT_SANITIZER_LINK_FLAGS}" PARENT_SCOPE)
+    set(ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB "${ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB}" PARENT_SCOPE)
+    set(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB "${ASCIICHAT_ASAN_RUNTIME_THUNK_LIB}" PARENT_SCOPE)
+    set(ASCIICHAT_SANITIZER_RUNTIME_DIR "${ASCIICHAT_SANITIZER_RUNTIME_DIR}" PARENT_SCOPE)
 endfunction()
 
 # Configure ThreadSanitizer
@@ -303,24 +326,28 @@ function(configure_tsan_sanitizer)
     if(CMAKE_C_COMPILER_ID MATCHES "Clang")
         if(WIN32)
             # ThreadSanitizer has limited support on Windows
-            add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer)
-            add_link_options(-fsanitize=thread)
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -g -O1 -fsanitize=thread -fno-omit-frame-pointer)
+            list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS -fsanitize=thread)
             message(WARNING "ThreadSanitizer has limited support on Windows. Consider using Linux/macOS for full TSan support.")
         else()
             # Full TSan support on Unix-like systems
-            add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
-            add_link_options(-fsanitize=thread LINKER:-pie)
+            list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
+            list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS -fsanitize=thread LINKER:-pie)
         endif()
     elseif(CMAKE_C_COMPILER_ID MATCHES "GNU" AND NOT WIN32)
         # GCC TSan support (Unix only)
-        add_compile_options(-g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
-        add_link_options(-fsanitize=thread LINKER:-pie)
+        list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -g -O1 -fsanitize=thread -fno-omit-frame-pointer -fPIE)
+        list(APPEND ASCIICHAT_SANITIZER_LINK_FLAGS -fsanitize=thread LINKER:-pie)
     else()
         # Fallback for compilers without TSan support
-        add_compile_options(-g -O1)
+        list(APPEND ASCIICHAT_SANITIZER_COMPILE_FLAGS -g -O1)
         message(WARNING "ThreadSanitizer not available for this compiler/platform combination")
         message(STATUS "Consider using Clang or GCC on Linux/macOS for ThreadSanitizer support")
     endif()
+
+    # Propagate sanitizer flags to parent scope
+    set(ASCIICHAT_SANITIZER_COMPILE_FLAGS "${ASCIICHAT_SANITIZER_COMPILE_FLAGS}" PARENT_SCOPE)
+    set(ASCIICHAT_SANITIZER_LINK_FLAGS "${ASCIICHAT_SANITIZER_LINK_FLAGS}" PARENT_SCOPE)
 endfunction()
 
 # Copy ASAN runtime DLL on Windows (for Clang)
@@ -365,5 +392,36 @@ function(fix_macos_asan_runtime)
             message(STATUS "Using ASan runtime from: ${_llvm_lib_dir}/clang/${CLANG_VERSION_NAME}/lib/darwin")
         endif()
         unset(_llvm_lib_dir)
+    endif()
+endfunction()
+
+# Apply configured sanitizers to a specific target
+# This function applies sanitizers ONLY to project code, not to dependencies
+# Usage: apply_sanitizers_to_target(my_target_name)
+function(apply_sanitizers_to_target TARGET_NAME)
+    if(NOT ASCIICHAT_SANITIZER_COMPILE_FLAGS)
+        # No sanitizers configured, nothing to do
+        return()
+    endif()
+
+    # Apply compile options
+    target_compile_options(${TARGET_NAME} PRIVATE ${ASCIICHAT_SANITIZER_COMPILE_FLAGS})
+
+    # Apply link options
+    if(ASCIICHAT_SANITIZER_LINK_FLAGS)
+        target_link_options(${TARGET_NAME} PRIVATE ${ASCIICHAT_SANITIZER_LINK_FLAGS})
+    endif()
+
+    # Windows-specific: Link ASan import library FIRST (must be earliest in import table)
+    if(WIN32 AND ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB)
+        # Use LINK_LIBRARIES instead of target_link_libraries to ensure it comes first
+        # But since this is a per-target function, we need to use target_link_libraries
+        # and hope the linker respects the order (it usually does with modern linkers)
+        target_link_libraries(${TARGET_NAME} PRIVATE "${ASCIICHAT_ASAN_DYNAMIC_IMPORT_LIB}")
+
+        # Link the runtime thunk with /wholearchive
+        if(ASCIICHAT_ASAN_RUNTIME_THUNK_LIB)
+            target_link_options(${TARGET_NAME} PRIVATE "-Xlinker" "/wholearchive:${ASCIICHAT_ASAN_RUNTIME_THUNK_LIB}")
+        endif()
     endif()
 endfunction()
