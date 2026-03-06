@@ -288,49 +288,51 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
         totalMatches++;
 
         if (snippets.length < maxSnippets && !usedLines.has(i)) {
-          // Get the match line number (including parts without explicit numbers)
-          let matchLineNum = actualLineNumbers[i];
-          if (matchLineNum <= 0) {
-            // If match has no number, find it by looking forward
-            for (let j = i + 1; j < lines.length; j++) {
+          const before = i > 0 ? lines[i - 1] : "";
+          const match = lines[i];
+          const after = i < lines.length - 1 ? lines[i + 1] : "";
+
+          if (i > 0) usedLines.add(i - 1);
+          usedLines.add(i);
+          if (i < lines.length - 1) usedLines.add(i + 1);
+
+          // Get line numbers, skipping non-code lines (marked with -1)
+          let beforeLineNum = null;
+          if (i > 0) {
+            // Find previous code line
+            for (let j = i - 1; j >= 0; j--) {
               if (actualLineNumbers[j] > 0) {
-                matchLineNum = actualLineNumbers[j];
+                beforeLineNum = actualLineNumbers[j];
                 break;
               }
             }
           }
 
-          // Skip if we still don't have a line number for the match
-          if (matchLineNum <= 0) continue;
+          let matchLineNum = actualLineNumbers[i];
+          if (matchLineNum <= 0) matchLineNum = null;
 
-          // Find before: skip all elements from the match line or without line numbers
-          let beforeIdx = i - 1;
-          while (beforeIdx >= 0 && (actualLineNumbers[beforeIdx] <= 0 || actualLineNumbers[beforeIdx] === matchLineNum)) {
-            beforeIdx--;
+          let afterLineNum = null;
+          if (i < lines.length - 1) {
+            // Find next code line
+            for (let j = i + 1; j < lines.length; j++) {
+              if (actualLineNumbers[j] > 0) {
+                afterLineNum = actualLineNumbers[j];
+                break;
+              }
+            }
           }
-          const before = beforeIdx >= 0 ? lines[beforeIdx] : "";
-          let beforeLineNum = beforeIdx >= 0 ? actualLineNumbers[beforeIdx] : null;
-          if (beforeLineNum && beforeLineNum <= 0) beforeLineNum = null;
-
-          // Match line
-          const match = lines[i];
-
-          // Find after: skip all elements from the match line or without line numbers
-          let afterIdx = i + 1;
-          while (afterIdx < lines.length && (actualLineNumbers[afterIdx] <= 0 || actualLineNumbers[afterIdx] === matchLineNum)) {
-            afterIdx++;
           }
-          const after = afterIdx < lines.length ? lines[afterIdx] : "";
-          let afterLineNum = afterIdx < lines.length ? actualLineNumbers[afterIdx] : null;
-          if (afterLineNum && afterLineNum <= 0) afterLineNum = null;
 
-          // Track used lines
-          if (beforeIdx >= 0) usedLines.add(beforeIdx);
-          usedLines.add(i);
-          if (afterIdx < lines.length) usedLines.add(afterIdx);
+          // Determine what line number these parts belong to
+          // If match has no number, it's part of the closest numbered line
+          const matchOrAfterLineNum = matchLineNum || afterLineNum;
 
-          // Join with newlines to show three separate lines
-          const snippet = [before, match, after].join("\n");
+          // If all three parts are from the same source line, join with spaces
+          const allOnSameLine = matchOrAfterLineNum &&
+            (!beforeLineNum || beforeLineNum === matchOrAfterLineNum) &&
+            (!matchLineNum || matchLineNum === matchOrAfterLineNum) &&
+            (!afterLineNum || afterLineNum === matchOrAfterLineNum);
+          const snippet = [before, match, after].join(allOnSameLine ? " " : "\n");
 
           snippets.push({
             text: snippet,
