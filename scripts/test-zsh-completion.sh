@@ -29,7 +29,11 @@ tmux send-keys -t zsh-completion-test "./build/bin/ascii-chat --sho" Tab
 sleep 0.2
 tmux send-keys -t zsh-completion-test "Escape"
 tmux send-keys -t zsh-completion-test "C-u"
-tmux capture-pane -t zsh-completion-test -p | rg corrections && echo "🔴 CORRECTIONS FOUND! TEST FAILED"
+tmux capture-pane -t zsh-completion-test -p | rg corrections \
+  && echo "🔴 CORRECTIONS FOUND! TEST FAILED"
+tmux capture-pane -t zsh-completion-test -p | rg audio \
+  && echo "🟢 AUDIO FOUND! TEST PASSED" \
+  || echo "🔴 NO 'audio' options found! TEST FAILED"
 tmux capture-pane -t zsh-completion-test -p
 
 # clear
