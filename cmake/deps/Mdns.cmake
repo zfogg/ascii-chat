@@ -17,6 +17,14 @@
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 
+# iOS: mdns is header-only (source file gets compiled with project)
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}mdns${ColorReset} (iOS, header-only with patching)...")
+    set(MDNS_FOUND TRUE)
+    message(STATUS "${BoldGreen}✓${ColorReset} mdns configured (iOS, header-only)")
+    return()
+endif()
+
 function(configure_mdns)
     set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/mdns")
     set(PATCHES_DIR "${CMAKE_SOURCE_DIR}/cmake/deps/patches")

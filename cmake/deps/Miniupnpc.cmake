@@ -25,6 +25,86 @@
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/FindDependency.cmake)
 
+# =============================================================================
+# iOS: Build from source for iOS cross-compilation
+# =============================================================================
+if(PLATFORM_IOS)
+    message(STATUS "Configuring ${BoldBlue}miniupnpc${ColorReset} from source (iOS cross-compile)...")
+
+    set(MINIUPNPC_PREFIX "${IOS_DEPS_CACHE_DIR}/miniupnpc")
+    set(MINIUPNPC_LIBRARY "${MINIUPNPC_PREFIX}/lib/libminiupnpc.a")
+    set(MINIUPNPC_INCLUDE_DIRS "${MINIUPNPC_PREFIX}/include")
+
+    if(NOT EXISTS "${MINIUPNPC_LIBRARY}")
+        message(STATUS "  miniupnpc library not found in cache, will build from source")
+
+        set(MINIUPNPC_BUILD_DIR "${IOS_DEPS_CACHE_DIR}/miniupnpc-build")
+        file(MAKE_DIRECTORY "${MINIUPNPC_BUILD_DIR}")
+
+        # Get iOS SDK path
+        if(BUILD_IOS_SIM)
+            execute_process(COMMAND xcrun --sdk iphonesimulator --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        else()
+            execute_process(COMMAND xcrun --sdk iphoneos --show-sdk-path OUTPUT_VARIABLE IOS_SDK_PATH OUTPUT_STRIP_TRAILING_WHITESPACE)
+        endif()
+
+        message(STATUS "  Downloading miniupnpc 2.2.7...")
+        file(DOWNLOAD
+            "https://github.com/miniupnp/miniupnp/archive/refs/tags/miniupnpc_2_2_7.tar.gz"
+            "${MINIUPNPC_BUILD_DIR}/miniupnpc-2.2.7.tar.gz"
+            TIMEOUT 30
+            SHOW_PROGRESS
+        )
+
+        message(STATUS "  Extracting miniupnpc...")
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} -E tar xzf miniupnpc-2.2.7.tar.gz
+            WORKING_DIRECTORY "${MINIUPNPC_BUILD_DIR}"
+            RESULT_VARIABLE EXTRACT_RESULT
+        )
+        if(NOT EXTRACT_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to extract miniupnpc")
+        endif()
+
+        message(STATUS "  Building miniupnpc for iOS...")
+        execute_process(
+            COMMAND bash -c "cd '${MINIUPNPC_BUILD_DIR}/miniupnp-miniupnpc_2_2_7/miniupnpc' && \
+                    env CC=clang \
+                    CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
+                    LDFLAGS='-isysroot ${IOS_SDK_PATH} -arch arm64' \
+                    make -j && \
+                    mkdir -p '${MINIUPNPC_PREFIX}/lib' '${MINIUPNPC_PREFIX}/include' && \
+                    cp libminiupnpc.a '${MINIUPNPC_PREFIX}/lib/' && \
+                    cp miniupnpc.h '${MINIUPNPC_PREFIX}/include/' && \
+                    cp upnpcommands.h '${MINIUPNPC_PREFIX}/include/' && \
+                    cp upnperrors.h '${MINIUPNPC_PREFIX}/include/'"
+            RESULT_VARIABLE BUILD_RESULT
+            OUTPUT_VARIABLE BUILD_OUTPUT
+            ERROR_VARIABLE BUILD_ERROR
+        )
+        if(NOT BUILD_RESULT EQUAL 0)
+            message(FATAL_ERROR "miniupnpc iOS build failed:\\n${BUILD_ERROR}")
+        endif()
+    else()
+        message(STATUS "  ${BoldBlue}miniupnpc${ColorReset} library found in iOS cache: ${BoldMagenta}${MINIUPNPC_LIBRARY}${ColorReset}")
+    endif()
+
+    set(MINIUPNPC_FOUND TRUE)
+    set(MINIUPNPC_LIBRARIES "${MINIUPNPC_LIBRARY}")
+
+    # Create imported target
+    if(NOT TARGET PkgConfig::MINIUPNPC)
+        add_library(PkgConfig::MINIUPNPC STATIC IMPORTED GLOBAL)
+        set_target_properties(PkgConfig::MINIUPNPC PROPERTIES
+            IMPORTED_LOCATION "${MINIUPNPC_LIBRARY}"
+            INTERFACE_INCLUDE_DIRECTORIES "${MINIUPNPC_INCLUDE_DIRS}"
+        )
+    endif()
+
+    message(STATUS "${BoldGreen}✓${ColorReset} miniupnpc (iOS): ${MINIUPNPC_LIBRARY}")
+    return()
+endif()
+
 # On macOS, prefer Homebrew miniupnpc over system version if available
 if(APPLE AND NOT USE_MUSL)
     if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/miniupnpc/lib/pkgconfig/miniupnpc.pc")

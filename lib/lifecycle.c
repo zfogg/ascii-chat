@@ -1,9 +1,10 @@
 /**
  * @file lifecycle.c
  * @ingroup core
- * @brief TODO: Add Doxygen documentation for module lifecycle management
+ * @brief Lock-free module lifecycle state machine implementation
  *
- * Needs documentation for: Module initialization/cleanup, lifecycle state tracking
+ * Implements concurrent init/shutdown synchronization using atomic compare-and-swap.
+ * See include/ascii-chat/util/lifecycle.h for API documentation and usage patterns.
  */
 
 #include "ascii-chat/util/lifecycle.h"
