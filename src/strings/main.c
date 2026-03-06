@@ -4,8 +4,6 @@
 #include <getopt.h>
 #include <ascii-chat/discovery/strings.h>
 
-#define MAX_SESSIONS 1000
-
 int main(int argc, char *argv[]) {
   int count = 1;
   static struct option long_options[] = {
@@ -24,7 +22,7 @@ int main(int argc, char *argv[]) {
         printf("Usage: ascii-chat-strings [-n|--count COUNT]\n");
         printf("Generate memorable session strings (adjective-noun-noun format)\n");
         printf("\nOptions:\n");
-        printf("  -n, --count COUNT   Generate COUNT session strings (default: 1, max: 1000)\n");
+        printf("  -n, --count COUNT   Generate COUNT session strings (default: 1)\n");
         printf("  -h, --help          Show this help message\n");
         return 0;
       default:
@@ -32,7 +30,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (count <= 0 || count > MAX_SESSIONS) {
+  if (count <= 0) {
     return 1;
   }
 
