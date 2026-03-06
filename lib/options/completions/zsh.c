@@ -28,11 +28,6 @@ static void zsh_escape_desc(FILE *output, const char *text) {
       // In single-quoted strings, escape single quotes with '\''
       fprintf(output, "'\\''");
       break;
-    case '[':
-    case ']':
-      // Escape brackets for _arguments syntax
-      fprintf(output, "\\%c", *p);
-      break;
     case '\n':
     case '\t':
       fprintf(output, " ");
