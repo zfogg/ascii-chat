@@ -297,21 +297,6 @@ ascii-chat happy-sunset-ocean
               </TrackedLink>
 
               <TrackedLink
-                href="https://zfogg.github.io/ascii-chat/"
-                label="Home - Docs API"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
-              >
-                <h3 className="text-teal-300 font-semibold mb-1">
-                  📘 API Documentation
-                </h3>
-                <p className="text-gray-400 text-sm">
-                  Full Doxygen reference for developers
-                </p>
-              </TrackedLink>
-
-              <TrackedLink
                 href="https://discovery.ascii-chat.com"
                 label="Home - Docs ACDS"
                 target="_blank"
