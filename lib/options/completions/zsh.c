@@ -108,44 +108,71 @@ static void zsh_write_options_grouped(FILE *output, const option_descriptor_t *o
                                        const char *func_prefix) {
   if (!opts || count == 0) return;
 
+  // Set up proper context for zsh completion
+  fprintf(output, "  local curcontext=\"$curcontext\"\n");
   // Use _arguments for proper enum value completion support
   fprintf(output, "  _arguments -s \\\n");
 
   // Write all options for _arguments (which handles value completion properly)
   for (size_t i = 0; i < count; i++) {
     // Check if this is an enum option with values to complete
-    size_t value_count = 0;
-    const char **values = NULL;
+    size_t entry_count = 0;
+    const enum_to_string_entry_t *entries = NULL;
     if (options_is_enum_option(opts[i].long_name)) {
-      values = options_get_enum_values(opts[i].long_name, &value_count);
+      entries = options_get_enum_entries(opts[i].long_name, &entry_count);
     }
 
-    fprintf(output, "    \"--");
-
-    // For enum options, use _arguments format with value completion
-    if (values && value_count > 0) {
-      fprintf(output, "%s", opts[i].long_name);
-      fprintf(output, "=[");
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]:value:((");
-      for (size_t v = 0; v < value_count; v++) {
-        if (v > 0) fprintf(output, " ");
-        fprintf(output, "%s", values[v]);
+    // For enum options, use _arguments format matching rg's style
+    if (entries && entry_count > 0) {
+      fprintf(output, "    '--");
+      fprintf(output, "%s=[", opts[i].long_name);
+      // Escape the help text for the option description
+      for (const char *p = opts[i].help_text; p && *p; p++) {
+        if (*p == '\'') {
+          fprintf(output, "'\\''");
+        } else if (*p == '\n' || *p == '\t') {
+          fprintf(output, " ");
+        } else {
+          fputc(*p, output);
+        }
       }
-      fprintf(output, "))");
-      SAFE_FREE(values);
+      fprintf(output, "]:values:((\n");
+      // Write each value with its description on its own line
+      for (size_t v = 0; v < entry_count; v++) {
+        fprintf(output, "      %s\\:\"", entries[v].string);
+        // Escape the description
+        if (entries[v].desc) {
+          for (const char *p = entries[v].desc; *p; p++) {
+            if (*p == '\'') {
+              fprintf(output, "'\\''");
+            } else {
+              fputc(*p, output);
+            }
+          }
+        }
+        fprintf(output, "\"\n");
+      }
+      fprintf(output, "    ))'");
     } else {
       // For non-enum options, use simple description format
+      fprintf(output, "    '--");
       fprintf(output, "%s", opts[i].long_name);
-      fprintf(output, ":[");
-      zsh_escape_desc(output, opts[i].help_text);
-      fprintf(output, "]");
+      fprintf(output, ":");
+      // Escape help text for single quotes
+      for (const char *p = opts[i].help_text; p && *p; p++) {
+        if (*p == '\'') {
+          fprintf(output, "'\\''");
+        } else if (*p == '\n' || *p == '\t') {
+          fprintf(output, " ");
+        } else {
+          fputc(*p, output);
+        }
+      }
+      fprintf(output, "'");
     }
 
-    fprintf(output, "\" ");
-
     if (i < count - 1) {
-      fprintf(output, "\\\n");
+      fprintf(output, " \\\n");
     } else {
       fprintf(output, "\n");
     }
@@ -211,26 +238,29 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
                   "}\n"
                   "\n"
                   "_ascii_chat_args() {\n"
+                  "  local curcontext=\"$curcontext:${words[2]}\"\n"
+                  "  local ret=1\n"
                   "  case $words[2] in\n"
                   "    server)\n"
-                  "      _ascii_chat_server\n"
+                  "      _ascii_chat_server && ret=0\n"
                   "      ;;\n"
                   "    discovery-service)\n"
-                  "      _ascii_chat_discovery_service\n"
+                  "      _ascii_chat_discovery_service && ret=0\n"
                   "      ;;\n"
                   "    client)\n"
-                  "      _ascii_chat_client\n"
+                  "      _ascii_chat_client && ret=0\n"
                   "      ;;\n"
                   "    mirror)\n"
-                  "      _ascii_chat_mirror\n"
+                  "      _ascii_chat_mirror && ret=0\n"
                   "      ;;\n"
                   "    discovery)\n"
-                  "      _ascii_chat_discovery\n"
+                  "      _ascii_chat_discovery && ret=0\n"
                   "      ;;\n"
                   "    *)\n"
-                  "      _ascii_chat_discovery\n"
+                  "      _ascii_chat_discovery && ret=0\n"
                   "      ;;\n"
                   "  esac\n"
+                  "  return $ret\n"
                   "}\n"
                   "\n"
                   "# Server-like modes: handle incoming connections and stream management\n"
@@ -306,9 +336,7 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
 
   // Return after all option sets are described (prevents zsh fallback completion)
   fprintf(output, "  return\n"
-                  "}\n"
-                  "\n"
-                  "_ascii_chat \"$@\"\n");
+                  "}\n");
 
   return ASCIICHAT_OK;
 }

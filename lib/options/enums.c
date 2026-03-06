@@ -13,95 +13,87 @@
  * Enum-to-String Mapping
  *
  * Each enum type has a mapping array that links enum values to their string
- * representations. This eliminates duplication and ensures consistency.
+ * representations with descriptions. This eliminates duplication and ensures consistency.
  * ═════════════════════════════════════════════════════════════════════════ */
-
-/**
- * @brief Maps a single enum value to its string representation
- */
-typedef struct {
-  int enum_value;      ///< The numeric enum value
-  const char *string;  ///< The string representation of that enum value
-} enum_to_string_entry_t;
 
 /**
  * @brief Maps log level enum values to strings
  */
 static const enum_to_string_entry_t log_level_map[] = {
     /* These enum values come from log/log.h */
-    {0, "dev"},      /* LOG_LEVEL_DEV */
-    {1, "debug"},    /* LOG_LEVEL_DEBUG */
-    {2, "info"},     /* LOG_LEVEL_INFO */
-    {3, "warn"},     /* LOG_LEVEL_WARN */
-    {4, "error"},    /* LOG_LEVEL_ERROR */
-    {5, "fatal"},    /* LOG_LEVEL_FATAL */
-    {-1, NULL}       /* Terminator */
+    {0, "dev", "development level"},
+    {1, "debug", "debug messages"},
+    {2, "info", "info messages"},
+    {3, "warn", "warnings"},
+    {4, "error", "errors"},
+    {5, "fatal", "fatal errors"},
+    {-1, NULL, NULL}       /* Terminator */
 };
 
 /**
  * @brief Maps color mode enum values to strings
  */
 static const enum_to_string_entry_t color_mode_map[] = {
-    {0, "auto"},         /* COLOR_MODE_AUTO */
-    {1, "none"},         /* COLOR_MODE_NONE */
-    {2, "16"},           /* COLOR_MODE_16 */
-    {3, "256"},          /* COLOR_MODE_256 */
-    {4, "truecolor"},    /* COLOR_MODE_TRUECOLOR */
-    {-1, NULL}           /* Terminator */
+    {0, "auto", "auto-detect based on terminal"},
+    {1, "none", "disable colors"},
+    {2, "16", "16 color mode"},
+    {3, "256", "256 color mode"},
+    {4, "truecolor", "true color (24-bit RGB)"},
+    {-1, NULL, NULL}           /* Terminator */
 };
 
 /**
  * @brief Maps color filter enum values to strings
  */
 static const enum_to_string_entry_t color_filter_map[] = {
-    {COLOR_FILTER_NONE, "none"},
-    {COLOR_FILTER_BLACK, "black"},
-    {COLOR_FILTER_WHITE, "white"},
-    {COLOR_FILTER_GREEN, "green"},
-    {COLOR_FILTER_MAGENTA, "magenta"},
-    {COLOR_FILTER_FUCHSIA, "fuchsia"},
-    {COLOR_FILTER_ORANGE, "orange"},
-    {COLOR_FILTER_TEAL, "teal"},
-    {COLOR_FILTER_CYAN, "cyan"},
-    {COLOR_FILTER_PINK, "pink"},
-    {COLOR_FILTER_RED, "red"},
-    {COLOR_FILTER_YELLOW, "yellow"},
-    {COLOR_FILTER_RAINBOW, "rainbow"},
-    {-1, NULL}  /* Terminator */
+    {COLOR_FILTER_NONE, "none", "no tint"},
+    {COLOR_FILTER_BLACK, "black", "black tint"},
+    {COLOR_FILTER_WHITE, "white", "white tint"},
+    {COLOR_FILTER_GREEN, "green", "green tint"},
+    {COLOR_FILTER_MAGENTA, "magenta", "magenta tint"},
+    {COLOR_FILTER_FUCHSIA, "fuchsia", "fuchsia tint"},
+    {COLOR_FILTER_ORANGE, "orange", "orange tint"},
+    {COLOR_FILTER_TEAL, "teal", "teal tint"},
+    {COLOR_FILTER_CYAN, "cyan", "cyan tint"},
+    {COLOR_FILTER_PINK, "pink", "pink tint"},
+    {COLOR_FILTER_RED, "red", "red tint"},
+    {COLOR_FILTER_YELLOW, "yellow", "yellow tint"},
+    {COLOR_FILTER_RAINBOW, "rainbow", "rainbow tint"},
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /**
  * @brief Maps palette enum values to strings
  */
 static const enum_to_string_entry_t palette_map[] = {
-    {0, "standard"},
-    {1, "blocks"},
-    {2, "digital"},
-    {3, "minimal"},
-    {4, "cool"},
-    {5, "custom"},
-    {-1, NULL}  /* Terminator */
+    {0, "standard", "standard palette"},
+    {1, "blocks", "block characters"},
+    {2, "digital", "digital display"},
+    {3, "minimal", "minimal palette"},
+    {4, "cool", "cool colors"},
+    {5, "custom", "custom palette"},
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /**
  * @brief Maps render mode enum values to strings
  */
 static const enum_to_string_entry_t render_mode_map[] = {
-    {RENDER_MODE_FOREGROUND, "foreground"},
-    {RENDER_MODE_FOREGROUND, "fg"},      /* Short alias for foreground */
-    {RENDER_MODE_BACKGROUND, "background"},
-    {RENDER_MODE_BACKGROUND, "bg"},      /* Short alias for background */
-    {RENDER_MODE_HALF_BLOCK, "half-block"},
-    {-1, NULL}  /* Terminator */
+    {RENDER_MODE_FOREGROUND, "foreground", "text foreground"},
+    {RENDER_MODE_FOREGROUND, "fg", "text foreground (short)"},
+    {RENDER_MODE_BACKGROUND, "background", "text background"},
+    {RENDER_MODE_BACKGROUND, "bg", "text background (short)"},
+    {RENDER_MODE_HALF_BLOCK, "half-block", "half-block characters"},
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /**
  * @brief Maps reconnect enum values to strings
  */
 static const enum_to_string_entry_t reconnect_map[] = {
-    {0, "off"},
-    {1, "auto"},
-    {-1, NULL}  /* Terminator */
+    {0, "off", "disable auto-reconnect"},
+    {1, "auto", "enable auto-reconnect"},
+    {-1, NULL, NULL}  /* Terminator */
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -128,6 +120,37 @@ static const enum_map_descriptor_t enum_registry[] = {
     {.option_name = "reconnect", .map = reconnect_map},
     {.option_name = NULL, .map = NULL}  /* Terminator */
 };
+
+/**
+ * @brief Get all enum entries with descriptions for an option
+ *
+ * Returns entries containing both string values and descriptions for shell completion.
+ * Used by zsh completion to show descriptions alongside values.
+ *
+ * @param option_name Option long name (e.g., "log-level")
+ * @param entry_count OUTPUT: Number of entries returned
+ * @return Array of enum entries, or NULL if not an enum option
+ */
+const enum_to_string_entry_t *options_get_enum_entries(const char *option_name, size_t *entry_count) {
+  if (!option_name || !entry_count) {
+    return NULL;
+  }
+
+  for (size_t i = 0; enum_registry[i].option_name != NULL; i++) {
+    if (strcmp(enum_registry[i].option_name, option_name) == 0) {
+      /* Count entries up to terminator */
+      size_t count = 0;
+      for (size_t j = 0; enum_registry[i].map[j].enum_value != -1; j++) {
+        count++;
+      }
+      *entry_count = count;
+      return enum_registry[i].map;
+    }
+  }
+
+  *entry_count = 0;
+  return NULL;
+}
 
 /**
  * @brief Get all unique string values for an option

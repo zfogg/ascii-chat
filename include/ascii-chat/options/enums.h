@@ -22,6 +22,15 @@ extern "C" {
 #endif
 
 /**
+ * @brief Enum value mapping with description for shell completions
+ */
+typedef struct {
+  int enum_value;      ///< The numeric enum value
+  const char *string;  ///< The string representation of that enum value
+  const char *desc;    ///< Description for shell completion
+} enum_to_string_entry_t;
+
+/**
  * @brief Enum value mapping for an option
  */
 typedef struct {
@@ -29,6 +38,17 @@ typedef struct {
   const char **values;     ///< Array of valid string values
   size_t value_count;      ///< Number of values in array
 } enum_descriptor_t;
+
+/**
+ * @brief Get enum entries with descriptions for an option
+ *
+ * Returns entries containing both string values and descriptions for shell completion.
+ *
+ * @param option_name Option long name (e.g., "log-level")
+ * @param entry_count OUTPUT: Number of entries returned
+ * @return Array of enum entries, or NULL if not an enum option
+ */
+const enum_to_string_entry_t *options_get_enum_entries(const char *option_name, size_t *entry_count);
 
 /**
  * @brief Get enum values for an option
