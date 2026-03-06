@@ -224,7 +224,6 @@ static pcre2_code *session_format_regex_get(void) {
 
 
 asciichat_error_t acds_string_init(void) {
-  // No initialization needed - getrandom() works directly
   return ASCIICHAT_OK;
 }
 
