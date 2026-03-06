@@ -32,6 +32,14 @@ static void zsh_escape_desc(FILE *output, const char *text) {
       // Escape backslashes in double-quoted strings
       fprintf(output, "\\\\");
       break;
+    case '$':
+      // Escape dollar signs to prevent variable expansion
+      fprintf(output, "\\$");
+      break;
+    case '`':
+      // Escape backticks to prevent command substitution
+      fprintf(output, "\\`");
+      break;
     case '[':
     case ']':
       // Escape brackets for _arguments syntax
