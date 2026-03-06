@@ -268,15 +268,16 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
   fprintf(output, "    return 0\n"
                   "  fi\n"
                   "\n"
-                  "  # Server mode\n"
-                  "  if [[ \"${words[2]}\" == \"server\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:server\"\n"
-                  "    _arguments -s \\\n");
+                  "  # Route to mode-specific options\n"
+                  "  case \"${words[2]}\" in\n"
+                  "    server)\n"
+                  "      curcontext=\"${curcontext%%%%:*}:server\"\n");
 
   /* Server options */
   size_t server_count = 0;
   const option_descriptor_t *server_opts = options_registry_get_for_display(MODE_SERVER, false, &server_count);
   if (server_opts) {
+    fprintf(output, "      _arguments -s \\\n");
     for (size_t i = 0; i < server_count; i++) {
       zsh_format_option_for_arguments(output, &server_opts[i], i < server_count - 1);
     }
@@ -284,19 +285,17 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(server_opts);
   }
 
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Discovery service mode\n"
-                  "  if [[ \"${words[2]}\" == \"discovery-service\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:discovery-service\"\n"
-                  "    _arguments -s \\\n");
+  fprintf(output, "      return 0\n"
+                  "      ;;\n"
+                  "    discovery-service)\n"
+                  "      curcontext=\"${curcontext%%%%:*}:discovery-service\"\n");
 
   /* Discovery-service options */
   size_t discovery_svc_count = 0;
   const option_descriptor_t *discovery_svc_opts =
       options_registry_get_for_display(MODE_DISCOVERY_SERVICE, false, &discovery_svc_count);
   if (discovery_svc_opts) {
+    fprintf(output, "      _arguments -s \\\n");
     for (size_t i = 0; i < discovery_svc_count; i++) {
       zsh_format_option_for_arguments(output, &discovery_svc_opts[i], i < discovery_svc_count - 1);
     }
@@ -304,18 +303,16 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(discovery_svc_opts);
   }
 
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Client mode\n"
-                  "  if [[ \"${words[2]}\" == \"client\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:client\"\n"
-                  "    _arguments -s \\\n");
+  fprintf(output, "      return 0\n"
+                  "      ;;\n"
+                  "    client)\n"
+                  "      curcontext=\"${curcontext%%%%:*}:client\"\n");
 
   /* Client options */
   size_t client_count = 0;
   const option_descriptor_t *client_opts = options_registry_get_for_display(MODE_CLIENT, false, &client_count);
   if (client_opts) {
+    fprintf(output, "      _arguments -s \\\n");
     for (size_t i = 0; i < client_count; i++) {
       zsh_format_option_for_arguments(output, &client_opts[i], i < client_count - 1);
     }
@@ -323,18 +320,16 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(client_opts);
   }
 
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Mirror mode\n"
-                  "  if [[ \"${words[2]}\" == \"mirror\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:mirror\"\n"
-                  "    _arguments -s \\\n");
+  fprintf(output, "      return 0\n"
+                  "      ;;\n"
+                  "    mirror)\n"
+                  "      curcontext=\"${curcontext%%%%:*}:mirror\"\n");
 
   /* Mirror options */
   size_t mirror_count = 0;
   const option_descriptor_t *mirror_opts = options_registry_get_for_display(MODE_MIRROR, false, &mirror_count);
   if (mirror_opts) {
+    fprintf(output, "      _arguments -s \\\n");
     for (size_t i = 0; i < mirror_count; i++) {
       zsh_format_option_for_arguments(output, &mirror_opts[i], i < mirror_count - 1);
     }
@@ -342,18 +337,16 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(mirror_opts);
   }
 
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
-                  "\n"
-                  "  # Explicit discovery mode\n"
-                  "  if [[ \"${words[2]}\" == \"discovery\" ]]; then\n"
-                  "    curcontext=\"${curcontext%%%%:*}:discovery\"\n"
-                  "    _arguments -s \\\n");
+  fprintf(output, "      return 0\n"
+                  "      ;;\n"
+                  "    discovery)\n"
+                  "      curcontext=\"${curcontext%%%%:*}:discovery\"\n");
 
-  /* Discovery mode options for explicit discovery command */
+  /* Discovery mode options again for explicit discovery command */
   size_t discovery_count2 = 0;
   const option_descriptor_t *discovery_opts2 = options_registry_get_for_display(MODE_DISCOVERY, true, &discovery_count2);
   if (discovery_opts2) {
+    fprintf(output, "      _arguments -s \\\n");
     for (size_t i = 0; i < discovery_count2; i++) {
       zsh_format_option_for_arguments(output, &discovery_opts2[i], i < discovery_count2 - 1);
     }
@@ -361,8 +354,9 @@ asciichat_error_t completions_generate_zsh(FILE *output) {
     SAFE_FREE(discovery_opts2);
   }
 
-  fprintf(output, "    return 0\n"
-                  "  fi\n"
+  fprintf(output, "      return 0\n"
+                  "      ;;\n"
+                  "  esac\n"
                   "\n"
                   "  # No mode specified - show mode selection\n"
                   "  local state line modes\n"
