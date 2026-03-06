@@ -1766,7 +1766,7 @@ export default function Man3() {
                                         false,
                                         snippet.text,
                                       )}
-                                    className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-hidden cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
+                                    className="bg-gray-950/80 border border-gray-700/50 rounded px-2 py-2 text-xs text-gray-300 font-mono overflow-x-auto cursor-pointer hover:bg-gray-900/80 hover:border-gray-600/50 transition-colors"
                                   >
                                     <div className="flex gap-2">
                                       {/* Line numbers column */}
