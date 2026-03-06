@@ -263,8 +263,6 @@ Cycle through render modes: Foreground → background → half-Block → foregro
 .TP
 .B -
 Toggle FPS counter overlay in the top-right corner.
-.PP
-.B Video Controls
 .TP
 .B F
 Toggle webcam flip (horizontal mirror). Only works when using a webcam source.
