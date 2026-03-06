@@ -403,10 +403,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
       break;
     }
 
-    // Properly detect first/final bits from WebSocket frame
-    // lws_remaining_packet_payload() returns 0 when we're at the final frame
-    bool is_first = 1; // First frame of a fragmented message (safe to assume - we get callbacks per frame)
-    bool is_final = (lws_remaining_packet_payload(wsi) == 0); // Final frame when no more payload remains
+    // Detect first/final bits from WebSocket frame using the LWS API
+    bool is_first = lws_is_first_fragment(wsi);
+    bool is_final = lws_is_final_fragment(wsi);
 
     log_info("🟡 LWS_CALLBACK_CLIENT_RECEIVE: %zu bytes (first=%d, final=%d), wsi=%p, timestamp=%llu", len, is_first,
              is_final, (void *)wsi, (unsigned long long)now_ns);
@@ -493,9 +492,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
     // libwebsockets #464: Sending messages > rx_buffer_size causes ultra-slow buffering
     uint64_t now_ns = time_get_ns();
     log_info("🟡 LWS_CALLBACK_CLIENT_WRITEABLE FIRED for wsi=%p, ws_data=%p, is_connected=%d, timestamp=%llu",
-             (void *)wsi, (void *)ws_data, ws_data ? ws_data->is_connected : -1, (unsigned long long)now_ns);
-    if (!ws_data) {
-      log_warn("    [CLIENT_WRITEABLE] ws_data is NULL, breaking");
+             (void *)wsi, (void *)ws_data, ws_data->is_connected, (unsigned long long)now_ns);
+
+    if (atomic_load_bool(&ws_data->is_destroying)) {
       break;
     }
 
