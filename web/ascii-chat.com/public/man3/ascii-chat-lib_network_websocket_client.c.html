@@ -241,8 +241,8 @@
 68 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>, and
-  <b>mutex_init()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, <b>mutex_init()</b>,
+    <b>SAFE_FREE</b>, and <b>SAFE_MALLOC</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>, and
     <b>connection_attempt_websocket()</b>.</p>
 </section>
@@ -281,7 +281,7 @@
 99 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>mutex_destroy()</b>.</p>
+<p class="Pp">References <b>mutex_destroy()</b>, and <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>connection_attempt_tcp()</b>,
     <b>connection_attempt_websocket()</b>, and
   <b>session_client_like_run()</b>.</p>
@@ -398,8 +398,8 @@
 265 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_load_bool()</b>, and
-    <b>packet_send_via_transport()</b>.</p>
+<p class="Pp">References <b>atomic_load_bool()</b>,
+    <b>packet_send_via_transport()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>websocket_client_send_ping()</b>, and
     <b>websocket_client_send_pong()</b>.</p>
 </section>

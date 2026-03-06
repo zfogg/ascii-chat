@@ -1429,8 +1429,8 @@ if (result == CONNECTION_ERROR_GENERIC) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>, <b>buffer_pool_alloc()</b>,
-    <b>buffer_pool_free()</b>, <b>packet_send_via_transport()</b>, and
-    <b>server_connection_lost()</b>.</p>
+    <b>buffer_pool_free()</b>, <b>packet_send_via_transport()</b>,
+    <b>server_connection_lost()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_threaded_send_audio_opus_batch_(const_uint8_t_*_opus_data,_size_t_opus_size,_const_uint16_t_*_frame_sizes,_int_frame_count)"><a class="permalink" href="#asciichat_error_t_threaded_send_audio_opus_batch_(const_uint8_t_*_opus_data,_size_t_opus_size,_const_uint16_t_*_frame_sizes,_int_frame_count)">asciichat_error_t
@@ -1499,7 +1499,8 @@ if (result == CONNECTION_ERROR_GENERIC) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_audio_opus_batch()</b>,
-    <b>atomic_load_bool()</b>, and <b>server_connection_lost()</b>.</p>
+    <b>atomic_load_bool()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_threaded_send_client_join_packet_(const_char_*_display_name,_uint32_t_capabilities)"><a class="permalink" href="#int_threaded_send_client_join_packet_(const_char_*_display_name,_uint32_t_capabilities)">int
@@ -1621,8 +1622,8 @@ if (result == CONNECTION_ERROR_GENERIC) {
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_image_frame()</b>,
     <b>server_connection_get_transport()</b>,
-    <b>server_connection_is_active()</b>, and
-  <b>server_connection_lost()</b>.</p>
+    <b>server_connection_is_active()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_threaded_send_image_frame_h265_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height)"><a class="permalink" href="#asciichat_error_t_threaded_send_image_frame_h265_(const_void_*_pixel_data,_uint32_t_width,_uint32_t_height)">asciichat_error_t
@@ -1681,8 +1682,8 @@ if (result == CONNECTION_ERROR_GENERIC) {
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_image_frame_h265()</b>,
     <b>g_h265_encoder</b>, <b>server_connection_get_transport()</b>,
-    <b>server_connection_is_active()</b>, and
-  <b>server_connection_lost()</b>.</p>
+    <b>server_connection_is_active()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_threaded_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)"><a class="permalink" href="#asciichat_error_t_threaded_send_packet_(packet_type_t_type,_const_void_*_data,_size_t_len)">asciichat_error_t
@@ -1749,7 +1750,8 @@ if (result == CONNECTION_ERROR_GENERIC) {
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_load_bool()</b>,
-    <b>packet_send_via_transport()</b>, and <b>server_connection_lost()</b>.</p>
+    <b>packet_send_via_transport()</b>, <b>server_connection_lost()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>threaded_send_client_join_packet()</b>,
     <b>threaded_send_ping_packet()</b>, <b>threaded_send_pong_packet()</b>,
     <b>threaded_send_stream_start_packet()</b>, and

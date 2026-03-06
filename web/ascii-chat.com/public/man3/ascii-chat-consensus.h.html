@@ -371,9 +371,9 @@
     <b>session_consensus_callbacks_t::get_metrics</b>,
     <b>session_consensus::is_leader</b>, <b>session_consensus::my_id</b>,
     <b>session_consensus::on_election</b>,
-    <b>session_consensus_callbacks_t::on_election</b>,
+    <b>session_consensus_callbacks_t::on_election</b>, <b>SAFE_FREE</b>,
     <b>session_consensus::send_packet</b>,
-    <b>session_consensus_callbacks_t::send_packet</b>, and
+    <b>session_consensus_callbacks_t::send_packet</b>, <b>SET_ERRNO</b>, and
     <b>session_consensus::topology</b>.</p>
 <p class="Pp">Referenced by <b>consensus_create_for_discovery()</b>.</p>
 </section>
@@ -404,7 +404,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_destroy()</b>,
     <b>consensus_topology_destroy()</b>, <b>session_consensus::coordinator</b>,
-    and <b>session_consensus::topology</b>.</p>
+    <b>SAFE_FREE</b>, and <b>session_consensus::topology</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_consensus_get_elected_host_("><a class="permalink" href="#asciichat_error_t_session_consensus_get_elected_host_(">asciichat_error_t
@@ -458,8 +458,8 @@
 283 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_get_current_host()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_get_current_host()</b>,
+    <b>session_consensus::coordinator</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="int_session_consensus_get_metrics_count_("><a class="permalink" href="#int_session_consensus_get_metrics_count_(">int
@@ -561,8 +561,8 @@
 225 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_on_collection_start()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_on_collection_start()</b>,
+    <b>session_consensus::coordinator</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_consensus_on_election_result_("><a class="permalink" href="#asciichat_error_t_session_consensus_on_election_result_(">asciichat_error_t
@@ -614,7 +614,7 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_on_election_result()</b>,
     <b>session_consensus::context</b>, <b>session_consensus::coordinator</b>,
-    and <b>session_consensus::on_election</b>.</p>
+    <b>session_consensus::on_election</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_consensus_on_stats_update_("><a class="permalink" href="#asciichat_error_t_session_consensus_on_stats_update_(">asciichat_error_t
@@ -645,8 +645,8 @@
 234 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_on_stats_update()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_on_stats_update()</b>,
+    <b>session_consensus::coordinator</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_consensus_process_("><a class="permalink" href="#asciichat_error_t_session_consensus_process_(">asciichat_error_t
@@ -681,8 +681,8 @@
 189 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>consensus_coordinator_process()</b>, and
-    <b>session_consensus::coordinator</b>.</p>
+<p class="Pp">References <b>consensus_coordinator_process()</b>,
+    <b>session_consensus::coordinator</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_session_consensus_set_topology_("><a class="permalink" href="#asciichat_error_t_session_consensus_set_topology_(">asciichat_error_t
@@ -730,8 +730,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>consensus_coordinator_on_ring_members()</b>,
     <b>consensus_topology_create()</b>, <b>consensus_topology_destroy()</b>,
-    <b>session_consensus::coordinator</b>, <b>session_consensus::my_id</b>, and
-    <b>session_consensus::topology</b>.</p>
+    <b>session_consensus::coordinator</b>, <b>session_consensus::my_id</b>,
+    <b>SET_ERRNO</b>, and <b>session_consensus::topology</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="uint64_t_session_consensus_time_until_next_round_("><a class="permalink" href="#uint64_t_session_consensus_time_until_next_round_(">uint64_t

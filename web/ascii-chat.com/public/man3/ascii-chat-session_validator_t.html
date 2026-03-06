@@ -17,20 +17,21 @@
     code.Nm, .Fl, .Cm, .Ic, code.In, .Fd, .Fn, .Cd { font-weight: bold;
       font-family: inherit; }
   </style>
-  <title>word_cache_entry_t(3)</title>
+  <title>session_validator_t(3)</title>
 </head>
 <body>
 <table class="head">
   <tr>
-    <td class="head-ltitle">word_cache_entry_t(3)</td>
+    <td class="head-ltitle">session_validator_t(3)</td>
     <td class="head-vol">Library Functions Manual</td>
-    <td class="head-rtitle">word_cache_entry_t(3)</td>
+    <td class="head-rtitle">session_validator_t(3)</td>
   </tr>
 </table>
 <div class="manual-text">
 <section class="Sh">
 <h1 class="Sh" id="NAME"><a class="permalink" href="#NAME">NAME</a></h1>
-<p class="Pp">word_cache_entry_t - Hashtable entry for cached word lookups.</p>
+<p class="Pp">session_validator_t - Session string format validator using
+  PCRE2.</p>
 <p class="Pp"></p>
 </section>
 <section class="Sh">
@@ -39,11 +40,12 @@
 <h2 class="Ss" id="Data_Fields"><a class="permalink" href="#Data_Fields">Data
   Fields</a></h2>
 <br/>
-<p class="Pp">char * <b>word</b>
+<p class="Pp">pcre2_code * <b>session_regex</b>
   <br/>
-  The word string (key). UT_hash_handle <b>hh</b>
+  pcre2_jit_stack * <b>jit_stack</b>
   <br/>
-  uthash handle
+  <b>bool</b> <b>initialized</b>
+  <br/>
   <br/>
 </p>
 </section>
@@ -51,27 +53,38 @@
 <section class="Sh">
 <h1 class="Sh" id="Detailed_Description"><a class="permalink" href="#Detailed_Description">Detailed
   Description</a></h1>
-<p class="Pp">Hashtable entry for cached word lookups.</p>
-<p class="Pp">Definition at line <b>53</b> of file
+<p class="Pp">Session string format validator using PCRE2.</p>
+<p class="Pp">Validates the format adjective-noun-noun with regex:</p>
+<ul class="Bl-bullet">
+  <li>Each word is 2-12 lowercase letters</li>
+  <li>Exactly 2 hyphens separating 3 words</li>
+  <li>No leading/trailing hyphens</li>
+  <li>No consecutive hyphens</li>
+</ul>
+<p class="Pp">This regex validator handles FORMAT validation only. Dictionary
+    validation (adjective/noun caches) is handled separately.</p>
+<p class="Pp">Definition at line <b>168</b> of file
   <b>discovery/strings.c</b>.</p>
 </section>
 <section class="Sh">
 <h1 class="Sh" id="Field_Documentation"><a class="permalink" href="#Field_Documentation">Field
   Documentation</a></h1>
 <section class="Ss">
-<h2 class="Ss" id="UT_hash_handle_word_cache_entry_t::hh"><a class="permalink" href="#UT_hash_handle_word_cache_entry_t::hh">UT_hash_handle
-  word_cache_entry_t::hh</a></h2>
-<p class="Pp">uthash handle</p>
-<p class="Pp">Definition at line <b>55</b> of file
+<h2 class="Ss"><b>bool</b> session_validator_t::initialized</h2>
+<p class="Pp">Definition at line <b>171</b> of file
   <b>discovery/strings.c</b>.</p>
 </section>
 <section class="Ss">
-<h2 class="Ss" id="char*_word_cache_entry_t::word"><a class="permalink" href="#char*_word_cache_entry_t::word">char*
-  word_cache_entry_t::word</a></h2>
-<p class="Pp">The word string (key).</p>
-<p class="Pp">Definition at line <b>54</b> of file
+<h2 class="Ss" id="pcre2_jit_stack*_session_validator_t::jit_stack"><a class="permalink" href="#pcre2_jit_stack*_session_validator_t::jit_stack">pcre2_jit_stack*
+  session_validator_t::jit_stack</a></h2>
+<p class="Pp">Definition at line <b>170</b> of file
   <b>discovery/strings.c</b>.</p>
-<p class="Pp">Referenced by <b>acds_strings_destroy()</b>.</p>
+</section>
+<section class="Ss">
+<h2 class="Ss" id="pcre2_code*_session_validator_t::session_regex"><a class="permalink" href="#pcre2_code*_session_validator_t::session_regex">pcre2_code*
+  session_validator_t::session_regex</a></h2>
+<p class="Pp">Definition at line <b>169</b> of file
+  <b>discovery/strings.c</b>.</p>
 <p class="Pp"></p>
 </section>
 </section>

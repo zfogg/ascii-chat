@@ -142,7 +142,7 @@
 128 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>decompress_data()</b>.</p>
+<p class="Pp">References <b>decompress_data()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_packet_decode_frame_data_malloc_(const_char_*_frame_data_ptr,_size_t_frame_data_len,_"><a class="permalink" href="#char_*_packet_decode_frame_data_malloc_(const_char_*_frame_data_ptr,_size_t_frame_data_len,_">char
@@ -208,7 +208,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>decompress_data()</b>, <b>format_bytes_pretty()</b>,
-    and <b>PACKET_MAX_FRAME_SIZE</b>.</p>
+    <b>PACKET_MAX_FRAME_SIZE</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_packet_parse_opus_batch_(const_void_*_packet_data,_size_t_packet_len,_const_uint8_t_**_out_opus_data,_size_t_*_out_opus_size,_const_uint16_t_**_out_frame_sizes,_int_*_out_sample_rate,_int_*_out_frame_duration,_int_*_out_frame_count)"><a class="permalink" href="#asciichat_error_t_packet_parse_opus_batch_(const_void_*_packet_data,_size_t_packet_len,_const_uint8_t_**_out_opus_data,_size_t_*_out_opus_size,_const_uint16_t_**_out_frame_sizes,_int_*_out_sample_rate,_int_*_out_frame_duration,_int_*_out_frame_count)">asciichat_error_t
@@ -272,6 +273,7 @@
 226 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>handle_audio_opus_batch_packet()</b>.</p>
 </section>
 <section class="Ss">
@@ -321,7 +323,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>format_bytes_pretty()</b>,
-    <b>PACKET_MAX_DIMENSION</b>, and <b>PACKET_MAX_FRAME_SIZE</b>.</p>
+    <b>PACKET_MAX_DIMENSION</b>, <b>PACKET_MAX_FRAME_SIZE</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

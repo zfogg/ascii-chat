@@ -196,8 +196,9 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>format_ip_with_port()</b>,
-    <b>get_known_hosts_path()</b>, <b>platform_fopen()</b>, and
-    <b>safe_fprintf()</b>.</p>
+    <b>get_known_hosts_path()</b>, <b>platform_fopen()</b>,
+    <b>safe_fprintf()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
 <section class="Ss">
@@ -379,7 +380,8 @@
     <b>config_file_list_destroy()</b>, <b>crypto_regex_match_known_hosts()</b>,
     <b>format_ip_with_port()</b>, <b>parse_public_key()</b>,
     <b>platform_close()</b>, <b>platform_find_config_file()</b>,
-    <b>platform_open()</b>, and <b>safe_snprintf()</b>.</p>
+    <b>platform_open()</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
 <section class="Ss">
@@ -464,7 +466,8 @@
 <p class="Pp">References <b>compare_ip_port_strings()</b>,
     <b>crypto_regex_match_known_hosts()</b>, <b>format_ip_with_port()</b>,
     <b>get_known_hosts_path()</b>, <b>platform_close()</b>,
-    <b>platform_open()</b>, and <b>safe_snprintf()</b>.</p>
+    <b>platform_open()</b>, <b>SAFE_FREE</b>, <b>safe_snprintf()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
 <section class="Ss">
@@ -604,8 +607,8 @@
 73 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>get_config_dir()</b>, and
-  <b>safe_snprintf()</b>.</p>
+<p class="Pp">References <b>get_config_dir()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, and <b>safe_snprintf()</b>.</p>
 <p class="Pp">Referenced by <b>add_known_host()</b>,
     <b>check_known_host_no_identity()</b>,
     <b>crypto_handshake_client_key_exchange()</b>,
@@ -624,6 +627,7 @@
 834 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_destroy()</b>.</p>
 </section>
 <section class="Ss">
@@ -704,7 +708,8 @@
     <b>format_ip_with_port()</b>, <b>get_known_hosts_path()</b>,
     <b>log_lock_terminal()</b>, <b>log_unlock_terminal()</b>,
     <b>platform_getenv()</b>, <b>platform_prompt_yes_no()</b>,
-    <b>safe_snprintf()</b>, and <b>terminal_can_prompt_user()</b>.</p>
+    <b>safe_snprintf()</b>, <b>SET_ERRNO</b>, and
+    <b>terminal_can_prompt_user()</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
 <section class="Ss">
@@ -774,7 +779,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>format_ip_with_port()</b>,
-    <b>platform_prompt_yes_no()</b>, and <b>safe_snprintf()</b>.</p>
+    <b>platform_prompt_yes_no()</b>, <b>safe_snprintf()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>crypto_handshake_client_key_exchange()</b>.</p>
 </section>
 <section class="Ss">
@@ -868,8 +874,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>format_ip_with_port()</b>,
     <b>get_known_hosts_path()</b>, <b>platform_close()</b>,
-    <b>platform_open()</b>, <b>platform_strdup()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>platform_open()</b>, <b>platform_strdup()</b>, <b>SAFE_FREE</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 </section>
 <section class="Sh">

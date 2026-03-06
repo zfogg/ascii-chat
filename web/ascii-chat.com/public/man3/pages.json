@@ -2370,6 +2370,12 @@
     "sourcePath": "src/common/session/settings.h"
   },
   {
+    "name": "session_validator_t",
+    "title": "session_validator_t",
+    "file": "ascii-chat-session_validator_t.html",
+    "sourcePath": null
+  },
+  {
     "name": "setting_map_entry_t",
     "title": "setting_map_entry_t",
     "file": "ascii-chat-setting_map_entry_t.html",

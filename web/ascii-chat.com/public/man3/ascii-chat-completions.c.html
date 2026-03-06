@@ -92,7 +92,7 @@
   be freed by caller. Returns NULL if no options found.</div>
 <p class="Pp"><b>Note</b></p>
 <div class="Bd-indent">The caller must free the returned pointer with
-  SAFE_FREE()</div>
+  <b>SAFE_FREE()</b></div>
 <p class="Pp">Definition at line <b>96</b> of file <b>completions.c</b>.</p>
 <pre>96                                                                          {
 97   if (!count) {
@@ -138,7 +138,8 @@
 137 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_for_mode()</b>.</p>
+<p class="Pp">References <b>options_registry_get_for_mode()</b>, and
+    <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="asciichat_error_t_completions_generate_bash_(FILE_*_output)"><a class="permalink" href="#asciichat_error_t_completions_generate_bash_(FILE_*_output)">asciichat_error_t
@@ -161,6 +162,7 @@
 381 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
 </section>
 <section class="Ss">
@@ -272,7 +274,8 @@
 232 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">References <b>options_registry_get_for_display()</b>,
+    <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
 </section>
 <section class="Ss">
@@ -302,8 +305,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>completions_generate_bash()</b>,
     <b>completions_generate_fish()</b>,
-    <b>completions_generate_powershell()</b>, and
-    <b>completions_generate_zsh()</b>.</p>
+    <b>completions_generate_powershell()</b>, <b>completions_generate_zsh()</b>,
+    and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>action_completions()</b>.</p>
 </section>
 <section class="Ss">
@@ -438,7 +441,8 @@
 255 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">References <b>options_registry_get_for_display()</b>,
+    <b>SAFE_FREE</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
 </section>
 <section class="Ss">
@@ -607,8 +611,9 @@
 304 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>get_modes_by_group()</b>, and
-    <b>options_registry_get_for_display()</b>.</p>
+<p class="Pp">References <b>get_modes_by_group()</b>,
+    <b>options_registry_get_for_display()</b>, <b>SAFE_FREE</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>completions_generate_for_shell()</b>.</p>
 </section>
 <section class="Ss">

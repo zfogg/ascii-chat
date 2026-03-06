@@ -234,6 +234,7 @@
 1027 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SAFE_FREE</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_symbol_cache_get_stats_(uint64_t_*_hits_out,_uint64_t_*_misses_out,_size_t_*_entries_out)"><a class="permalink" href="#void_symbol_cache_get_stats_(uint64_t_*_hits_out,_uint64_t_*_misses_out,_size_t_*_entries_out)">void
@@ -288,7 +289,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_store_u64()</b>, <b>lifecycle_init()</b>,
-    <b>lifecycle_init_abort()</b>, and <b>rwlock_init()</b>.</p>
+    <b>lifecycle_init_abort()</b>, <b>rwlock_init()</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>asciichat_shared_init()</b>.</p>
 </section>
 <section class="Ss">
@@ -565,9 +567,10 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>atomic_cas_bool()</b>,
     <b>lifecycle_is_initialized()</b>, <b>NULL_SENTINEL</b>,
-    <b>platform_strdup()</b>, <b>symbol_cache_insert()</b>,
-    <b>symbol_cache_lookup()</b>, <b>SYMBOLIZER_ADDR2LINE</b>,
-    <b>SYMBOLIZER_LLVM</b>, and <b>SYMBOLIZER_NONE</b>.</p>
+    <b>platform_strdup()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>,
+    <b>symbol_cache_insert()</b>, <b>symbol_cache_lookup()</b>,
+    <b>SYMBOLIZER_ADDR2LINE</b>, <b>SYMBOLIZER_LLVM</b>, and
+    <b>SYMBOLIZER_NONE</b>.</p>
 </section>
 </section>
 <section class="Sh">

@@ -184,8 +184,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>emit_rep()</b>, <b>get_utf8_palette_cache()</b>,
-    <b>ob_putc()</b>, <b>ob_term()</b>, <b>ob_write()</b>, and
-    <b>rep_is_profitable()</b>.</p>
+    <b>ob_putc()</b>, <b>ob_term()</b>, <b>ob_write()</b>,
+    <b>rep_is_profitable()</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>.</p>
 </section>
 <section class="Ss">
@@ -288,7 +288,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
     <b>append_16color_fg()</b>, <b>buffer_size</b>,
-    <b>get_utf8_palette_cache()</b>, and <b>rgb_to_16color()</b>.</p>
+    <b>get_utf8_palette_cache()</b>, <b>rgb_to_16color()</b>,
+    <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_image_print_16color_dithered_(const_image_t_*_image,_const_char_*_palette)"><a class="permalink" href="#char_*_image_print_16color_dithered_(const_image_t_*_image,_const_char_*_palette)">char
@@ -400,7 +401,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
     <b>append_16color_fg()</b>, <b>buffer_size</b>,
-    <b>get_utf8_palette_cache()</b>, and <b>rgb_to_16color_dithered()</b>.</p>
+    <b>get_utf8_palette_cache()</b>, <b>rgb_to_16color_dithered()</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_image_print_16color_dithered_with_background_(const_image_t_*_image,_"><a class="permalink" href="#char_*_image_print_16color_dithered_with_background_(const_image_t_*_image,_">char
@@ -509,8 +511,9 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_fast_init_16color()</b>,
     <b>append_16color_bg()</b>, <b>append_16color_fg()</b>, <b>buffer_size</b>,
-    <b>get_16color_rgb()</b>, <b>get_utf8_palette_cache()</b>, and
-    <b>rgb_to_16color_dithered()</b>.</p>
+    <b>get_16color_rgb()</b>, <b>get_utf8_palette_cache()</b>,
+    <b>rgb_to_16color_dithered()</b>, <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>image_print_color_simd()</b>.</p>
 </section>
 <section class="Ss">
@@ -534,8 +537,8 @@
 427 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>image_print_color()</b>, and
-    <b>image_print_color_simd()</b>.</p>
+<p class="Pp">References <b>image_print_color()</b>,
+    <b>image_print_color_simd()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>image_print_color_simd()</b>.</p>
 </section>
 <section class="Ss">
@@ -748,8 +751,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>ansi_rle_add_pixel()</b>, <b>ansi_rle_finish()</b>,
-    <b>ansi_rle_init()</b>, <b>get_utf8_palette_cache()</b>, and
-    <b>safe_snprintf()</b>.</p>
+    <b>ansi_rle_init()</b>, <b>get_utf8_palette_cache()</b>, <b>SAFE_MALLOC</b>,
+    <b>safe_snprintf()</b>, and <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>ascii_convert()</b>,
     <b>image_print_256color()</b>, <b>image_print_color_background()</b>,
     <b>image_print_color_simd()</b>, and
@@ -777,6 +780,7 @@
 155 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_rgb_to_ansi_8bit_(int_r,_int_g,_int_b,_int_*_fg_code,_int_*_bg_code)"><a class="permalink" href="#void_rgb_to_ansi_8bit_(int_r,_int_g,_int_b,_int_*_fg_code,_int_*_bg_code)">void
@@ -809,6 +813,7 @@
 387 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="char_*_rgb_to_ansi_bg_(int_r,_int_g,_int_b)"><a class="permalink" href="#char_*_rgb_to_ansi_bg_(int_r,_int_g,_int_b)">char

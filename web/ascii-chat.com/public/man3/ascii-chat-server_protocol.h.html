@@ -167,6 +167,7 @@
 1935 }</pre>
 <pre></pre>
 <p class="Pp"></p>
+<p class="Pp">References <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_disconnect_client_for_bad_data_(client_info_t_*_client,_const_char_*_format,__"><a class="permalink" href="#void_disconnect_client_for_bad_data_(client_info_t_*_client,_const_char_*_format,__">void
@@ -452,9 +453,9 @@
 <p class="Pp">References <b>atomic_load_bool()</b>,
     <b>audio_dequantize_samples()</b>, <b>audio_parse_batch_header()</b>,
     <b>audio_ring_buffer_write()</b>, <b>audio_batch_info_t::batch_count</b>,
-    <b>disconnect_client_for_bad_data()</b>,
-    <b>audio_batch_info_t::sample_rate</b>, and
-    <b>audio_batch_info_t::total_samples</b>.</p>
+    <b>disconnect_client_for_bad_data()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>audio_batch_info_t::sample_rate</b>,
+    <b>SET_ERRNO</b>, and <b>audio_batch_info_t::total_samples</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_handle_audio_opus_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_opus_batch_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
@@ -662,8 +663,8 @@
 <p class="Pp"></p>
 <p class="Pp">References <b>audio_ring_buffer_write()</b>,
     <b>disconnect_client_for_bad_data()</b>, <b>opus_codec_decode()</b>,
-    <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>, and
-  <b>packet_parse_opus_batch()</b>.</p>
+    <b>OPUS_DECODE_STATIC_MAX_SAMPLES</b>, <b>packet_parse_opus_batch()</b>,
+    <b>SAFE_FREE</b>, <b>SAFE_MALLOC</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_handle_audio_opus_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_audio_opus_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
@@ -1085,7 +1086,8 @@
 1752 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>initialize_client_palette()</b>.</p>
+<p class="Pp">References <b>initialize_client_palette()</b>, and
+    <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>add_client()</b>.</p>
 </section>
 <section class="Ss">
@@ -1274,7 +1276,7 @@
 483 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>atomic_store_bool()</b>.</p>
+<p class="Pp">References <b>atomic_store_bool()</b>, and <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_handle_image_frame_h265_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_image_frame_h265_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
@@ -1430,7 +1432,8 @@
     <b>atomic_load_bool()</b>, <b>disconnect_client_for_bad_data()</b>,
     <b>frame</b>, <b>g_h265_server</b>, <b>g_should_exit</b>,
     <b>h265_server_decode_and_convert()</b>,
-    <b>h265_server_get_client_decoder()</b>, <b>time_get_realtime_ns()</b>,
+    <b>h265_server_get_client_decoder()</b>, <b>SAFE_FREE</b>,
+    <b>SAFE_MALLOC</b>, <b>time_get_realtime_ns()</b>,
     <b>video_frame_begin_write()</b>, and <b>video_frame_commit()</b>.</p>
 </section>
 <section class="Ss">
@@ -1695,8 +1698,8 @@
     <b>frame</b>, <b>frame_check_size_overflow()</b>,
     <b>frame_validate_legacy()</b>, <b>g_should_exit</b>,
     <b>image_calc_rgb_size()</b>, <b>image_validate_buffer_size()</b>,
-    <b>image_validate_dimensions()</b>, <b>video_frame_begin_write()</b>, and
-    <b>video_frame_commit()</b>.</p>
+    <b>image_validate_dimensions()</b>, <b>SAFE_FREE</b>, <b>SET_ERRNO</b>,
+    <b>video_frame_begin_write()</b>, and <b>video_frame_commit()</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_handle_ping_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_ping_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
@@ -1727,8 +1730,8 @@
 664 }</pre>
 <pre></pre>
 <p class="Pp"></p>
-<p class="Pp">References <b>acip_send_pong()</b>, and
-  <b>atomic_load_bool()</b>.</p>
+<p class="Pp">References <b>acip_send_pong()</b>, <b>atomic_load_bool()</b>, and
+    <b>SET_ERRNO</b>.</p>
 </section>
 <section class="Ss">
 <h2 class="Ss" id="void_handle_pong_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)"><a class="permalink" href="#void_handle_pong_packet_(client_info_t_*_client,_const_void_*_data,_size_t_len)">void
@@ -2273,7 +2276,8 @@
 <pre></pre>
 <p class="Pp"></p>
 <p class="Pp">References <b>acip_send_server_state()</b>,
-    <b>atomic_load_bool()</b>, and <b>g_client_manager</b>.</p>
+    <b>atomic_load_bool()</b>, <b>g_client_manager</b>, and
+  <b>SET_ERRNO</b>.</p>
 <p class="Pp">Referenced by <b>add_webrtc_client()</b>.</p>
 </section>
 </section>
