@@ -204,9 +204,10 @@ void ui_status_display(const ui_status_t *status) {
     return;
   }
 
-  // Redirect status screen to stderr when stdout is piped (not a TTY)
-  // This keeps stdout clean for frame data while status goes to stderr
-  if (!isatty(STDOUT_FILENO)) {
+  // Redirect status screen to stderr when stdout is piped (not a TTY).
+  // This keeps stdout clean for frame data while status goes to stderr.
+  // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
+  if (!platform_isatty(STDOUT_FILENO)) {
     terminal_screen_set_output_fd(STDERR_FILENO);
   }
 

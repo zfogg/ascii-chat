@@ -5,6 +5,7 @@
  */
 
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/platform/terminal.h>
 #include <ascii-chat/common.h>
 #include <ascii-chat/platform/init.h>
 #include <ascii-chat/util/lifecycle.h>
@@ -76,9 +77,10 @@ asciichat_error_t keyboard_init(void) {
   int config_fd = STDIN_FILENO;
   bool use_stdin = true;
 
-  // Check if stdin is a TTY - if so, use it directly
-  // This is important for tmux sessions where stdin receives input from tmux send-keys
-  if (isatty(STDIN_FILENO)) {
+  // Check if stdin is a TTY - if so, use it directly.
+  // This is important for tmux sessions where stdin receives input from tmux send-keys.
+  // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
+  if (platform_isatty(STDIN_FILENO)) {
     log_info("keyboard_init: stdin is a TTY - using stdin for keyboard input");
     if (tcgetattr(STDIN_FILENO, &g_original_termios) < 0) {
       log_error("keyboard_init: FAILED - tcgetattr(stdin) failed");

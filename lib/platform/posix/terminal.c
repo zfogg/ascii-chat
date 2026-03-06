@@ -416,14 +416,14 @@ tty_info_t get_current_tty(void) {
   }
 
   // Method 2: Check standard file descriptors for TTY status
-  if (isatty(STDIN_FILENO)) {
+  if (platform_isatty(STDIN_FILENO)) {
     result.fd = STDIN_FILENO;
     result.path = ttyname(STDIN_FILENO);
     result.owns_fd = false;
     log_dev("POSIX TTY from stdin: %s (fd=%d)", result.path ? result.path : "unknown", result.fd);
     return result;
   }
-  if (isatty(STDOUT_FILENO)) {
+  if (platform_isatty(STDOUT_FILENO)) {
     result.fd = STDOUT_FILENO;
     result.path = ttyname(STDOUT_FILENO);
     result.owns_fd = false;
@@ -456,7 +456,7 @@ bool is_valid_tty_path(const char *path) {
     return false;
   }
 
-  bool is_tty = isatty(fd);
+  bool is_tty = platform_isatty(fd);
   close(fd);
   return is_tty;
 }
@@ -482,7 +482,7 @@ asciichat_error_t get_terminal_size(unsigned short int *width, unsigned short in
   const char *lines_env;
   const char *cols_env;
   int tty_fd;
-  int stdout_is_tty = isatty(STDOUT_FILENO);
+  int stdout_is_tty = platform_isatty(STDOUT_FILENO);
 
   // Method 1: Try ioctl on stdout first (most common case)
   if (stdout_is_tty && ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 && ws.ws_col > 0 && ws.ws_row > 0) {

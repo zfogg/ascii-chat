@@ -650,9 +650,10 @@ int splash_intro_start(session_display_ctx_t *ctx) {
     return 0;
   }
 
-  // Redirect splash screen to stderr when stdout is piped (not a TTY)
-  // This keeps stdout clean for frame data while splash goes to stderr
-  if (!isatty(STDOUT_FILENO)) {
+  // Redirect splash screen to stderr when stdout is piped (not a TTY).
+  // This keeps stdout clean for frame data while splash goes to stderr.
+  // Uses platform_isatty() so non-desktop platforms (iOS, WASM) can override.
+  if (!platform_isatty(STDOUT_FILENO)) {
     terminal_screen_set_output_fd(STDERR_FILENO);
   }
 

@@ -303,9 +303,9 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
           // Skip if we still don't have a line number for the match
           if (matchLineNum <= 0) continue;
 
-          // Find before: previous element from a DIFFERENT source line
+          // Find before: skip all elements from the match line or without line numbers
           let beforeIdx = i - 1;
-          while (beforeIdx >= 0 && actualLineNumbers[beforeIdx] === matchLineNum) {
+          while (beforeIdx >= 0 && (actualLineNumbers[beforeIdx] <= 0 || actualLineNumbers[beforeIdx] === matchLineNum)) {
             beforeIdx--;
           }
           const before = beforeIdx >= 0 ? lines[beforeIdx] : "";
@@ -315,9 +315,9 @@ function findSnippets(text, query, maxSnippets = 3, lineNumbers = null) {
           // Match line
           const match = lines[i];
 
-          // Find after: next element from a DIFFERENT source line
+          // Find after: skip all elements from the match line or without line numbers
           let afterIdx = i + 1;
-          while (afterIdx < lines.length && actualLineNumbers[afterIdx] === matchLineNum) {
+          while (afterIdx < lines.length && (actualLineNumbers[afterIdx] <= 0 || actualLineNumbers[afterIdx] === matchLineNum)) {
             afterIdx++;
           }
           const after = afterIdx < lines.length ? lines[afterIdx] : "";
