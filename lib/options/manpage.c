@@ -465,7 +465,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           size_t var_len = (size_t)(var_end - var_start);
           if (var_len > 0) {
             char *var_name = SAFE_MALLOC(var_len + 1, char *);
-            SAFE_STRNCPY(var_name, var_start, var_len);
+            memcpy(var_name, var_start, var_len);
             var_name[var_len] = '\0';
 
             // Trim trailing whitespace
@@ -496,7 +496,7 @@ asciichat_error_t options_config_generate_manpage_merged(const options_config_t 
           size_t desc_len = (size_t)(line_end - desc_start);
           if (desc_len > 0 && manual_env_descs[manual_env_count - 1] == NULL) {
             char *desc = SAFE_MALLOC(desc_len + 1, char *);
-            SAFE_STRNCPY(desc, desc_start, desc_len);
+            memcpy(desc, desc_start, desc_len);
             desc[desc_len] = '\0';
 
             // Trim trailing whitespace
