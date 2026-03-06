@@ -33,13 +33,20 @@
 #define SET_ERRNO(code, fmt, ...) (code)
 
 
-// Simple RNG using getrandom() - no external dependencies
+// Simple RNG using getentropy() - works on native platforms and WASM (Emscripten)
+// getentropy() is available in glibc and maps to crypto.getRandomValues() in Emscripten
 static uint32_t simple_randombytes_uniform(uint32_t upper_bound) {
   if (upper_bound == 0) return 0;
+
   uint32_t random_val = 0;
-  if (getrandom(&random_val, sizeof(random_val), 0) != sizeof(random_val)) {
-    random_val = (uint32_t)time(NULL) ^ getpid();
+
+  // Try getentropy() first (works on WASM and modern Unix systems)
+  if (getentropy(&random_val, sizeof(random_val)) == 0) {
+    return random_val % upper_bound;
   }
+
+  // Fallback: time-based seed (for platforms without getentropy)
+  random_val = (uint32_t)time(NULL) ^ getpid();
   return random_val % upper_bound;
 }
 
@@ -233,16 +240,20 @@ static pcre2_code *session_format_regex_get(void) {
   return g_session_format_regex;
 }
 
-// Simple RNG using getrandom() - no external dependencies
+// Simple RNG using getentropy() - works on native platforms and WASM (Emscripten)
+// getentropy() is available in glibc and maps to crypto.getRandomValues() in Emscripten
 static uint32_t simple_simple_randombytes_uniform(uint32_t upper_bound) {
   if (upper_bound == 0) return 0;
 
-  // Get random bytes from kernel
   uint32_t random_val = 0;
-  if (getrandom(&random_val, sizeof(random_val), 0) != sizeof(random_val)) {
-    // Fallback: use time-based seed (less ideal but works)
-    random_val = (uint32_t)time(NULL) ^ getpid();
+
+  // Try getentropy() first (works on WASM and modern Unix systems)
+  if (getentropy(&random_val, sizeof(random_val)) == 0) {
+    return random_val % upper_bound;
   }
+
+  // Fallback: time-based seed (for platforms without getentropy)
+  random_val = (uint32_t)time(NULL) ^ getpid();
 
   // Use modulo to get value in range [0, upper_bound)
   // Note: This has slight bias for non-power-of-2 bounds, but acceptable for our use case
