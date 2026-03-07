@@ -4,26 +4,27 @@ set -e
 
 cd "$(dirname "$0")/.."
 
-echo "Type checking with TypeScript..."
+build_commands=()
 
-build_commands+=()
+echo "Type checking with TypeScript..."
+build_commands+=("bun run type-check")
+
 echo "Formatting check with prettier..."
 to_format=$(bun prettier . --list-different || true)
 if [ -n "$to_format" ]; then
   echo "Files need formatting:"
   echo "$to_format"
   echo "Running prettier --write..."
-  build_commands=("bun run format")
-
+  build_commands+=("bun run format")
 fi
 
 echo "Linting with eslint..."
-build_commands=("bun run lint")
+build_commands+=("bun run lint")
 
 echo "Building with vite..."
-build_commands=("bun run vite build")
+build_commands+=("bun run vite build")
 
-# Build command array dynamically
+# Build manpage html if not on Vercel
 if [ -z "$VERCEL" ]; then
   echo "Building manpage html..."
   build_commands+=("./scripts/manpage-build.sh")
