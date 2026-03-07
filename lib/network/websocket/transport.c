@@ -206,8 +206,12 @@ static void *websocket_service_thread(void *arg) {
       } else {
         // This is a CLIENT transport - request WRITEABLE callback to send queued messages
         // lws_write() must be called from within LWS callbacks, not from external threads
-        int messages_sent = 0;
 
+        // CRITICAL FIX: Always request writeable callback on every loop iteration
+        // Race condition: If we only request callback when queue is not empty,
+        // messages queued after the check but before lws_service() completes
+        // will never be sent (callback was never requested).
+        // Solution: Always request callback - lws handles duplicates gracefully.
         mutex_lock(&ws_data->send_mutex);
         bool has_data = !ringbuffer_is_empty(ws_data->send_queue);
 
@@ -215,19 +219,14 @@ static void *websocket_service_thread(void *arg) {
           log_info("[LOOP %d] Queue check: has_data=%d", loop_count, has_data);
         }
 
-        if (has_data) {
-          log_info(">>> SERVICE_THREAD: CLIENT queue has data, requesting CLIENT_WRITEABLE callback");
-          // Request CLIENT_WRITEABLE callback instead of calling lws_write() directly
-          // lws_write() MUST be called from within a callback context, not from external threads
-          lws_callback_on_writable(ws_data->wsi);
-          messages_sent++;
-          total_messages_sent++;
-        }
+        // Always request writeable callback, not just when queue has data
+        // This ensures messages added concurrently are picked up
+        lws_callback_on_writable(ws_data->wsi);
+
         mutex_unlock(&ws_data->send_mutex);
 
-        if (messages_sent > 0) {
-          log_info(">>> SERVICE_BATCH: requested %d writable callbacks (total: %d)", messages_sent,
-                   total_messages_sent);
+        if (loop_count <= 10 && has_data) {
+          log_info(">>> SERVICE_THREAD: CLIENT queue has data (callback will process it)");
         }
       } // End of if (connected) block
     } else {
