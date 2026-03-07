@@ -5,8 +5,7 @@ FROM caddy:alpine
 COPY gateway/Caddyfile /etc/caddy/Caddyfile
 
 # Create data directory for Let's Encrypt certificates
-RUN mkdir -p /data/caddy /config/caddy && \
-    chown -R caddy:caddy /data /config
+RUN mkdir -p /data/caddy /config/caddy
 
 # Expose HTTP and HTTPS ports
 EXPOSE 80 443
