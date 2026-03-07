@@ -13,7 +13,6 @@
 # =============================================================================
 
 # iOS build: Build from source for iOS cross-compilation
-message(STATUS "FreeType2.cmake: PLATFORM_IOS=${PLATFORM_IOS}, BUILD_IOS=${BUILD_IOS}, CMAKE_SYSTEM_NAME=${CMAKE_SYSTEM_NAME}")
 if(PLATFORM_IOS)
     message(STATUS "Configuring ${BoldBlue}freetype${ColorReset} from source (iOS cross-compile)...")
 

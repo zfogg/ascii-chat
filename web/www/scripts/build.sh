@@ -7,22 +7,22 @@ cd "$(dirname "$0")/.."
 build_commands=()
 
 echo "Type checking with TypeScript..."
-build_commands+=("bun run type-check")
+build_commands+=("bun x tsc --noEmit")
 
 echo "Formatting check with prettier..."
-to_format=$(bun prettier . --list-different || true)
+to_format=$(bun x prettier . --list-different || true)
 if [ -n "$to_format" ]; then
   echo "Files need formatting:"
   echo "$to_format"
   echo "Running prettier --write..."
-  build_commands+=("bun run format")
+  build_commands+=("bun x prettier --write .")
 fi
 
 echo "Linting with eslint..."
-build_commands+=("bun run lint")
+build_commands+=("bun x eslint .")
 
 echo "Building with vite..."
-build_commands+=("bun run vite build")
+build_commands+=("bun x vite build")
 
 # Build manpage html if not on Vercel
 if [ -z "$VERCEL" ]; then
