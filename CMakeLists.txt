@@ -426,20 +426,33 @@ if(EMSCRIPTEN_TOOLCHAIN_FILE AND NOT WASM_TARGETS_DEFINED)
     add_custom_target(mirror-web
         COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target mirror-web
         COMMENT "Building mirror-web WASM module"
+        BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm"
         VERBATIM
     )
 
     add_custom_target(client-web
         COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target client-web
         COMMENT "Building client-web WASM module"
+        BYPRODUCTS "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
         VERBATIM
     )
 
-    add_custom_target(web
-        COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
-        COMMENT "Building all WASM modules"
-        VERBATIM
-    )
+    # web target: only rebuild if outputs don't exist
+    if(EXISTS "${WASM_BUILD_DIR}/mirror.js" AND EXISTS "${WASM_BUILD_DIR}/mirror.wasm" AND EXISTS "${WASM_BUILD_DIR}/client.js" AND EXISTS "${WASM_BUILD_DIR}/client.wasm")
+        add_custom_target(web
+            COMMAND ${CMAKE_COMMAND} -E echo_append ""
+            COMMENT "WASM modules up to date"
+            BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
+        )
+    else()
+        add_custom_target(web
+            COMMAND cd "${WASM_BUILD_DIR}" && ${CMAKE_COMMAND} --build . --target web
+            COMMENT "Building all WASM modules"
+            BYPRODUCTS "${WASM_BUILD_DIR}/mirror.js" "${WASM_BUILD_DIR}/mirror.wasm" "${WASM_BUILD_DIR}/client.js" "${WASM_BUILD_DIR}/client.wasm"
+            DEPENDS mirror-web client-web
+            VERBATIM
+        )
+    endif()
 
     message(STATUS "WASM targets configured:")
     message(STATUS "  mirror-web - Build mirror mode WASM only")
