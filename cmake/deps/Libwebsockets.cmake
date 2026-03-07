@@ -273,6 +273,8 @@ endif()
 if(NOT LWS_OPENSSL_SSL_LIBRARY)
     if(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
         set(LWS_OPENSSL_SSL_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libssl.a")
+        set(LWS_OPENSSL_SSL_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libssl.a")
     elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib64/libssl.a")
         set(LWS_OPENSSL_SSL_LIBRARY "${LWS_OPENSSL_PREFIX}/lib64/libssl.a")
     endif()
@@ -281,6 +283,8 @@ endif()
 if(NOT LWS_OPENSSL_CRYPTO_LIBRARY)
     if(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX}")
         set(LWS_OPENSSL_CRYPTO_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libcrypto${CMAKE_SHARED_LIBRARY_SUFFIX}")
+    elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib/libcrypto.a")
+        set(LWS_OPENSSL_CRYPTO_LIBRARY "${LWS_OPENSSL_PREFIX}/lib/libcrypto.a")
     elseif(EXISTS "${LWS_OPENSSL_PREFIX}/lib64/libcrypto.a")
         set(LWS_OPENSSL_CRYPTO_LIBRARY "${LWS_OPENSSL_PREFIX}/lib64/libcrypto.a")
     endif()
@@ -295,7 +299,17 @@ endif()
 
 if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a" OR NOT LWS_OPENSSL_LIBS_EXIST)
     message(STATUS "  libwebsockets not in cache, building from source with extensions enabled...")
-    message(STATUS "  libwebsockets will use OpenSSL 3.4.0 from: ${LWS_OPENSSL_PREFIX}")
+    message(STATUS "  libwebsockets will use OpenSSL from: ${LWS_OPENSSL_PREFIX}")
+    if(LWS_OPENSSL_SSL_LIBRARY)
+        message(STATUS "  OpenSSL SSL library: ${LWS_OPENSSL_SSL_LIBRARY}")
+    else()
+        message(STATUS "  OpenSSL SSL library: NOT FOUND")
+    endif()
+    if(LWS_OPENSSL_CRYPTO_LIBRARY)
+        message(STATUS "  OpenSSL Crypto library: ${LWS_OPENSSL_CRYPTO_LIBRARY}")
+    else()
+        message(STATUS "  OpenSSL Crypto library: NOT FOUND")
+    endif()
 
     ExternalProject_Add(libwebsockets-native
         URL https://github.com/warmcat/libwebsockets/archive/refs/heads/main.tar.gz
@@ -310,7 +324,8 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a" OR NOT LWS_OPENSSL_LIBS
             -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
             -DCMAKE_INSTALL_PREFIX=${LWS_NATIVE_PREFIX}
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-            -DCMAKE_C_FLAGS=-Wno-error=incompatible-pointer-types-discards-qualifiers\ -Wno-sign-conversion
+            -DCMAKE_PREFIX_PATH=${LWS_OPENSSL_PREFIX}
+            -DCMAKE_C_FLAGS=-I${LWS_OPENSSL_PREFIX}/include\ -Wno-error=incompatible-pointer-types-discards-qualifiers\ -Wno-sign-conversion
             -DLWS_WITH_SHARED=OFF
             -DLWS_WITH_STATIC=ON
             -DLWS_WITHOUT_TESTAPPS=ON
@@ -340,6 +355,7 @@ if(NOT EXISTS "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a" OR NOT LWS_OPENSSL_LIBS
             -DLWS_WITH_BUNDLED_ZLIB=ON
             -DLWS_WITH_SOCKS5=OFF
         BUILD_BYPRODUCTS ${LWS_NATIVE_PREFIX}/lib/libwebsockets.a
+        INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${LWS_NATIVE_PREFIX}
         LOG_DOWNLOAD TRUE
         LOG_CONFIGURE TRUE
         LOG_BUILD TRUE
@@ -356,6 +372,9 @@ set(LIBWEBSOCKETS_LIBRARIES "${LWS_NATIVE_PREFIX}/lib/libwebsockets.a")
 set(LIBWEBSOCKETS_INCLUDE_DIRS "${LWS_NATIVE_PREFIX}/include")
 set(LIBWEBSOCKETS_BUILD_TARGET libwebsockets-native)
 add_compile_definitions(HAVE_LIBWEBSOCKETS=1)
+
+# Create placeholder directories so CMake validation doesn't fail at configure time
+file(MAKE_DIRECTORY "${LIBWEBSOCKETS_INCLUDE_DIRS}")
 
 # Create an imported target for consistency with find_package() targets
 # Only create if not already created (by MuslDependencies.cmake or other means)

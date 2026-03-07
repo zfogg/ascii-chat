@@ -510,14 +510,18 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
 endif()
 
 # =============================================================================
-# macOS Release: Try static libraries first when ASCIICHAT_SHARED_DEPS is OFF
+# macOS Release: Use cached OpenSSL 1.1.1w for libwebsockets compatibility
 # =============================================================================
 set(_OPENSSL_STATIC_FOUND FALSE)
 if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
-    # Find static OpenSSL libraries from Homebrew
+    # Use cached OpenSSL 1.1.1w (libwebsockets is built with this version)
     set(_OPENSSL_HOMEBREW_PATH "")
-    if(HOMEBREW_PREFIX AND EXISTS "${HOMEBREW_PREFIX}/opt/openssl@3/lib")
-        set(_OPENSSL_HOMEBREW_PATH "${HOMEBREW_PREFIX}/opt/openssl@3")
+    set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
+    set(OPENSSL_LIBDIR "lib")
+
+    # Check if cached OpenSSL 1.1.1w exists
+    if(EXISTS "${OPENSSL_PREFIX}/lib/libssl.a" AND EXISTS "${OPENSSL_PREFIX}/lib/libcrypto.a")
+        set(_OPENSSL_HOMEBREW_PATH "${OPENSSL_PREFIX}")
     endif()
 
     if(_OPENSSL_HOMEBREW_PATH)
