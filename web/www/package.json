@@ -10,6 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build": "bash scripts/build.sh",
+    "build:vite": "vite build",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
     "preview": "vite preview"
