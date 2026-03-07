@@ -16,27 +16,27 @@ Each Dockerfile uses a multi-stage build process:
 ## Building Individual Projects
 
 ```bash
-# Build discovery app
+# Build discovery app (frontend on 5174)
 docker build -f discovery/Dockerfile -t ascii-chat-discovery .
 
-# Build web app
+# Build web app (frontend on 3000)
 docker build -f web/Dockerfile -t ascii-chat-web .
 
-# Build www app
+# Build www app (frontend on 5173, API on 30001)
 docker build -f www/Dockerfile -t ascii-chat-www .
 ```
 
 ## Running Individual Projects
 
 ```bash
-# Run discovery (listens on port 3001 → container 3000)
-docker run -p 3001:3000 ascii-chat-discovery
+# Run discovery (frontend on port 5174)
+docker run -p 5174:3000 ascii-chat-discovery
 
-# Run web (listens on port 3002 → container 3000)
-docker run -p 3002:3000 ascii-chat-web
+# Run web (frontend on port 3000)
+docker run -p 3000:3000 ascii-chat-web
 
-# Run www (listens on port 5173 for frontend, 3000 for API)
-docker run -p 5173:5173 -p 3000:3000 ascii-chat-www
+# Run www (frontend on port 5173, API on port 30001)
+docker run -p 5173:5173 -p 30001:30001 -e API_PORT=30001 ascii-chat-www
 ```
 
 ## Using Docker Compose
@@ -58,10 +58,10 @@ docker-compose down
 ```
 
 Services will be available at:
-- **Discovery**: http://localhost:3001
-- **Web**: http://localhost:3002
+- **Discovery Frontend**: http://localhost:5174
+- **Web Frontend**: http://localhost:3000
 - **WWW Frontend**: http://localhost:5173
-- **WWW API**: http://localhost:3000
+- **WWW API**: http://localhost:30001
 
 ## Notes
 

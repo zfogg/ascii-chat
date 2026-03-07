@@ -6,7 +6,9 @@ services:
       context: .
       dockerfile: discovery/Dockerfile
     ports:
-      - "3001:3000"
+      - "5174:3000"
+    environment:
+      - API_PORT=3001
     container_name: ascii-chat-discovery
 
   web:
@@ -14,7 +16,9 @@ services:
       context: .
       dockerfile: web/Dockerfile
     ports:
-      - "3002:3000"
+      - "3000:3000"
+    environment:
+      - API_PORT=3001
     container_name: ascii-chat-web
 
   www:
@@ -23,7 +27,9 @@ services:
       dockerfile: www/Dockerfile
     ports:
       - "5173:5173"
-      - "3000:3000"
+      - "30001:30001"
+    environment:
+      - API_PORT=30001
     container_name: ascii-chat-www
 
 volumes:

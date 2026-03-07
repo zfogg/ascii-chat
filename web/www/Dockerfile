@@ -33,9 +33,12 @@ COPY --from=builder /app/www/package-lock.json ./package-lock.json
 # Install production dependencies
 RUN npm ci --legacy-peer-deps --only=production
 
+# Environment variable for API port (default 3001)
+ENV API_PORT=30001
+
 # Expose ports
-EXPOSE 3000 5173
+EXPOSE 5173 30001
 
 # Start both frontend server and API
-# Frontend on 5173, API on 3000
+# Frontend on 5173, API on API_PORT (default 30001)
 CMD ["bun", "api.js"]

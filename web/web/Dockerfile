@@ -24,6 +24,9 @@ WORKDIR /app/web
 # Copy built dist from builder
 COPY --from=builder /app/web/dist ./dist
 
+# Environment variable for API port
+ENV API_PORT=3001
+
 # Expose port for serving
 EXPOSE 3000
 
