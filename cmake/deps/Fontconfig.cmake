@@ -310,12 +310,18 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
+    # Use FONTCONFIG_LIBRARIES instead of LDFLAGS for proper CMake linking
+    set(FONTCONFIG_LDFLAGS ${FONTCONFIG_LIBRARIES})
+
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
 elseif(APPLE)
     # macOS: Use homebrew or macports
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
+
+    # Use FONTCONFIG_LIBRARIES instead of LDFLAGS for proper CMake linking
+    set(FONTCONFIG_LDFLAGS ${FONTCONFIG_LIBRARIES})
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
