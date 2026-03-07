@@ -1,0 +1,11 @@
+{
+  "type": "module",
+  "name": "ascii-chat",
+  "private": true,
+  "workspaces": [
+    "web"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

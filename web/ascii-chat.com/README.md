@@ -13,20 +13,20 @@ Official website for ascii-chat - Video chat in your terminal
 ## Development
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 ## Build
 
 ```bash
-npm run build
+bun run build
 ```
 
 The man page is automatically converted from the ascii-chat repository:
 
 ```bash
-mandoc -Thtml ../ascii-chat/build/share/man/man1/ascii-chat.1 > public/ascii-chat-man.html
+scripts/manpage-build.sh
 ```
 
 ## Deployment
@@ -36,8 +36,10 @@ Deploy to Vercel or any static hosting service. The site is built to `dist/`.
 ## Pages
 
 - **/** - Home page with features, installation, and quick start
-- **/crypto** - Cryptography documentation and key authentication
-- **/man** - Complete man page reference (auto-generated)
+- **/docs/** - ascii-chat executable documentation
+- **/man1** - Complete man page reference (auto-generated)
+- **/man5** - Files man page
+- **/man3** - Searchable API docs
 
 TODO:
 
