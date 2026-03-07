@@ -429,6 +429,13 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   bool has_media_source = (media_url_val && strlen(media_url_val) > 0) ||
                           (media_file_val && strlen(media_file_val) > 0) ||
                           GET_OPTION(test_pattern);
+
+  // Enable audio capture if render-file is active and media source exists
+  if (render_file_opt && strlen(render_file_opt) > 0 && has_media_source) {
+    capture_config.enable_audio = true;
+    log_debug("Audio capture enabled for render-file encoding");
+  }
+
   bool stdin_render_mode = (render_file_opt && strcmp(render_file_opt, "-") == 0 &&
                             !terminal_is_stdin_tty() && height_explicitly_set &&
                             !has_media_source && !mirror_mode);
@@ -552,6 +559,13 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   if (stdin_render_mode && g_stdin_reader) {
     session_display_set_stdin_reader(display, g_stdin_reader);
     log_debug("stdin_reader passed to display context");
+  }
+
+  // Set audio source for render-file encoding
+  media_source_t *render_audio_source = session_capture_get_media_source(capture);
+  if (render_audio_source && GET_OPTION(render_file) && strlen(GET_OPTION(render_file)) > 0) {
+    session_display_set_render_audio_source(display, render_audio_source);
+    log_debug("Audio source set for render-file output");
   }
 
   // ============================================================================

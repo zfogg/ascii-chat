@@ -461,6 +461,15 @@ void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps) {
   }
 }
 
+void session_display_set_render_audio_source(session_display_ctx_t *ctx, void *audio_source) {
+  if (!ctx || !ctx->render_file)
+    return;
+  render_file_set_audio_source((render_file_ctx_t *)ctx->render_file, audio_source, NULL);
+  if (audio_source) {
+    log_debug("session_display_set_render_audio_source: Audio source set for render-file encoding");
+  }
+}
+
 bool session_display_has_first_frame(session_display_ctx_t *ctx) {
   if (!ctx) {
     return false;

@@ -276,6 +276,18 @@ uint32_t session_display_get_render_fps(session_display_ctx_t *ctx);
 void session_display_set_render_fps(session_display_ctx_t *ctx, uint32_t fps);
 
 /**
+ * @brief Set audio source for render-file output
+ * @param ctx Display context (must not be NULL)
+ * @param audio_source Media source for file/URL audio (borrowed), or NULL to clear
+ *
+ * Call this after creating the display to set the audio source for --render-file encoding.
+ * The audio_source pointer is borrowed and must remain valid until the display is destroyed.
+ *
+ * @ingroup session
+ */
+void session_display_set_render_audio_source(session_display_ctx_t *ctx, void *audio_source);
+
+/**
  * @brief Check if the display has rendered its first frame
  * @param ctx Display context (can be NULL)
  * @return true if first frame has been rendered, false if not yet rendered or ctx is NULL
