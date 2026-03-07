@@ -1,25 +1,24 @@
-# Discovery web app - extends base Dockerfile
+# Discovery web app
 FROM node:22-alpine AS builder
 
-# Install bun
-RUN npm install -g bun
+# Install bash and bun
+RUN apk add --no-cache bash && npm install -g bun
 
 WORKDIR /app
 
-# Copy root dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
-
-# Copy entire monorepo
+# Copy entire web directory (preserves workspace structure)
 COPY . .
 
-# Build discovery project
-RUN cd discovery && npm run build
+# Install dependencies
+RUN bun install
+
+# Build discovery project only
+RUN bun run --filter './discovery' build
 
 # Production stage
 FROM node:22-alpine
 
-WORKDIR /app/discovery
+WORKDIR /app
 
 # Copy built dist from builder
 COPY --from=builder /app/discovery/dist ./dist
@@ -30,6 +29,6 @@ ENV API_PORT=3001
 # Expose port for serving
 EXPOSE 3000
 
-# Serve static files (requires a simple HTTP server)
+# Serve static files
 RUN npm install -g http-server
 CMD ["http-server", "dist", "-p", "3000"]

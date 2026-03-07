@@ -1,44 +1,56 @@
-# WWW app (frontend + API) - extends base Dockerfile
+# WWW app (frontend + API)
 FROM node:22-alpine AS builder
 
-# Install bun
-RUN npm install -g bun
+# Install bash and bun
+RUN apk add --no-cache bash && npm install -g bun
 
 WORKDIR /app
 
-# Copy root dependencies
-COPY package.json package-lock.json ./
-RUN npm ci --legacy-peer-deps
-
-# Copy entire monorepo
+# Copy entire web directory (preserves workspace structure)
 COPY . .
 
-# Build www project (Vite frontend + bun API)
-RUN cd www && npm run build
+# Install dependencies
+RUN bun install
+
+# Build www project only
+RUN bun run --filter './www' build
 
 # Production stage
+FROM caddy:alpine AS caddy_base
+
+# Production stage - combined
 FROM node:22-alpine
 
-# Install bun in production image
+# Install bun and caddy
 RUN npm install -g bun
+COPY --from=caddy_base /usr/bin/caddy /usr/local/bin/caddy
+
+WORKDIR /app
+
+# Copy monorepo structure from builder (needed for workspace resolution)
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/packages ./packages
+COPY --from=builder /app/www ./www
+
+# Copy prebuilt node_modules from builder (skip reinstall)
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/bun.lock* ./
 
 WORKDIR /app/www
 
-# Copy built assets from builder
-COPY --from=builder /app/www/dist ./dist
-COPY --from=builder /app/www/api.js ./api.js
-COPY --from=builder /app/www/package.json ./package.json
-COPY --from=builder /app/www/package-lock.json ./package-lock.json
+# Copy Caddyfile for frontend serving + API proxying
+COPY www/Caddyfile /etc/caddy/Caddyfile
 
-# Install production dependencies
-RUN npm ci --legacy-peer-deps --only=production
-
-# Environment variable for API port (default 3001)
+# Environment variable for API port (default 30001)
 ENV API_PORT=30001
 
 # Expose ports
 EXPOSE 5173 30001
 
-# Start both frontend server and API
-# Frontend on 5173, API on API_PORT (default 30001)
-CMD ["bun", "api.js"]
+# Start script that runs both API and Caddy
+RUN echo '#!/bin/sh' > /start.sh && \
+    echo 'bun api.js &' >> /start.sh && \
+    echo 'caddy run --config /etc/caddy/Caddyfile' >> /start.sh && \
+    chmod +x /start.sh
+
+CMD ["/start.sh"]
