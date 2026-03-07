@@ -536,9 +536,12 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
   // Increment global frame counter BEFORE rendering (to track unique frames received)
   int total_frames = atomic_fetch_add_u64(&g_frames_rendered, 1) + 1;
 
-  // DEBUG: Periodically log frame stats on client side
+  // Log every frame for simple FPS calculation via grep
   static int client_frame_counter = 0;
   client_frame_counter++;
+  log_info("[FRAMES_RENDERED_TOTAL] %d", total_frames);
+
+  // DEBUG: Periodically log frame stats on client side
   if (client_frame_counter % 60 == 1) {
     // Count lines and check for issues
     int line_count = 0;
