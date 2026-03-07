@@ -132,8 +132,7 @@ cd ascii-chat
 # Windows
 ./scripts/install-deps.ps1
 
-cmake --preset default && cmake --build build
-./build/bin/ascii-chat`}
+sudo make install`}
                 </CodeBlock>
               </div>
             </div>
