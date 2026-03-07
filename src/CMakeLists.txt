@@ -571,8 +571,10 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
     # Compile with optimization
     target_compile_options(ascii-chat-strings PRIVATE -std=c23 -O3)
 
-    # Link libsodium for randombytes_uniform()
-    target_link_libraries(ascii-chat-strings PRIVATE sodium)
+    # Link libsodium - use static when available (musl builds, iOS, etc.)
+    # For musl/static builds, LIBSODIUM_LIBRARIES points to .a file
+    # For dynamic builds, it points to .so/.dylib
+    target_link_libraries(ascii-chat-strings PRIVATE ${LIBSODIUM_LIBRARIES})
 
     # Static linking for release builds (musl on Linux only)
     # Note: macOS doesn't support fully static binaries - it uses dynamic linking for libc
