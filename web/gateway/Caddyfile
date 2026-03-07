@@ -1,0 +1,49 @@
+# Caddy reverse proxy gateway for ascii-chat web services
+# Routes requests to backend services based on domain names
+# Automatically handles Let's Encrypt certificates
+
+# Default (uncomment and update for production domains)
+# ascii-chat.com, www.ascii-chat.com {
+#   reverse_proxy www:5173
+# }
+
+# Discovery service
+# discovery.ascii-chat.com {
+#   reverse_proxy discovery:3000
+# }
+
+# Web client
+# web.ascii-chat.com {
+#   reverse_proxy web:3000
+# }
+
+# Development: Local HTTP server (no HTTPS)
+# Use this for local testing without domain names
+http://:80 {
+  @www host localhost:80
+  @discovery host localhost:80
+  @web host localhost:80
+
+  # Route based on path prefixes for local development
+  handle_path /www/* {
+    reverse_proxy www:5173
+  }
+
+  handle_path /discovery/* {
+    reverse_proxy discovery:3000
+  }
+
+  handle_path /web/* {
+    reverse_proxy web:3000
+  }
+
+  # Health check endpoint
+  handle /health {
+    respond "OK" 200
+  }
+
+  # Default: redirect to www
+  handle {
+    redir / /www/
+  }
+}

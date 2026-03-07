@@ -1,37 +1,61 @@
 services:
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    image: zfogg/ascii-chat-web-gateway:latest
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data/caddy
+      - caddy_config:/config/caddy
+    container_name: ascii-chat-gateway
+    depends_on:
+      - discovery
+      - web
+      - www
+    networks:
+      - ascii-chat
+
   discovery:
     build:
       context: .
       dockerfile: discovery/Dockerfile
     image: zfogg/ascii-chat-web-discovery:latest
-    ports:
-      - "5174:3000"
     environment:
       - API_PORT=3001
     container_name: ascii-chat-discovery
+    networks:
+      - ascii-chat
 
   web:
     build:
       context: .
       dockerfile: web/Dockerfile
     image: zfogg/ascii-chat-web-web:latest
-    ports:
-      - "3000:3000"
     environment:
       - API_PORT=3001
     container_name: ascii-chat-web
+    networks:
+      - ascii-chat
 
   www:
     build:
       context: .
       dockerfile: www/Dockerfile
     image: zfogg/ascii-chat-web-www:latest
-    ports:
-      - "5173:5173"
-      - "3001:3001"
     environment:
       - API_PORT=3001
     container_name: ascii-chat-www
+    networks:
+      - ascii-chat
 
 volumes:
+  caddy_data:
+  caddy_config:
   node_modules:
+
+networks:
+  ascii-chat:
+    driver: bridge
