@@ -88,3 +88,7 @@ vcpkg_installed/
 vgcore*
 callgrind.out*
 massif.out*
+
+/*.mp4
+/*.webm
+/*.png
