@@ -584,7 +584,9 @@ static int websocket_callback(struct lws *wsi, enum lws_callback_reasons reason,
 // =============================================================================
 
 static asciichat_error_t websocket_send(acip_transport_t *transport, const void *data, size_t len) {
-  START_TIMER("ws_send_total");
+  // NOTE: Disabled START_TIMER/STOP_TIMER due to thread safety issues with timer hashtable
+  // causing heap-use-after-free crashes in ASAN. The timer system has race conditions
+  // when accessed from the service thread context. See: line 325 (similar issue).
   websocket_transport_data_t *ws_data = (websocket_transport_data_t *)transport->impl_data;
 
   // For server-side transports (owns_context=false), the connection is already established
@@ -636,15 +638,8 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
       }
 
       size_t ciphertext_len;
-      START_TIMER("ws_encrypt_packet");
       crypto_result_t result =
           crypto_encrypt(transport->crypto_ctx, data, len, ciphertext, ciphertext_size, &ciphertext_len);
-      double _ws_encrypt_elapsed = STOP_TIMER("ws_encrypt_packet");
-      if (_ws_encrypt_elapsed >= 0.0) {
-        char _ws_encrypt_duration[32];
-        time_pretty((uint64_t)_ws_encrypt_elapsed, -1, _ws_encrypt_duration, sizeof(_ws_encrypt_duration));
-        log_info("[WS] encrypt %zu bytes in %s", len, _ws_encrypt_duration);
-      }
       if (result != CRYPTO_OK) {
         SAFE_FREE(ciphertext);
         return SET_ERRNO(ERROR_CRYPTO, "Failed to encrypt WebSocket packet: %s", crypto_result_to_string(result));
@@ -742,12 +737,6 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
     SAFE_FREE(send_buffer);
     if (encrypted_packet)
       buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-    double _ws_send_server_elapsed = STOP_TIMER("ws_send_total");
-    if (_ws_send_server_elapsed >= 0.0) {
-      char _ws_send_server_duration[32];
-      time_pretty((uint64_t)_ws_send_server_elapsed, -1, _ws_send_server_duration, sizeof(_ws_send_server_duration));
-      log_info("[WS_TOTAL] send_server %zu bytes in %s", len, _ws_send_server_duration);
-    }
     return ASCIICHAT_OK;
   }
 
@@ -797,12 +786,6 @@ static asciichat_error_t websocket_send(acip_transport_t *transport, const void 
   SAFE_FREE(send_buffer);
   if (encrypted_packet)
     buffer_pool_free(NULL, encrypted_packet, encrypted_packet_size);
-  double _ws_send_client_elapsed = STOP_TIMER("ws_send_total");
-  if (_ws_send_client_elapsed >= 0.0) {
-    char _ws_send_client_duration[32];
-    time_pretty((uint64_t)_ws_send_client_elapsed, -1, _ws_send_client_duration, sizeof(_ws_send_client_duration));
-    log_info("[WS_TOTAL] send_client %zu bytes in %s", len, _ws_send_client_duration);
-  }
   return ASCIICHAT_OK;
 }
 
