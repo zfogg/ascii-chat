@@ -313,6 +313,7 @@ options_config_t *options_preset_unified(const char *program_name, const char *d
                               "Enforce identity verification for all parties", false);
 
   // Add mode descriptions
+  options_builder_add_mode(b, "default", "When the ascii-chat binary is used without a mode, it operates as either client or server automatically and uses the discovery-service to make peer connections with session strings");
   options_builder_add_mode(b, "server", "Run as multi-client video chat server");
   options_builder_add_mode(b, "client", "Run as video chat client (connect to server)");
   options_builder_add_mode(b, "mirror", "View local media as ASCII art (no server)");
