@@ -68,15 +68,26 @@ if(PLATFORM_IOS)
                 export CC=clang
                 export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC'
                 export LDFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -fPIC'
-                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} no-shared no-tests no-ui-console
+                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} no-shared no-tests no-ui-console < /dev/null
             "
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
+            TIMEOUT 60
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
+            INPUT ""
         )
-        if(NOT CONFIG_RESULT EQUAL 0)
-            message(FATAL_ERROR "Failed to configure OpenSSL for iOS:\n${CONFIG_ERROR}\n${CONFIG_OUTPUT}")
+        message(STATUS "  Configure result: ${CONFIG_RESULT}")
+        if(CONFIG_OUTPUT)
+            message(STATUS "  Configure stdout:\n${CONFIG_OUTPUT}")
+        endif()
+        if(CONFIG_ERROR)
+            message(STATUS "  Configure stderr:\n${CONFIG_ERROR}")
+        endif()
+        if(NOT CONFIG_RESULT EQUAL 0 AND NOT CONFIG_RESULT EQUAL -1)
+            message(FATAL_ERROR "Failed to configure OpenSSL for iOS (result: ${CONFIG_RESULT})")
+        elseif(CONFIG_RESULT EQUAL -1)
+            message(FATAL_ERROR "OpenSSL configure timed out after 60 seconds")
         endif()
 
         message(STATUS "  Building OpenSSL (this takes a few minutes)...")
@@ -215,6 +226,7 @@ if(USE_MUSL)
             RESULT_VARIABLE CONFIG_RESULT
             OUTPUT_VARIABLE CONFIG_OUTPUT
             ERROR_VARIABLE CONFIG_ERROR
+            INPUT ""
         )
         if(NOT CONFIG_RESULT EQUAL 0)
             message(FATAL_ERROR "Failed to configure OpenSSL:\n${CONFIG_ERROR}")
