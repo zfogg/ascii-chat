@@ -569,6 +569,21 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
     # Link libsodium for randombytes_uniform()
     target_link_libraries(ascii-chat-strings PRIVATE sodium)
 
+    # Static linking for release builds with musl
+    if(USE_MUSL)
+        # Enforce static linking for musl builds
+        set_target_properties(ascii-chat-strings PROPERTIES
+            LINK_FLAGS "-static"
+        )
+        # Link musl libc explicitly
+        target_link_options(ascii-chat-strings PRIVATE -static-libgcc)
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        # Static linking for release builds on non-musl systems
+        set_target_properties(ascii-chat-strings PROPERTIES
+            LINK_FLAGS "-static"
+        )
+    endif()
+
     # Apply sanitizers
     apply_sanitizers_to_target(ascii-chat-strings)
 
