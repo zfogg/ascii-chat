@@ -501,8 +501,18 @@ if(NOT FFMPEG_FOUND OR NOT FFMPEG_LIBRARIES)
         return()
     endif()
 
-    # Use FFMPEG_LDFLAGS which includes -L path and -l flags, not just library names
-    set(FFMPEG_LIBRARIES ${FFMPEG_LDFLAGS})
+    # pkg_check_modules sets FFMPEG_LIBRARIES (library names), FFMPEG_LIBRARY_DIRS (paths), and FFMPEG_LDFLAGS (full flags)
+    # We use FFMPEG_LINK_LIBRARIES which pkg-config creates from the above and is the proper way to link
+    # If not available, fall back to FFMPEG_LDFLAGS which includes all necessary -L and -l flags
+    if(FFMPEG_LINK_LIBRARIES)
+        set(FFMPEG_LIBRARIES ${FFMPEG_LINK_LIBRARIES})
+    else()
+        # Fallback to full linker flags (includes both -L and -l flags)
+        set(FFMPEG_LIBRARIES ${FFMPEG_LDFLAGS})
+    endif()
+
+    # Store library directories for later use if needed
+    set(FFMPEG_LIBRARY_DIRS ${FFMPEG_LIBRARY_DIRS})
 
     message(STATUS "${BoldGreen}✓${ColorReset} FFmpeg found:")
     message(STATUS "  - libavformat: ${FFMPEG_libavformat_VERSION}")
