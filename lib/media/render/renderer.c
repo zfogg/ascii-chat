@@ -98,7 +98,9 @@ asciichat_error_t render_file_create(const char *output_path, int cols, int rows
 
   // Initialize audio fields
   ctx->audio_sample_rate = 48000;  // Audio pipeline is 48kHz
-  ctx->audio_buf_size = 1024;      // Temporary buffer for reading audio (in floats)
+  // Allocate large buffer for snapshot mode (5 seconds at 48kHz with ~14 FPS = 3,428 samples per frame)
+  // Use 8192 to comfortably handle snapshot reads without excessive overhead
+  ctx->audio_buf_size = 8192;      // Temporary buffer for reading audio (in floats)
   ctx->audio_read_buf = SAFE_MALLOC(ctx->audio_buf_size * sizeof(float), float *);
   ctx->audio_media_source = NULL;
   ctx->audio_capture_rb = NULL;
@@ -211,54 +213,98 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
   SAFE_FREE(pixels_copy);
 
   // Write synchronized audio for this frame if available
-  // Calculate how many samples correspond to one video frame
-  // Note: Audio samples per frame = 48000 Hz / FPS  (e.g., 1600 samples @ 30fps)
+  // In snapshot mode, track actual FPS and calculate samples_per_frame dynamically
   if (ctx && ctx->audio_read_buf && ctx->encoder) {
-    // Assume default 60 FPS if we can't determine it (typically matches capture rate)
-    int fps = 60;
-    int samples_per_frame = ctx->audio_sample_rate / fps;
+    // Detect if we're in snapshot mode
+    bool snapshot_mode = GET_OPTION(snapshot_mode);
+    double snapshot_delay = GET_OPTION(snapshot_delay);
+
+    int samples_per_frame;
+
+    // Track frame timing for dynamic FPS calculation in snapshot mode
+    static uint64_t first_frame_ns = 0;
+    static int frame_count = 0;
+    static int log_once = 0;
+
+    if (first_frame_ns == 0) {
+      first_frame_ns = captured_ns;
+    }
+    frame_count++;
+
+    if (snapshot_mode && snapshot_delay > 0) {
+      // Calculate actual FPS from elapsed time and frame count
+      uint64_t elapsed_ns = (captured_ns > first_frame_ns) ? (captured_ns - first_frame_ns) : 1;
+      double elapsed_sec = elapsed_ns / 1e9;
+      double actual_fps = (elapsed_sec > 0) ? frame_count / elapsed_sec : 14;  // Fallback to 14 if no time elapsed
+
+      // Calculate samples needed to fill snapshot duration at actual FPS
+      // total_samples_needed = snapshot_delay * sample_rate
+      // frames_to_fill = snapshot_delay * actual_fps
+      // samples_per_frame = total_samples_needed / frames_to_fill
+      samples_per_frame = (int)(ctx->audio_sample_rate * snapshot_delay) / (int)(snapshot_delay * actual_fps + 0.5);
+
+      if (!log_once && frame_count % 10 == 0) {
+        log_info("[AUDIO_DYNAMIC] Frame %d: elapsed=%.2fs, actual_fps=%.1f, samples_per_frame=%d",
+                 frame_count, elapsed_sec, actual_fps, samples_per_frame);
+      }
+    } else {
+      // Normal/live mode: use 60 FPS baseline
+      samples_per_frame = ctx->audio_sample_rate / 60;
+      if (!log_once++) {
+        log_info("[AUDIO_CALC] Normal mode: samples_per_frame=%d", samples_per_frame);
+      }
+    }
+
     if (samples_per_frame > ctx->audio_buf_size) {
       samples_per_frame = ctx->audio_buf_size;
+      if (!log_once++) {
+        log_warn("[AUDIO_CALC] samples_per_frame clamped to buffer size %d", ctx->audio_buf_size);
+      }
+    }
+    if (samples_per_frame <= 0) {
+      samples_per_frame = 800;  // Fallback minimum
     }
 
     int samples_read = 0;
-    static int audio_debug_once = 0;
+    static int audio_frame_count = 0;
+    static int audio_eof_reached = 0;
 
     // Read from whichever audio source is available (prefer media source, fallback to capture)
-    if (ctx->audio_media_source) {
-      // Read from media source (file/URL audio)
+    if (!audio_eof_reached && ctx->audio_media_source) {
+      // Read from media source (file/URL audio) - try to get samples
       samples_read = media_source_read_audio(ctx->audio_media_source, ctx->audio_read_buf, samples_per_frame);
-      if (samples_read < 0) {
-        samples_read = 0;  // On error, write silence
+
+      if (samples_read <= 0) {
+        // EOF reached or error - no more audio samples available from source
+        audio_eof_reached = 1;
+        samples_read = 0;
+        if (audio_frame_count < 5 || audio_frame_count > 65) {
+          log_info("[AUDIO] frame[%d]: audio source EOF detected (got %d samples)",
+                   audio_frame_count, samples_read);
+        }
       }
-      if (!audio_debug_once++) {
-        log_debug("render_file_write_frame: reading audio from media_source (samples_per_frame=%d, read=%d)",
-                  samples_per_frame, samples_read);
-      }
-    } else if (ctx->audio_capture_rb) {
+      audio_frame_count++;
+    } else if (!audio_eof_reached && ctx->audio_capture_rb) {
       // Read from ring buffer (live mic capture)
       samples_read =
           audio_ring_buffer_read(ctx->audio_capture_rb, ctx->audio_read_buf, samples_per_frame);
       if (samples_read < 0) {
         samples_read = 0;  // On error, write silence
+        audio_eof_reached = 1;
+      } else if (samples_read == 0) {
+        audio_eof_reached = 1;
       }
-      if (!audio_debug_once++) {
-        log_debug("render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)",
-                  samples_per_frame, samples_read);
-      }
-    } else {
-      if (!audio_debug_once++) {
-        log_debug("render_file_write_frame: no audio source available (media=%p, capture=%p)",
-                  ctx->audio_media_source, ctx->audio_capture_rb);
-      }
+      log_debug("render_file_write_frame: reading audio from capture_rb (samples_per_frame=%d, read=%d)",
+                samples_per_frame, samples_read);
     }
 
-    // Write audio samples if any were read
+    // Write audio: either from source or silence to fill remaining time
     if (samples_read > 0) {
+      // We got samples from the source - write them
       ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, samples_read);
-    } else if (samples_read == 0 && (ctx->audio_media_source || ctx->audio_capture_rb)) {
-      // Source exists but no samples available - still need to write something for sync
-      // Zero-fill the buffer (silence) to maintain timing
+    } else {
+      // No samples available (EOF reached or not available) - write silence to maintain sync
+      // This ensures audio track duration matches video track duration
       memset(ctx->audio_read_buf, 0, samples_per_frame * sizeof(float));
       ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, samples_per_frame);
     }

@@ -594,9 +594,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
   // SETUP: Create Mirror Capture (after splash screen finishes)
   // ============================================================================
 
+  log_info("[MIRROR_CHECK] stdin_render_mode=%d, capture=%p", stdin_render_mode, (void *)capture);
   if (!stdin_render_mode && !capture) {
     // Mirror mode: create capture context with local media source (NOW, after splash finishes)
-    log_debug("Mirror mode detected - creating mirror capture after splash screen");
+    log_info("Mirror mode detected - creating mirror capture after splash screen");
     uint64_t mirror_cap_start = time_get_ns();
     capture = session_mirror_capture_create(&capture_config);
     double mirror_cap_ms = time_ns_to_ms(time_elapsed_ns(mirror_cap_start, time_get_ns()));
@@ -610,12 +611,16 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     // Set audio source for render-file encoding (after capture is created)
     media_source_t *render_audio_source = session_capture_get_media_source(capture);
     const char *render_file_path = GET_OPTION(render_file);
-    log_debug("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu",
+    log_info("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu",
              render_audio_source, render_file_path ? render_file_path : "(null)",
              render_file_path ? strlen(render_file_path) : 0);
     if (render_audio_source && render_file_path && strlen(render_file_path) > 0) {
       session_display_set_render_audio_source(display, render_audio_source);
-      log_debug("Audio source set for render-file output");
+      log_info("Audio source set for render-file output");
+    } else {
+      log_warn("[AUDIO_SOURCE] Conditions not met: render_audio_source=%p, render_file_path=%s, len=%zu",
+               render_audio_source, render_file_path ? render_file_path : "(null)",
+               render_file_path ? strlen(render_file_path) : 0);
     }
   }
 
