@@ -25,6 +25,8 @@ static bool g_atomic_debug_initialized = false;
 // Debug Initialization/Shutdown
 // ============================================================================
 
+#ifndef NDEBUG
+
 void debug_atomic_init(void) {
     g_atomic_debug_initialized = true;
 }
@@ -139,3 +141,5 @@ void debug_atomic_print_state(void) {
     // The preferred method is to use sync.c's atomic_iter_callback
     // which integrates atomics into the synchronized output buffer
 }
+
+#endif  // !NDEBUG
