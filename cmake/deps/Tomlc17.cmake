@@ -13,15 +13,17 @@
 
 include(${CMAKE_SOURCE_DIR}/cmake/utils/Patching.cmake)
 
-# iOS: tomlc17 is header-only, no build needed
-if(PLATFORM_IOS)
-    message(STATUS "Configuring ${BoldBlue}tomlc17${ColorReset} (iOS, header-only)...")
-    set(TOMLC17_FOUND TRUE)
-    message(STATUS "${BoldGreen}✓${ColorReset} tomlc17 configured (iOS, header-only)")
-    return()
-endif()
-
+# Function definition (applies to all platforms)
 function(configure_tomlc17)
+    # iOS: tomlc17 is header-only, no build needed
+    if(PLATFORM_IOS)
+        message(STATUS "Configuring ${BoldBlue}tomlc17${ColorReset} (iOS, header-only)...")
+        set(TOMLC17_FOUND TRUE PARENT_SCOPE)
+        message(STATUS "${BoldGreen}✓${ColorReset} tomlc17 configured (iOS, header-only)")
+        return()
+    endif()
+
+    # Non-iOS: Apply patches
     set(DEP_DIR "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17")
     set(PATCHES_DIR "${CMAKE_SOURCE_DIR}/cmake/deps/patches")
 

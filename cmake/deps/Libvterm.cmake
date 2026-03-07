@@ -18,8 +18,8 @@
 
 # All builds: Try to find libvterm
 
-# iOS builds: Build from source
-if(PLATFORM_IOS)
+# iOS builds: Build from source (only if executables enabled, render-file needs it)
+if(PLATFORM_IOS AND BUILD_EXECUTABLES)
     message(STATUS "Configuring ${BoldBlue}libvterm${ColorReset} from source (iOS cross-compile)...")
 
     include(ExternalProject)
@@ -69,6 +69,12 @@ if(PLATFORM_IOS)
 
     message(STATUS "${BoldGreen}✓${ColorReset} Render-file backend (iOS): ${BoldCyan}libvterm + FreeType2${ColorReset}")
 
+    return()
+endif()
+
+# iOS without executables: Skip libvterm (not needed, render-file is disabled)
+if(PLATFORM_IOS)
+    message(STATUS "Skipping libvterm (iOS with BUILD_EXECUTABLES=OFF)")
     return()
 endif()
 

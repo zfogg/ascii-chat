@@ -13,7 +13,8 @@
 # =============================================================================
 
 # iOS: Build fontconfig from source (with expat and freetype)
-if(PLATFORM_IOS)
+# Only build fontconfig if we're building executables (render-file uses it)
+if(PLATFORM_IOS AND BUILD_EXECUTABLES)
     message(STATUS "Configuring ${BoldBlue}fontconfig${ColorReset} from source (iOS cross-compile)...")
 
     # FreeType must be configured first (via FreeType2.cmake)
@@ -164,6 +165,12 @@ Cflags: -I\${includedir}/freetype2 -I\${includedir}
     set(FONTCONFIG_INCLUDE_DIRS "${FONTCONFIG_INCLUDE_DIR}")
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig (iOS): ${FONTCONFIG_LIBRARY}")
+    return()
+endif()
+
+# iOS without executables: Skip fontconfig (not needed, render-file is disabled)
+if(PLATFORM_IOS)
+    message(STATUS "Skipping fontconfig (iOS with BUILD_EXECUTABLES=OFF)")
     return()
 endif()
 

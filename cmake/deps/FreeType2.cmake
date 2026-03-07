@@ -13,7 +13,8 @@
 # =============================================================================
 
 # iOS build: Build from source for iOS cross-compilation
-if(PLATFORM_IOS)
+# Only build FreeType if we're building executables or libvterm (both need fonts)
+if(PLATFORM_IOS AND BUILD_EXECUTABLES)
     message(STATUS "Configuring ${BoldBlue}freetype${ColorReset} from source (iOS cross-compile)...")
 
     include(ExternalProject)
@@ -71,6 +72,12 @@ if(PLATFORM_IOS)
     set(FREETYPE_PREFIX "${FREETYPE_PREFIX}" PARENT_SCOPE)
     file(MAKE_DIRECTORY "${FREETYPE_PREFIX}/include" "${FREETYPE_PREFIX}/lib")
 
+    return()
+endif()
+
+# iOS without executables: Skip FreeType (not needed, render-file is disabled)
+if(PLATFORM_IOS)
+    message(STATUS "Skipping FreeType (iOS with BUILD_EXECUTABLES=OFF)")
     return()
 endif()
 

@@ -39,11 +39,10 @@ if(PLATFORM_IOS)
 
         message(STATUS "  Building libsodium-bcrypt-pbkdf for iOS...")
         execute_process(
-            COMMAND bash -c "cd '${DEP_DIR}' && \
-                    env CC=clang \
+            COMMAND bash -c "export PATH=/tmp/bin:$PATH && cd '${DEP_DIR}' && \
+                    CC=clang \
                     AR=ar \
                     CFLAGS='-fPIC -isysroot ${IOS_SDK_PATH} -arch arm64 -miphoneos-version-min=16.0' \
-                    OBJCOPY=objcopy \
                     HAVE_EXPLICIT_BZERO=0 \
                     make lib && \
                     mkdir -p '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/lib' '${LIBSODIUM_BCRYPT_PBKDF_PREFIX}/include' && \
