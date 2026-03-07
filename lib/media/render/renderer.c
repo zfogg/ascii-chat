@@ -223,13 +223,11 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
 
     // Track frame timing for dynamic FPS calculation in snapshot mode
     static uint64_t first_frame_ns = 0;
-    static int frame_count = 0;
     static int log_once = 0;
 
     if (first_frame_ns == 0) {
       first_frame_ns = captured_ns;
     }
-    frame_count++;
 
     if (snapshot_mode && snapshot_delay > 0) {
       // Simple approach: distribute snapshot_delay * sample_rate evenly across expected ~70 frames
@@ -262,7 +260,6 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     }
 
     int samples_read = 0;
-    static int audio_frame_count = 0;
     static int audio_eof_reached = 0;
 
     // Read from whichever audio source is available (prefer media source, fallback to capture)
@@ -275,7 +272,6 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
         audio_eof_reached = 1;
         samples_read = 0;
       }
-      audio_frame_count++;
     } else if (!audio_eof_reached && ctx->audio_capture_rb) {
       // Read from ring buffer (live mic capture)
       samples_read =

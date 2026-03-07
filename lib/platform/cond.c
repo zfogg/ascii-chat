@@ -121,12 +121,13 @@ int cond_format_state(const cond_t *cond, char *buffer, size_t size) {
 
   uint64_t waiting_count = atomic_load_u64(&cond->waiting_count);
   if (waiting_count > 0) {
-    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%lu]", waiting_count);
+    snprintf(waiting_str, sizeof(waiting_str), "[WAITING=%llu]", (unsigned long long)waiting_count);
   }
 
   if (cond->wait_count > 0 || cond->signal_count > 0 || cond->broadcast_count > 0) {
-    snprintf(count_str, sizeof(count_str), "[ops: wait=%lu signal=%lu broadcast=%lu]",
-             cond->wait_count, cond->signal_count, cond->broadcast_count);
+    snprintf(count_str, sizeof(count_str), "[ops: wait=%llu signal=%llu broadcast=%llu]",
+             (unsigned long long)cond->wait_count, (unsigned long long)cond->signal_count,
+             (unsigned long long)cond->broadcast_count);
   }
 
   offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s",

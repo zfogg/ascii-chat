@@ -118,12 +118,13 @@ int rwlock_format_state(const rwlock_t *rwlock, char *buffer, size_t size) {
   if (rwlock->write_held_by_key != 0) {
     snprintf(held_str, sizeof(held_str), "[WRITE_LOCKED_BY=thread.%lu]", (unsigned long)rwlock->write_held_by_key);
   } else if (read_count > 0) {
-    snprintf(held_str, sizeof(held_str), "[READ_LOCKED=%lu]", read_count);
+    snprintf(held_str, sizeof(held_str), "[READ_LOCKED=%llu]", (unsigned long long)read_count);
   }
 
   if (rwlock->rdlock_count > 0 || rwlock->wrlock_count > 0 || rwlock->unlock_count > 0) {
-    snprintf(count_str, sizeof(count_str), "[ops: rdlock=%lu wrlock=%lu unlock=%lu]",
-             rwlock->rdlock_count, rwlock->wrlock_count, rwlock->unlock_count);
+    snprintf(count_str, sizeof(count_str), "[ops: rdlock=%llu wrlock=%llu unlock=%llu]",
+             (unsigned long long)rwlock->rdlock_count, (unsigned long long)rwlock->wrlock_count,
+             (unsigned long long)rwlock->unlock_count);
   }
 
   offset += snprintf(buffer + offset, size - offset, "%s %s %s %s %s",

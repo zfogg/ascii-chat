@@ -112,8 +112,9 @@ int mutex_format_state(const mutex_t *mutex, char *buffer, size_t size) {
   }
 
   if (mutex->lock_count > 0 || mutex->unlock_count > 0 || mutex->trylock_count > 0) {
-    snprintf(count_str, sizeof(count_str), "[ops: lock=%lu unlock=%lu trylock=%lu/%lu]",
-             mutex->lock_count, mutex->unlock_count, mutex->trylock_success_count, mutex->trylock_count);
+    snprintf(count_str, sizeof(count_str), "[ops: lock=%llu unlock=%llu trylock=%llu/%llu]",
+             (unsigned long long)mutex->lock_count, (unsigned long long)mutex->unlock_count,
+             (unsigned long long)mutex->trylock_success_count, (unsigned long long)mutex->trylock_count);
   }
 
   offset += snprintf(buffer + offset, size - offset, "%s %s %s %s", lock_str, unlock_str, held_str, count_str);

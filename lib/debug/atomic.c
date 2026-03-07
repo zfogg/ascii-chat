@@ -76,8 +76,10 @@ int debug_atomic_format_timing(const atomic_t *atomic, char *buffer, size_t size
     }
 
     if (atomic->load_count > 0 || atomic->store_count > 0 || atomic->cas_count > 0 || atomic->fetch_count > 0) {
-        snprintf(count_str, sizeof(count_str), "[ops: load=%lu store=%lu cas=%lu/%lu fetch=%lu]",
-                 atomic->load_count, atomic->store_count, atomic->cas_success_count, atomic->cas_count, atomic->fetch_count);
+        snprintf(count_str, sizeof(count_str), "[ops: load=%llu store=%llu cas=%llu/%llu fetch=%llu]",
+                 (unsigned long long)atomic->load_count, (unsigned long long)atomic->store_count,
+                 (unsigned long long)atomic->cas_success_count, (unsigned long long)atomic->cas_count,
+                 (unsigned long long)atomic->fetch_count);
     }
 
     offset += snprintf(buffer + offset, size - offset, "%s %s %s", load_str, store_str, count_str);
@@ -119,8 +121,10 @@ int debug_atomic_ptr_format_timing(const atomic_ptr_t *atomic, char *buffer, siz
     }
 
     if (atomic->load_count > 0 || atomic->store_count > 0 || atomic->cas_count > 0 || atomic->exchange_count > 0) {
-        snprintf(count_str, sizeof(count_str), "[ops: load=%lu store=%lu cas=%lu/%lu exchange=%lu]",
-                 atomic->load_count, atomic->store_count, atomic->cas_success_count, atomic->cas_count, atomic->exchange_count);
+        snprintf(count_str, sizeof(count_str), "[ops: load=%llu store=%llu cas=%llu/%llu exchange=%llu]",
+                 (unsigned long long)atomic->load_count, (unsigned long long)atomic->store_count,
+                 (unsigned long long)atomic->cas_success_count, (unsigned long long)atomic->cas_count,
+                 (unsigned long long)atomic->exchange_count);
     }
 
     offset += snprintf(buffer + offset, size - offset, "%s %s %s", load_str, store_str, count_str);

@@ -268,15 +268,6 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     post_convert_ns = time_get_ns();
     conversion_elapsed_ns = post_convert_ns - pre_convert_ns;
 
-    // DEBUG: Log frame conversion to file
-    FILE *debug_log = fopen("/tmp/render_loop_debug.log", "a");
-    if (debug_log) {
-      fprintf(debug_log, "[FRAME_CONVERT] frame %lu: image=%p, ascii_frame=%p (len=%zu), conversion_ms=%u\n",
-              frame_count, (void *)image, (void *)ascii_frame,
-              ascii_frame ? strlen(ascii_frame) : 0,
-              (unsigned)(conversion_elapsed_ns / NS_PER_MS_INT));
-      fclose(debug_log);
-    }
 
     if (frame_count <= 3) {
       log_info("RENDER_LOOP[%lu]: image=%p, ascii_frame=%p (conversion took %u ms)",
