@@ -636,6 +636,17 @@ if(NOT libdatachannel_POPULATED)
             message(FATAL_ERROR "Failed to build libdatachannel")
         endif()
 
+        # Install libdatachannel explicitly (headers and libraries)
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} --install . --prefix ${LIBDATACHANNEL_BUILD_DIR}
+            WORKING_DIRECTORY "${LIBDATACHANNEL_BUILD_DIR}"
+            RESULT_VARIABLE LIBDATACHANNEL_INSTALL_RESULT
+        )
+
+        if(NOT LIBDATACHANNEL_INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install libdatachannel")
+        endif()
+
         # Strip debug symbols from libdatachannel.a to eliminate linker warnings
         # about duplicate debug map objects with invalid timestamps
         if(APPLE)

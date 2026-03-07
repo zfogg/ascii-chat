@@ -91,6 +91,7 @@ if(PLATFORM_IOS)
                 -DLWS_IPV6=ON
                 -DLWS_WITHOUT_EXTENSIONS=OFF
                 -DLWS_WITH_ZLIB=ON
+            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${LWS_PREFIX}
             BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
@@ -187,6 +188,7 @@ if(USE_MUSL)
                 -DZLIB_INCLUDE_DIR=${ZLIB_INCLUDE_DIR}
                 -DZLIB_LIBRARY=${ZLIB_LIBRARY}
                 -DLWS_WITH_SOCKS5=OFF
+            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${LWS_PREFIX}
             BUILD_BYPRODUCTS ${LWS_PREFIX}/lib/libwebsockets.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE

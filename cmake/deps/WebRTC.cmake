@@ -369,6 +369,17 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             message(FATAL_ERROR "Failed to build WebRTC AEC3")
         endif()
 
+        # Install WebRTC explicitly (headers and libraries)
+        execute_process(
+            COMMAND ${CMAKE_COMMAND} --install . --prefix ${WEBRTC_BUILD_DIR}
+            WORKING_DIRECTORY "${WEBRTC_BUILD_DIR}"
+            RESULT_VARIABLE WEBRTC_INSTALL_RESULT
+        )
+
+        if(NOT WEBRTC_INSTALL_RESULT EQUAL 0)
+            message(FATAL_ERROR "Failed to install WebRTC AEC3")
+        endif()
+
         # Write build config marker for future cache validation
         file(WRITE "${WEBRTC_CONFIG_MARKER}" "${WEBRTC_BUILD_CONFIG}")
         message(STATUS "${BoldGreen}WebRTC AEC3${ColorReset} libraries built and cached successfully (${WEBRTC_BUILD_CONFIG})")

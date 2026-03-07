@@ -50,6 +50,7 @@ if(PLATFORM_IOS)
                 -DBUILD_SHARED_LIBS=OFF
                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                 -DCMAKE_CXX_STANDARD=17
+            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${ABSEIL_PREFIX}
             BUILD_BYPRODUCTS
                 ${ABSEIL_PREFIX}/lib/libabsl_base.a
                 ${ABSEIL_PREFIX}/lib/libabsl_strings.a
@@ -100,6 +101,7 @@ if(USE_MUSL)
                 -DCMAKE_POSITION_INDEPENDENT_CODE=ON
                 -DCMAKE_C_FLAGS=-O3\ -fPIC
                 -DCMAKE_CXX_FLAGS=-O3\ -fPIC\ -target\ x86_64-linux-musl\ -stdlib=libc++
+            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${ABSEIL_PREFIX}
             BUILD_BYPRODUCTS
                 ${ABSEIL_PREFIX}/lib/libabsl_base.a
                 ${ABSEIL_PREFIX}/lib/libabsl_strings.a

@@ -55,6 +55,7 @@ if(PLATFORM_IOS AND BUILD_EXECUTABLES)
                 -DFT_DISABLE_BZIP2=ON
                 -DFT_DISABLE_HARFBUZZ=ON
                 -DFT_DISABLE_BROTLI=ON
+            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${FREETYPE_PREFIX}
             BUILD_BYPRODUCTS ${FREETYPE_PREFIX}/lib/libfreetype.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
@@ -116,6 +117,7 @@ if(USE_MUSL)
                 -DFT_DISABLE_BZIP2=ON
                 -DFT_DISABLE_HARFBUZZ=ON
                 -DFT_DISABLE_BROTLI=ON
+            INSTALL_COMMAND "${CMAKE_COMMAND}" --install . --prefix ${FREETYPE_PREFIX}
             BUILD_BYPRODUCTS ${FREETYPE_PREFIX}/lib/libfreetype.a
             LOG_DOWNLOAD TRUE
             LOG_CONFIGURE TRUE
