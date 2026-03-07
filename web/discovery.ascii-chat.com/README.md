@@ -98,5 +98,4 @@ npm run preview
 
 - **[ascii-chat](https://github.com/zfogg/ascii-chat)** - Main project repository
 - **[ascii-chat.com](https://github.com/zfogg/ascii-chat.com)** - Homepage and documentation site
-- **[web.ascii-chat.com](https://github.com/zfogg/ascii-chat)** - Browser client app
 - **ACDS server** - Runs at `discovery-service.ascii-chat.com:27225` (not open source)
