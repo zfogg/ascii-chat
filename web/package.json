@@ -2,6 +2,7 @@
   "type": "module",
   "name": "ascii-chat-web",
   "private": true,
+  "packageManager": "bun@1.3.9",
   "workspaces": [
     "packages/*",
     "www",
