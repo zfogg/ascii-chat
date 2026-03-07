@@ -2048,6 +2048,13 @@ asciichat_error_t options_init(int argc, char **argv) {
   // STAGE 8: Publish to RCU
   // ========================================================================
 
+  // Adjust flip_x default: if --file or --url is provided, default flip_x to false
+  // (file/URL content is typically not horizontally flipped, unlike webcam)
+  if ((opts.media_file[0] != '\0' || opts.media_url[0] != '\0') && opts.flip_x) {
+    opts.flip_x = false;
+    log_debug("flip_x auto-adjusted to false for media file/URL");
+  }
+
   // Save the quiet flag before publishing (RCU will be cleaned up before memory report runs)
 #if defined(DEBUG_MEMORY) && !defined(USE_MIMALLOC_DEBUG) && !defined(NDEBUG)
   bool quiet_for_memory_report = opts.quiet;

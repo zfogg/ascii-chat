@@ -440,31 +440,17 @@ static void on_exit_show_cursor(void) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
-  fprintf(stderr, "[DEBUG] main() called with argc=%d\n", argc);
-  fflush(stderr);
-
   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
   g_argc = argc;
   g_argv = argv;
 
-  // Print all arguments for debugging
-  for (int i = 0; i < argc; i++) {
-    fprintf(stderr, "[DEBUG] argv[%d] = %s\n", i, argv[i]);
-  }
-  fflush(stderr);
-
   // Validate basic argument structure
   if (argc < 1 || argv == NULL || argv[0] == NULL) {
-    fprintf(stderr, "Error: Invalid argument vector\n");
     return 1;
   }
 
   // Show cursor early in case a previous session crashed with it hidden
-  fprintf(stderr, "[DEBUG] calling terminal_cursor_show()\n");
-  fflush(stderr);
   (void)terminal_cursor_show();
-  fprintf(stderr, "[DEBUG] terminal_cursor_show() returned\n");
-  fflush(stderr);
 
   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
 #ifndef NDEBUG
@@ -512,10 +498,7 @@ int main(int argc, char *argv[]) {
       const char *pattern = argv[i + 1];
       asciichat_error_t filter_result = grep_init(pattern);
       if (filter_result != ASCIICHAT_OK) {
-        fprintf(stderr,
-                "ERROR: Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., "
-                "\"/query/ig\" or \"/literal/F\")\n",
-                pattern);
+        log_error("Invalid --grep pattern or invalid flags: \"%s\" - use /pattern/flags format (e.g., \"/query/ig\" or \"/literal/F\")", pattern);
         return 1;
       }
       i++; // Skip the pattern argument
@@ -531,10 +514,7 @@ int main(int argc, char *argv[]) {
   // Warn if Release build was built from dirty working tree
 #if ASCII_CHAT_GIT_IS_DIRTY
   if (strcmp(ASCII_CHAT_BUILD_TYPE, "Release") == 0) {
-    fprintf(stderr, "⚠️  WARNING: This Release build was compiled from a dirty git working tree!\n");
-    fprintf(stderr, "    Git commit: %s (dirty)\n", ASCII_CHAT_GIT_COMMIT_HASH);
-    fprintf(stderr, "    Build date: %s\n", ASCII_CHAT_BUILD_DATE);
-    fprintf(stderr, "    For reproducible builds, commit or stash changes before building.\n\n");
+    // Dirty git warning will be logged after logging initialization
   }
 #endif
 
@@ -682,11 +662,7 @@ int main(int argc, char *argv[]) {
   // If JSON format is requested, don't write text logs to file
   // All logs will be JSON formatted later once options_init() runs
   const char *early_log_file = early_json_format ? NULL : log_file;
-  fprintf(stderr, "[DEBUG] calling asciichat_shared_init(log_file=%s, is_client=%d)\n", early_log_file ? early_log_file : "null", is_client_like_mode);
-  fflush(stderr);
   asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
-  fprintf(stderr, "[DEBUG] asciichat_shared_init() returned: %d\n", init_result);
-  fflush(stderr);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
@@ -725,19 +701,14 @@ int main(int argc, char *argv[]) {
 #endif
 
   // NOW parse all options - can use logging with colors!
-  fprintf(stderr, "[DEBUG] calling options_init(argc=%d)\n", argc);
-  fflush(stderr);
   asciichat_error_t options_result = options_init(argc, argv);
-  fprintf(stderr, "[DEBUG] options_init() returned: %d\n", options_result);
-  fflush(stderr);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
     if (HAS_ERRNO(&error_ctx)) {
-      fprintf(stderr, "Error: %s\n", error_ctx.context_message);
+      log_error("Error: %s", error_ctx.context_message);
     } else {
-      fprintf(stderr, "Error: Failed to initialize options (error code: %d)\n", options_result);
+      log_error("Error: Failed to initialize options (error code: %d)", options_result);
     }
-    (void)fflush(stderr);
 
     // Clean up options state before exiting
     options_state_destroy();
@@ -749,7 +720,7 @@ int main(int argc, char *argv[]) {
   // Get parsed options
   const options_t *opts = options_get();
   if (!opts) {
-    fprintf(stderr, "Error: Options not initialized\n");
+    log_error("Error: Options not initialized");
     return 1;
   }
 
@@ -993,7 +964,7 @@ int main(int argc, char *argv[]) {
   // Find and dispatch to mode entry point
   const mode_descriptor_t *mode = find_mode(opts->detected_mode);
   if (!mode) {
-    fprintf(stderr, "Error: Mode not found for detected_mode=%d\n", opts->detected_mode);
+    log_error("Error: Mode not found for detected_mode=%d", opts->detected_mode);
     return 1;
   }
 
