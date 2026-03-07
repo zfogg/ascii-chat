@@ -22,7 +22,7 @@ echo "Linting with eslint..."
 build_commands+=("bun run lint")
 
 echo "Building with vite..."
-build_commands+=("bun run build:vite")
+build_commands+=("bun run vite build")
 
 # Build manpage html if not on Vercel
 if [ -z "$VERCEL" ]; then
