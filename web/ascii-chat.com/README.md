@@ -45,3 +45,4 @@ TODO:
 
 - SSR
 - Add E2E tests with Playwright
+- Dark mode support
