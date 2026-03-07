@@ -4,6 +4,9 @@
  * @brief ARM NEON-accelerated ASCII rendering utilities
  *
  * Shared helper functions and utilities for NEON rendering.
+ *
+ * TODO: Refactor NEON renderer with the rest of the renderer implementations
+ * to consolidate SIMD-accelerated ASCII rendering across scalar and vector paths.
  */
 
 #if SIMD_SUPPORT_NEON
@@ -35,7 +38,7 @@
 // Tables are now built inline when needed for optimal performance
 
 // Build NEON lookup tables inline (faster than caching - 30ns rebuild vs 50ns lookup)
-static inline void build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, uint8x16x4_t *tbl, uint8x16x4_t *char_lut,
+static inline void __attribute__((unused)) build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, uint8x16x4_t *tbl, uint8x16x4_t *char_lut,
                                             uint8x16x4_t *length_lut, uint8x16x4_t *char_byte0_lut,
                                             uint8x16x4_t *char_byte1_lut, uint8x16x4_t *char_byte2_lut,
                                             uint8x16x4_t *char_byte3_lut) {
@@ -105,7 +108,7 @@ static inline void build_neon_lookup_tables(utf8_palette_cache_t *utf8_cache, ui
 }
 
 // NEON-optimized RLE detection: find run length for char+color pairs
-static inline int find_rle_run_length_neon(const uint8_t *char_buf, const uint8_t *color_buf, int start_pos,
+static inline int __attribute__((unused)) find_rle_run_length_neon(const uint8_t *char_buf, const uint8_t *color_buf, int start_pos,
                                            int max_len, uint8_t target_char, uint8_t target_color) {
   int run_length = 1; // At least the starting position
 
@@ -179,7 +182,7 @@ static inline int find_rle_run_length_neon(const uint8_t *char_buf, const uint8_
 }
 
 // NEON helper: Check if all characters have same length
-static inline bool all_same_length_neon(uint8x16_t lengths, uint8_t *out_length) {
+static inline bool __attribute__((unused)) all_same_length_neon(uint8x16_t lengths, uint8_t *out_length) {
   uint8_t first_len = vgetq_lane_u8(lengths, 0);
   uint8x16_t first_len_vec = vdupq_n_u8(first_len);
   uint8x16_t all_same = vceqq_u8(lengths, first_len_vec);
@@ -236,7 +239,7 @@ void init_neon_decimal_table(void) {
 // For now, keep the existing scalar approach to avoid breaking the build
 
 // True NEON vectorized ANSI truecolor sequence assembly - no scalar loops!
-static inline size_t neon_assemble_truecolor_sequences_true_simd(uint8x16_t char_indices, uint8x16_t r_vals,
+static inline size_t __attribute__((unused)) neon_assemble_truecolor_sequences_true_simd(uint8x16_t char_indices, uint8x16_t r_vals,
                                                                  uint8x16_t g_vals, uint8x16_t b_vals,
                                                                  utf8_palette_cache_t *utf8_cache, char *output_buffer,
                                                                  size_t buffer_capacity, bool use_background) {
