@@ -537,15 +537,21 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
 
   // TODO/FIXME: WebSocket/WSS FPS performance gap vs TCP
   // Test commands to verify and compare:
-  //   ./scripts/debug-fps.zsh --proto tcp   # ~56 FPS (baseline)
-  //   ./scripts/debug-fps.zsh --proto ws    # ~49 FPS (gap: 7 FPS)
-  //   ./scripts/debug-fps.zsh --proto wss   # Should also match TCP despite TLS handshake
+  //   ./scripts/debug-fps.zsh --proto tcp   # ~56 FPS (baseline) ✓
+  //   ./scripts/debug-fps.zsh --proto ws    # ~49 FPS (gap: 7 FPS, 87% of TCP)
+  //   ./scripts/debug-fps.zsh --proto wss   # ~20 FPS CRASHES (heap-use-after-free in timer_stop)
   //
-  // Root cause: libwebsockets' buffering + service loop timing vs direct TCP socket handling.
-  // WebSocket is a solid, battle-tested protocol - there's no inherent reason for lower FPS.
-  // The protocol itself is fine; we need to optimize frame dispatch given lws constraints.
+  // TWO SEPARATE ISSUES:
+  // 1. FPS GAP (WS): Root cause is libwebsockets' buffering + service loop timing
+  //    vs direct TCP socket handling. Need to optimize frame dispatch in service thread.
   //
-  // Investigation areas:
+  // 2. WSS CRASH: AddressSanitizer heap-use-after-free in websocket_send()->timer_stop()
+  //    (lib/network/websocket/transport.c lines 745/800). Check for:
+  //    - Timer freed then accessed by service thread
+  //    - Race condition between START_TIMER(line 587) and dual STOP_TIMER paths
+  //    - TLS-specific timing that triggers the race
+  //
+  // Investigation areas for FPS gap:
   // - Optimize lws_service() loop frequency and timing in websocket/transport.c
   // - Check if frame reassembly or buffering can be more aggressive
   // - Profile service thread wakeup latency vs actual packet arrival
