@@ -241,7 +241,9 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       // total_samples_needed = snapshot_delay * sample_rate
       // frames_to_fill = snapshot_delay * actual_fps
       // samples_per_frame = total_samples_needed / frames_to_fill
-      samples_per_frame = (int)(ctx->audio_sample_rate * snapshot_delay) / (int)(snapshot_delay * actual_fps + 0.5);
+      double total_samples = (double)ctx->audio_sample_rate * snapshot_delay;
+      double frames_to_fill = snapshot_delay * actual_fps;
+      samples_per_frame = (int)(total_samples / frames_to_fill + 0.5);
 
       if (!log_once && frame_count % 10 == 0) {
         log_info("[AUDIO_DYNAMIC] Frame %d: elapsed=%.2fs, actual_fps=%.1f, samples_per_frame=%d",
