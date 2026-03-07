@@ -15,28 +15,23 @@ RUN bun install
 # Build www project only
 RUN bun run --filter './www' build
 
-# Production stage
-FROM caddy:alpine AS caddy_base
-
-# Production stage - combined
+# Production stage - Caddy + API
+FROM caddy:alpine AS caddy
 FROM node:22-alpine
 
-# Install bun and caddy
+# Install bun
 RUN npm install -g bun
-COPY --from=caddy_base /usr/bin/caddy /usr/local/bin/caddy
 
-WORKDIR /app
-
-# Copy monorepo structure from builder (needed for workspace resolution)
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/packages ./packages
-COPY --from=builder /app/www ./www
-
-# Copy prebuilt node_modules from builder (skip reinstall)
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/bun.lock* ./
+# Copy caddy binary
+COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/www
+
+# Copy only www dist and node_modules from builder
+COPY --from=builder /app/www/dist ./dist
+COPY --from=builder /app/www/node_modules ./node_modules
+COPY --from=builder /app/www/api.js ./api.js
+COPY --from=builder /app/www/package.json ./package.json
 
 # Copy Caddyfile for frontend serving + API proxying
 COPY www/Caddyfile /etc/caddy/Caddyfile

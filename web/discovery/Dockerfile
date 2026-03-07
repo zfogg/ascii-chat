@@ -15,20 +15,22 @@ RUN bun install
 # Build discovery project only
 RUN bun run --filter './discovery' build
 
-# Production stage
-FROM node:22-alpine
+# Clean up node_modules
+RUN rm -rf /app/node_modules /app/packages /app/www /app/web /app/bun.lock*
 
-WORKDIR /app
+# Production stage with Caddy
+FROM caddy:alpine
+
+WORKDIR /app/discovery
 
 # Copy built dist from builder
 COPY --from=builder /app/discovery/dist ./dist
 
-# Environment variable for API port
-ENV API_PORT=3001
+# Copy Caddyfile
+COPY discovery/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port for serving
 EXPOSE 3000
 
-# Serve static files
-RUN npm install -g http-server
-CMD ["http-server", "dist", "-p", "3000"]
+# Serve with Caddy
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
