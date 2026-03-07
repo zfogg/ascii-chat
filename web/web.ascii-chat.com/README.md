@@ -87,6 +87,9 @@ Modern browsers with WebAssembly support (Chrome, Firefox, Safari, Edge).
 Q: **WASM build fails with "emcc: command not found"**?
 A: Install Emscripten.
 
+Q: **HMR not working**?
+A: Make sure the dev server is running and the browser can reach http://localhost:3000.
+
 ## License
 
 Same as ascii-chat (see root repository).
