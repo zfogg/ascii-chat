@@ -1,6 +1,6 @@
 # ascii-chat.com
 
-Official website for ascii-chat - Video chat in your terminal
+Official homepage for ascii-chat - Video chat in your terminal
 
 ## Tech Stack
 
@@ -36,7 +36,7 @@ Deploy to Vercel or any static hosting service. The site is built to `dist/`.
 ## Pages
 
 - **/** - Home page with features, installation, and quick start
-- **/docs/** - ascii-chat executable documentation
+- **/docs/** - ascii-chat executable documentation pages
 - **/man1** - Complete man page reference (auto-generated)
 - **/man5** - Files man page
 - **/man3** - Searchable API docs

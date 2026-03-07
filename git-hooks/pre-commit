@@ -9,13 +9,13 @@ export all_staged=$(git diff --cached --name-only --diff-filter=ACM || true)
 cwp="scripts/check-web-project.zsh"
 bun run concurrently --kill-others-on-fail --kill-timeout $((1000 * 20)) \
   "scripts/clang-format-and-add.zsh" \
-  "$cwp 'web/web.ascii-chat.com'" \
-  "$cwp 'web/ascii-chat.com'" \
-  "$cwp 'web/discovery.ascii-chat.com'"
+  "$cwp 'web/web'" \
+  "$cwp 'web/www'" \
+  "$cwp 'web/discovery'"
 
-# Build web/ascii-chat.com and git add man pages
-if echo "$all_staged" | grep -q "^(web/ascii-chat\.com/|web/packages/)"; then
-  manpage_files=$(command -p ls web/ascii-chat.com/public/ascii-chat*-man*.html 2>/dev/null || true)
+# Build web/www and git add man pages
+if echo "$all_staged" | grep -q "^(web/www/|web/packages/)"; then
+  manpage_files=$(command -p ls web/www/public/ascii-chat*-man*.html 2>/dev/null || true)
   for manpage_file in $manpage_files; do
     if [[ -f "$manpage_file" ]] && git diff --name-only "$manpage_file" | grep -q "^$manpage_file$"; then
       git add $manpage_files
@@ -24,10 +24,10 @@ if echo "$all_staged" | grep -q "^(web/ascii-chat\.com/|web/packages/)"; then
   done
 fi
 
-# Build web/web.ascii-chat.com and git add WASM assets
-web_src_changed=$(echo "$all_staged" | grep -E "^(web/web\.ascii-chat\.com/|src/web/|web/packages/)" | grep -v "^web/web\.ascii-chat\.com/src/wasm/dist/" || true)
+# Build web/web and git add WASM assets
+web_src_changed=$(echo "$all_staged" | grep -E "^(web/web/|src/web/|web/packages/)" | grep -v "^web/web/src/wasm/dist/" || true)
 if [[ -n "$web_src_changed" ]]; then
-  wasm_files="web/web.ascii-chat.com/src/wasm/dist/mirror.js web/web.ascii-chat.com/src/wasm/dist/mirror.wasm"
+  wasm_files="web/web/src/wasm/dist/mirror.js web/web/src/wasm/dist/mirror.wasm"
   for wasm_file in $wasm_files; do
     if [[ -f "$wasm_file" ]] && git diff --name-only "$wasm_file" | grep -q "^$wasm_file$"; then
       git add "$wasm_file"

@@ -4,20 +4,20 @@
   "private": true,
   "workspaces": [
     "packages/*",
-    "ascii-chat.com",
-    "discovery.ascii-chat.com",
-    "web.ascii-chat.com"
+    "www",
+    "discovery",
+    "web"
   ],
   "scripts": {
-    "dev": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' dev",
+    "dev": "bun run --filter './www' --filter './discovery' --filter './web' dev",
     "build": "bun run --filter '*' build",
     "build:shared": "bun run --filter '@ascii-chat/shared' build",
-    "build:websites": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' build",
-    "type-check": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' type-check",
-    "lint": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' lint",
-    "format": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' format",
-    "format:check": "bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' format:check",
-    "build:sites": "bun run build:shared && bun run --filter './ascii-chat.com' --filter './discovery.ascii-chat.com' --filter './web.ascii-chat.com' build"
+    "build:websites": "bun run --filter './www' --filter './discovery' --filter './web' build",
+    "type-check": "bun run --filter './www' --filter './discovery' --filter './web' type-check",
+    "lint": "bun run --filter './www' --filter './discovery' --filter './web' lint",
+    "format": "bun run --filter './www' --filter './discovery' --filter './web' format",
+    "format:check": "bun run --filter './www' --filter './discovery' --filter './web' format:check",
+    "build:sites": "bun run build:shared && bun run --filter './www' --filter './discovery' --filter './web' build"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
