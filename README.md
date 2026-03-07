@@ -121,16 +121,20 @@ cd ascii-chat
 git submodule update --init --recursive
 
 # 3. Install dependencies (see supported platforms above)
-./scripts/install-deps.sh      # Linux or macOS
-# ./scripts/install-deps.ps1   # Windows
+./scripts/install-deps.sh     # Linux or macOS
+# ./scripts/install-deps.ps1  # Windows
 
-# 4. Build
-cmake --preset default
-cmake --build build
+# 4. Build and install
+sudo make install
 
-# 5. Run
-./build/bin/ascii-chat server  # Start server
-./build/bin/ascii-chat client  # Connect client (in another terminal)
+# 5. Run ascii-chat
+# Learn how to use it
+ascii-chat --help
+man ascii-chat
+# Use ascii-chat
+ascii-chat mirror -S -D 0  # Take an ASCII art selfie with your webcam
+ascii-chat server          # Start server
+ascii-chat client          # Connect client (in another terminal)
 ```
 
 For detailed build instructions, configuration options, and troubleshooting, see the **[Build System Documentation](https://zfogg.github.io/ascii-chat/group__build.html)**.
