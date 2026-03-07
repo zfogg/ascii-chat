@@ -231,6 +231,10 @@ static void mutex_iter_callback(uintptr_t key, const char *name, void *user_data
     return;
   }
 
+  if (!key) {
+    return;
+  }
+
   const mutex_t *mutex = (const mutex_t *)key;
   char timing_str[256] = {0};
   format_mutex_timing(mutex, timing_str, sizeof(timing_str));
@@ -249,6 +253,10 @@ static void rwlock_iter_callback(uintptr_t key, const char *name, void *user_dat
 
   const char *type = named_get_type(key);
   if (!type || strcmp(type, "rwlock") != 0) {
+    return;
+  }
+
+  if (!key) {
     return;
   }
 
