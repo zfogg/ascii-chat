@@ -1263,8 +1263,11 @@ void protocol_stop_connection() {
     log_debug("[PROTOCOL_STOP] Snapshot mode: flushing H.265 encoder before stopping capture thread");
     // Flush the encoder to output any buffered frames before exiting
     if (g_h265_encoder) {
-      uint8_t flush_buf[1024];
-      size_t flush_size = sizeof(flush_buf);
+      // Allocate buffer large enough for worst-case H.265 encoded frame
+      // Using 320x240 (typical test resolution) * 2x multiplier + header
+      size_t flush_buf_size = 5 + (320 * 240 * 2);
+      uint8_t *flush_buf = SAFE_MALLOC(flush_buf_size, uint8_t *);
+      size_t flush_size = flush_buf_size;
       asciichat_error_t flush_result = h265_encoder_flush(g_h265_encoder, flush_buf, &flush_size);
       if (flush_result == ASCIICHAT_OK && flush_size > 0) {
         log_info("[PROTOCOL_STOP] Flushed H.265 encoder: got %zu bytes of buffered frames", flush_size);
@@ -1275,6 +1278,7 @@ void protocol_stop_connection() {
           log_debug("[PROTOCOL_STOP] Sending flushed frame: %ux%u, %zu bytes", width, height, flush_size);
         }
       }
+      SAFE_FREE(flush_buf);
     }
     log_debug("[PROTOCOL_STOP] Snapshot mode: stopping capture thread before returning");
     capture_stop_thread();
