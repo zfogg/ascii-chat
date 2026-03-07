@@ -152,4 +152,17 @@ option(ASCIICHAT_ENABLE_CTEST_DASHBOARD "Configure CTest dashboards (include(CTe
 #
 option(BUILD_WEB "Build web components (WASM, browser targets)" OFF)
 
+# =============================================================================
+# Executable Build Configuration
+# =============================================================================
+# Controls whether CLI executables are built
+#
+# Default: ON (build executables on desktop)
+# iOS: OFF (library-only builds for iOS)
+#
+# Note: iOS.cmake sets BUILD_EXECUTABLES=OFF for iOS builds
+if(NOT DEFINED BUILD_EXECUTABLES)
+    option(BUILD_EXECUTABLES "Build command-line executables" ON)
+endif()
+
 

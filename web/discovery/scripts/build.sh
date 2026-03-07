@@ -8,13 +8,7 @@ echo "Type checking with TypeScript..."
 bun run tsc --noEmit
 
 echo "Formatting check with prettier..."
-to_format=$(bun prettier . --list-different || true)
-if [ -n "$to_format" ]; then
-  echo "Files need formatting:"
-  echo "$to_format"
-  echo "Running prettier --write..."
-  bun run format
-fi
+bun run format:check
 
 echo "Linting with eslint..."
 bun run lint

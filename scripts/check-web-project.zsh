@@ -24,10 +24,15 @@ check_web_project() {
       done
     fi
 
-    # Type check
+    # Type check and lint
     echo "  ✓ Type checking and linting..."
-    bun run build || {
-      echo "  ✗ Build failed in $project_name"
+    bun run type-check || {
+      echo "  ✗ Type check failed in $project_name"
+      cd - > /dev/null
+      return 1
+    }
+    bun run lint || {
+      echo "  ✗ Linting failed in $project_name"
       cd - > /dev/null
       return 1
     }

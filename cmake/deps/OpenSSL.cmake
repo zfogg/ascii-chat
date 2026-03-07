@@ -288,8 +288,9 @@ endif()
 
 # =============================================================================
 # Native Linux/macOS: Build OpenSSL 3.4.0 from source for libwebsockets
+# SKIP for Debug/Dev builds - cmake execute_process hangs, use system OpenSSL instead
 # =============================================================================
-if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+if(FALSE AND NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
     message(STATUS "Configuring ${BoldBlue}OpenSSL 3.4.0${ColorReset} from source for libwebsockets...")
 
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")

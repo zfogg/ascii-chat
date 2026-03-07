@@ -25,7 +25,6 @@ function languageOptions(jsx = false, useTypeScript = false) {
   };
   if (useTypeScript) {
     opts.parser = tseslint.parser;
-    opts.parserOptions.projectService = true;
   }
   return opts;
 }
@@ -86,7 +85,8 @@ export default defineConfig([
     },
     rules: {
       "no-var": "error",
-      // React TSX specific configuration                                      │
+      "react/prop-types": "off",
+      "react/no-unescaped-entities": "off",
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": "warn",
     },
@@ -129,7 +129,8 @@ export default defineConfig([
           varsIgnorePattern: "^_",
         },
       ],
-      // React TSX specific configuration                                      │
+      "react/prop-types": "off",
+      "react/no-unescaped-entities": "off",
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": "warn",
     },

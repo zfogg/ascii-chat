@@ -440,9 +440,19 @@ static void on_exit_show_cursor(void) {
  * ============================================================================ */
 
 int main(int argc, char *argv[]) {
+  fprintf(stderr, "[DEBUG] main() called with argc=%d\n", argc);
+  fflush(stderr);
+
   // Set global argc/argv for early argv inspection (e.g., in terminal.c)
   g_argc = argc;
   g_argv = argv;
+
+  // Print all arguments for debugging
+  for (int i = 0; i < argc; i++) {
+    fprintf(stderr, "[DEBUG] argv[%d] = %s\n", i, argv[i]);
+  }
+  fflush(stderr);
+
   // Validate basic argument structure
   if (argc < 1 || argv == NULL || argv[0] == NULL) {
     fprintf(stderr, "Error: Invalid argument vector\n");
@@ -450,7 +460,11 @@ int main(int argc, char *argv[]) {
   }
 
   // Show cursor early in case a previous session crashed with it hidden
+  fprintf(stderr, "[DEBUG] calling terminal_cursor_show()\n");
+  fflush(stderr);
   (void)terminal_cursor_show();
+  fprintf(stderr, "[DEBUG] terminal_cursor_show() returned\n");
+  fflush(stderr);
 
   // Initialize the named registry for debugging (allows --debug-state to show registered synchronization primitives)
 #ifndef NDEBUG
@@ -668,7 +682,11 @@ int main(int argc, char *argv[]) {
   // If JSON format is requested, don't write text logs to file
   // All logs will be JSON formatted later once options_init() runs
   const char *early_log_file = early_json_format ? NULL : log_file;
+  fprintf(stderr, "[DEBUG] calling asciichat_shared_init(log_file=%s, is_client=%d)\n", early_log_file ? early_log_file : "null", is_client_like_mode);
+  fflush(stderr);
   asciichat_error_t init_result = asciichat_shared_init(early_log_file, is_client_like_mode);
+  fprintf(stderr, "[DEBUG] asciichat_shared_init() returned: %d\n", init_result);
+  fflush(stderr);
   if (init_result != ASCIICHAT_OK) {
     return init_result;
   }
@@ -707,7 +725,11 @@ int main(int argc, char *argv[]) {
 #endif
 
   // NOW parse all options - can use logging with colors!
+  fprintf(stderr, "[DEBUG] calling options_init(argc=%d)\n", argc);
+  fflush(stderr);
   asciichat_error_t options_result = options_init(argc, argv);
+  fprintf(stderr, "[DEBUG] options_init() returned: %d\n", options_result);
+  fflush(stderr);
   if (options_result != ASCIICHAT_OK) {
     asciichat_error_context_t error_ctx;
     if (HAS_ERRNO(&error_ctx)) {

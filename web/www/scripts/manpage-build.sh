@@ -6,7 +6,7 @@ set -euo pipefail
 cd  "$(dirname "$0")/.."
 
 # Build ascii-chat and generate manpages
-# Now we're in web/ascii-chat.com, so root is ../../
+# Now we're in web/www so root is ../../
 REPO_ROOT="$(cd ../.. && pwd)"
 if [ -d "$REPO_ROOT" ]; then
   man1_just_edited=$(perl -e 'exit(time - (stat($ARGV[0]))[9] <= 2 ? 0 : 1)' "$REPO_ROOT/share/man/man1/ascii-chat.1.in"; echo $?)
