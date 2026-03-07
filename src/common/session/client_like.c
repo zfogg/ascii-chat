@@ -561,13 +561,6 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     log_debug("stdin_reader passed to display context");
   }
 
-  // Set audio source for render-file encoding
-  media_source_t *render_audio_source = session_capture_get_media_source(capture);
-  if (render_audio_source && GET_OPTION(render_file) && strlen(GET_OPTION(render_file)) > 0) {
-    session_display_set_render_audio_source(display, render_audio_source);
-    log_debug("Audio source set for render-file output");
-  }
-
   // ============================================================================
   // SETUP: End Splash Screen
   // ============================================================================
@@ -612,6 +605,17 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
       log_fatal("Failed to initialize mirror capture source");
       result = ERROR_MEDIA_INIT;
       goto cleanup;
+    }
+
+    // Set audio source for render-file encoding (after capture is created)
+    media_source_t *render_audio_source = session_capture_get_media_source(capture);
+    const char *render_file_path = GET_OPTION(render_file);
+    log_debug("[AUDIO_SOURCE] render_audio_source=%p, render_file=%s, render_file_len=%zu",
+             render_audio_source, render_file_path ? render_file_path : "(null)",
+             render_file_path ? strlen(render_file_path) : 0);
+    if (render_audio_source && render_file_path && strlen(render_file_path) > 0) {
+      session_display_set_render_audio_source(display, render_audio_source);
+      log_debug("Audio source set for render-file output");
     }
   }
 

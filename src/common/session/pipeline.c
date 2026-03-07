@@ -280,22 +280,6 @@ static void *pipeline_capture_thread(void *arg) {
             }
         }
 
-        // Read and write audio samples for render-file encoding (before frame processing)
-        // Audio is read at a fixed rate independent of video FPS to maintain sync
-        if (pipeline->has_render_file && session_capture_has_audio(pipeline->capture)) {
-            // Read audio in small chunks (e.g., 4800 samples = 100ms at 48kHz)
-            // This keeps audio in sync with video without needing large buffers
-            float audio_buffer[4800];
-            size_t samples_read = session_capture_read_audio(pipeline->capture, audio_buffer, 4800);
-            log_debug_every(30 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Audio read: %zu samples", samples_read);
-            if (samples_read > 0) {
-                asciichat_error_t audio_err = session_display_write_audio(pipeline->display, audio_buffer, samples_read);
-                if (audio_err != ASCIICHAT_OK) {
-                    log_warn_every(1 * NS_PER_SEC_INT, "[PIPELINE_CAPTURE] Failed to write audio samples: %d", audio_err);
-                }
-            }
-        }
-
         // Respect configured FPS
         session_capture_sleep_for_fps(pipeline->capture);
 
