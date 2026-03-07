@@ -563,22 +563,29 @@ if(BUILD_WEB AND BUILD_EXECUTABLES)
         ${CMAKE_BINARY_DIR}/generated
     )
 
+    # Add mimalloc include directory (needed for SAFE_MALLOC macros)
+    if(MIMALLOC_INCLUDE_DIRS)
+        target_include_directories(ascii-chat-strings PRIVATE ${MIMALLOC_INCLUDE_DIRS})
+    endif()
+
     # Compile with optimization
     target_compile_options(ascii-chat-strings PRIVATE -std=c23 -O3)
 
     # Link libsodium for randombytes_uniform()
     target_link_libraries(ascii-chat-strings PRIVATE sodium)
 
-    # Static linking for release builds with musl
+    # Static linking for release builds (musl on Linux only)
+    # Note: macOS doesn't support fully static binaries - it uses dynamic linking for libc
+    # Windows uses static linking by default for Release builds
     if(USE_MUSL)
-        # Enforce static linking for musl builds
+        # Enforce static linking for musl builds (Linux only)
         set_target_properties(ascii-chat-strings PROPERTIES
             LINK_FLAGS "-static"
         )
         # Link musl libc explicitly
         target_link_options(ascii-chat-strings PRIVATE -static-libgcc)
-    elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-        # Static linking for release builds on non-musl systems
+    elseif(CMAKE_BUILD_TYPE STREQUAL "Release" AND UNIX AND NOT APPLE)
+        # Static linking for release builds on Linux (non-musl)
         set_target_properties(ascii-chat-strings PROPERTIES
             LINK_FLAGS "-static"
         )
