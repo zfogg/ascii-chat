@@ -2,6 +2,7 @@
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
   "installCommand": "cd .. && bun install",
+  "root": "web/www",
   "routes": [
     {
       "src": "/api/(.*)",
