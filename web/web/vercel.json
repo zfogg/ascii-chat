@@ -1,7 +1,6 @@
 {
   "buildCommand": "bun run build",
   "outputDirectory": "dist",
-  "installCommand": "cd .. && bun install",
   "rewrites": [
     {
       "source": "/",
