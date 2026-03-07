@@ -44,4 +44,4 @@ Deploy to Vercel or any static hosting service. The site is built to `dist/`.
 TODO:
 
 - SSR
-test
+  test

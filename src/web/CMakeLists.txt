@@ -335,7 +335,7 @@ target_compile_definitions(wasm-common PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Enable Emscripten's pthread support
 target_compile_options(wasm-common PRIVATE -pthread)
-target_link_options(wasm-common PRIVATE -pthread)
+target_link_options(wasm-common PRIVATE -pthread -Wno-error=pthreads-mem-growth)
 
 # Link dependencies for shared library
 target_link_libraries(wasm-common PRIVATE
@@ -361,7 +361,7 @@ target_compile_definitions(mirror-web PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Enable Emscripten's pthread support and SIMD for video processing
 target_compile_options(mirror-web PRIVATE -pthread -msimd128 -mavx2)
-target_link_options(mirror-web PRIVATE -pthread)
+target_link_options(mirror-web PRIVATE -pthread -Wno-error=pthreads-mem-growth)
 
 # Link dependencies (built for WASM via FetchContent)
 target_link_libraries(mirror-web PRIVATE
@@ -390,7 +390,7 @@ target_compile_definitions(client-web PRIVATE EMSCRIPTEN_BUILD=1)
 
 # Enable Emscripten's pthread support
 target_compile_options(client-web PRIVATE -pthread)
-target_link_options(client-web PRIVATE -pthread)
+target_link_options(client-web PRIVATE -pthread -Wno-error=pthreads-mem-growth)
 
 # Link dependencies for client mode
 target_link_libraries(client-web PRIVATE
@@ -490,7 +490,7 @@ set(EXPORTED_FUNCTIONS_CLIENT
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_MIRROR_CSV "${EXPORTED_FUNCTIONS_MIRROR}")
 string(REPLACE ";" "," EXPORTED_FUNCTIONS_CLIENT_CSV "${EXPORTED_FUNCTIONS_CLIENT}")
 
-set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8,print,printErr")
+set(EXPORTED_RUNTIME_METHODS_CSV "ccall,cwrap,UTF8ToString,stringToUTF8,lengthBytesUTF8,getValue,setValue,HEAPU8")
 
 # Use target_link_options for better cross-platform quoting
 target_link_options(mirror-web PRIVATE
@@ -508,6 +508,8 @@ target_link_options(mirror-web PRIVATE
     -msimd128
     -O3
     --no-entry
+    -Wno-js-compiler
+    -Wno-pthreads-mem-growth
 )
 
 target_link_options(client-web PRIVATE
@@ -525,6 +527,8 @@ target_link_options(client-web PRIVATE
     -msimd128
     -O3
     --no-entry
+    -Wno-js-compiler
+    -Wno-pthreads-mem-growth
 )
 
 # Set output names to match target names
