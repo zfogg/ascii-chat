@@ -232,23 +232,17 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
     frame_count++;
 
     if (snapshot_mode && snapshot_delay > 0) {
-      // Calculate actual FPS from elapsed time and frame count
-      uint64_t elapsed_ns = (captured_ns > first_frame_ns) ? (captured_ns - first_frame_ns) : 1;
-      double elapsed_sec = elapsed_ns / 1e9;
-      double actual_fps = (elapsed_sec > 0) ? frame_count / elapsed_sec : 14;  // Fallback to 14 if no time elapsed
+      // Simple approach: distribute snapshot_delay * sample_rate evenly across expected ~70 frames
+      // This ensures total audio duration = snapshot_delay seconds
+      int total_target_samples = (int)(ctx->audio_sample_rate * snapshot_delay);
+      int expected_frame_count = (int)(13.6 * snapshot_delay);  // 13.6 FPS is typical capture rate
+      samples_per_frame = total_target_samples / expected_frame_count;
 
-      // Calculate samples needed to fill snapshot duration at actual FPS
-      // total_samples_needed = snapshot_delay * sample_rate
-      // frames_to_fill = snapshot_delay * actual_fps
-      // samples_per_frame = total_samples_needed / frames_to_fill
-      double total_samples = (double)ctx->audio_sample_rate * snapshot_delay;
-      double frames_to_fill = snapshot_delay * actual_fps;
-      samples_per_frame = (int)(total_samples / frames_to_fill + 0.5);
-
-      if (!log_once && frame_count % 10 == 0) {
-        log_info("[AUDIO_DYNAMIC] Frame %d: elapsed=%.2fs, actual_fps=%.1f, samples_per_frame=%d",
-                 frame_count, elapsed_sec, actual_fps, samples_per_frame);
+      // Ensure minimum to avoid rounding to 0
+      if (samples_per_frame < 100) {
+        samples_per_frame = 100;
       }
+
     } else {
       // Normal/live mode: use 60 FPS baseline
       samples_per_frame = ctx->audio_sample_rate / 60;
@@ -280,10 +274,6 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
         // EOF reached or error - no more audio samples available from source
         audio_eof_reached = 1;
         samples_read = 0;
-        if (audio_frame_count < 5 || audio_frame_count > 65) {
-          log_info("[AUDIO] frame[%d]: audio source EOF detected (got %d samples)",
-                   audio_frame_count, samples_read);
-        }
       }
       audio_frame_count++;
     } else if (!audio_eof_reached && ctx->audio_capture_rb) {
@@ -310,6 +300,7 @@ asciichat_error_t render_file_write_frame(render_file_ctx_t *ctx, const char *an
       memset(ctx->audio_read_buf, 0, samples_per_frame * sizeof(float));
       ffmpeg_encoder_write_audio(ctx->encoder, ctx->audio_read_buf, samples_per_frame);
     }
+
   }
 
   return err;
