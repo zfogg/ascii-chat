@@ -28,14 +28,14 @@ if(PLATFORM_IOS)
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
-        # Download OpenSSL source
-        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-3.4.0.tar.gz")
+        # Download OpenSSL source (1.1.1 for libwebsockets compatibility)
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-1.1.1w.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL 3.4.0...")
+            message(STATUS "  Downloading OpenSSL 1.1.1w...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz"
+                "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
+                EXPECTED_HASH SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -57,7 +57,7 @@ if(PLATFORM_IOS)
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract OpenSSL tarball")
             endif()
-            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-3.4.0" "${OPENSSL_SOURCE_DIR}")
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-1.1.1w" "${OPENSSL_SOURCE_DIR}")
         endif()
 
         # Configure OpenSSL for iOS using clang directly (more reliable than ios64-cross)
@@ -68,7 +68,7 @@ if(PLATFORM_IOS)
                 export CC=clang
                 export CFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -miphoneos-version-min=16.0 -fPIC'
                 export LDFLAGS='-arch arm64 -isysroot ${IOS_SDK_PATH} -fPIC'
-                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} no-shared no-tests no-ui-console < /dev/null
+                '${OPENSSL_SOURCE_DIR}/Configure' darwin64-arm64-cc --prefix=${OPENSSL_PREFIX} no-shared no-tests < /dev/null
             "
             WORKING_DIRECTORY "${OPENSSL_SOURCE_DIR}"
             TIMEOUT 60
@@ -175,14 +175,14 @@ if(USE_MUSL)
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
-        # Download OpenSSL source
-        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-3.4.0.tar.gz")
+        # Download OpenSSL source (1.1.1 for libwebsockets compatibility)
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-1.1.1w.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL 3.4.0...")
+            message(STATUS "  Downloading OpenSSL 1.1.1w...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/openssl-3.4.0/openssl-3.4.0.tar.gz"
+                "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf
+                EXPECTED_HASH SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c
                 STATUS DOWNLOAD_STATUS
                 SHOW_PROGRESS
             )
@@ -204,8 +204,8 @@ if(USE_MUSL)
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract OpenSSL tarball")
             endif()
-            # Move from openssl-3.4.0/ to src/openssl/
-            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-3.4.0" "${OPENSSL_SOURCE_DIR}")
+            # Move from openssl-1.1.1w/ to src/openssl/
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-1.1.1w" "${OPENSSL_SOURCE_DIR}")
         endif()
 
         # Configure OpenSSL
@@ -300,9 +300,8 @@ endif()
 
 # =============================================================================
 # Native Linux/macOS: Build OpenSSL 3.4.0 from source for libwebsockets
-# SKIP for Debug/Dev builds - cmake execute_process hangs, use system OpenSSL instead
 # =============================================================================
-if(FALSE AND NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
+if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
     message(STATUS "Configuring ${BoldBlue}OpenSSL 3.4.0${ColorReset} from source for libwebsockets...")
 
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
