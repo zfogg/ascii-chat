@@ -28,9 +28,9 @@ services:
     image: zfogg/ascii-chat-web-www:latest
     ports:
       - "5173:5173"
-      - "30001:30001"
+      - "3001:3001"
     environment:
-      - API_PORT=30001
+      - API_PORT=3001
     container_name: ascii-chat-www
 
 volumes:

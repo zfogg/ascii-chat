@@ -36,11 +36,11 @@ COPY --from=builder /app/www/package.json ./package.json
 # Copy Caddyfile for frontend serving + API proxying
 COPY www/Caddyfile /etc/caddy/Caddyfile
 
-# Environment variable for API port (default 30001)
-ENV API_PORT=30001
+# Environment variable for API port (default 3001)
+ENV API_PORT=3001
 
 # Expose ports
-EXPOSE 5173 30001
+EXPOSE 5173 3001
 
 # Start script that runs both API and Caddy
 RUN echo '#!/bin/sh' > /start.sh && \

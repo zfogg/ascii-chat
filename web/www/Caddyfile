@@ -6,6 +6,6 @@
   try_files {path} /index.html
 }
 
-:30001 {
-  reverse_proxy * localhost:30001
+:3001 {
+  reverse_proxy * localhost:3001
 }
