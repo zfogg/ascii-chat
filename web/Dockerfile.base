@@ -1,0 +1,19 @@
+# Base Dockerfile for all web projects
+# Provides Node.js, bun, and common build dependencies
+FROM node:22-alpine
+
+# Install bun
+RUN npm install -g bun
+
+# Set working directory
+WORKDIR /app
+
+# Copy root package files for monorepo
+COPY package.json package-lock.json ./
+RUN npm ci --legacy-peer-deps
+
+# Install project dependencies
+COPY . .
+
+# Default command (override in child Dockerfiles)
+CMD ["npm", "run", "build"]

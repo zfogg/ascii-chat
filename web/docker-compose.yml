@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  discovery:
+    build:
+      context: .
+      dockerfile: discovery/Dockerfile
+    ports:
+      - "3001:3000"
+    container_name: ascii-chat-discovery
+
+  web:
+    build:
+      context: .
+      dockerfile: web/Dockerfile
+    ports:
+      - "3002:3000"
+    container_name: ascii-chat-web
+
+  www:
+    build:
+      context: .
+      dockerfile: www/Dockerfile
+    ports:
+      - "5173:5173"
+      - "3000:3000"
+    container_name: ascii-chat-www
+
+volumes:
+  node_modules:
