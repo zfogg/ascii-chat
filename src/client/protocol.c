@@ -535,6 +535,25 @@ static void handle_ascii_frame_packet(const void *data, size_t len) {
     last_render_time_ns = render_time_ns;
   }
 
+  // TODO/FIXME: WebSocket/WSS FPS performance gap vs TCP
+  // Test commands to verify and compare:
+  //   ./scripts/debug-fps.zsh --proto tcp   # ~56 FPS (baseline)
+  //   ./scripts/debug-fps.zsh --proto ws    # ~49 FPS (gap: 7 FPS)
+  //   ./scripts/debug-fps.zsh --proto wss   # Should also match TCP despite TLS handshake
+  //
+  // Root cause: libwebsockets' buffering + service loop timing vs direct TCP socket handling.
+  // WebSocket is a solid, battle-tested protocol - there's no inherent reason for lower FPS.
+  // The protocol itself is fine; we need to optimize frame dispatch given lws constraints.
+  //
+  // Investigation areas:
+  // - Optimize lws_service() loop frequency and timing in websocket/transport.c
+  // - Check if frame reassembly or buffering can be more aggressive
+  // - Profile service thread wakeup latency vs actual packet arrival
+  // - Consider frame batching or predictive dispatch in lws callbacks
+  // - Reduce latency between packet arrival and frame processing in service loop
+  //
+  // Success criteria: ws/wss FPS within 2% of TCP using --proto option in debug-fps.zsh
+
   // Increment global frame counter BEFORE rendering (to track unique frames received)
   int total_frames = atomic_fetch_add_u64(&g_frames_rendered, 1) + 1;
 
