@@ -305,15 +305,7 @@ install(DIRECTORY "${CMAKE_SOURCE_DIR}/deps/ascii-chat-deps/tomlc17/src/"
 
 # Install pkg-config files for both shared and static libraries
 if(CMAKE_BUILD_TYPE STREQUAL "Release")
-    # Set mimalloc requirement conditionally (for shared library only)
-    if(USE_MIMALLOC)
-        set(MIMALLOC_REQUIREMENT "mimalloc, ")
-    else()
-        set(MIMALLOC_REQUIREMENT "")
-    endif()
-
-    # Configure the pkgconfig file (works for both shared and static library)
-    # Both require external dependencies: libsodium, zstd, portaudio, opus, mimalloc
+    # Configure shared library .pc file (simple - no transitive deps needed)
     configure_file(
         "${CMAKE_SOURCE_DIR}/lib/pkgconfig/libasciichat.pc.in"
         "${CMAKE_BINARY_DIR}/lib/pkgconfig/libasciichat.pc"
@@ -323,7 +315,37 @@ if(CMAKE_BUILD_TYPE STREQUAL "Release")
         DESTINATION lib/pkgconfig
         COMPONENT Development
     )
-    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} file: libasciichat.pc")
+
+    # Configure static library .pc file (needs all transitive dependencies)
+    # Only mimalloc is optional
+    if(USE_MIMALLOC)
+        set(ASCIICHAT_OPTIONAL_MIMALLOC_PC "mimalloc, ")
+    else()
+        set(ASCIICHAT_OPTIONAL_MIMALLOC_PC "")
+    endif()
+
+    # Build Libs.private for static build
+    if(APPLE)
+        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -framework Foundation -framework AVFoundation -framework CoreMedia -framework CoreVideo -framework CoreAudio -framework AudioUnit -framework AudioToolbox -framework CoreServices -framework IOKit -lc++")
+    elseif(UNIX AND NOT APPLE)
+        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -ldl -lpthread -lstdc++")
+    elseif(WIN32)
+        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lws2_32 -luser32 -ladvapi32 -ldbghelp -lmf -lmfplat -lmfreadwrite -lmfuuid -lole32 -lcrypt32")
+    else()
+        set(ASCIICHAT_STATIC_LIBS_PRIVATE "-lm -lpthread")
+    endif()
+
+    configure_file(
+        "${CMAKE_SOURCE_DIR}/lib/pkgconfig/libasciichat-static.pc.in"
+        "${CMAKE_BINARY_DIR}/lib/pkgconfig/libasciichat-static.pc"
+        @ONLY
+    )
+    install(FILES "${CMAKE_BINARY_DIR}/lib/pkgconfig/libasciichat-static.pc"
+        DESTINATION lib/pkgconfig
+        COMPONENT Development
+    )
+
+    message(STATUS "${BoldGreen}Configured${ColorReset} ${BoldBlue}pkg-config${ColorReset} files: libasciichat.pc, libasciichat-static.pc")
 endif()
 
 # Install CMake package config file (for find_package support)

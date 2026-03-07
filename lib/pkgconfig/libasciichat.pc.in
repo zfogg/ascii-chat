@@ -1,11 +1,11 @@
-# ascii-chat pkg-config file
-# For use with pkg-config to get compile and link flags
+# ascii-chat pkg-config file (shared library)
 #
-# Usage (shared library):
+# This file is for shared library consumers only.
+# Shared library consumers do NOT need transitive dependencies
+# (they are embedded in the dylib).
+#
+# Usage:
 #   pkg-config --cflags --libs ascii-chat
-#
-# Usage (static library):
-#   pkg-config --cflags --libs --static ascii-chat
 
 prefix=@CMAKE_INSTALL_PREFIX@
 exec_prefix=${prefix}
@@ -17,14 +17,9 @@ Description: Video chat in your terminal
 Version: @PROJECT_VERSION@
 URL: @PROJECT_HOMEPAGE_URL@
 
-# Required dependencies - users must install these via their package manager
-Requires.private: @MIMALLOC_REQUIREMENT@libsodium >= 1.0.18, libzstd, portaudio-2.0, opus
-
-# Main library to link
+# Shared library consumers need only headers and the library itself
+# All dependencies are embedded in the dylib
 Libs: -L${libdir} -lasciichat
-
-# System libraries (and bundled deps: BearSSL, WebRTC AEC3 are in libasciichat.a)
-Libs.private: -lm -lpthread
 
 # Include directories
 Cflags: -I${includedir} -I${includedir}/ascii-chat

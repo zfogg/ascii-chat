@@ -1,0 +1,31 @@
+# ascii-chat pkg-config file (static library)
+#
+# This file is for static library consumers only.
+# Static library consumers MUST link all transitive dependencies
+# (they are not embedded in the static archive).
+#
+# Usage:
+#   pkg-config --cflags --libs --static ascii-chat-static
+
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
+
+Name: ascii-chat (static)
+Description: Video chat in your terminal — static library
+Version: @PROJECT_VERSION@
+URL: @PROJECT_HOMEPAGE_URL@
+
+# Core required dependencies (all platforms)
+# mimalloc is optional, everything else is required
+Requires.private: libsodium >= 1.0.18, libzstd, portaudio-2.0, opus, libpcre2-8, sqlite3, @ASCIICHAT_OPTIONAL_MIMALLOC_PC@libavformat, libavcodec, libavutil, libswscale, libswresample, openssl, freetype2, fontconfig, libwebsockets
+
+# Main library to link
+Libs: -L${libdir} -lasciichat
+
+# System libraries and platform-specific frameworks
+Libs.private: @ASCIICHAT_STATIC_LIBS_PRIVATE@
+
+# Include directories
+Cflags: -I${includedir} -I${includedir}/ascii-chat
