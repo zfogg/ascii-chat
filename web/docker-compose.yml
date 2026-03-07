@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: discovery/Dockerfile
+    image: zfogg/ascii-chat-web-discovery:latest
     ports:
       - "5174:3000"
     environment:
@@ -13,6 +14,7 @@ services:
     build:
       context: .
       dockerfile: web/Dockerfile
+    image: zfogg/ascii-chat-web-web:latest
     ports:
       - "3000:3000"
     environment:
@@ -23,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: www/Dockerfile
+    image: zfogg/ascii-chat-web-www:latest
     ports:
       - "5173:5173"
       - "30001:30001"
