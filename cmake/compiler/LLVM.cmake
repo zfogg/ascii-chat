@@ -143,22 +143,30 @@ function(configure_llvm_pre_project)
     # =============================================================================
     # Homebrew's LLVM doesn't include static libraries. For CI builds, set
     # ASCIICHAT_LIBCXX_STATIC_ROOT to point to official LLVM release binaries.
+    # If static libc++ is not available, skip this step and use dynamic linking.
     if(APPLE AND CMAKE_BUILD_TYPE STREQUAL "Release" AND NOT ASCIICHAT_SHARED_DEPS)
         if(ASCIICHAT_LIBCXX_STATIC_ROOT)
             set(_libcxx_root "${ASCIICHAT_LIBCXX_STATIC_ROOT}")
         else()
             set(_libcxx_root "${LLVM_ROOT_PREFIX}")
         endif()
-        set(ASCIICHAT_STATIC_LIBCXX "${_libcxx_root}/lib/libc++.a" PARENT_SCOPE)
-        set(ASCIICHAT_STATIC_LIBCXXABI "${_libcxx_root}/lib/libc++abi.a" PARENT_SCOPE)
-        set(ASCIICHAT_STATIC_LIBUNWIND "${_libcxx_root}/lib/libunwind.a" PARENT_SCOPE)
-        set(ASCIICHAT_STATIC_LIBCXX_LIBS
-            "${_libcxx_root}/lib/libc++.a"
-            "${_libcxx_root}/lib/libc++abi.a"
-            "${_libcxx_root}/lib/libunwind.a"
-            PARENT_SCOPE
-        )
-        message(STATUS "${BoldGreen}Static libc++${ColorReset} from: ${BoldCyan}${_libcxx_root}/lib${ColorReset}")
+
+        # Check if static libc++ actually exists (Homebrew LLVM doesn't provide it)
+        if(EXISTS "${_libcxx_root}/lib/libc++.a")
+            set(ASCIICHAT_STATIC_LIBCXX "${_libcxx_root}/lib/libc++.a" PARENT_SCOPE)
+            set(ASCIICHAT_STATIC_LIBCXXABI "${_libcxx_root}/lib/libc++abi.a" PARENT_SCOPE)
+            set(ASCIICHAT_STATIC_LIBUNWIND "${_libcxx_root}/lib/libunwind.a" PARENT_SCOPE)
+            set(ASCIICHAT_STATIC_LIBCXX_LIBS
+                "${_libcxx_root}/lib/libc++.a"
+                "${_libcxx_root}/lib/libc++abi.a"
+                "${_libcxx_root}/lib/libunwind.a"
+                PARENT_SCOPE
+            )
+            message(STATUS "${BoldGreen}Static libc++${ColorReset} from: ${BoldCyan}${_libcxx_root}/lib${ColorReset}")
+        else()
+            message(STATUS "${BoldYellow}Static libc++ not found${ColorReset} at ${_libcxx_root}/lib/libc++.a")
+            message(STATUS "${BoldYellow}Homebrew LLVM detected${ColorReset} - using dynamic libc++ instead (force ASCIICHAT_SHARED_DEPS=ON for static)")
+        endif()
     endif()
 
     # =============================================================================
