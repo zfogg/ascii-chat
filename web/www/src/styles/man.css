@@ -189,29 +189,53 @@ section {
   color: #d1d5db;
 }
 
-/* Macros table styling */
+/* Macros table styling with CSS grid */
 .man-macros-table {
   width: 100%;
-  border-collapse: separate;
-  border-spacing: 0 0.5rem;
+  display: grid;
   margin: 1rem 0;
+  border-collapse: collapse;
+  gap: 1rem;
+}
+
+.man-macros-table tbody {
+  display: contents;
+}
+
+.man-macros-table tr {
+  display: contents;
+}
+
+/* Desktop: 3 columns (name | value | description) */
+@media (min-width: 768px) {
+  .man-macros-table {
+    grid-template-columns: auto auto 1fr;
+  }
+}
+
+/* Mobile: 2 columns for name/value, description spans full width */
+@media (max-width: 767px) {
+  .man-macros-table {
+    grid-template-columns: auto auto;
+  }
+
+  .man-macros-table .man-macro-desc {
+    grid-column: 1 / -1;
+  }
 }
 
 .man-macro-name {
   color: #c084fc;
   font-weight: 600;
-  padding-right: 1rem;
-  vertical-align: top;
   white-space: nowrap;
 }
 
-.man-macro-value {
-  color: #d946ef;
+.man-macro-value code {
+  color: #f0abfc;
 }
 
 .man-macro-desc {
   color: #d1d5db;
-  vertical-align: top;
 }
 
 /* Lists */
