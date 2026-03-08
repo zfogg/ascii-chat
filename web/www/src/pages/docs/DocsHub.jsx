@@ -76,7 +76,7 @@ export default function DocsHub() {
     {
       icon: "📚",
       title: "ascii-chat-*(3)",
-      description: "API documentation for the libasciichat library",
+      description: "Source code documentation for ascii-chat and libasciichat",
       to: "/man3",
       colorClass: "accent-teal",
       textClass: "text-teal-300",
