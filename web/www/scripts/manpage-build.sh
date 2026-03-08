@@ -21,20 +21,20 @@ if [ -d "$REPO_ROOT" ]; then
     BUILD_DIR="$REPO_ROOT/build"
   fi
 
-  cmake --build "$BUILD_DIR" --target man1 man5 || true
+  cmake --build "$BUILD_DIR" --target man1 man5
 
   # Generate man(1) page from troff format and convert to HTML
   #$BUILD_DIR/bin/ascii-chat --man-page-create | mandoc -Thtml > public/ascii-chat-man1.html
-  mandoc -Thtml "$BUILD_DIR/share/man/man1/ascii-chat.1" > public/ascii-chat-man1.html || true
+  mandoc -Thtml "$BUILD_DIR/share/man/man1/ascii-chat.1" > public/ascii-chat-man1.html
   echo "📜 man(1) page updated"
 
   # Generate man(5) page from built manpage and convert to HTML
-  mandoc -Thtml "$BUILD_DIR/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html || true
+  mandoc -Thtml "$BUILD_DIR/share/man/man5/ascii-chat.5" > public/ascii-chat-man5.html
   echo "📜 man(5) page updated"
 
   # Generate man(3) pages from Doxygen (man pages only, no HTML)
   echo "📚 Generating man(3) pages from Doxygen..."
-  cmake --build "$BUILD_DIR" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
+  cmake --build "$BUILD_DIR" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)"
 
   # Check if man3 directory exists and has files
   if [ -d "$BUILD_DIR/share/man/man3" ]; then
