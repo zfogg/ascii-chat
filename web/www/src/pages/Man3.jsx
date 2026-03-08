@@ -264,11 +264,18 @@ export default function Man3() {
           const nameIndex = text.indexOf(name);
           if (nameIndex !== -1) {
             const afterName = text.substring(nameIndex + name.length).trim();
-            const firstSpace = afterName.indexOf(" ");
-            if (firstSpace !== -1) {
-              value = afterName.substring(0, firstSpace);
+            // If value contains parentheses, take everything up to closing paren
+            const closeParen = afterName.indexOf(")");
+            if (closeParen !== -1) {
+              value = afterName.substring(0, closeParen + 1);
             } else {
-              value = afterName;
+              // Otherwise, stop at first space
+              const firstSpace = afterName.indexOf(" ");
+              if (firstSpace !== -1) {
+                value = afterName.substring(0, firstSpace);
+              } else {
+                value = afterName;
+              }
             }
           }
         }
