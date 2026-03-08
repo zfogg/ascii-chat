@@ -250,6 +250,9 @@ export default function Man3() {
       // Step 1: Transform macros to tables
       let processed = transformMacrosInHTML(html);
 
+      // Step 1b: Transform functions to tables
+      processed = transformFunctionsInHTML(processed);
+
       // Step 2: Fix relative paths
       processed = processed.replace(/src="([^"]+)"/g, (match, src) => {
         if (!src.startsWith("/") && !src.startsWith("http")) {
@@ -429,6 +432,89 @@ export default function Man3() {
           const nameCell = row.name ? `<code>${row.name}</code>` : "";
           const valueCell = row.value ? `<code>${row.value}</code>` : "";
           tableHtml += `<tr><td class="man-macro-name">${nameCell}</td><td class="man-macro-value">${valueCell}</td><td class="man-macro-desc">${row.description}</td></tr>`;
+        }
+        tableHtml += "</tbody></table>";
+
+        return tableHtml;
+      },
+    );
+  };
+
+  // Transform function P tags into tables (works on HTML strings)
+  const transformFunctionsInHTML = (html) => {
+    // Find all P tags that start with <br> and contain function signatures
+    // This avoids matching header P tags which are just bold text
+    return html.replace(
+      /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?<\/p>/g,
+      (match) => {
+        const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
+        const sections = content.split(/<br\s*\/?>/i);
+
+        const rows = [];
+        let previousFunc = null;
+
+        for (const section of sections) {
+          const trimmed = section.trim();
+          if (!trimmed) continue;
+
+          // Extract plain text without HTML
+          const tempDiv = document.createElement("div");
+          tempDiv.innerHTML = trimmed;
+          const plainText = tempDiv.textContent.trim();
+
+          // Find function name (bold tag content)
+          const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>/;
+          const boldMatch = trimmed.match(boldRegex);
+
+          // Check if this section contains a function signature (has bold name + parentheses)
+          if (boldMatch && plainText.includes("(")) {
+            const name = boldMatch[1];
+
+            // If we have a previous function waiting for a description, push it now
+            if (previousFunc) {
+              rows.push(previousFunc);
+            }
+
+            // Extract signature: name + everything up to closing paren
+            const nameIdx = plainText.indexOf(name);
+            if (nameIdx !== -1) {
+              const afterName = plainText.substring(nameIdx + name.length);
+              const closeParenIdx = afterName.indexOf(")");
+
+              if (closeParenIdx !== -1) {
+                const signature = (afterName.substring(0, closeParenIdx + 1)).trim();
+                const afterSig = afterName.substring(closeParenIdx + 1).trim();
+
+                previousFunc = {
+                  name,
+                  signature,
+                  description: afterSig,
+                };
+              }
+            }
+          } else if (previousFunc && plainText) {
+            // This is a description section - append to previous function's description
+            if (previousFunc.description) {
+              previousFunc.description += " " + plainText;
+            } else {
+              previousFunc.description = plainText;
+            }
+          }
+        }
+
+        // Don't forget the last function
+        if (previousFunc) {
+          rows.push(previousFunc);
+        }
+
+        if (rows.length === 0) return match;
+
+        // Build table HTML
+        let tableHtml = '<table class="man-functions-table"><tbody>';
+        for (const row of rows) {
+          const nameCell = row.name ? `<code>${row.name}</code>` : "";
+          const sigCell = row.signature ? `<code>${row.signature}</code>` : "";
+          tableHtml += `<tr><td class="man-func-name">${nameCell}</td><td class="man-func-sig">${sigCell}</td><td class="man-func-desc">${row.description}</td></tr>`;
         }
         tableHtml += "</tbody></table>";
 
