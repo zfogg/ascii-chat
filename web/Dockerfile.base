@@ -2,8 +2,8 @@
 # Provides Node.js, bun, and monorepo dependencies
 FROM node:22-alpine
 
-# Install bash and bun
-RUN apk add --no-cache bash && npm install -g bun
+# Install bash, git, and bun
+RUN apk add --no-cache bash git && npm install -g bun
 
 WORKDIR /app
 

@@ -1,8 +1,8 @@
 # WWW app - builds on shared
 FROM node:22-slim AS base
 
-# Install bash and bun
-RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
+# Install bash, git, and bun
+RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
