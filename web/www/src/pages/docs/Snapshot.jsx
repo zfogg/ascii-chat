@@ -444,12 +444,22 @@ export default function Snapshot() {
                   <code className="text-cyan-300">--url</code> and{" "}
                   <code className="text-cyan-300">--seek</code> to grab frames
                   at specific timestamps for documentation, analysis, or
-                  creative projects.
+                  creative projects. Combine{" "}
+                  <code className="text-cyan-300">--seek</code> with{" "}
+                  <code className="text-cyan-300">--snapshot-delay</code> to save
+                  ASCII art segments from URLs or media files.
                 </p>
                 <p className="text-gray-400 text-xs">
                   <strong>Tip:</strong> Use{" "}
-                  <code className="text-cyan-300">yt-dlp</code> to download
-                  videos first, then snapshot locally. See{" "}
+                  <a
+                    href="https://github.com/yt-dlp/yt-dlp"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-cyan-300 hover:text-cyan-200 underline"
+                  >
+                    yt-dlp
+                  </a>{" "}
+                  to download videos first, then snapshot locally. See{" "}
                   <code className="text-cyan-300">man yt-dlp</code> for format
                   options. For supported codecs and container formats, see{" "}
                   <code className="text-cyan-300">man ffmpeg-codecs</code> and{" "}
