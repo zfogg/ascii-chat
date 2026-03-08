@@ -447,6 +447,10 @@ export default function Man3() {
     return html.replace(
       /<p[^>]*class="Pp"[^>]*>[\s\S]*?<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*\([\s\S]*?<\/p>/g,
       (match) => {
+        // Skip P tags with macro definitions - let them render as plain text to preserve grouping
+        if (match.includes("#define")) {
+          return match;
+        }
         const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
         const sections = content.split(/<br\s*\/?>/i);
 
@@ -2212,9 +2216,9 @@ export default function Man3() {
             </div>
 
             {/* Content viewer */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 flex min-w-0">
               {pageNotFound ? (
-                <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto h-[calc(100vh-300px)] flex flex-col items-center justify-center">
+                <div className="bg-gray-900/30 border border-gray-800 rounded-lg p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center">
                   <div className="text-center">
                     <h2 className="text-7xl font-bold text-red-400 mb-6">
                       404
