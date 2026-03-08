@@ -204,6 +204,38 @@ export default function Man3() {
     }
   }, [selectedPageContent]);
 
+  // Helper function to add GitHub links to "Definition at line X of file Y"
+  // Also converts line number anchors on source pages to GitHub links
+  const processDefinitionLinks = useCallback(
+    (html, sourcePath, commitSha, isSourcePage = false) => {
+      if (!sourcePath || !commitSha || commitSha === "unknown") return html;
+
+      // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
+      // Use \s* to handle whitespace/newlines between "of file" and the filename
+      let result = html.replace(
+        /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
+        (_, lineNum, filename) =>
+          `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
+          `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`,
+      );
+
+      // On source pages, transform line number anchors to GitHub links
+      // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
+      if (isSourcePage) {
+        result = result.replace(
+          /<a\s+id="l(\d+)"[^>]*>(\d+)<\/a>/g,
+          (_, lineNum, displayNum) =>
+            `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
+            `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">${displayNum}</a>`,
+        );
+      }
+
+      return result;
+    },
+    [],
+  );
+
   // Comprehensive HTML preprocessing pipeline - applies ALL transformations
   const preprocessPageHTML = useCallback(
     (
@@ -415,38 +447,6 @@ export default function Man3() {
       return preprocessPageHTML(content, searchQuery);
     },
     [preprocessPageHTML],
-  );
-
-  // Helper function to add GitHub links to "Definition at line X of file Y"
-  // Also converts line number anchors on source pages to GitHub links
-  const processDefinitionLinks = useCallback(
-    (html, sourcePath, commitSha, isSourcePage = false) => {
-      if (!sourcePath || !commitSha || commitSha === "unknown") return html;
-
-      // Transform "Definition at line X of file Y" text to add GitHub links with commit hash
-      // Use \s* to handle whitespace/newlines between "of file" and the filename
-      let result = html.replace(
-        /Definition at line <b>(\d+)<\/b> of file\s*<b>([^<]+)<\/b>/g,
-        (_, lineNum, filename) =>
-          `<a href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
-          `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">` +
-          `Definition at line <b>${lineNum}</b> of file <b>${filename}</b></a>`,
-      );
-
-      // On source pages, transform line number anchors to GitHub links
-      // e.g., <a id="l00022">22</a> becomes <a href="...#L22" ...>22</a>
-      if (isSourcePage) {
-        result = result.replace(
-          /<a\s+id="l(\d+)"[^>]*>(\d+)<\/a>/g,
-          (_, lineNum, displayNum) =>
-            `<a id="l${lineNum}" href="https://github.com/zfogg/ascii-chat/blob/${commitSha}/${sourcePath}#L${lineNum}" ` +
-            `target="_blank" rel="noopener noreferrer" class="text-cyan-400 hover:text-cyan-300">${displayNum}</a>`,
-        );
-      }
-
-      return result;
-    },
-    [],
   );
 
   useEffect(() => {
