@@ -5846,6 +5846,18 @@
   {
     "name": "common.c",
     "title": "common.c",
+    "file": "ascii-chat-video_ascii_avx2_common.c.html",
+    "sourcePath": "lib/video/ascii/neon/common.c"
+  },
+  {
+    "name": "common.h",
+    "title": "common.h",
+    "file": "ascii-chat-video_ascii_avx2_common.h.html",
+    "sourcePath": "include/ascii-chat/video/ascii/neon/common.h"
+  },
+  {
+    "name": "common.c",
+    "title": "common.c",
     "file": "ascii-chat-video_ascii_common.c.html",
     "sourcePath": "lib/video/ascii/neon/common.c"
   },

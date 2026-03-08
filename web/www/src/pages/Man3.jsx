@@ -307,49 +307,55 @@ export default function Man3() {
   }, []);
 
   // Transform macro P tags into tables (works on HTML strings)
-  const transformMacrosInHTML = useCallback((html) => {
-    // Pattern 1: Standard sections that start with <br> (Password Requirements, etc.)
-    let result = html.replace(
-      /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?#define[\s\S]*?<\/p>/g,
-      (match) => parseMacroMatch(match) || match,
-    );
+  const transformMacrosInHTML = useCallback(
+    (html) => {
+      // Pattern 1: Standard sections that start with <br> (Password Requirements, etc.)
+      let result = html.replace(
+        /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?#define[\s\S]*?<\/p>/g,
+        (match) => parseMacroMatch(match) || match,
+      );
 
-    // Pattern 2: Initial Macros section (starts directly with #define, allowing optional whitespace)
-    // Only match if it contains #define statements
-    result = result.replace(
-      /<p[^>]*class="Pp"[^>]*>\s*#define[\s\S]*?<\/p>/g,
-      (match) => {
-        // Skip if this is just a header (contains only bold text without #define)
-        if (!match.includes("#define")) return match;
-        return parseMacroMatch(match) || match;
-      },
-    );
+      // Pattern 2: Initial Macros section (starts directly with #define, allowing optional whitespace)
+      // Only match if it contains #define statements
+      result = result.replace(
+        /<p[^>]*class="Pp"[^>]*>\s*#define[\s\S]*?<\/p>/g,
+        (match) => {
+          // Skip if this is just a header (contains only bold text without #define)
+          if (!match.includes("#define")) return match;
+          return parseMacroMatch(match) || match;
+        },
+      );
 
-    return result;
-  }, [parseMacroMatch]);
+      return result;
+    },
+    [parseMacroMatch],
+  );
 
   // Transform filename references to man3 links (works on HTML strings)
-  const transformFilenameLinksInHTML = useCallback((html) => {
-    const fileRegex = /\b([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))\b/g;
+  const transformFilenameLinksInHTML = useCallback(
+    (html) => {
+      const fileRegex = /\b([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))\b/g;
 
-    return html.replace(fileRegex, (match, filename) => {
-      // Check if already inside a link
-      const beforeMatch = html.substring(0, html.indexOf(match));
-      const openLinks = (beforeMatch.match(/<a[^>]*>/g) || []).length;
-      const closeLinks = (beforeMatch.match(/<\/a>/g) || []).length;
+      return html.replace(fileRegex, (match, filename) => {
+        // Check if already inside a link
+        const beforeMatch = html.substring(0, html.indexOf(match));
+        const openLinks = (beforeMatch.match(/<a[^>]*>/g) || []).length;
+        const closeLinks = (beforeMatch.match(/<\/a>/g) || []).length;
 
-      if (openLinks > closeLinks) {
-        // Already inside a link
+        if (openLinks > closeLinks) {
+          // Already inside a link
+          return match;
+        }
+
+        // Check if file exists in pages
+        if (validPagesRef.current.has(filename)) {
+          return `<a href="/man3?page=${filename}" class="text-cyan-400 hover:text-cyan-300 underline">${filename}</a>`;
+        }
         return match;
-      }
-
-      // Check if file exists in pages
-      if (validPagesRef.current.has(filename)) {
-        return `<a href="/man3?page=${filename}" class="text-cyan-400 hover:text-cyan-300 underline">${filename}</a>`;
-      }
-      return match;
-    });
-  }, [validPagesRef]);
+      });
+    },
+    [validPagesRef],
+  );
 
   // Helper function to add GitHub links to "Definition at line X of file Y"
   // Also converts line number anchors on source pages to GitHub links
