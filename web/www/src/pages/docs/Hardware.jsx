@@ -76,7 +76,7 @@ export default function Hardware() {
                   <strong>Mode-Specific Options:</strong> Some hardware options
                   are only available in certain modes. For example,{" "}
                   <code className="text-cyan-300">--audio</code> is client-only
-                  while audio volume controls work in both client and mirror
+                  while audio volume controls work in client, mirror, and discovery
                   modes.
                 </p>
               </div>
