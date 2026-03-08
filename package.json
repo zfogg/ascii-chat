@@ -2,12 +2,6 @@
   "type": "module",
   "name": "ascii-chat",
   "private": true,
-  "workspaces": [
-    "web/packages/*",
-    "web/www",
-    "web/discovery",
-    "web/web"
-  ],
   "devDependencies": {
     "concurrently": "^9.2.1"
   }
