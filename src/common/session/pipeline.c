@@ -451,23 +451,26 @@ asciichat_error_t session_pipeline_run_main(
 
         if (!frame) continue;  // timeout, check should_exit again
 
-        // Log frame details IMMEDIATELY after popping
-        log_debug("[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d",
-                  (void *)frame, (void *)frame->pixels, frame->w, frame->h);
+        // Validate frame structure exists before accessing fields
+        if (!frame_is_valid(frame)) {
+            log_error("Received invalid frame: corrupted or NULL");
+            free_frame(frame);
+            frame = NULL;
+            continue;
+        }
 
+        // Check for EOF sentinel (NULL pixels)
         if (!frame->pixels) {
             // EOF sentinel
             log_info("[PIPELINE_MAIN_EOF] Received EOF sentinel, stopping");
             free_frame(frame);
+            frame = NULL;
             break;
         }
 
-        // Validate frame before processing (catch memory corruption)
-        if (!frame_is_valid(frame)) {
-            log_error("Skipping frame with corrupted dimensions: w=%d, h=%d", frame->w, frame->h);
-            free_frame(frame);
-            continue;
-        }
+        // Log frame details after validation
+        log_debug("[PIPELINE_MAIN_POP] frame=%p, pixels=%p, w=%d, h=%d",
+                  (void *)frame, (void *)frame->pixels, frame->w, frame->h);
 
         // Check if help screen is active - if so, don't render ASCII frames
         bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
@@ -478,6 +481,7 @@ asciichat_error_t session_pipeline_run_main(
             image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
             char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
             free_frame(frame);
+            frame = NULL;
 
             if (ascii) {
                 // Write ASCII to terminal
@@ -486,6 +490,7 @@ asciichat_error_t session_pipeline_run_main(
             }
         } else {
             free_frame(frame);
+            frame = NULL;
         }
 
         // Keyboard polling
