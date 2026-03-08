@@ -13,7 +13,9 @@ services:
       - web
       - www
     networks:
-      - ascii-chat
+      ascii-chat:
+        aliases:
+          - gateway
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/health"]
       interval: 30s
@@ -35,7 +37,9 @@ services:
       - API_PORT=3001
     container_name: ascii-chat-discovery
     networks:
-      - ascii-chat
+      ascii-chat:
+        aliases:
+          - discovery
 
   web:
     build:
@@ -46,7 +50,9 @@ services:
       - API_PORT=3001
     container_name: ascii-chat-web
     networks:
-      - ascii-chat
+      ascii-chat:
+        aliases:
+          - web
 
   www:
     build:
@@ -57,7 +63,9 @@ services:
       - API_PORT=3001
     container_name: ascii-chat-www
     networks:
-      - ascii-chat
+      ascii-chat:
+        aliases:
+          - www
 
 volumes:
   caddy_data:
