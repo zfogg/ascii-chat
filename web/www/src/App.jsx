@@ -1,5 +1,4 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Analytics } from "@vercel/analytics/react";
 import { HelmetProvider } from "react-helmet-async";
 import Navigation from "./components/Navigation";
 import Home from "./pages/Home";
@@ -41,7 +40,6 @@ export default function App() {
             </Routes>
           </div>
         </div>
-        <Analytics />
       </BrowserRouter>
     </HelmetProvider>
   );

@@ -26,7 +26,6 @@
     "@ascii-chat/shared": "workspace:*",
     "@headlessui/react": "^2.2.9",
     "@pablo-lion/xterm-react": "^1.1.2",
-    "@vercel/analytics": "^1.6.1",
     "@xterm/addon-fit": "^0.11.0",
     "@xterm/addon-web-links": "^0.12.0",
     "hls.js": "^1.6.15",

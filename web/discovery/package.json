@@ -16,7 +16,6 @@
   },
   "dependencies": {
     "@ascii-chat/shared": "workspace:*",
-    "@vercel/analytics": "^1.6.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-helmet-async": "^2.0.5",

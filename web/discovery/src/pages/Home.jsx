@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Analytics } from "@vercel/analytics/react";
 import {
   Footer,
   PreCode,
@@ -399,7 +398,6 @@ ascii-chat client session-name \\
             </>
           }
         />
-        <Analytics />
       </div>
     </>
   );
