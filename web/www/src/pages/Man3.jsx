@@ -482,7 +482,9 @@ export default function Man3() {
               const closeParenIdx = afterName.indexOf(")");
 
               if (closeParenIdx !== -1) {
-                const signature = (afterName.substring(0, closeParenIdx + 1)).trim();
+                const signature = afterName
+                  .substring(0, closeParenIdx + 1)
+                  .trim();
                 const afterSig = afterName.substring(closeParenIdx + 1).trim();
 
                 previousFunc = {
@@ -2175,24 +2177,6 @@ export default function Man3() {
                       searchQuery,
                       targetLineNumber,
                     )}
-                  </div>
-                  <div className="mt-8 pt-6 border-t border-gray-700">
-                    <h3 className="text-sm font-semibold text-cyan-400 mb-2">
-                      SEE ALSO
-                    </h3>
-                    <p className="text-sm text-gray-400">
-                      <a
-                        href={SITES.WEB}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-cyan-400 hover:text-cyan-300 underline"
-                      >
-                        Web Client
-                      </a>
-                      {" — "}
-                      Terminal video chat with ASCII art rendering and
-                      end-to-end encryption
-                    </p>
                   </div>
                 </div>
               ) : (
