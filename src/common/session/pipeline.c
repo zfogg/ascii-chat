@@ -566,10 +566,8 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     frame_queue_flush(pipeline->display_queue, free_frame_generic);
     frame_queue_flush(pipeline->encode_queue, free_frame_generic);
 
-    // Don't explicitly destroy mutexes/cond_vars to avoid race with thread cleanup.
-    // Let SAFE_FREE(pipeline) clean up all queue memory together.
-    SAFE_FREE(pipeline->display_queue);
-    SAFE_FREE(pipeline->encode_queue);
+    // Don't free queue structures - debug_sync monitoring thread may still be accessing
+    // the condition variables. Queues will be cleaned up with the pipeline structure.
     SAFE_FREE(pipeline);
 
     log_info("[PIPELINE] Pipeline destroyed");
