@@ -24,10 +24,9 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 WORKDIR /app/www
 
 COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/www/dist ./dist
-COPY --from=builder /app/www/api.js ./api.js
-COPY --from=builder /app/www/package.json ./package.json
-COPY --from=builder /app/www/src ./src
+COPY --from=builder /app/web/www/dist ./dist
+COPY --from=builder /app/web/www/api.js ./api.js
+COPY --from=builder /app/web/www/package.json ./package.json
 COPY web/www/Caddyfile /etc/caddy/Caddyfile
 
 ENV API_PORT=3001
