@@ -39,4 +39,9 @@ http://:80 {
   handle /health {
     respond "OK" 200
   }
+
+  # Catch-all for unmatched domains (fallback to www service)
+  handle {
+    reverse_proxy www:5173
+  }
 }
