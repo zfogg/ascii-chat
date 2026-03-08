@@ -26,6 +26,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.gateway.rule=PathPrefix(`/`)"
       - "traefik.http.routers.gateway.priority=1"
+      - "traefik.http.routers.gateway.entrypoints=http,https"
       - "traefik.http.services.gateway.loadbalancer.server.port=80"
 
   discovery:
