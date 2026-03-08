@@ -109,6 +109,7 @@ export function CodeBlock({
 
   return (
     <div ref={codeRef}>
+      {/* @ts-expect-error react-syntax-highlighter types not compatible with React 19 */}
       <SyntaxHighlighter
         language={language}
         style={vscDarkPlus}
