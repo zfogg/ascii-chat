@@ -27,9 +27,9 @@ export default function Configuration() {
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
-            <h1 className="heading-1 mb-4">
+            <Heading level={1} className="heading-1 mb-4">
               <span className="text-purple-400">⚙️</span> Configuration
-            </h1>
+            </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               Config files, locations, overrides, options, and shell completions
             </p>
@@ -37,9 +37,9 @@ export default function Configuration() {
 
           {/* Priority & Overrides */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-cyan-400">
+            <Heading level={2} className="heading-2 text-cyan-400">
               📊 Configuration Priority & Override Chain
-            </h2>
+            </Heading>
             <p className="docs-paragraph">
               Settings are applied in strict priority order. Each level can
               override levels below it:
@@ -51,9 +51,9 @@ export default function Configuration() {
                     1️⃣ Highest
                   </span>
                   <div>
-                    <h4 className="text-pink-300 font-semibold">
+                    <Heading level={4} className="text-pink-300 font-semibold">
                       Command-line Flags
-                    </h4>
+                    </Heading>
                     <p className="text-gray-400 text-sm">
                       Explicitly passed arguments (e.g.,{" "}
                       <code className="text-gray-300">--port 8080</code>). Most
@@ -68,9 +68,9 @@ export default function Configuration() {
                     2️⃣ High
                   </span>
                   <div>
-                    <h4 className="text-cyan-300 font-semibold">
+                    <Heading level={4} className="text-cyan-300 font-semibold">
                       Environment Variables
-                    </h4>
+                    </Heading>
                     <p className="text-gray-400 text-sm">
                       Set in shell (e.g.,{" "}
                       <code className="text-gray-300">
@@ -87,9 +87,9 @@ export default function Configuration() {
                     3️⃣ Medium
                   </span>
                   <div>
-                    <h4 className="text-purple-300 font-semibold">
+                    <Heading level={4} className="text-purple-300 font-semibold">
                       Config File Values
-                    </h4>
+                    </Heading>
                     <p className="text-gray-400 text-sm">
                       Settings from TOML configuration files
                     </p>
@@ -102,9 +102,9 @@ export default function Configuration() {
                     4️⃣ Lowest
                   </span>
                   <div>
-                    <h4 className="text-teal-300 font-semibold">
+                    <Heading level={4} className="text-teal-300 font-semibold">
                       Built-in Defaults
-                    </h4>
+                    </Heading>
                     <p className="text-gray-400 text-sm">
                       Hard-coded default values
                     </p>
@@ -129,9 +129,9 @@ export default function Configuration() {
 
           {/* Configuration Files & Search Paths */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-purple-400">
+            <Heading level={2} className="heading-2 text-purple-400">
               📁 Configuration Files & Search Paths
-            </h2>
+            </Heading>
 
             <p className="docs-paragraph">
               ascii-chat searches for configuration files across multiple
@@ -174,9 +174,9 @@ export default function Configuration() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-4">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-4">
                 Create a Config File
-              </h3>
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">
                 Generate a template config file with all options commented out:
               </p>
@@ -201,14 +201,14 @@ export default function Configuration() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-4">
+              <Heading level={3} className="heading-3 text-green-300 mb-4">
                 Understanding Config Sections & Keys
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-green">
-                  <h4 className="text-green-300 font-semibold mb-2">
+                  <Heading level={4} className="text-green-300 font-semibold mb-2">
                     TOML Sections: Uppercase → Lowercase
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Each <code className="text-cyan-300">[section]</code> in the
                     config corresponds to a section from{" "}
@@ -248,9 +248,9 @@ export default function Configuration() {
                   </ul>
                 </div>
                 <div className="card-standard accent-green">
-                  <h4 className="text-green-300 font-semibold mb-2">
+                  <Heading level={4} className="text-green-300 font-semibold mb-2">
                     Config Keys: Flags → Underscores
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Keys are CLI flags with hyphens converted to underscores:
                   </p>
@@ -299,9 +299,9 @@ export default function Configuration() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-4">
+              <Heading level={3} className="heading-3 text-green-300 mb-4">
                 Complete Example Config
-              </h3>
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">
                 This example demonstrates all major configuration sections:
               </p>
@@ -359,9 +359,9 @@ log_file = "/tmp/ascii-chat.log"`}</CodeBlock>
 
           {/* Environment Variables */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-cyan-400">
+            <Heading level={2} className="heading-2 text-cyan-400">
               🌍 Environment Variables
-            </h2>
+            </Heading>
 
             <div className="info-box-info mb-6">
               <p className="text-gray-300 text-sm mb-2">
@@ -392,9 +392,9 @@ log_file = "/tmp/ascii-chat.log"`}</CodeBlock>
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-4">
+              <Heading level={3} className="heading-3 text-pink-300 mb-4">
                 Option Override Variables
-              </h3>
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">
                 Most CLI options have a corresponding environment variable.
                 Environment variables provide session-wide configuration that
@@ -413,9 +413,9 @@ log_file = "/tmp/ascii-chat.log"`}</CodeBlock>
               </p>
               <div className="space-y-3">
                 <div className="card-standard accent-pink">
-                  <h4 className="text-pink-300 font-semibold mb-2">
+                  <Heading level={4} className="text-pink-300 font-semibold mb-2">
                     Naming Convention
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Environment variable names are uppercase option names with
                     hyphens converted to underscores, prefixed with{" "}
@@ -453,9 +453,9 @@ log_file = "/tmp/ascii-chat.log"`}</CodeBlock>
                   </p>
                 </div>
                 <div className="card-standard accent-pink">
-                  <h4 className="text-pink-300 font-semibold mb-2">
+                  <Heading level={4} className="text-pink-300 font-semibold mb-2">
                     Example: Override Chain in Action
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">{`# config.toml:
 [network]
 port = 8080
@@ -482,14 +482,14 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-4">
+              <Heading level={3} className="heading-3 text-teal-300 mb-4">
                 Config File Discovery Variables
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-1">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-1">
                     XDG_CONFIG_HOME
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Specifies config directory location (Linux/macOS)
                   </p>
@@ -498,15 +498,15 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </CodeBlock>
                 </div>
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-1">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-1">
                     APPDATA / USERPROFILE
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Used for config location on Windows (set by system)
                   </p>
                 </div>
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-1">HOME</h4>
+                  <Heading level={4} className="text-teal-300 font-semibold mb-1">HOME</Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     User home directory
                   </p>
@@ -515,9 +515,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-4">
+              <Heading level={3} className="heading-3 text-purple-300 mb-4">
                 Special Purpose Variables
-              </h3>
+              </Heading>
               <p className="text-gray-400 text-sm mb-4">
                 Beyond the standard{" "}
                 <code className="text-cyan-300">ASCII_CHAT_*</code> option
@@ -525,9 +525,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
               </p>
               <div className="space-y-3">
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     SSH_AUTH_SOCK
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     SSH agent socket for password-free key authentication (Unix
                     only)
@@ -538,9 +538,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     GNUPGHOME
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     GPG home directory for key management and gpg-agent
                   </p>
@@ -550,9 +550,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     ASCII_CHAT_KEY_PASSWORD
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     ⚠️ Passphrase for encrypted SSH/GPG keys
                   </p>
@@ -568,9 +568,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     WEBCAM_DISABLED
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Use test pattern instead of real webcam
                   </p>
@@ -581,9 +581,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     XDG_CONFIG_DIRS
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Additional system-wide config directories (Linux/macOS)
                   </p>
@@ -593,9 +593,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     XDG_DATA_HOME
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     XDG Base Directory data location (Linux/macOS)
                   </p>
@@ -606,9 +606,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     USER / USERNAME
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Current user identifier (system-set)
                   </p>
@@ -618,9 +618,9 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-1">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-1">
                     LLVM_SYMBOLIZER_PATH &amp; _NT_SYMBOL_PATH
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-2">
                     Debug build helpers for stack traces (debug builds only)
                   </p>
@@ -645,7 +645,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
 
             <div className="space-y-3 mb-6">
               <div className="card-standard accent-teal">
-                <h4 className="text-teal-300 font-semibold mb-2">
+                <Heading level={4} className="text-teal-300 font-semibold mb-2">
                   <a
                     href="/man1"
                     className="text-teal-300 hover:text-teal-200 transition-colors"
@@ -653,7 +653,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                     ascii-chat(1)
                   </a>{" "}
                   - Command Reference
-                </h4>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   Complete list of all command-line options, environment
                   variables, modes, examples, security details, and keyboard
@@ -661,7 +661,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                 </p>
               </div>
               <div className="card-standard accent-purple">
-                <h4 className="text-purple-300 font-semibold mb-2">
+                <Heading level={4} className="text-purple-300 font-semibold mb-2">
                   <a
                     href="/man5"
                     className="text-purple-300 hover:text-purple-200 transition-colors"
@@ -669,7 +669,7 @@ color_mode = truecolor # from ASCII_CHAT_COLOR_MODE env var (overrides config)
                     ascii-chat(5)
                   </a>{" "}
                   - File Formats
-                </h4>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   Configuration file format (TOML), color scheme files,
                   authentication files, and other data formats.
@@ -698,9 +698,9 @@ open https://ascii-chat.com/man5  # File formats`}
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-4">
+              <Heading level={3} className="heading-3 text-teal-300 mb-4">
                 Install Man Page for Terminal Access
-              </h3>
+              </Heading>
 
               <p className="text-gray-400 text-sm mb-4">
                 By default, the ascii-chat man page is installed in the standard
@@ -711,9 +711,9 @@ open https://ascii-chat.com/man5  # File formats`}
               </p>
 
               <div className="docs-subsection-spacing">
-                <h4 className="text-teal-300 font-semibold mb-3">
+                <Heading level={4} className="text-teal-300 font-semibold mb-3">
                   macOS (Homebrew)
-                </h4>
+                </Heading>
                 <p className="text-gray-400 text-sm mb-2">
                   If you installed ascii-chat via Homebrew, add the man page
                   directory to your shell profile:
@@ -729,7 +729,7 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</CodeBlock>
               </div>
 
               <div className="docs-subsection-spacing">
-                <h4 className="text-teal-300 font-semibold mb-3">Linux</h4>
+                <Heading level={4} className="text-teal-300 font-semibold mb-3">Linux</Heading>
                 <p className="text-gray-400 text-sm mb-2">
                   The man page is typically installed to{" "}
                   <code className="text-cyan-300">/usr/local/share/man</code> or{" "}
@@ -745,9 +745,9 @@ export MANPATH="$(brew --prefix)/share/man:$MANPATH"`}</CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-4">
+              <Heading level={3} className="heading-3 text-teal-300 mb-4">
                 Generate Man Page Manually
-              </h3>
+              </Heading>
               <p className="text-gray-400 text-sm mb-3">
                 Generate the man page from the binary:
               </p>

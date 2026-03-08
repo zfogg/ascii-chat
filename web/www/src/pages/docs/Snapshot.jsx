@@ -492,10 +492,9 @@ export default function Snapshot() {
                   🤳 Take an ASCII Art Selfie
                 </Heading>
                 <p className="text-gray-300 text-sm">
-                  Capture yourself as ASCII art in real-time. Perfect for profile
-                  pictures, social media, or just having fun. Zero delay mode
-                  gives instant results, or use a longer delay for the perfect
-                  pose
+                  Capture yourself as ASCII art. Perfect for profile pictures,
+                  social media, or just having fun. Use zero delay for an instant
+                  snapshot, or add a 3-4 second delay to compose the perfect pose
                 </p>
               </div>
             </div>

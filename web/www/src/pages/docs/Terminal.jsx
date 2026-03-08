@@ -26,9 +26,9 @@ export default function Terminal() {
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
-            <h1 className="heading-1 mb-4">
+            <Heading level={1} className="heading-1 mb-4">
               <span className="text-cyan-400">🖥️</span> Terminal Rendering
-            </h1>
+            </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               Colors, display modes, dimensions, Unicode support, and terminal
               capabilities for perfect rendering
@@ -87,9 +87,9 @@ export default function Terminal() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Enable/Disable Color
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 The <code>--color</code> flag controls whether colors are
                 displayed at all (independent of color mode):
@@ -109,9 +109,9 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Color Depth Modes
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Control how many colors are available (when colors are enabled).
                 Default is <code>auto</code>, which detects your terminal's
@@ -132,9 +132,9 @@ export default function Terminal() {
               </CodeBlock>
               <div className="space-y-2 mt-3">
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Color Mode Details
-                  </h4>
+                  </Heading>
                   <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       <strong>auto:</strong> Detects via TERM, terminfo, or
@@ -162,9 +162,9 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Logging Color Scheme
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Control the color scheme for ascii-chat's debug/log output (not
                 video display):
@@ -198,9 +198,9 @@ export default function Terminal() {
               </CodeBlock>
               <div className="space-y-2 mt-3">
                 <div className="card-standard accent-green">
-                  <h4 className="text-green-300 font-semibold mb-2">
+                  <Heading level={4} className="text-green-300 font-semibold mb-2">
                     Render Mode Comparison
-                  </h4>
+                  </Heading>
                   <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       <strong>foreground:</strong> Classic look, good
@@ -257,9 +257,9 @@ export default function Terminal() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Auto-Detection & Environment Variables
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Terminal dimensions are automatically detected via:
               </p>
@@ -289,9 +289,9 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Custom Dimensions
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Override auto-detection with explicit width and height:
               </p>
@@ -308,9 +308,9 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Piping & Non-Interactive Mode
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 When output is piped (
                 <code>ascii-chat mirror | tee file.txt</code>
@@ -397,14 +397,14 @@ export default function Terminal() {
 
           {/* Terminal Detection & Debugging */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-pink-400">
+            <Heading level={2} className="heading-2 text-pink-400">
               🔍 Debugging & Detection
-            </h2>
+            </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Show Terminal Capabilities
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Display detected terminal capabilities and configuration:
               </p>
@@ -418,14 +418,14 @@ export default function Terminal() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Debug Display Issues
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Colors Look Wrong
-                  </h4>
+                  </Heading>
                   <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       Run <code>--show-capabilities</code>
@@ -443,9 +443,9 @@ export default function Terminal() {
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Unicode Characters Broken
-                  </h4>
+                  </Heading>
                   <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       Check locale: <code>locale</code>
@@ -460,9 +460,9 @@ export default function Terminal() {
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Dimensions Wrong
-                  </h4>
+                  </Heading>
                   <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       Check detected size: <code>--show-capabilities</code>
@@ -486,14 +486,14 @@ export default function Terminal() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-blue-300 mb-3">
+              <Heading level={3} className="heading-3 text-blue-300 mb-3">
                 Render Mode & Display Dependencies
-              </h3>
+              </Heading>
               <div className="space-y-2">
                 <div className="card-standard accent-blue">
-                  <h4 className="text-blue-300 font-semibold mb-2">
+                  <Heading level={4} className="text-blue-300 font-semibold mb-2">
                     half-block Requires UTF-8
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Combination:</strong>{" "}
                     <code>--render-mode half-block</code> +{" "}
@@ -502,9 +502,9 @@ export default function Terminal() {
                 </div>
 
                 <div className="card-standard accent-blue">
-                  <h4 className="text-blue-300 font-semibold mb-2">
+                  <Heading level={4} className="text-blue-300 font-semibold mb-2">
                     Custom Palette Requires UTF-8
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Combination:</strong>{" "}
                     <code>--palette blocks --utf8 true</code>
@@ -512,9 +512,9 @@ export default function Terminal() {
                 </div>
 
                 <div className="card-standard accent-blue">
-                  <h4 className="text-blue-300 font-semibold mb-2">
+                  <Heading level={4} className="text-blue-300 font-semibold mb-2">
                     Piping Affects Color & Dimensions
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm mb-2">
                     When piped, always explicitly set:
                   </p>
@@ -532,9 +532,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
               </Heading>
               <div className="space-y-2">
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Maximum Quality
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat mirror \\
   --color-mode truecolor \\
@@ -546,9 +546,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Over SSH (Slow)
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat client example.com \\
   --color-mode 256 \\
@@ -558,9 +558,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Capture to File
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat mirror -x 120 -y 40 \\
   --snapshot -D 0 \\
@@ -569,9 +569,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Piped Output
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`COLUMNS=150 ROWS=50 ascii-chat mirror \\
   --color true \\
@@ -589,9 +589,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Environment Variable Precedence
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Order of precedence (highest to lowest):
               </p>
@@ -609,9 +609,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 SSH & Remote Sessions
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Set TERM before SSH\nexport TERM=xterm-256color\nssh user@host ascii-chat client\n\n# Or in ~/.ssh/config\nHost *\n  SetEnv TERM=xterm-256color\n\n# Force color mode over SSH\nssh user@host ascii-chat client --color-mode 256"
@@ -620,14 +620,14 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Optimal Settings by Device
-              </h3>
+              </Heading>
               <div className="space-y-2">
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Modern Terminal
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <code>
                       --color-mode truecolor --render-mode half-block --utf8
@@ -637,9 +637,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Slow Network
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <code>
                       --color-mode 16 --render-mode foreground --fps 30
@@ -648,9 +648,9 @@ ascii-chat mirror -x 120 -y 40 --color true | tee output.txt`}
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Lightweight
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <code>--color false --fps 20 -x 80 -y 24</code>
                   </p>

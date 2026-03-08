@@ -26,9 +26,9 @@ export default function Hardware() {
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
-            <h1 className="heading-1 mb-4">
+            <Heading level={1} className="heading-1 mb-4">
               <span className="text-pink-400">⚙️</span> Hardware Setup
-            </h1>
+            </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               Webcam, microphone, speaker, and display configuration for
               ascii-chat
@@ -89,9 +89,9 @@ export default function Hardware() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 List Available Webcams
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 See all connected webcam devices and their indices (works in
                 client and mirror modes):
@@ -103,9 +103,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Select Specific Webcam
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Use <code className="text-cyan-300">--webcam-index</code> (or
                 short form <code className="text-cyan-300">-c</code>) to choose
@@ -127,9 +127,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Flip Webcam Video
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Control horizontal mirroring of webcam output (default: enabled,
                 good for front-facing cameras):
@@ -142,9 +142,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Test Pattern Mode
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Use a test pattern instead of actual webcam (useful for testing,
                 CI/CD, or when no camera is available):
@@ -164,9 +164,9 @@ export default function Hardware() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Enable Audio (Client)
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Audio is disabled by default in client mode. Enable with{" "}
                 <code className="text-cyan-300">--audio</code> or{" "}
@@ -187,9 +187,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Audio Source Selection
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Control whether to capture from microphone, media (other
                 applications), or both:
@@ -208,9 +208,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 List Audio Devices
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Discover available microphones and speakers:
               </p>
@@ -226,9 +226,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Select Microphone and Adjust Volume
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Use system default microphone (RECOMMENDED)\nascii-chat client example.com --audio --microphone-index -1\n\n# Use specific microphone (index from --list-microphones)\nascii-chat client example.com --audio --microphone-index 2\n\n# Short form\nascii-chat client example.com --audio -m 2\n\n# Adjust microphone volume (0.0-1.0, default 1.0)\nascii-chat client example.com --audio -m -1 --microphone-volume 0.5\n\n# Alias: --ivolume\nascii-chat client example.com --audio --ivolume 0.8"
@@ -243,9 +243,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Select Speakers and Adjust Volume
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Use system default speakers (RECOMMENDED)\nascii-chat client example.com --audio --speakers-index -1\n\n# Use specific speaker device\nascii-chat client example.com --audio --speakers-index 1\n\n# Adjust speaker volume (0.0-1.0, default 1.0)\nascii-chat client example.com --audio --speakers-volume 0.5\n\n# Alias: --volume\nascii-chat client example.com --audio --volume 0.8\n\n# Combine all audio options\nascii-chat client example.com --audio \\\n  --microphone-index -1 --microphone-volume 0.8 \\\n  --speakers-index -1 --speakers-volume 0.7"
@@ -254,9 +254,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-orange-300 mb-3">
+              <Heading level={3} className="heading-3 text-orange-300 mb-3">
                 Audio Playback Control
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Disable speaker output (listen-only mode)\nascii-chat client example.com --audio --no-audio-playback\n\n# Control Opus encoding (default: enabled)\nascii-chat client example.com --audio --encode-audio\nascii-chat client example.com --audio --no-encode-audio"
@@ -277,9 +277,9 @@ export default function Hardware() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-indigo-300 mb-3">
+              <Heading level={3} className="heading-3 text-indigo-300 mb-3">
                 Stream Local Files
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Use <code className="text-cyan-300">--file</code> or{" "}
                 <code className="text-cyan-300">-f</code> to stream from video,
@@ -325,9 +325,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-yellow-300 mb-3">
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">
                 YouTube & Cookies
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Use{" "}
                 <code className="text-cyan-300">--cookies-from-browser</code> to
@@ -390,9 +390,9 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Frame Rate and Snapshot
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Set target frame rate (1-144 FPS, default 60)\nascii-chat client example.com --fps 30\nascii-chat mirror --fps 10  # Lower for slower machines\n\n# Snapshot mode: capture one frame and exit\nascii-chat client example.com --snapshot\nascii-chat mirror --snapshot\n\n# Snapshot with delay (seconds, default 4.0)\nascii-chat client example.com --snapshot --snapshot-delay 10\n\n# Snapshot immediately (no delay)\nascii-chat mirror -S -D 0\n\n# Pipe to clipboard\nascii-chat mirror -S -D 0 | pbcopy  # macOS\nascii-chat mirror -S -D 0 | xclip    # Linux"
@@ -419,9 +419,9 @@ export default function Hardware() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Help & Documentation
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Press <code className="text-cyan-300">?</code> to toggle the
                 interactive keyboard shortcuts help TUI showing all available
@@ -430,39 +430,39 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Common Navigation & Control
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Arrow Keys / HJKL
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Navigate between clients in grid view or focus different
                     streams
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     +/- Keys or =/-
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Adjust speaker volume in real-time during active calls
                   </p>
                 </div>
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     Space or M
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Mute/unmute microphone (when audio is enabled)
                   </p>
                 </div>
                 <div className="card-standard accent-pink">
-                  <h4 className="text-pink-300 font-semibold mb-2">
+                  <Heading level={4} className="text-pink-300 font-semibold mb-2">
                     Q or Ctrl+C
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Quit ascii-chat gracefully
                   </p>
@@ -471,25 +471,25 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-yellow-300 mb-3">
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">
                 Display & Rendering
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-yellow">
-                  <h4 className="text-yellow-300 font-semibold mb-2">R</h4>
+                  <Heading level={4} className="text-yellow-300 font-semibold mb-2">R</Heading>
                   <p className="text-gray-300 text-sm">
                     Cycle through render modes (foreground, background,
                     half-block)
                   </p>
                 </div>
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">C</h4>
+                  <Heading level={4} className="text-orange-300 font-semibold mb-2">C</Heading>
                   <p className="text-gray-300 text-sm">
                     Cycle through color modes (auto, none, 16, 256, truecolor)
                   </p>
                 </div>
                 <div className="card-standard accent-red">
-                  <h4 className="text-red-300 font-semibold mb-2">-</h4>
+                  <Heading level={4} className="text-red-300 font-semibold mb-2">-</Heading>
                   <p className="text-gray-300 text-sm">
                     Toggle FPS counter overlay in top-right corner
                   </p>
@@ -503,13 +503,13 @@ export default function Hardware() {
               </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-green">
-                  <h4 className="text-green-300 font-semibold mb-2">F</h4>
+                  <Heading level={4} className="text-green-300 font-semibold mb-2">F</Heading>
                   <p className="text-gray-300 text-sm">
                     Flip video horizontally (mirror webcam or file)
                   </p>
                 </div>
                 <div className="card-standard accent-lime">
-                  <h4 className="text-lime-300 font-semibold mb-2">0 (Zero)</h4>
+                  <Heading level={4} className="text-lime-300 font-semibold mb-2">0 (Zero)</Heading>
                   <p className="text-gray-300 text-sm">
                     Toggle Matrix-style digital rain effect
                   </p>
@@ -520,9 +520,9 @@ export default function Hardware() {
 
           {/* Option Compatibility */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-orange-400">
+            <Heading level={2} className="heading-2 text-orange-400">
               🔗 Option Compatibility
-            </h2>
+            </Heading>
 
             <p className="docs-paragraph">
               Some options work in specific modes or have dependencies on other
@@ -530,14 +530,14 @@ export default function Hardware() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-orange-300 mb-3">
+              <Heading level={3} className="heading-3 text-orange-300 mb-3">
                 Mode Availability
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">
+                  <Heading level={4} className="text-orange-300 font-semibold mb-2">
                     --audio flag
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Client & Mirror (with --file/--url):</strong> In
                     client mode, required to enable microphone capture. In
@@ -547,9 +547,9 @@ export default function Hardware() {
                 </div>
 
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">
+                  <Heading level={4} className="text-orange-300 font-semibold mb-2">
                     Audio Volume/Source Options
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Client, Mirror, Server:</strong>{" "}
                     <code className="text-cyan-300">--microphone-volume</code>,{" "}
@@ -560,9 +560,9 @@ export default function Hardware() {
                 </div>
 
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">
+                  <Heading level={4} className="text-orange-300 font-semibold mb-2">
                     Media Streaming
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Client & Mirror Only:</strong>{" "}
                     <code className="text-cyan-300">--file</code> and{" "}
@@ -572,9 +572,9 @@ export default function Hardware() {
                 </div>
 
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">
+                  <Heading level={4} className="text-orange-300 font-semibold mb-2">
                     Display Options
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Client & Mirror Only:</strong> Render modes,
                     palettes, FPS, and snapshot only work in client and mirror
@@ -585,14 +585,14 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-yellow-300 mb-3">
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">
                 Webcam & Media Options
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-yellow">
-                  <h4 className="text-yellow-300 font-semibold mb-2">
+                  <Heading level={4} className="text-yellow-300 font-semibold mb-2">
                     --test-pattern & --file/--url
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm mb-2">
                     <strong>Compatible:</strong> Can use together, but
                     <code className="text-cyan-300">--file</code>/
@@ -602,9 +602,9 @@ export default function Hardware() {
                 </div>
 
                 <div className="card-standard accent-yellow">
-                  <h4 className="text-yellow-300 font-semibold mb-2">
+                  <Heading level={4} className="text-yellow-300 font-semibold mb-2">
                     --webcam-flip & --webcam-index
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Work Together:</strong> Select device with{" "}
                     <code className="text-cyan-300">--webcam-index</code>, then
@@ -614,9 +614,9 @@ export default function Hardware() {
                 </div>
 
                 <div className="card-standard accent-yellow">
-                  <h4 className="text-yellow-300 font-semibold mb-2">
+                  <Heading level={4} className="text-yellow-300 font-semibold mb-2">
                     WEBCAM_DISABLED Environment Variable
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Overrides CLI:</strong> Setting{" "}
                     <code className="text-cyan-300">WEBCAM_DISABLED=1</code>{" "}
@@ -628,14 +628,14 @@ export default function Hardware() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Audio Dependencies
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     --audio flag (Client Only)
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm mb-2">
                     In <strong>client mode:</strong> Must use{" "}
                     <code className="text-cyan-300">--audio</code> to enable
@@ -649,9 +649,9 @@ export default function Hardware() {
                 </div>
 
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     Microphone & Speaker Independence
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Can select microphone and speakers independently:
                   </p>
@@ -665,9 +665,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     --audio-source Options
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Available in all modes. In client mode, requires{" "}
                     <code className="text-cyan-300">--audio</code> to enable
@@ -709,27 +709,27 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
               </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Basic Video Call
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     ascii-chat client example.com
                   </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     With Audio
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     ascii-chat client example.com --audio
                   </CodeBlock>
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Custom Audio Devices
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat client example.com --audio \\
   --microphone-index 2 --microphone-volume 0.8 \\
@@ -738,9 +738,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     High-Quality Display
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat client example.com \\
   --render-mode half-block --palette blocks --fps 60`}
@@ -748,9 +748,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Stream YouTube Video
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat client example.com \\
   --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --audio`}
@@ -758,9 +758,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Low Bandwidth
-                  </h4>
+                  </Heading>
                   <CodeBlock language="bash">
                     {`ascii-chat client example.com --audio \\
   --fps 30 --palette minimal \\
@@ -771,14 +771,14 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Troubleshooting
-              </h3>
+              </Heading>
               <div className="space-y-3">
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Webcam Not Found
-                  </h4>
+                  </Heading>
                   <ol className="list-decimal list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       Run <code className="text-cyan-300">--list-webcams</code>{" "}
@@ -797,9 +797,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     No Audio
-                  </h4>
+                  </Heading>
                   <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       In client mode, add{" "}
@@ -817,9 +817,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Video is Flipped
-                  </h4>
+                  </Heading>
                   <p className="text-gray-300 text-sm">
                     Flip is enabled by default (good for front cameras). Disable
                     for rear/fixed cameras:
@@ -829,9 +829,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     Media File Not Playing
-                  </h4>
+                  </Heading>
                   <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
                     <li>
                       Ensure ffmpeg is installed (used for format support)
@@ -848,9 +848,9 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                 </div>
 
                 <div className="card-standard accent-purple">
-                  <h4 className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
                     YouTube Won't Stream
-                  </h4>
+                  </Heading>
                   <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
                     <li>Install yt-dlp: required for YouTube support</li>
                     <li>
