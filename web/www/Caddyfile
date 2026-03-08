@@ -14,9 +14,9 @@
     reverse_proxy localhost:3001
   }
 
-  # Rewrites from vercel.json: /, /docs, /docs/*, /man1, /man3, /man5
+  # Rewrites from vercel.json: /, /docs, /docs/*, /man1, /man3, /man5, /404
   @sparoutes {
-    path / /docs /docs/* /man1 /man3 /man5
+    path / /404 /docs /docs/* /man1 /man3 /man5
   }
   rewrite @sparoutes /index.html
 

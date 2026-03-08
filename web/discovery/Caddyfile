@@ -9,9 +9,9 @@
   header Referrer-Policy "strict-origin-when-cross-origin"
   header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
-  # Rewrites from vercel.json: only "/" rewrites to index.html
+  # Rewrites: / and /404 rewrite to index.html
   @sparoutes {
-    path /
+    path / /404
   }
   rewrite @sparoutes /index.html
 

@@ -5,9 +5,9 @@
   header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
 
-  # Rewrites from vercel.json: /, /mirror, /client, /discovery
+  # Rewrites: /, /mirror, /client, /discovery, /404
   @sparoutes {
-    path / /mirror /client /discovery
+    path / /404 /mirror /client /discovery
   }
   rewrite @sparoutes /index.html
 
