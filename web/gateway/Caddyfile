@@ -17,9 +17,9 @@
 #   reverse_proxy web:3000
 # }
 
-# Wildcard domain for all subdomains
-# TLS is handled by Traefik (reverse proxy in Coolify)
-*.ascii-chat.com, ascii-chat.com {
+# HTTP-only routing (Traefik terminates HTTPS)
+# Traefik handles TLS/certificates and forwards HTTP to Caddy
+http://*.ascii-chat.com, http://ascii-chat.com {
   # Route based on subdomain
   @www host ascii-chat.com www.ascii-chat.com
   @discovery host discovery.ascii-chat.com
