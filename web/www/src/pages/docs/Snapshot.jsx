@@ -478,13 +478,11 @@ export default function Snapshot() {
               </div>
               <div className="card-standard accent-teal">
                 <Heading level={4} className="text-teal-300 font-semibold mb-2">
-                  Automated Testing & CI/CD
+                  Developer Testing
                 </Heading>
                 <p className="text-gray-300 text-sm">
-                  Test that the entire video/crypto/network stack works by
-                  checking exit codes and comparing frame output. Verify network
-                  connectivity, encryption, and media handling in CI
-                  environments without interactive display
+                  The developer uses it to test that ascii-chat works as he
+                  builds it
                 </p>
               </div>
               <div className="card-standard accent-cyan">
