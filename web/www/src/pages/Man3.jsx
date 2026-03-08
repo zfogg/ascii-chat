@@ -462,51 +462,86 @@ export default function Man3() {
           tempDiv.innerHTML = trimmed;
           const plainText = tempDiv.textContent.trim();
 
-          // Find function name (bold tag content)
-          const boldRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>/;
-          const boldMatch = trimmed.match(boldRegex);
+          // Find ALL function definitions in this section (bold name + parens)
+          // Pattern: <b>functionName</b> followed by parentheses
+          const funcRegex = /<b>([a-zA-Z_][a-zA-Z0-9_]*)<\/b>\s*\(/g;
+          let match;
+          let lastProcessedIdx = 0;
 
-          // Check if this section contains a function signature (has bold name + parentheses)
-          if (boldMatch && plainText.includes("(")) {
-            const name = boldMatch[1];
+          while ((match = funcRegex.exec(trimmed)) !== null) {
+            const name = match[1];
+            const matchStart = match.index;
 
-            // If we have a previous function waiting for a description, push it now
-            if (previousFunc) {
+            // Text before this function definition is description for previous function
+            if (previousFunc && lastProcessedIdx < matchStart) {
+              let descText = trimmed
+                .substring(lastProcessedIdx, matchStart)
+                .replace(/<[^>]*>/g, "")
+                .trim();
+
+              // Only use as description if it contains a space (multi-word) or ends with period (sentence)
+              if (descText && (descText.includes(" ") || descText.endsWith("."))) {
+                // Stop at period if there's text after it
+                const lastPeriodIdx = descText.lastIndexOf(".");
+                if (lastPeriodIdx !== -1 && lastPeriodIdx < descText.length - 1) {
+                  descText = descText.substring(0, lastPeriodIdx + 1).trim();
+                }
+                if (!previousFunc.description) {
+                  previousFunc.description = descText;
+                }
+              }
               rows.push(previousFunc);
             }
 
-            // Extract signature: return type + parameters (without repeating function name)
+            // Extract full signature from plainText
             const nameIdx = plainText.indexOf(name);
             if (nameIdx !== -1) {
-              // Find the closing paren after the function name
               const afterName = plainText.substring(nameIdx + name.length);
               const closeParenIdx = afterName.indexOf(")");
 
               if (closeParenIdx !== -1) {
-                // Look backwards from function name to find start of signature (return type)
+                // Get return type: look backwards from name to find the word/type before it
+                // Skip any "(", ")", or other non-word characters
                 const beforeName = plainText.substring(0, nameIdx).trimEnd();
-                const lastSpaceIdx = beforeName.lastIndexOf(" ");
-                const returnTypeStart =
-                  lastSpaceIdx !== -1 ? lastSpaceIdx + 1 : 0;
-                const returnType = beforeName.substring(returnTypeStart).trim();
 
-                // Signature: return type + parameters (skip the function name)
+                // Find all words and take the last meaningful one (skip type modifiers)
+                const wordMatches = beforeName.match(/\b\w+(?:\*+)?\b/g);
+                let returnType = wordMatches && wordMatches.length > 0
+                  ? wordMatches[wordMatches.length - 1]
+                  : "";
+
+                // Handle cases like "void *" - need to include the asterisk
+                const afterLastWord = beforeName.substring(
+                  beforeName.lastIndexOf(returnType) + returnType.length
+                ).trim();
+                if (afterLastWord.startsWith("*")) {
+                  returnType += afterLastWord.match(/\*+/)[0];
+                }
+
                 const signature = (
                   returnType +
                   " " +
                   afterName.substring(0, closeParenIdx + 1)
                 ).trim();
-                const afterSig = afterName.substring(closeParenIdx + 1).trim();
+                let afterSig = afterName.substring(closeParenIdx + 1).trim();
+
+                // Only treat afterSig as description if it has multiple words (actual description text)
+                if (!afterSig || !afterSig.includes(" ") || /^\w+(\s|\*)*$/.test(afterSig)) {
+                  afterSig = "";
+                }
 
                 previousFunc = {
                   name,
                   signature,
                   description: afterSig,
                 };
+                lastProcessedIdx = match.index + match[0].length;
               }
             }
-          } else if (previousFunc && plainText) {
-            // This is a description section - append to previous function's description
+          }
+
+          // If there were no function definitions but we have a previous function and text, add description
+          if (lastProcessedIdx === 0 && previousFunc && plainText) {
             if (previousFunc.description) {
               previousFunc.description += " " + plainText;
             } else {
