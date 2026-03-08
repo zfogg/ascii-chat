@@ -125,8 +125,6 @@ if(USE_MUSL)
     endif()
 
     set(BZIP2_FOUND TRUE)
-    set(BZIP2_LIBRARY "${BZIP2_LIBRARY}")
-    set(BZIP2_INCLUDE_DIR "${BZIP2_INCLUDE_DIR}")
 
     # Create imported target for bzip2 to match system find_package behavior
     if(NOT TARGET BZip2::BZip2)
@@ -159,7 +157,7 @@ if(NOT BZIP2_FOUND)
     # Create imported target for compatibility
     if(NOT TARGET BZip2::BZip2)
         add_library(BZip2::BZip2 INTERFACE IMPORTED)
-        target_include_directories(BZip2::BZip2 INTERFACE ${BZIP2_INCLUDE_DIRS})
+        target_include_directories(BZip2::BZip2 SYSTEM INTERFACE ${BZIP2_INCLUDE_DIRS})
         target_link_libraries(BZip2::BZip2 INTERFACE ${BZIP2_LIBRARIES})
     endif()
 endif()

@@ -386,7 +386,7 @@ if(NOT TARGET websockets)
     set_property(TARGET websockets PROPERTY IMPORTED_LOCATION "${LIBWEBSOCKETS_LIBRARIES}")
     # Include directories - only add if they exist to avoid validation errors
     if(EXISTS "${LIBWEBSOCKETS_INCLUDE_DIRS}")
-        target_include_directories(websockets INTERFACE "${LIBWEBSOCKETS_INCLUDE_DIRS}")
+        target_include_directories(websockets SYSTEM INTERFACE "${LIBWEBSOCKETS_INCLUDE_DIRS}")
     endif()
     add_dependencies(websockets libwebsockets-native)
 endif()

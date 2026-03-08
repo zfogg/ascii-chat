@@ -212,7 +212,7 @@ if(NOT ZLIB_FOUND)
     # Create imported target for compatibility
     if(NOT TARGET ZLIB::zlib)
         add_library(ZLIB::zlib INTERFACE IMPORTED)
-        target_include_directories(ZLIB::zlib INTERFACE ${ZLIB_INCLUDE_DIRS})
+        target_include_directories(ZLIB::zlib SYSTEM INTERFACE ${ZLIB_INCLUDE_DIRS})
         target_link_libraries(ZLIB::zlib INTERFACE ${ZLIB_LIBRARIES})
     endif()
 endif()

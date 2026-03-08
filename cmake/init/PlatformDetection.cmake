@@ -56,7 +56,7 @@ elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
     endif()
 
     # Force arm64 when building natively on Apple Silicon
-    if(IS_APPLE_SILICON EQUAL 1 AND NOT IS_ROSETTA EQUAL 1)
+    if(IS_APPLE_SILICON AND NOT IS_ROSETTA)
         set(CMAKE_OSX_ARCHITECTURES arm64)
     endif()
 

@@ -174,7 +174,7 @@ if(NOT zstd_FOUND)
     # Create interface library for compatibility
     if(NOT TARGET zstd::zstd)
         add_library(zstd::zstd INTERFACE IMPORTED)
-        target_include_directories(zstd::zstd INTERFACE ${zstd_INCLUDE_DIRS})
+        target_include_directories(zstd::zstd SYSTEM INTERFACE ${zstd_INCLUDE_DIRS})
         target_link_libraries(zstd::zstd INTERFACE ${zstd_LIBRARIES})
     endif()
 endif()

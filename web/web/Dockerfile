@@ -6,16 +6,14 @@ RUN apk add --no-cache bash && npm install -g bun
 
 WORKDIR /app
 
-# Copy entire web directory (preserves workspace structure)
+# Copy entire monorepo (preserves workspace structure)
 COPY . .
 
-# bun.lock is already included in COPY . . above
-
-# Install dependencies
-RUN bun install
+# Install dependencies from web workspace root
+RUN cd web && bun install
 
 # Build web project (type check + vite build)
-RUN cd web && bun run type-check && bun x vite build
+RUN cd web && bun x tsc --noEmit && bun run --filter './web' build
 
 # Clean up node_modules and other projects
 RUN rm -rf /app/node_modules /app/discovery /app/www /app/packages /app/bun.lock*

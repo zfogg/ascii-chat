@@ -86,7 +86,7 @@ function(configure_musl_pre_project BUILD_TYPE_PARAM)
 
         # Only enable musl by default on x86_64 - ARM64 musl support on GitHub runners is limited
         # Autotools (autoconf, automake, libtool) are installed by scripts/install-deps.sh before cmake runs
-        if(HOST_ARCH STREQUAL "x86_64" AND (BUILD_TYPE STREQUAL "Release" OR BUILD_TYPE STREQUAL "RelWithDebInfo"))
+        if(HOST_ARCH STREQUAL "x86_64" AND (BUILD_TYPE_PARAM STREQUAL "Release" OR BUILD_TYPE_PARAM STREQUAL "RelWithDebInfo"))
             option(USE_MUSL "Use musl libc + mimalloc for optimal performance (Linux Release builds)" ON)
         else()
             option(USE_MUSL "Use musl libc instead of glibc (Linux only)" OFF)
@@ -256,7 +256,7 @@ function(configure_musl_post_project)
         -D_FORTIFY_SOURCE=0
     )
     # Use libc++ for C++ code (musl-compatible, unlike libstdc++)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -stdlib=libc++" CACHE STRING "C++ flags for musl" FORCE)
+    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-stdlib=libc++>)
 
     # Linker flags for static-PIE linking with musl
     # Use rcrt1.o for static-PIE (combines static linking with ASLR security)
