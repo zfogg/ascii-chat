@@ -1631,7 +1631,7 @@ export default function Man3() {
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
         url={`${SITES.MAIN}/man3`}
       />
-      <div className="w-full h-full mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
+      <div className="w-full h-[calc(100vh-65px)] mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
         {/* Header - does not scroll */}
         <header className="flex-shrink-0 px-4 sm:px-6 pb-4 pt-8 sm:pt-12 max-w-4xl mx-auto w-full">
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold mb-4">
