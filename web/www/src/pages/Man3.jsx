@@ -245,7 +245,9 @@ export default function Man3() {
       if (bTags.length === 0) continue;
 
       // Extract macro name and value based on b tags
-      let name, value, description = "";
+      let name,
+        value,
+        description = "";
 
       if (bTags.length >= 1) {
         // First b tag is the macro name
@@ -277,7 +279,14 @@ export default function Man3() {
         let plainText = tempEl.textContent.trim();
 
         // Remove the name and value from the text to get description
-        plainText = plainText.replace(new RegExp(`^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), "").trim();
+        plainText = plainText
+          .replace(
+            new RegExp(
+              `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+            ),
+            "",
+          )
+          .trim();
         description = plainText;
 
         // If there's a previous macro waiting for a description, assign this description to it
@@ -305,13 +314,13 @@ export default function Man3() {
     const tbody = document.createElement("tbody");
     for (const row of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="man-data-field-name"><code>${row.name}</code></td><td class="man-data-field-type" style="font-family: monospace; word-break: break-word;">${row.value}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tr.innerHTML = `<td class="man-macro-name"><code>${row.name}</code></td><td class="man-macro-value"><code>${row.value}</code></td><td class="man-macro-desc">${row.description}</td>`;
       tbody.appendChild(tr);
     }
 
     if (tbody.children.length > 0) {
       const table = document.createElement("table");
-      table.className = "man-data-fields-table";
+      table.className = "man-macros-table";
       table.appendChild(tbody);
       pTag.innerHTML = "";
       pTag.appendChild(table);

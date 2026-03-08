@@ -189,6 +189,31 @@ section {
   color: #d1d5db;
 }
 
+/* Macros table styling */
+.man-macros-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0 0.5rem;
+  margin: 1rem 0;
+}
+
+.man-macro-name {
+  color: #c084fc;
+  font-weight: 600;
+  padding-right: 1rem;
+  vertical-align: top;
+  white-space: nowrap;
+}
+
+.man-macro-value {
+  color: #d946ef;
+}
+
+.man-macro-desc {
+  color: #d1d5db;
+  vertical-align: top;
+}
+
 /* Lists */
 .man-page-content ul,
 .man-page-content ol {
