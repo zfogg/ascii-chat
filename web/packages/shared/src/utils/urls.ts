@@ -12,12 +12,8 @@
 
 declare global {
   interface ImportMetaEnv {
-    readonly DEV: boolean;
-    readonly NODE_ENV?: string;
-  }
-
-  interface ImportMeta {
-    readonly env: ImportMetaEnv;
+    DEV: boolean;
+    NODE_ENV?: string;
   }
 }
 
