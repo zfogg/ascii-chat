@@ -16,7 +16,7 @@ echo "Linting with eslint..."
 build_commands+=("bun run lint")
 
 echo "Building with vite..."
-build_commands+=("bun x vite build")
+build_commands+=("bun run vite:build")
 
 # Build manpage html if not on Vercel and cmake/mandoc are available
 if [ -z "$VERCEL" ] && command -v cmake &> /dev/null && command -v mandoc &> /dev/null; then
