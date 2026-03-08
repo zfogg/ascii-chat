@@ -463,7 +463,7 @@ export default function Hardware() {
                   </p>
                 </div>
                 <div className="card-standard accent-purple">
-                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2" id="fps-meter">
                     -
                   </Heading>
                   <p className="text-gray-300 text-sm">
