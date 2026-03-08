@@ -1,5 +1,4 @@
 import { createContext, useContext, useRef, useEffect, useCallback, useMemo, type ReactNode } from "react";
-import { useLocation } from "react-router-dom";
 
 interface HeadingContextType {
   registerHeading: (baseId: string) => string;
@@ -9,12 +8,15 @@ const HeadingContext = createContext<HeadingContextType | null>(null);
 
 export function HeadingProvider({ children }: { children: ReactNode }) {
   const usedIdsRef = useRef<Set<string>>(new Set());
-  const location = useLocation();
 
   // Reset heading IDs when page changes
   useEffect(() => {
-    usedIdsRef.current.clear();
-  }, [location.pathname]);
+    const handlePopstate = () => {
+      usedIdsRef.current.clear();
+    };
+    window.addEventListener("popstate", handlePopstate);
+    return () => window.removeEventListener("popstate", handlePopstate);
+  }, []);
 
   const registerHeading = useCallback((baseId: string): string => {
     if (!usedIdsRef.current.has(baseId)) {
