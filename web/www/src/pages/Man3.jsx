@@ -204,6 +204,153 @@ export default function Man3() {
     }
   }, [selectedPageContent]);
 
+  // Helper to convert macro match to table
+  const parseMacroMatch = useCallback((match) => {
+    const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
+    const sections = content.split(/<br\s*\/?>/i);
+    if (sections.length < 1) return null;
+
+    const rows = [];
+    let previousMacro = null;
+
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i].trim();
+      if (!section) continue;
+
+      // Extract bold tags and text
+      const boldRegex = /<b>([^<]+)<\/b>/g;
+      const bolds = [];
+      let boldMatch;
+      while ((boldMatch = boldRegex.exec(section))) {
+        bolds.push(boldMatch[1]);
+      }
+
+      if (bolds.length === 0) continue;
+
+      let name,
+        value,
+        description = "";
+
+      if (bolds.length >= 1) {
+        name = bolds[0];
+
+        if (bolds.length >= 2) {
+          value = bolds[1];
+        } else {
+          // Extract value from text
+          const text = section.replace(/<[^>]+>/g, "");
+          const nameIndex = text.indexOf(name);
+          if (nameIndex !== -1) {
+            const afterName = text.substring(nameIndex + name.length).trim();
+            const closeParen = afterName.indexOf(")");
+            if (closeParen !== -1) {
+              value = afterName.substring(0, closeParen + 1);
+            } else {
+              const firstSpace = afterName.indexOf(" ");
+              if (firstSpace !== -1) {
+                value = afterName.substring(0, firstSpace);
+              } else {
+                value = afterName;
+              }
+            }
+          }
+        }
+
+        // Extract description
+        let plainText = section.replace(/<[^>]+>/g, "").trim();
+        plainText = plainText
+          .replace(
+            new RegExp(
+              `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+            ),
+            "",
+          )
+          .trim();
+
+        // Remove any subsequent #define statements from the description
+        const nextDefineIndex = plainText.indexOf("#define");
+        if (nextDefineIndex !== -1) {
+          plainText = plainText.substring(0, nextDefineIndex).trim();
+        }
+
+        description = plainText;
+
+        if (previousMacro && !previousMacro.description) {
+          previousMacro.description = description;
+          rows.push(previousMacro);
+          previousMacro = null;
+          description = "";
+        }
+      }
+
+      if (name) {
+        previousMacro = { name, value: value || "", description };
+      }
+    }
+
+    if (previousMacro) {
+      rows.push(previousMacro);
+    }
+
+    if (rows.length === 0) return null;
+
+    // Build table HTML
+    let tableHtml = '<table class="man-macros-table"><tbody>';
+    for (const row of rows) {
+      const nameCell = row.name ? `<code>${row.name}</code>` : "";
+      const valueCell = row.value ? `<code>${row.value}</code>` : "";
+      tableHtml += `<tr><td class="man-macro-name">${nameCell}</td><td class="man-macro-value">${valueCell}</td><td class="man-macro-desc">${row.description}</td></tr>`;
+    }
+    tableHtml += "</tbody></table>";
+
+    return tableHtml;
+  }, []);
+
+  // Transform macro P tags into tables (works on HTML strings)
+  const transformMacrosInHTML = useCallback((html) => {
+    // Pattern 1: Standard sections that start with <br> (Password Requirements, etc.)
+    let result = html.replace(
+      /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?#define[\s\S]*?<\/p>/g,
+      (match) => parseMacroMatch(match) || match,
+    );
+
+    // Pattern 2: Initial Macros section (starts directly with #define, allowing optional whitespace)
+    // Only match if it contains #define statements
+    result = result.replace(
+      /<p[^>]*class="Pp"[^>]*>\s*#define[\s\S]*?<\/p>/g,
+      (match) => {
+        // Skip if this is just a header (contains only bold text without #define)
+        if (!match.includes("#define")) return match;
+        return parseMacroMatch(match) || match;
+      },
+    );
+
+    return result;
+  }, [parseMacroMatch]);
+
+  // Transform filename references to man3 links (works on HTML strings)
+  const transformFilenameLinksInHTML = useCallback((html) => {
+    const fileRegex = /\b([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))\b/g;
+
+    return html.replace(fileRegex, (match, filename) => {
+      // Check if already inside a link
+      const beforeMatch = html.substring(0, html.indexOf(match));
+      const openLinks = (beforeMatch.match(/<a[^>]*>/g) || []).length;
+      const closeLinks = (beforeMatch.match(/<\/a>/g) || []).length;
+
+      if (openLinks > closeLinks) {
+        // Already inside a link
+        return match;
+      }
+
+      // Check if file exists in pages
+      if (validPagesRef.current.has(filename)) {
+        return `<a href="/man3?page=${filename}" class="text-cyan-400 hover:text-cyan-300 underline">${filename}</a>`;
+      }
+      return match;
+    });
+  }, [validPagesRef]);
+
   // Helper function to add GitHub links to "Definition at line X of file Y"
   // Also converts line number anchors on source pages to GitHub links
   const processDefinitionLinks = useCallback(
@@ -303,142 +450,12 @@ export default function Man3() {
 
       return processed;
     },
-    [processDefinitionLinks],
+    [
+      processDefinitionLinks,
+      transformMacrosInHTML,
+      transformFilenameLinksInHTML,
+    ],
   );
-
-  // Transform filename references to man3 links (works on HTML strings)
-  const transformFilenameLinksInHTML = (html) => {
-    const fileRegex = /\b([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))\b/g;
-
-    return html.replace(fileRegex, (match, filename) => {
-      // Check if already inside a link
-      const beforeMatch = html.substring(0, html.indexOf(match));
-      const openLinks = (beforeMatch.match(/<a[^>]*>/g) || []).length;
-      const closeLinks = (beforeMatch.match(/<\/a>/g) || []).length;
-
-      if (openLinks > closeLinks) {
-        // Already inside a link
-        return match;
-      }
-
-      // Check if file exists in pages
-      if (validPagesRef.current.has(filename)) {
-        return `<a href="/man3?page=${filename}" class="text-cyan-400 hover:text-cyan-300 underline">${filename}</a>`;
-      }
-      return match;
-    });
-  };
-
-  // Transform macro P tags into tables (works on HTML strings)
-  const transformMacrosInHTML = (html) => {
-    // Find all P tags that start with <br> and contain #define (macro definitions)
-    // This avoids matching header P tags which are just bold text
-    return html.replace(
-      /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?#define[\s\S]*?<\/p>/g,
-      (match) => {
-        const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
-        const sections = content.split(/<br\s*\/?>/i);
-        if (sections.length < 2) return match;
-
-        const rows = [];
-        let previousMacro = null;
-
-        for (let i = 0; i < sections.length; i++) {
-          const section = sections[i].trim();
-          if (!section) continue;
-
-          // Extract bold tags and text
-          const boldRegex = /<b>([^<]+)<\/b>/g;
-          const bolds = [];
-          let boldMatch;
-          while ((boldMatch = boldRegex.exec(section))) {
-            bolds.push(boldMatch[1]);
-          }
-
-          if (bolds.length === 0) continue;
-
-          let name,
-            value,
-            description = "";
-
-          if (bolds.length >= 1) {
-            name = bolds[0];
-
-            if (bolds.length >= 2) {
-              value = bolds[1];
-            } else {
-              // Extract value from text
-              const text = section.replace(/<[^>]+>/g, "");
-              const nameIndex = text.indexOf(name);
-              if (nameIndex !== -1) {
-                const afterName = text
-                  .substring(nameIndex + name.length)
-                  .trim();
-                const closeParen = afterName.indexOf(")");
-                if (closeParen !== -1) {
-                  value = afterName.substring(0, closeParen + 1);
-                } else {
-                  const firstSpace = afterName.indexOf(" ");
-                  if (firstSpace !== -1) {
-                    value = afterName.substring(0, firstSpace);
-                  } else {
-                    value = afterName;
-                  }
-                }
-              }
-            }
-
-            // Extract description
-            let plainText = section.replace(/<[^>]+>/g, "").trim();
-            plainText = plainText
-              .replace(
-                new RegExp(
-                  `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
-                ),
-                "",
-              )
-              .trim();
-
-            // Remove any subsequent #define statements from the description
-            const nextDefineIndex = plainText.indexOf("#define");
-            if (nextDefineIndex !== -1) {
-              plainText = plainText.substring(0, nextDefineIndex).trim();
-            }
-
-            description = plainText;
-
-            if (previousMacro && !previousMacro.description) {
-              previousMacro.description = description;
-              rows.push(previousMacro);
-              previousMacro = null;
-              description = "";
-            }
-          }
-
-          if (name) {
-            previousMacro = { name, value: value || "", description };
-          }
-        }
-
-        if (previousMacro) {
-          rows.push(previousMacro);
-        }
-
-        if (rows.length === 0) return match;
-
-        // Build table HTML
-        let tableHtml = '<table class="man-macros-table"><tbody>';
-        for (const row of rows) {
-          const nameCell = row.name ? `<code>${row.name}</code>` : "";
-          const valueCell = row.value ? `<code>${row.value}</code>` : "";
-          tableHtml += `<tr><td class="man-macro-name">${nameCell}</td><td class="man-macro-value">${valueCell}</td><td class="man-macro-desc">${row.description}</td></tr>`;
-        }
-        tableHtml += "</tbody></table>";
-
-        return tableHtml;
-      },
-    );
-  };
 
   // Transform function P tags into tables (works on HTML strings)
   const transformFunctionsInHTML = (html) => {
