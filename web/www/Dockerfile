@@ -19,8 +19,8 @@ RUN bun run --filter './www' build
 FROM caddy:alpine AS caddy
 FROM node:22-alpine
 
-# Install bun
-RUN npm install -g bun
+# Install bun and git (for commit SHA detection)
+RUN apk add --no-cache git && npm install -g bun
 
 # Copy caddy binary
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
@@ -32,6 +32,9 @@ COPY --from=builder /app/www/dist ./dist
 COPY --from=builder /app/www/node_modules ./node_modules
 COPY --from=builder /app/www/api.js ./api.js
 COPY --from=builder /app/www/package.json ./package.json
+
+# Copy .git directory for commit SHA detection
+COPY --from=builder /app/.git ../.git
 
 # Copy Caddyfile for frontend serving + API proxying
 COPY www/Caddyfile /etc/caddy/Caddyfile
