@@ -480,10 +480,16 @@ export default function Man3() {
                 .trim();
 
               // Only use as description if it contains a space (multi-word) or ends with period (sentence)
-              if (descText && (descText.includes(" ") || descText.endsWith("."))) {
+              if (
+                descText &&
+                (descText.includes(" ") || descText.endsWith("."))
+              ) {
                 // Stop at period if there's text after it
                 const lastPeriodIdx = descText.lastIndexOf(".");
-                if (lastPeriodIdx !== -1 && lastPeriodIdx < descText.length - 1) {
+                if (
+                  lastPeriodIdx !== -1 &&
+                  lastPeriodIdx < descText.length - 1
+                ) {
                   descText = descText.substring(0, lastPeriodIdx + 1).trim();
                 }
                 if (!previousFunc.description) {
@@ -506,14 +512,17 @@ export default function Man3() {
 
                 // Find all words and take the last meaningful one (skip type modifiers)
                 const wordMatches = beforeName.match(/\b\w+(?:\*+)?\b/g);
-                let returnType = wordMatches && wordMatches.length > 0
-                  ? wordMatches[wordMatches.length - 1]
-                  : "";
+                let returnType =
+                  wordMatches && wordMatches.length > 0
+                    ? wordMatches[wordMatches.length - 1]
+                    : "";
 
                 // Handle cases like "void *" - need to include the asterisk
-                const afterLastWord = beforeName.substring(
-                  beforeName.lastIndexOf(returnType) + returnType.length
-                ).trim();
+                const afterLastWord = beforeName
+                  .substring(
+                    beforeName.lastIndexOf(returnType) + returnType.length,
+                  )
+                  .trim();
                 if (afterLastWord.startsWith("*")) {
                   returnType += afterLastWord.match(/\*+/)[0];
                 }
@@ -526,7 +535,11 @@ export default function Man3() {
                 let afterSig = afterName.substring(closeParenIdx + 1).trim();
 
                 // Only treat afterSig as description if it has multiple words (actual description text)
-                if (!afterSig || !afterSig.includes(" ") || /^\w+(\s|\*)*$/.test(afterSig)) {
+                if (
+                  !afterSig ||
+                  !afterSig.includes(" ") ||
+                  /^\w+(\s|\*)*$/.test(afterSig)
+                ) {
                   afterSig = "";
                 }
 
