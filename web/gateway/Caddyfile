@@ -17,36 +17,16 @@
 #   reverse_proxy web:3000
 # }
 
-# Production domains on HTTP and HTTPS
-http://:80 {
-  @www host ascii-chat.com www.ascii-chat.com
-  @discovery host discovery.ascii-chat.com
-  @web host web.ascii-chat.com
-
-  handle @www {
-    reverse_proxy www:5173
+# Wildcard domain for all subdomains
+*.ascii-chat.com, ascii-chat.com {
+  # Automatic HTTPS with Let's Encrypt for wildcard
+  tls {
+    issuer acme {
+      email admin@ascii-chat.com
+    }
   }
 
-  handle @discovery {
-    reverse_proxy discovery:5174
-  }
-
-  handle @web {
-    reverse_proxy web:3000
-  }
-
-  # Health check endpoint
-  handle /health {
-    respond "OK" 200
-  }
-
-  # Catch-all for unmatched domains (fallback to www service)
-  handle {
-    reverse_proxy www:5173
-  }
-}
-
-https://:443 {
+  # Route based on subdomain
   @www host ascii-chat.com www.ascii-chat.com
   @discovery host discovery.ascii-chat.com
   @web host web.ascii-chat.com
