@@ -494,7 +494,7 @@ export default function Snapshot() {
                 <p className="text-gray-300 text-sm">
                   Capture yourself as ASCII art. Perfect for profile pictures,
                   social media, or just having fun. Use zero delay for an instant
-                  snapshot, or add a 3-4 second delay to compose the perfect pose
+                  snapshot
                 </p>
               </div>
             </div>
