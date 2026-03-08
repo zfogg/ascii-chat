@@ -18,9 +18,9 @@ import Media from "./pages/docs/Media";
 
 export default function App() {
   return (
-    <HelmetProvider>
-      <HeadingProvider>
-        <BrowserRouter>
+    <BrowserRouter>
+      <HelmetProvider>
+        <HeadingProvider>
           <div className="h-screen flex flex-col overflow-hidden">
             <Navigation />
             <div className="flex-1 overflow-y-auto">
@@ -42,8 +42,8 @@ export default function App() {
               </Routes>
             </div>
           </div>
-        </BrowserRouter>
-      </HeadingProvider>
-    </HelmetProvider>
+        </HeadingProvider>
+      </HelmetProvider>
+    </BrowserRouter>
   );
 }
