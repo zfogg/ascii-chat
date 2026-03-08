@@ -23,7 +23,7 @@ export default function App() {
         <HeadingProvider>
           <div className="flex flex-col min-h-screen overflow-y-auto">
             <Navigation />
-            <div>
+            <div className="pt-[65px]">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/docs" element={<DocsHub />} />
