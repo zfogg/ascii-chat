@@ -18,25 +18,40 @@ export function HomePage() {
         <p className="text-xl text-terminal-fg mb-8">
           Video chat in your <del className="opacity-60">terminal</del> browser
         </p>
-        <div className="space-y-4 flex flex-col items-center">
-          <Button
-            href="/mirror"
-            className="px-6 py-3 bg-terminal-cyan text-terminal-bg rounded hover:opacity-80 transition-opacity inline-block w-64"
-          >
-            Mirror Mode
-          </Button>
-          <Button
-            href="/client"
-            className="px-6 py-3 bg-terminal-green text-terminal-bg rounded hover:opacity-80 transition-opacity inline-block w-64"
-          >
-            Client Mode
-          </Button>
-          <Button
-            href="/discovery"
-            className="px-6 py-3 bg-terminal-magenta text-terminal-bg rounded hover:opacity-80 transition-opacity inline-block w-64"
-          >
-            Discovery Mode
-          </Button>
+        <div className="space-y-4 flex flex-col items-center max-w-4xl">
+          <div className="flex items-center gap-4 w-full justify-center">
+            <Button
+              href="/mirror"
+              className="w-56 px-6 py-3 bg-terminal-cyan text-terminal-bg rounded hover:opacity-80 transition-opacity"
+            >
+              Mirror Mode
+            </Button>
+            <p className="text-sm text-terminal-cyan flex-1 text-left">
+              Use your webcam, files, or URLs without network activity
+            </p>
+          </div>
+          <div className="flex items-center gap-4 w-full justify-center">
+            <Button
+              href="/client"
+              className="w-56 px-6 py-3 bg-terminal-green text-terminal-bg rounded hover:opacity-80 transition-opacity"
+            >
+              Client Mode
+            </Button>
+            <p className="text-sm text-terminal-green flex-1 text-left">
+              Connect to ascii-chat servers via WebSocket and URL or IP
+            </p>
+          </div>
+          <div className="flex items-center gap-4 w-full justify-center">
+            <Button
+              href="/discovery"
+              className="w-56 px-6 py-3 bg-terminal-magenta text-terminal-bg rounded hover:opacity-80 transition-opacity"
+            >
+              Discovery Mode
+            </Button>
+            <p className="text-sm text-terminal-magenta flex-1 text-left">
+              Get a shareable link for someone to see your ASCII art face.
+            </p>
+          </div>
         </div>
       </div>
     </div>
