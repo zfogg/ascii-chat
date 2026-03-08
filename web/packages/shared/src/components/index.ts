@@ -8,6 +8,7 @@ export { GettingHelpSection } from "./GettingHelpSection";
 export { Head } from "./Head";
 export type { HeadProps } from "./Head";
 export { Heading } from "./Heading";
+export { HeadingProvider, useHeadingContext } from "./HeadingContext";
 export { InfoBox } from "./InfoBox";
 export { Link } from "./Link";
 export { NotFound } from "./NotFound";

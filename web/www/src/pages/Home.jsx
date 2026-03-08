@@ -3,6 +3,7 @@ import {
   CodeBlock,
   GettingHelpSection,
   Heading,
+  HeadingProvider,
   UsageExamplesSection,
 } from "@ascii-chat/shared/components";
 import {
@@ -47,8 +48,9 @@ export default function Home() {
   return (
     <>
       <AsciiChatHead />
-      <div className="bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
+      <HeadingProvider>
+        <div className="bg-gray-950 text-gray-100 flex flex-col">
+          <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
           {/* Header */}
           <header className="mb-12 sm:mb-16 text-center">
             <Heading
@@ -841,6 +843,7 @@ target_link_libraries(myapp libasciichat::libasciichat)`}
           <Footer />
         </div>
       </div>
+      </HeadingProvider>
     </>
   );
 }
