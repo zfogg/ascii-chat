@@ -123,14 +123,10 @@ export default function Hardware() {
                 Flip Webcam Video
               </Heading>
               <p className="docs-paragraph">
-                Control horizontal mirroring of webcam output (default: enabled,
-                good for front-facing cameras):
+                Control horizontal and vertical mirroring of webcam output with{" "}
+                <code className="text-cyan-300">--flip-x</code> and{" "}
+                <code className="text-cyan-300">--flip-y</code> flags.
               </p>
-              <CodeBlock language="bash">
-                {
-                  "# Enable flip (DEFAULT)\nascii-chat client example.com --webcam-flip\n\n# Disable flip (for rear cameras)\nascii-chat client example.com --no-webcam-flip\n\n# Short form\nascii-chat client example.com -g  # Enable\nascii-chat client example.com -g=false  # Disable"
-                }
-              </CodeBlock>
             </div>
 
             <div className="docs-subsection-spacing">
@@ -595,13 +591,14 @@ export default function Hardware() {
 
                 <div className="card-standard accent-yellow">
                   <Heading level={4} className="text-yellow-300 font-semibold mb-2">
-                    --webcam-flip & --webcam-index
+                    --flip-x, --flip-y & --webcam-index
                   </Heading>
                   <p className="text-gray-300 text-sm">
                     <strong>Work Together:</strong> Select device with{" "}
                     <code className="text-cyan-300">--webcam-index</code>, then
                     control flipping with{" "}
-                    <code className="text-cyan-300">--webcam-flip</code>
+                    <code className="text-cyan-300">--flip-x</code> and{" "}
+                    <code className="text-cyan-300">--flip-y</code>
                   </p>
                 </div>
 
@@ -813,10 +810,11 @@ ascii-chat client --audio -m -1 --speakers-index 1`}
                     Video is Flipped
                   </Heading>
                   <p className="text-gray-300 text-sm">
-                    Flip is enabled by default (good for front cameras). Disable
-                    for rear/fixed cameras:
-                    <br />
-                    <code className="text-cyan-300">--no-webcam-flip</code>
+                    Horizontal flip is enabled by default (like FaceTime, good for
+                    front-facing cameras). Use{" "}
+                    <code className="text-cyan-300">--flip-x</code> and{" "}
+                    <code className="text-cyan-300">--flip-y</code> to control
+                    flipping.
                   </p>
                 </div>
 
