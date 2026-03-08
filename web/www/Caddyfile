@@ -1,4 +1,10 @@
 :5173 {
+  # API requests go to Express backend on port 3001
+  handle /api/* {
+    reverse_proxy * localhost:3001
+  }
+
+  # Static files from dist/
   root * /app/www/dist
   file_server
 
