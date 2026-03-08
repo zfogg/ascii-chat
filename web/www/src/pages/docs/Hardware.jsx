@@ -658,7 +658,7 @@ export default function Hardware() {
                     <li>
                       For age-restricted videos, use{" "}
                       <code className="text-cyan-300">
-                        --cookies-from-browser
+                        --yt-dlp-options="--cookies-from-browser=chrome"
                       </code>
                     </li>
                     <li>For login-required content, same cookie solution</li>
