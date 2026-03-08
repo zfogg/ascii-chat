@@ -10,6 +10,7 @@
  * @date February 2026
  */
 
+#include <ascii-chat/options/registry/mode_defaults.h>
 #include <ascii-chat/options/registry/common.h>
 #include <ascii-chat/options/options.h>
 #include <ascii-chat/platform/system.h>
@@ -19,16 +20,7 @@
 // ============================================================================
 // Mode Descriptors - Names, Descriptions, and Groups
 // ============================================================================
-
-/**
- * @brief Metadata for a mode
- */
-typedef struct {
-  asciichat_mode_t mode;
-  const char *name;        // "server", "client", etc.
-  const char *description; // User-friendly description
-  const char *group;       // "server-like" or "client-like"
-} mode_descriptor_t;
+// Note: mode_descriptor_t is defined in mode_defaults.h (not here)
 
 /**
  * @brief Mode metadata for all modes
