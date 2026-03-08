@@ -5,15 +5,19 @@ interface CommitLinkProps extends AnchorHTMLAttributes<HTMLAnchorElement> {
 }
 
 export function CommitLink({ commitSha, className = "", ...props }: CommitLinkProps) {
+  const isUnknown = commitSha === "unknown";
+  const displayText = isUnknown ? "unknown commit" : commitSha;
+
   return (
     <a
-      href={`https://github.com/zfogg/ascii-chat/commit/${commitSha}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={className}
+      href={isUnknown ? undefined : `https://github.com/zfogg/ascii-chat/commit/${commitSha}`}
+      target={isUnknown ? undefined : "_blank"}
+      rel={isUnknown ? undefined : "noopener noreferrer"}
+      className={className + (isUnknown ? " cursor-default" : "")}
+      style={isUnknown ? { pointerEvents: "none" } : {}}
       {...props}
     >
-      {commitSha}
+      {displayText}
     </a>
   );
 }
