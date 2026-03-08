@@ -114,6 +114,13 @@ file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}")
             file(REMOVE_RECURSE "${WEBRTC_BUILD_DIR}/lib")
             message(STATUS "Cleaned old WebRTC AEC3 build artifacts")
         endif()
+
+        # Remove patch marker so patches are reapplied on next configure
+        set(_patch_marker_to_clean "${webrtc_aec3_SOURCE_DIR}/.patches_applied")
+        if(EXISTS "${_patch_marker_to_clean}")
+            file(REMOVE "${_patch_marker_to_clean}")
+            message(STATUS "Removed patch marker to reapply patches on rebuild")
+        endif()
         file(MAKE_DIRECTORY "${WEBRTC_BUILD_DIR}/lib")
 
         # Prepare CMake args for WebRTC build

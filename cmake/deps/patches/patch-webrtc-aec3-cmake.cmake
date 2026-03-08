@@ -22,6 +22,13 @@ if(NOT WEBRTC_AEC3_SOURCE_DIR)
     message(FATAL_ERROR "WEBRTC_AEC3_SOURCE_DIR not provided to patch script")
 endif()
 
+# Check if patches have already been applied to avoid unnecessary rewrites
+set(WEBRTC_PATCH_MARKER "${WEBRTC_AEC3_SOURCE_DIR}/.patches_applied")
+if(EXISTS "${WEBRTC_PATCH_MARKER}")
+    message(STATUS "WebRTC AEC3 patches already applied, skipping")
+    return()
+endif()
+
 # =============================================================================
 # Patch 1: Main CMakeLists.txt - Update CMake compatibility
 # =============================================================================
@@ -706,3 +713,7 @@ else()
 endif()
 
 message(STATUS "WebRTC AEC3 patching complete: Full stack (api/aec3/base/AudioProcess) enabled")
+
+# Create patch marker file to skip patching on future configure runs
+file(WRITE "${WEBRTC_PATCH_MARKER}" "Patches applied on $(date)\nSkip patching on future runs.\n")
+message(STATUS "Created patch marker: ${WEBRTC_PATCH_MARKER}")
