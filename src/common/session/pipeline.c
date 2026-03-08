@@ -11,6 +11,7 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -468,16 +469,23 @@ asciichat_error_t session_pipeline_run_main(
             continue;
         }
 
-        log_info("[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
-        // Convert to ASCII
-        image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
-        char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
-        free_frame(frame);
+        // Check if help screen is active - if so, don't render ASCII frames
+        bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
 
-        if (ascii) {
-            // Write ASCII to terminal
-            session_display_write_ascii(pipeline->display, ascii);
-            SAFE_FREE(ascii);
+        if (!help_is_active) {
+            log_info("[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
+            // Convert to ASCII
+            image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
+            char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
+            free_frame(frame);
+
+            if (ascii) {
+                // Write ASCII to terminal
+                session_display_write_ascii(pipeline->display, ascii);
+                SAFE_FREE(ascii);
+            }
+        } else {
+            free_frame(frame);
         }
 
         // Keyboard polling
@@ -538,12 +546,14 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
         asciichat_thread_join(&pipeline->encode_tid, NULL);
     }
 
-    // Flush queues
+    // Flush queues to free any remaining frames
     frame_queue_flush(pipeline->display_queue, free_frame_generic);
     frame_queue_flush(pipeline->encode_queue, free_frame_generic);
 
-    frame_queue_destroy(pipeline->display_queue);
-    frame_queue_destroy(pipeline->encode_queue);
+    // Don't explicitly destroy mutexes/cond_vars to avoid race with thread cleanup.
+    // Let SAFE_FREE(pipeline) clean up all queue memory together.
+    SAFE_FREE(pipeline->display_queue);
+    SAFE_FREE(pipeline->encode_queue);
     SAFE_FREE(pipeline);
 
     log_info("[PIPELINE] Pipeline destroyed");
