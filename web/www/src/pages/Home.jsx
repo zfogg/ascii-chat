@@ -839,28 +839,6 @@ target_link_libraries(myapp libasciichat::libasciichat)`}
             </div>
           </section>
 
-          {/* Test Duplicate Heading */}
-          <section className="mb-12 sm:mb-16 p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-lg">
-            <Heading
-              level={2}
-              className="text-2xl font-bold text-yellow-400 mb-4"
-            >
-              📦 Installation
-            </Heading>
-            <p className="text-gray-300">This is a duplicate "Installation" heading for testing. It should have -2 after it in the anchor.</p>
-          </section>
-
-          {/* Test Third Duplicate Heading */}
-          <section className="mb-12 sm:mb-16 p-4 bg-orange-900/20 border border-orange-700/50 rounded-lg">
-            <Heading
-              level={2}
-              className="text-2xl font-bold text-orange-400 mb-4"
-            >
-              📦 Installation
-            </Heading>
-            <p className="text-gray-300">This is the third "Installation" heading. It should have -3 after it in the anchor.</p>
-          </section>
-
           {/* Footer */}
           <Footer />
         </div>
