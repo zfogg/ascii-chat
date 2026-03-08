@@ -1124,12 +1124,6 @@ void keyboard_help_toggle(session_display_ctx_t *ctx) {
     return;
   }
 
-  // Disable help in snapshot mode only - allow help toggle even if stdin/stdout aren't TTYs
-  // (the display context tracks has_tty independently)
-  if (GET_OPTION(snapshot_mode)) {
-    return;
-  }
-
   bool current = atomic_load_bool(&ctx->keyboard_help_active);
   atomic_store_bool(&ctx->keyboard_help_active, !current);
 }
@@ -1137,6 +1131,34 @@ void keyboard_help_toggle(session_display_ctx_t *ctx) {
 /**
  * @brief Check if keyboard help is currently active (implemented in display.c for struct access)
  */
+// Global reference to current display context (used by signal handlers)
+// Set during render loop, cleared on exit
+static atomic_ptr_t g_current_display_ctx = {0};
+
+// Signal-safe flag to request help screen closure from Ctrl+C handler
+static atomic_t g_help_signal_cancel = {0};
+
+// Signal handler safe way to access current display context
+static session_display_ctx_t *get_current_display_ctx(void) {
+  return (session_display_ctx_t *)atomic_ptr_load(&g_current_display_ctx);
+}
+
+// Called by render loop to register/unregister the display context
+void session_display_set_global_context(session_display_ctx_t *ctx) {
+  atomic_ptr_store(&g_current_display_ctx, (void *)ctx);
+}
+
+// Called from Ctrl+C signal handler to request help screen closure
+void keyboard_help_signal_cancel(void) {
+  atomic_store_bool(&g_help_signal_cancel, true);
+}
+
+// Called from render loop to check if help should be closed
+bool keyboard_help_check_signal_cancel(void) {
+  bool expected = true;
+  return atomic_cas_bool(&g_help_signal_cancel, &expected, false);
+}
+
 bool keyboard_help_is_active(session_display_ctx_t *ctx) {
   if (!ctx) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Session display context is NULL");
@@ -1149,6 +1171,28 @@ bool keyboard_help_is_active(session_display_ctx_t *ctx) {
   }
 
   return atomic_load_bool(&ctx->keyboard_help_active);
+}
+
+// Global accessor for signal handlers (called from Ctrl+C handler)
+// Checks raw help state without snapshot mode check (signal handler needs to know
+// if help is active even in snapshot mode)
+bool keyboard_help_is_active_global(void) {
+  session_display_ctx_t *ctx = get_current_display_ctx();
+  if (!ctx) {
+    platform_write_all(STDERR_FILENO, "[DEBUG: ctx is NULL]\n", 20);
+    return false;
+  }
+  bool active = atomic_load_bool(&ctx->keyboard_help_active);
+  const char *msg = active ? "[DEBUG: help active]\n" : "[DEBUG: help inactive]\n";
+  platform_write_all(STDERR_FILENO, msg, active ? 22 : 24);
+  return active;
+}
+
+void keyboard_help_toggle_global(void) {
+  session_display_ctx_t *ctx = get_current_display_ctx();
+  if (ctx) {
+    keyboard_help_toggle(ctx);
+  }
 }
 
 void session_display_set_snapshot_actual_duration(session_display_ctx_t *ctx, double actual_duration_sec) {

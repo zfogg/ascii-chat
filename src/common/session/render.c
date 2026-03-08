@@ -191,6 +191,10 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
   // to ensure the snapshot delay timer can start
   bool force_first_iteration = snapshot_mode && frame_count == 0;
 
+  // Register display context globally so signal handlers (Ctrl+C) can access it
+  // This enables Ctrl+C to close the help screen instead of quitting when help is active
+  session_display_set_global_context(display);
+
   while (force_first_iteration || (!should_exit(user_data) && !(snapshot_mode && snapshot_done))) {
     force_first_iteration = false;
     loop_iteration++;
@@ -302,6 +306,13 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
         if (frame_count <= 5 || frame_count % 10 == 0) {
           log_info("RENDER_LOOP: Frame %lu - calling session_display_render_frame, display=%p",
                    (unsigned long)frame_count, (void *)display);
+        }
+
+        // Check if SIGINT handler cancelled help mode (Ctrl+C while help is open).
+        // The signal handler sets an atomic flag instead of touching state directly.
+        if (display && keyboard_help_check_signal_cancel()) {
+          keyboard_help_toggle(display);
+          log_debug("Ctrl+C cancelled help screen - returning to ASCII art");
         }
 
         // Check if help screen is active - if so, render help instead of frame
@@ -491,6 +502,9 @@ asciichat_error_t session_render_loop(session_capture_ctx_t *capture, session_di
     keyboard_destroy();
     log_debug_every(2 * NS_PER_SEC_INT, "Keyboard input disabled");
   }
+
+  // Unregister global display context (for signal handlers)
+  session_display_set_global_context(NULL);
 
   return ASCIICHAT_OK;
 }

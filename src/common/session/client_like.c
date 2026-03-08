@@ -15,6 +15,7 @@
 #include <ascii-chat/audio/audio.h>
 #include <ascii-chat/video/webcam/webcam.h>
 #include <ascii-chat/ui/splash.h>
+#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/debug/sync.h>
 
 #include <ascii-chat/log/log.h>
@@ -198,6 +199,10 @@ asciichat_error_t session_client_like_run(const session_client_like_config_t *co
     goto cleanup;
   }
   log_debug("[SETUP_DISPLAY_EARLY] Display context created, will use for splash");
+
+  // Register global display context for signal handlers (Ctrl+C help screen closure)
+  // This makes the context available to signal handlers for the entire app lifetime
+  session_display_set_global_context(display);
 
   // ============================================================================
   // SETUP: Splash Screen (using unified display context)

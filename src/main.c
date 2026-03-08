@@ -37,6 +37,9 @@
 // Application callbacks for library integration
 #include <ascii-chat/app_callbacks.h>
 
+// Keyboard help UI
+#include <ascii-chat/ui/keyboard_help.h>
+
 // Utilities
 #include <ascii-chat/util/utf8.h>
 #include <ascii-chat/util/time.h>
@@ -233,6 +236,14 @@ static void handle_sigterm(int sig) {
                                            : "UNKNOWN";
   char log_out[64];
   safe_snprintf(log_out, sizeof(log_out), "Signal '%s' received", sig_name);
+
+  // If Ctrl+C (SIGINT) and help screen is active, close it instead of exiting
+  if (sig == SIGINT && keyboard_help_is_active_global()) {
+    log_console(LOG_INFO, "Ctrl+C received - closing help screen");
+    keyboard_help_toggle_global();
+    return; // Help is now closed, don't exit
+  }
+
   if (sig == SIGTERM || sig == SIGHUP || sig == SIGINT) {
     safe_snprintf(log_out, sizeof(log_out), "%s - shutting down", log_out);
   }
@@ -251,11 +262,21 @@ static void handle_sigterm(int sig) {
 
 /**
  * Console Ctrl+C handler (called from signal dispatcher on all platforms)
- * Counts consecutive Ctrl+C presses - double press forces immediate exit
+ * - If help screen is active: set atomic flag to close help (render loop handles actual close)
+ * - If help screen is inactive: initiate shutdown (double Ctrl+C forces immediate exit)
  */
 static bool console_ctrl_handler(console_ctrl_event_t event) {
   if (event != CONSOLE_CTRL_C && event != CONSOLE_CTRL_BREAK && event != CONSOLE_CLOSE) {
     return false;
+  }
+
+  // Check if keyboard help screen is active (defined in session/display.c)
+  // Uses atomic load only - safe from signal context
+  if (keyboard_help_is_active_global()) {
+    // Help screen is active - close it instead of exiting
+    log_console(LOG_INFO, "Ctrl+C received - closing help screen");
+    keyboard_help_toggle_global();
+    return true; // Handled - don't exit
   }
 
   log_console(LOG_INFO, "Ctrl+C received - shutting down");
