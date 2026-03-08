@@ -25,20 +25,20 @@ export default function App() {
             <Navigation />
             <div className="flex-1 overflow-y-auto">
               <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/docs" element={<DocsHub />} />
-              <Route path="/docs/" element={<DocsHub />} />
-              <Route path="/docs/configuration" element={<Configuration />} />
-              <Route path="/docs/hardware" element={<Hardware />} />
-              <Route path="/docs/terminal" element={<Terminal />} />
-              <Route path="/docs/snapshot" element={<Snapshot />} />
-              <Route path="/docs/network" element={<Network />} />
-              <Route path="/docs/media" element={<Media />} />
-              <Route path="/docs/crypto" element={<Crypto />} />
-              <Route path="/man1" element={<Man1 />} />
-              <Route path="/man5" element={<Man5 />} />
-              <Route path="/man3" element={<Man3 />} />
-              <Route path="*" element={<NotFound />} />
+                <Route path="/" element={<Home />} />
+                <Route path="/docs" element={<DocsHub />} />
+                <Route path="/docs/" element={<DocsHub />} />
+                <Route path="/docs/configuration" element={<Configuration />} />
+                <Route path="/docs/hardware" element={<Hardware />} />
+                <Route path="/docs/terminal" element={<Terminal />} />
+                <Route path="/docs/snapshot" element={<Snapshot />} />
+                <Route path="/docs/network" element={<Network />} />
+                <Route path="/docs/media" element={<Media />} />
+                <Route path="/docs/crypto" element={<Crypto />} />
+                <Route path="/man1" element={<Man1 />} />
+                <Route path="/man5" element={<Man5 />} />
+                <Route path="/man3" element={<Man3 />} />
+                <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </div>
