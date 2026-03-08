@@ -4,9 +4,6 @@ services:
       context: .
       dockerfile: gateway/Dockerfile
     image: zfogg/ascii-chat-web-gateway:latest
-    ports:
-      - "8080:80"
-      - "8443:443"
     volumes:
       - caddy_data:/data/caddy
       - caddy_config:/config/caddy
@@ -27,7 +24,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.gateway.rule=PathPrefix(`/`)"
       - "traefik.http.routers.gateway.priority=1"
-      - "traefik.http.services.gateway.loadbalancer.server.port=8080"
+      - "traefik.http.services.gateway.loadbalancer.server.port=80"
 
   discovery:
     build:
