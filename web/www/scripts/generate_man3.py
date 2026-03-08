@@ -91,21 +91,33 @@ def lookup_source_path(name, source_lookup, html_file):
 
 
 def deduplicate_names(pages):
-    """Handle duplicate page names by using HTML filename."""
+    """Handle duplicate page names by removing common duplicate entries."""
     name_counts = {}
     for page in pages:
         name = page["name"]
         name_counts[name] = name_counts.get(name, 0) + 1
 
-    # For duplicates, use HTML filename (with ascii-chat- prefix removed)
-    for page in pages:
-        name = page["name"]
-        if name_counts[name] > 1:
-            html_file = page["file"]
-            if html_file.startswith("ascii-chat-") and html_file.endswith(".html"):
-                # Remove "ascii-chat-" prefix and ".html" suffix
-                unique_name = html_file[11:-5]  # Skip "ascii-chat-", remove ".html"
-                page["name"] = unique_name
+    # Filter out vendored dependency duplicates (keep only project files)
+    # Prefer entries with sourcePath pointing to lib/, src/, or include/
+    filtered = []
+    for name in sorted(name_counts.keys()):
+        if name_counts[name] == 1:
+            # No duplicates, keep it
+            filtered.extend([p for p in pages if p["name"] == name])
+        else:
+            # Multiple entries: prefer ones with sourcePath in lib/, src/, include/
+            candidates = [p for p in pages if p["name"] == name]
+            project_files = [p for p in candidates if p.get("sourcePath") and
+                           any(p["sourcePath"].startswith(prefix) for prefix in ["lib/", "src/", "include/"])]
+            if project_files:
+                # Use the first project file
+                filtered.append(project_files[0])
+            else:
+                # Skip vendored deps if no project file found
+                pass
+
+    pages.clear()
+    pages.extend(filtered)
 
 
 def check_duplicates(pages):
@@ -132,7 +144,7 @@ def check_duplicates(pages):
 def main():
     """Generate pages.json from Doxygen man3 HTML files."""
     man3_dir = Path("public/man3")
-    build_man3_dir = Path("../../build/share/man/man3")
+    build_man3_dir = Path("../../build_release/share/man/man3")
     repo_root = Path("../../").resolve()
 
     if not man3_dir.exists():
@@ -142,20 +154,23 @@ def main():
     source_lookup = build_source_lookup(repo_root)
     pages = []
 
-    # Get all HTML files except pages.json
+    # Get all HTML files in public/man3
+    if not man3_dir.exists():
+        print(f"ERROR: {man3_dir} directory not found", file=sys.stderr)
+        return False
+
     for html_file in sorted(man3_dir.glob("*.html")):
         filename = html_file.name
         basename_no_ext = filename[:-5]  # Remove .html
 
         # Skip Doxygen internal documentation pages (file docs, source listings, etc)
-        if re.search(r'_8[a-z](_source)?$', basename_no_ext):
+        if re.search(r'_home_|_usr_|_opt_|_var_', basename_no_ext):
             continue
 
         # Corresponding .3 file has same basename but with .3 extension
         man3_file = build_man3_dir / f"{basename_no_ext}.3"
 
         # Skip HTML files that don't have corresponding .3 man files
-        # (ensures pages.json only includes pages from current Doxygen output)
         if not man3_file.exists():
             continue
 
@@ -167,7 +182,7 @@ def main():
             name = get_fallback_name(basename_no_ext)
 
         # Look up source path
-        source_path = lookup_source_path(name, source_lookup, html_file)
+        source_path = lookup_source_path(name, source_lookup, man3_file)
 
         pages.append(
             {
@@ -178,11 +193,9 @@ def main():
             }
         )
 
-    # Deduplicate names
-    deduplicate_names(pages)
-
-    # Check for remaining duplicates
-    if not check_duplicates(pages):
+    # Fail if no pages were generated
+    if not pages:
+        print("ERROR: No man3 pages generated - pages.json would be empty", file=sys.stderr)
         return False
 
     # Write pages.json

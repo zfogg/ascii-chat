@@ -38,10 +38,8 @@ if [ -d "$REPO_ROOT" ]; then
 
   # Check if man3 directory exists and has files
   if [ -d "$BUILD_DIR/share/man/man3" ]; then
-    # Convert all man(3) pages to HTML and create index
+    # Convert man3 pages to HTML with mandoc
     mkdir -p public/man3
-
-    # Convert each .3 file to HTML
     for manfile in "$BUILD_DIR/share/man/man3"/*.3; do
       if [ -f "$manfile" ]; then
         basename=$(basename "$manfile" .3)

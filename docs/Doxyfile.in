@@ -139,7 +139,9 @@ EXCLUDE                = @CMAKE_SOURCE_DIR@/tests \
                          @CMAKE_SOURCE_DIR@/build_release \
                          @CMAKE_BINARY_DIR@
 
-EXCLUDE_PATTERNS       = */mainpage.dox
+EXCLUDE_PATTERNS       = */mainpage.dox \
+                         */.deps-cache* \
+                         */deps/*
 
 INPUT_ENCODING         = UTF-8
 
@@ -152,77 +154,7 @@ FILE_PATTERNS          = *.c \
 RECURSIVE              = YES
 
 EXCLUDE_SYMLINKS       = NO
-EXCLUDE_SYMBOLS        = A2NLSF \
-                         ALIGNED_ATTR \
-                         AdaCombState \
-                         AdaConvState \
-                         AdaShapeState \
-                         AnalysisDenseLayer \
-                         AnalysisGRULayer \
-                         Argon2* \
-                         BIT_* \
-                         BMK_* \
-                         COVER_* \
-                         DREDEnc \
-                         DRED* \
-                         EStats_* \
-                         FARGANState \
-                         FASTCOVER_* \
-                         FIO_* \
-                         FSE_* \
-                         FUZZ_* \
-                         FWGANState \
-                         HUF_* \
-                         IOJob_t \
-                         ImageRGB \
-                         Inlines \
-                         InternalRandom* \
-                         KeygenTV \
-                         LACE* \
-                         LPCNetEncState \
-                         LPCNetPLCState \
-                         LPC_* \
-                         LP_variable_cutoff \
-                         LTP_* \
-                         LinearLayer \
-                         LossGenState \
-                         Likely \
-                         Logging \
-                         MacroCount \
-                         MacroDebug \
-                         MappingMatrix \
-                         NLSF* \
-                         NSQ* \
-                         NoLACE* \
-                         OSCEFeatureState \
-                         OSCEModel \
-                         OSCEState \
-                         Options \
-                         OptionsTest \
-                         OpusCustom* \
-                         OpusDecoder \
-                         OpusEncoder \
-                         OpusMSDecoder \
-                         OpusMSEncoder \
-                         OpusProjection* \
-                         OpusRepacketizer \
-                         OpusDRED* \
-                         PACKED_ATTR \
-                         PLC* \
-                         PLCNetState \
-                         POOL_* \
-                         PitchDNNState \
-                         _kiss_* \
-                         _random_state_t \
-                         _silk_* \
-                         _trbudget_t \
-                         __attribute__ \
-                         pzstd_* \
-                         *avx2* \
-                         *neon* \
-                         *sse* \
-                         *ssse3* \
-                         *sve*
+EXCLUDE_SYMBOLS        =
 EXAMPLE_PATH           =
 EXAMPLE_PATTERNS       =
 EXAMPLE_RECURSIVE      = NO

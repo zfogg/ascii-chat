@@ -79,26 +79,17 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
     set(DOXYFILE_MAN3_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
     set(DOXYFILE_MAN3_OUT "${CMAKE_BINARY_DIR}/Doxyfile.man3")
 
-    # Read the Doxyfile template and customize for man3-only output
-    file(READ ${DOXYFILE_MAN3_IN} DOXYFILE_CONTENT)
-    # Set GENERATE_HTML to NO and keep GENERATE_MAN to YES
-    string(REPLACE "GENERATE_HTML" "GENERATE_HTML_DISABLED" DOXYFILE_CONTENT "${DOXYFILE_CONTENT}")
-    string(REPLACE "GENERATE_HTML_DISABLED" "GENERATE_HTML" DOXYFILE_CONTENT "${DOXYFILE_CONTENT}")
-
-    # Write custom Doxyfile for man3 that will be processed with CMake variables
-    file(WRITE "${CMAKE_BINARY_DIR}/Doxyfile.man3.in" "${DOXYFILE_CONTENT}")
+    # Set CMake variables needed for Doxyfile substitution
+    set(GENERATE_HTML "NO")
+    set(GENERATE_MAN "YES")
+    set(AWESOME_CSS_DIR "${CMAKE_SOURCE_DIR}/deps/doxygen-awesome-css")
 
     # Configure the file with CMake variables
     configure_file(
-        "${CMAKE_BINARY_DIR}/Doxyfile.man3.in"
+        "${DOXYFILE_MAN3_IN}"
         "${DOXYFILE_MAN3_OUT}"
         @ONLY
     )
-
-    # Post-process to disable HTML generation
-    file(READ "${DOXYFILE_MAN3_OUT}" DOXYFILE_CONTENT)
-    string(REPLACE "GENERATE_HTML          = YES" "GENERATE_HTML          = NO" DOXYFILE_CONTENT "${DOXYFILE_CONTENT}")
-    file(WRITE "${DOXYFILE_MAN3_OUT}" "${DOXYFILE_CONTENT}")
 
     # Generate manpage renaming script at configure time
     file(WRITE "${CMAKE_BINARY_DIR}/RenameManpages.cmake" "

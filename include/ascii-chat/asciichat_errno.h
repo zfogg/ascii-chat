@@ -8,7 +8,6 @@
 #include <unistd.h>
 #endif
 
-// Platform-specific includes - must be first
 #include "common.h"
 
 /**
