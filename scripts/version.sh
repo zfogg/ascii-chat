@@ -106,17 +106,17 @@ parse_version "$CURRENT_VERSION"
 
 # Handle component queries
 if [[ "$SHOW_MAJOR" == "true" ]]; then
-    echo "$MAJOR"
+    echo "${MAJOR}.${MINOR}.${PATCH}"
     exit 0
 fi
 
 if [[ "$SHOW_MINOR" == "true" ]]; then
-    echo "$MINOR"
+    echo "${MAJOR}.${MINOR}.${PATCH}"
     exit 0
 fi
 
 if [[ "$SHOW_PATCH" == "true" ]]; then
-    echo "$PATCH"
+    echo "${MAJOR}.${MINOR}.${PATCH}"
     exit 0
 fi
 
@@ -143,4 +143,4 @@ if [[ "$NEXT_PATCH" == "true" ]]; then
 fi
 
 # Default: print current version
-echo "$CURRENT_VERSION"
+echo "${MAJOR}.${MINOR}.${PATCH}"
