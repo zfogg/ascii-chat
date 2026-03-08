@@ -13,7 +13,7 @@ COPY . .
 RUN bun install
 
 # Build discovery project only
-RUN bun run --filter './web/discovery' build
+RUN cd web && bun run --filter './discovery' build
 
 # Clean up node_modules
 RUN rm -rf /app/node_modules /app/packages /app/web/www /app/web/web /app/bun.lock*

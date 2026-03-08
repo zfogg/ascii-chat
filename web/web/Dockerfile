@@ -13,7 +13,7 @@ COPY . .
 RUN bun install
 
 # Build web project (type check + vite build)
-RUN cd web/web && bun run type-check && bun x vite build
+RUN cd web && bun run --filter './web' type-check && bun run --filter './web' build
 
 # Clean up node_modules and other projects
 RUN rm -rf /app/node_modules /app/web/discovery /app/web/www /app/packages /app/bun.lock*

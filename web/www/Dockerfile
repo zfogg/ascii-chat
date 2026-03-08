@@ -13,7 +13,7 @@ COPY . .
 RUN bun install --frozen-lockfile
 
 # Build www project only (uses vite to build dist/)
-RUN bun run --filter './web/www' build
+RUN cd web && bun run --filter './www' build
 
 # Verify dist was created
 RUN test -d web/www/dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
