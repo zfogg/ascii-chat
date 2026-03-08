@@ -4,9 +4,6 @@ services:
       context: .
       dockerfile: gateway/Dockerfile
     image: zfogg/ascii-chat-web-gateway:latest
-    ports:
-      - "80:80"
-      - "443:443"
     volumes:
       - caddy_data:/data/caddy
       - caddy_config:/config/caddy
