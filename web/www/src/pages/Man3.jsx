@@ -204,90 +204,95 @@ export default function Man3() {
     }
   }, [selectedPageContent]);
 
+  // Comprehensive HTML preprocessing pipeline - applies ALL transformations
+  const preprocessPageHTML = useCallback(
+    (
+      html,
+      searchQuery = "",
+      sourcePath = "",
+      commitSha = "",
+      isSourcePage = false,
+    ) => {
+      if (!html) return html;
 
-  // Link filenames (.c, .h, .cpp, .m, .hpp) to man3 pages if not already linked
-  useEffect(() => {
-    const contentDiv = contentViewerRef.current;
-    if (!contentDiv) return;
+      // Step 1: Transform macros to tables
+      let processed = transformMacrosInHTML(html);
 
-    const fileRegex = /([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))/g;
-
-    // Walk through all text nodes
-    const walker = document.createTreeWalker(
-      contentDiv,
-      NodeFilter.SHOW_TEXT,
-      null,
-      false,
-    );
-
-    const textNodesToProcess = [];
-    let node;
-    while ((node = walker.nextNode())) {
-      textNodesToProcess.push(node);
-    }
-
-    // Process each text node
-    for (const textNode of textNodesToProcess) {
-      // Skip if already inside a link or code tag
-      let parent = textNode.parentNode;
-      let isAlreadyLinked = false;
-      while (parent) {
-        if (parent.tagName === "A" || parent.tagName === "CODE") {
-          isAlreadyLinked = true;
-          break;
+      // Step 2: Fix relative paths
+      processed = processed.replace(/src="([^"]+)"/g, (match, src) => {
+        if (!src.startsWith("/") && !src.startsWith("http")) {
+          return `src="/man3/${src}"`;
         }
-        if (parent === contentDiv) break;
-        parent = parent.parentNode;
-      }
-
-      if (isAlreadyLinked) continue;
-
-      const text = textNode.textContent;
-      const parts = [];
-      let lastIndex = 0;
-      let match;
-
-      while ((match = fileRegex.exec(text))) {
-        const filename = match[1];
-        const startIndex = match.index;
-
-        // Add text before match
-        if (startIndex > lastIndex) {
-          const textPart = document.createTextNode(
-            text.substring(lastIndex, startIndex),
-          );
-          parts.push(textPart);
+        return match;
+      });
+      processed = processed.replace(/href="([^"]+)"/g, (match, href) => {
+        if (
+          !href.startsWith("/") &&
+          !href.startsWith("http") &&
+          !href.startsWith("#")
+        ) {
+          return `href="/man3/${href}"`;
         }
+        return match;
+      });
 
-        // Only link if the file exists in pages.json
-        if (validPagesRef.current.has(filename)) {
-          const link = document.createElement("a");
-          link.href = `/man3?page=${filename}`;
-          link.className = "text-cyan-400 hover:text-cyan-300 underline";
-          link.textContent = filename;
-          parts.push(link);
-        } else {
-          // Just add the text without linking
-          parts.push(document.createTextNode(filename));
-        }
+      // Step 3: Convert HTML file links to man3 links
+      processed = processed.replace(
+        /href="(?:https?:\/\/[^/]+)?([^"]*\/)?([^/".]+\.html)(#l\d+)?"/gi,
+        (match, path, htmlFile, anchor) => {
+          const newPageName = htmlFile.replace(".html", "");
+          const newHref = `/man3?page=${newPageName}${anchor || ""}`;
+          return `href="${newHref}"`;
+        },
+      );
 
-        lastIndex = match.index + filename.length;
+      // Step 4: Preserve empty anchor tags
+      processed = processed.replace(
+        /<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g,
+        '<a id="$1">\u200B</a>',
+      );
+
+      // Step 5: Add GitHub links to definition references
+      processed = processDefinitionLinks(
+        processed,
+        sourcePath,
+        commitSha,
+        isSourcePage,
+      );
+
+      // Step 6: Transform filenames to man3 links (in HTML)
+      processed = transformFilenameLinksInHTML(processed);
+
+      // Step 7: Highlight search matches
+      processed = highlightMatchesInHTML(processed, searchQuery);
+
+      return processed;
+    },
+    [processDefinitionLinks],
+  );
+
+  // Transform filename references to man3 links (works on HTML strings)
+  const transformFilenameLinksInHTML = (html) => {
+    const fileRegex = /\b([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))\b/g;
+
+    return html.replace(fileRegex, (match, filename) => {
+      // Check if already inside a link
+      const beforeMatch = html.substring(0, html.indexOf(match));
+      const openLinks = (beforeMatch.match(/<a[^>]*>/g) || []).length;
+      const closeLinks = (beforeMatch.match(/<\/a>/g) || []).length;
+
+      if (openLinks > closeLinks) {
+        // Already inside a link
+        return match;
       }
 
-      // Add remaining text
-      if (lastIndex < text.length) {
-        const textPart = document.createTextNode(text.substring(lastIndex));
-        parts.push(textPart);
+      // Check if file exists in pages
+      if (validPagesRef.current.has(filename)) {
+        return `<a href="/man3?page=${filename}" class="text-cyan-400 hover:text-cyan-300 underline">${filename}</a>`;
       }
-
-      // Replace text node with processed parts
-      if (parts.length > 0) {
-        const fragment = document.createDocumentFragment();
-        parts.forEach((part) => fragment.appendChild(part));
-        textNode.parentNode.replaceChild(fragment, textNode);
-      }
-    }
-  }, [selectedPageContent]);
+      return match;
+    });
+  };
 
   // Transform macro P tags into tables (works on HTML strings)
   const transformMacrosInHTML = (html) => {
@@ -317,7 +322,9 @@ export default function Man3() {
 
           if (bolds.length === 0) continue;
 
-          let name, value, description = "";
+          let name,
+            value,
+            description = "";
 
           if (bolds.length >= 1) {
             name = bolds[0];
@@ -329,7 +336,9 @@ export default function Man3() {
               const text = section.replace(/<[^>]+>/g, "");
               const nameIndex = text.indexOf(name);
               if (nameIndex !== -1) {
-                const afterName = text.substring(nameIndex + name.length).trim();
+                const afterName = text
+                  .substring(nameIndex + name.length)
+                  .trim();
                 const closeParen = afterName.indexOf(")");
                 if (closeParen !== -1) {
                   value = afterName.substring(0, closeParen + 1);
@@ -354,6 +363,13 @@ export default function Man3() {
                 "",
               )
               .trim();
+
+            // Remove any subsequent #define statements from the description
+            const nextDefineIndex = plainText.indexOf("#define");
+            if (nextDefineIndex !== -1) {
+              plainText = plainText.substring(0, nextDefineIndex).trim();
+            }
+
             description = plainText;
 
             if (previousMacro && !previousMacro.description) {
@@ -390,53 +406,16 @@ export default function Man3() {
   };
 
   // Helper function to process HTML content: convert URLs and highlight matches
-  const processPageContent = useCallback((html, searchQuery) => {
-    const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    let content = bodyMatch ? bodyMatch[1] : html;
+  const processPageContent = useCallback(
+    (html, searchQuery) => {
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
+      let content = bodyMatch ? bodyMatch[1] : html;
 
-    // Transform macro P tags into tables
-    content = transformMacrosInHTML(content);
-
-    // Transform Data Fields section into table (disabled - use CSS instead)
-    // content = transformDataFieldsToTable(content);
-
-    // Fix relative paths to absolute paths for images and links
-    content = content.replace(/src="([^"]+)"/g, (match, src) => {
-      if (!src.startsWith("/") && !src.startsWith("http")) {
-        return `src="/man3/${src}"`;
-      }
-      return match;
-    });
-    content = content.replace(/href="([^"]+)"/g, (match, href) => {
-      if (
-        !href.startsWith("/") &&
-        !href.startsWith("http") &&
-        !href.startsWith("#")
-      ) {
-        return `href="/man3/${href}"`;
-      }
-      return match;
-    });
-
-    // Convert all HTML file links to Man3 links
-    content = content.replace(
-      /href="(?:https?:\/\/[^/]+)?([^"]*\/)?([^/".]+\.html)(#l\d+)?"/gi,
-      (match, path, htmlFile, anchor) => {
-        const newPageName = htmlFile.replace(".html", "");
-        const newHref = `/man3?page=${newPageName}${anchor || ""}`;
-        return `href="${newHref}"`;
-      },
-    );
-
-    // Preserve empty anchor tags by adding zero-width space
-    content = content.replace(
-      /<a\s+id="(l\d+)"[^>]*>\s*<\/a>/g,
-      '<a id="$1">\u200B</a>',
-    );
-
-    // Highlight matches in the processed content
-    return highlightMatchesInHTML(content, searchQuery);
-  }, []);
+      // Apply comprehensive preprocessing pipeline
+      return preprocessPageHTML(content, searchQuery);
+    },
+    [preprocessPageHTML],
+  );
 
   // Helper function to add GitHub links to "Definition at line X of file Y"
   // Also converts line number anchors on source pages to GitHub links
