@@ -69,11 +69,11 @@ const char *g_color_mode_descs[] = {"Auto-detect from terminal",
 // ============================================================================
 
 const char *g_color_filter_values[] = {OPT_COLOR_FILTER_NONE, OPT_COLOR_FILTER_BLACK, OPT_COLOR_FILTER_WHITE, OPT_COLOR_FILTER_GREEN, OPT_COLOR_FILTER_MAGENTA, OPT_COLOR_FILTER_FUCHSIA, OPT_COLOR_FILTER_ORANGE,
-                                       OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  NULL};
+                                       OPT_COLOR_FILTER_TEAL, OPT_COLOR_FILTER_CYAN,  OPT_COLOR_FILTER_PINK,  OPT_COLOR_FILTER_RED,   OPT_COLOR_FILTER_YELLOW,  OPT_COLOR_FILTER_RAINBOW, NULL};
 const int g_color_filter_integers[] = {COLOR_FILTER_NONE,   COLOR_FILTER_BLACK,   COLOR_FILTER_WHITE,
                                        COLOR_FILTER_GREEN,  COLOR_FILTER_MAGENTA, COLOR_FILTER_FUCHSIA,
                                        COLOR_FILTER_ORANGE, COLOR_FILTER_TEAL,    COLOR_FILTER_CYAN,
-                                       COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW};
+                                       COLOR_FILTER_PINK,   COLOR_FILTER_RED,     COLOR_FILTER_YELLOW,    COLOR_FILTER_RAINBOW};
 const char *g_color_filter_descs[] = {"No filtering (default)",
                                       "Dark content on white background",
                                       "White content on black background",
