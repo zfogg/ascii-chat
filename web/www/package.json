@@ -20,11 +20,13 @@
     "dotenv": "^16.4.5",
     "express": "^4.18.2",
     "express-rate-limit": "^7.1.5",
+    "morgan": "^1.10.0",
     "prismjs": "^1.30.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "react-helmet-async": "^2.0.5",
-    "react-router-dom": "^7.13.0"
+    "react-router-dom": "^7.13.0",
+    "winston": "^3.11.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.7.0",
