@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN cd web && bun install && npm ci --no-save
+RUN cd web && bun install --frozen-lockfile=false
 
 # Build discovery
 FROM base AS builder
