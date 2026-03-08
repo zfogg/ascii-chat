@@ -1,6 +1,6 @@
 # Caddy reverse proxy gateway for ascii-chat web services
 # Routes requests to backend services based on domain names
-# Automatically handles Let's Encrypt certificates
+# TLS/certificates handled by Traefik (Coolify reverse proxy)
 
 # Default (uncomment and update for production domains)
 # ascii-chat.com, www.ascii-chat.com {
@@ -18,14 +18,8 @@
 # }
 
 # Wildcard domain for all subdomains
+# TLS is handled by Traefik (reverse proxy in Coolify)
 *.ascii-chat.com, ascii-chat.com {
-  # Automatic HTTPS with Let's Encrypt for wildcard
-  tls {
-    issuer acme {
-      email admin@ascii-chat.com
-    }
-  }
-
   # Route based on subdomain
   @www host ascii-chat.com www.ascii-chat.com
   @discovery host discovery.ascii-chat.com
