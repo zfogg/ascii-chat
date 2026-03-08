@@ -232,10 +232,64 @@ section {
 }
 
 .man-macro-value code {
-  color: #f0abfc;
+  color: #fb923c;
 }
 
 .man-macro-desc {
+  color: #d1d5db;
+}
+
+/* Functions table styling with CSS grid */
+.man-functions-table {
+  width: 100%;
+  display: grid;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  gap: 1rem;
+  font-size: 0.8rem;
+}
+
+.man-functions-table tbody {
+  display: contents;
+}
+
+.man-functions-table tr {
+  display: contents;
+}
+
+/* Desktop: 3 columns (name | signature | description) */
+@media (min-width: 768px) {
+  .man-functions-table {
+    grid-template-columns: auto auto 1fr;
+  }
+}
+
+/* Mobile: 2 columns for name/signature, description spans full width */
+@media (max-width: 767px) {
+  .man-functions-table {
+    grid-template-columns: auto auto;
+  }
+
+  .man-functions-table .man-func-desc {
+    grid-column: 1 / -1;
+  }
+}
+
+.man-func-name {
+  color: #c084fc;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.man-func-sig {
+  color: #fbbf24;
+}
+
+.man-func-sig code {
+  color: #fbbf24;
+}
+
+.man-func-desc {
   color: #d1d5db;
 }
 
