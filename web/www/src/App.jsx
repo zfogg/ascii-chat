@@ -21,9 +21,9 @@ export default function App() {
     <BrowserRouter>
       <HelmetProvider>
         <HeadingProvider>
-          <div className="h-screen flex flex-col overflow-hidden">
+          <div className="flex flex-col min-h-screen overflow-y-auto">
             <Navigation />
-            <div className="flex-1 overflow-y-auto">
+            <div>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/docs" element={<DocsHub />} />

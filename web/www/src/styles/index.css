@@ -5,7 +5,7 @@
 @source "../../packages/shared/src";
 
 body {
-  overflow-y: hidden;
+  overflow-y: auto;
 }
 
 /* Mobile overflow fix for docs pages */
