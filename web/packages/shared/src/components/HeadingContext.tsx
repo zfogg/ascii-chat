@@ -1,39 +1,34 @@
-import { createContext, useContext, useCallback, useState, type ReactNode } from "react";
+import { createContext, useContext, useRef, type ReactNode } from "react";
 
 interface HeadingContextType {
   registerHeading: (baseId: string) => string;
-  resetHeadings: () => void;
 }
 
 const HeadingContext = createContext<HeadingContextType | null>(null);
 
 export function HeadingProvider({ children }: { children: ReactNode }) {
-  const [usedIds, setUsedIds] = useState<Set<string>>(new Set());
+  const usedIdsRef = useRef<Set<string>>(new Set());
 
-  const registerHeading = useCallback((baseId: string): string => {
-    if (!usedIds.has(baseId)) {
-      setUsedIds((prev) => new Set([...prev, baseId]));
+  const registerHeading = (baseId: string): string => {
+    if (!usedIdsRef.current.has(baseId)) {
+      usedIdsRef.current.add(baseId);
       return baseId;
     }
 
-    // Find the next available ID with a counter
+    // Find the next available ID with a counter (only add suffix if duplicate)
     let counter = 2;
     let candidateId = `${baseId}-${counter}`;
-    while (usedIds.has(candidateId)) {
+    while (usedIdsRef.current.has(candidateId)) {
       counter++;
       candidateId = `${baseId}-${counter}`;
     }
 
-    setUsedIds((prev) => new Set([...prev, candidateId]));
+    usedIdsRef.current.add(candidateId);
     return candidateId;
-  }, [usedIds]);
-
-  const resetHeadings = useCallback(() => {
-    setUsedIds(new Set());
-  }, []);
+  };
 
   return (
-    <HeadingContext.Provider value={{ registerHeading, resetHeadings }}>
+    <HeadingContext.Provider value={{ registerHeading }}>
       {children}
     </HeadingContext.Provider>
   );
