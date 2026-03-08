@@ -7,6 +7,9 @@ RUN apk add --no-cache bash git && npm install -g bun
 
 WORKDIR /app
 
+# Copy .git directory explicitly (needed for getCommitSha.ts to use git rev-parse)
+COPY .git .git
+
 # Copy entire monorepo (preserves workspace structure)
 COPY . .
 

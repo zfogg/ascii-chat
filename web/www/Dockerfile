@@ -6,9 +6,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm
 
 WORKDIR /app
 
-# Copy .git directory explicitly (needed for getCommitSha.ts to use git rev-parse)
-COPY .git .git
-
 # Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
 
