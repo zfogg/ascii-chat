@@ -17,9 +17,9 @@
 #   reverse_proxy web:3000
 # }
 
-# HTTP-only routing (Traefik terminates HTTPS)
-# Traefik handles TLS/certificates and forwards HTTP to Caddy
-http://*.ascii-chat.com, http://ascii-chat.com {
+# Routing by domain (Traefik handles TLS)
+# Traefik terminates HTTPS and forwards HTTP to Caddy on port 80
+*.ascii-chat.com, ascii-chat.com {
   # Route based on subdomain
   @www host ascii-chat.com www.ascii-chat.com
   @discovery host discovery.ascii-chat.com
