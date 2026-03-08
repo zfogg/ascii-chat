@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN bun install
+RUN bun install --no-save-lockfile
 
 # Build www
 FROM base AS builder
