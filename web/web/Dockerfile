@@ -9,14 +9,16 @@ WORKDIR /app
 # Copy entire web directory (preserves workspace structure)
 COPY . .
 
+# bun.lock is already included in COPY . . above
+
 # Install dependencies
 RUN bun install
 
 # Build web project (type check + vite build)
-RUN cd web && bun run --filter './web' type-check && bun run --filter './web' build
+RUN cd web && bun run type-check && bun x vite build
 
 # Clean up node_modules and other projects
-RUN rm -rf /app/node_modules /app/web/discovery /app/web/www /app/packages /app/bun.lock*
+RUN rm -rf /app/node_modules /app/discovery /app/www /app/packages /app/bun.lock*
 
 # Production stage with Caddy
 FROM caddy:alpine
@@ -27,7 +29,7 @@ WORKDIR /app/web
 COPY --from=builder /app/web/dist ./dist
 
 # Copy Caddyfile
-COPY web/web/Caddyfile /etc/caddy/Caddyfile
+COPY web/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port for serving
 EXPOSE 3000
