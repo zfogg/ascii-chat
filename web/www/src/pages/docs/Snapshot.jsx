@@ -388,10 +388,10 @@ export default function Snapshot() {
             </div>
           </section>
 
-          {/* Advanced Scripting */}
+          {/* Scripting and Testing */}
           <section className="docs-section-spacing">
             <Heading level={2} className="heading-2 text-green-400">
-              🚀 Advanced Scripting Examples
+              🚀 Scripting and Testing
             </Heading>
 
             <div className="docs-subsection-spacing">
@@ -478,7 +478,7 @@ export default function Snapshot() {
               </div>
               <div className="card-standard accent-teal">
                 <Heading level={4} className="text-teal-300 font-semibold mb-2">
-                  Developer Testing
+                  Scripting and Testing
                 </Heading>
                 <p className="text-gray-300 text-sm">
                   The developer uses it to test that ascii-chat works as he

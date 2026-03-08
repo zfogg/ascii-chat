@@ -120,11 +120,12 @@ export default function DocsHub() {
                   label={`Docs - ${section.title}`}
                   className={`card ${section.colorClass} transition-colors`}
                 >
-                  <h3
+                  <Heading
+                    level={3}
                     className={`text-2xl ${section.textClass} font-semibold mb-2`}
                   >
                     {section.icon} {section.title}
-                  </h3>
+                  </Heading>
                   <p className="text-gray-400 text-sm">{section.description}</p>
                 </TrackedLink>
               ))}

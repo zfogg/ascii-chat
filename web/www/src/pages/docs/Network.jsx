@@ -26,9 +26,9 @@ export default function Network() {
       <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
-            <h1 className="heading-1 mb-4">
+            <Heading level={1} className="heading-1 mb-4">
               <span className="text-green-400">🌐</span> Network & ACIP Protocol
-            </h1>
+            </Heading>
             <p className="text-lg sm:text-xl text-gray-300">
               ACIP protocol architecture, ACDS discovery, NAT traversal, and P2P
               connections
@@ -63,9 +63,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Packet Structure
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Every ACIP packet follows a consistent 22-byte header format:
               </p>
@@ -83,9 +83,9 @@ export default function Network() {
               <div className="space-y-4">
                 {/* Type 1: Protocol Negotiation */}
                 <div className="card-standard accent-blue">
-                  <h4 className="text-blue-300 font-semibold mb-2">
+                  <Heading level={4} className="text-blue-300 font-semibold mb-2">
                     Type 1: Protocol Negotiation
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     <code className="code-inline">1</code> = PROTOCOL_VERSION
                     (UNENCRYPTED)
@@ -98,9 +98,9 @@ export default function Network() {
 
                 {/* Types 1000-1203: Cryptographic Operations */}
                 <div className="card-standard accent-orange">
-                  <h4 className="text-orange-300 font-semibold mb-2">
+                  <Heading level={4} className="text-orange-300 font-semibold mb-2">
                     Types 1000-1109: Crypto Client Hello & Handshake
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-3">
                     <strong>🔒 ALWAYS UNENCRYPTED</strong> - Exchanged before
                     encryption keys are established. Uses X25519 (ECDH) for key
@@ -185,9 +185,9 @@ export default function Network() {
 
                 {/* Types 1200-1203: Crypto Rekeying */}
                 <div className="card-standard accent-violet">
-                  <h4 className="text-violet-300 font-semibold mb-2">
+                  <Heading level={4} className="text-violet-300 font-semibold mb-2">
                     Types 1200-1203: Crypto Rekeying & Encryption
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     <code className="code-inline">1200</code> = PACKET_ENCRYPTED
                     <br />
@@ -219,9 +219,9 @@ export default function Network() {
 
                 {/* Types 2000-2004: Messages */}
                 <div className="card-standard accent-red">
-                  <h4 className="text-red-300 font-semibold mb-2">
+                  <Heading level={4} className="text-red-300 font-semibold mb-2">
                     Types 2000-2004: Message Packets
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     <code className="code-inline">2000</code> = SIZE_MESSAGE
                     <br />
@@ -251,9 +251,9 @@ export default function Network() {
 
                 {/* Types 3000-3001: Media Frames */}
                 <div className="card-standard accent-cyan">
-                  <h4 className="text-cyan-300 font-semibold mb-2">
+                  <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                     Types 3000-3001: Media Frames
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     <code className="code-inline">3000</code> = ASCII_FRAME
                     (Server → Client)
@@ -272,9 +272,9 @@ export default function Network() {
 
                 {/* Types 4000-4001: Audio */}
                 <div className="card-standard accent-yellow">
-                  <h4 className="text-yellow-300 font-semibold mb-2">
+                  <Heading level={4} className="text-yellow-300 font-semibold mb-2">
                     Types 4000-4001: Audio Streaming
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     <code className="code-inline">4000</code> = AUDIO_BATCH
                     <br />
@@ -290,9 +290,9 @@ export default function Network() {
 
                 {/* Types 5000-5008: Control/State */}
                 <div className="card-standard accent-green">
-                  <h4 className="text-green-300 font-semibold mb-2">
+                  <Heading level={4} className="text-green-300 font-semibold mb-2">
                     Types 5000-5008: Control/State Packets
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     <code className="code-inline">5000</code> =
                     CLIENT_CAPABILITIES (Client → Server)
@@ -346,9 +346,9 @@ export default function Network() {
 
                 {/* Types 6000-6199: Discovery Mode */}
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     Types 6000-6199: ascii-chat Discovery Service (ACDS)
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm mb-3">
                     Used in P2P WebRTC mode to establish connections through
                     discovery service. Find server keys at{" "}
@@ -570,9 +570,9 @@ export default function Network() {
             </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-yellow-300 mb-3">
+              <Heading level={3} className="heading-3 text-yellow-300 mb-3">
                 TCP Handshake & Crypto Setup
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "UNENCRYPTED HANDSHAKE:\n1. TCP handshake\n2. PROTOCOL_VERSION negotiation (version check)\n3. CRYPTO_CLIENT_HELLO (client key fingerprint)\n4. CRYPTO_CAPABILITIES exchange (algorithms)\n5. CRYPTO_KEY_EXCHANGE_INIT (server's ephemeral key)\n6. CRYPTO_KEY_EXCHANGE_RESP (client's ephemeral key)\n7. CRYPTO_AUTH_CHALLENGE (server nonce)\n8. CRYPTO_AUTH_RESPONSE (client signature)\n9. CRYPTO_SERVER_AUTH_RESP (server signature)\n10. CRYPTO_HANDSHAKE_COMPLETE (keys established)\n\nENCRYPTED SESSION:\n11. CLIENT_CAPABILITIES (terminal dims, color support) ← ENCRYPTED\n12. Server responds with session state ← ENCRYPTED\n13. Media frames begin ← ENCRYPTED\n\nKey Property: TCP guarantees packet order,\nACIP relies on this for frame integrity"
@@ -581,9 +581,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-orange-300 mb-3">
+              <Heading level={3} className="heading-3 text-orange-300 mb-3">
                 Perfect Forward Secrecy
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Each session uses ephemeral X25519 keys that are discarded after
                 use. Even if long-term keys are compromised, past sessions
@@ -595,9 +595,9 @@ export default function Network() {
 
           {/* Discovery Mode (P2P) */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-purple-400">
+            <Heading level={2} className="heading-2 text-purple-400">
               🚀 Discovery Mode (WebRTC P2P)
-            </h2>
+            </Heading>
 
             <p className="docs-paragraph">
               Discovery Mode is the default mode for ascii-chat, enabling
@@ -624,18 +624,18 @@ export default function Network() {
             </p>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 Phase 1: Instant Host Election (100ms)
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Two participants exchange NAT information and instantly elect a
                 host. No bandwidth test blocking media startup.
               </p>
               <div className="space-y-3">
                 <div className="card-standard accent-teal">
-                  <h4 className="text-teal-300 font-semibold mb-2">
+                  <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     NAT Priority Tiers (Best to Worst)
-                  </h4>
+                  </Heading>
                   <p className="text-gray-400 text-sm">
                     1. Localhost/LAN (same subnet, ~1ms latency)
                     <br />
@@ -656,9 +656,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Phase 2: Media Starts (500ms total)
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 WebRTC DataChannel established. All packets (control + media)
                 flow through single DataChannel. Host begins rendering,
@@ -667,9 +667,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 Phase 3: Background Quality Measurement (30-60s)
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Bandwidth measured from real frames, not synthetic tests:
               </p>
@@ -681,9 +681,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-purple-300 mb-3">
+              <Heading level={3} className="heading-3 text-purple-300 mb-3">
                 Phase 4: Optional Host Migration
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 If a participant scores 20%+ higher quality, host migration
                 happens transparently over the same DataChannel. Media resumes
@@ -711,14 +711,14 @@ export default function Network() {
 
           {/* Basic Networking */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-teal-400">
+            <Heading level={2} className="heading-2 text-teal-400">
               ⚡ Traditional Mode Setup
-            </h2>
+            </Heading>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-teal-300 mb-3">
+              <Heading level={3} className="heading-3 text-teal-300 mb-3">
                 Local Network Connection
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Direct P2P connection on same LAN (fastest, ~1-10ms latency):
               </p>
@@ -730,9 +730,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Custom Ports & Advanced Options
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "# Server: Listen on custom port (all interfaces)\nascii-chat server --port 8080\n\n# Server: Bind to multiple addresses with custom port\nascii-chat server --port 8080 192.168.1.50 '[2001:db8::1]'\n\n# Client: Connect via IPv4 with custom port\nascii-chat client 192.168.1.50:8080\n\n# Client: Connect via IPv6 with custom port\nascii-chat client '[2001:db8::1]:8080'"
@@ -741,9 +741,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-green-300 mb-3">
+              <Heading level={3} className="heading-3 text-green-300 mb-3">
                 mDNS (Zero-Config LAN Discovery)
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Auto-discover servers on local network without knowing IP
                 addresses:
@@ -756,9 +756,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-orange-300 mb-3">
+              <Heading level={3} className="heading-3 text-orange-300 mb-3">
                 Port Forwarding & External Access
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Enable connections from outside your network:
               </p>
@@ -772,9 +772,9 @@ export default function Network() {
 
           {/* ACDS */}
           <section className="docs-section-spacing">
-            <h2 className="heading-2 text-purple-400">
+            <Heading level={2} className="heading-2 text-purple-400">
               🔍 ACDS Discovery Service
-            </h2>
+            </Heading>
 
             <div className="docs-subsection-spacing">
               <Heading level={3} className="heading-3 text-pink-300 mb-3">
@@ -805,9 +805,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-cyan-300 mb-3">
+              <Heading level={3} className="heading-3 text-cyan-300 mb-3">
                 Discovery Mode: Server Registration
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Start a server to create a session string and register with
                 ACDS. The session string is auto-generated and printed when the
@@ -821,9 +821,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-orange-300 mb-3">
+              <Heading level={3} className="heading-3 text-orange-300 mb-3">
                 Discovery Mode: Client Connection
-              </h3>
+              </Heading>
               <p className="docs-paragraph">
                 Connect to a running server using its session string (no IP
                 needed):
@@ -867,9 +867,9 @@ export default function Network() {
             </div>
 
             <div className="docs-subsection-spacing">
-              <h3 className="heading-3 text-pink-300 mb-3">
+              <Heading level={3} className="heading-3 text-pink-300 mb-3">
                 3-Stage Connection Fallback
-              </h3>
+              </Heading>
               <CodeBlock language="bash">
                 {
                   "1. Direct TCP         → 3s timeout  (if server has public IP)\n2. WebRTC + STUN      → 8s timeout  (NAT hole-punching)\n3. WebRTC + TURN      → 15s timeout (relay, always works)\n\nTotal time to first connection: up to 26 seconds worst case\nTypical home networks: 1-2 seconds (direct or UPnP)"
@@ -886,18 +886,18 @@ export default function Network() {
 
             <div className="space-y-3">
               <div className="card-standard accent-red">
-                <h4 className="text-red-300 font-semibold mb-2">
+                <Heading level={4} className="text-red-300 font-semibold mb-2">
                   Connection Refused
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   Ensure server is running and port is accessible. Check
                   firewall settings. If behind corporate proxy, enable TURN.
                 </p>
               </div>
               <div className="card-standard accent-yellow">
-                <h4 className="text-yellow-300 font-semibold mb-2">
+                <Heading level={4} className="text-yellow-300 font-semibold mb-2">
                   Authentication Failed
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   Verify password or server key matches. For SSH key auth,
                   ensure public key is in server's authorized_keys or GitHub
@@ -905,9 +905,9 @@ export default function Network() {
                 </p>
               </div>
               <div className="card-standard accent-cyan">
-                <h4 className="text-cyan-300 font-semibold mb-2">
+                <Heading level={4} className="text-cyan-300 font-semibold mb-2">
                   Slow Connection
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   Reduce frame rate:{" "}
                   <code className="code-inline">--fps 20</code>. Disable audio:
@@ -917,9 +917,9 @@ export default function Network() {
                 </p>
               </div>
               <div className="card-standard accent-purple">
-                <h4 className="text-purple-300 font-semibold mb-2">
+                <Heading level={4} className="text-purple-300 font-semibold mb-2">
                   TURN Relay Only
-                </h4>
+                </Heading>
                 <p className="text-gray-300 text-sm">
                   If connection quality is poor, you're likely on TURN relay
                   (highest latency). Typical on corporate networks. Try: enable
