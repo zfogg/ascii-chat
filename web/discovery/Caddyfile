@@ -15,7 +15,11 @@
   }
   rewrite @sparoutes /index.html
 
-  # Serve files, 404 for missing
   file_server
-  error 404 /404.html
+
+  # Handle 404 errors for non-existent routes
+  handle_errors 404 {
+    rewrite * /404.html
+    file_server
+  }
 }
