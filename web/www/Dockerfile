@@ -1,5 +1,16 @@
 # WWW app - builds on shared
-FROM ./Dockerfile.base AS base
+FROM node:22-slim AS base
+
+# Install bash, git, and bun
+RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy entire monorepo (node_modules excluded via .dockerignore)
+COPY . .
+
+# Clean install dependencies with no cache (from web root where monorepo is)
+RUN cd web && bun install --no-cache
 
 # Build www
 FROM base AS builder
