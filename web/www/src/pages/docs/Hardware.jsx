@@ -456,14 +456,6 @@ export default function Hardware() {
                     Toggle horizontal (--flip-x) and vertical (--flip-y) webcam flipping
                   </p>
                 </div>
-                <div className="card-standard accent-purple">
-                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
-                    -
-                  </Heading>
-                  <p className="text-gray-300 text-sm">
-                    Toggle the FPS meter display
-                  </p>
-                </div>
                 <div className="card-standard accent-teal">
                   <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     Space
@@ -476,6 +468,14 @@ export default function Hardware() {
                   <Heading level={4} className="text-lime-300 font-semibold mb-2">0 (Zero)</Heading>
                   <p className="text-gray-300 text-sm">
                     Toggle Matrix-style digital rain effect
+                  </p>
+                </div>
+                <div className="card-standard accent-purple">
+                  <Heading level={4} className="text-purple-300 font-semibold mb-2">
+                    -
+                  </Heading>
+                  <p className="text-gray-300 text-sm">
+                    Toggle the FPS meter display
                   </p>
                 </div>
                 <div className="card-standard accent-red">
