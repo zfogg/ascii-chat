@@ -29,7 +29,7 @@ WORKDIR /app/web
 COPY --from=builder /app/web/dist ./dist
 
 # Copy Caddyfile
-COPY web/Caddyfile /etc/caddy/Caddyfile
+COPY web/web/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port for serving
 EXPOSE 3000
