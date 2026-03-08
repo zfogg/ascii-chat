@@ -17,6 +17,19 @@
 #   reverse_proxy web:3000
 # }
 
+# Production domains with HTTPS (Let's Encrypt)
+ascii-chat.com, www.ascii-chat.com {
+  reverse_proxy www:5173
+}
+
+discovery.ascii-chat.com {
+  reverse_proxy discovery:5174
+}
+
+web.ascii-chat.com {
+  reverse_proxy web:3000
+}
+
 # Development: Local HTTP server (no HTTPS)
 # Use this for local testing without domain names
 http://:80 {
@@ -30,7 +43,7 @@ http://:80 {
   }
 
   handle_path /discovery/* {
-    reverse_proxy discovery:3000
+    reverse_proxy discovery:5174
   }
 
   handle_path /web/* {

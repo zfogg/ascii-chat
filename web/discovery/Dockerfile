@@ -30,7 +30,7 @@ COPY --from=builder /app/discovery/dist ./dist
 COPY discovery/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port for serving
-EXPOSE 3000
+EXPOSE 5174
 
 # Serve with Caddy
 CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]

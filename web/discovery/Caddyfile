@@ -1,4 +1,4 @@
-:3000 {
+:5174 {
   root * /app/discovery/dist
   file_server
 
