@@ -33,9 +33,6 @@ COPY --from=builder /app/www/node_modules ./node_modules
 COPY --from=builder /app/www/api.js ./api.js
 COPY --from=builder /app/www/package.json ./package.json
 
-# Copy .git directory for commit SHA detection
-COPY --from=builder /app/.git ../.git
-
 # Copy Caddyfile for frontend serving + API proxying
 COPY www/Caddyfile /etc/caddy/Caddyfile
 
