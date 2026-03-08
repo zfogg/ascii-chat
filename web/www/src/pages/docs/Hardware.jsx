@@ -448,14 +448,6 @@ export default function Hardware() {
                     Cycle through color filters
                   </p>
                 </div>
-                <div className="card-standard accent-green">
-                  <Heading level={4} className="text-green-300 font-semibold mb-2">
-                    X / Y
-                  </Heading>
-                  <p className="text-gray-300 text-sm">
-                    Toggle horizontal (--flip-x) and vertical (--flip-y) webcam flipping
-                  </p>
-                </div>
                 <div className="card-standard accent-teal">
                   <Heading level={4} className="text-teal-300 font-semibold mb-2">
                     Space
