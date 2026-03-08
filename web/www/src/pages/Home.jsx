@@ -8,8 +8,8 @@ import {
 import {
   fetchSessionStrings,
   SITES,
-  useScrollToHash,
 } from "@ascii-chat/shared/utils";
+import { useAnchorNavigation } from "../hooks/useAnchorNavigation";
 import { AsciiChatHead } from "../components/AsciiChatHead";
 import Footer from "../components/Footer";
 import TrackedLink from "../components/TrackedLink";
@@ -25,8 +25,9 @@ export default function Home() {
     "online-fame-standby",
     "irritable-cappuccino-smoke",
   ]);
+  const [contentLoaded, setContentLoaded] = useState(true);
 
-  useScrollToHash(100);
+  useAnchorNavigation(contentLoaded);
 
   useEffect(() => {
     // Fetch multiple session strings for different examples
@@ -35,8 +36,12 @@ export default function Home() {
         if (strings.length > 0) {
           setSessionStrings(strings);
         }
+        setContentLoaded(true);
       })
-      .catch((e) => console.error("Failed to load session strings:", e));
+      .catch((e) => {
+        console.error("Failed to load session strings:", e);
+        setContentLoaded(true);
+      });
   }, []);
 
   return (
@@ -46,7 +51,12 @@ export default function Home() {
         <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
           {/* Header */}
           <header className="mb-12 sm:mb-16 text-center">
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4">
+            <Heading
+              level={1}
+              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4"
+              id="ascii-chat"
+              anchorLink={false}
+            >
               <span className="text-cyan-400">💻</span>
               <span className="text-purple-400">📸</span>{" "}
               <span className="text-cyan-400">ascii</span>
@@ -54,7 +64,7 @@ export default function Home() {
               <span className="text-teal-400">chat</span>{" "}
               <span className="text-pink-400">🔡</span>
               <span className="text-purple-400">💬</span>
-            </h1>
+            </Heading>
             <p className="text-lg sm:text-xl md:text-2xl text-gray-300 mb-2">
               Video chat in your terminal
             </p>
@@ -75,9 +85,12 @@ export default function Home() {
 
             <div className="space-y-6">
               <div>
-                <h3 className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3"
+                >
                   Pre-built static binaries
-                </h3>
+                </Heading>
                 <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
                   <p className="text-gray-300 mb-3">
                     Download for{" "}
@@ -98,9 +111,12 @@ export default function Home() {
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Homebrew
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`brew tap zfogg/ascii-chat
 brew install ascii-chat`}
@@ -108,9 +124,12 @@ brew install ascii-chat`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-pink-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-pink-300 mb-3"
+                >
                   Arch Linux (AUR)
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`paru -S ascii-chat
 # or
@@ -119,9 +138,12 @@ yay -S ascii-chat`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-teal-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-teal-300 mb-3"
+                >
                   Build from source
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`git clone https://github.com/zfogg/ascii-chat.git
 cd ascii-chat
@@ -140,15 +162,21 @@ sudo make install`}
 
           {/* Features */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-purple-400 mb-4 sm:mb-6 border-b border-purple-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-purple-400 mb-4 sm:mb-6 border-b border-purple-900/50 pb-2"
+            >
               ✨ Features
-            </h2>
+            </Heading>
 
             <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
               <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3"
+                >
                   📺 Terminal Video calls
-                </h3>
+                </Heading>
                 <p className="text-gray-300">
                   Webcam video over tcp/ip rendered as ASCII art in real-time.
                   Works in any terminal-rxvt-unicode, iTerm, Kitty, even SSH
@@ -157,9 +185,12 @@ sudo make install`}
               </div>
 
               <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-purple-300 mb-3"
+                >
                   🔒 End-to-End Encryption
-                </h3>
+                </Heading>
                 <p className="text-gray-300">
                   Ed25519 authentication with X25519 key exchange. Your video
                   and audio never leave the secure tunnel between peers. SSH and
@@ -168,9 +199,12 @@ sudo make install`}
               </div>
 
               <div className="bg-gray-900/50 border border-teal-900/30 rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-teal-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-teal-300 mb-3"
+                >
                   🎤 Voice Chat
-                </h3>
+                </Heading>
                 <p className="text-gray-300">
                   Real-time audio with Opus encoding. Talk while you see each
                   other's ASCII faces. WebRTC AEC3 echo cancellation
@@ -179,9 +213,12 @@ sudo make install`}
               </div>
 
               <div className="bg-gray-900/50 border border-pink-900/30 rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-pink-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-pink-300 mb-3"
+                >
                   🌍 Zero Config Networking
-                </h3>
+                </Heading>
                 <p className="text-gray-300">
                   Share a memorable three-word string like{" "}
                   <code className="text-pink-400 bg-gray-950 px-2 py-1 rounded">
@@ -193,9 +230,12 @@ sudo make install`}
               </div>
 
               <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-cyan-300 mb-3"
+                >
                   👥 3+ Person Conference Calls
-                </h3>
+                </Heading>
                 <p className="text-gray-300">
                   3+ people can join the same session. Video grid layout
                   automatically adjusts. Like Zoom or Google Hangouts, but in
@@ -204,9 +244,12 @@ sudo make install`}
               </div>
 
               <div className="bg-gray-900/50  rounded-lg p-4 sm:p-6">
-                <h3 className="text-lg sm:text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-lg sm:text-xl font-semibold text-purple-300 mb-3"
+                >
                   🎨 Customizable Rendering
-                </h3>
+                </Heading>
                 <p className="text-gray-300">
                   Choose ASCII palettes, color modes (mono/16/256/truecolor),
                   and rendering styles and modes.
@@ -217,9 +260,12 @@ sudo make install`}
 
           {/* Quick Start */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-cyan-400 mb-4 sm:mb-6 border-b border-cyan-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-cyan-400 mb-4 sm:mb-6 border-b border-cyan-900/50 pb-2"
+            >
               ⚡ Quick Start
-            </h2>
+            </Heading>
 
             <UsageExamplesSection
               sessionString={sessionStrings[0]}
@@ -229,9 +275,12 @@ sudo make install`}
 
           {/* Links */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-cyan-400 mb-4 sm:mb-6 border-b border-cyan-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-cyan-400 mb-4 sm:mb-6 border-b border-cyan-900/50 pb-2"
+            >
               📚 Documentation
-            </h2>
+            </Heading>
 
             <div className="grid sm:grid-cols-2 gap-4">
               <TrackedLink
@@ -239,9 +288,12 @@ sudo make install`}
                 label="Home - Documentation"
                 className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
               >
-                <h3 className="text-teal-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-teal-300 font-semibold mb-1"
+                >
                   📚 Documentation
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   Configuration, hardware, terminal, snapshot, network, media
                 </p>
@@ -252,9 +304,12 @@ sudo make install`}
                 label="Home - Docs Man Page (1)"
                 className="bg-gray-900/50 border border-cyan-900/50 rounded-lg p-4 hover:border-cyan-500/50 transition-colors"
               >
-                <h3 className="text-cyan-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-cyan-300 font-semibold mb-1"
+                >
                   📖 ascii-chat(1)
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   Complete command-line man(1) page reference
                 </p>
@@ -265,9 +320,12 @@ sudo make install`}
                 label="Home - Docs Man Page (5)"
                 className="bg-gray-900/50 border border-orange-900/50 rounded-lg p-4 hover:border-orange-500/50 transition-colors"
               >
-                <h3 className="text-orange-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-orange-300 font-semibold mb-1"
+                >
                   📋 ascii-chat(5)
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   File formats and configuration man(5) page
                 </p>
@@ -278,9 +336,12 @@ sudo make install`}
                 label="Home - Docs Cryptography"
                 className="bg-gray-900/50 border border-purple-900/50 rounded-lg p-4 hover:border-purple-500/50 transition-colors"
               >
-                <h3 className="text-purple-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-purple-300 font-semibold mb-1"
+                >
                   🔐 Cryptography
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   Encryption, keys, and authentication
                 </p>
@@ -291,9 +352,12 @@ sudo make install`}
                 label="Home - Docs Man Page (3)"
                 className="bg-gray-900/50 border border-pink-900/50 rounded-lg p-4 hover:border-pink-500/50 transition-colors"
               >
-                <h3 className="text-pink-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-pink-300 font-semibold mb-1"
+                >
                   📚 ascii-chat-*(3)
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   Documentation for the source code as man(3) pages
                 </p>
@@ -304,9 +368,12 @@ sudo make install`}
                 label="Home - Man1 OPTIONS"
                 className="bg-gray-900/50 border border-green-900/50 rounded-lg p-4 hover:border-green-500/50 transition-colors"
               >
-                <h3 className="text-green-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-green-300 font-semibold mb-1"
+                >
                   🌍 Command Line --options
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   See man(1) page OPTIONS section
                 </p>
@@ -319,9 +386,12 @@ sudo make install`}
                 rel="noopener noreferrer"
                 className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
               >
-                <h3 className="text-teal-300 font-semibold mb-1">
+                <Heading
+                  level={3}
+                  className="text-teal-300 font-semibold mb-1"
+                >
                   🔍 Discovery Service
-                </h3>
+                </Heading>
                 <p className="text-gray-400 text-sm">
                   ACDS public keys and details
                 </p>
@@ -331,9 +401,12 @@ sudo make install`}
 
           {/* Examples */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-pink-400 mb-4 sm:mb-6 border-b border-pink-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-pink-400 mb-4 sm:mb-6 border-b border-pink-900/50 pb-2"
+            >
               💻 Usage Examples
-            </h2>
+            </Heading>
 
             <div className="bg-purple-900/20 border border-purple-700/50 rounded-lg p-4 mb-6">
               <p className="text-gray-300 text-sm">
@@ -360,9 +433,12 @@ sudo make install`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Local connection (no ACDS)
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Server binds to localhost
 ascii-chat server
@@ -373,9 +449,12 @@ ascii-chat client`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Internet session with ACDS
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Server registers with official ACDS
 ascii-chat server
@@ -387,9 +466,12 @@ ascii-chat ${sessionStrings[1]}`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-teal-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-teal-300 mb-3"
+                >
                   Authenticated session with SSH keys
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Server with Ed25519 key
 ascii-chat server --key ~/.ssh/id_ed25519
@@ -400,9 +482,12 @@ ascii-chat ${sessionStrings[2]} --key ~/.ssh/id_ed25519`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-cyan-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-cyan-300 mb-3"
+                >
                   Server whitelisting clients with GitHub SSH keys
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Server whitelists GitHub user's SSH keys
 ascii-chat server --key ~/.ssh/id_ed25519 --client-keys github:zfogg
@@ -413,9 +498,12 @@ ascii-chat ${sessionStrings[3]} --key ~/.ssh/id_ed25519`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Client whitelisting server with GitHub GPG keys
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Server with GPG key
 ascii-chat server --key gpg:897607FA43DC66F6
@@ -426,9 +514,12 @@ ascii-chat ${sessionStrings[4]} --server-key github:zfogg.gpg`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-pink-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-pink-300 mb-3"
+                >
                   Mirror mode (test webcam locally)
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# View your webcam as ASCII without connecting anywhere
 ascii-chat mirror --palette blocks`}
@@ -436,9 +527,12 @@ ascii-chat mirror --palette blocks`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Rainbow matrix effect
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Digital rain effect with rainbow colors
 ascii-chat mirror --color-filter rainbow --matrix`}
@@ -446,9 +540,12 @@ ascii-chat mirror --color-filter rainbow --matrix`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-cyan-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-cyan-300 mb-3"
+                >
                   Capture ASCII selfie to file
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Take a snapshot from your webcam and save to file
 ascii-chat --snapshot-delay 0 --color mirror --snapshot --render-mode half-block > selfie.txt
@@ -457,9 +554,12 @@ cat selfie.txt`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Stream video file as ASCII art
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Play MP4 video as ASCII (also works with MOV, AVI, MKV, WebM, GIF, ...)
 ascii-chat mirror --file video.mp4`}
@@ -467,9 +567,12 @@ ascii-chat mirror --file video.mp4`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-teal-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-teal-300 mb-3"
+                >
                   Stream YouTube as ASCII art
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Watch YouTube video as ASCII art locally (mirror mode)
 ascii-chat mirror --url 'https://youtu.be/7ynHVGCehoM' -s 38:29 --color-mode truecolor
@@ -480,9 +583,12 @@ ascii-chat ${sessionStrings[5]} --url 'https://youtu.be/7ynHVGCehoM' -s 38:29`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-pink-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-pink-300 mb-3"
+                >
                   Watch Twitch stream as ASCII art
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Watch Twitch stream locally in ASCII (mirror mode)
 ascii-chat mirror --url 'https://www.twitch.tv/ludwig'
@@ -493,9 +599,12 @@ ascii-chat ${sessionStrings[6]} --url 'https://www.twitch.tv/ludwig'`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-teal-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-teal-300 mb-3"
+                >
                   Convert video to ASCII and preview
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Convert video frame to ASCII and preview first 30 lines
 ascii-chat mirror --file video.mp4 --snapshot | head -30`}
@@ -503,9 +612,12 @@ ascii-chat mirror --file video.mp4 --snapshot | head -30`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-purple-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-purple-300 mb-3"
+                >
                   Play animated GIF
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Loop an animated GIF continuously
 ascii-chat mirror --file animation.gif --loop`}
@@ -513,9 +625,12 @@ ascii-chat mirror --file animation.gif --loop`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-cyan-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-cyan-300 mb-3"
+                >
                   Convert image to ASCII
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Display JPEG or PNG image as ASCII art
 ascii-chat mirror --file photo.jpg --snapshot`}
@@ -523,9 +638,12 @@ ascii-chat mirror --file photo.jpg --snapshot`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-pink-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-pink-300 mb-3"
+                >
                   Pipe video through stdin
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Stream from stdin (useful for chaining commands)
 cat video.mp4 | ascii-chat mirror --file -`}
@@ -533,9 +651,12 @@ cat video.mp4 | ascii-chat mirror --file -`}
               </div>
 
               <div>
-                <h3 className="text-xl font-semibold text-orange-300 mb-3">
+                <Heading
+                  level={3}
+                  className="text-xl font-semibold text-orange-300 mb-3"
+                >
                   Render ASCII Art Files and Pipe to FFmpeg
-                </h3>
+                </Heading>
                 <CodeBlock language="bash">
                   {`# Render 60 seconds of Twitch stream as ASCII art video
 ascii-chat mirror --url 'https://www.twitch.tv/doublelift' --snapshot --snapshot-delay 60 --render-file=ascii-art.mp4
@@ -552,9 +673,12 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
 
           {/* Open Source */}
           <section className="mb-12 sm:mb-16">
-            <h2 className="text-2xl sm:text-3xl font-bold text-cyan-400 mb-4 sm:mb-6 border-b border-cyan-900/50 pb-2">
+            <Heading
+              level={2}
+              className="text-2xl sm:text-3xl font-bold text-cyan-400 mb-4 sm:mb-6 border-b border-cyan-900/50 pb-2"
+            >
               💝 Open Source
-            </h2>
+            </Heading>
 
             <div className="space-y-6">
               <div className="bg-gray-900/50  rounded-lg p-6">
@@ -578,9 +702,12 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
               </div>
 
               <div className="bg-gray-900/50  rounded-lg p-6">
-                <h3 className="text-purple-300 font-semibold text-xl mb-4">
+                <Heading
+                  level={3}
+                  className="text-purple-300 font-semibold text-xl mb-4"
+                >
                   Build with libasciichat
-                </h3>
+                </Heading>
                 <p className="text-gray-300 mb-4">
                   <strong className="text-purple-400">libasciichat</strong> is
                   the core library. It implements{" "}
@@ -629,9 +756,12 @@ ascii-chat mirror --file video.mp4 --render-file="-" | ffplay -`}
                 </p>
 
                 <div className="bg-gray-950/50  rounded-lg p-4">
-                  <h4 className="text-cyan-300 font-semibold mb-3">
+                  <Heading
+                    level={4}
+                    className="text-cyan-300 font-semibold mb-3"
+                  >
                     Installing libasciichat
-                  </h4>
+                  </Heading>
                   <div className="space-y-3">
                     <div>
                       <p className="text-gray-400 text-sm mb-2">Homebrew:</p>
@@ -671,24 +801,33 @@ paru -S libasciichat-git`}
               </div>
 
               <div className="bg-gray-900/50 border border-teal-900/30 rounded-lg p-6">
-                <h3 className="text-teal-300 font-semibold text-xl mb-4">
+                <Heading
+                  level={3}
+                  className="text-teal-300 font-semibold text-xl mb-4"
+                >
                   Using libasciichat in Your Project
-                </h3>
+                </Heading>
 
                 <div className="space-y-4">
                   <div>
-                    <h4 className="text-cyan-400 font-semibold mb-2">
+                    <Heading
+                      level={4}
+                      className="text-cyan-400 font-semibold mb-2"
+                    >
                       With pkg-config:
-                    </h4>
+                    </Heading>
                     <CodeBlock language="bash">
                       {`clang myapp.c $(pkg-config --cflags --libs libasciichat) -o myapp`}
                     </CodeBlock>
                   </div>
 
                   <div>
-                    <h4 className="text-purple-400 font-semibold mb-2">
+                    <Heading
+                      level={4}
+                      className="text-purple-400 font-semibold mb-2"
+                    >
                       With CMake:
-                    </h4>
+                    </Heading>
                     <CodeBlock language="bash">
                       {`find_package(libasciichat REQUIRED)
 target_link_libraries(myapp libasciichat::libasciichat)`}
@@ -696,9 +835,12 @@ target_link_libraries(myapp libasciichat::libasciichat)`}
                   </div>
 
                   <div>
-                    <h4 className="text-pink-400 font-semibold mb-2">
+                    <Heading
+                      level={4}
+                      className="text-pink-400 font-semibold mb-2"
+                    >
                       Include headers:
-                    </h4>
+                    </Heading>
                     <CodeBlock language="bash">
                       {`#include <ascii-chat/video/ascii/ascii.h>
 #include <ascii-chat/audio/audio.h>
