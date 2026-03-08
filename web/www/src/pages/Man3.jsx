@@ -442,10 +442,10 @@ export default function Man3() {
 
   // Transform function P tags into tables (works on HTML strings)
   const transformFunctionsInHTML = (html) => {
-    // Find all P tags that start with <br> and contain function signatures
-    // This avoids matching header P tags which are just bold text
+    // Find P tags with function signatures separated by <br> tags
+    // Only matches tags that contain bold function names followed by parameters
     return html.replace(
-      /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?<\/p>/g,
+      /<p[^>]*class="Pp"[^>]*>[\s\S]*?<b>[a-zA-Z_][a-zA-Z0-9_]*<\/b>\s*\([\s\S]*?<\/p>/g,
       (match) => {
         const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
         const sections = content.split(/<br\s*\/?>/i);
@@ -486,11 +486,16 @@ export default function Man3() {
                 // Look backwards from function name to find start of signature (return type)
                 const beforeName = plainText.substring(0, nameIdx).trimEnd();
                 const lastSpaceIdx = beforeName.lastIndexOf(" ");
-                const returnTypeStart = lastSpaceIdx !== -1 ? lastSpaceIdx + 1 : 0;
+                const returnTypeStart =
+                  lastSpaceIdx !== -1 ? lastSpaceIdx + 1 : 0;
                 const returnType = beforeName.substring(returnTypeStart).trim();
 
                 // Signature: return type + parameters (skip the function name)
-                const signature = (returnType + " " + afterName.substring(0, closeParenIdx + 1)).trim();
+                const signature = (
+                  returnType +
+                  " " +
+                  afterName.substring(0, closeParenIdx + 1)
+                ).trim();
                 const afterSig = afterName.substring(closeParenIdx + 1).trim();
 
                 previousFunc = {
