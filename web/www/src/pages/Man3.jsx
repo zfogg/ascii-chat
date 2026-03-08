@@ -24,6 +24,7 @@ export default function Man3() {
   const [regexError, setRegexError] = useState(null);
   const searchTimeoutRef = useRef(null);
   const contentViewerRef = useRef(null);
+  const validPagesRef = useRef(new Set());
 
   // Transform Data Fields section into a table using DOM
   useEffect(() => {
@@ -203,141 +204,198 @@ export default function Man3() {
     }
   }, [selectedPageContent]);
 
-  // Transform Macros section into a table using DOM
-  useEffect(() => {
-    const macrosHeading = document.getElementById("Macros");
-    if (!macrosHeading) return;
 
-    // Find the P tag that follows (skip the title P tag)
-    let pTag = macrosHeading.nextElementSibling;
-    let foundTitle = false;
-    while (pTag && pTag.tagName !== "P") {
-      pTag = pTag.nextElementSibling;
+  // Link filenames (.c, .h, .cpp, .m, .hpp) to man3 pages if not already linked
+  useEffect(() => {
+    const contentDiv = contentViewerRef.current;
+    if (!contentDiv) return;
+
+    const fileRegex = /([a-zA-Z0-9_\-./]+\.(c|h|cpp|m|hpp))/g;
+
+    // Walk through all text nodes
+    const walker = document.createTreeWalker(
+      contentDiv,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false,
+    );
+
+    const textNodesToProcess = [];
+    let node;
+    while ((node = walker.nextNode())) {
+      textNodesToProcess.push(node);
     }
-    if (pTag && pTag.textContent.includes("Protocol")) {
-      foundTitle = true;
-      pTag = pTag.nextElementSibling;
-      while (pTag && pTag.tagName !== "P") {
-        pTag = pTag.nextElementSibling;
+
+    // Process each text node
+    for (const textNode of textNodesToProcess) {
+      // Skip if already inside a link or code tag
+      let parent = textNode.parentNode;
+      let isAlreadyLinked = false;
+      while (parent) {
+        if (parent.tagName === "A" || parent.tagName === "CODE") {
+          isAlreadyLinked = true;
+          break;
+        }
+        if (parent === contentDiv) break;
+        parent = parent.parentNode;
+      }
+
+      if (isAlreadyLinked) continue;
+
+      const text = textNode.textContent;
+      const parts = [];
+      let lastIndex = 0;
+      let match;
+
+      while ((match = fileRegex.exec(text))) {
+        const filename = match[1];
+        const startIndex = match.index;
+
+        // Add text before match
+        if (startIndex > lastIndex) {
+          const textPart = document.createTextNode(
+            text.substring(lastIndex, startIndex),
+          );
+          parts.push(textPart);
+        }
+
+        // Only link if the file exists in pages.json
+        if (validPagesRef.current.has(filename)) {
+          const link = document.createElement("a");
+          link.href = `/man3?page=${filename}`;
+          link.className = "text-cyan-400 hover:text-cyan-300 underline";
+          link.textContent = filename;
+          parts.push(link);
+        } else {
+          // Just add the text without linking
+          parts.push(document.createTextNode(filename));
+        }
+
+        lastIndex = match.index + filename.length;
+      }
+
+      // Add remaining text
+      if (lastIndex < text.length) {
+        const textPart = document.createTextNode(text.substring(lastIndex));
+        parts.push(textPart);
+      }
+
+      // Replace text node with processed parts
+      if (parts.length > 0) {
+        const fragment = document.createDocumentFragment();
+        parts.forEach((part) => fragment.appendChild(part));
+        textNode.parentNode.replaceChild(fragment, textNode);
       }
     }
+  }, [selectedPageContent]);
 
-    if (!pTag) return;
+  // Transform macro P tags into tables (works on HTML strings)
+  const transformMacrosInHTML = (html) => {
+    // Find all P tags that start with <br> and contain #define (macro definitions)
+    // This avoids matching header P tags which are just bold text
+    return html.replace(
+      /<p[^>]*class="Pp"[^>]*>\s*<br[^>]*>[\s\S]*?#define[\s\S]*?<\/p>/g,
+      (match) => {
+        const content = match.replace(/<p[^>]*>/, "").replace(/<\/p>/, "");
+        const sections = content.split(/<br\s*\/?>/i);
+        if (sections.length < 2) return match;
 
-    // Split by <br> to get sections
-    const html = pTag.innerHTML;
-    const sections = html.split(/<br\s*\/?>/i);
-    if (sections.length < 2) return;
+        const rows = [];
+        let previousMacro = null;
 
-    // Parse each section to extract macro name and description
-    const rows = [];
-    let previousMacro = null;
+        for (let i = 0; i < sections.length; i++) {
+          const section = sections[i].trim();
+          if (!section) continue;
 
-    for (let i = 0; i < sections.length; i++) {
-      const section = sections[i].trim();
-      if (!section) continue;
+          // Extract bold tags and text
+          const boldRegex = /<b>([^<]+)<\/b>/g;
+          const bolds = [];
+          let boldMatch;
+          while ((boldMatch = boldRegex.exec(section))) {
+            bolds.push(boldMatch[1]);
+          }
 
-      // Create temp element to query b tags within this section
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = section;
-      const bTags = tempDiv.querySelectorAll("b");
+          if (bolds.length === 0) continue;
 
-      if (bTags.length === 0) continue;
+          let name, value, description = "";
 
-      // Extract macro name and value based on b tags
-      let name,
-        value,
-        description = "";
+          if (bolds.length >= 1) {
+            name = bolds[0];
 
-      if (bTags.length >= 1) {
-        // First b tag is the macro name
-        name = bTags[0].textContent;
-
-        // Try to find the value (second b tag if exists)
-        if (bTags.length >= 2) {
-          value = bTags[1].textContent;
-        } else {
-          // Extract value from text after the name
-          const tempEl = document.createElement("div");
-          tempEl.innerHTML = section;
-          const text = tempEl.textContent;
-          const nameIndex = text.indexOf(name);
-          if (nameIndex !== -1) {
-            const afterName = text.substring(nameIndex + name.length).trim();
-            // If value contains parentheses, take everything up to closing paren
-            const closeParen = afterName.indexOf(")");
-            if (closeParen !== -1) {
-              value = afterName.substring(0, closeParen + 1);
+            if (bolds.length >= 2) {
+              value = bolds[1];
             } else {
-              // Otherwise, stop at first space
-              const firstSpace = afterName.indexOf(" ");
-              if (firstSpace !== -1) {
-                value = afterName.substring(0, firstSpace);
-              } else {
-                value = afterName;
+              // Extract value from text
+              const text = section.replace(/<[^>]+>/g, "");
+              const nameIndex = text.indexOf(name);
+              if (nameIndex !== -1) {
+                const afterName = text.substring(nameIndex + name.length).trim();
+                const closeParen = afterName.indexOf(")");
+                if (closeParen !== -1) {
+                  value = afterName.substring(0, closeParen + 1);
+                } else {
+                  const firstSpace = afterName.indexOf(" ");
+                  if (firstSpace !== -1) {
+                    value = afterName.substring(0, firstSpace);
+                  } else {
+                    value = afterName;
+                  }
+                }
               }
             }
+
+            // Extract description
+            let plainText = section.replace(/<[^>]+>/g, "").trim();
+            plainText = plainText
+              .replace(
+                new RegExp(
+                  `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+                ),
+                "",
+              )
+              .trim();
+            description = plainText;
+
+            if (previousMacro && !previousMacro.description) {
+              previousMacro.description = description;
+              rows.push(previousMacro);
+              previousMacro = null;
+              description = "";
+            }
+          }
+
+          if (name) {
+            previousMacro = { name, value: value || "", description };
           }
         }
 
-        // Get remaining text as description
-        const tempEl = document.createElement("div");
-        tempEl.innerHTML = section;
-        let plainText = tempEl.textContent.trim();
-
-        // Remove the name and value from the text to get description
-        plainText = plainText
-          .replace(
-            new RegExp(
-              `^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
-            ),
-            "",
-          )
-          .trim();
-        description = plainText;
-
-        // If there's a previous macro waiting for a description, assign this description to it
-        if (previousMacro && !previousMacro.description) {
-          previousMacro.description = description;
+        if (previousMacro) {
           rows.push(previousMacro);
-          previousMacro = null;
-          description = "";
         }
-      }
 
-      if (name) {
-        previousMacro = { name, value: value || "", description };
-      }
-    }
+        if (rows.length === 0) return match;
 
-    // Don't forget the last macro if it hasn't been pushed yet
-    if (previousMacro) {
-      rows.push(previousMacro);
-    }
+        // Build table HTML
+        let tableHtml = '<table class="man-macros-table"><tbody>';
+        for (const row of rows) {
+          const nameCell = row.name ? `<code>${row.name}</code>` : "";
+          const valueCell = row.value ? `<code>${row.value}</code>` : "";
+          tableHtml += `<tr><td class="man-macro-name">${nameCell}</td><td class="man-macro-value">${valueCell}</td><td class="man-macro-desc">${row.description}</td></tr>`;
+        }
+        tableHtml += "</tbody></table>";
 
-    // Build table from parsed rows
-    if (rows.length === 0) return;
-
-    const tbody = document.createElement("tbody");
-    for (const row of rows) {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td class="man-macro-name"><code>${row.name}</code></td><td class="man-macro-value"><code>${row.value}</code></td><td class="man-macro-desc">${row.description}</td>`;
-      tbody.appendChild(tr);
-    }
-
-    if (tbody.children.length > 0) {
-      const table = document.createElement("table");
-      table.className = "man-macros-table";
-      table.appendChild(tbody);
-      pTag.innerHTML = "";
-      pTag.appendChild(table);
-    }
-  }, [selectedPageContent]);
+        return tableHtml;
+      },
+    );
+  };
 
   // Helper function to process HTML content: convert URLs and highlight matches
   const processPageContent = useCallback((html, searchQuery) => {
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
     let content = bodyMatch ? bodyMatch[1] : html;
+
+    // Transform macro P tags into tables
+    content = transformMacrosInHTML(content);
 
     // Transform Data Fields section into table (disabled - use CSS instead)
     // content = transformDataFieldsToTable(content);
@@ -525,6 +583,8 @@ export default function Man3() {
         setLoading(false);
         // Show all pages initially
         setSearchResults(pages);
+        // Populate valid pages set for filename linking
+        validPagesRef.current = new Set(pages.map((p) => p.name));
       })
       .catch((e) => {
         console.error("Failed to load man3 index:", e);
@@ -1755,12 +1815,16 @@ export default function Man3() {
     );
   };
 
+  const pageTitle = selectedPageName
+    ? `${selectedPageName} - ascii-chat(3) | ascii-chat`
+    : "ascii-chat(3) - Library Functions | ascii-chat";
+
   return (
     <>
       <AsciiChatHead
-        title="ascii-chat(3) - Library Functions | ascii-chat"
+        title={pageTitle}
         description="C library function reference for ascii-chat. Complete API documentation with function signatures, data structures, and type definitions."
-        url={`${SITES.MAIN}/man3`}
+        url={`${SITES.MAIN}/man3${selectedPageName ? `?page=${selectedPageName}` : ""}`}
       />
       <div className="w-full h-[calc(100vh-65px)] mx-auto max-w-[2200px] xl:px-[4rem] bg-gray-950 text-gray-100 flex flex-col overflow-hidden">
         {/* Header - does not scroll */}
