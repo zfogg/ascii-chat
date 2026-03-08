@@ -1,4 +1,4 @@
-import { Heading, CodeBlock } from "@ascii-chat/shared/components";
+import { Heading, CodeBlock, HeadingProvider } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
@@ -23,7 +23,8 @@ export default function Network() {
         description="Connections, discovery service, NAT traversal, and network protocols for ascii-chat."
         url={`${SITES.MAIN}/docs/network`}
       />
-      <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <HeadingProvider>
+        <div className="bg-gray-950 text-gray-100 flex flex-col">
         <div className="flex-1 flex flex-col docs-container">
           <header className="mb-12 sm:mb-16">
             <Heading level={1} className="heading-1 mb-4">
@@ -931,7 +932,8 @@ export default function Network() {
 
           <Footer />
         </div>
-      </div>
+        </div>
+      </HeadingProvider>
     </>
   );
 }
