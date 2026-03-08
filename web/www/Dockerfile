@@ -27,8 +27,8 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/www
 
-# Copy root node_modules (monorepo hoisted dependencies)
-COPY --from=builder /app/node_modules /app/node_modules
+# Copy node_modules to www directory (Bun needs them where api.js can find them)
+COPY --from=builder /app/node_modules ./node_modules
 
 # Copy only www dist and specific files from builder
 COPY --from=builder /app/www/dist ./dist
@@ -39,9 +39,8 @@ COPY --from=builder /app/www/src ./src
 # Copy Caddyfile for frontend serving + API proxying
 COPY www/Caddyfile /etc/caddy/Caddyfile
 
-# Environment variables
+# Environment variable for API port (default 3001)
 ENV API_PORT=3001
-ENV NODE_PATH=/app/node_modules
 
 # Expose ports
 EXPOSE 5173 3001
