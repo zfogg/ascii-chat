@@ -79,10 +79,12 @@ endif()
 
 if(ENABLE_SIMD_AVX2)
     list(APPEND SIMD_SRCS
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/common.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/mono.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/color.c
     )
     set_source_files_properties(
+        ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/common.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/mono.c
         ${CMAKE_CURRENT_SOURCE_DIR}/ascii/avx2/color.c
         PROPERTIES COMPILE_FLAGS "-mavx2"
