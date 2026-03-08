@@ -624,11 +624,10 @@ static void *splash_animation_thread(void *arg) {
     terminal_flush(STDOUT_FILENO);
   }
 
-  // Cleanup keyboard
-  if (keyboard_enabled) {
-    log_dev("[SPLASH_ANIM] Destroying keyboard");
-    keyboard_destroy();
-  }
+  // NOTE: Do NOT call keyboard_destroy() here!
+  // Keyboard was initialized by asciichat_shared_init() and needs to persist
+  // for the render loop. The splash thread is allowed to READ keyboard input,
+  // but should not destroy it. It will be destroyed by the render loop cleanup.
 
   atomic_store_bool(&g_splash_state.is_running, false);
   log_dev("[SPLASH_ANIM] Animation thread exiting");
