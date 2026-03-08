@@ -483,7 +483,8 @@ asciichat_error_t session_pipeline_run_main(
         // Keyboard polling
         if (keyboard_handler) {
             keyboard_key_t key = keyboard_read_nonblocking();
-            if (key > 0) {
+            if (key != KEY_NONE) {
+                log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
                 keyboard_handler(NULL, (int)key, user_data);  // NULL capture ctx
             }
         }

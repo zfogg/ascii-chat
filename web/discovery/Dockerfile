@@ -1,17 +1,17 @@
 # Discovery app - builds on shared
 FROM node:22-slim AS base
 
-RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . .
-RUN cd web && bun install && npm install --save-optional @rollup/rollup-linux-arm64-gnu 2>/dev/null || true
+RUN rm -f bun.lock && bun install
 
 # Build discovery
 FROM base AS builder
 
 RUN cd web/discovery && bun run build
-RUN rm -rf /app/node_modules /app/packages /app/www /app/bun.lock*
+RUN test -d /app/web/discovery/dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Production stage
 FROM caddy:alpine

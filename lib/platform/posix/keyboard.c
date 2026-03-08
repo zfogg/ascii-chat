@@ -198,6 +198,7 @@ keyboard_key_t keyboard_read_nonblocking(void) {
   timeout.tv_usec = 0;
 
   int select_result = select(read_fd + 1, &readfds, NULL, NULL, &timeout);
+  log_dev_every(5 * NS_PER_SEC_INT, "keyboard_read_nonblocking: select fd=%d result=%d, tty_fd=%d", read_fd, select_result, g_tty_fd);
   if (select_result <= 0) {
     return KEY_NONE; // No input available or error
   }

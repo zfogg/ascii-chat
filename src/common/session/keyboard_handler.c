@@ -108,6 +108,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     if (key == 'x' || key == 'X') {
       log_info("!!! X KEY DETECTED AT HANDLER ENTRY !!!");
     }
+    if (key == '-' || key == 45) {
+      log_info("!!! MINUS KEY DETECTED AT HANDLER ENTRY !!!");
+    }
   }
 
   switch ((int)key) {
@@ -321,7 +324,8 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // ===== FPS COUNTER TOGGLE =====
-  case '-': {
+  case KEY_MINUS: {
+    log_info("!!! MINUS KEY DETECTED !!!");
     bool current = (bool)GET_OPTION(fps_counter);
     options_set_bool("fps_counter", !current);
     log_info("FPS counter: %s", !current ? "enabled" : "disabled");

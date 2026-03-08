@@ -63,6 +63,7 @@ typedef enum {
   KEY_HOME = 261,        ///< Home key (move to start of line)
   KEY_END = 262,         ///< End key (move to end of line)
   KEY_CTRL_DELETE = 263, ///< Ctrl+Delete (delete word forward)
+  KEY_MINUS = '-',       ///< '-' key - toggle FPS counter
   KEY_0 = '0',           ///< '0' key - toggle matrix rain effect
   KEY_C = 'c',           ///< 'c' key - cycle color modes
   KEY_R = 'r',           ///< 'r' key - cycle render modes
