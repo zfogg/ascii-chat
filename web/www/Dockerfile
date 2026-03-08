@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN bun install && npm install --only=optional
+RUN bun install && npm ci --no-save
 
 # Build www
 FROM base AS builder

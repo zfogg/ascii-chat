@@ -5,7 +5,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN cd web && bun install && npm install --only=optional
+RUN cd web && bun install && npm ci --no-save
 
 # Build discovery
 FROM base AS builder
