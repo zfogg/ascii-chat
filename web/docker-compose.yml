@@ -3,6 +3,8 @@ services:
     build:
       context: ..
       dockerfile: web/discovery/Dockerfile
+      args:
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
     image: zfogg/ascii-chat-web-discovery:latest
     environment:
       - API_PORT=3001
@@ -18,6 +20,8 @@ services:
     build:
       context: ..
       dockerfile: web/web/Dockerfile
+      args:
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
     image: zfogg/ascii-chat-web-web:latest
     environment:
       - API_PORT=3001
@@ -33,6 +37,8 @@ services:
     build:
       context: ..
       dockerfile: web/www/Dockerfile
+      args:
+        SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
     image: zfogg/ascii-chat-web-www:latest
     environment:
       - API_PORT=3001
