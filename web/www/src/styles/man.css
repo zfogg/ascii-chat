@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 /**
  * Man page styling for ascii-chat.com
  * Styles for Doxygen-generated man page content and custom rendering
@@ -108,6 +110,7 @@ section {
   margin-top: -1rem;
   margin-left: 2rem;
 }
+
 .man-page-content .Bd-indent + .Pp:last-child {
   margin-bottom: 0rem;
 }
@@ -208,20 +211,23 @@ section {
 }
 
 /* Desktop: 3 columns (name | value | description) */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .man-macros-table {
     grid-template-columns: auto auto 1fr;
   }
 }
 
 /* Mobile: 2 columns for name/value, description spans full width */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .man-macros-table {
     grid-template-columns: auto auto;
+    row-gap: 0;
+    column-gap: 1rem;
   }
 
   .man-macros-table .man-macro-desc {
     grid-column: 1 / -1;
+    margin-bottom: 1rem;
   }
 }
 
@@ -258,20 +264,23 @@ section {
 }
 
 /* Desktop: 3 columns (name | signature | description) */
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .man-functions-table {
     grid-template-columns: auto auto 1fr;
   }
 }
 
 /* Mobile: 2 columns for name/signature, description spans full width */
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .man-functions-table {
     grid-template-columns: auto auto;
+    row-gap: 0;
+    column-gap: 1rem;
   }
 
   .man-functions-table .man-func-desc {
     grid-column: 1 / -1;
+    margin-bottom: 1rem;
   }
 }
 
@@ -283,6 +292,8 @@ section {
 
 .man-func-sig {
   color: #fbbf24;
+  @apply sm:max-w-full;
+  @apply lg:max-w-50;
 }
 
 .man-func-sig code {
