@@ -26,13 +26,13 @@
 // ============================================================================
 
 /**
- * @brief Mode descriptor for string conversion
+ * @brief Mode name mapping for string conversion
  */
 typedef struct {
   asciichat_mode_t mode;
   const char *name;
   const char *description;
-} mode_descriptor_t;
+} mode_string_mapping_t;
 
 /**
  * @brief Mode registry - single source of truth for mode names
@@ -41,7 +41,7 @@ typedef struct {
  * It's the default mode when no mode is specified, and users cannot
  * explicitly invoke it with "ascii-chat default" or "ascii-chat discovery".
  */
-static const mode_descriptor_t mode_registry[] = {
+static const mode_string_mapping_t mode_registry[] = {
     {MODE_SERVER, "server", "Multi-client video chat server"},
     {MODE_CLIENT, "client", "Connect to ascii-chat server"},
     {MODE_MIRROR, "mirror", "Local webcam preview (no networking)"},
