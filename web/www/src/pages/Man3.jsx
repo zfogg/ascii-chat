@@ -203,6 +203,121 @@ export default function Man3() {
     }
   }, [selectedPageContent]);
 
+  // Transform Macros section into a table using DOM
+  useEffect(() => {
+    const macrosHeading = document.getElementById("Macros");
+    if (!macrosHeading) return;
+
+    // Find the P tag that follows (skip the title P tag)
+    let pTag = macrosHeading.nextElementSibling;
+    let foundTitle = false;
+    while (pTag && pTag.tagName !== "P") {
+      pTag = pTag.nextElementSibling;
+    }
+    if (pTag && pTag.textContent.includes("Protocol")) {
+      foundTitle = true;
+      pTag = pTag.nextElementSibling;
+      while (pTag && pTag.tagName !== "P") {
+        pTag = pTag.nextElementSibling;
+      }
+    }
+
+    if (!pTag) return;
+
+    // Split by <br> to get sections
+    const html = pTag.innerHTML;
+    const sections = html.split(/<br\s*\/?>/i);
+    if (sections.length < 2) return;
+
+    // Parse each section to extract macro name and description
+    const rows = [];
+    let previousMacro = null;
+
+    for (let i = 0; i < sections.length; i++) {
+      const section = sections[i].trim();
+      if (!section) continue;
+
+      // Create temp element to query b tags within this section
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = section;
+      const bTags = tempDiv.querySelectorAll("b");
+
+      if (bTags.length === 0) continue;
+
+      // Extract macro name and value based on b tags
+      let name, value, description = "";
+
+      if (bTags.length >= 1) {
+        // First b tag is the macro name
+        name = bTags[0].textContent;
+
+        // Try to find the value (second b tag if exists)
+        if (bTags.length >= 2) {
+          value = bTags[1].textContent;
+        } else {
+          // Extract value from text after the name
+          const tempEl = document.createElement("div");
+          tempEl.innerHTML = section;
+          const text = tempEl.textContent;
+          const nameIndex = text.indexOf(name);
+          if (nameIndex !== -1) {
+            const afterName = text.substring(nameIndex + name.length).trim();
+            const firstSpace = afterName.indexOf(" ");
+            if (firstSpace !== -1) {
+              value = afterName.substring(0, firstSpace);
+            } else {
+              value = afterName;
+            }
+          }
+        }
+
+        // Get remaining text as description
+        const tempEl = document.createElement("div");
+        tempEl.innerHTML = section;
+        let plainText = tempEl.textContent.trim();
+
+        // Remove the name and value from the text to get description
+        plainText = plainText.replace(new RegExp(`^#define\\s+${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*${(value || "").replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`), "").trim();
+        description = plainText;
+
+        // If there's a previous macro waiting for a description, assign this description to it
+        if (previousMacro && !previousMacro.description) {
+          previousMacro.description = description;
+          rows.push(previousMacro);
+          previousMacro = null;
+          description = "";
+        }
+      }
+
+      if (name) {
+        previousMacro = { name, value: value || "", description };
+      }
+    }
+
+    // Don't forget the last macro if it hasn't been pushed yet
+    if (previousMacro) {
+      rows.push(previousMacro);
+    }
+
+    // Build table from parsed rows
+    if (rows.length === 0) return;
+
+    const tbody = document.createElement("tbody");
+    for (const row of rows) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td class="man-data-field-name"><code>${row.name}</code></td><td class="man-data-field-type" style="font-family: monospace; word-break: break-word;">${row.value}</td><td class="man-data-field-desc">${row.description}</td>`;
+      tbody.appendChild(tr);
+    }
+
+    if (tbody.children.length > 0) {
+      const table = document.createElement("table");
+      table.className = "man-data-fields-table";
+      table.appendChild(tbody);
+      pTag.innerHTML = "";
+      pTag.appendChild(table);
+    }
+  }, [selectedPageContent]);
+
   // Helper function to process HTML content: convert URLs and highlight matches
   const processPageContent = useCallback((html, searchQuery) => {
     const bodyMatch = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
