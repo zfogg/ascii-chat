@@ -921,6 +921,7 @@ add_library(ascii-chat-shared SHARED
     # Link WebRTC and other network libraries
     target_link_libraries(ascii-chat-shared PRIVATE
         libdatachannel
+        OpenSSL::SSL
         OpenSSL::Crypto
     )
     if(MINIUPNPC_FOUND)
@@ -934,9 +935,9 @@ add_library(ascii-chat-shared SHARED
     # Link BearSSL (required)
     target_link_libraries(ascii-chat-shared PRIVATE ${BEARSSL_LIBRARIES})
     # Link libwebsockets
-    if(TARGET PkgConfig::LIBWEBSOCKETS)
-        target_link_libraries(ascii-chat-shared PRIVATE PkgConfig::LIBWEBSOCKETS)
-    else()
+    if(TARGET websockets)
+        target_link_libraries(ascii-chat-shared PRIVATE websockets)
+    elseif(LIBWEBSOCKETS_LIBRARIES)
         target_link_libraries(ascii-chat-shared PRIVATE ${LIBWEBSOCKETS_LIBRARIES})
     endif()
 

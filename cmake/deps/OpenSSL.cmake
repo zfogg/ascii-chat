@@ -57,7 +57,7 @@ if(PLATFORM_IOS)
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract OpenSSL tarball")
             endif()
-            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-1.1.1w" "${OPENSSL_SOURCE_DIR}")
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}" "${OPENSSL_SOURCE_DIR}")
         endif()
 
         # Configure OpenSSL for iOS using clang directly (more reliable than ios64-cross)
@@ -205,7 +205,7 @@ if(USE_MUSL)
                 message(FATAL_ERROR "Failed to extract OpenSSL tarball")
             endif()
             # Move from openssl-1.1.1w/ to src/openssl/
-            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-1.1.1w" "${OPENSSL_SOURCE_DIR}")
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}" "${OPENSSL_SOURCE_DIR}")
         endif()
 
         # Configure OpenSSL
@@ -299,10 +299,24 @@ if(TARGET OpenSSL::Crypto)
 endif()
 
 # =============================================================================
-# Native Linux/macOS: Build OpenSSL 3.4.0 from source for libwebsockets
+# Native Linux/macOS: Build OpenSSL from source for libwebsockets
+# Platform-specific versions:
+#   - macOS: OpenSSL 1.1.1w (for libwebsockets compatibility)
+#   - Linux: OpenSSL 3.4.0 (has SSL_CTX_load_verify_dir function)
 # =============================================================================
 if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "Dev"))
-    message(STATUS "Configuring ${BoldBlue}OpenSSL 1.1.1w${ColorReset} from source for libwebsockets compatibility...")
+    # Determine OpenSSL version based on platform
+    if(APPLE)
+        set(OPENSSL_VERSION "1.1.1w")
+        set(OPENSSL_DOWNLOAD_TAG "OpenSSL_1_1_1w")
+        set(OPENSSL_EXPECTED_HASH "SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c")
+        message(STATUS "Configuring ${BoldBlue}OpenSSL 1.1.1w${ColorReset} from source (macOS libwebsockets compatibility)...")
+    else()
+        set(OPENSSL_VERSION "3.4.0")
+        set(OPENSSL_DOWNLOAD_TAG "openssl-3.4.0")
+        set(OPENSSL_EXPECTED_HASH "SHA256=e15dda82fe2fe8139dc2ac21a36d4ca01d5313c75f99f46c4e8a27709b7294bf")
+        message(STATUS "Configuring ${BoldBlue}OpenSSL 3.4.0${ColorReset} from source (Linux with SSL_CTX_load_verify_dir)...")
+    endif()
 
     set(OPENSSL_PREFIX "${ASCIICHAT_DEPS_CACHE_DIR}/openssl")
     set(OPENSSL_BUILD_DIR "${ASCIICHAT_DEPS_CACHE_DIR}/openssl-build")
@@ -334,7 +348,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         set(OPENSSL_TARGET "linux-generic64")
         set(OPENSSL_LIBDIR "lib64")  # Default to 64-bit
     endif()
-    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=1.1.1w")
+    set(OPENSSL_CONFIG_SIGNATURE "target=${OPENSSL_TARGET};no_asm=${OPENSSL_NO_ASM};shared=${OPENSSL_BUILD_SHARED};version=${OPENSSL_VERSION}")
 
     if(OPENSSL_BUILD_SHARED)
         set(_OPENSSL_EXPECTED_SSL_LIB "${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}/libssl${CMAKE_SHARED_LIBRARY_SUFFIX}")
@@ -366,21 +380,21 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
         file(REMOVE_RECURSE "${OPENSSL_PREFIX}")
     endif()
 
-    # Build OpenSSL 1.1.1w if not cached (compatible with libwebsockets)
+    # Build OpenSSL if not cached
     if(NOT EXISTS "${_OPENSSL_EXPECTED_SSL_LIB}" OR NOT EXISTS "${_OPENSSL_EXPECTED_CRYPTO_LIB}")
-        message(STATUS "  OpenSSL 1.1.1w not found in cache, building from source...")
+        message(STATUS "  OpenSSL ${OPENSSL_VERSION} not found in cache, building from source...")
 
         file(MAKE_DIRECTORY "${OPENSSL_BUILD_DIR}")
         file(MAKE_DIRECTORY "${OPENSSL_SOURCE_DIR}")
 
         # Download OpenSSL source
-        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-1.1.1w.tar.gz")
+        set(OPENSSL_TARBALL "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}.tar.gz")
         if(NOT EXISTS "${OPENSSL_TARBALL}")
-            message(STATUS "  Downloading OpenSSL 1.1.1w...")
+            message(STATUS "  Downloading OpenSSL ${OPENSSL_VERSION}...")
             file(DOWNLOAD
-                "https://github.com/openssl/openssl/releases/download/OpenSSL_1_1_1w/openssl-1.1.1w.tar.gz"
+                "https://github.com/openssl/openssl/releases/download/${OPENSSL_DOWNLOAD_TAG}/openssl-${OPENSSL_VERSION}.tar.gz"
                 "${OPENSSL_TARBALL}"
-                EXPECTED_HASH SHA256=cf3098950cb4d529d2e4a8e25c72edd6cd7fff53ec5c0326b3515afc450b484c
+                EXPECTED_HASH "${OPENSSL_EXPECTED_HASH}"
                 SHOW_PROGRESS
             )
         endif()
@@ -396,7 +410,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
             if(NOT EXTRACT_RESULT EQUAL 0)
                 message(FATAL_ERROR "Failed to extract OpenSSL tarball")
             endif()
-            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-1.1.1w" "${OPENSSL_SOURCE_DIR}")
+            file(RENAME "${OPENSSL_BUILD_DIR}/openssl-${OPENSSL_VERSION}" "${OPENSSL_SOURCE_DIR}")
         endif()
 
         # Configure OpenSSL
@@ -450,9 +464,9 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
 
         file(WRITE "${OPENSSL_TARGET_STAMP}" "${OPENSSL_CONFIG_SIGNATURE}\n")
 
-        message(STATUS "  ${BoldGreen}OpenSSL 3.4.0${ColorReset} built and cached successfully")
+        message(STATUS "  ${BoldGreen}OpenSSL ${OPENSSL_VERSION}${ColorReset} built and cached successfully")
     else()
-        message(STATUS "  ${BoldBlue}OpenSSL 3.4.0${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}${ColorReset}")
+        message(STATUS "  ${BoldBlue}OpenSSL ${OPENSSL_VERSION}${ColorReset} found in cache: ${BoldMagenta}${OPENSSL_PREFIX}/${OPENSSL_LIBDIR}${ColorReset}")
     endif()
 
     # Resolve installed OpenSSL library paths (handle versioned shared-library names).
@@ -485,7 +499,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     set(OPENSSL_SSL_LIBRARY "${OPENSSL_SSL_LIBRARY}" CACHE FILEPATH "OpenSSL SSL library" FORCE)
     set(OPENSSL_CRYPTO_LIBRARY "${OPENSSL_CRYPTO_LIBRARY}" CACHE FILEPATH "OpenSSL Crypto library" FORCE)
 
-    # Create imported targets for OpenSSL 3.4.0
+    # Create imported targets for OpenSSL ${OPENSSL_VERSION}
     if(NOT TARGET OpenSSL::Crypto)
         add_library(OpenSSL::Crypto ${_OPENSSL_IMPORTED_TYPE} IMPORTED GLOBAL)
         set_target_properties(OpenSSL::Crypto PROPERTIES
@@ -504,8 +518,7 @@ if(NOT USE_MUSL AND NOT WIN32 AND (CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BU
     endif()
 
     set(OpenSSL_FOUND TRUE)
-    set(OPENSSL_VERSION "3.4.0")
-    message(STATUS "  ${BoldGreen}✓${ColorReset} OpenSSL 3.4.0 configured for native build")
+    message(STATUS "  ${BoldGreen}✓${ColorReset} OpenSSL ${OPENSSL_VERSION} configured for native build")
     return()
 endif()
 
