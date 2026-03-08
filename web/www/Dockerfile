@@ -7,25 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm
 
 WORKDIR /app
 
-# Copy .git directory explicitly (needed for getCommitSha.ts to use git rev-parse)
-COPY .git .git
-
 # Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
 
 # Pass SOURCE_COMMIT from Coolify as environment variable for build-time use
 ENV SOURCE_COMMIT=${SOURCE_COMMIT}
-
-# Clean install dependencies with no cache (from web root where monorepo is)
-RUN cd web && bun install --no-cache
-
-# Install bash, git, and bun
-RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
-
-WORKDIR /app
-
-# Copy entire monorepo (node_modules excluded via .dockerignore)
-COPY . .
 
 # Clean install dependencies with no cache (from web root where monorepo is)
 RUN cd web && bun install --no-cache
