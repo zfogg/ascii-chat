@@ -1,7 +1,16 @@
 :80 {
   root * /app/discovery/dist
-  file_server
 
-  # SPA routing: fall back to index.html for client-side routing
-  try_files {path} /index.html
+  # Security headers from vercel.json (applied to all responses)
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  header X-Content-Type-Options "nosniff"
+  header X-Frame-Options "SAMEORIGIN"
+  header X-XSS-Protection "1; mode=block"
+  header Referrer-Policy "strict-origin-when-cross-origin"
+  header Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+  # SPA routing: try to serve file, fall back to index.html, then 404.html
+  try_files {path} /index.html /404.html
+
+  file_server
 }

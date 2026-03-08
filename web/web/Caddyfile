@@ -1,7 +1,12 @@
 :80 {
   root * /app/web/dist
-  file_server
 
-  # SPA routing: fall back to index.html for client-side routing
-  try_files {path} /index.html
+  # COEP/COOP headers for SharedArrayBuffer support (required for WASM threads)
+  header Cross-Origin-Embedder-Policy "require-corp"
+  header Cross-Origin-Opener-Policy "same-origin"
+
+  # SPA routing: matches vercel.json rewrites for /, /mirror, /client, /discovery
+  try_files {path} /index.html /404.html
+
+  file_server
 }

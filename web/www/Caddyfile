@@ -1,15 +1,24 @@
 :80 {
-  # API requests go to Express backend on port 3001
+  root * /app/www/dist
+
+  # Security headers from vercel.json
+  header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+  header X-Content-Type-Options "nosniff"
+  header X-Frame-Options "SAMEORIGIN"
+  header X-XSS-Protection "1; mode=block"
+  header Referrer-Policy "strict-origin-when-cross-origin"
+  header Permissions-Policy "camera=(), microphone=(), geolocation=()"
+
+  # API routing from vercel.json routes
   handle /api/* {
-    reverse_proxy * localhost:3001
+    reverse_proxy localhost:3001
   }
 
-  # Static files from dist/
-  root * /app/www/dist
-  file_server
+  # SPA routing: matches vercel.json rewrites
+  # Routes: /, /docs, /docs/*, /man*, /man1, /man3, /man5
+  try_files {path} /index.html /404.html
 
-  # SPA routing: fall back to index.html for client-side routing
-  try_files {path} /index.html
+  file_server
 }
 
 :3001 {
