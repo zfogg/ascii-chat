@@ -14,11 +14,15 @@
     reverse_proxy localhost:3001
   }
 
-  # SPA routing: matches vercel.json rewrites
-  # Routes: /, /docs, /docs/*, /man*, /man1, /man3, /man5
-  try_files {path} /index.html /404.html
+  # Rewrites from vercel.json: /, /docs, /docs/*, /man1, /man3, /man5
+  @sparoutes {
+    path / /docs /docs/* /man1 /man3 /man5
+  }
+  rewrite @sparoutes /index.html
 
+  # Serve files, 404 for missing
   file_server
+  error 404 /404.html
 }
 
 :3001 {

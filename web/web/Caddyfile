@@ -5,8 +5,13 @@
   header Cross-Origin-Embedder-Policy "require-corp"
   header Cross-Origin-Opener-Policy "same-origin"
 
-  # SPA routing: matches vercel.json rewrites for /, /mirror, /client, /discovery
-  try_files {path} /index.html /404.html
+  # Rewrites from vercel.json: /, /mirror, /client, /discovery
+  @sparoutes {
+    path / /mirror /client /discovery
+  }
+  rewrite @sparoutes /index.html
 
+  # Serve files, 404 for missing
   file_server
+  error 404 /404.html
 }

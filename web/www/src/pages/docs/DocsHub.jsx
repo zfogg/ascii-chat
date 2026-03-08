@@ -100,42 +100,44 @@ export default function DocsHub() {
       />
       <HeadingProvider>
         <div className="bg-gray-950 text-gray-100 flex flex-col">
-        <div className="flex-1 flex flex-col docs-container">
-          {/* Header */}
-          <header className="mb-12 sm:mb-16 text-center">
-            <Heading level={1} className="heading-1 mb-4">
-              📚 Documentation
-            </Heading>
-            <p className="text-lg sm:text-xl text-gray-300">
-              Complete guides for configuring, using, and scripting ascii-chat
-            </p>
-          </header>
+          <div className="flex-1 flex flex-col docs-container">
+            {/* Header */}
+            <header className="mb-12 sm:mb-16 text-center">
+              <Heading level={1} className="heading-1 mb-4">
+                📚 Documentation
+              </Heading>
+              <p className="text-lg sm:text-xl text-gray-300">
+                Complete guides for configuring, using, and scripting ascii-chat
+              </p>
+            </header>
 
-          {/* Documentation Grid */}
-          <section className="docs-section-spacing">
-            <div className="grid-cols-2-sm lg:grid-cols-3">
-              {docSections.map((section) => (
-                <TrackedLink
-                  key={section.to}
-                  to={section.to}
-                  label={`Docs - ${section.title}`}
-                  className={`card ${section.colorClass} transition-colors`}
-                >
-                  <Heading
-                    level={3}
-                    className={`text-2xl ${section.textClass} font-semibold mb-2`}
+            {/* Documentation Grid */}
+            <section className="docs-section-spacing">
+              <div className="grid-cols-2-sm lg:grid-cols-3">
+                {docSections.map((section) => (
+                  <TrackedLink
+                    key={section.to}
+                    to={section.to}
+                    label={`Docs - ${section.title}`}
+                    className={`card ${section.colorClass} transition-colors`}
                   >
-                    {section.icon} {section.title}
-                  </Heading>
-                  <p className="text-gray-400 text-sm">{section.description}</p>
-                </TrackedLink>
-              ))}
-            </div>
-          </section>
+                    <Heading
+                      level={3}
+                      className={`text-2xl ${section.textClass} font-semibold mb-2`}
+                    >
+                      {section.icon} {section.title}
+                    </Heading>
+                    <p className="text-gray-400 text-sm">
+                      {section.description}
+                    </p>
+                  </TrackedLink>
+                ))}
+              </div>
+            </section>
 
-          {/* Footer */}
-          <Footer />
-        </div>
+            {/* Footer */}
+            <Footer />
+          </div>
         </div>
       </HeadingProvider>
     </>

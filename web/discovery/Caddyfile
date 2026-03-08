@@ -1,7 +1,7 @@
 :80 {
   root * /app/discovery/dist
 
-  # Security headers from vercel.json (applied to all responses)
+  # Security headers from vercel.json
   header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
   header X-Content-Type-Options "nosniff"
   header X-Frame-Options "SAMEORIGIN"
@@ -9,8 +9,13 @@
   header Referrer-Policy "strict-origin-when-cross-origin"
   header Permissions-Policy "camera=(), microphone=(), geolocation=()"
 
-  # SPA routing: try to serve file, fall back to index.html, then 404.html
-  try_files {path} /index.html /404.html
+  # Rewrites from vercel.json: only "/" rewrites to index.html
+  @sparoutes {
+    path /
+  }
+  rewrite @sparoutes /index.html
 
+  # Serve files, 404 for missing
   file_server
+  error 404 /404.html
 }
