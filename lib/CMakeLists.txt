@@ -823,6 +823,22 @@ add_library(ascii-chat-shared SHARED
         )
     endif()
 
+    # Ensure all object library targets are built before linking the shared library
+    # This prevents parallel build race conditions where the linker tries to use
+    # object files that haven't finished compiling yet
+    add_dependencies(ascii-chat-shared
+        ascii-chat-util
+        ascii-chat-data-structures
+        ascii-chat-platform
+        ascii-chat-crypto
+        ascii-chat-simd
+        ascii-chat-video
+        ascii-chat-audio
+        ascii-chat-network
+        ascii-chat-core
+        ascii-chat-panic
+    )
+
     # Add include directories needed by the OBJECT libraries
     target_include_directories(ascii-chat-shared PRIVATE
         $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/generated>
