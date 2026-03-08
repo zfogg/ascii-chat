@@ -10,7 +10,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "build": "bash scripts/build.sh",
-    "lint": "node ../node_modules/eslint/bin/eslint.js src",
+    "lint": "eslint . --max-warnings 0",
     "type-check": "bun x tsc --noEmit",
     "preview": "vite preview",
     "vite:build": "vite build"
