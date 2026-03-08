@@ -7,6 +7,8 @@ services:
     environment:
       - API_PORT=3001
     container_name: ascii-chat-discovery
+    ports:
+      - "5174:80"
     networks:
       ascii-chat:
         aliases:
@@ -20,6 +22,8 @@ services:
     environment:
       - API_PORT=3001
     container_name: ascii-chat-web
+    ports:
+      - "3000:80"
     networks:
       ascii-chat:
         aliases:
@@ -33,6 +37,8 @@ services:
     environment:
       - API_PORT=3001
     container_name: ascii-chat-www
+    ports:
+      - "5173:80"
     networks:
       ascii-chat:
         aliases:
