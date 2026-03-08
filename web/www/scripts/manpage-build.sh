@@ -36,9 +36,6 @@ if [ -d "$REPO_ROOT" ]; then
   echo "📚 Generating man(3) pages from Doxygen..."
   cmake --build "$BUILD_DIR" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
 
-  echo "📚 Generating man(3) pages from Doxygen..."
-  cmake --build "$BUILD_DIR" --target man3 2>&1 | grep -E "(Doxygen|manpage|error)" || true
-
   # Check if man3 directory exists and has files
   if [ -d "$BUILD_DIR/share/man/man3" ]; then
     # Convert all man(3) pages to HTML and create index
