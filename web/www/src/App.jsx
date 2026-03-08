@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
+import { HeadingProvider } from "@ascii-chat/shared/components";
 import Navigation from "./components/Navigation";
 import Home from "./pages/Home";
 import Crypto from "./pages/docs/Crypto";
@@ -18,11 +19,12 @@ import Media from "./pages/docs/Media";
 export default function App() {
   return (
     <HelmetProvider>
-      <BrowserRouter>
-        <div className="h-screen flex flex-col overflow-hidden">
-          <Navigation />
-          <div className="flex-1 overflow-y-auto">
-            <Routes>
+      <HeadingProvider>
+        <BrowserRouter>
+          <div className="h-screen flex flex-col overflow-hidden">
+            <Navigation />
+            <div className="flex-1 overflow-y-auto">
+              <Routes>
               <Route path="/" element={<Home />} />
               <Route path="/docs" element={<DocsHub />} />
               <Route path="/docs/" element={<DocsHub />} />
@@ -37,10 +39,11 @@ export default function App() {
               <Route path="/man5" element={<Man5 />} />
               <Route path="/man3" element={<Man3 />} />
               <Route path="*" element={<NotFound />} />
-            </Routes>
+              </Routes>
+            </div>
           </div>
-        </div>
-      </BrowserRouter>
+        </BrowserRouter>
+      </HeadingProvider>
     </HelmetProvider>
   );
 }

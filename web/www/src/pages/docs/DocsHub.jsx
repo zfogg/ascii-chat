@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { Heading, HeadingProvider } from "@ascii-chat/shared/components";
+import { Heading } from "@ascii-chat/shared/components";
 import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import { SITES } from "@ascii-chat/shared/utils";
@@ -98,9 +98,8 @@ export default function DocsHub() {
         description="Complete guides for configuring, using, and scripting ascii-chat. Learn about configuration, hardware, terminal modes, snapshots, networking, and media."
         url={`${SITES.MAIN}/docs`}
       />
-      <HeadingProvider>
-        <div className="bg-gray-950 text-gray-100 flex flex-col">
-          <div className="flex-1 flex flex-col docs-container">
+      <div className="bg-gray-950 text-gray-100 flex flex-col">
+        <div className="flex-1 flex flex-col docs-container">
             {/* Header */}
             <header className="mb-12 sm:mb-16 text-center">
               <Heading level={1} className="heading-1 mb-4">
@@ -139,7 +138,6 @@ export default function DocsHub() {
             <Footer />
           </div>
         </div>
-      </HeadingProvider>
-    </>
-  );
-}
+      </>
+    );
+  }
