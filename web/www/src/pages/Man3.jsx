@@ -479,6 +479,12 @@ export default function Man3() {
                 .replace(/<[^>]*>/g, "")
                 .trim();
 
+              // Stop at #define to prevent macro definitions from bleeding into descriptions
+              const defineIdx = descText.indexOf("#define");
+              if (defineIdx !== -1) {
+                descText = descText.substring(0, defineIdx).trim();
+              }
+
               // Only use as description if it contains a space (multi-word) or ends with period (sentence)
               if (
                 descText &&
@@ -534,6 +540,12 @@ export default function Man3() {
                 ).trim();
                 let afterSig = afterName.substring(closeParenIdx + 1).trim();
 
+                // Stop at #define to prevent macro definitions from bleeding into descriptions
+                const defineIdx = afterSig.indexOf("#define");
+                if (defineIdx !== -1) {
+                  afterSig = afterSig.substring(0, defineIdx).trim();
+                }
+
                 // Only treat afterSig as description if it has multiple words (actual description text)
                 if (
                   !afterSig ||
@@ -555,10 +567,18 @@ export default function Man3() {
 
           // If there were no function definitions but we have a previous function and text, add description
           if (lastProcessedIdx === 0 && previousFunc && plainText) {
-            if (previousFunc.description) {
-              previousFunc.description += " " + plainText;
-            } else {
-              previousFunc.description = plainText;
+            let descToAdd = plainText;
+            // Stop at #define to prevent macro definitions from bleeding into descriptions
+            const defineIdx = descToAdd.indexOf("#define");
+            if (defineIdx !== -1) {
+              descToAdd = descToAdd.substring(0, defineIdx).trim();
+            }
+            if (descToAdd) {
+              if (previousFunc.description) {
+                previousFunc.description += " " + descToAdd;
+              } else {
+                previousFunc.description = descToAdd;
+              }
             }
           }
         }
