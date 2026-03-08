@@ -9,11 +9,11 @@ WORKDIR /app
 # Copy entire monorepo (preserves workspace structure)
 COPY . .
 
-# Install dependencies from web workspace root
-RUN cd web && bun install
+# Install dependencies for entire monorepo workspace
+RUN bun install
 
 # Build web project (type check + vite build)
-RUN cd web && bun x tsc --noEmit && bun run --filter './web' build
+RUN cd web && bun x tsc --noEmit --project ./web && bun run --filter './web' build
 
 # Clean up node_modules and other projects
 RUN rm -rf /app/node_modules /app/discovery /app/www /app/packages /app/bun.lock*

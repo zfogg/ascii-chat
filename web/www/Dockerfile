@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy entire monorepo (preserves workspace structure)
 COPY . .
 
-# Install dependencies from web workspace root
-RUN cd web && bun install
+# Install dependencies for entire monorepo workspace
+RUN bun install
 
 # Build www project only (uses vite to build dist/)
 RUN cd web && bun run --filter './www' build

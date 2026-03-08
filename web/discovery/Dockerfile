@@ -9,8 +9,8 @@ WORKDIR /app
 # Copy entire monorepo (preserves workspace structure)
 COPY . .
 
-# Install dependencies from web workspace root
-RUN cd web && bun install
+# Install dependencies for entire monorepo workspace
+RUN bun install
 
 # Build discovery project only
 RUN cd web && bun run --filter './discovery' build
