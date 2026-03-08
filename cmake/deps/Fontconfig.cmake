@@ -310,8 +310,8 @@ if(UNIX AND NOT APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
-    # Use full library path for better linker compatibility
-    set(FONTCONFIG_LDFLAGS "${FONTCONFIG_LINK_LIBRARIES}")
+    # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
+    # (-L/path/to/lib -lfontconfig), so use it as-is
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
@@ -320,8 +320,8 @@ elseif(APPLE)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(FONTCONFIG fontconfig REQUIRED)
 
-    # Use FONTCONFIG_LINK_LIBRARIES for better compatibility (includes full paths and dependencies)
-    set(FONTCONFIG_LDFLAGS "${FONTCONFIG_LINK_LIBRARIES}")
+    # pkg_check_modules already sets FONTCONFIG_LDFLAGS to proper linker flags
+    # (-L/path/to/lib -lfontconfig), so use it as-is
 
     message(STATUS "${BoldGreen}✓${ColorReset} Fontconfig: ${FONTCONFIG_LDFLAGS}")
 
