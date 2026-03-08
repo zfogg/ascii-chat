@@ -880,8 +880,7 @@ asciichat_error_t options_set_bool(const char *field_name, bool value) {
       strcmp(field_name, "palette_custom_set") != 0 && strcmp(field_name, "media_loop") != 0 &&
       strcmp(field_name, "media_from_stdin") != 0 && strcmp(field_name, "auto_width") != 0 &&
       strcmp(field_name, "auto_height") != 0 && strcmp(field_name, "splash_screen") != 0 &&
-      strcmp(field_name, "status_screen") != 0 && strcmp(field_name, "matrix_rain") != 0 &&
-      strcmp(field_name, "fps_counter") != 0) {
+      strcmp(field_name, "status_screen") != 0 && strcmp(field_name, "matrix_rain") != 0) {
     SET_ERRNO(ERROR_INVALID_PARAM, "Unknown boolean field: %s", field_name);
     return ERROR_INVALID_PARAM;
   }

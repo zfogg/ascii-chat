@@ -211,10 +211,8 @@ keyboard_key_t keyboard_read_nonblocking(void) {
     return KEY_NONE;
   }
 
-  log_info("KEYBOARD_READ: char=0x%02x (%c) from fd=%d", ch, (ch >= 32 && ch < 127) ? ch : '?', read_fd);
-  if (ch == '-' || ch == 45) {
-    log_info("!!! MINUS CHAR READ FROM FD !!!");
-  }
+  log_info("keyboard_read_nonblocking: Read char 0x%02x (%c) from fd=%d", ch, (ch >= 32 && ch < 127) ? ch : '?',
+           read_fd);
 
   // Handle special characters first
   if (ch == ' ') {

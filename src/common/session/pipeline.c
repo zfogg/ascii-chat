@@ -11,7 +11,6 @@
 #include <ascii-chat/platform/memory.h>
 #include <ascii-chat/platform/abstraction.h>
 #include <ascii-chat/platform/keyboard.h>
-#include <ascii-chat/ui/keyboard_help.h>
 #include <ascii-chat/util/time.h>
 #include <ascii-chat/log/log.h>
 #include <ascii-chat/options/options.h>
@@ -469,31 +468,23 @@ asciichat_error_t session_pipeline_run_main(
             continue;
         }
 
-        // Skip ASCII rendering if help screen is active - let help screen render instead
-        bool help_is_active = pipeline->display && keyboard_help_is_active(pipeline->display);
+        log_info("[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
+        // Convert to ASCII
+        image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
+        char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
+        free_frame(frame);
 
-        if (!help_is_active) {
-            log_info("[PIPELINE_MAIN_RENDER] Converting frame to ASCII: %dx%d", frame->w, frame->h);
-            // Convert to ASCII
-            image_t tmp = { .w = frame->w, .h = frame->h, .pixels = (rgb_pixel_t *)frame->pixels };
-            char *ascii = session_display_convert_to_ascii(pipeline->display, &tmp);
-            free_frame(frame);
-
-            if (ascii) {
-                // Write ASCII to terminal
-                session_display_write_ascii(pipeline->display, ascii);
-                SAFE_FREE(ascii);
-            }
-        } else {
-            free_frame(frame);
-            log_info("[PIPELINE] Help screen active - skipping ASCII render");
+        if (ascii) {
+            // Write ASCII to terminal
+            session_display_write_ascii(pipeline->display, ascii);
+            SAFE_FREE(ascii);
         }
 
         // Keyboard polling
         if (keyboard_handler) {
             keyboard_key_t key = keyboard_read_nonblocking();
             if (key != KEY_NONE) {
-                log_info("PIPELINE_KEY: code=%d (0x%02x) char='%c' calling handler", key, key, (key >= 32 && key < 127) ? key : '?');
+                log_debug("PIPELINE_KEYBOARD: Received key=%d", key);
                 keyboard_handler(NULL, (int)key, user_data);  // NULL capture ctx
             }
         }
