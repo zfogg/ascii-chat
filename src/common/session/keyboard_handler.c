@@ -327,7 +327,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   case KEY_MINUS: {
     log_info("!!! MINUS KEY DETECTED !!!");
     bool current = (bool)GET_OPTION(fps_counter);
+    log_info("FPS counter current value: %d", current);
     options_set_bool("fps_counter", !current);
+    log_info("FPS counter set to: %d", !current);
     log_info("FPS counter: %s", !current ? "enabled" : "disabled");
     break;
   }
@@ -347,7 +349,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
   }
 
   // Re-render help screen if it's active to show updated settings
+  log_info("KEYBOARD_HANDLER_END: display=%p, help_active=%d", (void *)display, display ? keyboard_help_is_active(display) : 0);
   if (display && keyboard_help_is_active(display)) {
+    log_info("Re-rendering help screen after key press");
     keyboard_help_render(display);
   }
 }
