@@ -18,7 +18,7 @@ FROM caddy:alpine
 
 WORKDIR /app/web
 
-COPY --from=builder /app/web/dist ./dist
+COPY --from=builder /app/web/web/dist ./dist
 COPY web/web/Caddyfile /etc/caddy/Caddyfile
 
 EXPOSE 3000
