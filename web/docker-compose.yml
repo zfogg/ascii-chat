@@ -23,7 +23,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.ascii-chat.rule=HostRegexp(`{host:.+}`)"
-      - "traefik.http.routers.ascii-chat.entrypoints=web,websecure"
+      - "traefik.http.routers.ascii-chat.entrypoints=http,https"
       - "traefik.http.services.ascii-chat.loadbalancer.server.port=80"
 
   discovery:
