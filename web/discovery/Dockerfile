@@ -18,7 +18,7 @@ FROM caddy:alpine
 
 WORKDIR /app/discovery
 
-COPY --from=builder /app/discovery/dist ./dist
+COPY --from=builder /app/web/discovery/dist ./dist
 COPY web/discovery/Caddyfile /etc/caddy/Caddyfile
 
 EXPOSE 5174
