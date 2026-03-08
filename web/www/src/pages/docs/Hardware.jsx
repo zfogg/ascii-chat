@@ -71,15 +71,6 @@ export default function Hardware() {
                 </p>
               </div>
 
-              <div className="info-box-note">
-                <p className="text-gray-300 text-sm mb-2">
-                  <strong>Mode-Specific Options:</strong> Some hardware options
-                  are only available in certain modes. For example,{" "}
-                  <code className="text-cyan-300">--audio</code> is client-only
-                  while audio volume controls work in client, mirror, and discovery
-                  modes.
-                </p>
-              </div>
             </div>
           </section>
 
