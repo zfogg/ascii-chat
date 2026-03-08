@@ -326,4 +326,9 @@ void session_handle_keyboard_input(session_capture_ctx_t *capture, session_displ
     // Unknown key - silently ignore
     break;
   }
+
+  // Re-render help screen if it's active to show updated settings
+  if (display && keyboard_help_is_active(display)) {
+    keyboard_help_render(display);
+  }
 }
