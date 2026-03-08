@@ -167,6 +167,10 @@ def main():
         if re.search(r'_home_|_usr_|_opt_|_var_', basename_no_ext):
             continue
 
+        # Skip Directory Reference pages (path-based entries with many underscores)
+        if re.search(r'_Users_|_src_|_github_', basename_no_ext):
+            continue
+
         # Corresponding .3 file has same basename but with .3 extension
         man3_file = build_man3_dir / f"{basename_no_ext}.3"
 

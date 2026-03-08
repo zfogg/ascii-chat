@@ -134,16 +134,20 @@ message(STATUS \"Manpage processing: \${RENAMED_COUNT} renamed, \${SKIPPED_COUNT
 
     # Create man3 target (fast, man pages only)
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
-    add_custom_target(man3
+    add_custom_command(
+        OUTPUT "${CMAKE_BINARY_DIR}/.man3.done"
         COMMAND timeout 10 ${ASCIICHAT_DOXYGEN_EXECUTABLE} ${DOXYFILE_MAN3_OUT}
         COMMAND ${CMAKE_COMMAND} -E echo "Adding ascii-chat- prefix to manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_BINARY_DIR}/RenameManpages.cmake
         COMMAND ${CMAKE_COMMAND} -E echo "Injecting author information into manpages..."
         COMMAND ${CMAKE_COMMAND} -DMAN_DIR=${CMAKE_BINARY_DIR}/share/man/man3 -P ${CMAKE_SOURCE_DIR}/cmake/utils/InjectAuthorInfo.cmake
+        COMMAND ${CMAKE_COMMAND} -E touch "${CMAKE_BINARY_DIR}/.man3.done"
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "Generating man(3) API reference pages"
+        DEPENDS ${DOXYFILE_MAN3_OUT}
         VERBATIM
     )
+    add_custom_target(man3 DEPENDS "${CMAKE_BINARY_DIR}/.man3.done")
 
     message(STATUS "Man3 target ${BoldGreen}'man3'${ColorReset} is available (man pages only, no HTML). Build with: ${BoldYellow}cmake --build build --target man3${ColorReset}")
 endif()
