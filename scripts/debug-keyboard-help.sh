@@ -25,7 +25,7 @@ sleep 0.2
 
 # Start mirror in tmux (NO PIPING - keep stdout as TTY)
 tmux new-session -d -s "$SESSION" -x 120 -y 40 "cd '$_repo_root' && ./build/bin/ascii-chat mirror --splash-screen=false"
-sleep 1.5
+sleep 3
 
 echo "=== Testing keyboard help screen with tmux ==="
 echo ""
@@ -33,10 +33,10 @@ echo ""
 # Send ? key
 echo "Sending '?' key..."
 tmux send-keys -t "$SESSION" "?"
-sleep 1
+sleep 1.5
 
 echo "=== Screen after '?' (should show help) ==="
-tmux capture-pane -t "$SESSION" -p
+tmux capture-pane -t "$SESSION" -p | head -40
 
 echo ""
 echo "Sending ESC key..."
@@ -44,7 +44,7 @@ tmux send-keys -t "$SESSION" "Escape"
 sleep 1
 
 echo "=== Screen after ESC (back to ASCII art) ==="
-tmux capture-pane -t "$SESSION" -p
+tmux capture-pane -t "$SESSION" -p | head -40
 
 # Cleanup
 tmux send-keys -t "$SESSION" "q"
