@@ -1,8 +1,8 @@
 # WWW app - builds on shared
-FROM node:22-alpine AS base
+FROM node:22-slim AS base
 
 # Install bash and bun
-RUN apk add --no-cache bash && npm install -g bun
+RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . .
@@ -16,9 +16,9 @@ RUN test -d web/www/dist || (echo "ERROR: dist directory not created during buil
 
 # Production stage
 FROM caddy:alpine AS caddy
-FROM node:22-alpine
+FROM node:22-slim
 
-RUN apk add --no-cache git && npm install -g bun
+RUN apt-get update && apt-get install -y --no-install-recommends git && npm install -g bun && rm -rf /var/lib/apt/lists/*
 COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/www

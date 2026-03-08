@@ -1,7 +1,7 @@
 # Web app - builds on shared
-FROM node:22-alpine AS base
+FROM node:22-slim AS base
 
-RUN apk add --no-cache bash && npm install -g bun
+RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 COPY . .
