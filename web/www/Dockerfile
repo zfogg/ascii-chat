@@ -26,7 +26,7 @@ COPY --from=caddy /usr/bin/caddy /usr/local/bin/caddy
 
 WORKDIR /app/www
 
-COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/web/node_modules ./node_modules
 COPY --from=builder /app/web/www/dist ./dist
 COPY --from=builder /app/web/www/api.js ./api.js
 COPY --from=builder /app/web/www/package.json ./package.json
