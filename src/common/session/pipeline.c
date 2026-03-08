@@ -536,6 +536,22 @@ asciichat_error_t session_pipeline_destroy(session_pipeline_t *pipeline) {
     // Signal threads to stop (may already be stopped)
     atomic_store_bool(&pipeline->stop, true);
 
+    // Wake up any threads blocked on condition variable waits
+    // so they can check the stop flag and exit immediately
+    // instead of waiting for timeouts (e.g., 100ms frame_queue_pop timeout)
+    if (pipeline->display_queue) {
+        mutex_lock(&pipeline->display_queue->mu);
+        cond_broadcast(&pipeline->display_queue->not_empty);
+        cond_broadcast(&pipeline->display_queue->not_full);
+        mutex_unlock(&pipeline->display_queue->mu);
+    }
+    if (pipeline->encode_queue) {
+        mutex_lock(&pipeline->encode_queue->mu);
+        cond_broadcast(&pipeline->encode_queue->not_empty);
+        cond_broadcast(&pipeline->encode_queue->not_full);
+        mutex_unlock(&pipeline->encode_queue->mu);
+    }
+
     // Drain and wait for capture thread
     if (asciichat_thread_is_initialized(&pipeline->capture_tid)) {
         asciichat_thread_join(&pipeline->capture_tid, NULL);
