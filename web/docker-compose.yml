@@ -4,6 +4,9 @@ services:
       context: .
       dockerfile: gateway/Dockerfile
     image: zfogg/ascii-chat-web-gateway:latest
+    ports:
+      - "80:80"
+      - "443:443"
     volumes:
       - caddy_data:/data/caddy
       - caddy_config:/config/caddy
@@ -36,6 +39,8 @@ services:
     container_name: ascii-chat-discovery
     networks:
       - ascii-chat
+    labels:
+      - "traefik.enable=false"
 
   web:
     build:
@@ -47,6 +52,8 @@ services:
     container_name: ascii-chat-web
     networks:
       - ascii-chat
+    labels:
+      - "traefik.enable=false"
 
   www:
     build:
@@ -58,6 +65,8 @@ services:
     container_name: ascii-chat-www
     networks:
       - ascii-chat
+    labels:
+      - "traefik.enable=false"
 
 volumes:
   caddy_data:
