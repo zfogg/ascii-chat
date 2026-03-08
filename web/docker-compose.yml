@@ -20,11 +20,6 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.ascii-chat.rule=HostRegexp(`{host:.+}`)"
-      - "traefik.http.routers.ascii-chat.entrypoints=http,https"
-      - "traefik.http.services.ascii-chat.loadbalancer.server.port=80"
 
   discovery:
     build:
@@ -36,8 +31,6 @@ services:
     container_name: ascii-chat-discovery
     networks:
       - ascii-chat
-    labels:
-      - "traefik.enable=false"
 
   web:
     build:
@@ -49,8 +42,6 @@ services:
     container_name: ascii-chat-web
     networks:
       - ascii-chat
-    labels:
-      - "traefik.enable=false"
 
   www:
     build:
@@ -62,8 +53,6 @@ services:
     container_name: ascii-chat-www
     networks:
       - ascii-chat
-    labels:
-      - "traefik.enable=false"
 
 volumes:
   caddy_data:
