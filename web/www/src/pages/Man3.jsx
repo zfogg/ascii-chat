@@ -475,16 +475,22 @@ export default function Man3() {
               rows.push(previousFunc);
             }
 
-            // Extract signature: name + everything up to closing paren
+            // Extract signature: return type + parameters (without repeating function name)
             const nameIdx = plainText.indexOf(name);
             if (nameIdx !== -1) {
+              // Find the closing paren after the function name
               const afterName = plainText.substring(nameIdx + name.length);
               const closeParenIdx = afterName.indexOf(")");
 
               if (closeParenIdx !== -1) {
-                const signature = afterName
-                  .substring(0, closeParenIdx + 1)
-                  .trim();
+                // Look backwards from function name to find start of signature (return type)
+                const beforeName = plainText.substring(0, nameIdx).trimEnd();
+                const lastSpaceIdx = beforeName.lastIndexOf(" ");
+                const returnTypeStart = lastSpaceIdx !== -1 ? lastSpaceIdx + 1 : 0;
+                const returnType = beforeName.substring(returnTypeStart).trim();
+
+                // Signature: return type + parameters (skip the function name)
+                const signature = (returnType + " " + afterName.substring(0, closeParenIdx + 1)).trim();
                 const afterSig = afterName.substring(closeParenIdx + 1).trim();
 
                 previousFunc = {
