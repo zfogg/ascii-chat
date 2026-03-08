@@ -76,7 +76,7 @@ if(ASCIICHAT_DOXYGEN_EXECUTABLE)
     file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/share/man/man3")
 
     # Configure Doxyfile for man3 generation (no HTML)
-    set(DOXYFILE_MAN3_IN "${CMAKE_SOURCE_DIR}/Doxyfile.html")
+    set(DOXYFILE_MAN3_IN "${CMAKE_SOURCE_DIR}/docs/Doxyfile.in")
     set(DOXYFILE_MAN3_OUT "${CMAKE_BINARY_DIR}/Doxyfile.man3")
 
     # Read the Doxyfile template and customize for man3-only output
