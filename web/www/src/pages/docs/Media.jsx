@@ -1,8 +1,4 @@
-import {
-  Heading,
-  CodeBlock,
-  HeadingProvider,
-} from "@ascii-chat/shared/components";
+import { Heading, CodeBlock } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import Footer from "../../components/Footer";
@@ -27,8 +23,7 @@ export default function Media() {
         description="Video files, URLs, streaming, and media handling in ascii-chat."
         url={`${SITES.MAIN}/docs/media`}
       />
-      <HeadingProvider>
-        <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <div className="bg-gray-950 text-gray-100 flex flex-col">
           <div className="flex-1 flex flex-col docs-container">
             <header className="mb-12 sm:mb-16">
               <Heading level={1} className="heading-1 mb-4">
@@ -649,7 +644,6 @@ export default function Media() {
             <Footer />
           </div>
         </div>
-      </HeadingProvider>
     </>
   );
 }

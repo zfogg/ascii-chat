@@ -285,7 +285,7 @@ sudo make install`}
                 label="Home - Documentation"
                 className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
               >
-                <Heading level={3} className="text-teal-300 font-semibold mb-1">
+                <Heading level={3} className="text-teal-300 font-semibold mb-1" anchorLink={false}>
                   📚 Documentation
                 </Heading>
                 <p className="text-gray-400 text-sm">
@@ -298,7 +298,7 @@ sudo make install`}
                 label="Home - Docs Man Page (1)"
                 className="bg-gray-900/50 border border-cyan-900/50 rounded-lg p-4 hover:border-cyan-500/50 transition-colors"
               >
-                <Heading level={3} className="text-cyan-300 font-semibold mb-1">
+                <Heading level={3} className="text-cyan-300 font-semibold mb-1" anchorLink={false}>
                   📖 ascii-chat(1)
                 </Heading>
                 <p className="text-gray-400 text-sm">
@@ -314,6 +314,7 @@ sudo make install`}
                 <Heading
                   level={3}
                   className="text-purple-300 font-semibold mb-1"
+                  anchorLink={false}
                 >
                   🔐 Cryptography
                 </Heading>
@@ -327,7 +328,7 @@ sudo make install`}
                 label="Home - Docs Man Page (3)"
                 className="bg-gray-900/50 border border-pink-900/50 rounded-lg p-4 hover:border-pink-500/50 transition-colors"
               >
-                <Heading level={3} className="text-pink-300 font-semibold mb-1">
+                <Heading level={3} className="text-pink-300 font-semibold mb-1" anchorLink={false}>
                   📚 ascii-chat-*(3)
                 </Heading>
                 <p className="text-gray-400 text-sm">
@@ -343,6 +344,7 @@ sudo make install`}
                 <Heading
                   level={3}
                   className="text-green-300 font-semibold mb-1"
+                  anchorLink={false}
                 >
                   🌍 Command Line --options
                 </Heading>
@@ -358,7 +360,7 @@ sudo make install`}
                 rel="noopener noreferrer"
                 className="bg-gray-900/50 border border-teal-900/50 rounded-lg p-4 hover:border-teal-500/50 transition-colors"
               >
-                <Heading level={3} className="text-teal-300 font-semibold mb-1">
+                <Heading level={3} className="text-teal-300 font-semibold mb-1" anchorLink={false}>
                   🔍 Discovery Service
                 </Heading>
                 <p className="text-gray-400 text-sm">

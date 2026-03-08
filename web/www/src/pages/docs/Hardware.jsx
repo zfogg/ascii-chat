@@ -1,8 +1,4 @@
-import {
-  CodeBlock,
-  Heading,
-  HeadingProvider,
-} from "@ascii-chat/shared/components";
+import { CodeBlock, Heading } from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { useEffect } from "react";
 import { AsciiChatHead } from "../../components/AsciiChatHead";
@@ -27,8 +23,7 @@ export default function Hardware() {
         description="Learn about webcams, microphones, speakers, and keyboard shortcuts in ascii-chat."
         url={`${SITES.MAIN}/docs/hardware`}
       />
-      <HeadingProvider>
-        <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <div className="bg-gray-950 text-gray-100 flex flex-col">
           <div className="flex-1 flex flex-col docs-container">
             <header className="mb-12 sm:mb-16">
               <Heading level={1} className="heading-1 mb-4">
@@ -525,7 +520,6 @@ export default function Hardware() {
             <Footer />
           </div>
         </div>
-      </HeadingProvider>
     </>
   );
 }

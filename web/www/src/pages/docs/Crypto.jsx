@@ -3,9 +3,7 @@ import Footer from "../../components/Footer";
 import TrackedLink from "../../components/TrackedLink";
 import {
   Heading,
-  CodeBlock,
-  HeadingProvider,
-} from "@ascii-chat/shared/components";
+  CodeBlock} from "@ascii-chat/shared/components";
 import { SITES } from "@ascii-chat/shared/utils";
 import { setBreadcrumbSchema } from "../../utils/breadcrumbs";
 import { useScrollToHash } from "../../utils/hooks";
@@ -26,8 +24,7 @@ export default function Crypto() {
         description="Encryption, keys, and authentication in ascii-chat. Learn about Ed25519, X25519, and end-to-end encryption."
         url={`${SITES.MAIN}/crypto`}
       />
-      <HeadingProvider>
-        <div className="bg-gray-950 text-gray-100 flex flex-col">
+      <div className="bg-gray-950 text-gray-100 flex flex-col">
           <div className="flex-1 flex flex-col max-w-4xl mx-auto px-4 sm:px-6 py-8 sm:py-12 w-full">
             {/* Header */}
             <header className="mb-12 sm:mb-16">
@@ -1214,7 +1211,6 @@ ascii-chat client 127.0.0.1 --no-encrypt`}</CodeBlock>
             <Footer />
           </div>
         </div>
-      </HeadingProvider>
     </>
   );
 }
