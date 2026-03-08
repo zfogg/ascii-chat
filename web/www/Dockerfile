@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends bash && npm ins
 
 WORKDIR /app
 COPY . .
-RUN bun install --frozen-lockfile=false
+RUN bun install
 
 # Build www
 FROM base AS builder
