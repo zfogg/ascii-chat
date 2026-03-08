@@ -13,10 +13,10 @@ COPY . .
 RUN bun install
 
 # Build discovery project only
-RUN bun run --filter './discovery' build
+RUN bun run --filter './web/discovery' build
 
 # Clean up node_modules
-RUN rm -rf /app/node_modules /app/packages /app/www /app/web /app/bun.lock*
+RUN rm -rf /app/node_modules /app/packages /app/web/www /app/web/web /app/bun.lock*
 
 # Production stage with Caddy
 FROM caddy:alpine
@@ -27,7 +27,7 @@ WORKDIR /app/discovery
 COPY --from=builder /app/discovery/dist ./dist
 
 # Copy Caddyfile
-COPY discovery/Caddyfile /etc/caddy/Caddyfile
+COPY web/discovery/Caddyfile /etc/caddy/Caddyfile
 
 # Expose port for serving
 EXPOSE 5174

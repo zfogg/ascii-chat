@@ -1,8 +1,8 @@
 services:
   gateway:
     build:
-      context: .
-      dockerfile: gateway/Dockerfile
+      context: ..
+      dockerfile: web/gateway/Dockerfile
     image: zfogg/ascii-chat-web-gateway:latest
     volumes:
       - caddy_data:/data/caddy
@@ -30,8 +30,8 @@ services:
 
   discovery:
     build:
-      context: .
-      dockerfile: discovery/Dockerfile
+      context: ..
+      dockerfile: web/discovery/Dockerfile
     image: zfogg/ascii-chat-web-discovery:latest
     environment:
       - API_PORT=3001
@@ -43,8 +43,8 @@ services:
 
   web:
     build:
-      context: .
-      dockerfile: web/Dockerfile
+      context: ..
+      dockerfile: web/web/Dockerfile
     image: zfogg/ascii-chat-web-web:latest
     environment:
       - API_PORT=3001
@@ -56,8 +56,8 @@ services:
 
   www:
     build:
-      context: .
-      dockerfile: www/Dockerfile
+      context: ..
+      dockerfile: web/www/Dockerfile
     image: zfogg/ascii-chat-web-www:latest
     environment:
       - API_PORT=3001

@@ -9,11 +9,14 @@ WORKDIR /app
 # Copy entire web directory (preserves workspace structure)
 COPY . .
 
-# Install dependencies
-RUN bun install
+# Install dependencies for entire monorepo workspace
+RUN bun install --frozen-lockfile
 
-# Build www project only
-RUN bun run --filter './www' build
+# Build www project only (uses vite to build dist/)
+RUN bun run --filter './web/www' build
+
+# Verify dist was created
+RUN test -d web/www/dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Production stage - Caddy + API
 FROM caddy:alpine AS caddy
@@ -31,13 +34,13 @@ WORKDIR /app/www
 COPY --from=builder /app/node_modules ./node_modules
 
 # Copy only www dist and specific files from builder
-COPY --from=builder /app/www/dist ./dist
-COPY --from=builder /app/www/api.js ./api.js
-COPY --from=builder /app/www/package.json ./package.json
-COPY --from=builder /app/www/src ./src
+COPY --from=builder /app/web/www/dist ./dist
+COPY --from=builder /app/web/www/api.js ./api.js
+COPY --from=builder /app/web/www/package.json ./package.json
+COPY --from=builder /app/web/www/src ./src
 
 # Copy Caddyfile for frontend serving + API proxying
-COPY www/Caddyfile /etc/caddy/Caddyfile
+COPY web/www/Caddyfile /etc/caddy/Caddyfile
 
 # Environment variable for API port (default 3001)
 ENV API_PORT=3001
