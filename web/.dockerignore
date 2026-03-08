@@ -1,18 +1,62 @@
+# Root-level artifacts (ascii-chat project)
+build
+build-*
+.deps-cache
+.cache
+cmake-*
+cmake_install.cmake
+CMakeFiles
+CMakeCache.txt
+compile_commands.json
+witness
+polecats
+deploy
+
+# Node/package managers
 node_modules
 npm-debug.log
+bun.lockb
+pnpm-lock.yaml
+
+# Version control
 .git
 .gitignore
-README.md
+.github
+
+# IDE and editors
+.vscode
+.idea
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Environment
 .env
 .env.local
 .env.*.local
-*.log
-.DS_Store
-.idea
-.vscode
+
+# Build outputs
 dist
+*/dist
 build
+*/build
 coverage
+*/coverage
+.turbo
+
+# Logging and debugging
+*.log
 .vercel
 .claude
 git-hooks
+
+# CI/CD
+.github/workflows
+
+# Documentation
+README.md
+CLAUDE.md
+DOCKER.md
+docs
+images

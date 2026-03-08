@@ -1,13 +1,16 @@
 # WWW app - builds on shared
 FROM node:22-slim AS base
 
-# Install bash and bun (fresh install, no cache)
+# Install bash and bun
 RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-# Cache invalidator: rebuild because of stale lock
+
+# Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
-RUN rm -f bun.lock* && bun install
+
+# Clean install dependencies with no cache
+RUN bun install --no-cache
 
 # Build www
 FROM base AS builder

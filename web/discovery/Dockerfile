@@ -1,11 +1,15 @@
 # Discovery app - builds on shared
 FROM node:22-slim AS base
 
-RUN apt-get update && apt-get install -y --no-install-recommends bash && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends bash git && npm install -g bun@1.3.10 && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+# Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
-RUN rm -f bun.lock && bun install
+
+# Clean install dependencies with no cache
+RUN bun install --no-cache
 
 # Build discovery
 FROM base AS builder
