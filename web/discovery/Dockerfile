@@ -8,8 +8,8 @@ WORKDIR /app
 # Copy entire monorepo (node_modules excluded via .dockerignore)
 COPY . .
 
-# Clean install dependencies with no cache
-RUN bun install --no-cache
+# Clean install dependencies with no cache (run from web/ which is the monorepo root)
+RUN cd web && bun install --no-cache
 
 # Build discovery
 FROM base AS builder
