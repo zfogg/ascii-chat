@@ -11,7 +11,7 @@ RUN bun install
 # Build www
 FROM base AS builder
 
-RUN cd web && bun run --filter './www' build
+RUN cd web/www && bun run build
 RUN test -d web/www/dist || (echo "ERROR: dist directory not created during build" && ls -la && exit 1)
 
 # Production stage

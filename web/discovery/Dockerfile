@@ -10,7 +10,7 @@ RUN cd web && bun install
 # Build discovery
 FROM base AS builder
 
-RUN cd web && bun run --filter './discovery' build
+RUN cd web/discovery && bun run build
 RUN rm -rf /app/node_modules /app/packages /app/www /app/bun.lock*
 
 # Production stage
