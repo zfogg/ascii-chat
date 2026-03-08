@@ -638,9 +638,6 @@ export default function Hardware() {
                     Media File Not Playing
                   </Heading>
                   <ul className="list-disc list-inside text-gray-300 text-sm space-y-1">
-                    <li>
-                      Ensure ffmpeg is installed (used for format support)
-                    </li>
                     <li>Check file path is correct and readable</li>
                     <li>
                       Try{" "}
