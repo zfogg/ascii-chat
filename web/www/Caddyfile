@@ -1,4 +1,4 @@
-:5173 {
+:80 {
   # API requests go to Express backend on port 3001
   handle /api/* {
     reverse_proxy * localhost:3001

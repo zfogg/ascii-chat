@@ -1,4 +1,4 @@
-:3000 {
+:80 {
   root * /app/web/dist
   file_server
 
